@@ -11,12 +11,12 @@ binding = "ASSETS"
 [[d1_databases]]
 binding = "DB"         # env.DB
 database_name = "ruwt"
-database_id = "XXXX"
+database_id = "5e08f725-146d-4f45-9ad3-7a438bafd665"
 
 # KV (fast config/cache/session)
 [[kv_namespaces]]
 binding = "KV"
-id = "XXXX"
+id = "9ab69c3234ee4a6fb103e39c7abdc79c"
 
 # R2 (files/images)
 [[r2_buckets]]
