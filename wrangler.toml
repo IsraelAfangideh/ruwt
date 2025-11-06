@@ -1,0 +1,24 @@
+name = "my-app"
+main = ".cloudflare/worker.js"
+compatibility_date = "2025-11-05"
+
+# D1 (relational DB)
+[[d1_databases]]
+binding = "DB"         # env.DB
+database_name = "myapp"
+database_id = "XXXX"
+
+# KV (fast config/cache/session)
+[[kv_namespaces]]
+binding = "KV"
+id = "XXXX"
+
+# R2 (files/images)
+[[r2_buckets]]
+binding = "R2"
+bucket_name = "myapp-files"
+
+# Queues (background jobs, optional)
+[[queues.producers]]
+binding = "JOBS"
+queue = "myapp-jobs"
