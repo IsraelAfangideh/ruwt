@@ -5,6 +5,7 @@ compatibility_date = "2025-11-06"
 
 [assets]
 directory = ".svelte-kit/output/client"
+binding = "ASSETS"
 
 # D1 (relational DB)
 [[d1_databases]]
