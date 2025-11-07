@@ -12,6 +12,7 @@ binding = "ASSETS"
 binding = "DB"         # env.DB
 database_name = "ruwt"
 database_id = "5e08f725-146d-4f45-9ad3-7a438bafd665"
+migrations_dir = "migrations"
 
 # KV (fast config/cache/session)
 [[kv_namespaces]]
