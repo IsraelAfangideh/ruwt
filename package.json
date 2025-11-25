@@ -1,0 +1,10 @@
+{
+  "name": "ruwt-monorepo",
+  "version": "0.0.0",
+  "private": true,
+  "workspaces": [
+    "api",
+    "mobile",
+    "shared"
+  ]
+}
