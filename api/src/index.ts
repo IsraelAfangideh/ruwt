@@ -1,16 +1,16 @@
-import { serve } from '@hono/node-server';
 import { Hono } from 'hono';
-import { drizzle } from 'drizzle-orm/better-sqlite3';
-import Database from 'better-sqlite3';
+import { drizzle } from 'drizzle-orm/postgres-js';
+import postgres from 'postgres';
 import { runners } from './db/schema';
 
 const app = new Hono();
 
 // Database connection
-const sqlite = new Database('ruwt.db');
-const db = drizzle(sqlite);
+const connectionString = process.env.DATABASE_URL || 'postgres://postgres:password@localhost:5432/ruwt';
+const client = postgres(connectionString);
+const db = drizzle(client);
 
-app.get('/', (c) => c.text('Ruwt API is running on Node with SQLite!'));
+app.get('/', (c) => c.text('Ruwt API is running on Bun with Postgres!'));
 
 app.get('/runners', async (c) => {
   try {
@@ -22,10 +22,10 @@ app.get('/runners', async (c) => {
   }
 });
 
-const port = 3000;
+const port = parseInt(process.env.PORT || '3000');
 console.log(`Server is running on port ${port}`);
 
-serve({
+export default {
+  port,
   fetch: app.fetch,
-  port
-});
+};

@@ -1,8 +1,8 @@
 {
   "schema": "./src/db/schema.ts",
   "out": "./drizzle",
-  "driver": "better-sqlite",
+  "driver": "pg",
   "dbCredentials": {
-    "url": "ruwt.db"
+    "connectionString": "postgres://postgres:password@localhost:5432/ruwt"
   }
 }

@@ -1,12 +1,11 @@
-import { sqliteTable, text } from 'drizzle-orm/sqlite-core';
-import { sql } from 'drizzle-orm';
+import { pgTable, text, uuid, vector } from 'drizzle-orm/pg-core';
 
-export const runners = sqliteTable('runners', {
-  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+export const runners = pgTable('runners', {
+  id: uuid('id').defaultRandom().primaryKey(),
   name: text('name').notNull(),
   personality: text('personality').notNull(),
-  // Storing embedding as JSON string for MVP since SQLite doesn't have native vector support
-  embedding: text('embedding', { mode: 'json' }),
+  // Vector embedding for personality matching (1536 dims for OpenAI)
+  embedding: vector('embedding', { dimensions: 1536 }),
 });
 
 export type Runner = typeof runners.$inferSelect;

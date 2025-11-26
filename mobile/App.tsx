@@ -1,18 +1,20 @@
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
-import { StyleSheet, Text, View, FlatList, SafeAreaView, TouchableOpacity } from 'react-native';
+import { StyleSheet, Text, View, FlatList, SafeAreaView, TouchableOpacity, ListRenderItem } from 'react-native';
+import { Runner } from '@ruwt/shared';
+import { ENDPOINTS } from './src/config';
 
 export default function App() {
-  const [runners, setRunners] = useState([]);
+  const [runners, setRunners] = useState<Runner[]>([]);
 
   useEffect(() => {
-    fetch('http://localhost:3000/runners')
+    fetch(ENDPOINTS.runners)
       .then((res) => res.json())
       .then((data) => setRunners(data))
       .catch((err) => console.error(err));
   }, []);
 
-  const renderItem = ({ item }) => (
+  const renderItem: ListRenderItem<Runner> = ({ item }) => (
     <View style={styles.card}>
       <Text style={styles.name}>{item.name}</Text>
       <Text style={styles.personality}>{item.personality}</Text>
@@ -84,3 +86,4 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 });
+
