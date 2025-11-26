@@ -1,0 +1,183 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="57ae9766-4a8c-4416-8907-fd7485c4b8d5" name="Changes" comment="add +server.ts" />
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="FileTemplateManagerImpl">
+    <option name="RECENT_TEMPLATES">
+      <list>
+        <option value="JavaScript File" />
+        <option value="TypeScript File" />
+      </list>
+    </option>
+  </component>
+  <component name="Git.Settings">
+    <option name="PREVIEW_PUSH_ON_COMMIT_AND_PUSH" value="false" />
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="GitHubPullRequestSearchHistory">{
+  &quot;lastFilter&quot;: {
+    &quot;state&quot;: &quot;OPEN&quot;,
+    &quot;assignee&quot;: &quot;IsraelAfangideh&quot;
+  }
+}</component>
+  <component name="GithubPullRequestsUISettings">{
+  &quot;selectedUrlAndAccountId&quot;: {
+    &quot;url&quot;: &quot;https://github.com/IsraelAfangideh/ruwt.git&quot;,
+    &quot;accountId&quot;: &quot;3990211e-24bf-404e-af14-fd75c4498c3b&quot;
+  }
+}</component>
+  <component name="LLMProjectSettings">
+    <option name="turned_on" value="false" />
+  </component>
+  <component name="ProblemsViewState">
+    <option name="selectedTabId" value="CurrentFile" />
+  </component>
+  <component name="ProjectColorInfo">{
+  &quot;associatedIndex&quot;: 6
+}</component>
+  <component name="ProjectId" id="353fgSM4m4kmeh1gtvEoLnpA7SX" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "ModuleVcsDetector.initialDetectionPerformed": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "git-widget-placeholder": "main",
+    "last_opened_file_path": "/Users/israelafangideh/Documents/ruwt",
+    "node.js.detected.package.eslint": "true",
+    "node.js.detected.package.tslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
+    "node.js.selected.package.tslint": "(autodetect)",
+    "nodejs_package_manager_path": "npm",
+    "prettierjs.PrettierConfiguration.Package": "/Users/israelafangideh/Documents/ruwt/node_modules/prettier",
+    "rearrange.code.on.save": "true",
+    "settings.editor.selected.configurable": "vcs.Git",
+    "ts.external.directory.path": "/Users/israelafangideh/Documents/ruwt/node_modules/typescript/lib",
+    "vue.rearranger.settings.migration": "true"
+  },
+  "keyToStringList": {
+    "DatabaseDriversLRU": [
+      "sqlite"
+    ]
+  }
+}]]></component>
+  <component name="SharedIndexes">
+    <attachedChunks>
+      <set>
+        <option value="bundled-js-predefined-d6986cc7102b-9c94529fcfe0-JavaScript-WS-252.26199.162" />
+      </set>
+    </attachedChunks>
+  </component>
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="57ae9766-4a8c-4416-8907-fd7485c4b8d5" name="Changes" comment="" />
+      <created>1762343786716</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1762343786716</updated>
+      <workItem from="1762343788102" duration="15377000" />
+      <workItem from="1763987067309" duration="5232000" />
+    </task>
+    <task id="LOCAL-00001" summary="Update package-lock.json with new dependencies for Cloudflare and Sharp integrations">
+      <option name="closed" value="true" />
+      <created>1762463480800</created>
+      <option name="number" value="00001" />
+      <option name="presentableId" value="LOCAL-00001" />
+      <option name="project" value="LOCAL" />
+      <updated>1762463480800</updated>
+    </task>
+    <task id="LOCAL-00002" summary="Update `wrangler.toml` with new build outputs and assets configuration">
+      <option name="closed" value="true" />
+      <created>1762463735869</created>
+      <option name="number" value="00002" />
+      <option name="presentableId" value="LOCAL-00002" />
+      <option name="project" value="LOCAL" />
+      <updated>1762463735869</updated>
+    </task>
+    <task id="LOCAL-00003" summary="Add `binding` for assets configuration in `wrangler.toml`">
+      <option name="closed" value="true" />
+      <created>1762464021414</created>
+      <option name="number" value="00003" />
+      <option name="presentableId" value="LOCAL-00003" />
+      <option name="project" value="LOCAL" />
+      <updated>1762464021414</updated>
+    </task>
+    <task id="LOCAL-00004" summary="Update `wrangler.toml` with new database, bucket, and queue configurations">
+      <option name="closed" value="true" />
+      <created>1762464453351</created>
+      <option name="number" value="00004" />
+      <option name="presentableId" value="LOCAL-00004" />
+      <option name="project" value="LOCAL" />
+      <updated>1762464453351</updated>
+    </task>
+    <task id="LOCAL-00005" summary="Update `wrangler.toml` with new database and KV namespace IDs">
+      <option name="closed" value="true" />
+      <created>1762464962895</created>
+      <option name="number" value="00005" />
+      <option name="presentableId" value="LOCAL-00005" />
+      <option name="project" value="LOCAL" />
+      <updated>1762464962895</updated>
+    </task>
+    <task id="LOCAL-00006" summary="Update homepage layout and title styling in `+page.svelte`">
+      <option name="closed" value="true" />
+      <created>1762544330824</created>
+      <option name="number" value="00006" />
+      <option name="presentableId" value="LOCAL-00006" />
+      <option name="project" value="LOCAL" />
+      <updated>1762544330824</updated>
+    </task>
+    <task id="LOCAL-00007" summary="Begin writing 1.sql">
+      <option name="closed" value="true" />
+      <created>1762546710810</created>
+      <option name="number" value="00007" />
+      <option name="presentableId" value="LOCAL-00007" />
+      <option name="project" value="LOCAL" />
+      <updated>1762546710810</updated>
+    </task>
+    <task id="LOCAL-00008" summary="Add auth_provider table &#10;Email can now be null&#10;human_number is an Integer">
+      <option name="closed" value="true" />
+      <created>1762603398654</created>
+      <option name="number" value="00008" />
+      <option name="presentableId" value="LOCAL-00008" />
+      <option name="project" value="LOCAL" />
+      <updated>1762603398654</updated>
+    </task>
+    <task id="LOCAL-00009" summary="add +server.ts">
+      <option name="closed" value="true" />
+      <created>1762604669874</created>
+      <option name="number" value="00009" />
+      <option name="presentableId" value="LOCAL-00009" />
+      <option name="project" value="LOCAL" />
+      <updated>1762604669874</updated>
+    </task>
+    <option name="localTasksCounter" value="10" />
+    <servers />
+  </component>
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="3" />
+  </component>
+  <component name="VcsManagerConfiguration">
+    <MESSAGE value="Update package-lock.json with new dependencies for Cloudflare and Sharp integrations" />
+    <MESSAGE value="Update `wrangler.toml` with new build outputs and assets configuration" />
+    <MESSAGE value="Add `binding` for assets configuration in `wrangler.toml`" />
+    <MESSAGE value="Update `wrangler.toml` with new database, bucket, and queue configurations" />
+    <MESSAGE value="Update `wrangler.toml` with new database and KV namespace IDs" />
+    <MESSAGE value="Update homepage layout and title styling in `+page.svelte`" />
+    <MESSAGE value="Begin writing 1.sql" />
+    <MESSAGE value="Add auth_provider table &#10;Email can now be null&#10;human_number is an Integer" />
+    <MESSAGE value="add +server.ts" />
+    <option name="LAST_COMMIT_MESSAGE" value="add +server.ts" />
+  </component>
+</project>
