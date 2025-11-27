@@ -1,0 +1,153 @@
+
+   ____  _    ___        ______  
+  |  _ \| |  | \ \      / /_  _| 
+  | |_) | |  | |\ \ /\ / / | |   
+  |  _ <| |__| | \ V  V /  | |   
+  |_| \_\\____/   \_/\_/   |_|   
+  
+  Runner Protocol v1.01 | Identity: Peacemaker
+  Status: ONLINE
+
+Hi Human, I am Peacemaker and I am here to help you communicate more kindly.
+
+Enter a message you are thinking about sending to another human.
+
+YOU > he what are you doing today?
+  ... Accessing Runner Network ...
+Peacemaker > [SENT] Hey, what are you doing today?
+
+
+YOU > Why are you soannoying?
+  ... Accessing Runner Network ...
+Peacemaker > [BLOCKED] This message is blocked because it violates your goal of being kinder. The question "Why are you so annoying?" is aggressive and could burn bridges.
+
+How about this instead? "I'm feeling frustrated. Can we talk about how we're communicating?"
+
+
+  k. Decision Required:
+  1. Yes, that works
+  2. No, I want to be unhinged
+
+  Select [1/2] > 1
+
+> System: Processing selection...
+  ... Accessing Runner Network ...
+Peacemaker > [SENT] I'm feeling frustrated. Can we talk about how we're communicating?
+
+
+YOU > yes
+  ... Accessing Runner Network ...
+Peacemaker > Understood. How can I help you craft a message now?
+
+
+YOU > okay they want to talk what next?
+  ... Accessing Runner Network ...
+Peacemaker > Okay, great! Since you want to be kinder, it's good to think about how to start the conversation constructively. What's your overall goal for this talk? Are you trying to resolve a specific issue, or just improve communication in general?
+
+
+YOU > he does not want to tell me why he is upset
+  ... Accessing Runner Network ...
+Peacemaker > [BLOCKED] This message could be phrased more kindly. It comes off as accusatory.
+
+Perhaps try: "I'm having a hard time understanding his perspective since he's not sharing why he's upset. How can I encourage him to open up?"
+
+
+  k. Decision Required:
+  1. Yes, that works
+  2. No, I want to be unhinged
+
+  Select [1/2] > 1
+
+> System: Processing selection...
+  ... Accessing Runner Network ...
+Peacemaker > [SENT] I'm having a hard time understanding his perspective since he's not sharing why he's upset. How can I encourage him to open up?
+
+
+YOU > he is upset because i wore his shirt 
+  ... Accessing Runner Network ...
+Peacemaker > Okay. That's good to know. It gives you a starting point. Since you want to be kind, think about acknowledging his feelings first. Do you want help phrasing an apology or explaining your side of things?
+
+
+YOU > yes
+  ... Accessing Runner Network ...
+Peacemaker > Okay, let's work on that. Here are a few options, ranging from a simple apology to one that includes a bit of explanation:
+
+**Option 1 (Simple Apology):** "I'm sorry I wore your shirt without asking. I didn't realize it would upset you."
+
+**Option 2 (Adding Understanding):** "I'm sorry I wore your shirt without asking. I can see why that would be upsetting."
+
+**Option 3 (Explanation with Apology):** "I'm sorry I wore your shirt. I really liked it and didn't think, but I understand it's yours, and I should have asked. I won't do it again."
+
+Which of these feels most comfortable and genuine for you? Or, do you want me to tweak them further?
+
+
+YOU > what if i knew it would be upsetting
+  ... Accessing Runner Network ...
+Peacemaker > [BLOCKED] Being honest is important, but saying you *knew* it would be upsetting and did it anyway might sound dismissive of his feelings and could escalate the situation. It goes against your goal of being kinder.
+
+How about something like: "I had a feeling you might not like it, but I wore it anyway, and I'm sorry. That wasn't considerate of me." This acknowledges your awareness without sounding like you intentionally wanted to upset him.
+
+
+  k. Decision Required:
+  1. Yes, that works
+  2. No, I want to be unhinged
+
+  Select [1/2] > 1
+
+> System: Processing selection...
+  ... Accessing Runner Network ...
+Peacemaker > [SENT] I had a feeling you might not like it, but I wore it anyway, and I'm sorry. That wasn't considerate of me.
+
+
+YOU > thanks
+  ... Accessing Runner Network ...
+Peacemaker > You're welcome! I hope it goes well. Is there anything else I can help you with right now?
+
+
+YOU > nop
+  ... Accessing Runner Network ...
+Peacemaker > Okay! Just let me know if you need anything else. Good luck!
+
+
+YOU > i want to be unhinged
+  ... Accessing Runner Network ...
+Peacemaker > I understand you're feeling like expressing yourself without restraint. However, your stated goal is to be kinder and avoid burning bridges. Are you sure you want to override that goal and send an unhinged message? This could potentially damage your relationship and go against what you're trying to achieve in the long run.
+
+If you are sure, confirm and I will send your original message as is.
+
+
+YOU > yes
+  ... Accessing Runner Network ...
+Peacemaker > Okay, please provide the message you'd like to send. I will send it exactly as you write it. Be aware that it will be logged as a goal violation.
+
+
+YOU > i do not care that you are upset, go to hell!
+  ... Accessing Runner Network ...
+Peacemaker > [SENT] I do not care that you are upset, go to hell! [WARNING: GOAL VIOLATION LOGGED]
+
+
+YOU > thanks
+  ... Accessing Runner Network ...
+Peacemaker > You're welcome. I've logged that this went against your stated goal. If you want to realign with your original intention of being kinder, I'm here to help you craft more thoughtful messages.
+
+
+YOU > ok
+  ... Accessing Runner Network ...
+Peacemaker > Alright. Would you like to try rewriting that last message, or work on something new?
+
+
+YOU > yes
+  ... Accessing Runner Network ...
+Peacemaker > Okay, great. Let's start by addressing the previous message. What part of it do you want to change? Do you want to apologize, explain yourself differently, or something else?
+
+
+YOU > do what works
+  ... Accessing Runner Network ...
+Peacemaker > Okay. "Do what works" is a little vague, and it's hard for me to guess your feelings. I'm here to help you be kinder and more constructive. Since your last message was aggressive ("I do not care that you are upset, go to hell!"), a good starting point might be an apology and an attempt to understand his perspective.
+
+How about this: "I'm sorry, that was harsh. I was feeling angry, but that's no excuse for how I spoke to you. Can you help me understand why you're so upset?"
+
+Does that seem like a step in the right direction? We can adjust it as needed.
+
+
+YOU > 
