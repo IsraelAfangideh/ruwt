@@ -33,6 +33,9 @@ async function startSession() {
   `));
   console.log(chalk.gray(`  Runner Protocol v1.01 | Identity: ${chalk.white(RUNNER_NAME)}`));
   console.log(chalk.gray(`  Status: ${chalk.green('ONLINE')}\n`));
+  console.log(chalk.gray(`Hi Human, I am ${chalk.blue(RUNNER_NAME)} and I am here to help you communicate more kindly.\n`));
+  console.log(chalk.gray(`Enter a message you are thinking about sending to another human.\n`));
+
 
   const rl = readline.createInterface({
     input: process.stdin,

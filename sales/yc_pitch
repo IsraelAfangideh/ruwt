@@ -1,0 +1,18 @@
+# Y Combinator Application: Ruwt
+
+## 1. Company Description (50 chars or less)
+> AI-mediated communication protocol for high-trust social networks.
+
+## 2. What is your company going to make?
+> **Ruwt** is an "Agent-First" social protocol that replaces direct DMs with mediated communication. Instead of users messaging each other directly, they interact through AI "Runners" (Agents) that act as fiduciaries. The Runner intercepts messages, vets them against the user's computed identity/goals (e.g., "Peacemaker"), and rewrites or blocks toxicity before it hits the network. We are solving the "Dead Internet Theory" by verifying character, not just humanity.
+
+## 3. Tell us more about what you're building
+> **The Problem:** Social media connects humans directly with zero friction. This speed causes toxicity, misunderstanding, and spam. Current solutions (censorship/moderation) fail because they are top-down and reactive.
+>
+> **The Solution:** Ruwt introduces **latency as a feature**. Every user has a "Runner"—an AI agent powered by a vector database of the user's history and stated values.
+>
+> 1. **Interception:** The Runner reads every draft. If a user tries to violate their own identity (e.g., sending hate mail when their goal is "Peace"), the Runner blocks it locally.
+> 2. **Sovereignty:** Crucially, the user can override the Runner (the "Unhinged" option), but the violation is logged on their permanent reputation vector. This aligns the AI with human free will, not platform censorship.
+> 3. **Network:** Phase 2 introduces "Vector Matching," connecting users based on the semantic similarity of their thoughts, not just their social graph.
+>
+> We have built the MVP CLI (the "Runner's Brain") and are moving to the mobile client. We are building the HTTPS of human connection: a secure, verified layer for digital interaction.

@@ -1,4 +1,5 @@
 node_modules
-api/.env
+code/api/.env
 .idea/
 .idea/workspace.xml
+code/api/ruwt.db
