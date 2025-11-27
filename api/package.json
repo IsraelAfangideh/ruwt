@@ -1,23 +1,24 @@
 {
-"name": "@ruwt/api",
-"version": "0.0.0",
-"scripts": {
-    "dev": "bun --watch src/index.ts",
-    "cli": "bun src/cli.ts",
-    "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit push"
-},
-"dependencies": {
-    "ai": "^3.0.0",
-    "@ai-sdk/google": "^0.0.1",
-    "hono": "^4.0.0",
-    "drizzle-orm": "^0.36.0",
-    "postgres": "^3.4.0",
-    "@ruwt/shared": "*"
-},
-"devDependencies": {
-    "bun-types": "latest",
-    "drizzle-kit": "^0.28.0",
-    "@types/bun": "latest"
-}
+    "name": "@ruwt/api",
+    "version": "0.0.0",
+    "scripts": {
+        "dev": "bun --watch src/index.ts",
+        "cli": "bun src/cli.ts",
+        "db:generate": "drizzle-kit generate",
+        "db:migrate": "drizzle-kit push"
+    },
+    "dependencies": {
+        "@ai-sdk/google": "^2.0.44",
+        "@google/generative-ai": "^0.24.1",
+        "@ruwt/shared": "*",
+        "ai": "^3.0.0",
+        "drizzle-orm": "^0.36.0",
+        "hono": "^4.0.0",
+        "postgres": "^3.4.0"
+    },
+    "devDependencies": {
+        "bun-types": "latest",
+        "drizzle-kit": "^0.28.0",
+        "@types/bun": "latest"
+    }
 }

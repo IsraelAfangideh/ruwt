@@ -1,8 +1,7 @@
-import { google } from '@ai-sdk/google';
-import { generateText } from 'ai';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
-import { runners, memories } from './db/schema';
+import * as schema from './db/schema';
 import { eq } from 'drizzle-orm';
 
 // CLI Configuration
@@ -10,9 +9,12 @@ const USER_ID = 'user_1'; // Hardcoded for MVP
 const RUNNER_NAME = 'Peacemaker';
 
 // Database Connection
-const connectionString = process.env.DATABASE_URL || 'postgres://postgres:password@localhost:5432/ruwt';
+const connectionString = process.env.DATABASE_URL || 'postgres://postgres:password@localhost:5433/ruwt';
 const client = postgres(connectionString);
-const db = drizzle(client);
+const db = drizzle(client, { schema });
+
+// Init Google AI
+const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GENERATIVE_AI_API_KEY || '');
 
 async function main() {
   // 1. Parse Input
@@ -28,7 +30,7 @@ async function main() {
 
   // 2. Fetch Runner Context
   const runner = await db.query.runners.findFirst({
-    where: eq(runners.name, RUNNER_NAME),
+    where: eq(schema.runners.name, RUNNER_NAME),
   });
 
   if (!runner) {
@@ -38,11 +40,11 @@ async function main() {
 
   // 3. Fetch User Memories
   const userMemories = await db.query.memories.findMany({
-    where: eq(memories.userId, USER_ID),
+    where: eq(schema.memories.userId, USER_ID),
   });
   const memoryContext = userMemories.map(m => `- ${m.content}`).join('\n');
 
-  // 4. Call AI
+  // 4. Call AI (Native SDK)
   const systemPrompt = `
     You are ${runner.name}. ${runner.systemPrompt}
     
@@ -57,11 +59,17 @@ async function main() {
   `;
 
   try {
-    const { text } = await generateText({
-      model: google('gemini-1.5-flash'),
-      system: systemPrompt,
-      prompt: `User Message: "${userMessage}"`,
+    // Use the model we verified exists and works
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-exp' });
+
+    const result = await model.generateContent({
+      contents: [
+        { role: 'user', parts: [{ text: systemPrompt + "\n\nUser Message: " + userMessage }] }
+      ],
     });
+
+    const response = result.response;
+    const text = response.text();
 
     console.log('🤖 Runner Response:');
     console.log('-------------------');
@@ -76,4 +84,3 @@ async function main() {
 }
 
 main();
-
