@@ -11,7 +11,7 @@ const USER_ID = 'user_1';
 const RUNNER_NAME = 'Peacemaker';
 
 // Database Connection
-const connectionString = process.env.DATABASE_URL || 'postgres://postgres:password@localhost:5433/ruwt';
+const connectionString = process.env.DATABASE_URL || 'postgres://postgres:password@localhost:5432/ruwt';
 const client = postgres(connectionString);
 const db = drizzle(client, { schema });
 
@@ -29,7 +29,7 @@ async function startSession() {
   |  _ \\| |  | \\ \\      / /_  _| 
   | |_) | |  | |\\ \\ /\\ / / | |   
   |  _ <| |__| | \\ V  V /  | |   
-  |_| \\_\\\\____/   \\_/\\_/   |_|   
+  |  _ \\\\____/   \\_/\\_/   |_|   
   `));
   console.log(chalk.gray(`  Runner Protocol v1.03 | Identity: ${chalk.white(RUNNER_NAME)}`));
   console.log(chalk.gray(`  Status: ${chalk.green('ONLINE')}\n`));

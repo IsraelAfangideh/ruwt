@@ -6,5 +6,10 @@
     "api",
     "mobile",
     "shared"
-  ]
+  ],
+  "dependencies": {
+    "react": "^19.1.2",
+    "react-dom": "^19.1.2",
+    "react-server-dom-webpack": "^19.1.2"
+  }
 }

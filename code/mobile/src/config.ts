@@ -9,5 +9,5 @@ const API_URL = Platform.select({
 
 export const ENDPOINTS = {
   runners: `${API_URL}/runners`,
+  peacemakerChat: `${API_URL}/runners/peacemaker/chat`,
 };
-

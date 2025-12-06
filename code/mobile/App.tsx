@@ -1,10 +1,15 @@
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
 import { StyleSheet, Text, View, FlatList, SafeAreaView, TouchableOpacity, ListRenderItem } from 'react-native';
+import { NavigationContainer } from '@react-navigation/native';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Runner } from '@ruwt/shared';
 import { ENDPOINTS } from './src/config';
+import ChatScreen from './src/screens/ChatScreen';
 
-export default function App() {
+// --- Runner List Component ---
+
+function RunnerListScreen({ navigation }: any) {
   const [runners, setRunners] = useState<Runner[]>([]);
 
   useEffect(() => {
@@ -18,7 +23,10 @@ export default function App() {
     <View style={styles.card}>
       <Text style={styles.name}>{item.name}</Text>
       <Text style={styles.personality}>{item.personality}</Text>
-      <TouchableOpacity style={styles.button}>
+      <TouchableOpacity 
+        style={styles.button}
+        onPress={() => navigation.navigate('Chat', { runner: item })}
+      >
         <Text style={styles.buttonText}>Send Runner</Text>
       </TouchableOpacity>
     </View>
@@ -35,6 +43,29 @@ export default function App() {
       />
       <StatusBar style="auto" />
     </SafeAreaView>
+  );
+}
+
+// --- Navigation Setup ---
+
+const Stack = createNativeStackNavigator();
+
+export default function App() {
+  return (
+    <NavigationContainer>
+      <Stack.Navigator>
+        <Stack.Screen 
+          name="Runners" 
+          component={RunnerListScreen} 
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen 
+          name="Chat" 
+          component={ChatScreen} 
+          options={({ route }: any) => ({ title: route.params.runner.name })}
+        />
+      </Stack.Navigator>
+    </NavigationContainer>
   );
 }
 
@@ -86,4 +117,3 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 });
-
