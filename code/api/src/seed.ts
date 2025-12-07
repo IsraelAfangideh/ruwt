@@ -2,8 +2,8 @@ import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import { runners, memories } from './db/schema';
 
-// Use env var or default to the NEW port 5433
-const connectionString = process.env.DATABASE_URL || 'postgres://postgres:password@localhost:5433/ruwt';
+// Use env var or default to the NEW port 5432
+const connectionString = process.env.DATABASE_URL || 'postgres://postgres:password@127.0.0.1:5432/ruwt';
 const client = postgres(connectionString);
 const db = drizzle(client);
 

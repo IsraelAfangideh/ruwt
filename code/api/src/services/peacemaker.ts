@@ -10,8 +10,8 @@ import {
   PeacemakerChatResponse 
 } from '@ruwt/shared';
 
-// Initialize DB (Reusing the connection logic pattern)
-const connectionString = process.env.DATABASE_URL || 'postgres://postgres:password@localhost:5432/ruwt';
+// Initialize DB
+const connectionString = process.env.DATABASE_URL || 'postgres://postgres:password@127.0.0.1:5432/ruwt';
 const client = postgres(connectionString);
 const db = drizzle(client, { schema });
 
@@ -47,8 +47,22 @@ export async function chatWithPeacemaker(payload: PeacemakerChatRequest): Promis
       systemInstruction: systemInstruction
     });
 
+    // Valid History: Must start with 'user'. Filter out leading 'model' messages.
+    // Also, ensure alternating roles if necessary, but just fixing the start is usually enough for Gemini.
+    let validHistory = history;
+    if (validHistory.length > 0 && validHistory[0].role !== 'user') {
+      // Find the first 'user' message
+      const firstUserIndex = validHistory.findIndex(h => h.role === 'user');
+      if (firstUserIndex !== -1) {
+        validHistory = validHistory.slice(firstUserIndex);
+      } else {
+        // No user messages in history yet? Start empty.
+        validHistory = [];
+      }
+    }
+
     const chat = model.startChat({
-      history: history, 
+      history: validHistory, 
     });
 
     const result = await chat.sendMessage(message);
@@ -74,4 +88,3 @@ export async function chatWithPeacemaker(payload: PeacemakerChatRequest): Promis
     throw error;
   }
 }
-
