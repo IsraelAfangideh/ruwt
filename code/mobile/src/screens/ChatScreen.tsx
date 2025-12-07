@@ -28,7 +28,7 @@ export default function ChatScreen({ route }: any) {
     setMessages([
       {
         id: 'init',
-        text: `Hi Human, I am ${runner.name}. I am a Runner (Messenger). I deliver messages to other humans.`,
+        text: `Hi Human, I am ${runner.name}. I am a Runner. I deliver messages to other humans.`,
         sender: 'runner'
       }
     ]);
