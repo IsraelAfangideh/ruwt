@@ -8,10 +8,16 @@ import { PeacemakerChatRequestSchema } from '@ruwt/shared';
 
 const app = new Hono();
 
-app.use('/*', cors());
+// CORS: Allow everything for now to avoid mobile connection issues
+app.use('/*', cors({
+  origin: '*',
+  allowMethods: ['GET', 'POST', 'OPTIONS'],
+  allowHeaders: ['Content-Type', 'Authorization'],
+}));
 
 // Database connection
-const connectionString = process.env.DATABASE_URL || 'postgres://postgres:password@localhost:5432/ruwt';
+const connectionString = process.env.DATABASE_URL || 'postgres://postgres:password@127.0.0.1:5432/ruwt';
+console.log('Connecting to DB with:', connectionString.replace(/:[^:@]+@/, ':***@')); 
 const client = postgres(connectionString);
 const db = drizzle(client);
 
@@ -20,11 +26,12 @@ app.get('/', (c) => c.text('Ruwt API is running on Bun with Postgres!'));
 app.get('/runners', async (c) => {
   try {
     const allRunners = await db.select().from(runners);
+    console.log(`Fetched ${allRunners.length} runners`);
     return c.json(allRunners);
   } catch (error) {
-    console.error(error);
-    return c.json({ error: 'Failed to fetch runners' }, 500);
-    }
+    console.error('DB Connection Error:', error); // Log detailed error
+    return c.json({ error: 'Failed to fetch runners', details: String(error) }, 500);
+  }
 });
 
 app.post('/runners/peacemaker/chat', async (c) => {
@@ -51,4 +58,5 @@ console.log(`Server is running on port ${port}`);
 export default {
   port,
   fetch: app.fetch,
+  hostname: '0.0.0.0' // Explicitly listen on all network interfaces
 };

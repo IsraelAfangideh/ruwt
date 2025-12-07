@@ -28,33 +28,40 @@ export default function ChatScreen({ route }: any) {
     setMessages([
       {
         id: 'init',
-        text: `Hi Human, I am ${runner.name}. I am a Runner (Messenger). I deliver messages to other humans.`,
+        text: `Hi Human, I am ${runner.name}. I am a Runner. I deliver messages to other humans.`,
         sender: 'runner'
       }
     ]);
   }, []);
 
-  const sendMessage = async (text: string, isRewrite = false) => {
+  const sendMessage = async (text: string, isRewrite = false, isSystemInstruction = false) => {
     if (!text.trim()) return;
 
-    const userMsg: Message = {
-      id: Date.now().toString(),
-      text: text,
-      sender: 'user',
-    };
-
-    // Optimistically add user message if it's not a rewrite flow
-    if (!isRewrite) {
-      setMessages(prev => [...prev, userMsg]);
-      setInput('');
+    // Only add visible messages to the UI list
+    if (!isSystemInstruction) {
+        const userMsg: Message = {
+          id: Date.now().toString(),
+          text: text,
+          sender: 'user',
+        };
+        
+        // Optimistically add user message if it's not a rewrite flow
+        if (!isRewrite) {
+            setMessages(prev => [...prev, userMsg]);
+            setInput('');
+        } else {
+            // If it is a rewrite (user accepted AI version), we just send it as the final message
+            setMessages(prev => [...prev, userMsg]);
+        }
     } else {
-        // If it is a rewrite (user accepted AI version), we just send it as the final message
-        setMessages(prev => [...prev, userMsg]);
+        // Clear input even if system instruction
+        setInput('');
     }
     
     setIsLoading(true);
 
     try {
+      // Filter out system instructions from history so AI doesn't see "User said: make it kinder" as a literal message to deliver
       const history = messages
         .filter(m => !m.isSystem)
         .map(m => ({
@@ -81,8 +88,8 @@ export default function ChatScreen({ route }: any) {
         const explanation = parts[0].replace('[BLOCKED]', '').trim();
         
         setBlockedState({
-          originalText: text,
-          proposedRewrite: data.proposedRewrite || text, // Fallback
+          originalText: isSystemInstruction ? blockedState?.proposedRewrite || '' : text, // Keep track of what we are rewriting
+          proposedRewrite: data.proposedRewrite || text,
           explanation
         });
       } else {
@@ -145,10 +152,10 @@ export default function ChatScreen({ route }: any) {
 
     } else if (choice === 'kinder') {
         // "Make it EVEN KINDER" - Recursive call
-        // We send a special prompt to the AI
+        // We send a special prompt to the AI, but mark it as SYSTEM INSTRUCTION so it doesn't appear in chat UI
         const prompt = `The user wants this message to be EVEN KINDER: "${blockedState.proposedRewrite}". Please rewrite it again to be overwhelmingly kind.`;
-        setBlockedState(null); 
-        sendMessage(prompt, false); // treat as new input to generate new options
+        // Don't clear blocked state yet, we are fetching new options
+        sendMessage(prompt, false, true); 
     }
   };
 

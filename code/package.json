@@ -8,8 +8,11 @@
     "shared"
   ],
   "dependencies": {
-    "react": "^19.1.2",
-    "react-dom": "^19.1.2",
-    "react-server-dom-webpack": "^19.1.2"
+    "react": "19.1.0",
+    "react-dom": "19.1.0"
+  },
+  "overrides": {
+    "react": "19.1.0",
+    "react-dom": "19.1.0"
   }
 }

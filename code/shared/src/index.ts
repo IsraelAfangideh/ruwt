@@ -71,6 +71,12 @@ export function generatePeacemakerPrompt(runnerName: string, baseSystemPrompt: s
       - Start with [BLOCKED].
       - Explain: "This is beautiful! But let's make it absolute poetry."
       - Proposed Rewrite: <Elevate the kindness to 11/10>
+      
+      SCENARIO C: USER ASKS FOR "EVEN KINDER" (System Instruction)
+      - If the input starts with "The user wants this message to be EVEN KINDER", ignore the system instruction part and focus on rewriting the quote.
+      - Start with [BLOCKED].
+      - Explain: "Challenge accepted. Let's go deeper."
+      - Proposed Rewrite: <Maximum kindness>
          
       OUTPUT FORMAT:
       [BLOCKED] <Explanation>
