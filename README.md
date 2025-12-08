@@ -1,18 +1,35 @@
 # Ruwt
 
-> **"The HTTPS of Human Connection"**
+> **"Digital Couriers for the Modern Web"**
 
-Ruwt (pronounced *root*) is an Agent-First social protocol designed to replace direct instant messaging with **mediated communication**. Instead of users messaging each other directly, they interact through AI "Runners" that act as fiduciaries.
+Ruwt (pronounced *Root*) is a social media application designed to bring the historical dynamic of intelligent **courier-mediated communication** to the internet.
 
-We introduce **latency as a feature**. The Runner intercepts messages, vets them against the user's computed identity and goals (e.g., "Peace"), and rewrites or blocks toxicity before it hits the network.
+Just as Snapchat brought natural ephemerality to digital communication, Ruwt introduces the concept of intelligent **mediated delivery**.
 
-## The Concept
+### The Concept
 
-In the physical world, couriers (*ratzim* in Hebrew) delivered messages personally. Ruwt brings this concept to the digital world.
+In the physical world, couriers (*ratzim* in Hebrew) delivered messages personally, bridging the gap between distant parties. Ruwt brings this to the digital world with two distinct modes of interaction:
 
-- **No Direct DMs**: You do not interact with the sender directly; you interact with the Runner.
-- **The Runner**: An AI agent powered by a vector database of your history and values. It acts as a buffer, ensuring communication aligns with your stated intent (e.g., reconciliation).
-- **Sovereignty**: You can override the Runner (the "Unhinged" option), but doing so is logged against your reputation.
+1.  **The Runner (Mediated):** For the broader network, you do not DM users directly. You interact with AI "Runners"—fiduciaries that carry your message. They vet and format your communication based on your intent (e.g., Reconciliation with embittered parties or expanding the reach of your message) and the recipient's context, introducing a layer of intentionality and "latency as a feature."
+    
+2.  **The City & The Close (Direct):** For humans who know each other, Ruwt offers safe, private spaces.
+    *   **Cities:** Communities of shared interest.
+    *   **Closes:** Private, invite-only spaces (max 100 users) that function like digital homes.
+    *   *Inside these spaces, humans connect directly—without AI mediation or surveillance from the platform.*
+
+---
+
+## Current Status: Phase 1 (The Runner Prototype)
+
+*Currently, the codebase implements the core Runner architecture and the "Peacemaker" agent.*
+
+- **Mediated Communication:** The "Peacemaker" runner intercepts messages to ensure they align with the goal of peace.
+- **Mobile Client:** A React Native (Expo) app for 1-on-1 interaction with the Runner.
+- **Backend Brain:** Hono + Postgres + Gemini 2.0 Flash to power the Runner's "instincts."
+
+*Note: Cities, Closes, and Direct Messaging logic are part of the broader spec and are currently in development.*
+
+---
 
 ## Tech Stack
 
@@ -24,6 +41,12 @@ This is a **Bun** monorepo containing the following workspaces:
   - **AI**: Google Gemini 2.0 Flash
 - **`mobile`**: The React Native mobile client (Expo).
 - **`shared`**: Shared types, schemas, and prompts.
+
+**Production Goals:**
+- **Hosting**: Fly.io
+- **Auth/Data**: Supabase
+
+---
 
 ## Project Structure
 
