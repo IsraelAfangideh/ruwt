@@ -2,7 +2,7 @@
 
 > **"The HTTPS of Human Connection"**
 
-Ruwt (pronounced *ruwts*) is an Agent-First social protocol designed to replace direct instant messaging with **mediated communication**. Instead of users messaging each other directly, they interact through AI "Runners" that act as fiduciaries.
+Ruwt (pronounced *root*) is an Agent-First social protocol designed to replace direct instant messaging with **mediated communication**. Instead of users messaging each other directly, they interact through AI "Runners" that act as fiduciaries.
 
 We introduce **latency as a feature**. The Runner intercepts messages, vets them against the user's computed identity and goals (e.g., "Peace"), and rewrites or blocks toxicity before it hits the network.
 
