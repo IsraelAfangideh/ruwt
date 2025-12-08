@@ -48,15 +48,12 @@ export async function chatWithPeacemaker(payload: PeacemakerChatRequest): Promis
     });
 
     // Valid History: Must start with 'user'. Filter out leading 'model' messages.
-    // Also, ensure alternating roles if necessary, but just fixing the start is usually enough for Gemini.
     let validHistory = history;
     if (validHistory.length > 0 && validHistory[0].role !== 'user') {
-      // Find the first 'user' message
       const firstUserIndex = validHistory.findIndex(h => h.role === 'user');
       if (firstUserIndex !== -1) {
         validHistory = validHistory.slice(firstUserIndex);
       } else {
-        // No user messages in history yet? Start empty.
         validHistory = [];
       }
     }
@@ -69,17 +66,34 @@ export async function chatWithPeacemaker(payload: PeacemakerChatRequest): Promis
     const responseText = result.response.text();
 
     // 4. Parse Response for Blocking Logic
-    const isBlocked = responseText.includes('[BLOCKED]');
+    // New Format: [EXPLANATION] ... [REWRITE] ... [END]
+    
+    let explanation = undefined;
     let proposedRewrite = undefined;
 
-    if (isBlocked) {
-      const match = responseText.match(/Proposed Rewrite: "(.*)"/);
-      proposedRewrite = match ? match[1] : undefined;
+    // Check for new format first
+    if (responseText.includes('[EXPLANATION]') && responseText.includes('[REWRITE]')) {
+      const expMatch = responseText.match(/\[EXPLANATION\]\s*([\s\S]*?)\s*\[REWRITE\]/);
+      const rewMatch = responseText.match(/\[REWRITE\]\s*([\s\S]*?)(\s*\[END\]|$)/);
+      
+      explanation = expMatch ? expMatch[1].trim() : undefined;
+      proposedRewrite = rewMatch ? rewMatch[1].trim() : undefined;
+    } 
+    // Fallback to old format (robustness)
+    else if (responseText.includes('[BLOCKED]')) {
+       const parts = responseText.split('Proposed Rewrite:');
+       explanation = parts[0].replace('[BLOCKED]', '').trim();
+       const match = responseText.match(/Proposed Rewrite: "(.*)"/);
+       proposedRewrite = match ? match[1] : undefined;
     }
+
+    // It's considered "Blocked"/Intercepted if we have a rewrite
+    const isBlocked = !!proposedRewrite;
 
     return {
       text: responseText,
       isBlocked,
+      explanation,
       proposedRewrite
     };
 

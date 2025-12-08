@@ -31,9 +31,10 @@ export const PeacemakerChatRequestSchema = z.object({
 export type PeacemakerChatRequest = z.infer<typeof PeacemakerChatRequestSchema>;
 
 export const PeacemakerChatResponseSchema = z.object({
-  text: z.string(), // The full raw response from the model (including [BLOCKED] tags)
+  text: z.string(), // The full raw response
   isBlocked: z.boolean(),
-  proposedRewrite: z.string().optional(),
+  explanation: z.string().optional(), // The "Thought" bubble
+  proposedRewrite: z.string().optional(), // The "Actionable" bubble
 });
 
 export type PeacemakerChatResponse = z.infer<typeof PeacemakerChatResponseSchema>;
@@ -62,24 +63,22 @@ export function generatePeacemakerPrompt(runnerName: string, baseSystemPrompt: s
       - If the user says "I love you" (2nd person), KEEP it 2nd person.
       - Do NOT change who the message is talking about.
 
-      SCENARIO A: ANGRY / NEGATIVE
-      - Start with [BLOCKED].
-      - Explain: "This feels a bit sharp."
-      - Proposed Rewrite: <Transform anger into vulnerability/kindness>
-
-      SCENARIO B: ALREADY KIND (e.g., "I love you")
-      - Start with [BLOCKED].
-      - Explain: "This is beautiful! But let's make it absolute poetry."
-      - Proposed Rewrite: <Elevate the kindness to 11/10>
-      
-      SCENARIO C: USER ASKS FOR "EVEN KINDER" (System Instruction)
-      - If the input starts with "The user wants this message to be EVEN KINDER", ignore the system instruction part and focus on rewriting the quote.
-      - Start with [BLOCKED].
-      - Explain: "Challenge accepted. Let's go deeper."
-      - Proposed Rewrite: <Maximum kindness>
-         
       OUTPUT FORMAT:
-      [BLOCKED] <Explanation>
-      Proposed Rewrite: "<Text>"
+      You must respond in a specific format to separate your thought process from the rewrite.
+      
+      [EXPLANATION]
+      <Your kind, empathetic explanation of why we should rewrite this.>
+      
+      [REWRITE]
+      <The actual text of the rewrite, and NOTHING else.>
+      
+      [END]
+
+      Example:
+      [EXPLANATION]
+      This feels a bit sharp. Let's add some warmth to it.
+      [REWRITE]
+      I am feeling a bit overwhelmed right now, can we talk later?
+      [END]
     `;
 }

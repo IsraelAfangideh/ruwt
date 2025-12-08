@@ -9,9 +9,8 @@ import {
 } from 'react-native';
 import { ENDPOINTS } from '../config';
 import { PeacemakerChatResponse } from '@ruwt/shared';
-import { Message, BlockedState } from '../types/chat';
+import { Message } from '../types/chat';
 import MessageBubble from '../components/MessageBubble';
-import BlockedView from '../components/BlockedView';
 import ChatInput from '../components/ChatInput';
 
 export default function ChatScreen({ route }: any) {
@@ -19,7 +18,6 @@ export default function ChatScreen({ route }: any) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [blockedState, setBlockedState] = useState<BlockedState | null>(null);
   
   const flatListRef = useRef<FlatList>(null);
 
@@ -63,7 +61,7 @@ export default function ChatScreen({ route }: any) {
     try {
       // Filter out system instructions from history so AI doesn't see "User said: make it kinder" as a literal message to deliver
       const history = messages
-        .filter(m => !m.isSystem)
+        .filter(m => !m.isSystem && !m.isActionable) // Don't include previous 'action' bubbles in history context to keep it clean, or keep them if you want context
         .map(m => ({
           role: m.sender === 'user' ? 'user' as const : 'model' as const,
           parts: [{ text: m.text }]
@@ -82,20 +80,43 @@ export default function ChatScreen({ route }: any) {
       const data: PeacemakerChatResponse = await response.json();
 
       if (data.isBlocked) {
-        // Parse explanation from the text
-        // Text format: [BLOCKED] Explanation... Proposed Rewrite: "..."
-        const parts = data.text.split('Proposed Rewrite:');
-        const explanation = parts[0].replace('[BLOCKED]', '').trim();
-        
-        setBlockedState({
-          originalText: isSystemInstruction ? blockedState?.proposedRewrite || '' : text, // Keep track of what we are rewriting
-          proposedRewrite: data.proposedRewrite || text,
-          explanation
-        });
+        // 1. Add Explanation Bubble
+        if (data.explanation) {
+            setMessages(prev => [...prev, {
+                id: Date.now().toString() + '_exp',
+                text: data.explanation || "This feels sharp.",
+                sender: 'runner'
+            }]);
+        }
+
+        // 2. Add Actionable Rewrite Bubble
+        if (data.proposedRewrite) {
+            const rewriteText = data.proposedRewrite;
+            
+            // Define action handler
+            const handleAction = (action: 'send' | 'copy' | 'kinder') => {
+                if (action === 'send') {
+                    // Send the rewrite as if user typed it
+                    sendMessage(rewriteText, true); 
+                } else if (action === 'kinder') {
+                    // Request even kinder version
+                    const prompt = `The user wants this message to be EVEN KINDER: "${rewriteText}". Please rewrite it again to be overwhelmingly kind.`;
+                    sendMessage(prompt, false, true);
+                }
+                // Copy is handled in component
+            };
+
+            setMessages(prev => [...prev, {
+                id: Date.now().toString() + '_rewrite',
+                text: rewriteText,
+                sender: 'runner',
+                isActionable: true,
+                onAction: handleAction
+            }]);
+        }
+
       } else {
         // Message sent successfully (simulated)
-        // In a real app, this would go to the OTHER user. 
-        // Here, the runner just confirms it.
         const runnerMsg: Message = {
             id: Date.now().toString() + '_r',
             text: `[SENT] ${text}`,
@@ -109,53 +130,6 @@ export default function ChatScreen({ route }: any) {
       Alert.alert('Error', 'Failed to send message');
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  const handleDecision = (choice: 'rewrite' | 'original' | 'kinder') => {
-    if (!blockedState) return;
-
-    if (choice === 'rewrite') {
-      // User accepts rewrite
-      setMessages(prev => [...prev, {
-          id: Date.now().toString() + '_rewritten',
-          text: blockedState.proposedRewrite,
-          sender: 'user'
-      }]);
-      
-      // Simulate sending
-      setTimeout(() => {
-          setMessages(prev => [...prev, {
-              id: Date.now().toString() + '_sent',
-              text: `[SENT] ${blockedState.proposedRewrite}`,
-              sender: 'runner'
-          }]);
-      }, 500);
-      setBlockedState(null);
-
-    } else if (choice === 'original') {
-      // User insists on original
-      setMessages(prev => [...prev, {
-        id: Date.now().toString() + '_force',
-        text: blockedState.originalText,
-        sender: 'user'
-      }]);
-        
-      setTimeout(() => {
-        setMessages(prev => [...prev, {
-            id: Date.now().toString() + '_sent',
-            text: `[SENT] ${blockedState.originalText}`,
-            sender: 'runner'
-        }]);
-      }, 500);
-      setBlockedState(null);
-
-    } else if (choice === 'kinder') {
-        // "Make it EVEN KINDER" - Recursive call
-        // We send a special prompt to the AI, but mark it as SYSTEM INSTRUCTION so it doesn't appear in chat UI
-        const prompt = `The user wants this message to be EVEN KINDER: "${blockedState.proposedRewrite}". Please rewrite it again to be overwhelmingly kind.`;
-        // Don't clear blocked state yet, we are fetching new options
-        sendMessage(prompt, false, true); 
     }
   };
 
@@ -176,16 +150,12 @@ export default function ChatScreen({ route }: any) {
         onContentSizeChange={() => flatListRef.current?.scrollToEnd()}
       />
 
-      {blockedState ? (
-        <BlockedView blockedState={blockedState} onDecision={handleDecision} />
-      ) : (
-        <ChatInput 
-          input={input} 
-          isLoading={isLoading} 
-          onChangeText={setInput} 
-          onSend={() => sendMessage(input)} 
-        />
-      )}
+      <ChatInput 
+        input={input} 
+        isLoading={isLoading} 
+        onChangeText={setInput} 
+        onSend={() => sendMessage(input)} 
+      />
     </KeyboardAvoidingView>
   );
 }
