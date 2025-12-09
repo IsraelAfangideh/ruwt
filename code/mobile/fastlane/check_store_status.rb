@@ -28,7 +28,7 @@ def check_status
   
   # Find the app
   # You might need to set your Bundle ID here or via ENV
-  bundle_id = "com.ruwt.mobile" 
+  bundle_id = "com.ruwt.app" 
   app = Spaceship::ConnectAPI::App.find(bundle_id)
   
   unless app
