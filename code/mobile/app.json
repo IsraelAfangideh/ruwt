@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "mobile",
-    "slug": "mobile",
+    "slug": "ruwt",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -13,7 +13,11 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.ruwt.app",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -24,6 +28,12 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "e61acd37-fc5f-4b09-8a35-d80fc660878c"
+      }
+    },
+    "owner": "israelafangideh"
   }
 }

@@ -1,0 +1,135 @@
+name: Deployment
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  # ------------------------------------------------------------------
+  # 1. API DEPLOYMENT
+  # ------------------------------------------------------------------
+  deploy-api:
+    name: Deploy API to Fly.io
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./code
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Flyctl
+        uses: superfly/flyctl-actions/setup-flyctl@master
+      - name: Deploy to Fly
+        run: flyctl deploy --config api/fly.toml --dockerfile api/Dockerfile .
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+  # ------------------------------------------------------------------
+  # 2. TRACK A: OTA UPDATE (Always Run)
+  # ------------------------------------------------------------------
+  mobile-ota-update:
+    name: Track A - Publish OTA Update
+    runs-on: ubuntu-latest
+    needs: deploy-api
+    defaults:
+      run:
+        working-directory: ./code/mobile
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+      - name: Setup EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+      - name: Install Dependencies
+        run: cd .. && bun install
+      - name: Publish Update
+        run: |
+          eas update --branch production --message "Auto-deploy commit: ${{ github.sha }}"
+
+  # ------------------------------------------------------------------
+  # 3. TRACK B (ANDROID): ALWAYS BUILD
+  # ------------------------------------------------------------------
+  android-store-build:
+    name: Track B - Android Build & Submit
+    runs-on: ubuntu-latest
+    needs: deploy-api
+    defaults:
+      run:
+        working-directory: ./code/mobile
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+      - name: Setup EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+      - name: Install Dependencies
+        run: cd .. && bun install
+      - name: Build and Submit
+        run: eas build --platform android --profile production --auto-submit
+
+  # ------------------------------------------------------------------
+  # 4. TRACK B (iOS): CONDITIONAL BUILD
+  # ------------------------------------------------------------------
+  check-apple-status:
+    name: Track B - Check Apple Status
+    runs-on: ubuntu-latest
+    needs: deploy-api
+    defaults:
+      run:
+        working-directory: ./code/mobile
+    outputs:
+      should_build: ${{ steps.set_output.outputs.should_build }}
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.2'
+          bundler-cache: true
+      
+      - name: Install Fastlane
+        run: gem install fastlane spaceship
+
+      - name: Check Status Script
+        id: check
+        run: ruby fastlane/check_store_status.rb
+        env:
+          APP_STORE_CONNECT_API_KEY_KEY: ${{ secrets.APP_STORE_CONNECT_API_KEY_KEY }}
+          APP_STORE_CONNECT_API_KEY_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ISSUER_ID }}
+          APP_STORE_CONNECT_API_KEY_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_KEY_ID }}
+        continue-on-error: true 
+
+      - name: Set Output
+        id: set_output
+        if: steps.check.outcome == 'success'
+        run: echo "should_build=true" >> $GITHUB_OUTPUT
+
+  ios-store-build:
+    name: Track B - iOS Build & Submit
+    runs-on: ubuntu-latest
+    needs: check-apple-status
+    if: needs.check-apple-status.outputs.should_build == 'true'
+    defaults:
+      run:
+        working-directory: ./code/mobile
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+      - name: Setup EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+      - name: Install Dependencies
+        run: cd .. && bun install
+      - name: Build and Submit
+        run: eas build --platform ios --profile production --auto-submit

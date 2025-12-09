@@ -2,6 +2,7 @@
     "name": "@ruwt/api",
     "version": "0.0.0",
     "scripts": {
+        "start": "bun run src/index.ts",
         "dev": "bun --watch src/index.ts",
         "cli": "bun src/cli.ts",
         "db:generate": "drizzle-kit generate",
