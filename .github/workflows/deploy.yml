@@ -72,7 +72,7 @@ jobs:
       - name: Install Dependencies
         run: cd .. && bun install
       - name: Build and Submit
-        run: eas build --platform android --profile production --auto-submit
+        run: eas build --platform android --profile production --auto-submit --non-interactive
 
   # ------------------------------------------------------------------
   # 4. TRACK B (iOS): CONDITIONAL BUILD
@@ -132,4 +132,4 @@ jobs:
       - name: Install Dependencies
         run: cd .. && bun install
       - name: Build and Submit
-        run: eas build --platform ios --profile production --auto-submit
+        run: eas build --platform ios --profile production --auto-submit --non-interactive
