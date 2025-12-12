@@ -1,0 +1,11 @@
+# Cloudflare Pages redirects
+# https://developers.cloudflare.com/pages/configuration/redirects/
+
+# Handle trailing slashes
+/concept   /#concept   301
+/spaces    /#spaces    301
+/philosophy /#philosophy 301
+
+# Catch-all for SPA (if needed in future)
+/*    /index.html   200
+

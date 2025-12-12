@@ -8,6 +8,23 @@ on:
 
 jobs:
   # ------------------------------------------------------------------
+  # 0. MARKETING WEBSITE DEPLOYMENT (Cloudflare Pages)
+  # ------------------------------------------------------------------
+  deploy-web:
+    name: Deploy Marketing Site to Cloudflare Pages
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/pages-action@v1
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          projectName: ruwt-social
+          directory: code/web
+          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
+
+  # ------------------------------------------------------------------
   # 1. API DEPLOYMENT
   # ------------------------------------------------------------------
   deploy-api:

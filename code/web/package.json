@@ -1,0 +1,13 @@
+{
+  "name": "@ruwt/web",
+  "version": "1.0.0",
+  "description": "Marketing website for Ruwt",
+  "scripts": {
+    "dev": "npx serve .",
+    "build": "echo 'Static site - no build needed'"
+  },
+  "devDependencies": {
+    "serve": "^14.2.0"
+  }
+}
+
