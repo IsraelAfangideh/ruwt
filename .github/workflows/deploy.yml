@@ -20,7 +20,7 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          projectName: ruwt.social
+          projectName: ruwt
           directory: code/web
           gitHubToken: ${{ secrets.GITHUB_TOKEN }}
 
