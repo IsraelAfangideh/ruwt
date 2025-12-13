@@ -4,11 +4,11 @@ WORKDIR /usr/src/app
 # Copy root package files
 COPY package.json bun.lock ./
 
-# Copy workspace package files
+# Copy workspace package files (all needed to satisfy workspace resolution)
 COPY api/package.json api/
 COPY shared/package.json shared/
-# Mobile is not needed for API build, but to satisfy workspace resolution if strictly needed
 COPY mobile/package.json mobile/
+COPY web/package.json web/
 
 # Install dependencies, skipping optional peers (like better-sqlite3)
 RUN bun install --frozen-lockfile --no-optional
