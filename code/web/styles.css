@@ -1,0 +1,996 @@
+/* ==========================================================================
+   Ruwt Marketing Website
+   A distinctive, warm aesthetic reflecting intentional communication
+   ========================================================================== */
+
+:root {
+  /* Colors - Warm earth tones with burnished gold */
+  --color-bg: #0f0e0d;
+  --color-bg-warm: #1a1816;
+  --color-bg-elevated: #252220;
+  --color-text: #e8e4df;
+  --color-text-muted: #9a938a;
+  --color-text-subtle: #6b645c;
+  --color-accent: #c9a962;
+  --color-accent-muted: #a08745;
+  --color-accent-glow: rgba(201, 169, 98, 0.15);
+  --color-border: rgba(232, 228, 223, 0.08);
+  --color-border-strong: rgba(232, 228, 223, 0.15);
+  
+  /* Typography */
+  --font-display: 'Cormorant Garamond', Georgia, serif;
+  --font-body: 'Libre Franklin', -apple-system, BlinkMacSystemFont, sans-serif;
+  
+  /* Spacing */
+  --space-xs: 0.5rem;
+  --space-sm: 1rem;
+  --space-md: 1.5rem;
+  --space-lg: 2.5rem;
+  --space-xl: 4rem;
+  --space-2xl: 6rem;
+  --space-3xl: 10rem;
+  
+  /* Transitions */
+  --transition-fast: 150ms ease;
+  --transition-base: 300ms ease;
+  --transition-slow: 600ms ease;
+  --transition-slower: 1000ms ease;
+}
+
+/* ==========================================================================
+   Base Styles
+   ========================================================================== */
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: var(--font-body);
+  font-size: 16px;
+  font-weight: 300;
+  line-height: 1.7;
+  color: var(--color-text);
+  background-color: var(--color-bg);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Grain overlay for texture */
+.grain {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 1000;
+  opacity: 0.03;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-display);
+  font-weight: 500;
+  line-height: 1.2;
+  margin: 0;
+}
+
+p {
+  margin: 0;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+  transition: color var(--transition-fast);
+}
+
+a:hover {
+  color: var(--color-accent);
+}
+
+strong {
+  font-weight: 500;
+  color: var(--color-text);
+}
+
+em {
+  font-style: italic;
+  color: var(--color-accent);
+}
+
+/* ==========================================================================
+   Buttons
+   ========================================================================== */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.875rem 2rem;
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all var(--transition-base);
+  border: 1px solid transparent;
+}
+
+.btn-primary {
+  background: var(--color-accent);
+  color: var(--color-bg);
+  border-color: var(--color-accent);
+}
+
+.btn-primary:hover {
+  background: transparent;
+  color: var(--color-accent);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px var(--color-accent-glow);
+}
+
+.btn-secondary {
+  background: transparent;
+  color: var(--color-text);
+  border-color: var(--color-border-strong);
+}
+
+.btn-secondary:hover {
+  border-color: var(--color-text-muted);
+  color: var(--color-text);
+}
+
+/* ==========================================================================
+   Navigation
+   ========================================================================== */
+
+.nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-md) var(--space-xl);
+  background: linear-gradient(to bottom, var(--color-bg), transparent);
+  backdrop-filter: blur(8px);
+}
+
+.nav-logo {
+  font-family: var(--font-display);
+  font-size: 1.75rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--color-text);
+}
+
+.nav-logo:hover {
+  color: var(--color-accent);
+}
+
+.nav-links {
+  display: flex;
+  align-items: center;
+  gap: var(--space-lg);
+}
+
+.nav-links a {
+  font-size: 0.9rem;
+  color: var(--color-text-muted);
+  transition: color var(--transition-fast);
+}
+
+.nav-links a:hover {
+  color: var(--color-text);
+}
+
+.nav-cta {
+  padding: 0.625rem 1.25rem;
+  background: var(--color-accent);
+  color: var(--color-bg) !important;
+  border-radius: 4px;
+}
+
+.nav-cta:hover {
+  background: var(--color-accent-muted);
+}
+
+/* ==========================================================================
+   Hero Section
+   ========================================================================== */
+
+.hero {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: var(--space-3xl) var(--space-xl) var(--space-xl);
+  position: relative;
+  overflow: hidden;
+}
+
+.hero::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 100%;
+  background: radial-gradient(ellipse 80% 50% at 50% 0%, var(--color-accent-glow) 0%, transparent 60%);
+  pointer-events: none;
+}
+
+.hero-content {
+  max-width: 800px;
+  position: relative;
+  z-index: 1;
+}
+
+.hero-eyebrow {
+  font-size: 0.85rem;
+  font-weight: 400;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--color-accent);
+  margin-bottom: var(--space-md);
+  animation: fadeInUp 0.8s ease backwards;
+}
+
+.hero-title {
+  font-size: clamp(3rem, 8vw, 5.5rem);
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+  margin-bottom: var(--space-lg);
+}
+
+.hero-title-line {
+  display: block;
+  animation: fadeInUp 0.8s ease backwards;
+}
+
+.hero-title-line:nth-child(1) {
+  animation-delay: 0.1s;
+}
+
+.hero-title-line:nth-child(2) {
+  animation-delay: 0.2s;
+  color: var(--color-text-muted);
+}
+
+.hero-subtitle {
+  font-size: 1.25rem;
+  color: var(--color-text-muted);
+  max-width: 560px;
+  margin-bottom: var(--space-xl);
+  animation: fadeInUp 0.8s ease 0.3s backwards;
+}
+
+.hero-actions {
+  display: flex;
+  gap: var(--space-md);
+  animation: fadeInUp 0.8s ease 0.4s backwards;
+}
+
+.hero-visual {
+  position: absolute;
+  right: 10%;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 400px;
+  height: 200px;
+  opacity: 0.6;
+  animation: fadeIn 1.5s ease 0.5s backwards;
+}
+
+.runner-illustration {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.path-svg {
+  width: 100%;
+  height: 100%;
+}
+
+.path-line {
+  stroke: var(--color-accent);
+  stroke-dasharray: 600;
+  stroke-dashoffset: 600;
+  animation: drawPath 3s ease-in-out 1s forwards;
+}
+
+.runner-dot {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.runner-dot.sender {
+  left: 0;
+  background: var(--color-text-muted);
+  animation: pulse 2s ease-in-out infinite;
+}
+
+.runner-dot.runner {
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: var(--color-accent);
+  animation: runnerMove 4s ease-in-out infinite;
+  box-shadow: 0 0 20px var(--color-accent-glow);
+}
+
+.runner-dot.receiver {
+  right: 0;
+  background: var(--color-text-muted);
+  animation: pulse 2s ease-in-out 0.5s infinite;
+}
+
+/* ==========================================================================
+   Origin Section
+   ========================================================================== */
+
+.origin {
+  padding: var(--space-2xl) var(--space-xl);
+  background: var(--color-bg-warm);
+  border-top: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.origin-content {
+  max-width: 800px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.origin-quote {
+  margin: 0 0 var(--space-lg);
+  padding: 0;
+}
+
+.origin-quote p {
+  font-family: var(--font-display);
+  font-size: 1.75rem;
+  font-style: italic;
+  color: var(--color-text);
+  line-height: 1.5;
+}
+
+.origin-quote cite {
+  display: block;
+  margin-top: var(--space-sm);
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  font-style: normal;
+  color: var(--color-accent);
+}
+
+.origin-text {
+  font-size: 1.1rem;
+  color: var(--color-text-muted);
+  line-height: 1.8;
+}
+
+/* ==========================================================================
+   Section Styles
+   ========================================================================== */
+
+.section-header {
+  text-align: center;
+  margin-bottom: var(--space-2xl);
+}
+
+.section-title {
+  font-size: clamp(2rem, 5vw, 3rem);
+  margin-bottom: var(--space-sm);
+}
+
+.section-subtitle {
+  font-size: 1.1rem;
+  color: var(--color-text-muted);
+}
+
+/* ==========================================================================
+   Concept Section
+   ========================================================================== */
+
+.concept {
+  padding: var(--space-3xl) var(--space-xl);
+}
+
+.concept-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-2xl);
+  max-width: 1200px;
+  margin: 0 auto;
+  align-items: center;
+}
+
+.message-flow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-md);
+  padding: var(--space-xl);
+  background: var(--color-bg-elevated);
+  border-radius: 8px;
+  border: 1px solid var(--color-border);
+}
+
+.flow-step {
+  text-align: center;
+}
+
+.flow-icon {
+  width: 64px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-size: 0.85rem;
+  font-weight: 500;
+  margin-bottom: var(--space-xs);
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-bg);
+}
+
+.flow-step.highlight .flow-icon {
+  background: var(--color-accent);
+  color: var(--color-bg);
+  border-color: var(--color-accent);
+  box-shadow: 0 0 30px var(--color-accent-glow);
+}
+
+.runner-name {
+  font-size: 0.75rem;
+}
+
+.flow-label {
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+}
+
+.flow-arrow {
+  color: var(--color-text-subtle);
+  width: 40px;
+  flex-shrink: 0;
+}
+
+.concept-intro {
+  font-size: 1.25rem;
+  color: var(--color-text);
+  margin-bottom: var(--space-xl);
+  line-height: 1.7;
+}
+
+.concept-features {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+}
+
+.feature h3 {
+  font-family: var(--font-body);
+  font-size: 1rem;
+  font-weight: 500;
+  margin-bottom: var(--space-xs);
+  color: var(--color-accent);
+}
+
+.feature p {
+  color: var(--color-text-muted);
+  font-size: 0.95rem;
+}
+
+/* ==========================================================================
+   Peacemaker Section
+   ========================================================================== */
+
+.peacemaker {
+  padding: var(--space-3xl) var(--space-xl);
+  background: linear-gradient(180deg, var(--color-bg) 0%, var(--color-bg-warm) 100%);
+}
+
+.peacemaker-content {
+  max-width: 700px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.peacemaker-badge {
+  display: inline-block;
+  padding: 0.375rem 1rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-accent);
+  border: 1px solid var(--color-accent);
+  border-radius: 20px;
+  margin-bottom: var(--space-md);
+}
+
+.peacemaker-title {
+  font-size: clamp(2.5rem, 6vw, 4rem);
+  margin-bottom: var(--space-md);
+}
+
+.peacemaker-description {
+  font-size: 1.15rem;
+  color: var(--color-text-muted);
+  margin-bottom: var(--space-xl);
+  line-height: 1.8;
+}
+
+.peacemaker-demo {
+  text-align: left;
+  padding: var(--space-lg);
+  background: var(--color-bg);
+  border-radius: 12px;
+  border: 1px solid var(--color-border);
+}
+
+.demo-message {
+  padding: var(--space-md);
+  border-radius: 8px;
+  margin-bottom: var(--space-md);
+}
+
+.demo-label {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  margin-bottom: var(--space-xs);
+}
+
+.demo-message.original {
+  background: rgba(200, 100, 100, 0.1);
+  border: 1px solid rgba(200, 100, 100, 0.2);
+}
+
+.demo-message.original .demo-label {
+  color: #c87878;
+}
+
+.demo-message.original p {
+  color: var(--color-text-muted);
+}
+
+.demo-message.revised {
+  background: var(--color-accent-glow);
+  border: 1px solid rgba(201, 169, 98, 0.3);
+}
+
+.demo-message.revised .demo-label {
+  color: var(--color-accent);
+}
+
+.demo-message.revised p {
+  color: var(--color-text);
+}
+
+.demo-runner {
+  text-align: center;
+  padding: var(--space-sm) 0;
+}
+
+.demo-runner-text {
+  font-size: 0.85rem;
+  color: var(--color-text-subtle);
+  font-style: italic;
+}
+
+.demo-note {
+  font-size: 0.85rem;
+  color: var(--color-text-subtle);
+  text-align: center;
+  margin-top: var(--space-md);
+  padding-top: var(--space-md);
+  border-top: 1px solid var(--color-border);
+}
+
+/* ==========================================================================
+   Spaces Section
+   ========================================================================== */
+
+.spaces {
+  padding: var(--space-3xl) var(--space-xl);
+}
+
+.spaces-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-lg);
+  max-width: 900px;
+  margin: 0 auto var(--space-xl);
+}
+
+.space-card {
+  padding: var(--space-xl);
+  background: var(--color-bg-elevated);
+  border-radius: 12px;
+  border: 1px solid var(--color-border);
+  transition: all var(--transition-base);
+}
+
+.space-card:hover {
+  border-color: var(--color-border-strong);
+  transform: translateY(-4px);
+}
+
+.space-icon {
+  width: 48px;
+  height: 48px;
+  color: var(--color-accent);
+  margin-bottom: var(--space-md);
+}
+
+.space-card h3 {
+  font-size: 1.5rem;
+  margin-bottom: var(--space-sm);
+}
+
+.space-card > p {
+  color: var(--color-text-muted);
+  margin-bottom: var(--space-md);
+  line-height: 1.7;
+}
+
+.space-features {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.space-features li {
+  position: relative;
+  padding-left: var(--space-md);
+  font-size: 0.9rem;
+  color: var(--color-text-subtle);
+  margin-bottom: var(--space-xs);
+}
+
+.space-features li::before {
+  content: '→';
+  position: absolute;
+  left: 0;
+  color: var(--color-accent);
+}
+
+.spaces-note {
+  text-align: center;
+  font-size: 1rem;
+  color: var(--color-text-muted);
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+/* ==========================================================================
+   Philosophy Section
+   ========================================================================== */
+
+.philosophy {
+  padding: var(--space-3xl) var(--space-xl);
+  background: var(--color-bg-warm);
+  border-top: 1px solid var(--color-border);
+}
+
+.philosophy-content {
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+.philosophy-title {
+  font-size: clamp(2rem, 5vw, 3rem);
+  text-align: center;
+  margin-bottom: var(--space-sm);
+}
+
+.philosophy-intro {
+  text-align: center;
+  font-size: 1.25rem;
+  color: var(--color-text-muted);
+  margin-bottom: var(--space-2xl);
+}
+
+.philosophy-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-xl);
+}
+
+.principle {
+  padding: var(--space-lg);
+  border-left: 1px solid var(--color-border);
+}
+
+.principle-number {
+  font-family: var(--font-display);
+  font-size: 2rem;
+  color: var(--color-accent);
+  margin-bottom: var(--space-sm);
+}
+
+.principle h3 {
+  font-family: var(--font-body);
+  font-size: 1.1rem;
+  font-weight: 500;
+  margin-bottom: var(--space-sm);
+}
+
+.principle p {
+  color: var(--color-text-muted);
+  font-size: 0.95rem;
+  line-height: 1.7;
+}
+
+/* ==========================================================================
+   Waitlist Section
+   ========================================================================== */
+
+.waitlist {
+  padding: var(--space-3xl) var(--space-xl);
+  text-align: center;
+}
+
+.waitlist-content {
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.waitlist-title {
+  font-size: clamp(2rem, 5vw, 3rem);
+  margin-bottom: var(--space-md);
+}
+
+.waitlist-subtitle {
+  font-size: 1.1rem;
+  color: var(--color-text-muted);
+  margin-bottom: var(--space-xl);
+  line-height: 1.7;
+}
+
+.waitlist-form {
+  margin-bottom: var(--space-md);
+}
+
+.form-group {
+  display: flex;
+  gap: var(--space-sm);
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+.form-group input {
+  flex: 1;
+  padding: 0.875rem 1.25rem;
+  font-family: var(--font-body);
+  font-size: 1rem;
+  color: var(--color-text);
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border-strong);
+  border-radius: 4px;
+  outline: none;
+  transition: border-color var(--transition-fast);
+}
+
+.form-group input::placeholder {
+  color: var(--color-text-subtle);
+}
+
+.form-group input:focus {
+  border-color: var(--color-accent);
+}
+
+.waitlist-note {
+  font-size: 0.85rem;
+  color: var(--color-text-subtle);
+}
+
+/* ==========================================================================
+   Footer
+   ========================================================================== */
+
+.footer {
+  padding: var(--space-xl) var(--space-xl);
+  border-top: 1px solid var(--color-border);
+}
+
+.footer-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.footer-logo {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.footer-tagline {
+  font-size: 0.85rem;
+  color: var(--color-text-subtle);
+  margin-top: var(--space-xs);
+}
+
+.footer-links {
+  display: flex;
+  gap: var(--space-lg);
+}
+
+.footer-links a {
+  font-size: 0.9rem;
+  color: var(--color-text-muted);
+}
+
+.footer-copyright {
+  font-size: 0.85rem;
+  color: var(--color-text-subtle);
+}
+
+/* ==========================================================================
+   Animations
+   ========================================================================== */
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes drawPath {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: translateY(-50%) scale(1);
+    opacity: 0.7;
+  }
+  50% {
+    transform: translateY(-50%) scale(1.2);
+    opacity: 1;
+  }
+}
+
+@keyframes runnerMove {
+  0%, 100% {
+    left: 20%;
+  }
+  50% {
+    left: 80%;
+  }
+}
+
+/* ==========================================================================
+   Responsive Design
+   ========================================================================== */
+
+@media (max-width: 1024px) {
+  .hero-visual {
+    display: none;
+  }
+  
+  .concept-grid {
+    grid-template-columns: 1fr;
+    gap: var(--space-xl);
+  }
+  
+  .philosophy-grid {
+    grid-template-columns: 1fr;
+    gap: var(--space-lg);
+  }
+  
+  .principle {
+    border-left: none;
+    border-top: 1px solid var(--color-border);
+    padding-left: 0;
+    padding-top: var(--space-lg);
+  }
+}
+
+@media (max-width: 768px) {
+  :root {
+    --space-xl: 3rem;
+    --space-2xl: 4rem;
+    --space-3xl: 6rem;
+  }
+  
+  .nav {
+    padding: var(--space-sm) var(--space-md);
+  }
+  
+  .nav-links {
+    display: none;
+  }
+  
+  .hero {
+    padding: var(--space-2xl) var(--space-md) var(--space-xl);
+  }
+  
+  .hero-actions {
+    flex-direction: column;
+  }
+  
+  .spaces-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .form-group {
+    flex-direction: column;
+  }
+  
+  .footer-content {
+    flex-direction: column;
+    text-align: center;
+    gap: var(--space-lg);
+  }
+  
+  .footer-links {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+}
+
+/* ==========================================================================
+   Scroll Animations
+   ========================================================================== */
+
+.concept,
+.peacemaker,
+.spaces,
+.philosophy,
+.waitlist {
+  opacity: 0;
+  transform: translateY(20px);
+  animation: fadeInUp 0.8s ease forwards;
+  animation-play-state: paused;
+}
+
+.concept.visible,
+.peacemaker.visible,
+.spaces.visible,
+.philosophy.visible,
+.waitlist.visible {
+  animation-play-state: running;
+}
+
