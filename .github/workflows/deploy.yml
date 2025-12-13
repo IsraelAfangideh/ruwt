@@ -22,7 +22,6 @@ jobs:
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           projectName: ruwt
           directory: code/web
-          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
 
   # ------------------------------------------------------------------
   # 1. API DEPLOYMENT
