@@ -1,6 +1,6 @@
 # Ruwt
 
-> **"Digital Couriers for the Modern Web"**
+> **"Intelligent Digital Couriers for the Modern Web"**
 
 Ruwt (pronounced *Root*) is a social media application designed to bring the historical dynamic of intelligent **courier-mediated communication** to the internet.
 
