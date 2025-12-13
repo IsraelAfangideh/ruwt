@@ -5,7 +5,8 @@
   "workspaces": [
     "api",
     "mobile",
-    "shared"
+    "shared",
+    "web"
   ],
   "dependencies": {
     "react": "19.1.0",
