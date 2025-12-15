@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 150">
+  <!-- LinkedIn cover photo optimized - flattened sine wave amplitude -->
+  <rect width="600" height="150" fill="#0f0e0d"/>
+  
+  <!-- The Sine Wave (much flatter - only 30px amplitude instead of 80px) -->
+  <!-- Center is at y=75, peaks at y=45, troughs at y=105 -->
+  <path d="M75,75 Q187.5,45 300,75 T525,75" 
+        stroke="#c9a962" stroke-width="2" fill="none" opacity="0.4"/>
+        
+  <!-- Poles -->
+  <circle cx="75" cy="75" r="6" fill="#666"/>
+  <circle cx="525" cy="75" r="6" fill="#666"/>
+  
+  <!-- Balanced Linear Dots (All at y=75) -->
+  <circle cx="150" cy="75" r="6" fill="#c9a962"/>
+  <circle cx="300" cy="75" r="6" fill="#c9a962"/>
+  <circle cx="450" cy="75" r="6" fill="#c9a962"/>
+</svg>
+

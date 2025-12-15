@@ -1,0 +1,6 @@
+name = "ruwt"
+compatibility_date = "2024-01-01"
+
+# Serve static assets from this directory
+assets = { directory = "./" }
+
