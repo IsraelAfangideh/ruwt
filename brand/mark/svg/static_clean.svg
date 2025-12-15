@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 200">
+  <rect width="400" height="200" fill="#0f0e0d"/>
+  
+  <!-- The Clean Sine Path -->
+  <path d="M50,100 Q125,20 200,100 T350,100" 
+        stroke="#c9a962" stroke-width="4" fill="none" stroke-linecap="round"/>
+        
+  <!-- The Two Poles -->
+  <circle cx="50" cy="100" r="8" fill="#c9a962" opacity="0.8"/>
+  <circle cx="350" cy="100" r="8" fill="#c9a962" opacity="0.8"/>
+  
+  <!-- The Center/Runner (Optional - remove if you want purely the line) -->
+  <circle cx="200" cy="100" r="12" fill="#c9a962" />
+</svg>
+

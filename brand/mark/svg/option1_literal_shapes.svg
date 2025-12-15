@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <rect width="32" height="32" rx="6" fill="#0f0e0d"/>
+  <!-- 
+    The "7-i-y" Concept (Reading Right to Left for Hebrew)
+    Right: 7 (Resh)
+    Middle: i (Vav)
+    Left: y (Tsade)
+    
+    Styled to look like a connected motion/circuit.
+  -->
+  <g transform="translate(6, 8)" stroke="#c9a962" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <!-- Right Char (7/Resh) -->
+    <path d="M18 0 L20 0 L20 10" />
+    
+    <!-- Middle Char (i/Vav) -->
+    <path d="M14 2 L14 10" />
+    <circle cx="14" cy="0" r="1.2" fill="#c9a962" stroke="none" />
+    
+    <!-- Left Char (y/Tsade) -->
+    <path d="M4 0 L8 6 L8 14 M8 6 L12 0" />
+  </g>
+</svg>
+

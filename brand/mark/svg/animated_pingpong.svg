@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 200">
+  <defs>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="4" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  
+  <rect width="400" height="200" fill="#0f0e0d"/>
+  
+  <!-- Path Definition -->
+  <path id="motionPath" d="M50,100 Q125,20 200,100 T350,100" fill="none" stroke="none"/>
+  
+  <!-- Visible Sine Wave -->
+  <path d="M50,100 Q125,20 200,100 T350,100" 
+        stroke="#c9a962" stroke-width="3" fill="none" opacity="0.4"/>
+        
+  <!-- Poles -->
+  <circle cx="50" cy="100" r="8" fill="#555"/>
+  <circle cx="350" cy="100" r="8" fill="#555"/>
+  
+  <!-- The Runner (Ping-Pong Animation) -->
+  <circle r="8" fill="#c9a962" filter="url(#glow)">
+    <!-- 
+      keyPoints="0;1;0" combined with keyTimes="0;0.5;1" makes it go 
+      Start -> End (at 50% time) -> Start (at 100% time)
+    -->
+    <animateMotion dur="4s" repeatCount="indefinite" calcMode="spline" 
+                   keyTimes="0;0.5;1" 
+                   keySplines="0.45 0 0.55 1; 0.45 0 0.55 1"
+                   keyPoints="0;1;0">
+      <mpath href="#motionPath"/>
+    </animateMotion>
+    
+    <!-- Opacity pulse: Fade in at start, stay visible, fade out at end? 
+         Actually, for ping pong, it should stay visible mostly.
+         Let's make it pulse slightly in brightness instead.
+    -->
+    <animate attributeName="opacity" values="0.8;1;0.8" dur="2s" repeatCount="indefinite"/>
+  </circle>
+</svg>
+
