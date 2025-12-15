@@ -40,10 +40,12 @@ This is a **Bun** monorepo containing the following workspaces:
   - **Database**: Postgres with `pgvector` (via Drizzle ORM)
   - **AI**: Google Gemini 2.0 Flash
 - **`mobile`**: The React Native mobile client (Expo).
+- **`web`**: Marketing website (static, hosted on Cloudflare Pages).
 - **`shared`**: Shared types, schemas, and prompts.
 
-**Production Goals:**
-- **Hosting**: Fly.io
+**Production:**
+- **API Hosting**: Fly.io
+- **Marketing Site**: Cloudflare Pages (ruwt.social)
 - **Auth/Data**: Supabase
 
 ---
@@ -52,13 +54,20 @@ This is a **Bun** monorepo containing the following workspaces:
 
 ```text
 .
+├── brand
+│   └── mark         # Logo SVGs and PNG exports
 ├── code
 │   ├── api          # Hono backend & CLI prototype
 │   ├── mobile       # Expo React Native app
+│   ├── web          # Marketing website (ruwt.social)
 │   ├── shared       # Shared logic & types
 │   └── docker-compose.yml
-├── spec             # Product specifications & philosophy
-└── sales            # Pitch decks and positioning
+├── docs
+│   ├── spec         # Product specifications & philosophy
+│   └── context      # Historical context & conversations
+└── gtm
+    ├── customers    # Customer feedback & conversations
+    └── pitch        # Pitch decks and positioning
 ```
 
 ## Getting Started
