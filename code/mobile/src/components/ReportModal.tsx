@@ -10,6 +10,7 @@ import {
   Platform,
   ScrollView,
 } from 'react-native';
+import { useColors } from '../theme';
 
 interface ReportModalProps {
   visible: boolean;
@@ -27,6 +28,7 @@ const REPORT_REASONS = [
 ];
 
 export default function ReportModal({ visible, onClose, onSubmit, runnerName }: ReportModalProps) {
+  const colors = useColors();
   const [selectedReason, setSelectedReason] = useState<string | null>(null);
   const [details, setDetails] = useState('');
 
@@ -47,43 +49,49 @@ export default function ReportModal({ visible, onClose, onSubmit, runnerName }: 
       onRequestClose={onClose}
     >
       <KeyboardAvoidingView 
-        style={styles.container}
+        style={[styles.container, { backgroundColor: colors.bg }]}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        <View style={styles.header}>
+        <View style={[styles.header, { borderBottomColor: colors.border }]}>
           <TouchableOpacity onPress={onClose}>
-            <Text style={styles.cancelButton}>Cancel</Text>
+            <Text style={[styles.cancelButton, { color: colors.accent }]}>Cancel</Text>
           </TouchableOpacity>
-          <Text style={styles.title}>Report Issue</Text>
+          <Text style={[styles.title, { color: colors.text }]}>Report Issue</Text>
           <TouchableOpacity 
             onPress={handleSubmit}
             disabled={!selectedReason}
           >
-            <Text style={[styles.submitButton, !selectedReason && styles.disabled]}>
+            <Text style={[
+              styles.submitButton, 
+              { color: colors.accent },
+              !selectedReason && { color: colors.textSubtle }
+            ]}>
               Submit
             </Text>
           </TouchableOpacity>
         </View>
 
         <ScrollView style={styles.content}>
-          <Text style={styles.subtitle}>
+          <Text style={[styles.subtitle, { color: colors.textMuted }]}>
             Report an issue with {runnerName}
           </Text>
 
-          <Text style={styles.label}>What's the problem?</Text>
+          <Text style={[styles.label, { color: colors.text }]}>What's the problem?</Text>
           {REPORT_REASONS.map((reason) => (
             <TouchableOpacity
               key={reason}
               style={[
                 styles.reasonButton,
-                selectedReason === reason && styles.reasonButtonSelected,
+                { backgroundColor: colors.bgElevated, borderColor: colors.border },
+                selectedReason === reason && { backgroundColor: colors.accent },
               ]}
               onPress={() => setSelectedReason(reason)}
             >
               <Text
                 style={[
                   styles.reasonText,
-                  selectedReason === reason && styles.reasonTextSelected,
+                  { color: colors.text },
+                  selectedReason === reason && { color: colors.userBubbleText },
                 ]}
               >
                 {reason}
@@ -91,18 +99,22 @@ export default function ReportModal({ visible, onClose, onSubmit, runnerName }: 
             </TouchableOpacity>
           ))}
 
-          <Text style={styles.label}>Additional details (optional)</Text>
+          <Text style={[styles.label, { color: colors.text }]}>Additional details (optional)</Text>
           <TextInput
-            style={styles.textInput}
+            style={[styles.textInput, {
+              borderColor: colors.borderStrong,
+              backgroundColor: colors.bgElevated,
+              color: colors.text,
+            }]}
             placeholder="Describe the issue..."
-            placeholderTextColor="#999"
+            placeholderTextColor={colors.textSubtle}
             multiline
             numberOfLines={4}
             value={details}
             onChangeText={setDetails}
           />
 
-          <Text style={styles.note}>
+          <Text style={[styles.note, { color: colors.textSubtle }]}>
             Reports are reviewed within 24 hours. We take all reports seriously 
             and will take appropriate action.
           </Text>
@@ -115,7 +127,6 @@ export default function ReportModal({ visible, onClose, onSubmit, runnerName }: 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
   },
   header: {
     flexDirection: 'row',
@@ -123,7 +134,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
   },
   title: {
     fontSize: 17,
@@ -131,15 +141,10 @@ const styles = StyleSheet.create({
   },
   cancelButton: {
     fontSize: 17,
-    color: '#007AFF',
   },
   submitButton: {
     fontSize: 17,
-    color: '#007AFF',
     fontWeight: '600',
-  },
-  disabled: {
-    color: '#ccc',
   },
   content: {
     flex: 1,
@@ -147,7 +152,6 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     fontSize: 14,
-    color: '#666',
     marginBottom: 24,
   },
   label: {
@@ -158,34 +162,24 @@ const styles = StyleSheet.create({
   },
   reasonButton: {
     padding: 16,
-    borderRadius: 10,
-    backgroundColor: '#f5f5f5',
+    borderRadius: 12,
     marginBottom: 8,
-  },
-  reasonButtonSelected: {
-    backgroundColor: '#000',
+    borderWidth: 1,
   },
   reasonText: {
     fontSize: 16,
-    color: '#333',
-  },
-  reasonTextSelected: {
-    color: '#fff',
   },
   textInput: {
     borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 10,
-    padding: 12,
+    borderRadius: 12,
+    padding: 14,
     fontSize: 16,
     minHeight: 100,
     textAlignVertical: 'top',
   },
   note: {
     fontSize: 13,
-    color: '#999',
     marginTop: 20,
     lineHeight: 18,
   },
 });
-

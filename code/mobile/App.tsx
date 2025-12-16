@@ -1,15 +1,41 @@
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
-import { StyleSheet, Text, View, FlatList, SafeAreaView, TouchableOpacity, ListRenderItem } from 'react-native';
-import { NavigationContainer } from '@react-navigation/native';
+import { StyleSheet, Text, View, FlatList, SafeAreaView, TouchableOpacity, ListRenderItem, useColorScheme } from 'react-native';
+import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Runner } from '@ruwt/shared';
 import { ENDPOINTS } from './src/config';
 import ChatScreen from './src/screens/ChatScreen';
+import { ThemeProvider, useColors, colors } from './src/theme';
+
+// --- Custom Navigation Themes ---
+const RuwtLightTheme = {
+  ...DefaultTheme,
+  colors: {
+    ...DefaultTheme.colors,
+    primary: colors.light.accent,
+    background: colors.light.bg,
+    card: colors.light.bgElevated,
+    text: colors.light.text,
+    border: colors.light.border,
+  },
+};
+
+const RuwtDarkTheme = {
+  ...DarkTheme,
+  colors: {
+    ...DarkTheme.colors,
+    primary: colors.dark.accent,
+    background: colors.dark.bg,
+    card: colors.dark.bgElevated,
+    text: colors.dark.text,
+    border: colors.dark.border,
+  },
+};
 
 // --- Runner List Component ---
-
 function RunnerListScreen({ navigation }: any) {
+  const themeColors = useColors();
   const [runners, setRunners] = useState<Runner[]>([]);
 
   useEffect(() => {
@@ -20,34 +46,32 @@ function RunnerListScreen({ navigation }: any) {
   }, []);
 
   const renderItem: ListRenderItem<Runner> = ({ item }) => (
-    <View style={styles.card}>
-      <Text style={styles.name}>{item.name}</Text>
-      <Text style={styles.personality}>{item.personality}</Text>
+    <View style={[styles.card, { backgroundColor: themeColors.bgElevated, borderColor: themeColors.border }]}>
+      <Text style={[styles.name, { color: themeColors.text }]}>{item.name}</Text>
+      <Text style={[styles.personality, { color: themeColors.textMuted }]}>{item.personality}</Text>
       <TouchableOpacity 
-        style={styles.button}
+        style={[styles.button, { backgroundColor: themeColors.accent }]}
         onPress={() => navigation.navigate('Chat', { runner: item })}
       >
-        <Text style={styles.buttonText}>Send Runner</Text>
+        <Text style={[styles.buttonText, { color: themeColors.userBubbleText }]}>Send Runner</Text>
       </TouchableOpacity>
     </View>
   );
 
   return (
-    <SafeAreaView style={styles.container}>
-      <Text style={styles.header}>Ruwt</Text>
+    <SafeAreaView style={[styles.container, { backgroundColor: themeColors.bg }]}>
+      <Text style={[styles.header, { color: themeColors.text }]}>Ruwt</Text>
       <FlatList
         data={runners}
         renderItem={renderItem}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.list}
       />
-      <StatusBar style="auto" />
     </SafeAreaView>
   );
 }
 
 // --- Navigation Setup ---
-
 const Stack = createNativeStackNavigator();
 
 // Web linking config for deep links
@@ -61,70 +85,100 @@ const linking = {
   },
 };
 
+function AppContent() {
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === 'dark';
+  const themeColors = useColors();
+  
+  return (
+    <>
+      <StatusBar style={isDark ? 'light' : 'dark'} />
+      <NavigationContainer 
+        linking={linking}
+        theme={isDark ? RuwtDarkTheme : RuwtLightTheme}
+      >
+        <Stack.Navigator
+          screenOptions={{
+            headerStyle: {
+              backgroundColor: themeColors.bgElevated,
+            },
+            headerTintColor: themeColors.accent,
+            headerTitleStyle: {
+              color: themeColors.text,
+              fontWeight: '600',
+            },
+          }}
+        >
+          <Stack.Screen 
+            name="Runners" 
+            component={RunnerListScreen} 
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen 
+            name="Chat" 
+            component={ChatScreen} 
+            options={({ route }: any) => ({ title: route.params?.runner?.name || 'Peacemaker' })}
+          />
+        </Stack.Navigator>
+      </NavigationContainer>
+    </>
+  );
+}
+
 export default function App() {
   return (
-    <NavigationContainer linking={linking}>
-      <Stack.Navigator>
-        <Stack.Screen 
-          name="Runners" 
-          component={RunnerListScreen} 
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen 
-          name="Chat" 
-          component={ChatScreen} 
-          options={({ route }: any) => ({ title: route.params?.runner?.name || 'Peacemaker' })}
-        />
-      </Stack.Navigator>
-    </NavigationContainer>
+    <ThemeProvider>
+      <AppContent />
+    </ThemeProvider>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
     paddingTop: 50,
   },
   header: {
-    fontSize: 32,
-    fontWeight: 'bold',
+    fontSize: 36,
+    fontWeight: '300',
     textAlign: 'center',
-    marginBottom: 20,
-    color: '#333',
+    marginBottom: 24,
+    fontFamily: 'Georgia',
+    letterSpacing: -0.5,
   },
   list: {
     paddingHorizontal: 20,
   },
   card: {
-    backgroundColor: '#f9f9f9',
-    padding: 20,
-    borderRadius: 15,
-    marginBottom: 15,
+    padding: 24,
+    borderRadius: 16,
+    marginBottom: 16,
+    borderWidth: 1,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
     elevation: 3,
   },
   name: {
-    fontSize: 20,
-    fontWeight: '600',
-    marginBottom: 5,
+    fontSize: 22,
+    fontWeight: '500',
+    marginBottom: 6,
+    fontFamily: 'Georgia',
   },
   personality: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 15,
+    fontSize: 15,
+    marginBottom: 20,
+    lineHeight: 22,
   },
   button: {
-    backgroundColor: '#000',
-    padding: 10,
+    padding: 14,
     borderRadius: 8,
     alignItems: 'center',
   },
   buttonText: {
-    color: '#fff',
     fontWeight: '600',
+    fontSize: 15,
+    letterSpacing: 0.3,
   },
 });
