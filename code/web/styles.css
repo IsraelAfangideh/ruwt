@@ -1,21 +1,22 @@
 /* ==========================================================================
    Ruwt Marketing Website
    A distinctive, warm aesthetic reflecting intentional communication
+   System-aware light/dark theming
    ========================================================================== */
 
 :root {
-  /* Colors - Warm earth tones with burnished gold */
-  --color-bg: #0f0e0d;
-  --color-bg-warm: #1a1816;
-  --color-bg-elevated: #252220;
-  --color-text: #e8e4df;
-  --color-text-muted: #9a938a;
-  --color-text-subtle: #6b645c;
-  --color-accent: #c9a962;
-  --color-accent-muted: #a08745;
-  --color-accent-glow: rgba(201, 169, 98, 0.15);
-  --color-border: rgba(232, 228, 223, 0.08);
-  --color-border-strong: rgba(232, 228, 223, 0.15);
+  /* Light Mode Colors (Default) - Warm cream with burnished gold */
+  --color-bg: #f5f3f0;
+  --color-bg-warm: #ebe8e4;
+  --color-bg-elevated: #ffffff;
+  --color-text: #1a1816;
+  --color-text-muted: #5c564e;
+  --color-text-subtle: #8a847a;
+  --color-accent: #9a7b3c;
+  --color-accent-muted: #7d6430;
+  --color-accent-glow: rgba(154, 123, 60, 0.12);
+  --color-border: rgba(26, 24, 22, 0.08);
+  --color-border-strong: rgba(26, 24, 22, 0.15);
   
   /* Typography */
   --font-display: 'Cormorant Garamond', Georgia, serif;
@@ -35,6 +36,23 @@
   --transition-base: 300ms ease;
   --transition-slow: 600ms ease;
   --transition-slower: 1000ms ease;
+}
+
+/* Dark Mode Colors - System preference */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-bg: #0f0e0d;
+    --color-bg-warm: #1a1816;
+    --color-bg-elevated: #252220;
+    --color-text: #e8e4df;
+    --color-text-muted: #9a938a;
+    --color-text-subtle: #6b645c;
+    --color-accent: #c9a962;
+    --color-accent-muted: #a08745;
+    --color-accent-glow: rgba(201, 169, 98, 0.15);
+    --color-border: rgba(232, 228, 223, 0.08);
+    --color-border-strong: rgba(232, 228, 223, 0.15);
+  }
 }
 
 /* ==========================================================================
@@ -563,12 +581,23 @@ em {
 }
 
 .demo-message.original {
-  background: rgba(200, 100, 100, 0.1);
-  border: 1px solid rgba(200, 100, 100, 0.2);
+  background: rgba(200, 100, 100, 0.08);
+  border: 1px solid rgba(200, 100, 100, 0.15);
 }
 
 .demo-message.original .demo-label {
-  color: #c87878;
+  color: #b06060;
+}
+
+@media (prefers-color-scheme: dark) {
+  .demo-message.original {
+    background: rgba(200, 100, 100, 0.1);
+    border: 1px solid rgba(200, 100, 100, 0.2);
+  }
+  
+  .demo-message.original .demo-label {
+    color: #c87878;
+  }
 }
 
 .demo-message.original p {

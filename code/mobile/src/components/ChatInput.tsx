@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, TextInput, TouchableOpacity, Text, ActivityIndicator, StyleSheet } from 'react-native';
+import { useColors } from '../theme';
 
 type Props = {
   input: string;
@@ -9,21 +10,34 @@ type Props = {
 };
 
 export default function ChatInput({ input, isLoading, onChangeText, onSend }: Props) {
+  const colors = useColors();
+  
   return (
-    <View style={styles.inputContainer}>
+    <View style={[styles.inputContainer, { 
+      borderTopColor: colors.border,
+      backgroundColor: colors.bgElevated,
+    }]}>
       <TextInput
-        style={styles.input}
+        style={[styles.input, {
+          borderColor: colors.borderStrong,
+          backgroundColor: colors.bg,
+          color: colors.text,
+        }]}
         value={input}
         onChangeText={onChangeText}
         placeholder="Type a message..."
+        placeholderTextColor={colors.textSubtle}
         editable={!isLoading}
       />
       <TouchableOpacity 
-        style={styles.sendButton} 
+        style={[styles.sendButton, { backgroundColor: colors.accent }]} 
         onPress={onSend}
         disabled={isLoading || !input.trim()}
       >
-         {isLoading ? <ActivityIndicator color="#fff" /> : <Text style={styles.sendText}>Send</Text>}
+         {isLoading 
+           ? <ActivityIndicator color={colors.userBubbleText} /> 
+           : <Text style={[styles.sendText, { color: colors.userBubbleText }]}>Send</Text>
+         }
       </TouchableOpacity>
     </View>
   );
@@ -32,27 +46,25 @@ export default function ChatInput({ input, isLoading, onChangeText, onSend }: Pr
 const styles = StyleSheet.create({
   inputContainer: {
     flexDirection: 'row',
-    padding: 10,
+    padding: 12,
     borderTopWidth: 1,
-    borderTopColor: '#eee',
-    backgroundColor: '#fff',
   },
   input: {
     flex: 1,
     borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 20,
-    paddingHorizontal: 15,
-    paddingVertical: 10,
+    borderRadius: 24,
+    paddingHorizontal: 18,
+    paddingVertical: 12,
     fontSize: 16,
     marginRight: 10,
   },
   sendButton: {
-    backgroundColor: '#000',
-    borderRadius: 20,
+    borderRadius: 24,
     justifyContent: 'center',
-    paddingHorizontal: 20,
+    paddingHorizontal: 22,
   },
-  sendText: { color: '#fff', fontWeight: 'bold' },
+  sendText: { 
+    fontWeight: '600',
+    fontSize: 15,
+  },
 });
-

@@ -2,8 +2,10 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import { Message } from '../types/chat';
+import { useColors } from '../theme';
 
 export default function MessageBubble({ item }: { item: Message }) {
+  const colors = useColors();
   
   const handleCopy = async () => {
     await Clipboard.setStringAsync(item.text);
@@ -11,32 +13,57 @@ export default function MessageBubble({ item }: { item: Message }) {
     item.onAction?.('copy');
   };
 
+  const isUser = item.sender === 'user';
+
   return (
     <View style={[
       styles.container, 
-      item.sender === 'user' ? styles.userContainer : styles.runnerContainer
+      isUser ? styles.userContainer : styles.runnerContainer
     ]}>
       <View style={[
         styles.bubble,
-        item.sender === 'user' ? styles.userBubble : styles.runnerBubble,
-        item.isActionable && styles.actionableBubble
+        isUser 
+          ? [styles.userBubble, { backgroundColor: colors.userBubble }] 
+          : [styles.runnerBubble, { backgroundColor: colors.runnerBubble }],
+        item.isActionable && [styles.actionableBubble, { 
+          backgroundColor: colors.bgElevated,
+          borderColor: colors.accent,
+        }]
       ]}>
         <Text style={[
           styles.messageText,
-          item.sender === 'user' ? styles.userText : styles.runnerText
+          isUser 
+            ? { color: colors.userBubbleText } 
+            : { color: colors.runnerBubbleText }
         ]}>{item.text}</Text>
 
         {/* Action Buttons for Rewrite Bubbles */}
         {item.isActionable && (
-            <View style={styles.actionRow}>
-                <TouchableOpacity style={styles.actionBtn} onPress={() => item.onAction?.('send')}>
-                    <Text style={styles.actionBtnText}>Send This</Text>
+            <View style={[styles.actionRow, { borderTopColor: colors.border }]}>
+                <TouchableOpacity 
+                  style={[styles.actionBtn, { backgroundColor: colors.sendButton }]} 
+                  onPress={() => item.onAction?.('send')}
+                >
+                    <Text style={[styles.actionBtnText, { color: colors.sendButtonText }]}>Send This</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.actionBtnSecondary} onPress={handleCopy}>
-                    <Text style={styles.actionBtnTextSecondary}>Copy</Text>
+                <TouchableOpacity 
+                  style={[styles.actionBtnSecondary, { 
+                    backgroundColor: colors.copyButton,
+                    borderColor: colors.copyButtonBorder,
+                    borderWidth: 1,
+                  }]} 
+                  onPress={handleCopy}
+                >
+                    <Text style={[styles.actionBtnTextSecondary, { color: colors.copyButtonText }]}>Copy</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.actionBtnDestructive} onPress={() => item.onAction?.('kinder')}>
-                    <Text style={styles.actionBtnTextDestructive}>Make Kinder</Text>
+                <TouchableOpacity 
+                  style={[styles.actionBtnDestructive, { 
+                    backgroundColor: 'transparent',
+                    borderColor: colors.kindButtonBorder,
+                  }]} 
+                  onPress={() => item.onAction?.('kinder')}
+                >
+                    <Text style={[styles.actionBtnTextDestructive, { color: colors.kindButtonText }]}>Make Kinder</Text>
                 </TouchableOpacity>
             </View>
         )}
@@ -47,7 +74,7 @@ export default function MessageBubble({ item }: { item: Message }) {
 
 const styles = StyleSheet.create({
   container: {
-    marginBottom: 10,
+    marginBottom: 12,
     width: '100%',
   },
   userContainer: {
@@ -57,57 +84,58 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   bubble: {
-    padding: 12,
-    borderRadius: 16,
+    padding: 14,
+    borderRadius: 18,
     maxWidth: '85%',
   },
   userBubble: {
-    backgroundColor: '#007AFF',
-    borderBottomRightRadius: 2,
+    borderBottomRightRadius: 4,
   },
   runnerBubble: {
-    backgroundColor: '#F0F0F0',
-    borderBottomLeftRadius: 2,
+    borderBottomLeftRadius: 4,
   },
   actionableBubble: {
-    backgroundColor: '#E8F2FF', // Light blue/distinctive for rewrites
     borderWidth: 1,
-    borderColor: '#007AFF',
   },
-  messageText: { fontSize: 16, lineHeight: 22 },
-  userText: { color: '#fff' },
-  runnerText: { color: '#000' },
+  messageText: { 
+    fontSize: 16, 
+    lineHeight: 23,
+  },
 
   actionRow: {
     flexDirection: 'row',
-    marginTop: 10,
-    paddingTop: 10,
+    marginTop: 12,
+    paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(0,0,0,0.1)',
     gap: 8,
     flexWrap: 'wrap'
   },
   actionBtn: {
-    backgroundColor: '#007AFF',
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 15,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 8,
   },
   actionBtnSecondary: {
-    backgroundColor: '#e0e0e0',
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 15,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 8,
   },
   actionBtnDestructive: {
-    backgroundColor: '#FFF0F0',
     borderWidth: 1,
-    borderColor: '#FF3B30',
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 15,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 8,
   },
-  actionBtnText: { color: '#fff', fontSize: 13, fontWeight: '600' },
-  actionBtnTextSecondary: { color: '#333', fontSize: 13, fontWeight: '600' },
-  actionBtnTextDestructive: { color: '#FF3B30', fontSize: 13, fontWeight: '600' },
+  actionBtnText: { 
+    fontSize: 14, 
+    fontWeight: '600' 
+  },
+  actionBtnTextSecondary: { 
+    fontSize: 14, 
+    fontWeight: '600' 
+  },
+  actionBtnTextDestructive: { 
+    fontSize: 14, 
+    fontWeight: '600' 
+  },
 });
