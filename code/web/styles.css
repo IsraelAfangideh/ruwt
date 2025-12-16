@@ -851,6 +851,27 @@ em {
   color: var(--color-text-subtle);
 }
 
+.footer-legal {
+  margin-top: var(--space-sm);
+  font-size: 0.8rem;
+}
+
+.footer-legal a {
+  color: var(--color-text-subtle);
+  text-decoration: none;
+  transition: color var(--transition-fast);
+}
+
+.footer-legal a:hover {
+  color: var(--color-accent);
+}
+
+.footer-legal-divider {
+  color: var(--color-text-subtle);
+  margin: 0 var(--space-xs);
+  opacity: 0.5;
+}
+
 /* ==========================================================================
    Animations
    ========================================================================== */
@@ -968,6 +989,10 @@ em {
   .footer-links {
     flex-wrap: wrap;
     justify-content: center;
+  }
+  
+  .footer-legal {
+    margin-top: var(--space-md);
   }
 }
 
