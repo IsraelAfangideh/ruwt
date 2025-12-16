@@ -1,25 +1,114 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
 import { 
   View, 
   FlatList, 
   StyleSheet, 
   KeyboardAvoidingView, 
   Platform,
-  Alert
+  Alert,
+  TouchableOpacity,
+  Text,
+  ActionSheetIOS,
 } from 'react-native';
 import { ENDPOINTS } from '../config';
 import { PeacemakerChatResponse } from '@ruwt/shared';
 import { Message } from '../types/chat';
 import MessageBubble from '../components/MessageBubble';
 import ChatInput from '../components/ChatInput';
+import ReportModal from '../components/ReportModal';
 
-export default function ChatScreen({ route }: any) {
+export default function ChatScreen({ route, navigation }: any) {
   const { runner } = route.params;
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [isBlocked, setIsBlocked] = useState(false);
   
   const flatListRef = useRef<FlatList>(null);
+
+  // Add header menu button
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      headerRight: () => (
+        <TouchableOpacity 
+          onPress={showMenu}
+          style={styles.menuButton}
+        >
+          <Text style={styles.menuIcon}>•••</Text>
+        </TouchableOpacity>
+      ),
+    });
+  }, [navigation]);
+
+  const showMenu = () => {
+    if (Platform.OS === 'ios') {
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          options: ['Cancel', 'Report Issue', isBlocked ? 'Unblock Runner' : 'Block Runner'],
+          cancelButtonIndex: 0,
+          destructiveButtonIndex: 2,
+        },
+        (buttonIndex) => {
+          if (buttonIndex === 1) {
+            setShowReportModal(true);
+          } else if (buttonIndex === 2) {
+            handleBlock();
+          }
+        }
+      );
+    } else {
+      // Android fallback - show Alert with options
+      Alert.alert(
+        'Options',
+        undefined,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Report Issue', onPress: () => setShowReportModal(true) },
+          { 
+            text: isBlocked ? 'Unblock Runner' : 'Block Runner', 
+            onPress: handleBlock,
+            style: 'destructive'
+          },
+        ]
+      );
+    }
+  };
+
+  const handleBlock = () => {
+    if (isBlocked) {
+      setIsBlocked(false);
+      Alert.alert('Unblocked', `${runner.name} has been unblocked.`);
+    } else {
+      Alert.alert(
+        'Block Runner',
+        `Are you sure you want to block ${runner.name}? You won't receive messages from this runner.`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { 
+            text: 'Block', 
+            style: 'destructive',
+            onPress: () => {
+              setIsBlocked(true);
+              Alert.alert('Blocked', `${runner.name} has been blocked. You can unblock from the menu.`);
+            }
+          },
+        ]
+      );
+    }
+  };
+
+  const handleReport = (reason: string, details: string) => {
+    // In production, this would send to your API
+    // For now, we log it and show confirmation
+    console.log('Report submitted:', { runner: runner.name, reason, details });
+    
+    Alert.alert(
+      'Report Submitted',
+      'Thank you for your report. We will review it within 24 hours.',
+      [{ text: 'OK' }]
+    );
+  };
 
   // Initial Greeting
   useEffect(() => {
@@ -34,6 +123,12 @@ export default function ChatScreen({ route }: any) {
 
   const sendMessage = async (text: string, isRewrite = false, isSystemInstruction = false) => {
     if (!text.trim()) return;
+    
+    // Check if blocked
+    if (isBlocked) {
+      Alert.alert('Blocked', `${runner.name} is blocked. Unblock from the menu to send messages.`);
+      return;
+    }
 
     // Only add visible messages to the UI list
     if (!isSystemInstruction) {
@@ -140,6 +235,14 @@ export default function ChatScreen({ route }: any) {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
     >
+      {isBlocked && (
+        <View style={styles.blockedBanner}>
+          <Text style={styles.blockedText}>
+            {runner.name} is blocked. Tap ••• to unblock.
+          </Text>
+        </View>
+      )}
+      
       {/* @ts-ignore: React 19 type mismatch with RN */}
       <FlatList
         ref={flatListRef}
@@ -156,6 +259,13 @@ export default function ChatScreen({ route }: any) {
         onChangeText={setInput} 
         onSend={() => sendMessage(input)} 
       />
+
+      <ReportModal
+        visible={showReportModal}
+        onClose={() => setShowReportModal(false)}
+        onSubmit={handleReport}
+        runnerName={runner.name}
+      />
     </KeyboardAvoidingView>
   );
 }
@@ -163,4 +273,22 @@ export default function ChatScreen({ route }: any) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fff' },
   list: { padding: 15 },
+  menuButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  menuIcon: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    letterSpacing: 2,
+  },
+  blockedBanner: {
+    backgroundColor: '#ffebee',
+    padding: 12,
+    alignItems: 'center',
+  },
+  blockedText: {
+    color: '#c62828',
+    fontSize: 14,
+  },
 });

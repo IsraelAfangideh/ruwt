@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Delete Your Data — Ruwt</title>
+  <meta name="description" content="Request deletion of your Ruwt account and data">
+  <meta property="og:title" content="Delete Your Data — Ruwt">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://ruwt.social/delete">
+  <link rel="canonical" href="https://ruwt.social/delete">
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Libre+Franklin:wght@300;400;500&display=swap" rel="stylesheet">
+  
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    .legal-page {
+      min-height: 100vh;
+      padding: 120px 20px 80px;
+    }
+    .legal-container {
+      max-width: 720px;
+      margin: 0 auto;
+    }
+    .legal-header {
+      margin-bottom: 3rem;
+      padding-bottom: 2rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .legal-title {
+      font-family: var(--font-serif);
+      font-size: clamp(2rem, 5vw, 3rem);
+      font-weight: 500;
+      color: var(--text-primary);
+      margin-bottom: 0.5rem;
+    }
+    .legal-subtitle {
+      font-family: var(--font-sans);
+      font-size: 1.1rem;
+      color: var(--text-muted);
+    }
+    .legal-content h2 {
+      font-family: var(--font-serif);
+      font-size: 1.5rem;
+      font-weight: 500;
+      color: var(--text-primary);
+      margin: 2.5rem 0 1rem;
+    }
+    .legal-content h2:first-child {
+      margin-top: 0;
+    }
+    .legal-content p {
+      font-family: var(--font-sans);
+      font-size: 1rem;
+      line-height: 1.8;
+      color: var(--text-secondary);
+      margin-bottom: 1rem;
+    }
+    .legal-content ul, .legal-content ol {
+      margin: 1rem 0 1.5rem 1.5rem;
+      color: var(--text-secondary);
+    }
+    .legal-content li {
+      font-family: var(--font-sans);
+      font-size: 1rem;
+      line-height: 1.8;
+      margin-bottom: 0.5rem;
+    }
+    .legal-content a {
+      color: var(--gold);
+      text-decoration: underline;
+      text-underline-offset: 2px;
+    }
+    .legal-content a:hover {
+      color: var(--gold-light);
+    }
+    .delete-form {
+      background: var(--color-bg-elevated, #1a1918);
+      border: 1px solid var(--border, #333);
+      border-radius: 12px;
+      padding: 2rem;
+      margin: 2rem 0;
+    }
+    .form-group {
+      margin-bottom: 1.5rem;
+    }
+    .form-label {
+      display: block;
+      font-family: var(--font-sans);
+      font-size: 0.9rem;
+      font-weight: 500;
+      color: var(--text-primary);
+      margin-bottom: 0.5rem;
+    }
+    .form-input {
+      width: 100%;
+      padding: 0.875rem 1rem;
+      font-family: var(--font-sans);
+      font-size: 1rem;
+      color: var(--text-primary);
+      background: var(--color-bg, #0f0e0d);
+      border: 1px solid var(--border, #333);
+      border-radius: 8px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .form-input:focus {
+      border-color: var(--gold, #c9a962);
+    }
+    .form-input::placeholder {
+      color: var(--text-muted);
+    }
+    .form-textarea {
+      min-height: 120px;
+      resize: vertical;
+    }
+    .form-submit {
+      display: inline-block;
+      padding: 0.875rem 2rem;
+      font-family: var(--font-sans);
+      font-size: 1rem;
+      font-weight: 500;
+      color: #0f0e0d;
+      background: var(--gold, #c9a962);
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .form-submit:hover {
+      background: var(--gold-light, #d4b976);
+    }
+    .info-box {
+      background: rgba(201, 169, 98, 0.1);
+      border: 1px solid rgba(201, 169, 98, 0.3);
+      border-radius: 8px;
+      padding: 1rem 1.25rem;
+      margin: 1.5rem 0;
+    }
+    .info-box p {
+      margin: 0;
+      font-size: 0.95rem;
+    }
+    .legal-footer {
+      margin-top: 3rem;
+      padding-top: 2rem;
+      border-top: 1px solid var(--border);
+    }
+    .back-link {
+      font-family: var(--font-sans);
+      font-size: 0.875rem;
+      color: var(--text-muted);
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      transition: color 0.2s;
+    }
+    .back-link:hover {
+      color: var(--gold);
+    }
+  </style>
+</head>
+<body>
+  <!-- Grain overlay -->
+  <div class="grain"></div>
+  
+  <!-- Navigation -->
+  <nav class="nav">
+    <a href="/" class="nav-logo">ruwt</a>
+    <div class="nav-links">
+      <a href="/#concept">The Concept</a>
+      <a href="/#spaces">Spaces</a>
+      <a href="/#philosophy">Philosophy</a>
+      <a href="/#waitlist" class="nav-cta">Join Waitlist</a>
+    </div>
+  </nav>
+
+  <main class="legal-page">
+    <div class="legal-container">
+      <header class="legal-header">
+        <h1 class="legal-title">Delete Your Data</h1>
+        <p class="legal-subtitle">Request deletion of your Ruwt account and associated data</p>
+      </header>
+
+      <div class="legal-content">
+        <h2>How to Delete Your Data</h2>
+        <p>
+          You have the right to delete your Ruwt account and all associated data at any time. 
+          There are two ways to request deletion:
+        </p>
+
+        <h2>Option 1: In-App Deletion</h2>
+        <p>
+          If you have access to the Ruwt app:
+        </p>
+        <ol>
+          <li>Open the Ruwt app</li>
+          <li>Go to Settings</li>
+          <li>Select "Delete Account"</li>
+          <li>Confirm your request</li>
+        </ol>
+
+        <h2>Option 2: Web Request</h2>
+        <p>
+          If you cannot access the app, submit a deletion request using the form below:
+        </p>
+
+        <form class="delete-form" action="https://formspree.io/f/xpwzgkvq" method="POST">
+          <div class="form-group">
+            <label class="form-label" for="email">Email Address *</label>
+            <input 
+              type="email" 
+              id="email" 
+              name="email" 
+              class="form-input" 
+              placeholder="The email associated with your account"
+              required
+            >
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label" for="reason">Reason for Deletion (Optional)</label>
+            <textarea 
+              id="reason" 
+              name="reason" 
+              class="form-input form-textarea" 
+              placeholder="Help us improve by sharing why you're leaving"
+            ></textarea>
+          </div>
+
+          <input type="hidden" name="_subject" value="Account Deletion Request">
+          
+          <button type="submit" class="form-submit">Submit Deletion Request</button>
+        </form>
+
+        <h2>What Gets Deleted</h2>
+        <p>When you request account deletion, we will permanently remove:</p>
+        <ul>
+          <li>Your account information (email, display name)</li>
+          <li>Your message history</li>
+          <li>Your preferences and settings</li>
+          <li>Any data associated with your user ID</li>
+        </ul>
+
+        <div class="info-box">
+          <p>
+            <strong>Processing Time:</strong> Deletion requests are processed within 30 days. 
+            You will receive an email confirmation once your data has been deleted.
+          </p>
+        </div>
+
+        <h2>Data We May Retain</h2>
+        <p>
+          In some cases, we may retain certain data as required by law or for legitimate 
+          business purposes:
+        </p>
+        <ul>
+          <li>Transaction records (if applicable) for tax/legal compliance</li>
+          <li>Anonymized, aggregated analytics data</li>
+          <li>Data in encrypted backups (automatically purged within 90 days)</li>
+        </ul>
+
+        <h2>Questions?</h2>
+        <p>
+          If you have questions about data deletion, contact us at 
+          <a href="mailto:privacy@ruwt.social">privacy@ruwt.social</a>.
+        </p>
+      </div>
+
+      <footer class="legal-footer">
+        <a href="/" class="back-link">
+          ← Back to Home
+        </a>
+      </footer>
+    </div>
+  </main>
+
+  <script src="script.js"></script>
+</body>
+</html>
+
