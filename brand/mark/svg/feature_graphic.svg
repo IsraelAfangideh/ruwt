@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 500">
+  <!-- Background -->
+  <rect width="1024" height="500" fill="#0f0e0d"/>
+  
+  <!-- Subtle gradient overlay -->
+  <defs>
+    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1a1918;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0f0e0d;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <rect width="1024" height="500" fill="url(#bgGradient)"/>
+  
+  <!-- The Sine Wave Logo (centered, scaled) -->
+  <g transform="translate(312, 180)">
+    <!-- Sine Wave -->
+    <path d="M50,70 Q125,10 200,70 T350,70" 
+          stroke="#c9a962" stroke-width="2.5" fill="none" opacity="0.5"/>
+    
+    <!-- Origin Pole -->
+    <circle cx="50" cy="70" r="8" fill="#666"/>
+    
+    <!-- Destination Pole -->
+    <circle cx="350" cy="70" r="8" fill="#666"/>
+    
+    <!-- Transit Dots -->
+    <circle cx="100" cy="70" r="7" fill="#c9a962"/>
+    <circle cx="200" cy="70" r="7" fill="#c9a962"/>
+    <circle cx="300" cy="70" r="7" fill="#c9a962"/>
+  </g>
+  
+  <!-- App Name -->
+  <text x="512" y="340" 
+        font-family="Georgia, 'Times New Roman', serif" 
+        font-size="72" 
+        font-weight="400"
+        fill="#f5f3f0" 
+        text-anchor="middle">
+    ruwt
+  </text>
+  
+  <!-- Tagline -->
+  <text x="512" y="390" 
+        font-family="Arial, Helvetica, sans-serif" 
+        font-size="20" 
+        font-weight="300"
+        fill="#888" 
+        text-anchor="middle"
+        letter-spacing="2">
+    Digital Couriers for the Modern Web
+  </text>
+</svg>
+
