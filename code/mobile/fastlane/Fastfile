@@ -1,9 +1,93 @@
+# frozen_string_literal: true
+
 default_platform(:ios)
 
 platform :ios do
+  # ============================================================================
+  # CHECK STORE STATUS
+  # Determines if we should build based on current App Store review state
+  # ============================================================================
   desc "Check if we should build based on App Store status"
   lane :check_queue_status do
     ruby "fastlane/check_store_status.rb"
   end
+
+  # ============================================================================
+  # SUBMIT FOR REVIEW
+  # Submits the latest TestFlight build to App Store Review
+  # Called after EAS builds and uploads to TestFlight
+  # ============================================================================
+  desc "Submit the latest TestFlight build for App Store Review"
+  lane :submit_for_review do
+    # Authenticate with App Store Connect API
+    api_key = app_store_connect_api_key(
+      key_id: ENV["APP_STORE_CONNECT_API_KEY_KEY_ID"],
+      issuer_id: ENV["APP_STORE_CONNECT_API_KEY_ISSUER_ID"],
+      key_content: ENV["APP_STORE_CONNECT_API_KEY_KEY"],
+      is_key_content_base64: false
+    )
+
+    # Deliver to App Store
+    # This takes the latest TestFlight build and submits it for review
+    deliver(
+      api_key: api_key,
+      app_identifier: "com.ruwt.app",
+      
+      # Skip binary upload - EAS already uploaded to TestFlight
+      skip_binary_upload: true,
+      
+      # Use the latest build from TestFlight
+      build_number: "latest",
+      
+      # Submit for review automatically
+      submit_for_review: true,
+      automatic_release: true, # Release automatically after approval
+      
+      # Skip metadata/screenshots - manage in App Store Connect UI for now
+      skip_metadata: true,
+      skip_screenshots: true,
+      
+      # Submission information
+      submission_information: {
+        add_id_info_uses_idfa: false,
+        export_compliance_uses_encryption: false,
+        export_compliance_encryption_updated: false
+      },
+      
+      # Don't wait for processing (async)
+      force: true,
+      
+      # Precheck settings
+      precheck_include_in_app_purchases: false,
+      run_precheck_before_submit: false
+    )
+
+    UI.success "🚀 Successfully submitted for App Store Review!"
+  end
+
+  # ============================================================================
+  # FULL RELEASE
+  # Checks status, then submits if appropriate
+  # ============================================================================
+  desc "Check status and submit for review if ready"
+  lane :release do
+    # First check if we should proceed
+    begin
+      check_queue_status
+    rescue => e
+      UI.important "Status check failed or app is in review. Skipping submission."
+      UI.important "Error: #{e.message}"
+      next # Skip the rest of the lane
+    end
+
+    # If status check passed, submit for review
+    submit_for_review
+  end
 end
 
+platform :android do
+  desc "Android placeholder - EAS handles Android submissions"
+  lane :release do
+    UI.message "Android releases are handled by EAS Submit directly to Google Play Console"
+  end
+end

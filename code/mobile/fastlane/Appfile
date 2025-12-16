@@ -1,0 +1,16 @@
+# Fastlane Appfile
+# https://docs.fastlane.tools/advanced/Appfile/
+
+# App Identifiers
+app_identifier "com.ruwt.app"
+
+# Apple Developer Portal / App Store Connect
+apple_id ENV["APPLE_ID"] # Your Apple ID email (set in CI secrets)
+team_id "S5G585GH4X"     # Apple Developer Team ID
+
+# App Store Connect
+itc_team_id "S5G585GH4X" # App Store Connect Team ID (same as team_id for individuals)
+
+# For App Store Connect API authentication (preferred for CI)
+# These are set via environment variables in GitHub Actions
+
