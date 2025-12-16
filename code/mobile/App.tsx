@@ -50,9 +50,20 @@ function RunnerListScreen({ navigation }: any) {
 
 const Stack = createNativeStackNavigator();
 
+// Web linking config for deep links
+const linking = {
+  prefixes: ['http://localhost:8081'],
+  config: {
+    screens: {
+      Runners: '',
+      Chat: 'chat',
+    },
+  },
+};
+
 export default function App() {
   return (
-    <NavigationContainer>
+    <NavigationContainer linking={linking}>
       <Stack.Navigator>
         <Stack.Screen 
           name="Runners" 
@@ -62,7 +73,7 @@ export default function App() {
         <Stack.Screen 
           name="Chat" 
           component={ChatScreen} 
-          options={({ route }: any) => ({ title: route.params.runner.name })}
+          options={({ route }: any) => ({ title: route.params?.runner?.name || 'Peacemaker' })}
         />
       </Stack.Navigator>
     </NavigationContainer>
