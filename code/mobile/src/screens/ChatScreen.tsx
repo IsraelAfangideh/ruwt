@@ -17,8 +17,15 @@ import MessageBubble from '../components/MessageBubble';
 import ChatInput from '../components/ChatInput';
 import ReportModal from '../components/ReportModal';
 
+// Default runner for web deep linking / screenshots
+const DEFAULT_RUNNER = {
+  id: 'peacemaker',
+  name: 'Peacemaker',
+  personality: 'Calm, empathetic, and focused on de-escalation.',
+};
+
 export default function ChatScreen({ route, navigation }: any) {
-  const { runner } = route.params;
+  const runner = route?.params?.runner || DEFAULT_RUNNER;
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
