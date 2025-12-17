@@ -13,6 +13,7 @@ primary_region = "iad"
 
 [deploy]
   release_command = "bun run db:migrate"
+  release_command_timeout = "5m"
 
 [http_service]
   internal_port = 3000
