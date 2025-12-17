@@ -3,9 +3,11 @@ import { useEffect, useState } from 'react';
 import { StyleSheet, Text, View, FlatList, SafeAreaView, TouchableOpacity, ListRenderItem, useColorScheme } from 'react-native';
 import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Runner } from '@ruwt/shared';
 import { ENDPOINTS } from './src/config';
 import ChatScreen from './src/screens/ChatScreen';
+import LoadingScreen from './src/components/LoadingScreen';
 import { ThemeProvider, useColors, colors } from './src/theme';
 
 // --- Custom Navigation Themes ---
@@ -37,12 +39,19 @@ const RuwtDarkTheme = {
 function RunnerListScreen({ navigation }: any) {
   const themeColors = useColors();
   const [runners, setRunners] = useState<Runner[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     fetch(ENDPOINTS.runners)
       .then((res) => res.json())
-      .then((data) => setRunners(data))
-      .catch((err) => console.error(err));
+      .then((data) => {
+        setRunners(data);
+        setIsLoading(false);
+      })
+      .catch((err) => {
+        console.error(err);
+        setIsLoading(false);
+      });
   }, []);
 
   const renderItem: ListRenderItem<Runner> = ({ item }) => (
@@ -57,6 +66,11 @@ function RunnerListScreen({ navigation }: any) {
       </TouchableOpacity>
     </View>
   );
+
+  // Show loading screen while fetching runners
+  if (isLoading) {
+    return <LoadingScreen message="Gathering your runners..." />;
+  }
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: themeColors.bg }]}>
@@ -127,9 +141,11 @@ function AppContent() {
 
 export default function App() {
   return (
-    <ThemeProvider>
-      <AppContent />
-    </ThemeProvider>
+    <SafeAreaProvider>
+      <ThemeProvider>
+        <AppContent />
+      </ThemeProvider>
+    </SafeAreaProvider>
   );
 }
 

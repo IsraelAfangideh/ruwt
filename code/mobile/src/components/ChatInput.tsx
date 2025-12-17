@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, TextInput, TouchableOpacity, Text, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, TextInput, TouchableOpacity, Text, ActivityIndicator, StyleSheet, Platform } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '../theme';
 
 type Props = {
@@ -11,11 +12,16 @@ type Props = {
 
 export default function ChatInput({ input, isLoading, onChangeText, onSend }: Props) {
   const colors = useColors();
+  const insets = useSafeAreaInsets();
+  
+  // Add bottom padding for Android navigation bar (edge-to-edge mode)
+  const bottomPadding = Platform.OS === 'android' ? Math.max(insets.bottom, 12) : 12;
   
   return (
     <View style={[styles.inputContainer, { 
       borderTopColor: colors.border,
       backgroundColor: colors.bgElevated,
+      paddingBottom: bottomPadding,
     }]}>
       <TextInput
         style={[styles.input, {

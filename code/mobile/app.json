@@ -2,10 +2,10 @@
   "expo": {
     "name": "Ruwt",
     "slug": "ruwt",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "automatic",
     "newArchEnabled": false,
     "updates": {
       "url": "https://u.expo.dev/e61acd37-fc5f-4b09-8a35-d80fc660878c"
@@ -16,22 +16,22 @@
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#1a1816"
     },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.ruwt.app",
-      "buildNumber": "5",
+      "buildNumber": "6",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
       "package": "com.ruwt.app",
-      "versionCode": 5,
+      "versionCode": 6,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#1a1816"
       },
       "edgeToEdgeEnabled": true
     },
