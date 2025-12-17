@@ -16,6 +16,7 @@ import { Message } from '../types/chat';
 import MessageBubble from '../components/MessageBubble';
 import ChatInput from '../components/ChatInput';
 import ReportModal from '../components/ReportModal';
+import TypingIndicator from '../components/TypingIndicator';
 import { useColors } from '../theme';
 
 // Default runner for web deep linking / screenshots
@@ -284,6 +285,7 @@ export default function ChatScreen({ route, navigation }: any) {
         keyExtractor={item => item.id}
         contentContainerStyle={styles.list}
         onContentSizeChange={() => flatListRef.current?.scrollToEnd()}
+        ListFooterComponent={isLoading ? <TypingIndicator isRunner /> : null}
       />
 
       <ChatInput 
