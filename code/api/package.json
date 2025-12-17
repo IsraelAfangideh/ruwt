@@ -6,7 +6,7 @@
         "dev": "bun --watch src/index.ts",
         "cli": "bun src/cli.ts",
         "db:generate": "drizzle-kit generate",
-        "db:migrate": "drizzle-kit push",
+        "db:migrate": "drizzle-kit push --force",
         "db:seed": "bun src/seed.ts"
     },
     "dependencies": {
