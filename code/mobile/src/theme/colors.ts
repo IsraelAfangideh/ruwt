@@ -33,7 +33,7 @@ export const colors = {
     sendButton: '#1a1816',
     sendButtonText: '#ffffff',
     kindButton: '#9a7b3c',
-    kindButtonText: '#ffffff',
+    kindButtonText: '#9a7b3c',
     kindButtonBorder: '#9a7b3c',
     copyButton: 'transparent',
     copyButtonText: '#5c564e',
