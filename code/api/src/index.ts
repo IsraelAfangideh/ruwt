@@ -5,6 +5,7 @@ import postgres from 'postgres';
 import { runners } from './db/schema';
 import { chatWithPeacemaker } from './services/peacemaker';
 import { PeacemakerChatRequestSchema } from '@ruwt/shared';
+import { sendEmail } from './services/email';
 
 const app = new Hono();
 
@@ -49,6 +50,39 @@ app.post('/runners/peacemaker/chat', async (c) => {
   } catch (error) {
     console.error(error);
     return c.json({ error: 'Invalid request or server error' }, 400);
+  }
+});
+
+app.post('/report', async (c) => {
+  try {
+    const body = await c.req.json();
+    const { runner, reason, details } = body;
+
+    if (!runner || !reason) {
+      return c.json({ error: 'Missing required fields: runner and reason' }, 400);
+    }
+
+    const emailHtml = `
+      <h2>New Runner Report</h2>
+      <p><strong>Runner:</strong> ${runner}</p>
+      <p><strong>Reason:</strong> ${reason}</p>
+      ${details ? `<p><strong>Details:</strong> ${details}</p>` : ''}
+      <p><strong>Submitted at:</strong> ${new Date().toISOString()}</p>
+    `;
+
+    await sendEmail({
+      to: 'israelafangideh@gmail.com',
+      subject: `Runner Report: ${runner} - ${reason}`,
+      html: emailHtml,
+    });
+
+    return c.json({ success: true, message: 'Report submitted successfully' });
+  } catch (error) {
+    console.error('Error processing report:', error);
+    return c.json({ 
+      error: 'Failed to submit report', 
+      details: error instanceof Error ? error.message : 'Unknown error' 
+    }, 500);
   }
 });
 
