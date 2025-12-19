@@ -18,6 +18,7 @@ import ChatInput from '../components/ChatInput';
 import ReportModal from '../components/ReportModal';
 import TypingIndicator from '../components/TypingIndicator';
 import { useColors } from '../theme';
+import { submitReport } from '../services/report';
 
 // Default runner for web deep linking / screenshots
 const DEFAULT_RUNNER = {
@@ -108,16 +109,27 @@ export default function ChatScreen({ route, navigation }: any) {
     }
   };
 
-  const handleReport = (reason: string, details: string) => {
-    // In production, this would send to your API
-    // For now, we log it and show confirmation
-    console.log('Report submitted:', { runner: runner.name, reason, details });
-    
-    Alert.alert(
-      'Report Submitted',
-      'Thank you for your report. We will review it within 24 hours.',
-      [{ text: 'OK' }]
-    );
+  const handleReport = async (reason: string, details: string) => {
+    try {
+      await submitReport({
+        runner: runner.name,
+        reason,
+        details,
+      });
+      
+      Alert.alert(
+        'Report Submitted',
+        'Thank you for your report. We will review it within 24 hours.',
+        [{ text: 'OK' }]
+      );
+    } catch (error) {
+      console.error('Failed to submit report:', error);
+      Alert.alert(
+        'Error',
+        'Failed to submit report. Please try again later.',
+        [{ text: 'OK' }]
+      );
+    }
   };
 
   // Initial Greeting

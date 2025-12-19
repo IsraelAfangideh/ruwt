@@ -1,32 +1,81 @@
-name: Deployment
+name: Production Deployment
 
 on:
   push:
     branches:
       - main
-  schedule:
-    # Monthly builds: 1st of each month at 9:00 AM UTC
-    - cron: '0 9 1 * *'
   workflow_dispatch:
-    inputs:
-      build_native:
-        description: 'Build native apps (iOS/Android)'
-        required: false
-        default: 'false'
-        type: choice
-        options:
-          - 'false'
-          - 'true'
 
 jobs:
   # ------------------------------------------------------------------
-  # 0. MARKETING WEBSITE DEPLOYMENT (Cloudflare Pages)
-  # Runs on: push to main, manual trigger
+  # STEP 1: THE BRAIN (Decide what changed)
+  # ------------------------------------------------------------------
+  check-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      mobile_native: ${{ steps.filter.outputs.mobile_native }}
+      mobile_any: ${{ steps.filter.outputs.mobile_any }}
+      web: ${{ steps.filter.outputs.web }}
+      api: ${{ steps.filter.outputs.api }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v2
+        id: filter
+        with:
+          filters: |
+            web:
+              - 'code/web/**'
+            api:
+              - 'code/api/**'
+            mobile_native:
+              # [FLAW 3 FIX] Watch ROOT dependencies too. 
+              # If you update a shared library in the root, the native app MUST rebuild.
+              - 'package.json'
+              - 'bun.lockb'
+              - 'yarn.lock'
+              # Mobile specific native files
+              - 'code/mobile/app.json'
+              - 'code/mobile/package.json'
+              - 'code/mobile/ios/**'
+              - 'code/mobile/android/**'
+              - 'code/mobile/fastlane/**'
+              - 'code/mobile/eas.json'
+            mobile_any:
+              - 'code/mobile/**'
+
+  # ------------------------------------------------------------------
+  # STEP 2: PRE-FLIGHT CHECK (The Parachute)
+  # [FLAW 2 FIX] Stops broken code from ever leaving the hangar.
+  # Only runs if mobile code changed.
+  # ------------------------------------------------------------------
+  validate-mobile:
+    needs: check-changes
+    if: needs.check-changes.outputs.mobile_any == 'true'
+    name: 🛡️ Validate Mobile
+    runs-on: ubuntu-latest
+    defaults:
+      run: { working-directory: ./code/mobile }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v1
+      
+      # Install dependencies (from root because monorepo)
+      - name: Install Deps
+        run: cd .. && bun install
+
+      # The Check: If this fails, the pipeline dies here. 
+      # No broken builds sent to Apple.
+      - name: Type Check
+        run: bun tsc --noEmit
+
+  # ------------------------------------------------------------------
+  # STEP 3: WEB DEPLOYMENT
   # ------------------------------------------------------------------
   deploy-web:
-    name: Deploy Marketing Site to Cloudflare Pages
+    needs: check-changes
+    if: needs.check-changes.outputs.web == 'true'
+    name: Deploy Web
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     steps:
       - uses: actions/checkout@v4
       - name: Deploy to Cloudflare Pages
@@ -38,173 +87,91 @@ jobs:
           directory: code/web
 
   # ------------------------------------------------------------------
-  # 1. API DEPLOYMENT
-  # Runs on: push to main, manual trigger
+  # STEP 4: API DEPLOYMENT
   # ------------------------------------------------------------------
   deploy-api:
-    name: Deploy API to Fly.io
+    needs: check-changes
+    if: needs.check-changes.outputs.api == 'true'
+    name: Deploy API
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     defaults:
-      run:
-        working-directory: ./code
+      run: { working-directory: ./code }
     steps:
       - uses: actions/checkout@v4
-      - name: Setup Flyctl
-        uses: superfly/flyctl-actions/setup-flyctl@master
+      - uses: superfly/flyctl-actions/setup-flyctl@master
       - name: Deploy to Fly
         run: flyctl deploy --config api/fly.toml --dockerfile api/Dockerfile .
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
 
   # ------------------------------------------------------------------
-  # 2. OTA UPDATE (Every push to main)
-  # Delivers JS/asset changes to all users with app installed
+  # STEP 5: MOBILE OTA (Fast Path)
+  # Runs ONLY if validation passed AND no native files changed
   # ------------------------------------------------------------------
-  mobile-ota-update:
-    name: Publish OTA Update
+  mobile-ota:
+    needs: [check-changes, validate-mobile]
+    # Logic: Mobile changed + Native didn't change + Validation passed
+    if: needs.check-changes.outputs.mobile_any == 'true' && needs.check-changes.outputs.mobile_native == 'false'
+    name: ⚡️ Mobile OTA Update
     runs-on: ubuntu-latest
-    if: github.event_name == 'push'
     defaults:
-      run:
-        working-directory: ./code/mobile
+      run: { working-directory: ./code/mobile }
     steps:
       - uses: actions/checkout@v4
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v1
-      - name: Setup EAS
-        uses: expo/expo-github-action@v8
+      - uses: oven-sh/setup-bun@v1
+      - uses: expo/expo-github-action@v8
         with:
           eas-version: latest
           token: ${{ secrets.EXPO_TOKEN }}
-      - name: Install Dependencies
-        run: cd .. && bun install
-      - name: Publish Update
-        run: |
-          eas update --branch production --message "Auto-deploy commit: ${{ github.sha }}"
+      - run: cd .. && bun install
+      - name: Publish OTA
+        run: eas update --branch production --message "Commit ${{ github.sha }}"
 
   # ------------------------------------------------------------------
-  # 3. NATIVE BUILDS (Monthly schedule or manual trigger)
-  # Builds and submits to App Store Connect / Google Play Console
+  # STEP 6: MOBILE NATIVE BUILD (Safe Path)
+  # Runs ONLY if validation passed AND native files changed
   # ------------------------------------------------------------------
-  
-  # Android Build & Submit
-  android-store-build:
-    name: Android Build & Submit
+  mobile-native:
+    needs: [check-changes, validate-mobile]
+    # Logic: Native changed + Validation passed
+    if: needs.check-changes.outputs.mobile_native == 'true'
+    name: 🏗️ Mobile Native Build
     runs-on: ubuntu-latest
-    if: |
-      github.event_name == 'schedule' || 
-      (github.event_name == 'workflow_dispatch' && github.event.inputs.build_native == 'true')
     defaults:
-      run:
-        working-directory: ./code/mobile
+      run: { working-directory: ./code/mobile }
     steps:
       - uses: actions/checkout@v4
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v1
-      - name: Setup EAS
-        uses: expo/expo-github-action@v8
-        with:
-          eas-version: latest
-          token: ${{ secrets.EXPO_TOKEN }}
-      - name: Install Dependencies
-        run: cd .. && bun install
-      - name: Build and Submit
-        run: eas build --platform android --profile production --auto-submit --non-interactive
-
-  # iOS: Check Store Status
-  check-apple-status:
-    name: Check Apple Store Status
-    runs-on: ubuntu-latest
-    if: |
-      github.event_name == 'schedule' || 
-      (github.event_name == 'workflow_dispatch' && github.event.inputs.build_native == 'true')
-    defaults:
-      run:
-        working-directory: ./code/mobile
-    outputs:
-      should_build: ${{ steps.set_output.outputs.should_build }}
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Setup Ruby
-        uses: ruby/setup-ruby@v1
+      - uses: oven-sh/setup-bun@v1
+      - uses: ruby/setup-ruby@v1
         with:
           ruby-version: '3.2'
           bundler-cache: true
-      
-      - name: Install Fastlane
+      - uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - run: cd .. && bun install
+      - name: Install Fastlane Deps
         run: bundle install
 
-      - name: Check Status Script
-        id: check
-        run: bundle exec ruby fastlane/check_store_status.rb
+      # 1. SAFETY: Check Queue (Ruby)
+      # If app is "In Review", this exits 1 and stops the job safely.
+      - name: 🛡️ Check App Store Status
+        run: bundle exec fastlane check_queue_status
         env:
           APP_STORE_CONNECT_API_KEY_KEY: ${{ secrets.APP_STORE_CONNECT_API_KEY_KEY }}
           APP_STORE_CONNECT_API_KEY_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ISSUER_ID }}
           APP_STORE_CONNECT_API_KEY_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_KEY_ID }}
-        continue-on-error: true 
 
-      - name: Set Output
-        id: set_output
-        if: steps.check.outcome == 'success'
-        run: echo "should_build=true" >> $GITHUB_OUTPUT
+      # 2. BUILD: EAS (Auto-submit to TestFlight/Play Store)
+      - name: 🏗️ Build & Auto-Submit
+        run: eas build --platform all --profile production --auto-submit --non-interactive
 
-  # iOS: Build & Submit to TestFlight
-  ios-store-build:
-    name: iOS Build & Submit to TestFlight
-    runs-on: ubuntu-latest
-    needs: check-apple-status
-    if: needs.check-apple-status.outputs.should_build == 'true'
-    outputs:
-      build_success: ${{ steps.build.outcome == 'success' }}
-    defaults:
-      run:
-        working-directory: ./code/mobile
-    steps:
-      - uses: actions/checkout@v4
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v1
-      - name: Setup EAS
-        uses: expo/expo-github-action@v8
-        with:
-          eas-version: latest
-          token: ${{ secrets.EXPO_TOKEN }}
-      - name: Install Dependencies
-        run: cd .. && bun install
-      - name: Build and Submit to TestFlight
-        id: build
-        run: eas build --platform ios --profile production --auto-submit --non-interactive
-
-  # iOS: Submit to App Store Review (after TestFlight upload)
-  ios-app-store-submit:
-    name: iOS Submit for App Store Review
-    runs-on: ubuntu-latest
-    needs: ios-store-build
-    if: success()
-    defaults:
-      run:
-        working-directory: ./code/mobile
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Setup Ruby
-        uses: ruby/setup-ruby@v1
-        with:
-          ruby-version: '3.2'
-          bundler-cache: true
-      
-      - name: Install Fastlane
-        run: bundle install
-      
-      # Wait for TestFlight processing (Apple needs time to process the build)
-      - name: Wait for TestFlight Processing
-        run: |
-          echo "Waiting 5 minutes for Apple to process the TestFlight build..."
-          sleep 300
-      
-      - name: Submit for App Store Review
-        run: bundle exec fastlane ios submit_for_review
+      # 3. COMPLIANCE: Fastlane (Polling enabled)
+      # This runs your new, smarter Fastfile
+      - name: 🚀 Submit for Review & Compliance
+        run: bundle exec fastlane submit_for_review
         env:
           APP_STORE_CONNECT_API_KEY_KEY: ${{ secrets.APP_STORE_CONNECT_API_KEY_KEY }}
           APP_STORE_CONNECT_API_KEY_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ISSUER_ID }}

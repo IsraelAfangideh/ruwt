@@ -4,6 +4,7 @@ import { StyleSheet, Text, View, FlatList, SafeAreaView, TouchableOpacity, ListR
 import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import * as Updates from 'expo-updates';
 import { Runner } from '@ruwt/shared';
 import { ENDPOINTS } from './src/config';
 import ChatScreen from './src/screens/ChatScreen';
@@ -99,6 +100,37 @@ const linking = {
   },
 };
 
+// In App.tsx
+function UpdateInfo() {
+  const themeColors = useColors();
+  const { isUpdatePending, isUpdateAvailable, isDownloading } = Updates.useUpdates();
+  
+  // If an update is downloaded and ready, TELL ME.
+  const statusText = isUpdatePending ? 'Update Ready (Restart to Apply)' 
+    : isDownloading ? 'Downloading Update...'
+    : isUpdateAvailable ? 'Update Found...'
+    : 'Running Latest';
+
+  return (
+    <View style={[styles.updateInfo, { 
+      backgroundColor: isUpdatePending ? '#4caf50' : themeColors.bgElevated, // Green if ready to restart
+      borderColor: themeColors.border 
+    }]}>
+      <Text style={[styles.updateInfoLabel, { color: themeColors.textMuted }]}>
+        Build: {Updates.updateId ? Updates.updateId.slice(0, 8) : 'Native'}
+      </Text>
+      <Text style={[styles.updateInfoText, { color: themeColors.text }]}>
+        {statusText}
+      </Text>
+      {isUpdatePending && (
+        <TouchableOpacity onPress={() => Updates.reloadAsync()}>
+          <Text style={{fontWeight: 'bold', color: 'white', marginTop: 4}}>TAP TO RESTART</Text>
+        </TouchableOpacity>
+      )}
+    </View>
+  );
+}
+
 function AppContent() {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
@@ -135,6 +167,7 @@ function AppContent() {
           />
         </Stack.Navigator>
       </NavigationContainer>
+      <UpdateInfo />
     </>
   );
 }
@@ -196,5 +229,31 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     fontSize: 15,
     letterSpacing: 0.3,
+  },
+  updateInfo: {
+    position: 'absolute',
+    bottom: 20,
+    left: 20,
+    right: 20,
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  updateInfoLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    marginBottom: 8,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  updateInfoText: {
+    fontSize: 13,
+    marginBottom: 4,
+    fontFamily: 'System',
   },
 });

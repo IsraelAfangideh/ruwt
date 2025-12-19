@@ -27,6 +27,12 @@ platform :ios do
       is_key_content_base64: false
     )
 
+    UI.message "⏳ Waiting for build to process..."
+    wait_for_build_processing_to_be_complete(
+      app_identifier: "com.ruwt.app",
+      platform: "ios"
+    )
+
     # Deliver to App Store
     # This takes the latest TestFlight build and submits it for review
     deliver(
