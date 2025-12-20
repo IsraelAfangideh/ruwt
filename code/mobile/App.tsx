@@ -1,6 +1,6 @@
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
-import { StyleSheet, Text, View, FlatList, TouchableOpacity, ListRenderItem, useColorScheme } from 'react-native';
+import { StyleSheet, Text, View, FlatList, TouchableOpacity, ListRenderItem, useColorScheme, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -126,7 +126,17 @@ function AppContent() {
           <Stack.Screen 
             name="Runners" 
             component={RunnerListScreen} 
-            options={{ headerShown: false }}
+            options={({ navigation }) => ({ 
+              headerShown: Platform.OS === 'web',
+              title: 'RUWT',
+              headerRight: Platform.OS === 'web' ? () => (
+                <View style={{ paddingRight: 16 }}>
+                  <TouchableOpacity onPress={() => navigation.navigate('About')}>
+                    <Text style={{ color: themeColors.accent, fontSize: 18 }}>About</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : undefined,
+            })}
           />
           <Stack.Screen 
             name="Chat" 
