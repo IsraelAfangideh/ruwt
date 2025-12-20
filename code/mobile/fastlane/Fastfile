@@ -9,7 +9,9 @@ platform :ios do
   # ============================================================================
   desc "Check if we should build based on App Store status"
   lane :check_queue_status do
-    sh "ruby fastlane/check_store_status.rb"
+    # Use File.dirname(__FILE__) to find the script sitting right next to this Fastfile
+    script_path = File.join(File.dirname(__FILE__), "check_store_status.rb")
+    sh "ruby #{script_path}"
   end
 
   # ============================================================================
