@@ -25,6 +25,10 @@ jobs:
           filters: |
             web:
               - 'code/web/**'
+              - 'code/mobile/src/**'      # Mobile source = web source
+              - 'code/mobile/App.tsx'
+              - 'code/mobile/app.json'
+              - 'code/shared/**'          # Shared types
             api:
               - 'code/api/**'
             mobile_native:
@@ -70,21 +74,49 @@ jobs:
 
   # ------------------------------------------------------------------
   # STEP 3: WEB DEPLOYMENT
+  # Now builds from mobile codebase using Expo Web
   # ------------------------------------------------------------------
   deploy-web:
     needs: check-changes
+    # Trigger on web OR mobile changes (since web is built from mobile)
     if: needs.check-changes.outputs.web == 'true'
-    name: Deploy Web
+    name: 🌐 Deploy Web
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      
+      # Setup Node.js (required for Expo)
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      
+      # Setup Bun for monorepo install
+      - uses: oven-sh/setup-bun@v1
+      
+      # Install ALL dependencies from monorepo root
+      # This resolves @ruwt/shared workspace package
+      - name: Install Dependencies
+        run: bun install
+        working-directory: ./code
+      
+      # Build Expo Web (outputs to code/mobile/dist)
+      - name: Build Expo Web
+        run: npx expo export --platform web
+        working-directory: ./code/mobile
+      
+      # Copy static files to web/dist
+      - name: Prepare Deployment
+        run: node scripts/copy-static.js
+        working-directory: ./code/web
+      
+      # Deploy the combined output
       - name: Deploy to Cloudflare Pages
         uses: cloudflare/pages-action@v1
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           projectName: ruwt
-          directory: code/web
+          directory: code/web/dist
 
   # ------------------------------------------------------------------
   # STEP 4: API DEPLOYMENT

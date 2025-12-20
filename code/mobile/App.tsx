@@ -1,6 +1,6 @@
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
-import { StyleSheet, Text, View, FlatList, TouchableOpacity, ListRenderItem, useColorScheme } from 'react-native';
+import { StyleSheet, Text, View, FlatList, TouchableOpacity, ListRenderItem, useColorScheme, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -8,6 +8,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Runner } from '@ruwt/shared';
 import { ENDPOINTS } from './src/config';
 import ChatScreen from './src/screens/ChatScreen';
+import AboutScreen from './src/screens/AboutScreen';
 import LoadingScreen from './src/components/LoadingScreen';
 import { ThemeProvider, useColors, colors } from './src/theme';
 
@@ -74,7 +75,9 @@ function RunnerListScreen({ navigation }: any) {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: themeColors.bg }]}>
-      <Text style={[styles.header, { color: themeColors.text }]}>Ruwt</Text>
+      {Platform.OS !== 'web' && (
+        <Text style={[styles.header, { color: themeColors.text }]}>Ruwt</Text>
+      )}
       <FlatList
         data={runners}
         renderItem={renderItem}
@@ -90,11 +93,12 @@ const Stack = createNativeStackNavigator();
 
 // Web linking config for deep links
 const linking = {
-  prefixes: ['http://localhost:8081'],
+  prefixes: ['http://localhost:8081', 'https://ruwt.social'],
   config: {
     screens: {
       Runners: '',
       Chat: 'chat',
+      About: 'about',
     },
   },
 };
@@ -126,12 +130,25 @@ function AppContent() {
           <Stack.Screen 
             name="Runners" 
             component={RunnerListScreen} 
-            options={{ headerShown: false }}
+            options={({ navigation }) => ({ 
+              headerShown: Platform.OS === 'web',
+              title: 'Ruwt',
+              headerRight: Platform.OS === 'web' ? () => (
+                <TouchableOpacity onPress={() => navigation.navigate('About')}>
+                  <Text style={{ color: themeColors.accent, fontSize: 14 }}>About</Text>
+                </TouchableOpacity>
+              ) : undefined,
+            })}
           />
           <Stack.Screen 
             name="Chat" 
             component={ChatScreen} 
             options={({ route }: any) => ({ title: route.params?.runner?.name || 'Peacemaker' })}
+          />
+          <Stack.Screen 
+            name="About" 
+            component={AboutScreen} 
+            options={{ title: 'About Ruwt' }}
           />
         </Stack.Navigator>
       </NavigationContainer>

@@ -1,10 +1,13 @@
 {
   "name": "@ruwt/web",
   "version": "1.0.0",
-  "description": "Marketing website for Ruwt",
+  "description": "Web app for Ruwt - built from mobile codebase using Expo Web",
   "scripts": {
-    "dev": "npx serve .",
-    "build": "echo 'Static site - no build needed'"
+    "dev": "cd ../mobile && npx expo start --web",
+    "build:expo": "cd ../mobile && npx expo export --platform web",
+    "build:copy": "node scripts/copy-static.js",
+    "build": "npm run build:expo && npm run build:copy",
+    "serve": "npx serve dist"
   },
   "devDependencies": {
     "serve": "^14.2.0"

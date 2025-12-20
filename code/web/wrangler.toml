@@ -1,6 +1,7 @@
 name = "ruwt"
 compatibility_date = "2024-01-01"
 
-# Serve static assets from this directory
-assets = { directory = "./" }
+# Serve static assets from the build output directory
+# Run "npm run build" in code/web to generate this
+assets = { directory = "./dist" }
 
