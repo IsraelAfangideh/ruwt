@@ -11,7 +11,12 @@ type Props = {
 
 /**
  * SineWaveLoader - Animated loading indicator matching Ruwt brand
- * Shows a runner dot moving between two poles with a wave motion
+ * 
+ * Matches the animation from brand/mark/svg/animated_hero_replica.svg:
+ * - Runner dot moves horizontally between ~20% and ~80% of width
+ * - 4 second round trip (2s each direction)
+ * - Sender/Receiver poles pulse with opacity and scale
+ * - Runner has glow effect
  */
 export default function SineWaveLoader({ 
   width: customWidth, 
@@ -20,13 +25,17 @@ export default function SineWaveLoader({
   size = 'medium' 
 }: Props) {
   const colors = useColors();
-  const animatedValue = useRef(new Animated.Value(0)).current;
   
-  // Size presets
+  // Animation values
+  const runnerAnim = useRef(new Animated.Value(0)).current;
+  const senderPulse = useRef(new Animated.Value(0)).current;
+  const receiverPulse = useRef(new Animated.Value(0)).current;
+  
+  // Size presets - proportions match SVG viewBox (440x240 with content at 400x200)
   const sizes = {
-    small: { width: 80, height: 30, dotSize: 8, poleSize: 5 },
-    medium: { width: 160, height: 50, dotSize: 10, poleSize: 6 },
-    large: { width: 240, height: 70, dotSize: 14, poleSize: 8 },
+    small: { width: 100, height: 30, dotSize: 6, poleSize: 6 },
+    medium: { width: 200, height: 50, dotSize: 6, poleSize: 6 },
+    large: { width: 300, height: 60, dotSize: 6, poleSize: 6 },
   };
   
   const { width, height, dotSize, poleSize } = {
@@ -35,19 +44,18 @@ export default function SineWaveLoader({
     height: customHeight ?? sizes[size].height,
   };
   
-  const amplitude = height / 3;
-  
-  // Start ping-pong animation
+  // Start animations (matching SVG timing exactly)
   useEffect(() => {
-    const animation = Animated.loop(
+    // Runner animation: 4s round trip (2s each way), ease-in-out
+    const runnerAnimation = Animated.loop(
       Animated.sequence([
-        Animated.timing(animatedValue, {
+        Animated.timing(runnerAnim, {
           toValue: 1,
           duration: 2000,
           easing: Easing.inOut(Easing.ease),
           useNativeDriver: true,
         }),
-        Animated.timing(animatedValue, {
+        Animated.timing(runnerAnim, {
           toValue: 0,
           duration: 2000,
           easing: Easing.inOut(Easing.ease),
@@ -55,46 +63,85 @@ export default function SineWaveLoader({
         }),
       ])
     );
-    animation.start();
     
-    return () => animation.stop();
-  }, [animatedValue]);
+    // Sender pulse: 2s cycle, ease-in-out
+    const senderAnimation = Animated.loop(
+      Animated.sequence([
+        Animated.timing(senderPulse, {
+          toValue: 1,
+          duration: 1000,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+        Animated.timing(senderPulse, {
+          toValue: 0,
+          duration: 1000,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+      ])
+    );
+    
+    // Receiver pulse: 2s cycle with 0.5s delay, ease-in-out
+    const receiverAnimation = Animated.loop(
+      Animated.sequence([
+        Animated.timing(receiverPulse, {
+          toValue: 1,
+          duration: 1000,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+        Animated.timing(receiverPulse, {
+          toValue: 0,
+          duration: 1000,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+      ])
+    );
+    
+    runnerAnimation.start();
+    senderAnimation.start();
+    // Start receiver with delay to match SVG
+    setTimeout(() => receiverAnimation.start(), 500);
+    
+    return () => {
+      runnerAnimation.stop();
+      senderAnimation.stop();
+      receiverAnimation.stop();
+    };
+  }, [runnerAnim, senderPulse, receiverPulse]);
   
-  // Animated dot position
-  const translateX = animatedValue.interpolate({
+  // Runner position: moves from 20% to 80% of width (matching SVG cx:80 to cx:320 in 400px)
+  const runnerTranslateX = runnerAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: [poleSize, width - poleSize - dotSize],
+    outputRange: [width * 0.2, width * 0.8 - dotSize],
   });
   
-  // Sine wave Y position - creates smooth wave motion
-  const translateY = animatedValue.interpolate({
-    inputRange: [0, 0.25, 0.5, 0.75, 1],
-    outputRange: [0, -amplitude, 0, amplitude * 0.7, 0],
+  // Sender pulse: opacity 0.7 -> 1 -> 0.7, scale 1 -> 1.25 -> 1
+  const senderOpacity = senderPulse.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.7, 1],
+  });
+  const senderScale = senderPulse.interpolate({
+    inputRange: [0, 1],
+    outputRange: [1, 1.25],
   });
   
-  // Opacity pulse for glow effect
-  const opacity = animatedValue.interpolate({
-    inputRange: [0, 0.5, 1],
-    outputRange: [0.9, 1, 0.9],
+  // Receiver pulse: same as sender
+  const receiverOpacity = receiverPulse.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.7, 1],
+  });
+  const receiverScale = receiverPulse.interpolate({
+    inputRange: [0, 1],
+    outputRange: [1, 1.25],
   });
   
   return (
     <View style={[styles.container, { width, height }, style]}>
-      {/* Connection line */}
-      <View 
-        style={[
-          styles.line, 
-          { 
-            backgroundColor: colors.accent,
-            opacity: 0.2,
-            width: width - (poleSize * 2),
-            left: poleSize,
-          }
-        ]} 
-      />
-      
-      {/* Left pole */}
-      <View 
+      {/* Sender Dot (left) */}
+      <Animated.View 
         style={[
           styles.pole, 
           { 
@@ -103,12 +150,14 @@ export default function SineWaveLoader({
             height: poleSize * 2,
             borderRadius: poleSize,
             left: 0,
+            opacity: senderOpacity,
+            transform: [{ scale: senderScale }],
           }
         ]} 
       />
       
-      {/* Right pole */}
-      <View 
+      {/* Receiver Dot (right) */}
+      <Animated.View 
         style={[
           styles.pole, 
           { 
@@ -117,25 +166,38 @@ export default function SineWaveLoader({
             height: poleSize * 2,
             borderRadius: poleSize,
             right: 0,
+            opacity: receiverOpacity,
+            transform: [{ scale: receiverScale }],
           }
         ]} 
       />
       
-      {/* Animated runner dot */}
+      {/* Runner Glow (behind runner dot) */}
+      <Animated.View
+        style={[
+          styles.runnerGlow,
+          {
+            backgroundColor: colors.accent,
+            width: dotSize * 2.5,
+            height: dotSize * 2.5,
+            borderRadius: dotSize * 1.25,
+            opacity: 0.2,
+            transform: [{ translateX: runnerTranslateX }],
+          },
+        ]}
+      />
+      
+      {/* Runner Dot (the moving one) */}
       <Animated.View
         style={[
           styles.runnerDot,
           {
             backgroundColor: colors.accent,
             shadowColor: colors.accent,
-            width: dotSize,
-            height: dotSize,
-            borderRadius: dotSize / 2,
-            opacity,
-            transform: [
-              { translateX },
-              { translateY },
-            ],
+            width: dotSize * 2,
+            height: dotSize * 2,
+            borderRadius: dotSize,
+            transform: [{ translateX: runnerTranslateX }],
           },
         ]}
       />
@@ -148,21 +210,20 @@ const styles = StyleSheet.create({
     position: 'relative',
     justifyContent: 'center',
   },
-  line: {
-    position: 'absolute',
-    height: 2,
-    top: '50%',
-    marginTop: -1,
-  },
   pole: {
     position: 'absolute',
     top: '50%',
-    transform: [{ translateY: -6 }],
+    marginTop: -6,
+  },
+  runnerGlow: {
+    position: 'absolute',
+    top: '50%',
+    marginTop: -7.5,
   },
   runnerDot: {
     position: 'absolute',
     top: '50%',
-    marginTop: -5,
+    marginTop: -6,
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.6,
     shadowRadius: 10,

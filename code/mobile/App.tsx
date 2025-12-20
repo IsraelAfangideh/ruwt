@@ -8,6 +8,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Runner } from '@ruwt/shared';
 import { ENDPOINTS } from './src/config';
 import ChatScreen from './src/screens/ChatScreen';
+import AboutScreen from './src/screens/AboutScreen';
 import LoadingScreen from './src/components/LoadingScreen';
 import { ThemeProvider, useColors, colors } from './src/theme';
 
@@ -74,7 +75,9 @@ function RunnerListScreen({ navigation }: any) {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: themeColors.bg }]}>
-      <Text style={[styles.header, { color: themeColors.text }]}>Ruwt</Text>
+      {Platform.OS !== 'web' && (
+        <Text style={[styles.header, { color: themeColors.text }]}>Ruwt</Text>
+      )}
       <FlatList
         data={runners}
         renderItem={renderItem}
@@ -90,11 +93,12 @@ const Stack = createNativeStackNavigator();
 
 // Web linking config for deep links
 const linking = {
-  prefixes: ['http://localhost:8081'],
+  prefixes: ['http://localhost:8081', 'https://ruwt.social'],
   config: {
     screens: {
       Runners: '',
       Chat: 'chat',
+      About: 'about',
     },
   },
 };
@@ -142,6 +146,11 @@ function AppContent() {
             name="Chat" 
             component={ChatScreen} 
             options={({ route }: any) => ({ title: route.params?.runner?.name || 'Peacemaker' })}
+          />
+          <Stack.Screen 
+            name="About" 
+            component={AboutScreen} 
+            options={{ title: 'About Ruwt' }}
           />
         </Stack.Navigator>
       </NavigationContainer>

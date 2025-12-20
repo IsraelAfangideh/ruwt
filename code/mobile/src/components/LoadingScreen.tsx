@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
 import { useColors } from '../theme';
 import SineWaveLoader from './SineWaveLoader';
 import * as Updates from 'expo-updates';
@@ -50,8 +50,8 @@ export default function LoadingScreen({ message }: Props) {
       {message && (
         <Text style={[styles.message, { color: colors.textMuted }]}>{message}</Text>
       )}
-    <UpdateInfo />
-    </View>
+      {Platform.OS !== 'web' && <UpdateInfo />}
+      </View>
   );
 }
 
