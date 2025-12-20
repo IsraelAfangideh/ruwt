@@ -36,7 +36,14 @@
       "edgeToEdgeEnabled": true
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro",
+      "name": "Ruwt — Digital Couriers for the Modern Web",
+      "shortName": "Ruwt",
+      "description": "AI-mediated messaging that brings intentionality back to digital communication.",
+      "lang": "en",
+      "themeColor": "#1a1816",
+      "backgroundColor": "#1a1816"
     },
     "extra": {
       "eas": {

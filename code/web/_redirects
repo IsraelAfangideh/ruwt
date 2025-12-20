@@ -1,11 +1,16 @@
 # Cloudflare Pages redirects
 # https://developers.cloudflare.com/pages/configuration/redirects/
 
-# Handle trailing slashes
-/concept   /#concept   301
-/spaces    /#spaces    301
-/philosophy /#philosophy 301
+# Preserve static legal pages (do NOT apply SPA fallback)
+/privacy    /privacy.html   200
+/terms      /terms.html     200
+/delete     /delete.html    200
 
-# Catch-all for SPA (if needed in future)
+# Marketing section anchors redirect to about page
+/concept    /about#concept      302
+/spaces     /about#spaces       302
+/philosophy /about#philosophy   302
+
+# Catch-all for SPA (React app handles all other routes)
 /*    /index.html   200
 
