@@ -46,12 +46,11 @@ function RunnerListScreen({ navigation }: any) {
       .then((res) => res.json())
       .then((data) => {
         setRunners(data);
-        setIsLoading(false);
       })
-      .catch((err) => {
-        console.error(err);
-        setIsLoading(false);
-      });
+      .catch((err: Error) => {
+        console.error('Error fetching runners:', err);
+      })
+      .finally(() => setIsLoading(false));
   }, []);
 
   const renderItem: ListRenderItem<Runner> = ({ item }) => (

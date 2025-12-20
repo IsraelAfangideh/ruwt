@@ -278,8 +278,8 @@ export default function ChatScreen({ route, navigation }: any) {
     // @ts-ignore: React 19 type mismatch with RN
     <KeyboardAvoidingView 
       style={[styles.container, { backgroundColor: colors.bg }]} 
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 50}
     >
       {isBlocked && (
         <View style={[styles.blockedBanner, { backgroundColor: colors.blockedBg }]}>
