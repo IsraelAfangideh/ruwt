@@ -1,6 +1,7 @@
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
-import { StyleSheet, Text, View, FlatList, SafeAreaView, TouchableOpacity, ListRenderItem, useColorScheme } from 'react-native';
+import { StyleSheet, Text, View, FlatList, TouchableOpacity, ListRenderItem, useColorScheme } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -46,12 +47,11 @@ function RunnerListScreen({ navigation }: any) {
       .then((res) => res.json())
       .then((data) => {
         setRunners(data);
-        setIsLoading(false);
       })
-      .catch((err) => {
-        console.error(err);
-        setIsLoading(false);
-      });
+      .catch((err: Error) => {
+        console.error('Error fetching runners:', err);
+      })
+      .finally(() => setIsLoading(false));
   }, []);
 
   const renderItem: ListRenderItem<Runner> = ({ item }) => (
