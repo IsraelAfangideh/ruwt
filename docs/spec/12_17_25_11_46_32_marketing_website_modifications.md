@@ -1,7 +1,7 @@
 Marketing Website Modifications
 
 **Date**: December 17, 2025  
-**Status**: Active  
+**Status**: Overshadowed By [Marketing Website To Web App](./12_20_25_17_57_30_marketing_website_to_web_app.md)  
 **Extends**: Marketing Website
 **Author**: Israel Peter Thompson Afangideh
 
@@ -17,7 +17,6 @@ Our External testing links are
 
 IOS:  https://testflight.apple.com/join/XhwjnQEg
 Android: https://play.google.com/apps/internaltest/4700436557629324281
-
 
 We should also change the faviocon of the webstie which is visible in the tab, to be the same as the capital R that we use as the App Icon. We should also make it show up as the website icon in google search. 
 
