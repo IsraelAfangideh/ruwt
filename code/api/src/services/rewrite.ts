@@ -4,10 +4,10 @@ import postgres from 'postgres';
 import * as schema from '../db/schema';
 import { eq } from 'drizzle-orm';
 import { 
-  generatePeacemakerPrompt, 
-  PEACEMAKER_IDENTITY, 
-  PeacemakerChatRequest, 
-  PeacemakerChatResponse 
+  generateRewritePrompt, 
+  REWRITE_IDENTITY, 
+  RewriteChatRequest, 
+  RewriteChatResponse 
 } from '@ruwt/shared';
 
 // Initialize DB
@@ -18,9 +18,9 @@ const db = drizzle(client, { schema });
 // Initialize AI
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GENERATIVE_AI_API_KEY || '');
 
-export async function chatWithPeacemaker(payload: PeacemakerChatRequest): Promise<PeacemakerChatResponse | null> {
+export async function chatWithRewrite(payload: RewriteChatRequest): Promise<RewriteChatResponse | null> {
   const { message, userId, history } = payload;
-  const runnerName = PEACEMAKER_IDENTITY.NAME;
+  const runnerName = REWRITE_IDENTITY.NAME;
 
   try {
     // 1. Fetch Context
@@ -39,7 +39,7 @@ export async function chatWithPeacemaker(payload: PeacemakerChatRequest): Promis
     const memoryContent = userMemories.map(m => m.content);
 
     // 2. Generate System Prompt using Shared Logic
-    const systemInstruction = generatePeacemakerPrompt(runner.name, runner.systemPrompt, memoryContent);
+    const systemInstruction = generateRewritePrompt(runner.name, runner.systemPrompt, memoryContent);
 
     // 3. Call AI
     const model = genAI.getGenerativeModel({ 
@@ -98,7 +98,8 @@ export async function chatWithPeacemaker(payload: PeacemakerChatRequest): Promis
     };
 
   } catch (error) {
-    console.error('Peacemaker Service Error:', error);
+    console.error('Rewrite Service Error:', error);
     throw error;
   }
 }
+

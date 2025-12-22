@@ -21,9 +21,9 @@ In the physical world, couriers (*ratzim* in Hebrew) delivered messages personal
 
 ## Current Status: Phase 1 (The Runner Prototype)
 
-*Currently, the codebase implements the core Runner architecture and the "Peacemaker" agent.*
+*Currently, the codebase implements the core Runner architecture and the "Rewrite" agent.*
 
-- **Mediated Communication:** The "Peacemaker" runner intercepts messages to ensure they align with the goal of peace.
+- **Mediated Communication:** The "Rewrite" runner intercepts messages to ensure they align with the goal of kindness.
 - **Mobile Client:** A React Native (Expo) app for 1-on-1 interaction with the Runner.
 - **Backend Brain:** Hono + Postgres + Gemini 2.0 Flash to power the Runner's "instincts."
 
@@ -113,7 +113,7 @@ This is a **Bun** monorepo containing the following workspaces:
 ### Running the Project
 
 #### The CLI (Runner's Brain)
-The CLI allows you to interact directly with the `Peacemaker` runner to test its logic and "instincts."
+The CLI allows you to interact directly with the `Rewrite` runner to test its logic and "instincts."
 
 ```bash
 cd code/api
@@ -136,7 +136,7 @@ bun run start
 
 - **Test Driven**: Tests should mimic real-world conditions.
 - **Privacy First**: We prioritize data security and ownership.
-- **Naming**: Names should be short, descriptive, and spiritual where appropriate (e.g., `seed.md`, `Peacemaker`).
+- **Naming**: Names should be short, descriptive, and spiritual where appropriate (e.g., `seed.md`, `Rewrite`).
 
 ## License
 

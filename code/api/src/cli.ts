@@ -8,7 +8,7 @@ import readline from 'readline';
 
 // CLI Configuration
 const USER_ID = 'user_1';
-const RUNNER_NAME = 'Peacemaker';
+const RUNNER_NAME = 'Rewrite';
 
 // Database Connection
 const connectionString = process.env.DATABASE_URL || 'postgres://postgres:password@localhost:5432/ruwt';

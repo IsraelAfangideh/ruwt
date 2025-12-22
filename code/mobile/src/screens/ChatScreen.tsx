@@ -11,7 +11,7 @@ import {
   ActionSheetIOS,
 } from 'react-native';
 import { ENDPOINTS } from '../config';
-import { PeacemakerChatResponse } from '@ruwt/shared';
+import { RewriteChatResponse } from '@ruwt/shared';
 import { Message } from '../types/chat';
 import MessageBubble from '../components/MessageBubble';
 import ChatInput from '../components/ChatInput';
@@ -22,9 +22,9 @@ import { submitReport } from '../services/report';
 
 // Default runner for web deep linking / screenshots
 const DEFAULT_RUNNER = {
-  id: 'peacemaker',
-  name: 'Peacemaker',
-  personality: 'Calm, empathetic, and focused on de-escalation.',
+  id: 'rewrite',
+  name: 'Rewrite',
+  personality: 'I rewrite messages to be calm, empathetic, and kind.',
 };
 
 export default function ChatScreen({ route, navigation }: any) {
@@ -137,7 +137,7 @@ export default function ChatScreen({ route, navigation }: any) {
     setMessages([
       {
         id: 'init',
-        text: `Hi Human, I am ${runner.name}. I am a Runner. I deliver messages to other humans.`,
+        text: `Send me a message and I will rewrite it to be better while preserving the intent.`,
         sender: 'runner'
       }
     ]);
@@ -184,7 +184,7 @@ export default function ChatScreen({ route, navigation }: any) {
           parts: [{ text: m.text }]
         }));
 
-      const response = await fetch(ENDPOINTS.peacemakerChat, {
+      const response = await fetch(ENDPOINTS.rewriteChat, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -194,7 +194,7 @@ export default function ChatScreen({ route, navigation }: any) {
         })
       });
 
-      const data: PeacemakerChatResponse = await response.json();
+      const data: RewriteChatResponse = await response.json();
 
       if (data.isBlocked) {
         // 1. Add Explanation Bubble

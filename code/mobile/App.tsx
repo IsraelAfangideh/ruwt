@@ -63,7 +63,7 @@ function RunnerListScreen({ navigation }: any) {
         style={[styles.button, { backgroundColor: themeColors.accent }]}
         onPress={() => navigation.navigate('Chat', { runner: item })}
       >
-        <Text style={[styles.buttonText, { color: themeColors.userBubbleText }]}>Send Runner</Text>
+        <Text style={[styles.buttonText, { color: themeColors.userBubbleText }]}>Go to Chat</Text>
       </TouchableOpacity>
     </View>
   );
@@ -145,7 +145,7 @@ function AppContent() {
           <Stack.Screen 
             name="Chat" 
             component={ChatScreen} 
-            options={({ route }: any) => ({ title: route.params?.runner?.name || 'Peacemaker' })}
+            options={({ route }: any) => ({ title: route.params?.runner?.name || 'Rewrite' })}
           />
           <Stack.Screen 
             name="About" 
