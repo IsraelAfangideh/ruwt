@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { Text, StyleSheet, TouchableOpacity } from 'react-native';
 import BaseBubble from '../../components/ui/BaseBubble';
 import { Message } from '../../types/chat';
 import { useColors } from '../../theme';
@@ -36,11 +36,7 @@ export default function RewriteBubble({ item, onMakeKinder }: Props) {
           backgroundColor: 'transparent',
           borderColor: colors.kindButtonBorder,
         }]} 
-        onPress={() => {
-          if (onMakeKinder) {
-            onMakeKinder(item.text);
-          }
-        }}
+        onPress={() => onMakeKinder?.(item.text)}
       >
         <Text style={[styles.actionBtnTextDestructive, { color: colors.kindButtonText }]}>Make Kinder</Text>
       </TouchableOpacity>

@@ -53,13 +53,6 @@ export default function ChatScreen({ route, navigation }: any) {
   // Create ChatActions object once using useMemo (prevents callback hell)
   const actions = useMemo<ChatActions>(() => ({
     addMessage: (message: Message) => setMessages(prev => [...prev, message]),
-    updateLastMessage: (text: string) => setMessages(prev => {
-      const updated = [...prev];
-      if (updated.length > 0) {
-        updated[updated.length - 1] = { ...updated[updated.length - 1], text };
-      }
-      return updated;
-    }),
     setLoading: setIsLoading,
     triggerError: (error: string) => Alert.alert('Error', error),
   }), []);
@@ -255,20 +248,16 @@ export default function ChatScreen({ route, navigation }: any) {
           const handleAction = (action: 'send' | 'copy' | 'kinder') => {
             if (action === 'send') {
               handleSendRewrite(item.text);
-            } else if (action === 'copy') {
-              // Copy is handled in BaseBubble
             }
-            // 'kinder' is handled via onMakeKinder prop
-          };
-
-          const messageWithAction: Message = {
-            ...item,
-            onAction: item.isActionable ? handleAction : item.onAction,
+            // 'copy' and 'kinder' are handled elsewhere
           };
 
           return (
             <RunnerBubble 
-              item={messageWithAction} 
+              item={{
+                ...item,
+                onAction: item.isActionable ? handleAction : item.onAction,
+              }} 
               onMakeKinder={handleMakeKinder}
             />
           );

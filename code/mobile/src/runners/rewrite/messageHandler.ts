@@ -38,39 +38,27 @@ export async function handleMessage(
       if (data.explanation) {
         actions.addMessage({
           id: Date.now().toString() + '_exp',
-          text: data.explanation || "This feels sharp.",
+          text: data.explanation,
           sender: 'runner'
         });
       }
 
       // 2. Add Actionable Rewrite Bubble
       if (data.proposedRewrite) {
-        const rewriteText = data.proposedRewrite;
-        
         actions.addMessage({
           id: Date.now().toString() + '_rewrite',
-          text: rewriteText,
+          text: data.proposedRewrite,
           sender: 'runner',
           isActionable: true,
-          onAction: (action: 'send' | 'copy' | 'kinder') => {
-            // Actions are handled by ChatScreen via onMakeKinder callback
-            // This onAction is kept for compatibility but the actual logic is in ChatScreen
-          }
         });
       }
     } else {
       // Message approved by AI - show as actionable so user can confirm
-      // Use the text from response, or fallback to original text
-      const approvedText = data.text || text;
       actions.addMessage({
         id: Date.now().toString() + '_approved',
-        text: approvedText,
+        text: data.text,
         sender: 'runner',
         isActionable: true,
-        onAction: (action: 'send' | 'copy' | 'kinder') => {
-          // Actions are handled by ChatScreen via onMakeKinder callback
-          // This onAction is kept for compatibility but the actual logic is in ChatScreen
-        }
       });
     }
   } catch (error) {

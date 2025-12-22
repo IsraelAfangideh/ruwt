@@ -1,6 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
-import * as Clipboard from 'expo-clipboard';
+import { View, Text, StyleSheet } from 'react-native';
 import { Message } from '../../types/chat';
 import { useColors } from '../../theme';
 
@@ -11,13 +10,6 @@ type Props = {
 
 export default function BaseBubble({ item, actionButtons }: Props) {
   const colors = useColors();
-  
-  const handleCopy = async () => {
-    await Clipboard.setStringAsync(item.text);
-    Alert.alert('Copied', 'Message copied to clipboard');
-    item.onAction?.('copy');
-  };
-
   const isUser = item.sender === 'user';
 
   return (
