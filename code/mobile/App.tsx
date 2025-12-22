@@ -63,7 +63,7 @@ function RunnerListScreen({ navigation }: any) {
         style={[styles.button, { backgroundColor: themeColors.accent }]}
         onPress={() => navigation.navigate('Chat', { runner: item })}
       >
-        <Text style={[styles.buttonText, { color: themeColors.userBubbleText }]}>Go to Chat</Text>
+        <Text style={[styles.buttonText, { color: themeColors.userBubbleText }]}>Chat</Text>
       </TouchableOpacity>
     </View>
   );
