@@ -3,8 +3,8 @@ import { cors } from 'hono/cors';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import { runners } from './db/schema';
-import { chatWithPeacemaker } from './services/peacemaker';
-import { PeacemakerChatRequestSchema } from '@ruwt/shared';
+import { chatWithRewrite } from './services/rewrite';
+import { RewriteChatRequestSchema } from '@ruwt/shared';
 import { sendEmail } from './services/email';
 
 const app = new Hono();
@@ -35,15 +35,15 @@ app.get('/runners', async (c) => {
   }
 });
 
-app.post('/runners/peacemaker/chat', async (c) => {
+app.post('/runners/rewrite/chat', async (c) => {
   try {
     const body = await c.req.json();
-    const payload = PeacemakerChatRequestSchema.parse(body);
+    const payload = RewriteChatRequestSchema.parse(body);
     
-    const response = await chatWithPeacemaker(payload);
+    const response = await chatWithRewrite(payload);
     
     if (!response) {
-      return c.json({ error: 'Peacemaker failed to respond' }, 500);
+      return c.json({ error: 'Rewrite failed to respond' }, 500);
     }
 
     return c.json(response);

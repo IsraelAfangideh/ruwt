@@ -63,14 +63,14 @@ function RunnerListScreen({ navigation }: any) {
         style={[styles.button, { backgroundColor: themeColors.accent }]}
         onPress={() => navigation.navigate('Chat', { runner: item })}
       >
-        <Text style={[styles.buttonText, { color: themeColors.userBubbleText }]}>Send Runner</Text>
+        <Text style={[styles.buttonText, { color: themeColors.userBubbleText }]}>Chat</Text>
       </TouchableOpacity>
     </View>
   );
 
   // Show loading screen while fetching runners
   if (isLoading) {
-    return <LoadingScreen message="Gathering your runners..." />;
+    return <LoadingScreen message="Loading ..." />;
   }
 
   return (
@@ -132,18 +132,20 @@ function AppContent() {
             component={RunnerListScreen} 
             options={({ navigation }) => ({ 
               headerShown: Platform.OS === 'web',
-              title: 'Ruwt',
+              title: 'RUWT',
               headerRight: Platform.OS === 'web' ? () => (
-                <TouchableOpacity onPress={() => navigation.navigate('About')}>
-                  <Text style={{ color: themeColors.accent, fontSize: 14 }}>About</Text>
-                </TouchableOpacity>
+                <View style={{ paddingRight: 16 }}>
+                  <TouchableOpacity onPress={() => navigation.navigate('About')}>
+                    <Text style={{ color: themeColors.accent, fontSize: 18 }}>About</Text>
+                  </TouchableOpacity>
+                </View>
               ) : undefined,
             })}
           />
           <Stack.Screen 
             name="Chat" 
             component={ChatScreen} 
-            options={({ route }: any) => ({ title: route.params?.runner?.name || 'Peacemaker' })}
+            options={({ route }: any) => ({ title: route.params?.runner?.name || 'Rewrite' })}
           />
           <Stack.Screen 
             name="About" 

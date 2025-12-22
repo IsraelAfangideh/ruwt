@@ -11,7 +11,7 @@
   // ==========================================================================
   
   const animatedSections = document.querySelectorAll(
-    '.concept, .peacemaker, .spaces, .philosophy, .waitlist'
+    '.concept, .rewrite, .spaces, .philosophy, .waitlist'
   );
 
   const observerOptions = {
@@ -152,10 +152,10 @@
   }
 
   // ==========================================================================
-  // Peacemaker Demo Animation
+  // Rewrite Demo Animation
   // ==========================================================================
   
-  const demoSection = document.querySelector('.peacemaker-demo');
+  const demoSection = document.querySelector('.rewrite-demo');
   
   if (demoSection) {
     const demoObserver = new IntersectionObserver((entries) => {

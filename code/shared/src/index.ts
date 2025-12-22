@@ -9,17 +9,17 @@ export const RunnerSchema = z.object({
 
 export type Runner = z.infer<typeof RunnerSchema>;
 
-// --- Peacemaker Shared Logic ---
+// --- Rewrite Shared Logic ---
 
-export const PEACEMAKER_IDENTITY = {
-  NAME: 'Peacemaker',
+export const REWRITE_IDENTITY = {
+  NAME: 'Rewrite',
   DEFAULT_USER_ID: 'user_1', // For prototype phase
 };
 
 // Request/Response Types for the API
-export const PeacemakerChatRequestSchema = z.object({
+export const RewriteChatRequestSchema = z.object({
   message: z.string(),
-  userId: z.string().default(PEACEMAKER_IDENTITY.DEFAULT_USER_ID),
+  userId: z.string().default(REWRITE_IDENTITY.DEFAULT_USER_ID),
   history: z.array(
     z.object({
       role: z.enum(['user', 'model']),
@@ -28,19 +28,19 @@ export const PeacemakerChatRequestSchema = z.object({
   ).optional().default([]),
 });
 
-export type PeacemakerChatRequest = z.infer<typeof PeacemakerChatRequestSchema>;
+export type RewriteChatRequest = z.infer<typeof RewriteChatRequestSchema>;
 
-export const PeacemakerChatResponseSchema = z.object({
+export const RewriteChatResponseSchema = z.object({
   text: z.string(), // The full raw response
   isBlocked: z.boolean(),
   explanation: z.string().optional(), // The "Thought" bubble
   proposedRewrite: z.string().optional(), // The "Actionable" bubble
 });
 
-export type PeacemakerChatResponse = z.infer<typeof PeacemakerChatResponseSchema>;
+export type RewriteChatResponse = z.infer<typeof RewriteChatResponseSchema>;
 
 // The Prompt Generator (Pure Function)
-export function generatePeacemakerPrompt(runnerName: string, baseSystemPrompt: string, userMemories: string[]): string {
+export function generateRewritePrompt(runnerName: string, baseSystemPrompt: string, userMemories: string[]): string {
   const memoryContext = userMemories.map(m => `- ${m}`).join('\n');
 
   return `

@@ -16,5 +16,5 @@ export const API_URL = isDev ? ENV.dev.apiUrl : ENV.prod.apiUrl;
 
 export const ENDPOINTS = {
   runners: `${API_URL}/runners`,
-  peacemakerChat: `${API_URL}/runners/peacemaker/chat`,
+  rewriteChat: `${API_URL}/runners/rewrite/chat`,
 };

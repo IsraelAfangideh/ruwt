@@ -116,14 +116,14 @@ export default function AboutScreen({ navigation }: Props) {
           </View>
         </View>
 
-        {/* The Peacemaker */}
+        {/* The Rewrite */}
         <View style={[styles.section, { backgroundColor: colors.bgWarm }]}>
           <View style={[styles.badge, { borderColor: colors.accent }]}>
             <Text style={[styles.badgeText, { color: colors.accent }]}>First Runner</Text>
           </View>
-          <Text style={[styles.peacemakerTitle, { color: colors.text }]}>The Peacemaker</Text>
-          <Text style={[styles.peacemakerDesc, { color: colors.textMuted }]}>
-            Our first Runner specializes in reconciliation. It intercepts messages that might wound, 
+          <Text style={[styles.rewriteTitle, { color: colors.text }]}>The Rewrite</Text>
+          <Text style={[styles.rewriteDesc, { color: colors.textMuted }]}>
+            Our first Runner specializes in rewriting messages. It intercepts messages that might wound, 
             offering gentler alternatives while preserving your authentic voice.
           </Text>
 
@@ -137,7 +137,7 @@ export default function AboutScreen({ navigation }: Props) {
             </View>
             
             <Text style={[styles.demoRunner, { color: colors.textSubtle }]}>
-              The Peacemaker suggests...
+              The Rewrite suggests...
             </Text>
             
             <View style={[styles.demoMessage, styles.demoRevised, { borderColor: colors.accent }]}>
@@ -343,7 +343,7 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
 
-  // Peacemaker
+  // Rewrite
   badge: {
     alignSelf: 'center',
     paddingHorizontal: 16,
@@ -358,14 +358,14 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
     textTransform: 'uppercase',
   },
-  peacemakerTitle: {
+  rewriteTitle: {
     fontSize: 36,
     fontWeight: '400',
     fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
     textAlign: 'center',
     marginBottom: 16,
   },
-  peacemakerDesc: {
+  rewriteDesc: {
     fontSize: 16,
     lineHeight: 26,
     textAlign: 'center',

@@ -31,9 +31,9 @@ async function seed() {
   // 3. Insert Runner
   try {
     await db.insert(runners).values({
-      name: 'Peacemaker',
-      personality: 'Calm, empathetic, and focused on de-escalation.',
-      systemPrompt: `You are a Peacemaker. Your goal is to help the user communicate more kindly.
+      name: 'Rewrite',
+      personality: 'I can rewrite messages to be calm, empathetic, and kind.',
+      systemPrompt: `You are Rewrite. Your goal is to help the user communicate more kindly.
 
 CRITICAL RULE - MEANING PRESERVATION:
 When rewriting a message, you MUST preserve the user's original subject matter and intent. Only adjust the TONE, never the TOPIC.
@@ -53,7 +53,7 @@ Before suggesting a rewrite, verify: Does my rewrite address the SAME specific t
 Your rewrites should be assertive but kind, preserving the user's message while removing aggression.`,
       embedding: Array(1536).fill(0), // Mock embedding
     });
-    console.log('✅ Runner "Peacemaker" created.');
+    console.log('✅ Runner "Rewrite" created.');
 
     // 4. Insert Memory
     await db.insert(memories).values({

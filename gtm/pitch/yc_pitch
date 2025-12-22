@@ -4,7 +4,7 @@
 > AI-mediated communication protocol for high-trust social networks.
 
 ## 2. What is your company going to make?
-> **Ruwt** is an "Agent-First" social protocol that replaces direct DMs with mediated communication. Instead of users messaging each other directly, they interact through AI "Runners" (Agents) that act as fiduciaries. The Runner intercepts messages, vets them against the user's computed identity/goals (e.g., "Peacemaker"), and rewrites or blocks toxicity before it hits the network. We are solving the "Dead Internet Theory" by verifying character, not just humanity.
+> **Ruwt** is an "Agent-First" social protocol that replaces direct DMs with mediated communication. Instead of users messaging each other directly, they interact through AI "Runners" (Agents) that act as fiduciaries. The Runner intercepts messages, vets them against the user's computed identity/goals and rewrites or blocks toxicity before it hits the network. We are solving the "Dead Internet Theory" by verifying character, not just humanity.
 
 ## 3. Tell us more about what you're building
 > **The Problem:** Social media connects humans directly with zero friction. This speed causes toxicity, misunderstanding, and spam. Current solutions (censorship/moderation) fail because they are top-down and reactive.
