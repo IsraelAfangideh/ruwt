@@ -70,7 +70,7 @@ function RunnerListScreen({ navigation }: any) {
 
   // Show loading screen while fetching runners
   if (isLoading) {
-    return <LoadingScreen message="Gathering your runners..." />;
+    return <LoadingScreen message="Loading ..." />;
   }
 
   return (

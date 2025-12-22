@@ -1,5 +1,6 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { View, Animated, StyleSheet, Easing, ViewStyle } from 'react-native';
+import Svg, { Path, Circle, Rect } from 'react-native-svg';
 import { useColors } from '../theme';
 
 type Props = {
@@ -10,13 +11,14 @@ type Props = {
 };
 
 /**
- * SineWaveLoader - Animated loading indicator matching Ruwt brand
+ * SineWaveLoader - Exact replica of brand/mark/svg/animated_hero_replica.svg
  * 
- * Matches the animation from brand/mark/svg/animated_hero_replica.svg:
- * - Runner dot moves horizontally between ~20% and ~80% of width
- * - 4 second round trip (2s each direction)
- * - Sender/Receiver poles pulse with opacity and scale
- * - Runner has glow effect
+ * Matches the SVG animation exactly:
+ * - Sine wave path draws in over 3s with 1s delay (stroke-dasharray animation)
+ * - Runner dot moves horizontally from cx:80 to cx:320 (4s round trip)
+ * - Sender/Receiver dots pulse (opacity 0.7->1, radius 6->7.5) every 2s
+ * - Receiver pulse has 0.5s delay
+ * - Runner has glow effect (r:10, opacity:0.2)
  */
 export default function SineWaveLoader({ 
   width: customWidth, 
@@ -27,206 +29,209 @@ export default function SineWaveLoader({
   const colors = useColors();
   
   // Animation values
+  const pathDrawAnim = useRef(new Animated.Value(0)).current;
   const runnerAnim = useRef(new Animated.Value(0)).current;
   const senderPulse = useRef(new Animated.Value(0)).current;
   const receiverPulse = useRef(new Animated.Value(0)).current;
   
-  // Size presets - proportions match SVG viewBox (440x240 with content at 400x200)
+  // State for animated values (for SVG components that need re-renders)
+  const [pathDashoffset, setPathDashoffset] = useState(600);
+  const [runnerX, setRunnerX] = useState(80);
+  const [senderRadius, setSenderRadius] = useState(6);
+  const [senderOpacity, setSenderOpacity] = useState(0.7);
+  const [receiverRadius, setReceiverRadius] = useState(6);
+  const [receiverOpacity, setReceiverOpacity] = useState(0.7);
+  
+  // Size presets - matching SVG viewBox proportions (440x240)
   const sizes = {
-    small: { width: 100, height: 30, dotSize: 6, poleSize: 6 },
-    medium: { width: 200, height: 50, dotSize: 6, poleSize: 6 },
-    large: { width: 300, height: 60, dotSize: 6, poleSize: 6 },
+    small: { width: 100, height: 60 },
+    medium: { width: 200, height: 120 },
+    large: { width: 300, height: 180 },
   };
   
-  const { width, height, dotSize, poleSize } = {
+  const { width, height } = {
     ...sizes[size],
     width: customWidth ?? sizes[size].width,
     height: customHeight ?? sizes[size].height,
   };
   
-  // Start animations (matching SVG timing exactly)
+  // SVG viewBox: "-20 -20 440 240"
+  const svgViewBox = '-20 -20 440 240';
+  const centerY = 100;
+  const pathData = 'M0,100 Q100,20 200,100 T400,100';
+  
+  // Start animations and update state
   useEffect(() => {
-    // Runner animation: 4s round trip (2s each way), ease-in-out
+    // Path drawing: 3s animation with 1s delay, then stays drawn
+    const pathAnimation = Animated.sequence([
+      Animated.delay(1000), // 1s delay
+      Animated.timing(pathDrawAnim, {
+        toValue: 1,
+        duration: 3000, // 3s draw
+        easing: Easing.inOut(Easing.ease),
+        useNativeDriver: false,
+      }),
+    ]);
+    
+    // Runner animation: 4s round trip (2s each way), ease-in-out, infinite
     const runnerAnimation = Animated.loop(
       Animated.sequence([
         Animated.timing(runnerAnim, {
           toValue: 1,
           duration: 2000,
           easing: Easing.inOut(Easing.ease),
-          useNativeDriver: true,
+          useNativeDriver: false,
         }),
         Animated.timing(runnerAnim, {
           toValue: 0,
           duration: 2000,
           easing: Easing.inOut(Easing.ease),
-          useNativeDriver: true,
+          useNativeDriver: false,
         }),
       ])
     );
     
-    // Sender pulse: 2s cycle, ease-in-out
+    // Sender pulse: 2s cycle, ease-in-out, infinite
     const senderAnimation = Animated.loop(
       Animated.sequence([
         Animated.timing(senderPulse, {
           toValue: 1,
           duration: 1000,
           easing: Easing.inOut(Easing.ease),
-          useNativeDriver: true,
+          useNativeDriver: false,
         }),
         Animated.timing(senderPulse, {
           toValue: 0,
           duration: 1000,
           easing: Easing.inOut(Easing.ease),
-          useNativeDriver: true,
+          useNativeDriver: false,
         }),
       ])
     );
     
-    // Receiver pulse: 2s cycle with 0.5s delay, ease-in-out
+    // Receiver pulse: 2s cycle with 0.5s delay, ease-in-out, infinite
     const receiverAnimation = Animated.loop(
       Animated.sequence([
+        Animated.delay(500), // 0.5s delay
         Animated.timing(receiverPulse, {
           toValue: 1,
           duration: 1000,
           easing: Easing.inOut(Easing.ease),
-          useNativeDriver: true,
+          useNativeDriver: false,
         }),
         Animated.timing(receiverPulse, {
           toValue: 0,
           duration: 1000,
           easing: Easing.inOut(Easing.ease),
-          useNativeDriver: true,
+          useNativeDriver: false,
         }),
       ])
     );
     
+    // Listeners to update state from animation values
+    const pathListener = pathDrawAnim.addListener(({ value }) => {
+      setPathDashoffset(600 - (600 * value));
+    });
+    
+    const runnerListener = runnerAnim.addListener(({ value }) => {
+      setRunnerX(80 + (320 - 80) * value);
+    });
+    
+    const senderListener = senderPulse.addListener(({ value }) => {
+      setSenderRadius(6 + (7.5 - 6) * value);
+      setSenderOpacity(0.7 + (1 - 0.7) * value);
+    });
+    
+    const receiverListener = receiverPulse.addListener(({ value }) => {
+      setReceiverRadius(6 + (7.5 - 6) * value);
+      setReceiverOpacity(0.7 + (1 - 0.7) * value);
+    });
+    
+    pathAnimation.start();
     runnerAnimation.start();
     senderAnimation.start();
-    // Start receiver with delay to match SVG
-    setTimeout(() => receiverAnimation.start(), 500);
+    receiverAnimation.start();
     
     return () => {
+      pathAnimation.stop();
       runnerAnimation.stop();
       senderAnimation.stop();
       receiverAnimation.stop();
+      pathDrawAnim.removeListener(pathListener);
+      runnerAnim.removeListener(runnerListener);
+      senderPulse.removeListener(senderListener);
+      receiverPulse.removeListener(receiverListener);
     };
-  }, [runnerAnim, senderPulse, receiverPulse]);
-  
-  // Runner position: moves from 20% to 80% of width (matching SVG cx:80 to cx:320 in 400px)
-  const runnerTranslateX = runnerAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [width * 0.2, width * 0.8 - dotSize],
-  });
-  
-  // Sender pulse: opacity 0.7 -> 1 -> 0.7, scale 1 -> 1.25 -> 1
-  const senderOpacity = senderPulse.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0.7, 1],
-  });
-  const senderScale = senderPulse.interpolate({
-    inputRange: [0, 1],
-    outputRange: [1, 1.25],
-  });
-  
-  // Receiver pulse: same as sender
-  const receiverOpacity = receiverPulse.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0.7, 1],
-  });
-  const receiverScale = receiverPulse.interpolate({
-    inputRange: [0, 1],
-    outputRange: [1, 1.25],
-  });
+  }, [pathDrawAnim, runnerAnim, senderPulse, receiverPulse]);
   
   return (
     <View style={[styles.container, { width, height }, style]}>
-      {/* Sender Dot (left) */}
-      <Animated.View 
-        style={[
-          styles.pole, 
-          { 
-            backgroundColor: colors.textSubtle,
-            width: poleSize * 2,
-            height: poleSize * 2,
-            borderRadius: poleSize,
-            left: 0,
-            opacity: senderOpacity,
-            transform: [{ scale: senderScale }],
-          }
-        ]} 
-      />
-      
-      {/* Receiver Dot (right) */}
-      <Animated.View 
-        style={[
-          styles.pole, 
-          { 
-            backgroundColor: colors.textSubtle,
-            width: poleSize * 2,
-            height: poleSize * 2,
-            borderRadius: poleSize,
-            right: 0,
-            opacity: receiverOpacity,
-            transform: [{ scale: receiverScale }],
-          }
-        ]} 
-      />
-      
-      {/* Runner Glow (behind runner dot) */}
-      <Animated.View
-        style={[
-          styles.runnerGlow,
-          {
-            backgroundColor: colors.accent,
-            width: dotSize * 2.5,
-            height: dotSize * 2.5,
-            borderRadius: dotSize * 1.25,
-            opacity: 0.2,
-            transform: [{ translateX: runnerTranslateX }],
-          },
-        ]}
-      />
-      
-      {/* Runner Dot (the moving one) */}
-      <Animated.View
-        style={[
-          styles.runnerDot,
-          {
-            backgroundColor: colors.accent,
-            shadowColor: colors.accent,
-            width: dotSize * 2,
-            height: dotSize * 2,
-            borderRadius: dotSize,
-            transform: [{ translateX: runnerTranslateX }],
-          },
-        ]}
-      />
+      <Svg 
+        width={width} 
+        height={height} 
+        viewBox={svgViewBox}
+        style={styles.svg}
+        preserveAspectRatio="xMidYMid meet"
+      >
+        {/* Background (matching SVG) */}
+        <Rect x="-20" y="-20" width="440" height="240" fill={colors.bg} />
+        
+        {/* Sine Wave Path with drawing animation */}
+        <Path
+          d={pathData}
+          stroke={colors.accent}
+          strokeWidth={2}
+          fill="none"
+          strokeDasharray="600"
+          strokeDashoffset={pathDashoffset}
+        />
+        
+        {/* Sender Dot */}
+        <Circle
+          cx={0}
+          cy={centerY}
+          r={senderRadius}
+          fill={colors.textMuted}
+          opacity={senderOpacity}
+        />
+        
+        {/* Runner Glow (follows runner) */}
+        <Circle
+          cx={runnerX}
+          cy={centerY}
+          r={10}
+          fill={colors.accent}
+          opacity={0.2}
+        />
+        
+        {/* Runner Dot (the moving one) */}
+        <Circle
+          cx={runnerX}
+          cy={centerY}
+          r={6}
+          fill={colors.accent}
+        />
+        
+        {/* Receiver Dot */}
+        <Circle
+          cx={400}
+          cy={centerY}
+          r={receiverRadius}
+          fill={colors.textMuted}
+          opacity={receiverOpacity}
+        />
+      </Svg>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    position: 'relative',
     justifyContent: 'center',
+    alignItems: 'center',
   },
-  pole: {
-    position: 'absolute',
-    top: '50%',
-    marginTop: -6,
-  },
-  runnerGlow: {
-    position: 'absolute',
-    top: '50%',
-    marginTop: -7.5,
-  },
-  runnerDot: {
-    position: 'absolute',
-    top: '50%',
-    marginTop: -6,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.6,
-    shadowRadius: 10,
-    elevation: 6,
+  svg: {
+    width: '100%',
+    height: '100%',
   },
 });
