@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
+import React, { useState, useRef, useEffect, useLayoutEffect, useMemo } from 'react';
 import { 
   View, 
   FlatList, 
@@ -10,11 +10,9 @@ import {
   Text,
   ActionSheetIOS,
 } from 'react-native';
-import { ENDPOINTS } from '../config';
-import { RewriteChatResponse } from '@ruwt/shared';
 import { Message } from '../types/chat';
-import MessageBubble from '../components/MessageBubble';
-import ChatInput from '../components/ChatInput';
+import { ChatActions } from '../types/runner';
+import { getRunnerModule } from '../runners';
 import ReportModal from '../components/ReportModal';
 import TypingIndicator from '../components/TypingIndicator';
 import { useColors } from '../theme';
@@ -37,6 +35,34 @@ export default function ChatScreen({ route, navigation }: any) {
   const [isBlocked, setIsBlocked] = useState(false);
   
   const flatListRef = useRef<FlatList>(null);
+
+  // Get runner module
+  const runnerModule = useMemo(() => getRunnerModule(runner.id), [runner.id]);
+  
+  if (!runnerModule) {
+    return (
+      <View style={[styles.container, { backgroundColor: colors.bg, justifyContent: 'center', alignItems: 'center' }]}>
+        <Text style={{ color: colors.text }}>Runner not found: {runner.id}</Text>
+      </View>
+    );
+  }
+
+  const RunnerBubble = runnerModule.Bubble;
+  const RunnerInput = runnerModule.Input;
+
+  // Create ChatActions object once using useMemo (prevents callback hell)
+  const actions = useMemo<ChatActions>(() => ({
+    addMessage: (message: Message) => setMessages(prev => [...prev, message]),
+    updateLastMessage: (text: string) => setMessages(prev => {
+      const updated = [...prev];
+      if (updated.length > 0) {
+        updated[updated.length - 1] = { ...updated[updated.length - 1], text };
+      }
+      return updated;
+    }),
+    setLoading: setIsLoading,
+    triggerError: (error: string) => Alert.alert('Error', error),
+  }), []);
 
   // Add header menu button
   useLayoutEffect(() => {
@@ -143,7 +169,44 @@ export default function ChatScreen({ route, navigation }: any) {
     ]);
   }, []);
 
-  const sendMessage = async (text: string, isRewrite = false, isSystemInstruction = false) => {
+  // Handle "Make Kinder" action - triggers runner's handleMessage with new prompt
+  const handleMakeKinder = (rewriteText: string) => {
+    if (isBlocked) {
+      Alert.alert('Blocked', `${runner.name} is blocked. Unblock from the menu to send messages.`);
+      return;
+    }
+
+    const prompt = `The user wants this message to be EVEN KINDER: "${rewriteText}". Please rewrite it again to be overwhelmingly kind.`;
+    const history = messages.filter(m => !m.isSystem && !m.isActionable);
+    
+    runnerModule.handleMessage(prompt, history, actions);
+  };
+
+  // Handle "Send This" action - sends the rewrite as if user typed it
+  const handleSendRewrite = (rewriteText: string) => {
+    if (isBlocked) {
+      Alert.alert('Blocked', `${runner.name} is blocked. Unblock from the menu to send messages.`);
+      return;
+    }
+
+    // Add user message with the rewrite text
+    const userMsg: Message = {
+      id: Date.now().toString(),
+      text: rewriteText,
+      sender: 'user',
+    };
+    actions.addMessage(userMsg);
+    
+    // Show [SENT] confirmation (no need to call API again - user already approved the rewrite)
+    actions.addMessage({
+      id: Date.now().toString() + '_sent',
+      text: `[SENT] ${rewriteText}`,
+      sender: 'runner'
+    });
+  };
+
+  // Main send message handler
+  const sendMessage = async (text: string) => {
     if (!text.trim()) return;
     
     // Check if blocked
@@ -152,126 +215,20 @@ export default function ChatScreen({ route, navigation }: any) {
       return;
     }
 
-    // Only add visible messages to the UI list
-    if (!isSystemInstruction) {
-        const userMsg: Message = {
-          id: Date.now().toString(),
-          text: text,
-          sender: 'user',
-        };
-        
-        // Optimistically add user message if it's not a rewrite flow
-        if (!isRewrite) {
-            setMessages(prev => [...prev, userMsg]);
-            setInput('');
-        } else {
-            // If it is a rewrite (user accepted AI version), we just send it as the final message
-            setMessages(prev => [...prev, userMsg]);
-        }
-    } else {
-        // Clear input even if system instruction
-        setInput('');
-    }
-    
-    setIsLoading(true);
+    // Add user message
+    const userMsg: Message = {
+      id: Date.now().toString(),
+      text: text,
+      sender: 'user',
+    };
+    actions.addMessage(userMsg);
+    setInput('');
 
-    try {
-      // Filter out system instructions from history so AI doesn't see "User said: make it kinder" as a literal message to deliver
-      const history = messages
-        .filter(m => !m.isSystem && !m.isActionable) // Don't include previous 'action' bubbles in history context to keep it clean, or keep them if you want context
-        .map(m => ({
-          role: m.sender === 'user' ? 'user' as const : 'model' as const,
-          parts: [{ text: m.text }]
-        }));
+    // Get history for API (before adding the new message)
+    const history = messages.filter(m => !m.isSystem && !m.isActionable);
 
-      const response = await fetch(ENDPOINTS.rewriteChat, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          message: text,
-          userId: 'user_1', // Hardcoded for prototype
-          history
-        })
-      });
-
-      const data: RewriteChatResponse = await response.json();
-
-      if (data.isBlocked) {
-        // 1. Add Explanation Bubble
-        if (data.explanation) {
-            setMessages(prev => [...prev, {
-                id: Date.now().toString() + '_exp',
-                text: data.explanation || "This feels sharp.",
-                sender: 'runner'
-            }]);
-        }
-
-        // 2. Add Actionable Rewrite Bubble
-        if (data.proposedRewrite) {
-            const rewriteText = data.proposedRewrite;
-            
-            // Define action handler
-            const handleAction = (action: 'send' | 'copy' | 'kinder') => {
-                if (action === 'send') {
-                    // Send the rewrite as if user typed it
-                    sendMessage(rewriteText, true); 
-                } else if (action === 'kinder') {
-                    // Request even kinder version
-                    const prompt = `The user wants this message to be EVEN KINDER: "${rewriteText}". Please rewrite it again to be overwhelmingly kind.`;
-                    sendMessage(prompt, false, true);
-                }
-                // Copy is handled in component
-            };
-
-            setMessages(prev => [...prev, {
-                id: Date.now().toString() + '_rewrite',
-                text: rewriteText,
-                sender: 'runner',
-                isActionable: true,
-                onAction: handleAction
-            }]);
-        }
-
-      } else {
-        // Message approved by AI - but still needs user confirmation before "sending"
-        // Only show [SENT] when user explicitly clicks "Send This"
-        if (isRewrite) {
-          // User already clicked "Send This" on a previous rewrite - confirm sent
-          const runnerMsg: Message = {
-            id: Date.now().toString() + '_r',
-            text: `[SENT] ${text}`,
-            sender: 'runner'
-          };
-          setMessages(prev => [...prev, runnerMsg]);
-        } else {
-          // First submission - show as actionable so user can confirm
-          const handleAction = (action: 'send' | 'copy' | 'kinder') => {
-            if (action === 'send') {
-              // User confirmed - now actually "send" it
-              sendMessage(text, true);
-            } else if (action === 'kinder') {
-              const prompt = `The user wants this message to be KINDER: "${text}". Please rewrite it to be more gentle and kind.`;
-              sendMessage(prompt, false, true);
-            }
-          };
-
-          // Show approved message with action buttons
-          setMessages(prev => [...prev, {
-            id: Date.now().toString() + '_approved',
-            text: text,
-            sender: 'runner',
-            isActionable: true,
-            onAction: handleAction
-          }]);
-        }
-      }
-
-    } catch (error) {
-      console.error(error);
-      Alert.alert('Error', 'Failed to send message');
-    } finally {
-      setIsLoading(false);
-    }
+    // Call runner's handleMessage
+    await runnerModule.handleMessage(text, history, actions);
   };
 
   return (
@@ -293,14 +250,36 @@ export default function ChatScreen({ route, navigation }: any) {
       <FlatList
         ref={flatListRef}
         data={messages}
-        renderItem={({ item }) => <MessageBubble item={item} />}
+        renderItem={({ item }) => {
+          // Create action handler for actionable messages
+          const handleAction = (action: 'send' | 'copy' | 'kinder') => {
+            if (action === 'send') {
+              handleSendRewrite(item.text);
+            } else if (action === 'copy') {
+              // Copy is handled in BaseBubble
+            }
+            // 'kinder' is handled via onMakeKinder prop
+          };
+
+          const messageWithAction: Message = {
+            ...item,
+            onAction: item.isActionable ? handleAction : item.onAction,
+          };
+
+          return (
+            <RunnerBubble 
+              item={messageWithAction} 
+              onMakeKinder={handleMakeKinder}
+            />
+          );
+        }}
         keyExtractor={item => item.id}
         contentContainerStyle={styles.list}
         onContentSizeChange={() => flatListRef.current?.scrollToEnd()}
         ListFooterComponent={isLoading ? <TypingIndicator isRunner /> : null}
       />
 
-      <ChatInput 
+      <RunnerInput 
         input={input} 
         isLoading={isLoading} 
         onChangeText={setInput} 
