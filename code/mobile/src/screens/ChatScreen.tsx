@@ -137,7 +137,7 @@ export default function ChatScreen({ route, navigation }: any) {
     setMessages([
       {
         id: 'init',
-        text: `Send me a message and I will rewrite it to be better while preserving the intent.`,
+        text: `Send me a message, and I will improve it, while preserving the intent`,
         sender: 'runner'
       }
     ]);
