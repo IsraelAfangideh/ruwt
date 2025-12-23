@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, TextInput, TouchableOpacity, Text, ActivityIndicator, StyleSheet, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useColors } from '../theme';
+import { useColors } from '../../theme';
 
 type Props = {
   input: string;
@@ -10,7 +10,7 @@ type Props = {
   onSend: () => void;
 };
 
-export default function ChatInput({ input, isLoading, onChangeText, onSend }: Props) {
+export default function BaseInput({ input, isLoading, onChangeText, onSend }: Props) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   
@@ -74,3 +74,4 @@ const styles = StyleSheet.create({
     fontSize: 15,
   },
 });
+
