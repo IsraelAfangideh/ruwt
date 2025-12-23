@@ -36,13 +36,12 @@ export default function ChatScreen({ route, navigation }: any) {
   
   const flatListRef = useRef<FlatList>(null);
 
-  // Get runner module
-  const runnerModule = useMemo(() => getRunnerModule(runner.id), [runner.id]);
+  const runnerModule = useMemo(() => getRunnerModule(runner.name), [runner.id]);
   
   if (!runnerModule) {
     return (
       <View style={[styles.container, { backgroundColor: colors.bg, justifyContent: 'center', alignItems: 'center' }]}>
-        <Text style={{ color: colors.text }}>Runner not found: {runner.id}</Text>
+        <Text style={{ color: colors.text }}>Runner not found: {runner.name}</Text>
       </View>
     );
   }

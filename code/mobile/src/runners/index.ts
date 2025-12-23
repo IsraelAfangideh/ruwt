@@ -1,6 +1,7 @@
 import React from 'react';
 import { Message } from '../types/chat';
 import { ChatActions } from '../types/runner';
+import { UUID } from '../../../shared/src/uuid';
 
 // Input props type (matching BaseInput)
 export type InputProps = {
@@ -24,11 +25,7 @@ export function registerRunnerModule(module: RunnerModule): void {
   runners.set(module.id, module);
 }
 
-export function getRunnerModule(runnerId: string): RunnerModule | null {
-  return runners.get(runnerId) || null;
-}
+export const getRunnerModule = (runnerName: string): RunnerModule | undefined => runners.get(runnerName);
 
-// Register the rewrite module
 import rewriteModule from './rewrite';
 registerRunnerModule(rewriteModule);
-
