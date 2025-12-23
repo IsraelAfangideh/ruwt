@@ -1,14 +1,14 @@
 import RewriteBubble from './RewriteBubble';
 import RewriteInput from './RewriteInput';
 import { handleMessage } from './messageHandler';
-import { REWRITE_RUNNER_ID, REWRITE_ENDPOINT } from './config';
+import { REWRITE_MODULE_NAME, REWRITE_MODULE_ENDPOINT } from './config';
 import { type RunnerModule } from '../index';
 
 export const rewriteModule: RunnerModule = {
-  id: REWRITE_RUNNER_ID,
+  name: REWRITE_MODULE_NAME,
   Bubble: RewriteBubble,
   Input: RewriteInput,
-  endpoint: REWRITE_ENDPOINT,
+  endpoint: REWRITE_MODULE_ENDPOINT,
   handleMessage,
 };
 

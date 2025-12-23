@@ -1,7 +1,6 @@
 import React from 'react';
 import { Message } from '../types/chat';
 import { ChatActions } from '../types/runner';
-import { UUID } from '../../../shared/src/uuid';
 
 // Input props type (matching BaseInput)
 export type InputProps = {
@@ -12,20 +11,20 @@ export type InputProps = {
 };
 
 export interface RunnerModule {
-  id: string;
+  name: string;
   Bubble: React.ComponentType<{ item: Message; onMakeKinder?: (rewriteText: string) => void }>;
   Input: React.ComponentType<InputProps>;
   endpoint: string;
   handleMessage: (text: string, history: Message[], actions: ChatActions) => Promise<void>;
 }
 
-const runners: Map<string, RunnerModule> = new Map();
+const modules: Map<string, RunnerModule> = new Map();
 
 export function registerRunnerModule(module: RunnerModule): void {
-  runners.set(module.id, module);
+  modules.set(module.name, module);
 }
 
-export const getRunnerModule = (runnerName: string): RunnerModule | undefined => runners.get(runnerName);
+export const getRunnerModule = (runnerName: string): RunnerModule | undefined => modules.get(runnerName);
 
 import rewriteModule from './rewrite';
 registerRunnerModule(rewriteModule);

@@ -36,7 +36,7 @@ export default function ChatScreen({ route, navigation }: any) {
   
   const flatListRef = useRef<FlatList>(null);
 
-  const runnerModule = useMemo(() => getRunnerModule(runner.name), [runner.id]);
+  const runnerModule = useMemo(() => getRunnerModule(runner.name), [runner.name]);
   
   if (!runnerModule) {
     return (
