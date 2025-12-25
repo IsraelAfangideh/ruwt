@@ -2,6 +2,7 @@ import { RewriteChatResponse } from '@ruwt/shared';
 import { Message } from '../../types/chat';
 import { ChatActions } from '../../types/runner';
 import { REWRITE_MODULE_ENDPOINT } from './config';
+import { mockFetch } from '../../services/mockApi';
 
 export async function handleMessage(
   text: string,
@@ -21,7 +22,7 @@ export async function handleMessage(
   actions.setLoading(true);
 
   try {
-    const response = await fetch(REWRITE_MODULE_ENDPOINT, {
+    const response = await mockFetch(REWRITE_MODULE_ENDPOINT, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

@@ -1,4 +1,5 @@
 import { API_URL } from '../config';
+import { mockFetch } from './mockApi';
 
 export interface ReportData {
   runner: string;
@@ -8,7 +9,7 @@ export interface ReportData {
 
 export async function submitReport(data: ReportData): Promise<void> {
   try {
-    const response = await fetch(`${API_URL}/report`, {
+    const response = await mockFetch(`${API_URL}/report`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),

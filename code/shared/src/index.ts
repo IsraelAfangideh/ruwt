@@ -82,3 +82,6 @@ export function generateRewritePrompt(runnerName: string, baseSystemPrompt: stri
       [END]
     `;
 }
+
+// Export mocks for testing
+export * from './mocks';

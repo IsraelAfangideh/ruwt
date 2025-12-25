@@ -1,0 +1,13 @@
+appId: com.ruwt.app
+---
+- launchApp
+- assertVisible: "⚠️ MOCK MODE ACTIVE"
+- tapOn: "Chat"
+- assertVisible: "Send me a message"
+- inputText: "Hello, this is a test message"
+- tapOn:
+    id: ".*Send.*"
+- assertVisible: "This feels a bit sharp"
+- assertVisible: "I am feeling a bit overwhelmed right now, can we talk later?"
+
+

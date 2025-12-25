@@ -1,0 +1,13 @@
+appId: com.ruwt.app
+---
+- launchApp
+- assertVisible: "⚠️ MOCK MODE ACTIVE"
+- tapOn: "Chat"
+- assertVisible: "Send me a message"
+- inputText: "error test"
+- tapOn:
+    id: ".*Send.*"
+- assertVisible: "An error occurred"
+- assertVisible: "Failed to send message"
+
+

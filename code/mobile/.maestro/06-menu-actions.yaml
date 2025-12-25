@@ -1,0 +1,20 @@
+appId: com.ruwt.app
+---
+- launchApp
+- assertVisible: "⚠️ MOCK MODE ACTIVE"
+- tapOn: "Chat"
+- assertVisible: "•••"
+- tapOn: "•••"
+- assertVisible: "Report Issue"
+- assertVisible: "Block Runner"
+- tapOn: "Block Runner"
+- assertVisible: "Are you sure"
+- tapOn: "Block"
+- assertVisible: "has been blocked"
+- assertVisible: "is blocked"
+- tapOn: "•••"
+- assertVisible: "Unblock Runner"
+- tapOn: "Unblock Runner"
+- assertVisible: "has been unblocked"
+
+
