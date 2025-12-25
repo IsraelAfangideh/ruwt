@@ -3,10 +3,13 @@ appId: com.ruwt.app
 - launchApp
 - assertVisible: "⚠️ MOCK MODE ACTIVE"
 - tapOn: "Chat"
+- waitForAnimationToEnd
+- scroll
 - assertVisible: "Send me a message"
 - inputText: "I love you"
-- tapOn:
-    id: ".*Send.*"
+- tapOn: "Send"
+- waitForAnimationToEnd
+- waitForAnimationToEnd
 - assertVisible: "I appreciate your patience and understanding."
 - assertVisible: "Send This"
 

@@ -39,6 +39,9 @@ export default function BaseInput({ input, isLoading, onChangeText, onSend }: Pr
         style={[styles.sendButton, { backgroundColor: colors.accent }]} 
         onPress={onSend}
         disabled={isLoading || !input.trim()}
+        accessibilityLabel="Send"
+        accessible={true}
+        testID="send-button"
       >
          {isLoading 
            ? <ActivityIndicator color={colors.userBubbleText} /> 

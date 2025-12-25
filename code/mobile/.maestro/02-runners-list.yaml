@@ -8,6 +8,8 @@ appId: com.ruwt.app
 - assertVisible: "Chat"
 - tapOn: "Chat"
 - assertVisible: "Rewrite"
+- waitForAnimationToEnd
+- scroll
 - assertVisible: "Send me a message"
 
 

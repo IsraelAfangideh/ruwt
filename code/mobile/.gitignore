@@ -43,3 +43,12 @@ yarn-error.*
 # EAS Local Credentials (sensitive)
 credentials.json
 credentials/
+
+# Maestro test debug output (can be safely deleted)
+.maestro-debug/
+maestro-debug/
+
+# Maestro test screenshots (saved to .maestro-debug instead)
+*-after-*.png
+*-after-*.png.png
+screenshot*.png

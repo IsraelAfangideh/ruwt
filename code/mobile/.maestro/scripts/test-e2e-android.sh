@@ -15,7 +15,8 @@ EXPO_PUBLIC_MOCK_MODE=true npx expo run:android
 
 # Run Maestro tests
 echo "Running Maestro tests..."
-EXPO_PUBLIC_MOCK_MODE=true maestro test .maestro
+# Debug output goes to .maestro-debug (gitignored, can be safely deleted)
+EXPO_PUBLIC_MOCK_MODE=true maestro test .maestro --debug-output ./.maestro-debug
 
 # Clean up: kill Metro
 echo "Stopping Metro bundler..."
