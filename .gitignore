@@ -8,3 +8,5 @@ code/api/ruwt.db
 # Maestro test debug output (can be safely deleted)
 code/mobile/.maestro-debug/
 code/mobile/maestro-debug/
+code/mobile/debug-*/
+code/mobile/debug-*

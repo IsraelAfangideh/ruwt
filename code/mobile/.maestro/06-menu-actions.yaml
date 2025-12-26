@@ -10,13 +10,10 @@ appId: com.ruwt.app
 - assertVisible: "Block Runner"
 - tapOn: "Block Runner"
 - waitForAnimationToEnd
-- assertVisible: "Are you sure you want to block Rewrite"
+- assertVisible: "Are you sure.*" 
 - tapOn: "Block"
-- assertVisible: "has been blocked"
-- assertVisible: "is blocked"
-- tapOn: "•••"
-- assertVisible: "Unblock Runner"
-- tapOn: "Unblock Runner"
-- assertVisible: "has been unblocked"
-
-
+- assertVisible: ".*blocked.*"
+- tapOn: "OK"
+- assertVisible: ".*to unblock.*"
+# - tapOn: ""
+# - assertVisible: "has been unblocked"

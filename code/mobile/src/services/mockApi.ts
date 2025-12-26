@@ -21,58 +21,50 @@ export async function mockFetch(url: string, options: RequestInit): Promise<Resp
   const isMockMode = useMockMode();
 
   if (!isMockMode) {
-    // Not in mock mode, use real fetch
     return fetch(url, options);
   }
 
-  // Mock mode is enabled - return mock responses
-  if (url.includes('/runners')) {
-    // GET /runners - return mock runners list
-    return new Response(JSON.stringify(MOCK_RUNNERS), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
-    });
-  }
-
+  // 1. CHECK SPECIFIC CHAT ENDPOINT FIRST
   if (url.includes('/runners/rewrite/chat')) {
-    // POST /runners/rewrite/chat - return mock chat response
-    // For testing, we'll alternate between blocked and approved responses
-    // based on message content to test different scenarios
     const body = options.body ? JSON.parse(options.body as string) : {};
     const message = body.message || '';
 
-    // If message contains certain keywords, return different responses
     if (message.toLowerCase().includes('error')) {
-      return new Response(JSON.stringify(MOCK_ERROR_RESPONSE), {
-        status: 200,
+      return new Response(JSON.stringify({ error: 'Failed to send message' }), {
+        status: 500,
         headers: { 'Content-Type': 'application/json' },
       });
     }
 
     if (message.toLowerCase().includes('love') || message.toLowerCase().includes('kind')) {
-      // Already kind message - still blocked but with encouragement
       return new Response(JSON.stringify(MOCK_APPROVED_RESPONSE), {
         status: 200,
         headers: { 'Content-Type': 'application/json' },
       });
     }
 
-    // Default: blocked response
     return new Response(JSON.stringify(MOCK_BLOCKED_RESPONSE), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
     });
   }
 
+  // 2. CHECK REPORT ENDPOINT
   if (url.includes('/report')) {
-    // POST /report - return mock report success
     return new Response(JSON.stringify(MOCK_REPORT_SUCCESS), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
     });
   }
 
-  // Unknown endpoint - fallback to real fetch
+  // 3. CHECK GENERAL RUNNERS LIST LAST (Least specific)
+  if (url.includes('/runners')) {
+    return new Response(JSON.stringify(MOCK_RUNNERS), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
   return fetch(url, options);
 }
 

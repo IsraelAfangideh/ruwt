@@ -5,17 +5,21 @@ appId: com.ruwt.app
 - tapOn: "Chat"
 - waitForAnimationToEnd
 - scroll
-- assertVisible: "Send me a message"
+- assertVisible: ".*Send me a message.*"
+- tapOn:
+    id: "message-input"
 - inputText: "I'm frustrated with this situation"
+- hideKeyboard
 - tapOn: "Send"
 - waitForAnimationToEnd
 - waitForAnimationToEnd
-- assertVisible: "This feels a bit sharp"
-- assertVisible: "I am feeling a bit overwhelmed right now, can we talk later?"
-- assertVisible: "Send This"
-- assertVisible: "Copy"
-- assertVisible: "Make Kinder"
+- waitForAnimationToEnd
+- scroll
+- assertVisible: ".*This feels a bit sharp. Let's add some warmth to it.*"
+- scroll
+- assertVisible: ".*I am feeling a bit overwhelmed right now, can we talk later?.*"
+- assertVisible: ".*Send This.*"
+- assertVisible: ".*Copy.*"
+- assertVisible: ".*Make Kinder.*"
 - tapOn: "Send This"
-- assertVisible: "[SENT]"
-
-
+- assertVisible: ".*[SENT].*"

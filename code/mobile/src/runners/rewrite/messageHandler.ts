@@ -32,6 +32,19 @@ export async function handleMessage(
       })
     });
 
+    // Check if response is an error
+    if (!response.ok) {
+      let errorMessage = 'Failed to send message';
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.error || errorMessage;
+      } catch {
+        // If JSON parsing fails, use default message
+      }
+      actions.triggerError(errorMessage);
+      return;
+    }
+
     const data: RewriteChatResponse = await response.json();
 
     if (data.isBlocked) {

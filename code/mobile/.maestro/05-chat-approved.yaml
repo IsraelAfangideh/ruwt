@@ -6,10 +6,16 @@ appId: com.ruwt.app
 - waitForAnimationToEnd
 - scroll
 - assertVisible: "Send me a message"
-- inputText: "I love you"
+- tapOn:
+    id: "message-input"
+- inputText:
+    text: "I love you"
+- hideKeyboard
 - tapOn: "Send"
 - waitForAnimationToEnd
 - waitForAnimationToEnd
+- waitForAnimationToEnd
+- scroll
 - assertVisible: "I appreciate your patience and understanding."
 - assertVisible: "Send This"
 

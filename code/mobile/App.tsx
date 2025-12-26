@@ -1,3 +1,10 @@
+import { LogBox } from 'react-native';
+
+// Disable LogBox warnings during E2E tests (mock mode)
+if (process.env.EXPO_PUBLIC_MOCK_MODE === 'true') {
+  LogBox.ignoreAllLogs(true);
+}
+
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
 import { StyleSheet, Text, View, FlatList, TouchableOpacity, ListRenderItem, useColorScheme, Platform } from 'react-native';
