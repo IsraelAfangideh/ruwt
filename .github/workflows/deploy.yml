@@ -44,29 +44,39 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          # CRITICAL: We need full history to compare commits/tags
           fetch-depth: 0
       
       - name: Determine Diff Base
         id: base
         run: |
+          # 1. Check for the Native Tag (Stateful Logic)
+          # We verify it exists and output the SHA directly
           if git rev-parse --verify production-mobile-native-last-success >/dev/null 2>&1; then
             BASE_REF=$(git rev-parse production-mobile-native-last-success)
-            echo "base_ref=$BASE_REF" >> $GITHUB_OUTPUT
-            echo "Using tag production-mobile-native-last-success as base: $BASE_REF"
+            echo "Using stateful tag SHA: $BASE_REF"
+          
+          # 2. Check for Previous Commit (Fallback for standard pushes)
+          # checking if 'before' is set and not the null-hash
+          elif [ -n "${{ github.event.before }}" ] && [ "${{ github.event.before }}" != "0000000000000000000000000000000000000000" ]; then
+             BASE_REF="${{ github.event.before }}"
+             echo "Using github.event.before SHA: $BASE_REF"
+          
+          # 3. Final Fallback (Resolve HEAD~1 to SHA)
           else
-            # Try github.event.before first (for push events), then fallback to HEAD~1
-            if [ -n "${{ github.event.before }}" ] && git rev-parse --verify "${{ github.event.before }}" >/dev/null 2>&1; then
-              BASE_REF="${{ github.event.before }}"
-            else
-              BASE_REF="HEAD~1"
-            fi
-            echo "base_ref=$BASE_REF" >> $GITHUB_OUTPUT
-            echo "Tag not found, using fallback: $BASE_REF"
+            # CRITICAL FIX: We must resolve HEAD~1 to a specific SHA.
+            # Passing the string "HEAD~1" causes the 'invalid refspec' error in paths-filter.
+            BASE_REF=$(git rev-parse HEAD~1)
+            echo "Using HEAD~1 SHA: $BASE_REF"
           fi
+          
+          # Output the SHA
+          echo "base_ref=$BASE_REF" >> $GITHUB_OUTPUT
       
       - uses: dorny/paths-filter@v2
         id: filter
         with:
+          # Now this is always a clean SHA (e.g., a1b2c3d...)
           base: ${{ steps.base.outputs.base_ref }}
           filters: |
             web:
@@ -129,12 +139,6 @@ jobs:
           echo "api=$API" >> $GITHUB_OUTPUT
           echo "mobile_native=$MOBILE_NATIVE" >> $GITHUB_OUTPUT
           echo "mobile_any=$MOBILE_ANY" >> $GITHUB_OUTPUT
-          
-          echo "Final outputs:"
-          echo "  web: $WEB"
-          echo "  api: $API"
-          echo "  mobile_native: $MOBILE_NATIVE"
-          echo "  mobile_any: $MOBILE_ANY"
 
   # ------------------------------------------------------------------
   # STEP 2: PRE-FLIGHT CHECK (The Parachute)
