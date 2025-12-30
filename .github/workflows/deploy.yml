@@ -70,6 +70,12 @@ jobs:
             echo "Using HEAD~1 SHA: $BASE_REF"
           fi
           
+          # Verify we have a valid SHA (safety check)
+          if [ ${#BASE_REF} -ne 40 ]; then
+            echo "Error: base_ref is not a valid SHA: $BASE_REF"
+            exit 1
+          fi
+          
           # Output the SHA
           echo "base_ref=$BASE_REF" >> $GITHUB_OUTPUT
       
