@@ -132,6 +132,20 @@ cd code/mobile
 bun run start
 ```
 
+#### E2E Testing
+The mobile app includes comprehensive end-to-end tests using [Maestro](https://maestro.mobile.dev/). All tests run in mock mode to avoid hitting the real API.
+
+```bash
+cd code/mobile
+# Run iOS tests (requires iOS Simulator)
+npm run test:e2e:ios
+
+# Run Android tests (requires Android Emulator)
+npm run test:e2e:android
+```
+
+Tests automatically run on all pull requests and block deployment if they fail. See `code/mobile/.maestro/README.md` for detailed documentation.
+
 ## Development Philosophy
 
 - **Test Driven**: Tests should mimic real-world conditions.

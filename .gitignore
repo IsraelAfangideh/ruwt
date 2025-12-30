@@ -4,3 +4,11 @@ code/api/.env
 .idea/workspace.xml
 code/api/ruwt.db
 .DS_Store
+# Maestro test debug output (can be safely deleted)
+code/mobile/.maestro-debug/
+code/mobile/maestro-debug/
+code/mobile/debug-*/
+code/mobile/debug-*
+
+# Cursor stuff
+/.cursor

@@ -1,3 +1,10 @@
+import { LogBox } from 'react-native';
+
+// Disable LogBox warnings during E2E tests (mock mode)
+if (process.env.EXPO_PUBLIC_MOCK_MODE === 'true') {
+  LogBox.ignoreAllLogs(true);
+}
+
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
 import { StyleSheet, Text, View, FlatList, TouchableOpacity, ListRenderItem, useColorScheme, Platform } from 'react-native';
@@ -6,7 +13,7 @@ import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Runner } from '@ruwt/shared';
-import { ENDPOINTS } from './src/config';
+import { ENDPOINTS, useMockMode, mockFetch } from './src/config';
 import ChatScreen from './src/screens/ChatScreen';
 import AboutScreen from './src/screens/AboutScreen';
 import LoadingScreen from './src/components/LoadingScreen';
@@ -44,7 +51,7 @@ function RunnerListScreen({ navigation }: any) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    fetch(ENDPOINTS.runners)
+    mockFetch(ENDPOINTS.runners, { method: 'GET' })
       .then((res) => res.json())
       .then((data) => {
         setRunners(data);
@@ -107,10 +114,16 @@ function AppContent() {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   const themeColors = useColors();
+  const isMockMode = useMockMode();
   
   return (
     <>
       <StatusBar style={isDark ? 'light' : 'dark'} />
+      {isMockMode && (
+        <View style={styles.mockBanner}>
+          <Text style={styles.mockBannerText}>⚠️ MOCK MODE ACTIVE</Text>
+        </View>
+      )}
       <NavigationContainer 
         linking={linking}
         theme={isDark ? RuwtDarkTheme : RuwtLightTheme}
@@ -215,5 +228,17 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     fontSize: 15,
     letterSpacing: 0.3,
+  },
+  mockBanner: {
+    backgroundColor: '#dc2626',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    zIndex: 9999,
+  },
+  mockBannerText: {
+    color: '#ffffff',
+    fontWeight: '600',
+    fontSize: 14,
   },
 });

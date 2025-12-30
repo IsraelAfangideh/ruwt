@@ -1,0 +1,16 @@
+appId: com.ruwt.app
+---
+- launchApp
+- assertVisible: "⚠️ MOCK MODE ACTIVE"
+- assertVisible: "Ruwt"
+- assertVisible: "Rewrite"
+- tapOn: "Chat"
+- assertVisible: "Rewrite"
+- waitForAnimationToEnd
+- scroll
+- assertVisible: "Send me a message"
+- pressKey: Back
+- assertVisible: "Ruwt"
+- assertVisible: "Rewrite"
+
+
