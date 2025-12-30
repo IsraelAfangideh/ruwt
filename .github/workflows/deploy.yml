@@ -196,26 +196,39 @@ jobs:
         run: cd .. && bun install
       
       # 1. ROBUST SIMULATOR SETUP
-      # We explicitly create the device so we KNOW it exists.
       - name: Setup Simulator
         run: |
-          # List available device types to verify iPhone 15 is available
-          xcrun simctl list devicetypes | grep -i "iphone 15" || echo "Warning: iPhone 15 device type not found, listing all available types:"
-          xcrun simctl list devicetypes | grep -i "iphone"
+          DEVICE_NAME="iPhone 15"
+          DEVICE_TYPE="com.apple.CoreSimulator.SimDeviceType.iPhone-15"
           
-          # Create "iPhone 15" if it doesn't exist
-          if ! xcrun simctl list devices | grep -q "iPhone 15"; then
-            echo "Creating iPhone 15 simulator..."
-            xcrun simctl create "iPhone 15" "com.apple.CoreSimulator.SimDeviceType.iPhone-15" "com.apple.CoreSimulator.SimRuntime.iOS-17-0" || \
-            xcrun simctl create "iPhone 15" "com.apple.CoreSimulator.SimDeviceType.iPhone-15" "com.apple.CoreSimulator.SimRuntime.iOS-18-0" || \
-            xcrun simctl create "iPhone 15" "iPhone 15" "iOS"
+          # Check if the device already exists (booted or shutdown)
+          if xcrun simctl list devices | grep -q "$DEVICE_NAME"; then
+            echo "✅ Device '$DEVICE_NAME' already exists."
+          else
+            echo "⚙️ Device not found. Detecting latest Runtime..."
+            
+            # DYNAMICALLY find the newest iOS Runtime ID installed on this runner
+            # We filter for 'iOS', grab the ID, sort by version, and take the last one.
+            RUNTIME_ID=$(xcrun simctl list runtimes | grep -o "com.apple.CoreSimulator.SimRuntime.iOS-[0-9]*-[0-9]*" | sort -V | tail -n 1)
+            
+            if [ -z "$RUNTIME_ID" ]; then
+              echo "❌ Error: No iOS Runtimes found on this runner!"
+              echo "Available runtimes:"
+              xcrun simctl list runtimes
+              exit 1
+            fi
+            
+            echo "✅ Found latest runtime: $RUNTIME_ID"
+            echo "⚙️ Creating '$DEVICE_NAME'..."
+            xcrun simctl create "$DEVICE_NAME" "$DEVICE_TYPE" "$RUNTIME_ID"
           fi
           
-          # Boot it
-          xcrun simctl boot "iPhone 15" || true
+          echo "⚙️ Booting '$DEVICE_NAME'..."
+          xcrun simctl boot "$DEVICE_NAME" || echo "Simulator might already be booted."
           
-          # Wait for it to be fully ready (Prevents timeout errors)
-          xcrun simctl bootstatus "iPhone 15"
+          echo "⏳ Waiting for boot to finish..."
+          xcrun simctl bootstatus "$DEVICE_NAME"
+          echo "✅ Simulator Ready."
       
       # 2. Build AND Install to Simulator
       # --no-bundler prevents starting the metro server (we just want the binary installed)
