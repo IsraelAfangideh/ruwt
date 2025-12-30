@@ -73,13 +73,63 @@ jobs:
         run: bun tsc --noEmit
 
   # ------------------------------------------------------------------
+  # STEP 2.5: E2E TESTS (Deployment Gate)
+  # Runs E2E tests before deployment. Blocks deployment if tests fail.
+  # Philosophy: "Friction belongs in Deployment not in Development"
+  # ------------------------------------------------------------------
+  test-e2e:
+    needs: check-changes
+    if: needs.check-changes.outputs.mobile_any == 'true'
+    name: 🧪 E2E Tests (Deployment Gate)
+    runs-on: macos-latest
+    defaults:
+      run: { working-directory: ./code/mobile }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v1
+      - uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+      
+      # Install dependencies
+      - name: Install Dependencies
+        run: cd .. && bun install
+      
+      # 1. Boot the Simulator first (Required for run:ios)
+      - name: Boot Simulator
+        run: |
+          xcrun simctl boot "iPhone 15" || true
+          xcrun simctl list devices
+      
+      # 2. Build AND Install to Simulator
+      # --no-bundler prevents starting the metro server (we just want the binary installed)
+      - name: Build & Install App
+        run: |
+          EXPO_PUBLIC_MOCK_MODE=true npx expo run:ios --configuration Release --no-bundler --device "iPhone 15"
+        env:
+          EXPO_PUBLIC_MOCK_MODE: 'true'
+      
+      # Install Maestro
+      - name: Install Maestro
+        run: curl -Ls https://get.maestro.mobile.dev | bash
+      
+      # Run Maestro tests
+      - name: Run E2E Tests
+        run: |
+          EXPO_PUBLIC_MOCK_MODE=true maestro test .maestro
+        env:
+          EXPO_PUBLIC_MOCK_MODE: 'true'
+
+  # ------------------------------------------------------------------
   # STEP 3: WEB DEPLOYMENT
   # Now builds from mobile codebase using Expo Web
   # ------------------------------------------------------------------
   deploy-web:
-    needs: check-changes
+    needs: [check-changes, test-e2e]
     # Trigger on web OR mobile changes (since web is built from mobile)
-    if: needs.check-changes.outputs.web == 'true'
+    # Also requires E2E tests to pass if mobile code changed (test-e2e only runs if mobile_any is true)
+    if: needs.check-changes.outputs.web == 'true' && (needs.check-changes.outputs.mobile_any != 'true' || (needs.test-e2e.result == 'success' || needs.test-e2e.result == 'skipped'))
     name: 🌐 Deploy Web
     runs-on: ubuntu-latest
     steps:
@@ -141,9 +191,9 @@ jobs:
   # Runs ONLY if validation passed AND no native files changed
   # ------------------------------------------------------------------
   mobile-ota:
-    needs: [check-changes, validate-mobile]
-    # Logic: Mobile changed + Native didn't change + Validation passed
-    if: needs.check-changes.outputs.mobile_any == 'true' && needs.check-changes.outputs.mobile_native == 'false'
+    needs: [check-changes, validate-mobile, test-e2e]
+    # Logic: Mobile changed + Native didn't change + Validation passed + E2E tests passed
+    if: needs.check-changes.outputs.mobile_any == 'true' && needs.check-changes.outputs.mobile_native == 'false' && needs.test-e2e.result == 'success'
     name: ⚡️ Mobile OTA Update
     runs-on: ubuntu-latest
     defaults:
@@ -164,9 +214,9 @@ jobs:
   # Runs ONLY if validation passed AND native files changed
   # ------------------------------------------------------------------
   mobile-native:
-    needs: [check-changes, validate-mobile]
-    # Logic: Native changed + Validation passed
-    if: needs.check-changes.outputs.mobile_native == 'true'
+    needs: [check-changes, validate-mobile, test-e2e]
+    # Logic: Native changed + Validation passed + E2E tests passed
+    if: needs.check-changes.outputs.mobile_native == 'true' && needs.test-e2e.result == 'success'
     name: 🏗️ Mobile Native Build
     runs-on: ubuntu-latest
     defaults:

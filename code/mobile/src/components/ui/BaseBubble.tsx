@@ -13,10 +13,13 @@ export default function BaseBubble({ item, actionButtons }: Props) {
   const isUser = item.sender === 'user';
 
   return (
-    <View style={[
-      styles.container, 
-      isUser ? styles.userContainer : styles.runnerContainer
-    ]}>
+    <View 
+      style={[
+        styles.container, 
+        isUser ? styles.userContainer : styles.runnerContainer
+      ]}
+      testID={item.id === 'init' ? 'initial-message' : `message-${item.id}`}
+    >
       <View style={[
         styles.bubble,
         isUser 
@@ -27,12 +30,16 @@ export default function BaseBubble({ item, actionButtons }: Props) {
           borderColor: colors.accent,
         }]
       ]}>
-        <Text style={[
-          styles.messageText,
-          isUser 
-            ? { color: colors.userBubbleText } 
-            : { color: colors.runnerBubbleText }
-        ]}>{item.text}</Text>
+        <Text 
+          style={[
+            styles.messageText,
+            isUser 
+              ? { color: colors.userBubbleText } 
+              : { color: colors.runnerBubbleText }
+          ]}
+          accessibilityLabel={item.id === 'init' ? 'Send me a message' : item.text}
+          accessible={true}
+        >{item.text}</Text>
 
         {/* Action Buttons - provided by runner-specific components */}
         {item.isActionable && actionButtons && (

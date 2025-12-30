@@ -1,0 +1,19 @@
+appId: com.ruwt.app
+---
+- launchApp
+- assertVisible: "⚠️ MOCK MODE ACTIVE"
+- tapOn: "Chat"
+- waitForAnimationToEnd
+- assertVisible: "Send me a message"
+- tapOn:
+    id: "message-input"
+- inputText: "Hello, this is a test message"
+- hideKeyboard
+- tapOn: "Send"
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+# Keep scroll here because now we need to see the bottom bubbles
+- scroll 
+- assertVisible: "This feels a bit sharp. Let's add some warmth to it."
+- scroll
+- assertVisible: "I am feeling a bit overwhelmed right now, can we talk later?"

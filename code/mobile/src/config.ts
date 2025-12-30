@@ -1,3 +1,5 @@
+import { useMockMode, mockFetch } from './services/mockApi';
+
 const ENV = {
   dev: {
     apiUrl: 'http://localhost:3000', 
@@ -18,3 +20,6 @@ export const ENDPOINTS = {
   runners: `${API_URL}/runners`,
   rewriteChat: `${API_URL}/runners/rewrite/chat`,
 };
+
+// Export mock mode utilities
+export { useMockMode, mockFetch };
