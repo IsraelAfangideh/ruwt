@@ -10,5 +10,9 @@ code/mobile/maestro-debug/
 code/mobile/debug-*/
 code/mobile/debug-*
 
+# Build output
+code/web/dist/
+code/mobile/dist/
+
 # Cursor stuff
 /.cursor
