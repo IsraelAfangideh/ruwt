@@ -5,11 +5,7 @@
 /privacy    /privacy.html   200
 /terms      /terms.html     200
 /delete     /delete.html    200
-
-# Marketing section anchors redirect to about page
-/concept    /about#concept      302
-/spaces     /about#spaces       302
-/philosophy /about#philosophy   302
+/child-safety    /child-safety.html   200
 
 # Catch-all for SPA (React app handles all other routes)
 /*    /index.html   200

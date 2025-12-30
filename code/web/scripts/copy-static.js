@@ -19,6 +19,7 @@ const staticFiles = [
   'privacy.html',
   'terms.html',
   'delete.html',
+  'child-safety.html',
   '404.html',
   '_redirects',
   '_headers',
