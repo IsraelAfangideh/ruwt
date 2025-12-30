@@ -53,22 +53,7 @@ export default function ReportModal({ visible, onClose, onSubmit, runnerName }: 
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <View style={[styles.header, { borderBottomColor: colors.border }]}>
-          <TouchableOpacity onPress={onClose}>
-            <Text style={[styles.cancelButton, { color: colors.accent }]}>Cancel</Text>
-          </TouchableOpacity>
           <Text style={[styles.title, { color: colors.text }]}>Report Issue</Text>
-          <TouchableOpacity 
-            onPress={handleSubmit}
-            disabled={!selectedReason}
-          >
-            <Text style={[
-              styles.submitButton, 
-              { color: colors.accent },
-              !selectedReason && { color: colors.textSubtle }
-            ]}>
-              Submit
-            </Text>
-          </TouchableOpacity>
         </View>
 
         <ScrollView style={styles.content}>
@@ -119,6 +104,35 @@ export default function ReportModal({ visible, onClose, onSubmit, runnerName }: 
             and will take appropriate action.
           </Text>
         </ScrollView>
+
+        <View style={[styles.footer, { borderTopColor: colors.border }]}>
+          <TouchableOpacity 
+            onPress={onClose} 
+            testID="report-cancel-button"
+            style={[styles.footerButton, { backgroundColor: colors.bgElevated }]}
+          >
+            <Text style={[styles.cancelButtonText, { color: colors.text }]}>Cancel</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            onPress={handleSubmit}
+            disabled={!selectedReason}
+            testID="report-submit-button"
+            accessibilityLabel="Send"
+            style={[
+              styles.footerButton, 
+              { backgroundColor: colors.accent },
+              !selectedReason && { backgroundColor: colors.bgElevated }
+            ]}
+          >
+            <Text style={[
+              styles.submitButtonText, 
+              { color: colors.userBubbleText },
+              !selectedReason && { color: colors.textSubtle }
+            ]}>
+              Send
+            </Text>
+          </TouchableOpacity>
+        </View>
       </KeyboardAvoidingView>
     </Modal>
   );
@@ -129,20 +143,11 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
     padding: 16,
     borderBottomWidth: 1,
   },
   title: {
-    fontSize: 17,
-    fontWeight: '600',
-  },
-  cancelButton: {
-    fontSize: 17,
-  },
-  submitButton: {
     fontSize: 17,
     fontWeight: '600',
   },
@@ -181,5 +186,25 @@ const styles = StyleSheet.create({
     fontSize: 13,
     marginTop: 20,
     lineHeight: 18,
+  },
+  footer: {
+    flexDirection: 'row',
+    padding: 16,
+    gap: 12,
+    borderTopWidth: 1,
+  },
+  footerButton: {
+    flex: 1,
+    padding: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  cancelButtonText: {
+    fontSize: 17,
+    fontWeight: '600',
+  },
+  submitButtonText: {
+    fontSize: 17,
+    fontWeight: '600',
   },
 });
