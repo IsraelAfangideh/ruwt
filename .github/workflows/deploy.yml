@@ -5,6 +5,30 @@ on:
     branches:
       - main
   workflow_dispatch:
+    inputs:
+      force_web:
+        description: 'Force web deployment'
+        required: false
+        type: boolean
+        default: false
+      force_api:
+        description: 'Force API deployment'
+        required: false
+        type: boolean
+        default: false
+      force_native:
+        description: 'Force native mobile build'
+        required: false
+        type: boolean
+        default: false
+      force_ota:
+        description: 'Force mobile OTA update'
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
 
 jobs:
   # ------------------------------------------------------------------
@@ -13,15 +37,37 @@ jobs:
   check-changes:
     runs-on: ubuntu-latest
     outputs:
-      mobile_native: ${{ steps.filter.outputs.mobile_native }}
-      mobile_any: ${{ steps.filter.outputs.mobile_any }}
-      web: ${{ steps.filter.outputs.web }}
-      api: ${{ steps.filter.outputs.api }}
+      mobile_native: ${{ steps.override.outputs.mobile_native }}
+      mobile_any: ${{ steps.override.outputs.mobile_any }}
+      web: ${{ steps.override.outputs.web }}
+      api: ${{ steps.override.outputs.api }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Determine Diff Base
+        id: base
+        run: |
+          if git rev-parse --verify production-mobile-native-last-success >/dev/null 2>&1; then
+            BASE_REF=$(git rev-parse production-mobile-native-last-success)
+            echo "base_ref=$BASE_REF" >> $GITHUB_OUTPUT
+            echo "Using tag production-mobile-native-last-success as base: $BASE_REF"
+          else
+            # Try github.event.before first (for push events), then fallback to HEAD~1
+            if [ -n "${{ github.event.before }}" ] && git rev-parse --verify "${{ github.event.before }}" >/dev/null 2>&1; then
+              BASE_REF="${{ github.event.before }}"
+            else
+              BASE_REF="HEAD~1"
+            fi
+            echo "base_ref=$BASE_REF" >> $GITHUB_OUTPUT
+            echo "Tag not found, using fallback: $BASE_REF"
+          fi
+      
       - uses: dorny/paths-filter@v2
         id: filter
         with:
+          base: ${{ steps.base.outputs.base_ref }}
           filters: |
             web:
               - 'code/web/**'
@@ -46,6 +92,49 @@ jobs:
               - 'code/mobile/eas.json'
             mobile_any:
               - 'code/mobile/**'
+      
+      - name: Manual Override
+        id: override
+        run: |
+          # Start with filter outputs
+          WEB="${{ steps.filter.outputs.web }}"
+          API="${{ steps.filter.outputs.api }}"
+          MOBILE_NATIVE="${{ steps.filter.outputs.mobile_native }}"
+          MOBILE_ANY="${{ steps.filter.outputs.mobile_any }}"
+          
+          # Apply manual overrides
+          if [ "${{ github.event.inputs.force_web }}" == "true" ]; then
+            WEB="true"
+            echo "Manual override: force_web enabled"
+          fi
+          
+          if [ "${{ github.event.inputs.force_api }}" == "true" ]; then
+            API="true"
+            echo "Manual override: force_api enabled"
+          fi
+          
+          if [ "${{ github.event.inputs.force_native }}" == "true" ]; then
+            MOBILE_NATIVE="true"
+            MOBILE_ANY="true"
+            echo "Manual override: force_native enabled"
+          fi
+          
+          if [ "${{ github.event.inputs.force_ota }}" == "true" ]; then
+            MOBILE_ANY="true"
+            echo "Manual override: force_ota enabled"
+          fi
+          
+          # Output final values
+          echo "web=$WEB" >> $GITHUB_OUTPUT
+          echo "api=$API" >> $GITHUB_OUTPUT
+          echo "mobile_native=$MOBILE_NATIVE" >> $GITHUB_OUTPUT
+          echo "mobile_any=$MOBILE_ANY" >> $GITHUB_OUTPUT
+          
+          echo "Final outputs:"
+          echo "  web: $WEB"
+          echo "  api: $API"
+          echo "  mobile_native: $MOBILE_NATIVE"
+          echo "  mobile_any: $MOBILE_ANY"
 
   # ------------------------------------------------------------------
   # STEP 2: PRE-FLIGHT CHECK (The Parachute)
@@ -96,11 +185,27 @@ jobs:
       - name: Install Dependencies
         run: cd .. && bun install
       
-      # 1. Boot the Simulator first (Required for run:ios)
-      - name: Boot Simulator
+      # 1. ROBUST SIMULATOR SETUP
+      # We explicitly create the device so we KNOW it exists.
+      - name: Setup Simulator
         run: |
+          # List available device types to verify iPhone 15 is available
+          xcrun simctl list devicetypes | grep -i "iphone 15" || echo "Warning: iPhone 15 device type not found, listing all available types:"
+          xcrun simctl list devicetypes | grep -i "iphone"
+          
+          # Create "iPhone 15" if it doesn't exist
+          if ! xcrun simctl list devices | grep -q "iPhone 15"; then
+            echo "Creating iPhone 15 simulator..."
+            xcrun simctl create "iPhone 15" "com.apple.CoreSimulator.SimDeviceType.iPhone-15" "com.apple.CoreSimulator.SimRuntime.iOS-17-0" || \
+            xcrun simctl create "iPhone 15" "com.apple.CoreSimulator.SimDeviceType.iPhone-15" "com.apple.CoreSimulator.SimRuntime.iOS-18-0" || \
+            xcrun simctl create "iPhone 15" "iPhone 15" "iOS"
+          fi
+          
+          # Boot it
           xcrun simctl boot "iPhone 15" || true
-          xcrun simctl list devices
+          
+          # Wait for it to be fully ready (Prevents timeout errors)
+          xcrun simctl bootstatus "iPhone 15"
       
       # 2. Build AND Install to Simulator
       # --no-bundler prevents starting the metro server (we just want the binary installed)
@@ -258,3 +363,13 @@ jobs:
           APP_STORE_CONNECT_API_KEY_KEY: ${{ secrets.APP_STORE_CONNECT_API_KEY_KEY }}
           APP_STORE_CONNECT_API_KEY_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ISSUER_ID }}
           APP_STORE_CONNECT_API_KEY_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_KEY_ID }}
+
+      # 4. STATE: Tag successful native build
+      # This tag is used as the diff base for future change detection
+      - name: 📌 Tag Successful Native Build
+        if: success()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -f production-mobile-native-last-success
+          git push origin production-mobile-native-last-success --force
