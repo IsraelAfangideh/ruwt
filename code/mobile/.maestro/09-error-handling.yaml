@@ -1,0 +1,24 @@
+appId: com.ruwt.app
+---
+- launchApp
+- assertVisible: "⚠️ MOCK MODE ACTIVE"
+- tapOn: "Chat"
+- waitForAnimationToEnd
+
+# Verify we are on the screen
+- assertVisible: ".*end me a message.*"
+
+- tapOn:
+    id: "message-input"
+
+- inputText: "Big error test"
+
+# Dismiss keyboard to find the Send button reliably
+- hideKeyboard
+
+- tapOn: "Send"
+- waitForAnimationToEnd
+
+# Assertions
+- assertVisible: "Error"
+- assertVisible: "Failed to send message"

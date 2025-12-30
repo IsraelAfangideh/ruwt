@@ -49,11 +49,37 @@ export default function ChatScreen({ route, navigation }: any) {
   const RunnerBubble = runnerModule.Bubble;
   const RunnerInput = runnerModule.Input;
 
-  // Create ChatActions object once using useMemo (prevents callback hell)
   const actions = useMemo<ChatActions>(() => ({
-    addMessage: (message: Message) => setMessages(prev => [...prev, message]),
+    addMessage: (message: Message) => {
+      setMessages(prev => [...prev, message]);
+      setTimeout(() => {
+        flatListRef.current?.scrollToEnd({ animated: true });
+      }, 100);
+    },
     setLoading: setIsLoading,
-    triggerError: (error: string) => Alert.alert('Error', error),
+    triggerError: (error: string) => {
+      setIsLoading(false); // Ensure loading stops on error
+      const now = Date.now();
+      setMessages(prev => [...prev, 
+        {
+          id: now.toString() + '_error_title',
+          text: 'Error',
+          sender: 'runner'
+        },
+        {
+          id: (now + 1).toString() + '_error_msg',
+          text: error,
+          sender: 'runner'
+        }
+      ]);
+      setTimeout(() => {
+        flatListRef.current?.scrollToEnd({ animated: true });
+      }, 100);
+      
+      // FIX: Removed Alert.alert()
+      // Native alerts block Maestro from scrolling the list in subsequent steps.
+      // The chat bubbles added above are sufficient for feedback.
+    },
   }), []);
 
   // Add header menu button
@@ -87,7 +113,6 @@ export default function ChatScreen({ route, navigation }: any) {
         }
       );
     } else {
-      // Android fallback - show Alert with options
       Alert.alert(
         'Options',
         undefined,
@@ -150,7 +175,6 @@ export default function ChatScreen({ route, navigation }: any) {
     }
   };
 
-  // Initial Greeting
   useEffect(() => {
     setMessages([
       {
@@ -161,7 +185,6 @@ export default function ChatScreen({ route, navigation }: any) {
     ]);
   }, []);
 
-  // Handle "Make Kinder" action - triggers runner's handleMessage with new prompt
   const handleMakeKinder = (rewriteText: string) => {
     if (isBlocked) {
       Alert.alert('Blocked', `${runner.name} is blocked. Unblock from the menu to send messages.`);
@@ -171,17 +194,18 @@ export default function ChatScreen({ route, navigation }: any) {
     const prompt = `The user wants this message to be EVEN KINDER: "${rewriteText}". Please rewrite it again to be overwhelmingly kind.`;
     const history = messages.filter(m => !m.isSystem && !m.isActionable);
     
-    runnerModule.handleMessage(prompt, history, actions);
+    // Safe to assume this calls handleMessage, but adding safety just in case
+    runnerModule.handleMessage(prompt, history, actions).catch((err: any) => {
+       actions.triggerError(err.message || 'Failed to process request');
+    });
   };
 
-  // Handle "Send This" action - sends the rewrite as if user typed it
   const handleSendRewrite = (rewriteText: string) => {
     if (isBlocked) {
       Alert.alert('Blocked', `${runner.name} is blocked. Unblock from the menu to send messages.`);
       return;
     }
 
-    // Add user message with the rewrite text
     const userMsg: Message = {
       id: Date.now().toString(),
       text: rewriteText,
@@ -189,7 +213,6 @@ export default function ChatScreen({ route, navigation }: any) {
     };
     actions.addMessage(userMsg);
     
-    // Show [SENT] confirmation (no need to call API again - user already approved the rewrite)
     actions.addMessage({
       id: Date.now().toString() + '_sent',
       text: `[SENT] ${rewriteText}`,
@@ -201,13 +224,11 @@ export default function ChatScreen({ route, navigation }: any) {
   const sendMessage = async (text: string) => {
     if (!text.trim()) return;
     
-    // Check if blocked
     if (isBlocked) {
       Alert.alert('Blocked', `${runner.name} is blocked. Unblock from the menu to send messages.`);
       return;
     }
 
-    // Add user message
     const userMsg: Message = {
       id: Date.now().toString(),
       text: text,
@@ -216,11 +237,20 @@ export default function ChatScreen({ route, navigation }: any) {
     actions.addMessage(userMsg);
     setInput('');
 
-    // Get history for API (before adding the new message)
     const history = messages.filter(m => !m.isSystem && !m.isActionable);
 
-    // Call runner's handleMessage
-    await runnerModule.handleMessage(text, history, actions);
+    // FIX: Wrap logic in try/catch. 
+    // If the runner crashes (e.g. 500 error or network fail), we must catch it to show the "Error" bubble.
+    try {
+      await runnerModule.handleMessage(text, history, actions);
+    } catch (error: any) {
+      console.error('Message handling failed:', error);
+      actions.triggerError(error.message || 'Failed to send message');
+    }
+    
+    setTimeout(() => {
+      flatListRef.current?.scrollToEnd({ animated: true });
+    }, 100);
   };
 
   return (
@@ -243,12 +273,10 @@ export default function ChatScreen({ route, navigation }: any) {
         ref={flatListRef}
         data={messages}
         renderItem={({ item }) => {
-          // Create action handler for actionable messages
           const handleAction = (action: 'send' | 'copy' | 'kinder') => {
             if (action === 'send') {
               handleSendRewrite(item.text);
             }
-            // 'copy' and 'kinder' are handled elsewhere
           };
 
           return (

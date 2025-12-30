@@ -1,0 +1,10 @@
+appId: com.ruwt.app
+---
+- launchApp
+- assertVisible: "⚠️ MOCK MODE ACTIVE"
+- assertVisible: "Ruwt"
+- assertVisible: "Rewrite"
+# Note: About screen navigation test is simplified
+# Full navigation test would require platform-specific handling
+# (web uses header button, mobile may need deep link)
+

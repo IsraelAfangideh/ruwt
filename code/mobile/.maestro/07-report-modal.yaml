@@ -1,0 +1,21 @@
+appId: com.ruwt.app
+---
+- launchApp
+- assertVisible: "⚠️ MOCK MODE ACTIVE"
+- tapOn: "Chat"
+- waitForAnimationToEnd
+- assertVisible: "•••"
+- tapOn: "•••"
+- tapOn: "Report Issue"
+- waitForAnimationToEnd
+- assertVisible: "Report an issue with Rewrite"
+- assertVisible: "What's the problem?"
+- tapOn: "Inappropriate AI response"
+- waitForAnimationToEnd
+- assertVisible: "Additional details"
+- inputText: "Test report details"
+- tapOn: "Submit"
+- assertVisible: "Report Submitted"
+- assertVisible: "Thank you for your report. We will review it within 24 hours."
+
+

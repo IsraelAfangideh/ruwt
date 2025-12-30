@@ -99,7 +99,11 @@ export default function ReportModal({ visible, onClose, onSubmit, runnerName }: 
             </TouchableOpacity>
           ))}
 
-          <Text style={[styles.label, { color: colors.text }]}>Additional details (optional)</Text>
+          <Text 
+            style={[styles.label, { color: colors.text }]}
+            accessibilityLabel="Additional details"
+            accessible={true}
+          >Additional details (optional)</Text>
           <TextInput
             style={[styles.textInput, {
               borderColor: colors.borderStrong,
