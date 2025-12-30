@@ -41,10 +41,13 @@ export async function chatWithRewrite(payload: RewriteChatRequest): Promise<Rewr
     // 2. Generate System Prompt using Shared Logic
     const systemInstruction = generateRewritePrompt(runner.name, runner.systemPrompt, memoryContent);
 
-    // 3. Call AI
+    // 3. Call AI with JSON Enforcement
     const model = genAI.getGenerativeModel({ 
       model: 'gemini-2.0-flash-exp',
-      systemInstruction: systemInstruction
+      systemInstruction: systemInstruction,
+      generationConfig: {
+        responseMimeType: "application/json", // <--- THE FIX: Forces strict JSON output
+      }
     });
 
     // Valid History: Must start with 'user'. Filter out leading 'model' messages.
@@ -65,29 +68,22 @@ export async function chatWithRewrite(payload: RewriteChatRequest): Promise<Rewr
     const result = await chat.sendMessage(message);
     const responseText = result.response.text();
 
-    // 4. Parse Response for Blocking Logic
-    // New Format: [EXPLANATION] ... [REWRITE] ... [END]
-    
-    let explanation = undefined;
-    let proposedRewrite = undefined;
+    // 4. Parse JSON Response (Robust)
+    let explanation: string | undefined;
+    let proposedRewrite: string | undefined;
 
-    // Check for new format first
-    if (responseText.includes('[EXPLANATION]') && responseText.includes('[REWRITE]')) {
-      const expMatch = responseText.match(/\[EXPLANATION\]\s*([\s\S]*?)\s*\[REWRITE\]/);
-      const rewMatch = responseText.match(/\[REWRITE\]\s*([\s\S]*?)(\s*\[END\]|$)/);
-      
-      explanation = expMatch ? expMatch[1].trim() : undefined;
-      proposedRewrite = rewMatch ? rewMatch[1].trim() : undefined;
-    } 
-    // Fallback to old format (robustness)
-    else if (responseText.includes('[BLOCKED]')) {
-       const parts = responseText.split('Proposed Rewrite:');
-       explanation = parts[0].replace('[BLOCKED]', '').trim();
-       const match = responseText.match(/Proposed Rewrite: "(.*)"/);
-       proposedRewrite = match ? match[1] : undefined;
+    try {
+      const jsonResponse = JSON.parse(responseText);
+      explanation = jsonResponse.explanation;
+      proposedRewrite = jsonResponse.rewrite;
+    } catch (parseError) {
+      console.error("Failed to parse AI JSON response:", responseText);
+      // Fallback: If JSON fails, treat the whole text as the explanation (safeguard)
+      explanation = "I had trouble processing that specifically, but let's try to be kind.";
+      proposedRewrite = responseText; 
     }
 
-    // It's considered "Blocked"/Intercepted if we have a rewrite
+    // It's considered "Blocked"/Intercepted if we have a rewrite (which we always should now)
     const isBlocked = !!proposedRewrite;
 
     return {
@@ -102,4 +98,3 @@ export async function chatWithRewrite(payload: RewriteChatRequest): Promise<Rewr
     throw error;
   }
 }
-
