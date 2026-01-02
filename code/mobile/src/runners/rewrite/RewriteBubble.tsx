@@ -1,5 +1,6 @@
 import React from 'react';
-import { Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { Text, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Feather } from '@expo/vector-icons';
 import BaseBubble from '../../components/ui/BaseBubble';
 import { Message } from '../../types/chat';
 import { useColors } from '../../theme';
@@ -31,9 +32,16 @@ export default function RewriteBubble({ item, onMakeKinder, isCopied }: Props) {
         onPress={() => item.onAction?.('copy')}
         disabled={isCopied}
       >
-        <Text style={[styles.actionBtnTextSecondary, { color: isCopied ? colors.success : colors.copyButtonText }]}>
-          {isCopied ? '✓ Copied' : 'Copy'}
-        </Text>
+        <View style={styles.buttonContent}>
+          <Feather 
+            name={isCopied ? 'check' : 'copy'} 
+            size={14} 
+            color={isCopied ? colors.success : colors.copyButtonText} 
+          />
+          <Text style={[styles.actionBtnTextSecondary, { color: isCopied ? colors.success : colors.copyButtonText }]}>
+            {isCopied ? 'Copied' : 'Copy'}
+          </Text>
+        </View>
       </TouchableOpacity>
       <TouchableOpacity 
         style={[styles.actionBtnDestructive, { 
@@ -60,6 +68,11 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 14,
     borderRadius: 8,
+  },
+  buttonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
   },
   actionBtnDestructive: {
     borderWidth: 1,
