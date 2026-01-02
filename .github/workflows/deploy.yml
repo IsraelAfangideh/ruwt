@@ -289,14 +289,13 @@ jobs:
         run: node scripts/copy-static.js
         working-directory: ./code/web
       
-      # Deploy the combined output
+      # Deploy to Cloudflare Pages using Wrangler
       - name: Deploy to Cloudflare Pages
-        uses: cloudflare/pages-action@v1
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          projectName: ruwt
-          directory: code/web/dist
+        run: npx wrangler pages deploy dist --project-name=ruwt
+        working-directory: ./code/web
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
   # ------------------------------------------------------------------
   # STEP 4: API DEPLOYMENT
