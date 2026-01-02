@@ -7,9 +7,10 @@ import { useColors } from '../../theme';
 type Props = {
   item: Message;
   onMakeKinder?: (rewriteText: string) => void;
+  isCopied?: boolean;
 };
 
-export default function RewriteBubble({ item, onMakeKinder }: Props) {
+export default function RewriteBubble({ item, onMakeKinder, isCopied }: Props) {
   const colors = useColors();
 
   // Build action buttons for rewrite-specific actions
@@ -23,13 +24,16 @@ export default function RewriteBubble({ item, onMakeKinder }: Props) {
       </TouchableOpacity>
       <TouchableOpacity 
         style={[styles.actionBtnSecondary, { 
-          backgroundColor: colors.copyButton,
-          borderColor: colors.copyButtonBorder,
+          backgroundColor: isCopied ? colors.successBg : colors.copyButton,
+          borderColor: isCopied ? colors.success : colors.copyButtonBorder,
           borderWidth: 1,
         }]} 
         onPress={() => item.onAction?.('copy')}
+        disabled={isCopied}
       >
-        <Text style={[styles.actionBtnTextSecondary, { color: colors.copyButtonText }]}>Copy</Text>
+        <Text style={[styles.actionBtnTextSecondary, { color: isCopied ? colors.success : colors.copyButtonText }]}>
+          {isCopied ? '✓ Copied' : 'Copy'}
+        </Text>
       </TouchableOpacity>
       <TouchableOpacity 
         style={[styles.actionBtnDestructive, { 

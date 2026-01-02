@@ -10,6 +10,7 @@ import {
   Text,
   ActionSheetIOS,
 } from 'react-native';
+import * as Clipboard from 'expo-clipboard';
 import { Message } from '../types/chat';
 import { ChatActions } from '../types/runner';
 import { getRunnerModule } from '../runners';
@@ -33,6 +34,7 @@ export default function ChatScreen({ route, navigation }: any) {
   const [isLoading, setIsLoading] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
   const [isBlocked, setIsBlocked] = useState(false);
+  const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
   
   const flatListRef = useRef<FlatList>(null);
 
@@ -273,9 +275,13 @@ export default function ChatScreen({ route, navigation }: any) {
         ref={flatListRef}
         data={messages}
         renderItem={({ item }) => {
-          const handleAction = (action: 'send' | 'copy' | 'kinder') => {
+          const handleAction = async (action: 'send' | 'copy' | 'kinder') => {
             if (action === 'send') {
               handleSendRewrite(item.text);
+            } else if (action === 'copy') {
+              await Clipboard.setStringAsync(item.text);
+              setCopiedMessageId(item.id);
+              setTimeout(() => setCopiedMessageId(null), 2500);
             }
           };
 
@@ -286,6 +292,7 @@ export default function ChatScreen({ route, navigation }: any) {
                 onAction: item.isActionable ? handleAction : item.onAction,
               }} 
               onMakeKinder={handleMakeKinder}
+              isCopied={copiedMessageId === item.id}
             />
           );
         }}
