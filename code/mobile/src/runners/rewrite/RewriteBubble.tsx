@@ -21,7 +21,10 @@ export default function RewriteBubble({ item, onMakeKinder, isCopied }: Props) {
         style={[styles.actionBtn, { backgroundColor: colors.sendButton }]} 
         onPress={() => item.onAction?.('send')}
       >
-        <Text style={[styles.actionBtnText, { color: colors.sendButtonText }]}>Send This</Text>
+        <View style={styles.buttonContent}>
+          <Feather name="send" size={14} color={colors.sendButtonText} />
+          <Text style={[styles.actionBtnText, { color: colors.sendButtonText }]}>Send This</Text>
+        </View>
       </TouchableOpacity>
       <TouchableOpacity 
         style={[styles.actionBtnSecondary, { 
