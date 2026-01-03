@@ -291,6 +291,69 @@ jobs:
         run: node scripts/copy-static.js
         working-directory: ./code/web
       
+      # DEBUG: Test Cloudflare API directly (H3, H6, H7)
+      - name: Debug Cloudflare API Access
+        run: |
+          echo "=== Testing Cloudflare API Directly ==="
+          
+          echo "H3/H6: Testing if token can access the account..."
+          ACCOUNT_RESPONSE=$(curl -s -w "\n%{http_code}" \
+            "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID" \
+            -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            -H "Content-Type: application/json")
+          
+          ACCOUNT_HTTP_CODE=$(echo "$ACCOUNT_RESPONSE" | tail -n1)
+          ACCOUNT_BODY=$(echo "$ACCOUNT_RESPONSE" | sed '$d')
+          echo "Account API HTTP Code: $ACCOUNT_HTTP_CODE"
+          echo "Account API Response: $ACCOUNT_BODY"
+          
+          if [ "$ACCOUNT_HTTP_CODE" = "200" ]; then
+            echo "✓ H6 REJECTED: Token can access the account"
+          else
+            echo "❌ H6 CONFIRMED: Token cannot access this account (code: $ACCOUNT_HTTP_CODE)"
+          fi
+          
+          echo ""
+          echo "H7: Testing if Pages project 'ruwt' exists..."
+          PROJECT_RESPONSE=$(curl -s -w "\n%{http_code}" \
+            "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects/ruwt" \
+            -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            -H "Content-Type: application/json")
+          
+          PROJECT_HTTP_CODE=$(echo "$PROJECT_RESPONSE" | tail -n1)
+          PROJECT_BODY=$(echo "$PROJECT_RESPONSE" | sed '$d')
+          echo "Project API HTTP Code: $PROJECT_HTTP_CODE"
+          echo "Project API Response: $PROJECT_BODY"
+          
+          if [ "$PROJECT_HTTP_CODE" = "200" ]; then
+            echo "✓ H7 REJECTED: Project 'ruwt' exists and is accessible"
+          else
+            echo "❌ H7 CONFIRMED: Cannot access project 'ruwt' (code: $PROJECT_HTTP_CODE)"
+          fi
+          
+          echo ""
+          echo "H3: Testing Pages permission by listing projects..."
+          LIST_RESPONSE=$(curl -s -w "\n%{http_code}" \
+            "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects" \
+            -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            -H "Content-Type: application/json")
+          
+          LIST_HTTP_CODE=$(echo "$LIST_RESPONSE" | tail -n1)
+          LIST_BODY=$(echo "$LIST_RESPONSE" | sed '$d')
+          echo "List Projects HTTP Code: $LIST_HTTP_CODE"
+          echo "List Projects Response: $LIST_BODY"
+          
+          if [ "$LIST_HTTP_CODE" = "200" ]; then
+            echo "✓ H3 REJECTED: Token has Pages read permission"
+          else
+            echo "❌ H3 CONFIRMED: Token lacks Pages permission (code: $LIST_HTTP_CODE)"
+          fi
+          
+          echo "=== End API Debug ==="
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      
       # DEBUG: Check secrets are properly configured (H1, H2, H5)
       - name: Debug Secrets Configuration
         run: |
