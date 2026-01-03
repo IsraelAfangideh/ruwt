@@ -256,12 +256,10 @@ jobs:
   # Now builds from mobile codebase using Expo Web
   # ------------------------------------------------------------------
   deploy-web:
-    needs: [check-changes]
-    # TEMPORARILY bypassing E2E tests to debug Cloudflare deployment
-    # TODO: Restore after Cloudflare issue is fixed:
-    # needs: [check-changes, test-e2e]
-    # if: needs.check-changes.outputs.web == 'true' && (needs.check-changes.outputs.mobile_any != 'true' || (needs.test-e2e.result == 'success' || needs.test-e2e.result == 'skipped'))
-    if: needs.check-changes.outputs.web == 'true'
+    needs: [check-changes, test-e2e]
+    # Trigger on web OR mobile changes (since web is built from mobile)
+    # Also requires E2E tests to pass if mobile code changed (test-e2e only runs if mobile_any is true)
+    if: needs.check-changes.outputs.web == 'true' && (needs.check-changes.outputs.mobile_any != 'true' || (needs.test-e2e.result == 'success' || needs.test-e2e.result == 'skipped'))
     name: 🌐 Deploy Web
     runs-on: ubuntu-latest
     steps:
@@ -290,116 +288,6 @@ jobs:
       - name: Prepare Deployment
         run: node scripts/copy-static.js
         working-directory: ./code/web
-      
-      # DEBUG: Test Cloudflare API directly (H3, H6, H7)
-      - name: Debug Cloudflare API Access
-        run: |
-          echo "=== Testing Cloudflare API Directly ==="
-          
-          echo "H3/H6: Testing if token can access the account..."
-          ACCOUNT_RESPONSE=$(curl -s -w "\n%{http_code}" \
-            "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID" \
-            -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
-            -H "Content-Type: application/json")
-          
-          ACCOUNT_HTTP_CODE=$(echo "$ACCOUNT_RESPONSE" | tail -n1)
-          ACCOUNT_BODY=$(echo "$ACCOUNT_RESPONSE" | sed '$d')
-          echo "Account API HTTP Code: $ACCOUNT_HTTP_CODE"
-          echo "Account API Response: $ACCOUNT_BODY"
-          
-          if [ "$ACCOUNT_HTTP_CODE" = "200" ]; then
-            echo "✓ H6 REJECTED: Token can access the account"
-          else
-            echo "❌ H6 CONFIRMED: Token cannot access this account (code: $ACCOUNT_HTTP_CODE)"
-          fi
-          
-          echo ""
-          echo "H7: Testing if Pages project 'ruwt' exists..."
-          PROJECT_RESPONSE=$(curl -s -w "\n%{http_code}" \
-            "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects/ruwt" \
-            -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
-            -H "Content-Type: application/json")
-          
-          PROJECT_HTTP_CODE=$(echo "$PROJECT_RESPONSE" | tail -n1)
-          PROJECT_BODY=$(echo "$PROJECT_RESPONSE" | sed '$d')
-          echo "Project API HTTP Code: $PROJECT_HTTP_CODE"
-          echo "Project API Response: $PROJECT_BODY"
-          
-          if [ "$PROJECT_HTTP_CODE" = "200" ]; then
-            echo "✓ H7 REJECTED: Project 'ruwt' exists and is accessible"
-          else
-            echo "❌ H7 CONFIRMED: Cannot access project 'ruwt' (code: $PROJECT_HTTP_CODE)"
-          fi
-          
-          echo ""
-          echo "H3: Testing Pages permission by listing projects..."
-          LIST_RESPONSE=$(curl -s -w "\n%{http_code}" \
-            "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects" \
-            -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
-            -H "Content-Type: application/json")
-          
-          LIST_HTTP_CODE=$(echo "$LIST_RESPONSE" | tail -n1)
-          LIST_BODY=$(echo "$LIST_RESPONSE" | sed '$d')
-          echo "List Projects HTTP Code: $LIST_HTTP_CODE"
-          echo "List Projects Response: $LIST_BODY"
-          
-          if [ "$LIST_HTTP_CODE" = "200" ]; then
-            echo "✓ H3 REJECTED: Token has Pages read permission"
-          else
-            echo "❌ H3 CONFIRMED: Token lacks Pages permission (code: $LIST_HTTP_CODE)"
-          fi
-          
-          echo "=== End API Debug ==="
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-      
-      # DEBUG: Check secrets are properly configured (H1, H2, H5)
-      - name: Debug Secrets Configuration
-        run: |
-          echo "=== Hypothesis Testing ==="
-          echo "H1/H2/H5: Checking if secrets are set and their lengths"
-          
-          if [ -z "$CLOUDFLARE_API_TOKEN" ]; then
-            echo "❌ H5 CONFIRMED: CLOUDFLARE_API_TOKEN is EMPTY or NOT SET"
-          else
-            TOKEN_LEN=${#CLOUDFLARE_API_TOKEN}
-            echo "✓ CLOUDFLARE_API_TOKEN is set, length: $TOKEN_LEN"
-            # Check for whitespace (H1)
-            TRIMMED_TOKEN=$(echo "$CLOUDFLARE_API_TOKEN" | tr -d '[:space:]')
-            TRIMMED_LEN=${#TRIMMED_TOKEN}
-            if [ "$TOKEN_LEN" != "$TRIMMED_LEN" ]; then
-              echo "❌ H1 CONFIRMED: Token has whitespace! Original: $TOKEN_LEN, Trimmed: $TRIMMED_LEN"
-            else
-              echo "✓ H1 REJECTED: No whitespace detected in token"
-            fi
-          fi
-          
-          if [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
-            echo "❌ H5 CONFIRMED: CLOUDFLARE_ACCOUNT_ID is EMPTY or NOT SET"
-          else
-            ACCT_LEN=${#CLOUDFLARE_ACCOUNT_ID}
-            echo "✓ CLOUDFLARE_ACCOUNT_ID is set, length: $ACCT_LEN"
-            # Account ID should be 32 chars
-            if [ "$ACCT_LEN" != "32" ]; then
-              echo "⚠️ H4 POSSIBLE: Account ID length is $ACCT_LEN (expected 32)"
-            else
-              echo "✓ H4 partial check: Account ID length is correct (32)"
-            fi
-            # Check for whitespace (H1)
-            TRIMMED_ACCT=$(echo "$CLOUDFLARE_ACCOUNT_ID" | tr -d '[:space:]')
-            TRIMMED_ACCT_LEN=${#TRIMMED_ACCT}
-            if [ "$ACCT_LEN" != "$TRIMMED_ACCT_LEN" ]; then
-              echo "❌ H1 CONFIRMED: Account ID has whitespace! Original: $ACCT_LEN, Trimmed: $TRIMMED_ACCT_LEN"
-            else
-              echo "✓ H1 REJECTED: No whitespace detected in account ID"
-            fi
-          fi
-          
-          echo "=== End Debug ==="
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       
       # Deploy to Cloudflare Pages using Wrangler
       - name: Deploy to Cloudflare Pages
