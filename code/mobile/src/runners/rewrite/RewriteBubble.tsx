@@ -1,7 +1,17 @@
+/**
+ * RewriteBubble - The "smart" runner-specific bubble component
+ * 
+ * This component contains the business logic for the Rewrite runner:
+ * - Decides what action buttons to show for runner messages (Send, Copy, Make Kinder)
+ * - Decides what action buttons to show for user messages (Repeat, Copy)
+ * 
+ * It imports BaseBubble (the shell) and injects runner-specific content.
+ */
 import React from 'react';
 import { Text, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import BaseBubble from '../../components/ui/BaseBubble';
+import UserActionBar, { UserAction } from '../../components/ui/UserActionBar';
 import { Message } from '../../types/chat';
 import { useColors } from '../../theme';
 
@@ -9,13 +19,29 @@ type Props = {
   item: Message;
   onMakeKinder?: (rewriteText: string) => void;
   isCopied?: boolean;
+  // User message interaction
+  onUserLongPress?: (item: Message) => void;
+  isSelected?: boolean;
+  onRepeat?: () => void;
+  onCopy?: () => void;
+  onDismiss?: () => void;
 };
 
-export default function RewriteBubble({ item, onMakeKinder, isCopied }: Props) {
+export default function RewriteBubble({ 
+  item, 
+  onMakeKinder, 
+  isCopied, 
+  onUserLongPress,
+  isSelected,
+  onRepeat,
+  onCopy,
+  onDismiss,
+}: Props) {
   const colors = useColors();
+  const isUser = item.sender === 'user';
 
-  // Build action buttons for rewrite-specific actions
-  const actionButtons = item.isActionable ? (
+  // Runner message actions (Send, Copy, Make Kinder)
+  const runnerActionButtons = item.isActionable ? (
     <>
       <TouchableOpacity 
         style={[styles.actionBtn, { backgroundColor: colors.sendButton }]} 
@@ -58,7 +84,42 @@ export default function RewriteBubble({ item, onMakeKinder, isCopied }: Props) {
     </>
   ) : undefined;
 
-  return <BaseBubble item={item} actionButtons={actionButtons} />;
+  // User message actions (Repeat, Copy) - only shown when selected
+  const userActionButtons = isUser && isSelected && onDismiss ? (
+    <UserActionBar
+      actions={[
+        {
+          id: 'repeat',
+          label: 'Repeat',
+          icon: 'refresh-cw',
+          color: 'accent',
+          onPress: onRepeat || (() => {}),
+        },
+        {
+          id: 'copy',
+          label: 'Copy',
+          activeLabel: 'Copied!',
+          icon: isCopied ? 'check' : 'copy',
+          color: 'success',
+          onPress: onCopy || (() => {}),
+          isActive: isCopied,
+          disabled: isCopied,
+        },
+      ]}
+      onDismiss={onDismiss}
+    />
+  ) : undefined;
+
+  return (
+    <BaseBubble 
+      item={item} 
+      actionButtons={runnerActionButtons}
+      userActionButtons={userActionButtons}
+      onLongPress={isUser && onUserLongPress ? () => onUserLongPress(item) : undefined}
+      onPress={isSelected && onDismiss ? onDismiss : undefined}
+      isSelected={isSelected}
+    />
+  );
 }
 
 const styles = StyleSheet.create({
@@ -96,4 +157,3 @@ const styles = StyleSheet.create({
     fontWeight: '600' 
   },
 });
-
