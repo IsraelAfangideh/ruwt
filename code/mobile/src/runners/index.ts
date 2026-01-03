@@ -12,7 +12,7 @@ export type InputProps = {
 
 export interface RunnerModule {
   name: string;
-  Bubble: React.ComponentType<{ item: Message; onMakeKinder?: (rewriteText: string) => void }>;
+  Bubble: React.ComponentType<{ item: Message; onMakeKinder?: (rewriteText: string) => void; isCopied?: boolean }>;
   Input: React.ComponentType<InputProps>;
   endpoint: string;
   handleMessage: (text: string, history: Message[], actions: ChatActions) => Promise<void>;

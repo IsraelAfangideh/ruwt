@@ -10,13 +10,16 @@ import {
   Text,
   ActionSheetIOS,
 } from 'react-native';
+import * as Clipboard from 'expo-clipboard';
 import { Message } from '../types/chat';
 import { ChatActions } from '../types/runner';
 import { getRunnerModule } from '../runners';
 import ReportModal from '../components/ReportModal';
 import TypingIndicator from '../components/TypingIndicator';
+import Toast from '../components/Toast';
 import { useColors } from '../theme';
 import { submitReport } from '../services/report';
+import { shareMessage } from '../services/share';
 
 // Default runner for web deep linking / screenshots
 const DEFAULT_RUNNER = {
@@ -33,6 +36,9 @@ export default function ChatScreen({ route, navigation }: any) {
   const [isLoading, setIsLoading] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
   const [isBlocked, setIsBlocked] = useState(false);
+  const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
+  const [toastVisible, setToastVisible] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
   
   const flatListRef = useRef<FlatList>(null);
 
@@ -200,24 +206,21 @@ export default function ChatScreen({ route, navigation }: any) {
     });
   };
 
-  const handleSendRewrite = (rewriteText: string) => {
+  const handleShare = async (rewriteText: string) => {
     if (isBlocked) {
       Alert.alert('Blocked', `${runner.name} is blocked. Unblock from the menu to send messages.`);
       return;
     }
 
-    const userMsg: Message = {
-      id: Date.now().toString(),
-      text: rewriteText,
-      sender: 'user',
-    };
-    actions.addMessage(userMsg);
+    const result = await shareMessage(rewriteText);
     
-    actions.addMessage({
-      id: Date.now().toString() + '_sent',
-      text: `[SENT] ${rewriteText}`,
-      sender: 'runner'
-    });
+    // Show toast for clipboard fallback (desktop browsers without Web Share API)
+    if (result.success && result.method === 'clipboard') {
+      setToastMessage('Sharing not supported on desktop. Copied to clipboard!');
+      setToastVisible(true);
+    }
+    // Note: Native share sheets and Web Share API handle their own UI,
+    // so we don't need to show anything for those cases
   };
 
   // Main send message handler
@@ -273,9 +276,13 @@ export default function ChatScreen({ route, navigation }: any) {
         ref={flatListRef}
         data={messages}
         renderItem={({ item }) => {
-          const handleAction = (action: 'send' | 'copy' | 'kinder') => {
+          const handleAction = async (action: 'send' | 'copy' | 'kinder') => {
             if (action === 'send') {
-              handleSendRewrite(item.text);
+              await handleShare(item.text);
+            } else if (action === 'copy') {
+              await Clipboard.setStringAsync(item.text);
+              setCopiedMessageId(item.id);
+              setTimeout(() => setCopiedMessageId(null), 2500);
             }
           };
 
@@ -286,6 +293,7 @@ export default function ChatScreen({ route, navigation }: any) {
                 onAction: item.isActionable ? handleAction : item.onAction,
               }} 
               onMakeKinder={handleMakeKinder}
+              isCopied={copiedMessageId === item.id}
             />
           );
         }}
@@ -307,6 +315,12 @@ export default function ChatScreen({ route, navigation }: any) {
         onClose={() => setShowReportModal(false)}
         onSubmit={handleReport}
         runnerName={runner.name}
+      />
+
+      <Toast
+        visible={toastVisible}
+        message={toastMessage}
+        onDismiss={() => setToastVisible(false)}
       />
     </KeyboardAvoidingView>
   );
