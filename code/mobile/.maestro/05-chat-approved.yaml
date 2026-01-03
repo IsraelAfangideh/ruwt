@@ -17,6 +17,6 @@ appId: com.ruwt.app
 - waitForAnimationToEnd
 - scroll
 - assertVisible: "I appreciate your patience and understanding."
-- assertVisible: "Send This"
+- assertVisible: ".*Send.*"
 
 

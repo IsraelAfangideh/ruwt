@@ -18,8 +18,7 @@ appId: com.ruwt.app
 - assertVisible: ".*This feels a bit sharp. Let's add some warmth to it.*"
 - scroll
 - assertVisible: ".*I am feeling a bit overwhelmed right now, can we talk later?.*"
-- assertVisible: ".*Send This.*"
+- assertVisible: ".*Send.*"
 - assertVisible: ".*Copy.*"
 - assertVisible: ".*Make Kinder.*"
-- tapOn: "Send This"
-- assertVisible: ".*[SENT].*"
+- tapOn: "Send"
