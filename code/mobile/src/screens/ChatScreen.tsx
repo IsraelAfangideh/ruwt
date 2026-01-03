@@ -39,6 +39,7 @@ export default function ChatScreen({ route, navigation }: any) {
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
   const [toastVisible, setToastVisible] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
+  const [selectedMessageId, setSelectedMessageId] = useState<string | null>(null);
   
   const flatListRef = useRef<FlatList>(null);
 
@@ -223,6 +224,64 @@ export default function ChatScreen({ route, navigation }: any) {
     // so we don't need to show anything for those cases
   };
 
+  // Handle user message long-press - shows inline actions below the message
+  const handleUserMessageLongPress = (message: Message) => {
+    // Toggle selection - if already selected, deselect
+    if (selectedMessageId === message.id) {
+      setSelectedMessageId(null);
+    } else {
+      setSelectedMessageId(message.id);
+    }
+  };
+
+  // Dismiss inline action selection
+  const handleDismissSelection = () => {
+    setSelectedMessageId(null);
+  };
+
+  // Repeat a user message (submit again for a new rewrite)
+  const handleRepeatMessage = async (text: string) => {
+    setSelectedMessageId(null); // Dismiss selection first
+    
+    if (isBlocked) {
+      Alert.alert('Blocked', `${runner.name} is blocked. Unblock from the menu to send messages.`);
+      return;
+    }
+
+    const userMsg: Message = {
+      id: Date.now().toString(),
+      text: text,
+      sender: 'user',
+    };
+    actions.addMessage(userMsg);
+
+    const history = messages.filter(m => !m.isSystem && !m.isActionable);
+
+    try {
+      await runnerModule.handleMessage(text, history, actions);
+    } catch (error: any) {
+      console.error('Message handling failed:', error);
+      actions.triggerError(error.message || 'Failed to send message');
+    }
+    
+    setTimeout(() => {
+      flatListRef.current?.scrollToEnd({ animated: true });
+    }, 100);
+  };
+
+  // Copy a user message to clipboard
+  const handleCopyUserMessage = async (message: Message) => {
+    await Clipboard.setStringAsync(message.text);
+    setCopiedMessageId(message.id);
+    setToastMessage('Copied to clipboard');
+    setToastVisible(true);
+    // Keep selection visible briefly to show "Copied!" state, then dismiss
+    setTimeout(() => {
+      setCopiedMessageId(null);
+      setSelectedMessageId(null);
+    }, 1200);
+  };
+
   // Main send message handler
   const sendMessage = async (text: string) => {
     if (!text.trim()) return;
@@ -294,6 +353,12 @@ export default function ChatScreen({ route, navigation }: any) {
               }} 
               onMakeKinder={handleMakeKinder}
               isCopied={copiedMessageId === item.id}
+              onUserLongPress={handleUserMessageLongPress}
+              // Inline user message actions
+              isSelected={selectedMessageId === item.id}
+              onRepeat={() => handleRepeatMessage(item.text)}
+              onCopy={() => handleCopyUserMessage(item)}
+              onDismiss={handleDismissSelection}
             />
           );
         }}
