@@ -1,4 +1,4 @@
-import { pgTable, text, uuid, vector, timestamp } from 'drizzle-orm/pg-core';
+import { pgTable, text, uuid, vector, timestamp, boolean } from 'drizzle-orm/pg-core';
 
 export const runners = pgTable('runners', {
   id: uuid('id').defaultRandom().primaryKey(),
@@ -17,7 +17,19 @@ export const memories = pgTable('memories', {
   createdAt: timestamp('created_at').defaultNow(),
 });
 
+export const reports = pgTable('reports', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  runner: text('runner').notNull(),
+  reason: text('reason').notNull(),
+  details: text('details'),
+  notificationSent: boolean('notification_sent').default(false).notNull(),
+  notifiedAt: timestamp('notified_at'),
+  createdAt: timestamp('created_at').defaultNow(),
+});
+
 export type Runner = typeof runners.$inferSelect;
 export type NewRunner = typeof runners.$inferInsert;
 export type Memory = typeof memories.$inferSelect;
 export type NewMemory = typeof memories.$inferInsert;
+export type Report = typeof reports.$inferSelect;
+export type NewReport = typeof reports.$inferInsert;
