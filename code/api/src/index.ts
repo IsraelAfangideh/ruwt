@@ -5,7 +5,7 @@ import postgres from 'postgres';
 import { runners } from './db/schema';
 import { chatWithRewrite } from './services/rewrite';
 import { RewriteChatRequestSchema } from '@ruwt/shared';
-import { sendEmail } from './services/email';
+import { submitReport } from './services/report';
 
 const app = new Hono();
 
@@ -62,20 +62,14 @@ app.post('/report', async (c) => {
       return c.json({ error: 'Missing required fields: runner and reason' }, 400);
     }
 
-    const emailHtml = `
-      <h2>New Runner Report</h2>
-      <p><strong>Runner:</strong> ${runner}</p>
-      <p><strong>Reason:</strong> ${reason}</p>
-      ${details ? `<p><strong>Details:</strong> ${details}</p>` : ''}
-      <p><strong>Submitted at:</strong> ${new Date().toISOString()}</p>
-    `;
-
-    await sendEmail({
-      to: 'israelafangideh@gmail.com',
-      subject: `Runner Report: ${runner} - ${reason}`,
-      html: emailHtml,
+    // Use the new report service: saves to DB first, then attempts email
+    await submitReport({
+      runner,
+      reason,
+      details,
     });
 
+    // Always return success if DB write succeeded (email is best-effort)
     return c.json({ success: true, message: 'Report submitted successfully' });
   } catch (error) {
     console.error('Error processing report:', error);

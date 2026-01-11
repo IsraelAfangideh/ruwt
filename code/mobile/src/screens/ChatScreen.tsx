@@ -15,6 +15,7 @@ import { Message } from '../types/chat';
 import { ChatActions } from '../types/runner';
 import { getRunnerModule } from '../runners';
 import ReportModal from '../components/ReportModal';
+import OptionsMenu from '../components/OptionsMenu';
 import TypingIndicator from '../components/TypingIndicator';
 import Toast from '../components/Toast';
 import { useColors } from '../theme';
@@ -35,6 +36,7 @@ export default function ChatScreen({ route, navigation }: any) {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
+  const [showOptionsMenu, setShowOptionsMenu] = useState(false);
   const [isBlocked, setIsBlocked] = useState(false);
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
   const [toastVisible, setToastVisible] = useState(false);
@@ -119,6 +121,8 @@ export default function ChatScreen({ route, navigation }: any) {
           }
         }
       );
+    } else if (Platform.OS === 'web') {
+      setShowOptionsMenu(true);
     } else {
       Alert.alert(
         'Options',
@@ -167,18 +171,28 @@ export default function ChatScreen({ route, navigation }: any) {
         details,
       });
       
-      Alert.alert(
-        'Report Submitted',
-        'Thank you for your report. We will review it within 24 hours.',
-        [{ text: 'OK' }]
-      );
+      if (Platform.OS === 'web') {
+        setToastMessage('Report submitted. Thank you!');
+        setToastVisible(true);
+      } else {
+        Alert.alert(
+          'Report Submitted',
+          'Thank you for your report. We will review it within 24 hours.',
+          [{ text: 'OK' }]
+        );
+      }
     } catch (error) {
       console.error('Failed to submit report:', error);
-      Alert.alert(
-        'Error',
-        'Failed to submit report. Please try again later.',
-        [{ text: 'OK' }]
-      );
+      if (Platform.OS === 'web') {
+        setToastMessage('Failed to submit report. Please try again later.');
+        setToastVisible(true);
+      } else {
+        Alert.alert(
+          'Error',
+          'Failed to submit report. Please try again later.',
+          [{ text: 'OK' }]
+        );
+      }
     }
   };
 
@@ -380,6 +394,22 @@ export default function ChatScreen({ route, navigation }: any) {
         onClose={() => setShowReportModal(false)}
         onSubmit={handleReport}
         runnerName={runner.name}
+      />
+
+      <OptionsMenu
+        visible={showOptionsMenu}
+        onClose={() => setShowOptionsMenu(false)}
+        options={[
+          {
+            label: 'Report Issue',
+            onPress: () => setShowReportModal(true),
+          },
+          {
+            label: isBlocked ? 'Unblock Runner' : 'Block Runner',
+            onPress: handleBlock,
+            destructive: true,
+          },
+        ]}
       />
 
       <Toast
