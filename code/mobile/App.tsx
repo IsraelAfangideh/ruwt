@@ -12,11 +12,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { Runner } from '@ruwt/shared';
+import { Runner, MOCK_RUNNERS } from '@ruwt/shared';
 import { ENDPOINTS, useMockMode, mockFetch } from './src/config';
 import ChatScreen from './src/screens/ChatScreen';
 import AboutScreen from './src/screens/AboutScreen';
-import LoadingScreen from './src/components/LoadingScreen';
 import { ThemeProvider, useColors, colors } from './src/theme';
 
 // --- Custom Navigation Themes ---
@@ -47,19 +46,68 @@ const RuwtDarkTheme = {
 // --- Runner List Component ---
 function RunnerListScreen({ navigation }: any) {
   const themeColors = useColors();
-  const [runners, setRunners] = useState<Runner[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [runners, setRunners] = useState<Runner[]>(() => MOCK_RUNNERS);
+
+  const normalizeName = (name: string) => name.trim().toLowerCase();
+  const runnerSignature = (list: Runner[]) =>
+    list
+      .map((runner) => `${normalizeName(runner.name)}|${runner.kind}|${runner.personality}`)
+      .sort()
+      .join('||');
+  const mergeRunnersByName = (apiRunners: Runner[], baseRunners: Runner[]) => {
+    const baseByName = new Map(baseRunners.map((runner) => [normalizeName(runner.name), runner]));
+
+    return apiRunners.map((runner) => {
+      const match = baseByName.get(normalizeName(runner.name));
+      if (!match) {
+        return runner;
+      }
+
+      return {
+        ...runner,
+        id: match.id,
+      };
+    });
+  };
 
   useEffect(() => {
     mockFetch(ENDPOINTS.runners, { method: 'GET' })
       .then((res) => res.json())
-      .then((data) => {
-        setRunners(data);
+      .then((data: Runner[]) => {
+        if (!Array.isArray(data)) {
+          return;
+        }
+
+        const merged = mergeRunnersByName(data, MOCK_RUNNERS);
+        setRunners((prev) => {
+          const nextSignature = runnerSignature(merged);
+          const prevSignature = runnerSignature(prev);
+          if (nextSignature === prevSignature) {
+            return prev;
+          }
+
+          const prevOrder = new Map(prev.map((runner, index) => [normalizeName(runner.name), index]));
+          const ordered = [...merged].sort((a, b) => {
+            const aOrder = prevOrder.get(normalizeName(a.name));
+            const bOrder = prevOrder.get(normalizeName(b.name));
+            if (aOrder != null && bOrder != null) {
+              return aOrder - bOrder;
+            }
+            if (aOrder != null) {
+              return -1;
+            }
+            if (bOrder != null) {
+              return 1;
+            }
+            return normalizeName(a.name).localeCompare(normalizeName(b.name));
+          });
+
+          return ordered;
+        });
       })
       .catch((err: Error) => {
         console.error('Error fetching runners:', err);
-      })
-      .finally(() => setIsLoading(false));
+      });
   }, []);
 
   const renderItem: ListRenderItem<Runner> = ({ item }) => (
@@ -81,11 +129,6 @@ function RunnerListScreen({ navigation }: any) {
       </TouchableOpacity>
     </View>
   );
-
-  // Show loading screen while fetching runners
-  if (isLoading) {
-    return <LoadingScreen message="Loading ..." />;
-  }
 
   return (
     <SafeAreaView style={[
