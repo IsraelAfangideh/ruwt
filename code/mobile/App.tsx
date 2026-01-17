@@ -12,11 +12,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { Runner } from '@ruwt/shared';
+import { Runner, MOCK_RUNNERS } from '@ruwt/shared';
 import { ENDPOINTS, useMockMode, mockFetch } from './src/config';
 import ChatScreen from './src/screens/ChatScreen';
 import AboutScreen from './src/screens/AboutScreen';
-import LoadingScreen from './src/components/LoadingScreen';
 import { ThemeProvider, useColors, colors } from './src/theme';
 
 // --- Custom Navigation Themes ---
@@ -47,24 +46,80 @@ const RuwtDarkTheme = {
 // --- Runner List Component ---
 function RunnerListScreen({ navigation }: any) {
   const themeColors = useColors();
-  const [runners, setRunners] = useState<Runner[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [runners, setRunners] = useState<Runner[]>(() => MOCK_RUNNERS);
+
+  const normalizeName = (name: string) => name.trim().toLowerCase();
+  const runnerSignature = (list: Runner[]) =>
+    list
+      .map((runner) => `${normalizeName(runner.name)}|${runner.kind}|${runner.personality}`)
+      .sort()
+      .join('||');
+  const mergeRunnersByName = (apiRunners: Runner[], baseRunners: Runner[]) => {
+    const baseByName = new Map(baseRunners.map((runner) => [normalizeName(runner.name), runner]));
+
+    return apiRunners.map((runner) => {
+      const match = baseByName.get(normalizeName(runner.name));
+      if (!match) {
+        return runner;
+      }
+
+      return {
+        ...runner,
+        id: match.id,
+      };
+    });
+  };
 
   useEffect(() => {
     mockFetch(ENDPOINTS.runners, { method: 'GET' })
       .then((res) => res.json())
-      .then((data) => {
-        setRunners(data);
+      .then((data: Runner[]) => {
+        if (!Array.isArray(data)) {
+          return;
+        }
+
+        const merged = mergeRunnersByName(data, MOCK_RUNNERS);
+        setRunners((prev) => {
+          const nextSignature = runnerSignature(merged);
+          const prevSignature = runnerSignature(prev);
+          if (nextSignature === prevSignature) {
+            return prev;
+          }
+
+          const prevOrder = new Map(prev.map((runner, index) => [normalizeName(runner.name), index]));
+          const ordered = [...merged].sort((a, b) => {
+            const aOrder = prevOrder.get(normalizeName(a.name));
+            const bOrder = prevOrder.get(normalizeName(b.name));
+            if (aOrder != null && bOrder != null) {
+              return aOrder - bOrder;
+            }
+            if (aOrder != null) {
+              return -1;
+            }
+            if (bOrder != null) {
+              return 1;
+            }
+            return normalizeName(a.name).localeCompare(normalizeName(b.name));
+          });
+
+          return ordered;
+        });
       })
       .catch((err: Error) => {
         console.error('Error fetching runners:', err);
-      })
-      .finally(() => setIsLoading(false));
+      });
   }, []);
 
   const renderItem: ListRenderItem<Runner> = ({ item }) => (
     <View style={[styles.card, { backgroundColor: themeColors.bgElevated, borderColor: themeColors.border }]}>
-      <Text style={[styles.name, { color: themeColors.text }]}>{item.name}</Text>
+      <View style={styles.cardHeader}>
+        <Text style={[styles.name, { color: themeColors.text }]}>{item.name}</Text>
+        {item.kind && (
+          <View style={[styles.chip, { backgroundColor: themeColors.bg, borderColor: themeColors.border }]}>
+            <Text style={[styles.chipText, { color: themeColors.textMuted }]}>{item.kind}</Text>
+          </View>
+        )}
+      </View>
       <Text style={[styles.personality, { color: themeColors.textMuted }]}>{item.personality}</Text>
       <TouchableOpacity 
         style={[styles.button, { backgroundColor: themeColors.accent }]}
@@ -75,21 +130,34 @@ function RunnerListScreen({ navigation }: any) {
     </View>
   );
 
-  // Show loading screen while fetching runners
-  if (isLoading) {
-    return <LoadingScreen message="Loading ..." />;
-  }
-
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: themeColors.bg }]}>
+    <SafeAreaView style={[
+      styles.container,
+      {
+        backgroundColor: themeColors.bg,
+        paddingTop: Platform.OS === 'web' ? 24 : 50,
+      }
+    ]}>
       {Platform.OS !== 'web' && (
         <Text style={[styles.header, { color: themeColors.text }]}>Ruwt</Text>
+      )}
+      {Platform.OS === 'web' && (
+        <Text style={[
+          styles.subtitle,
+          styles.subtitleWeb,
+          { color: themeColors.textMuted }
+        ]}>
+          Choose a runner to craft a clear, human reply.
+        </Text>
       )}
       <FlatList
         data={runners}
         renderItem={renderItem}
         keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.list}
+        contentContainerStyle={[
+          styles.list,
+          Platform.OS === 'web' && styles.listWeb
+        ]}
       />
     </SafeAreaView>
   );
@@ -184,7 +252,6 @@ export default function App() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingTop: 50,
   },
   header: {
     fontSize: 36,
@@ -194,40 +261,79 @@ const styles = StyleSheet.create({
     fontFamily: 'Georgia',
     letterSpacing: -0.5,
   },
-  list: {
+  subtitle: {
+    fontSize: 16,
+    marginBottom: 18,
     paddingHorizontal: 20,
   },
+  subtitleWeb: {
+    textAlign: 'center',
+    alignSelf: 'center',
+    maxWidth: 520,
+    lineHeight: 22,
+  },
+  list: {
+    paddingHorizontal: 20,
+    paddingBottom: 24,
+  },
+  listWeb: {
+    width: '100%',
+    maxWidth: 900,
+    alignSelf: 'center',
+    paddingTop: 6,
+  },
   card: {
+    width: '100%',
     padding: 24,
-    borderRadius: 16,
-    marginBottom: 16,
+    borderRadius: 20,
+    marginBottom: 18,
     borderWidth: 1,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.06,
+    shadowRadius: 14,
+    elevation: 2,
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+    marginBottom: 6,
+  },
+  chip: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999,
+    borderWidth: 1,
+  },
+  chipText: {
+    fontSize: 12,
+    letterSpacing: 0.4,
+    textTransform: 'capitalize',
   },
   name: {
     fontSize: 22,
     fontWeight: '500',
-    marginBottom: 6,
     fontFamily: 'Georgia',
   },
   personality: {
     fontSize: 15,
-    marginBottom: 20,
+    marginBottom: 18,
     lineHeight: 22,
   },
   button: {
-    padding: 14,
-    borderRadius: 8,
+    minHeight: 44,
+    paddingVertical: 12,
+    paddingHorizontal: 18,
+    borderRadius: 12,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   buttonText: {
     fontWeight: '600',
     fontSize: 15,
-    letterSpacing: 0.3,
+    letterSpacing: 0.5,
   },
   mockBanner: {
     backgroundColor: '#dc2626',

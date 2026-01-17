@@ -3,6 +3,8 @@ import {
   MOCK_BLOCKED_RESPONSE,
   MOCK_APPROVED_RESPONSE,
   MOCK_ERROR_RESPONSE,
+  MOCK_RESPOND_RESPONSE,
+  MOCK_RESPOND_ERROR_RESPONSE,
   MOCK_REPORT_SUCCESS,
 } from '@ruwt/shared';
 
@@ -25,6 +27,23 @@ export async function mockFetch(url: string, options: RequestInit): Promise<Resp
   }
 
   // 1. CHECK SPECIFIC CHAT ENDPOINT FIRST
+  if (url.includes('/runners/respond/chat')) {
+    const body = options.body ? JSON.parse(options.body as string) : {};
+    const message = body.message || '';
+
+    if (message.toLowerCase().includes('error')) {
+      return new Response(JSON.stringify(MOCK_RESPOND_ERROR_RESPONSE), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    return new Response(JSON.stringify(MOCK_RESPOND_RESPONSE), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
   if (url.includes('/runners/rewrite/chat')) {
     const body = options.body ? JSON.parse(options.body as string) : {};
     const message = body.message || '';
