@@ -1,7 +1,7 @@
 Rename Runners
 
 **Date**: December 22, 2025  
-**Status**: Active  
+**Status**: Implemented  
 **Extends**: [Original Spec](./11_25_25.md)
 **Author**: Israel Peter Thompson Afangideh
 
