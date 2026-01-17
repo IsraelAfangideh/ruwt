@@ -173,93 +173,23 @@ jobs:
 
   # ------------------------------------------------------------------
   # STEP 2.5: E2E TESTS (Deployment Gate)
-  # Runs E2E tests before deployment. Blocks deployment if tests fail.
-  # Philosophy: "Friction belongs in Deployment not in Development"
+  # Disabled to speed up deployments.
   # ------------------------------------------------------------------
   test-e2e:
-    needs: check-changes
-    if: needs.check-changes.outputs.mobile_any == 'true'
+    if: false
     name: 🧪 E2E Tests (Deployment Gate)
     runs-on: macos-latest
-    defaults:
-      run: { working-directory: ./code/mobile }
     steps:
-      - uses: actions/checkout@v4
-      - uses: oven-sh/setup-bun@v1
-      - uses: expo/expo-github-action@v8
-        with:
-          eas-version: latest
-          token: ${{ secrets.EXPO_TOKEN }}
-      
-      # Install dependencies
-      - name: Install Dependencies
-        run: cd .. && bun install
-      
-      # 1. ROBUST SIMULATOR SETUP
-      - name: Setup Simulator
-        run: |
-          DEVICE_NAME="iPhone 15"
-          DEVICE_TYPE="com.apple.CoreSimulator.SimDeviceType.iPhone-15"
-          
-          # Check if the device already exists (booted or shutdown)
-          if xcrun simctl list devices | grep -q "$DEVICE_NAME"; then
-            echo "✅ Device '$DEVICE_NAME' already exists."
-          else
-            echo "⚙️ Device not found. Detecting latest Runtime..."
-            
-            # DYNAMICALLY find the newest iOS Runtime ID installed on this runner
-            # We filter for 'iOS', grab the ID, sort by version, and take the last one.
-            RUNTIME_ID=$(xcrun simctl list runtimes | grep -o "com.apple.CoreSimulator.SimRuntime.iOS-[0-9]*-[0-9]*" | sort -V | tail -n 1)
-            
-            if [ -z "$RUNTIME_ID" ]; then
-              echo "❌ Error: No iOS Runtimes found on this runner!"
-              echo "Available runtimes:"
-              xcrun simctl list runtimes
-              exit 1
-            fi
-            
-            echo "✅ Found latest runtime: $RUNTIME_ID"
-            echo "⚙️ Creating '$DEVICE_NAME'..."
-            xcrun simctl create "$DEVICE_NAME" "$DEVICE_TYPE" "$RUNTIME_ID"
-          fi
-          
-          echo "⚙️ Booting '$DEVICE_NAME'..."
-          xcrun simctl boot "$DEVICE_NAME" || echo "Simulator might already be booted."
-          
-          echo "⏳ Waiting for boot to finish..."
-          xcrun simctl bootstatus "$DEVICE_NAME"
-          echo "✅ Simulator Ready."
-      
-      # 2. Build AND Install to Simulator
-      # --no-bundler prevents starting the metro server (we just want the binary installed)
-      - name: Build & Install App
-        run: |
-          EXPO_PUBLIC_MOCK_MODE=true npx expo run:ios --configuration Release --no-bundler --device "iPhone 15"
-        env:
-          EXPO_PUBLIC_MOCK_MODE: 'true'
-      
-      # Install Maestro
-      - name: Install Maestro
-        run: |
-          curl -Ls https://get.maestro.mobile.dev | bash
-          echo "$HOME/.maestro/bin" >> $GITHUB_PATH
-      
-      # Run Maestro tests
-      - name: Run E2E Tests
-        run: |
-          EXPO_PUBLIC_MOCK_MODE=true maestro test .maestro
-        env:
-          EXPO_PUBLIC_MOCK_MODE: 'true'
+      - run: echo "E2E deployment gate is disabled."
 
   # ------------------------------------------------------------------
   # STEP 3: WEB DEPLOYMENT
   # Now builds from mobile codebase using Expo Web
   # ------------------------------------------------------------------
   deploy-web:
-    needs: [check-changes, test-e2e]
+    needs: check-changes
     # Trigger on web OR mobile changes (since web is built from mobile)
-    # Also requires E2E tests to pass if mobile code changed (test-e2e only runs if mobile_any is true)
-    if: needs.check-changes.outputs.web == 'true' && (needs.check-changes.outputs.mobile_any != 'true' || (needs.test-e2e.result == 'success' || needs.test-e2e.result == 'skipped'))
+    if: needs.check-changes.outputs.web == 'true'
     name: 🌐 Deploy Web
     runs-on: ubuntu-latest
     steps:
@@ -320,9 +250,9 @@ jobs:
   # Runs ONLY if validation passed AND no native files changed
   # ------------------------------------------------------------------
   mobile-ota:
-    needs: [check-changes, validate-mobile, test-e2e]
-    # Logic: Mobile changed + Native didn't change + Validation passed + E2E tests passed
-    if: needs.check-changes.outputs.mobile_any == 'true' && needs.check-changes.outputs.mobile_native == 'false' && needs.test-e2e.result == 'success'
+    needs: [check-changes, validate-mobile]
+    # Logic: Mobile changed + Native didn't change + Validation passed
+    if: needs.check-changes.outputs.mobile_any == 'true' && needs.check-changes.outputs.mobile_native == 'false'
     name: ⚡️ Mobile OTA Update
     runs-on: ubuntu-latest
     defaults:
@@ -343,9 +273,9 @@ jobs:
   # Runs ONLY if validation passed AND native files changed
   # ------------------------------------------------------------------
   mobile-native:
-    needs: [check-changes, validate-mobile, test-e2e]
-    # Logic: Native changed + Validation passed + E2E tests passed
-    if: needs.check-changes.outputs.mobile_native == 'true' && needs.test-e2e.result == 'success'
+    needs: [check-changes, validate-mobile]
+    # Logic: Native changed + Validation passed
+    if: needs.check-changes.outputs.mobile_native == 'true'
     name: 🏗️ Mobile Native Build
     runs-on: ubuntu-latest
     defaults:

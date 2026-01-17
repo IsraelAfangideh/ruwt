@@ -147,7 +147,7 @@ function RunnerListScreen({ navigation }: any) {
           styles.subtitleWeb,
           { color: themeColors.textMuted }
         ]}>
-          Choose a runner to craft a clear, human reply.
+          Choose a runner to help craft a clear, human reply.
         </Text>
       )}
       <FlatList
