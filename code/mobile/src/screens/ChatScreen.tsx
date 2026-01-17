@@ -198,14 +198,18 @@ export default function ChatScreen({ route, navigation }: any) {
   };
 
   useEffect(() => {
+    const initialText = runner?.kind === 'respond'
+      ? 'Paste the message you received, and I will draft a reply you can send.'
+      : 'Send me a message, and I will improve it while preserving the intent.';
+
     setMessages([
       {
         id: 'init',
-        text: `Send me a message, and I will improve it, while preserving the intent`,
+        text: initialText,
         sender: 'runner'
       }
     ]);
-  }, []);
+  }, [runner?.kind]);
 
   const handleMakeKinder = (rewriteText: string) => {
     if (isBlocked) {
