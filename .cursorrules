@@ -1,1 +1,2 @@
-Write a copyable commit message in the chat whenever you think it would be useful for the user to commit your changes so far
+* Write a copyable commit message in the chat whenever you think it would be useful for the user to commit your changes so far
+* Make sure any UI changes are responsive under different screen sizes. Always keep this in mind.

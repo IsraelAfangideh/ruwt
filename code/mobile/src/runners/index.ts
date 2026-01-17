@@ -48,4 +48,6 @@ export const getRunnerModule = (runnerName: string): RunnerModule | undefined =>
 
 // Register all runners
 import rewriteModule from './rewrite';
+import respondModule from './respond';
 registerRunnerModule(rewriteModule);
+registerRunnerModule(respondModule);

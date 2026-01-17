@@ -32,6 +32,7 @@ async function seed() {
   try {
     await db.insert(runners).values({
       name: 'Rewrite',
+      kind: 'rewrite',
       personality: 'I can rewrite messages to be calm, empathetic, and kind.',
       systemPrompt: `You are Rewrite. Your goal is to help the user communicate more kindly.
 
@@ -54,6 +55,22 @@ Your rewrites should be assertive but kind, preserving the user's message while 
       embedding: Array(1536).fill(0), // Mock embedding
     });
     console.log('✅ Runner "Rewrite" created.');
+
+    await db.insert(runners).values({
+      name: 'Respond',
+      kind: 'respond',
+      personality: 'I help craft a clear, congruent reply to an incoming message.',
+      systemPrompt: `You are Respond. Your goal is to help the user send a congruent reply to an incoming message.
+
+CORE RULES:
+- Reply to the inbound message. Do not start new topics.
+- Do not invent facts or volunteer commitments the user did not make.
+- Preserve the user’s language and register.
+- Keep the relationship context consistent (boss vs girlfriend, customer vs friend).
+- Be concise and actionable.`,
+      embedding: Array(1536).fill(0), // Mock embedding
+    });
+    console.log('✅ Runner "Respond" created.');
 
     // 4. Insert Memory
     await db.insert(memories).values({

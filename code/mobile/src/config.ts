@@ -19,6 +19,7 @@ export const API_URL = isDev ? ENV.dev.apiUrl : ENV.prod.apiUrl;
 export const ENDPOINTS = {
   runners: `${API_URL}/runners`,
   rewriteChat: `${API_URL}/runners/rewrite/chat`,
+  respondChat: `${API_URL}/runners/respond/chat`,
 };
 
 // Export mock mode utilities
