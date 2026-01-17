@@ -88,7 +88,13 @@ function RunnerListScreen({ navigation }: any) {
   }
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: themeColors.bg }]}>
+    <SafeAreaView style={[
+      styles.container,
+      {
+        backgroundColor: themeColors.bg,
+        paddingTop: Platform.OS === 'web' ? 24 : 50,
+      }
+    ]}>
       {Platform.OS !== 'web' && (
         <Text style={[styles.header, { color: themeColors.text }]}>Ruwt</Text>
       )}
@@ -203,7 +209,6 @@ export default function App() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingTop: 50,
   },
   header: {
     fontSize: 36,
@@ -235,8 +240,9 @@ const styles = StyleSheet.create({
     paddingTop: 6,
   },
   card: {
+    width: '100%',
     padding: 24,
-    borderRadius: 18,
+    borderRadius: 20,
     marginBottom: 18,
     borderWidth: 1,
     shadowColor: '#000',
@@ -274,10 +280,12 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
   button: {
+    minHeight: 44,
     paddingVertical: 12,
     paddingHorizontal: 18,
-    borderRadius: 10,
+    borderRadius: 12,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   buttonText: {
     fontWeight: '600',
