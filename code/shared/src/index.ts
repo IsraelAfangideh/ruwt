@@ -66,8 +66,7 @@ export const RespondChatResponseSchema = z.object({
 export type RespondChatResponse = z.infer<typeof RespondChatResponseSchema>;
 
 export function generateRespondPrompt(runnerName: string, baseSystemPrompt: string, userMemories: string[]): string {
-  const memoryContext = userMemories.map(m => `- ${m}`).join('
-');
+  const memoryContext = userMemories.map(m => `- ${m}`).join('');
 
   return `
       SYSTEM ROLE:
