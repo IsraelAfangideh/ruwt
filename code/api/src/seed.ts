@@ -5,7 +5,40 @@ import { runners, memories } from './db/schema';
 // Use env var or default to the NEW port 5432
 const connectionString = process.env.DATABASE_URL || 'postgres://postgres:password@127.0.0.1:5432/ruwt';
 const client = postgres(connectionString);
-const db = drizzle(client);
+const db = drizzle(client, { schema });
+const DRY_RUN = process.env.SEED_DRY_RUN === 'true';
+const SEED_MEMORY = process.env.SEED_MEMORY !== 'false';
+const ALLOW_ANY_HOST = process.env.SEED_ALLOW_ANY_HOST === 'true';
+
+function getDatabaseHost(url: string): string | null {
+  try {
+    return new URL(url).hostname;
+  } catch {
+    return null;
+  }
+}
+
+function assertSafeTarget() {
+  if (ALLOW_ANY_HOST) {
+    console.log('⚠️ SEED_ALLOW_ANY_HOST enabled. Skipping host safety check.');
+    return;
+  }
+
+  const host = getDatabaseHost(connectionString);
+  if (!host) {
+    console.error('❌ DATABASE_URL is invalid; cannot determine host.');
+    process.exit(1);
+  }
+
+  const isSupabase = host === 'supabase.co'
+    || host.endsWith('.supabase.co')
+    || host.endsWith('.pooler.supabase.com');
+  if (!isSupabase) {
+    console.error(`❌ Refusing to seed: DATABASE_URL host "${host}" is not allowed.`);
+    console.error('Set SEED_ALLOW_ANY_HOST=true to override.');
+    process.exit(1);
+  }
+}
 
 async function seed() {
   console.log('🔌 Connecting to database...');
