@@ -44,6 +44,18 @@ jobs:
         run: bun install
         working-directory: ./code
 
+      - name: Verify migrations applied
+        run: |
+          bun --eval "import postgres from 'postgres'; const sql = postgres(process.env.DATABASE_URL); const [row] = await sql\`
+            select 1 as ok
+            from information_schema.columns
+            where table_schema = 'public'
+              and table_name = 'runners'
+              and column_name = 'kind'
+            limit 1
+          \`; await sql.end(); if (!row?.ok) { console.error('Missing runners.kind. Run migrations before seeding.'); process.exit(1); }"
+        working-directory: ./code/api
+
       - name: Run seed
         run: bun run db:seed
         working-directory: ./code/api
