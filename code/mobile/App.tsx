@@ -93,7 +93,11 @@ function RunnerListScreen({ navigation }: any) {
         <Text style={[styles.header, { color: themeColors.text }]}>Ruwt</Text>
       )}
       {Platform.OS === 'web' && (
-        <Text style={[styles.subtitle, { color: themeColors.textMuted }]}>
+        <Text style={[
+          styles.subtitle,
+          styles.subtitleWeb,
+          { color: themeColors.textMuted }
+        ]}>
           Choose a runner to craft a clear, human reply.
         </Text>
       )}
@@ -214,6 +218,12 @@ const styles = StyleSheet.create({
     marginBottom: 18,
     paddingHorizontal: 20,
   },
+  subtitleWeb: {
+    textAlign: 'center',
+    alignSelf: 'center',
+    maxWidth: 520,
+    lineHeight: 22,
+  },
   list: {
     paddingHorizontal: 20,
     paddingBottom: 24,
@@ -222,6 +232,7 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 900,
     alignSelf: 'center',
+    paddingTop: 6,
   },
   card: {
     padding: 24,
