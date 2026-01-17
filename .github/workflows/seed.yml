@@ -7,6 +7,16 @@ on:
         description: 'Type SEED_PROD to confirm'
         required: true
         default: ''
+      dry_run:
+        description: 'Dry run (no writes)'
+        required: false
+        type: boolean
+        default: false
+      seed_memory:
+        description: 'Seed default memory'
+        required: false
+        type: boolean
+        default: true
       target:
         description: 'Target database'
         type: choice
@@ -22,6 +32,8 @@ jobs:
     runs-on: ubuntu-latest
     env:
       DATABASE_URL: ${{ secrets.SUPABASE_DATABASE_URL }}
+      SEED_DRY_RUN: ${{ inputs.dry_run }}
+      SEED_MEMORY: ${{ inputs.seed_memory }}
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v1

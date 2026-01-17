@@ -8,9 +8,41 @@ import { runners, memories } from './db/schema';
 const connectionString = process.env.DATABASE_URL || 'postgres://postgres:password@127.0.0.1:5432/ruwt';
 const client = postgres(connectionString);
 const db = drizzle(client, { schema });
+const DRY_RUN = process.env.SEED_DRY_RUN === 'true';
+const SEED_MEMORY = process.env.SEED_MEMORY !== 'false';
+const ALLOW_ANY_HOST = process.env.SEED_ALLOW_ANY_HOST === 'true';
+
+function getDatabaseHost(url: string): string | null {
+  try {
+    return new URL(url).hostname;
+  } catch {
+    return null;
+  }
+}
+
+function assertSafeTarget() {
+  if (ALLOW_ANY_HOST) {
+    console.log('⚠️ SEED_ALLOW_ANY_HOST enabled. Skipping host safety check.');
+    return;
+  }
+
+  const host = getDatabaseHost(connectionString);
+  if (!host) {
+    console.error('❌ DATABASE_URL is invalid; cannot determine host.');
+    process.exit(1);
+  }
+
+  const isSupabase = host === 'supabase.co' || host.endsWith('.supabase.co');
+  if (!isSupabase) {
+    console.error(`❌ Refusing to seed: DATABASE_URL host "${host}" is not allowed.`);
+    console.error('Set SEED_ALLOW_ANY_HOST=true to override.');
+    process.exit(1);
+  }
+}
 
 async function seed() {
   console.log('🔌 Connecting to database...');
+  assertSafeTarget();
   
   // 1. Enable Vector Extension (Critical for pgvector)
   try {
@@ -21,7 +53,7 @@ async function seed() {
   }
 
   try {
-    console.log('🌱 Seeding database (idempotent)...');
+    console.log(`🌱 Seeding database (idempotent${DRY_RUN ? ', dry-run' : ''})...`);
 
     const seedRunners = [
       {
@@ -69,34 +101,64 @@ CORE RULES:
       content: 'Goal: I want to be kinder and stop burning bridges when I am angry.',
     };
 
+    let insertedRunners = 0;
+    let updatedRunners = 0;
+    let memoryInserted = 0;
+
     await db.transaction(async (tx) => {
       for (const runner of seedRunners) {
-        await tx.insert(runners).values(runner).onConflictDoUpdate({
-          target: runners.name,
-          set: {
-            kind: runner.kind,
-            personality: runner.personality,
-            systemPrompt: runner.systemPrompt,
-            embedding: runner.embedding,
-          },
+        const existing = await tx.query.runners.findFirst({
+          where: eq(runners.name, runner.name),
         });
-        console.log(`✅ Runner "${runner.name}" ensured.`);
+
+        if (DRY_RUN) {
+          console.log(`🧪 Runner "${runner.name}" would be ${existing ? 'updated' : 'inserted'}.`);
+          continue;
+        }
+
+        if (existing) {
+          await tx.update(runners)
+            .set({
+              kind: runner.kind,
+              personality: runner.personality,
+              systemPrompt: runner.systemPrompt,
+              embedding: runner.embedding,
+            })
+            .where(eq(runners.name, runner.name));
+          updatedRunners += 1;
+          console.log(`✅ Runner "${runner.name}" updated.`);
+        } else {
+          await tx.insert(runners).values(runner);
+          insertedRunners += 1;
+          console.log(`✅ Runner "${runner.name}" inserted.`);
+        }
       }
 
-      const existingMemory = await tx.query.memories.findFirst({
-        where: and(
-          eq(memories.userId, seedMemory.userId),
-          eq(memories.content, seedMemory.content)
-        ),
-      });
+      if (SEED_MEMORY) {
+        const existingMemory = await tx.query.memories.findFirst({
+          where: and(
+            eq(memories.userId, seedMemory.userId),
+            eq(memories.content, seedMemory.content)
+          ),
+        });
 
-      if (!existingMemory) {
-        await tx.insert(memories).values(seedMemory);
-        console.log('✅ User Memory created.');
+        if (!existingMemory) {
+          if (DRY_RUN) {
+            console.log('🧪 User Memory would be inserted.');
+          } else {
+            await tx.insert(memories).values(seedMemory);
+            memoryInserted += 1;
+            console.log('✅ User Memory inserted.');
+          }
+        } else {
+          console.log('ℹ️ User Memory already exists.');
+        }
       } else {
-        console.log('ℹ️ User Memory already exists.');
+        console.log('ℹ️ Skipping memory seed (SEED_MEMORY=false).');
       }
     });
+
+    console.log(`📊 Seed summary: ${insertedRunners} runner(s) inserted, ${updatedRunners} runner(s) updated, ${memoryInserted} memory row(s) inserted.`);
 
   } catch (e: any) {
     if (e.code === '42P01') { // undefined_table
