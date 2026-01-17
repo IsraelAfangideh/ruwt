@@ -26,6 +26,7 @@ import { shareMessage } from '../services/share';
 const DEFAULT_RUNNER = {
   id: 'rewrite',
   name: 'Rewrite',
+  kind: 'rewrite',
   personality: 'I rewrite messages to be calm, empathetic, and kind.',
 };
 

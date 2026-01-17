@@ -118,6 +118,13 @@
           "primaryKey": false,
           "notNull": true
         },
+        "kind": {
+          "name": "kind",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'rewrite'"
+        },
         "personality": {
           "name": "personality",
           "type": "text",

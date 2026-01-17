@@ -3,6 +3,7 @@ import { pgTable, text, uuid, vector, timestamp, boolean } from 'drizzle-orm/pg-
 export const runners = pgTable('runners', {
   id: uuid('id').defaultRandom().primaryKey(),
   name: text('name').notNull().unique(),
+  kind: text('kind').notNull().default('rewrite'),
   personality: text('personality').notNull(),
   systemPrompt: text('system_prompt').notNull(),
   // Vector embedding for personality matching (768 dims for Google Gemini embeddings typically, or 1536 for OpenAI)

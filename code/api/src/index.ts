@@ -4,7 +4,8 @@ import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import { runners } from './db/schema';
 import { chatWithRewrite } from './services/rewrite';
-import { RewriteChatRequestSchema } from '@ruwt/shared';
+import { chatWithRespond } from './services/respond';
+import { RewriteChatRequestSchema, RespondChatRequestSchema } from '@ruwt/shared';
 import { submitReport } from './services/report';
 
 const app = new Hono();
@@ -44,6 +45,24 @@ app.post('/runners/rewrite/chat', async (c) => {
     
     if (!response) {
       return c.json({ error: 'Rewrite failed to respond' }, 500);
+    }
+
+    return c.json(response);
+  } catch (error) {
+    console.error(error);
+    return c.json({ error: 'Invalid request or server error' }, 400);
+  }
+});
+
+app.post('/runners/respond/chat', async (c) => {
+  try {
+    const body = await c.req.json();
+    const payload = RespondChatRequestSchema.parse(body);
+
+    const response = await chatWithRespond(payload);
+
+    if (!response) {
+      return c.json({ error: 'Respond failed to respond' }, 500);
     }
 
     return c.json(response);
