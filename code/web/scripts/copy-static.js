@@ -2,9 +2,10 @@
  * Post-build script to copy static files to Expo Web build output
  * 
  * This copies:
- * - Legal pages (privacy.html, terms.html, delete.html, 404.html)
+ * - Legal pages directories (privacy, terms, delete, child-safety)
+ * - Other static HTML (404.html)
  * - Cloudflare config files (_redirects, _headers)
- * - Favicon
+ * - Favicon and shared styles
  */
 
 const fs = require('fs');
@@ -16,15 +17,19 @@ const outputDir = path.join(webDir, 'dist');
 
 // Files to copy from web directory to build output
 const staticFiles = [
-  'privacy.html',
-  'terms.html',
-  'delete.html',
-  'child-safety.html',
   '404.html',
   '_redirects',
   '_headers',
   'favicon.svg',
   'styles.css', // Needed for legal pages styling
+];
+
+// Directories to copy from web directory to build output
+const staticDirs = [
+  'privacy',
+  'terms',
+  'delete',
+  'child-safety',
 ];
 
 // Ensure output directory exists
@@ -48,12 +53,26 @@ console.log('\nCopying static files...');
 staticFiles.forEach(file => {
   const src = path.join(webDir, file);
   const dest = path.join(outputDir, file);
-  
+
   if (fs.existsSync(src)) {
     fs.copyFileSync(src, dest);
     console.log(`✓ Copied ${file}`);
   } else {
     console.log(`  Skipped ${file} (not found)`);
+  }
+});
+
+// Copy static directories
+console.log('\nCopying static directories...');
+staticDirs.forEach(dir => {
+  const src = path.join(webDir, dir);
+  const dest = path.join(outputDir, dir);
+
+  if (fs.existsSync(src)) {
+    copyDir(src, dest);
+    console.log(`✓ Copied ${dir}/`);
+  } else {
+    console.log(`  Skipped ${dir}/ (not found)`);
   }
 });
 
