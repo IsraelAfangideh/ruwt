@@ -19,8 +19,14 @@ export function getGeminiModelCandidates(): string[] {
       .filter(Boolean);
   }
 
-  // Safe defaults for generateContent on v1beta.
-  return ['gemini-1.5-flash', 'gemini-1.5-pro'];
+  // Safe defaults for generateContent on v1beta (ordered by preference).
+  // As of Jan 2026, Google has deprecated 1.5 models; use 2.0/2.5 instead.
+  return [
+    'gemini-2.0-flash',          // fast, stable
+    'gemini-2.5-flash',          // newer, fast
+    'gemini-flash-latest',       // alias to latest flash
+    'gemini-2.0-flash-lite',     // lightweight fallback
+  ];
 }
 
 export function isGeminiModelNotFoundError(err: UnknownError): boolean {
