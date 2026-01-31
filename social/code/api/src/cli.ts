@@ -5,6 +5,7 @@ import * as schema from './db/schema';
 import { eq } from 'drizzle-orm';
 import chalk from 'chalk';
 import readline from 'readline';
+import { getGeminiModelCandidates, isGeminiModelNotFoundError } from './services/gemini';
 
 // CLI Configuration
 const USER_ID = 'user_1';
@@ -131,17 +132,38 @@ export async function processMessage(userMessage: string, rl: readline.Interface
     // 3. Update Local History
     conversationHistory.push({ role: 'user', parts: [{ text: userMessage }] });
 
-    // 4. Call AI (No Tools, just Text)
-    const model = genAI.getGenerativeModel({ 
-        model: 'gemini-2.0-flash-exp',
-        systemInstruction: systemInstruction
-    });
+    // 4. Call AI (No Tools, just Text) with fallback models
+    const modelCandidates = getGeminiModelCandidates();
+    let result: Awaited<ReturnType<ReturnType<typeof genAI.getGenerativeModel>['startChat']>['sendMessageStream']> | null = null;
+    let lastError: unknown = null;
 
-    const chat = model.startChat({
-        history: conversationHistory.slice(0, -1), 
-    });
+    for (const modelName of modelCandidates) {
+      try {
+        const model = genAI.getGenerativeModel({ 
+            model: modelName,
+            systemInstruction: systemInstruction
+        });
 
-    const result = await chat.sendMessageStream(userMessage);
+        const chat = model.startChat({
+            history: conversationHistory.slice(0, -1), 
+        });
+
+        result = await chat.sendMessageStream(userMessage);
+        break;
+      } catch (err) {
+        lastError = err;
+        if (isGeminiModelNotFoundError(err)) {
+          console.warn(chalk.yellow(`\n[!] Model "${modelName}" not available, trying next...`));
+          continue;
+        }
+        throw err;
+      }
+    }
+
+    if (!result) {
+      console.error(chalk.red(`\n[!] All Gemini model candidates failed: ${modelCandidates.join(', ')}`), lastError);
+      return null;
+    }
 
     process.stdout.write(chalk.blue.bold(`${RUNNER_NAME} > `));
     

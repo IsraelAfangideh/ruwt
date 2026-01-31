@@ -46,8 +46,10 @@ export function getClientMeta(): {
   const locale = Intl.DateTimeFormat().resolvedOptions().locale;
   const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
   const appVersion =
+    // Prefer config version (available in dev + EAS builds),
+    // fall back to native app version when manifest typing doesn't expose `version`.
     Constants.expoConfig?.version ||
-    Constants.manifest?.version ||
+    Constants.nativeAppVersion ||
     undefined;
 
   return {

@@ -9,6 +9,7 @@ import {
   RespondChatRequest,
   RespondChatResponse
 } from '@ruwt/shared';
+import { getGeminiModelCandidates, isGeminiModelNotFoundError } from './gemini';
 
 // Initialize DB
 const connectionString = process.env.DATABASE_URL || 'postgres://postgres:password@127.0.0.1:5432/ruwt';
@@ -41,15 +42,6 @@ export async function chatWithRespond(payload: RespondChatRequest): Promise<Resp
     // 2. Generate System Prompt using Shared Logic
     const systemInstruction = generateRespondPrompt(runner.name, runner.systemPrompt, memoryContent, tone);
 
-    // 3. Call AI with JSON Enforcement
-    const model = genAI.getGenerativeModel({
-      model: 'gemini-2.0-flash-exp',
-      systemInstruction: systemInstruction,
-      generationConfig: {
-        responseMimeType: "application/json",
-      }
-    });
-
     // Valid History: Must start with 'user'. Filter out leading 'model' messages.
     let validHistory = history;
     if (validHistory.length > 0 && validHistory[0].role !== 'user') {
@@ -61,12 +53,42 @@ export async function chatWithRespond(payload: RespondChatRequest): Promise<Resp
       }
     }
 
-    const chat = model.startChat({
-      history: validHistory,
-    });
+    // 3. Call AI with JSON Enforcement (retry with fallback model on 404 "model not found")
+    const modelCandidates = getGeminiModelCandidates();
+    let responseText: string | null = null;
+    let lastError: unknown = null;
 
-    const result = await chat.sendMessage(message);
-    const responseText = result.response.text();
+    for (const modelName of modelCandidates) {
+      try {
+        const model = genAI.getGenerativeModel({
+          model: modelName,
+          systemInstruction: systemInstruction,
+          generationConfig: {
+            responseMimeType: "application/json",
+          }
+        });
+
+        const chat = model.startChat({
+          history: validHistory,
+        });
+
+        const result = await chat.sendMessage(message);
+        responseText = result.response.text();
+        break;
+      } catch (err) {
+        lastError = err;
+        if (isGeminiModelNotFoundError(err)) {
+          console.warn(`Respond: Gemini model "${modelName}" not available, trying next candidate...`);
+          continue;
+        }
+        throw err;
+      }
+    }
+
+    if (responseText == null) {
+      console.error('Respond: all Gemini model candidates failed:', modelCandidates);
+      throw lastError ?? new Error('Respond: all Gemini model candidates failed');
+    }
 
     // 4. Parse JSON Response (Robust)
     let explanation: string | undefined;
