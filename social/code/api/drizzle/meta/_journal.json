@@ -1,0 +1,34 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1768163622482,
+      "tag": "0000_eager_jean_grey",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1768655039284,
+      "tag": "0001_add_runner_kind",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1769323917404,
+      "tag": "0002_add_report_fields",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1769323917405,
+      "tag": "0003_add_anonymous_users",
+      "breakpoints": true
+    }
+  ]
+}

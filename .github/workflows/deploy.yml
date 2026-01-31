@@ -86,28 +86,28 @@ jobs:
           base: ${{ steps.base.outputs.base_ref }}
           filters: |
             web:
-              - 'code/web/**'
-              - 'code/mobile/src/**'      # Mobile source = web source
-              - 'code/mobile/App.tsx'
-              - 'code/mobile/app.json'
-              - 'code/shared/**'          # Shared types
+              - 'social/code/web/**'
+              - 'social/code/mobile/src/**'      # Mobile source = web source
+              - 'social/code/mobile/App.tsx'
+              - 'social/code/mobile/app.json'
+              - 'social/code/shared/**'          # Shared types
             api:
-              - 'code/api/**'
+              - 'social/code/api/**'
             mobile_native:
               # [FLAW 3 FIX] Watch ROOT dependencies too. 
               # If you update a shared library in the root, the native app MUST rebuild.
-              - 'package.json'
-              - 'bun.lockb'
-              - 'yarn.lock'
+              - 'social/code/package.json'
+              - 'social/code/bun.lock'
+              - 'social/code/package-lock.json'
               # Mobile specific native files
-              - 'code/mobile/app.json'
-              - 'code/mobile/package.json'
-              - 'code/mobile/ios/**'
-              - 'code/mobile/android/**'
-              - 'code/mobile/fastlane/**'
-              - 'code/mobile/eas.json'
+              - 'social/code/mobile/app.json'
+              - 'social/code/mobile/package.json'
+              - 'social/code/mobile/ios/**'
+              - 'social/code/mobile/android/**'
+              - 'social/code/mobile/fastlane/**'
+              - 'social/code/mobile/eas.json'
             mobile_any:
-              - 'code/mobile/**'
+              - 'social/code/mobile/**'
       
       - name: Manual Override
         id: override
@@ -157,7 +157,7 @@ jobs:
     name: 🛡️ Validate Mobile
     runs-on: ubuntu-latest
     defaults:
-      run: { working-directory: ./code/mobile }
+      run: { working-directory: ./social/code/mobile }
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v1
@@ -207,22 +207,22 @@ jobs:
       # This resolves @ruwt/shared workspace package
       - name: Install Dependencies
         run: bun install
-        working-directory: ./code
+        working-directory: ./social/code
       
       # Build Expo Web (outputs to code/mobile/dist)
       - name: Build Expo Web
         run: npx expo export --platform web
-        working-directory: ./code/mobile
+        working-directory: ./social/code/mobile
       
       # Copy static files to web/dist
       - name: Prepare Deployment
         run: node scripts/copy-static.js
-        working-directory: ./code/web
+        working-directory: ./social/code/web
       
       # Deploy to Cloudflare Pages using Wrangler
       - name: Deploy to Cloudflare Pages
         run: npx wrangler pages deploy dist --project-name=ruwt
-        working-directory: ./code/web
+        working-directory: ./social/code/web
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -236,7 +236,7 @@ jobs:
     name: Deploy API
     runs-on: ubuntu-latest
     defaults:
-      run: { working-directory: ./code }
+      run: { working-directory: ./social/code }
     steps:
       - uses: actions/checkout@v4
       - uses: superfly/flyctl-actions/setup-flyctl@master
@@ -256,7 +256,7 @@ jobs:
     name: ⚡️ Mobile OTA Update
     runs-on: ubuntu-latest
     defaults:
-      run: { working-directory: ./code/mobile }
+      run: { working-directory: ./social/code/mobile }
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v1
@@ -279,7 +279,7 @@ jobs:
     name: 🏗️ Mobile Native Build
     runs-on: ubuntu-latest
     defaults:
-      run: { working-directory: ./code/mobile }
+      run: { working-directory: ./social/code/mobile }
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v1
