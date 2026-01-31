@@ -97,8 +97,8 @@ jobs:
               # [FLAW 3 FIX] Watch ROOT dependencies too. 
               # If you update a shared library in the root, the native app MUST rebuild.
               - 'social/code/package.json'
-              - 'bun.lockb'
-              - 'yarn.lock'
+              - 'social/code/bun.lock'
+              - 'social/code/package-lock.json'
               # Mobile specific native files
               - 'social/code/mobile/app.json'
               - 'social/code/mobile/package.json'
