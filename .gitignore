@@ -1,18 +1,50 @@
-node_modules
-code/api/.env
+# --------------------------------------------------------------------
+# Dependencies
+# --------------------------------------------------------------------
+**/node_modules/
+
+# --------------------------------------------------------------------
+# Environment files (never commit secrets)
+# --------------------------------------------------------------------
+**/.env
+**/.env.*
+!**/.env.example
+!**/.env.sample
+
+# --------------------------------------------------------------------
+# Local databases / binaries
+# --------------------------------------------------------------------
+**/*.db
+**/*.sqlite
+**/*.sqlite3
+**/*.sqlite3-journal
+
+# --------------------------------------------------------------------
+# Maestro / test debug output (can be safely deleted)
+# --------------------------------------------------------------------
+**/.maestro-debug/
+**/maestro-debug/
+**/debug-*/
+**/debug-*
+
+# --------------------------------------------------------------------
+# Build output
+# --------------------------------------------------------------------
+**/dist/
+
+# --------------------------------------------------------------------
+# Local-only / editor / OS
+# --------------------------------------------------------------------
 .idea/
 .idea/workspace.xml
-code/api/ruwt.db
 .DS_Store
-# Maestro test debug output (can be safely deleted)
-code/mobile/.maestro-debug/
-code/mobile/maestro-debug/
-code/mobile/debug-*/
-code/mobile/debug-*
-
-# Build output
-code/web/dist/
-code/mobile/dist/
 
 # Cursor stuff
 /.cursor
+
+# --------------------------------------------------------------------
+# Legacy / moved folders
+# --------------------------------------------------------------------
+# If you've moved the monorepo under social/code, keep the old root /code
+# tree untracked to avoid accidental commits.
+/code/

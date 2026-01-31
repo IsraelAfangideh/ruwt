@@ -87,12 +87,12 @@ This is a **Bun** monorepo containing the following workspaces:
 
 2. **Install dependencies**
    ```bash
-   cd code
+   cd social/code
    bun install
    ```
 
 3. **Environment Setup**
-   Create a `.env` file in `code/api` (and `code/mobile` if needed) with the following:
+   Create a `.env` file in `social/code/api` (and `social/code/mobile` if needed) with the following:
    ```env
    DATABASE_URL=postgres://postgres:password@localhost:5433/ruwt
    GOOGLE_GENERATIVE_AI_API_KEY=your_key_here
@@ -100,7 +100,7 @@ This is a **Bun** monorepo containing the following workspaces:
 
 4. **Start the Database**
    ```bash
-   cd code
+   cd social/code
    docker-compose up -d
    ```
 
@@ -116,19 +116,19 @@ This is a **Bun** monorepo containing the following workspaces:
 The CLI allows you to interact directly with the `Rewrite` runner to test its logic and "instincts."
 
 ```bash
-cd code/api
+cd social/code/api
 bun run cli
 ```
 
 #### The API Server
 ```bash
-cd code/api
+cd social/code/api
 bun run dev
 ```
 
 #### The Mobile App
 ```bash
-cd code/mobile
+cd social/code/mobile
 bun run start
 ```
 
@@ -136,7 +136,7 @@ bun run start
 The mobile app includes comprehensive end-to-end tests using [Maestro](https://maestro.mobile.dev/). All tests run in mock mode to avoid hitting the real API.
 
 ```bash
-cd code/mobile
+cd social/code/mobile
 # Run iOS tests (requires iOS Simulator)
 npm run test:e2e:ios
 
@@ -144,7 +144,7 @@ npm run test:e2e:ios
 npm run test:e2e:android
 ```
 
-Tests automatically run on all pull requests and block deployment if they fail. See `code/mobile/.maestro/README.md` for detailed documentation.
+Tests automatically run on all pull requests and block deployment if they fail. See `social/code/mobile/.maestro/README.md` for detailed documentation.
 
 ## Development Philosophy
 
