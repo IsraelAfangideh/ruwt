@@ -1,4 +1,5 @@
-FROM oven/bun:1 as base
+# Pin Bun to avoid lockfile churn breaking `--frozen-lockfile` in CI/CD.
+FROM oven/bun:1.3.3 as base
 WORKDIR /usr/src/app
 
 # Copy root package files
