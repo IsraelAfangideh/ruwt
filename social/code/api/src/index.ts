@@ -56,12 +56,15 @@ app.post('/runners/rewrite/chat', async (c) => {
     const payload = RewriteChatRequestSchema.parse(body);
     const ipAddress = getClientIp(c);
 
-    await trackAnonymousUser({
+    // Best-effort analytics: never block or fail core chat if tracking fails.
+    void trackAnonymousUser({
       anonymousUserId: payload.anonymousUserId || payload.clientMeta?.anonymousUserId || '',
       runnerName: 'Rewrite',
       ipAddress,
       clientMeta: payload.clientMeta,
       userAgent: c.req.header('user-agent'),
+    }).catch((error) => {
+      console.error('trackAnonymousUser failed (rewrite):', error);
     });
     
     const response = await chatWithRewrite(payload);
@@ -83,12 +86,15 @@ app.post('/runners/respond/chat', async (c) => {
     const payload = RespondChatRequestSchema.parse(body);
     const ipAddress = getClientIp(c);
 
-    await trackAnonymousUser({
+    // Best-effort analytics: never block or fail core chat if tracking fails.
+    void trackAnonymousUser({
       anonymousUserId: payload.anonymousUserId || payload.clientMeta?.anonymousUserId || '',
       runnerName: 'Respond',
       ipAddress,
       clientMeta: payload.clientMeta,
       userAgent: c.req.header('user-agent'),
+    }).catch((error) => {
+      console.error('trackAnonymousUser failed (respond):', error);
     });
 
     const response = await chatWithRespond(payload);

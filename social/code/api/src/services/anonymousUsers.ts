@@ -37,32 +37,38 @@ export async function trackAnonymousUser(data: AnonymousUserData): Promise<void>
     return;
   }
 
-  const existing = await db.query.anonymousUsers.findFirst({
-    where: eq(schema.anonymousUsers.anonymousUserId, data.anonymousUserId),
-  });
+  // Best-effort analytics: never throw. Core product flows should not depend on this.
+  try {
+    const existing = await db.query.anonymousUsers.findFirst({
+      where: eq(schema.anonymousUsers.anonymousUserId, data.anonymousUserId),
+    });
 
-  if (existing) {
-    await db
-      .update(anonymousUsers)
-      .set({ lastSeenAt: new Date() })
-      .where(eq(anonymousUsers.anonymousUserId, data.anonymousUserId));
+    if (existing) {
+      await db
+        .update(anonymousUsers)
+        .set({ lastSeenAt: new Date() })
+        .where(eq(anonymousUsers.anonymousUserId, data.anonymousUserId));
+      return;
+    }
+
+    const newUser: NewAnonymousUser = {
+      anonymousUserId: data.anonymousUserId,
+      firstSeenAt: new Date(),
+      lastSeenAt: new Date(),
+      firstRunnerName: data.runnerName || null,
+      firstIpAddress: data.ipAddress || null,
+      firstUserAgent: data.userAgent || data.clientMeta?.userAgent || null,
+      platform: data.clientMeta?.platform || null,
+      appVersion: data.clientMeta?.appVersion || null,
+      locale: data.clientMeta?.locale || null,
+      timezone: data.clientMeta?.timezone || null,
+    };
+
+    await db.insert(anonymousUsers).values(newUser);
+  } catch (error) {
+    console.error('trackAnonymousUser DB error:', error);
     return;
   }
-
-  const newUser: NewAnonymousUser = {
-    anonymousUserId: data.anonymousUserId,
-    firstSeenAt: new Date(),
-    lastSeenAt: new Date(),
-    firstRunnerName: data.runnerName || null,
-    firstIpAddress: data.ipAddress || null,
-    firstUserAgent: data.userAgent || data.clientMeta?.userAgent || null,
-    platform: data.clientMeta?.platform || null,
-    appVersion: data.clientMeta?.appVersion || null,
-    locale: data.clientMeta?.locale || null,
-    timezone: data.clientMeta?.timezone || null,
-  };
-
-  await db.insert(anonymousUsers).values(newUser);
 
   const emailHtml = `
     <h2>New Ruwt User</h2>
