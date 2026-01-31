@@ -32,7 +32,9 @@ function assertSafeTarget() {
     process.exit(1);
   }
 
-  const isSupabase = host === 'supabase.co' || host.endsWith('.supabase.co');
+  const isSupabase = host === 'supabase.co'
+    || host.endsWith('.supabase.co')
+    || host.endsWith('.pooler.supabase.com');
   if (!isSupabase) {
     console.error(`❌ Refusing to seed: DATABASE_URL host "${host}" is not allowed.`);
     console.error('Set SEED_ALLOW_ANY_HOST=true to override.');

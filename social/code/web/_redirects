@@ -1,12 +1,6 @@
 # Cloudflare Pages redirects
 # https://developers.cloudflare.com/pages/configuration/redirects/
 
-# Preserve static legal pages (do NOT apply SPA fallback)
-/privacy    /privacy.html   200
-/terms      /terms.html     200
-/delete     /delete.html    200
-/child-safety    /child-safety.html   200
-
 # Catch-all for SPA (React app handles all other routes)
 /*    /index.html   200
 
