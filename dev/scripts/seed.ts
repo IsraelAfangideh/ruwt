@@ -1,3 +1,4 @@
+import './load-env';
 import { db, challenges } from '../drizzle';
 
 const sampleChallenges = [
