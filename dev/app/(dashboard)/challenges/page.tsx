@@ -10,12 +10,23 @@ const difficultyColors = {
   hard: 'bg-red-500/10 text-red-500 hover:bg-red-500/20',
 };
 
+type ChallengeRow = {
+  id: string;
+  title: string;
+  description: string;
+  difficulty: 'easy' | 'medium' | 'hard';
+  max_tokens: number | null;
+  max_cost: number | null;
+  wall_clock_limit: number | null;
+};
+
 export default async function ChallengesPage() {
   const supabase = await createClient();
-  const { data: allChallenges = [] } = await supabase
+  const { data } = await supabase
     .from('challenges')
     .select('*')
     .order('created_at', { ascending: true });
+  const allChallenges: ChallengeRow[] = data ?? [];
 
   return (
     <div className="space-y-6">
