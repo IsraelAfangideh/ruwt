@@ -18,6 +18,7 @@ import {
   writeFile,
   readFile,
   createStarterFiles,
+  spawn,
 } from '@/lib/sandbox/webcontainer';
 
 // Dynamic imports for components that use browser APIs
@@ -45,6 +46,7 @@ interface Challenge {
   maxTokens?: number;
   maxCost?: number;
   wallClockLimit?: number;
+  testCode?: string;
 }
 
 export default function ArenaPage() {
@@ -92,6 +94,26 @@ export default function ArenaPage() {
           description: 'Write a function that adds two numbers.',
           difficulty: 'easy',
           starterCode: '// Write your solution here\n\nfunction add(a, b) {\n  // TODO: Implement\n}\n\nmodule.exports = { add };\n',
+          testCode: `
+const { add } = require('./index.js');
+
+try {
+  console.log('Running tests...');
+  
+  if (add(1, 2) !== 3) {
+    throw new Error('Test failed: add(1, 2) should equal 3');
+  }
+  
+  if (add(-1, 1) !== 0) {
+    throw new Error('Test failed: add(-1, 1) should equal 0');
+  }
+  
+  console.log('All tests passed!');
+} catch (error) {
+  console.error(error.message);
+  process.exit(1);
+}
+`,
           maxTokens: 50000,
           maxCost: 1000, // $0.10
           wallClockLimit: 1800, // 30 minutes
@@ -244,6 +266,62 @@ export default function ArenaPage() {
     }
   }, [challenge, messages, attemptId]);
 
+  // Handle running tests
+  const handleRunTests = async () => {
+    if (!selectedFile || !fileContents[selectedFile]) return;
+    
+    const terminalInstance = (terminalRef.current as HTMLDivElement & {
+      terminalInstance?: { 
+        write: (data: string) => void; 
+        writeln: (data: string) => void;
+        clear: () => void;
+      };
+    })?.terminalInstance;
+
+    try {
+      if (terminalInstance) {
+        terminalInstance.clear();
+        terminalInstance.writeln('Running tests...');
+      }
+
+      // Write current code
+      await writeFile('index.js', fileContents['index.js']);
+      
+      // Write test code
+      if (challenge?.testCode) {
+        await writeFile('test.js', challenge.testCode);
+      }
+
+      // Execute tests
+      const { exit, output } = await spawn('node', ['test.js']);
+
+      // Stream output to terminal
+      const reader = output.getReader();
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        terminalInstance?.write(value || '');
+      }
+
+      const exitCode = await exit;
+      if (exitCode === 0) {
+        terminalInstance?.writeln('\nTests passed successfully! 🎉');
+      } else {
+        terminalInstance?.writeln('\nTests failed. Keep trying! 💪');
+      }
+    } catch (err) {
+      console.error('Test execution failed:', err);
+      terminalInstance?.writeln(`\nError: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    }
+  };
+
+  const handleSubmitSolution = async () => {
+    // For now, just run tests and show success
+    await handleRunTests();
+    // TODO: Implement actual submission logic
+  };
+
   // Handle terminal input
   const handleTerminalInput = useCallback(async (data: string) => {
     // Echo input and handle commands
@@ -325,10 +403,10 @@ export default function ArenaPage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" onClick={handleRunTests}>
             Run Tests
           </Button>
-          <Button size="sm">Submit Solution</Button>
+          <Button size="sm" onClick={handleSubmitSolution}>Submit Solution</Button>
         </div>
       </header>
 

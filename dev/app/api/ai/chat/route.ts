@@ -14,7 +14,7 @@ const requestSchema = z.object({
     role: z.enum(['system', 'user', 'assistant']),
     content: z.string(),
   })),
-  attemptId: z.string().uuid().optional(),
+  attemptId: z.string().uuid().nullable().optional(),
   maxTokens: z.number().optional(),
   temperature: z.number().optional(),
 });
