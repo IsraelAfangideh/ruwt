@@ -1,15 +1,8 @@
 import { createClient } from '@/lib/supabase/server';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import Link from 'next/link';
+import { Card, CardContent } from '@/components/ui/card';
+import { ChallengeCard } from '@/components/challenge-card';
 
-const difficultyColors = {
-  easy: 'bg-green-500/10 text-green-500 hover:bg-green-500/20',
-  medium: 'bg-yellow-500/10 text-yellow-500 hover:bg-yellow-500/20',
-  hard: 'bg-red-500/10 text-red-500 hover:bg-red-500/20',
-};
-
+// Redefine locally or import if shared (keeping local for now based on original file)
 type ChallengeRow = {
   id: string;
   title: string;
@@ -29,61 +22,30 @@ export default async function ChallengesPage() {
   const allChallenges: ChallengeRow[] = data ?? [];
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Challenges</h1>
-          <p className="text-muted-foreground">
-            Solve coding challenges using AI at the lowest cost possible
-          </p>
-        </div>
+    <div className="space-y-8 p-8 max-w-7xl mx-auto">
+      <div className="flex flex-col gap-2 border-b pb-6">
+        <h1 className="text-4xl font-extrabold tracking-tighter text-foreground">
+          MARKET <span className="text-primary">OPPORTUNITIES</span>
+        </h1>
+        <p className="text-muted-foreground font-mono text-sm uppercase tracking-widest flex items-center gap-2">
+          <span className="inline-block w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+          Live Bounty Feed
+        </p>
       </div>
 
       {allChallenges.length === 0 ? (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <div className="text-center space-y-2">
-              <h3 className="text-lg font-semibold">No challenges yet</h3>
-              <p className="text-muted-foreground max-w-sm">
-                Challenges will appear here once they&apos;re added. Check back soon!
-              </p>
-            </div>
+        <Card className="border-dashed border-2 bg-transparent">
+          <CardContent className="flex flex-col items-center justify-center py-24 text-center">
+            <h3 className="text-xl font-mono text-muted-foreground">NO ACTIVE BOUNTIES</h3>
+            <p className="text-sm text-muted-foreground/50 mt-2">
+              The market is quiet. Check back later.
+            </p>
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {allChallenges.map((challenge) => (
-            <Card key={challenge.id} className="flex flex-col">
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <Badge className={difficultyColors[challenge.difficulty as keyof typeof difficultyColors]}>
-                    {challenge.difficulty}
-                  </Badge>
-                  {challenge.max_cost != null && (
-                    <span className="text-xs text-muted-foreground">
-                      Max: ${(challenge.max_cost / 10000).toFixed(2)}
-                    </span>
-                  )}
-                </div>
-                <CardTitle className="mt-2">{challenge.title}</CardTitle>
-                <CardDescription className="line-clamp-2">
-                  {challenge.description}
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="flex-1 flex flex-col justify-end">
-                <div className="flex items-center justify-between text-sm text-muted-foreground mb-4">
-                  {challenge.max_tokens != null && (
-                    <span>Max tokens: {challenge.max_tokens.toLocaleString()}</span>
-                  )}
-                  {challenge.wall_clock_limit != null && (
-                    <span>Time: {Math.floor(challenge.wall_clock_limit / 60)}m</span>
-                  )}
-                </div>
-                <Button asChild className="w-full">
-                  <Link href={`/arena/${challenge.id}`}>Start Challenge</Link>
-                </Button>
-              </CardContent>
-            </Card>
+            <ChallengeCard key={challenge.id} challenge={challenge} />
           ))}
         </div>
       )}
