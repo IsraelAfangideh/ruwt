@@ -5,7 +5,8 @@ import { motion } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { ArrowUpRight, Clock, Coins, Cpu } from "lucide-react";
+import { ArrowRight, Clock, CheckCircle2, Zap } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
 
 interface Challenge {
   id: string;
@@ -18,68 +19,73 @@ interface Challenge {
 }
 
 const difficultyColors = {
-  easy: 'bg-profit/10 text-profit border-profit/20',
-  medium: 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20',
-  hard: 'bg-loss/10 text-loss border-loss/20',
+  easy: 'bg-teal-500/10 text-teal-600 border-teal-200 dark:bg-teal-500/20 dark:text-teal-400 dark:border-teal-500/30',
+  medium: 'bg-sky-500/10 text-sky-600 border-sky-200 dark:bg-sky-500/20 dark:text-sky-400 dark:border-sky-500/30',
+  hard: 'bg-purple-500/10 text-purple-600 border-purple-200 dark:bg-purple-500/20 dark:text-purple-400 dark:border-purple-500/30',
 };
 
 export function ChallengeCard({ challenge }: { challenge: Challenge }) {
   return (
     <motion.div
-      whileHover={{ scale: 1.02, y: -4 }}
-      transition={{ type: "spring", stiffness: 300 }}
+      whileHover={{ y: -2 }}
+      transition={{ type: "spring", stiffness: 300, damping: 20 }}
+      className="h-full"
     >
-      <Card className="group relative overflow-hidden border-border bg-card/50 backdrop-blur-sm transition-colors hover:border-primary/50 hover:shadow-[0_0_30px_-10px_var(--primary)] h-full flex flex-col">
-        
-        {/* Decorative corner accents */}
-        <div className="absolute top-0 right-0 p-3 opacity-50 group-hover:opacity-100 transition-opacity">
-           <ArrowUpRight className="h-4 w-4 text-muted-foreground group-hover:text-primary" />
-        </div>
-
+      <Card className="flex flex-col h-full border-border/60 bg-card hover:border-primary/30 transition-colors shadow-sm hover:shadow-md">
         <CardHeader className="pb-3">
-          <div className="flex items-center justify-between mb-2">
+          <div className="flex justify-between items-start mb-2">
             <Badge 
               variant="outline" 
-              className={`uppercase tracking-wider font-mono text-[10px] ${difficultyColors[challenge.difficulty as keyof typeof difficultyColors] || 'text-muted-foreground'}`}
+              className={`capitalize font-medium text-[10px] px-2 py-0.5 border ${difficultyColors[challenge.difficulty as keyof typeof difficultyColors] || 'text-muted-foreground'}`}
             >
               {challenge.difficulty}
             </Badge>
-            {challenge.max_cost != null && (
-              <div className="flex items-center gap-1 font-mono text-xs text-muted-foreground group-hover:text-foreground transition-colors">
-                <Coins className="h-3 w-3" />
-                <span>${(challenge.max_cost / 10000).toFixed(4)}</span>
-              </div>
-            )}
+            {/* Placeholder for completion status if available later */}
+            <div className="text-muted-foreground/30">
+                <CheckCircle2 className="h-4 w-4" />
+            </div>
           </div>
-          <CardTitle className="text-lg font-bold tracking-tight group-hover:text-primary transition-colors">
+          <CardTitle className="text-lg font-semibold tracking-tight text-foreground">
             {challenge.title}
           </CardTitle>
-          <CardDescription className="line-clamp-2 text-xs font-mono opacity-80 mt-1">
+          <CardDescription className="line-clamp-2 text-sm text-muted-foreground mt-1">
             {challenge.description}
           </CardDescription>
         </CardHeader>
         
         <CardContent className="flex-1">
-          <div className="grid grid-cols-2 gap-2 text-xs font-mono text-muted-foreground">
-            {challenge.max_tokens != null && (
-              <div className="flex items-center gap-1.5 p-1.5 rounded-md bg-secondary/50">
-                <Cpu className="h-3 w-3" />
-                <span className="truncate">{challenge.max_tokens.toLocaleString()} toks</span>
-              </div>
-            )}
-            {challenge.wall_clock_limit != null && (
-              <div className="flex items-center gap-1.5 p-1.5 rounded-md bg-secondary/50">
-                <Clock className="h-3 w-3" />
-                <span>{Math.floor(challenge.wall_clock_limit / 60)}m</span>
-              </div>
-            )}
-          </div>
+           {/* Learning Metrics */}
+           <div className="grid grid-cols-2 gap-3 mt-2">
+                <div className="flex flex-col gap-1">
+                    <span className="text-[10px] uppercase text-muted-foreground font-medium">Avg. Time</span>
+                    <div className="flex items-center gap-1.5 text-xs text-foreground font-medium">
+                        <Clock className="h-3 w-3 text-muted-foreground" />
+                        <span>35m</span>
+                    </div>
+                </div>
+                <div className="flex flex-col gap-1">
+                     <span className="text-[10px] uppercase text-muted-foreground font-medium">Pass Rate</span>
+                     <div className="flex items-center gap-1.5 text-xs text-foreground font-medium">
+                        <Zap className="h-3 w-3 text-warning" />
+                        <span>78%</span>
+                     </div>
+                </div>
+           </div>
+           
+           <div className="mt-4 space-y-1.5">
+               <div className="flex justify-between text-[10px] text-muted-foreground font-medium">
+                  <span>Efficiency Goal</span>
+                  <span>${challenge.max_cost ? (challenge.max_cost / 10000).toFixed(4) : 'N/A'}</span>
+               </div>
+               <Progress value={Math.random() * 60 + 20} className="h-1" />
+           </div>
         </CardContent>
 
-        <CardFooter className="pt-3 border-t bg-muted/20">
-          <Button asChild className="w-full font-mono text-xs uppercase tracking-widest hover:bg-primary hover:text-primary-foreground transition-all" size="sm" variant="ghost">
-            <Link href={`/arena/${challenge.id}`}>
-              Initialize Contract
+        <CardFooter className="pt-3 border-t border-border/40 bg-muted/5">
+          <Button asChild className="w-full text-xs font-semibold" size="sm" variant="secondary">
+            <Link href={`/arena/${challenge.id}`} className="group flex items-center justify-center gap-2">
+              Start Problem
+              <ArrowRight className="h-3 w-3 transition-transform group-hover:translate-x-1" />
             </Link>
           </Button>
         </CardFooter>
