@@ -1,13 +1,11 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { useEffect, useState } from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { TrendingUp, TrendingDown, Minus, Trophy, Coins, Zap } from 'lucide-react';
-import { formatCost } from '@/lib/ai/pricing';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Trophy } from 'lucide-react';
 
 interface LeaderboardEntry {
   rank: number;
@@ -16,21 +14,17 @@ interface LeaderboardEntry {
     name: string;
     avatarUrl?: string;
   };
-  stats?: {
+  stats: {
     solved: number;
     attempts: number;
     avgCost: number;
     totalCost: number;
   };
-  cost?: number;
-  tokens?: number;
-  submittedAt?: string;
-  movement?: 'up' | 'down' | 'neutral'; // specific for ticker
 }
 
 export default function LeaderboardPage() {
-  const [globalEntries, setGlobalEntries] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [globalEntries, setGlobalEntries] = useState<LeaderboardEntry[]>([]);
 
   // Simulate acquiring data
   useEffect(() => {
@@ -43,11 +37,11 @@ export default function LeaderboardPage() {
         
         // Fallback to mock data if empty (for demo purposes)
         if (entries.length === 0) {
-            entries = Array.from({ length: 10 }).map((_, i) => ({
+            entries = Array.from({ length: 15 }).map((_, i) => ({
                 rank: i + 1,
                 user: {
                     id: `user-${i}`,
-                    name: `Trader_${Math.random().toString(36).substring(7).toUpperCase()}`,
+                    name: `Engineer_${Math.random().toString(36).substring(7).toUpperCase()}`,
                     avatarUrl: undefined
                 },
                 stats: {
@@ -55,14 +49,7 @@ export default function LeaderboardPage() {
                     attempts: Math.floor(Math.random() * 100) + 50,
                     avgCost: (Math.random() * 0.05),
                     totalCost: (Math.random() * 5)
-                },
-                movement: (Math.random() > 0.6 ? (Math.random() > 0.5 ? 'up' : 'down') : 'neutral') as 'up' | 'down' | 'neutral'
-            }));
-        } else {
-            // Add fake movement to real data
-            entries = entries.map((e: any) => ({
-              ...e,
-              movement: (Math.random() > 0.6 ? (Math.random() > 0.5 ? 'up' : 'down') : 'neutral') as 'up' | 'down' | 'neutral'
+                }
             }));
         }
 
@@ -70,11 +57,11 @@ export default function LeaderboardPage() {
       } catch (error) {
         console.error('Failed to fetch leaderboard or empty, using mock:', error);
         // Mock data on error too
-        const mockEntries = Array.from({ length: 10 }).map((_, i) => ({
+        const mockEntries = Array.from({ length: 15 }).map((_, i) => ({
             rank: i + 1,
             user: {
                 id: `user-${i}`,
-                name: `Operator_${Math.random().toString(36).substring(7).toUpperCase()}`,
+                name: `Scholar_${Math.random().toString(36).substring(7).toUpperCase()}`,
                 avatarUrl: undefined
             },
             stats: {
@@ -82,8 +69,7 @@ export default function LeaderboardPage() {
                 attempts: Math.floor(Math.random() * 100) + 50,
                 avgCost: (Math.random() * 0.05),
                 totalCost: (Math.random() * 5)
-            },
-            movement: (Math.random() > 0.6 ? (Math.random() > 0.5 ? 'up' : 'down') : 'neutral') as 'up' | 'down' | 'neutral'
+            }
         }));
         setGlobalEntries(mockEntries);
       } finally {
@@ -94,95 +80,92 @@ export default function LeaderboardPage() {
   }, []);
 
   return (
-    <div className="space-y-8 p-8 max-w-7xl mx-auto">
-      <div className="flex flex-col gap-2 border-b pb-6">
-        <h1 className="text-4xl font-extrabold tracking-tighter text-foreground">
-          MARKET <span className="text-primary">MOVERS</span>
-        </h1>
-        <div className="flex items-center justify-between">
-            <p className="text-muted-foreground font-mono text-sm uppercase tracking-widest">
-            Live Efficiency Rankings
-            </p>
-            <div className="flex items-center gap-4 text-xs font-mono text-muted-foreground">
-                <span className="flex items-center gap-1 text-profit"><TrendingUp className="h-3 w-3" /> USERS +12%</span>
-                <span className="flex items-center gap-1 text-loss"><TrendingDown className="h-3 w-3" /> COST -4%</span>
-            </div>
-        </div>
+    <div className="container max-w-6xl py-8 space-y-8">
+      {/* Header */}
+      <div className="flex flex-col gap-2">
+        <h1 className="text-3xl font-bold tracking-tight text-foreground">Global Rankings</h1>
+        <p className="text-muted-foreground">Top engineers demonstrating mastery in cost-efficient AI problem solving.</p>
       </div>
 
-      <Card className="border-border bg-card/50 backdrop-blur-md overflow-hidden">
-        <div className="overflow-x-auto">
-            <div className="min-w-[800px]">
-                <div className="grid grid-cols-12 gap-4 p-4 border-b bg-muted/30 text-xs font-mono text-muted-foreground uppercase tracking-wider">
-                  <div className="col-span-1 text-center">Rank</div>
-                  <div className="col-span-1 text-center">Trend</div>
-                  <div className="col-span-4">Operator</div>
-                  <div className="col-span-2 text-right">Avg Cost</div>
-                  <div className="col-span-2 text-right">Volume</div>
-                  <div className="col-span-2 text-right">Efficiency</div>
-                </div>
-                
-                <div className="divide-y divide-border/50">
-          {loading ? (
-             <div className="flex items-center justify-center py-20">
-               <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary" />
-             </div>
-          ) : globalEntries.length === 0 ? (
-             <div className="py-20 text-center font-mono text-muted-foreground">NO DATA AVAILABLE</div>
-          ) : (
-            globalEntries.map((entry, index) => (
-              <motion.div 
-                key={entry.user.id}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: index * 0.05 }}
-                className="grid grid-cols-12 gap-4 p-4 items-center hover:bg-muted/20 transition-colors font-mono text-sm group"
-              >
-                <div className="col-span-1 text-center font-bold text-foreground/80">
-                  {entry.rank === 1 ? <Trophy className="h-4 w-4 text-yellow-500 mx-auto" /> : 
-                   entry.rank === 2 ? <Trophy className="h-4 w-4 text-gray-400 mx-auto" /> :
-                   entry.rank === 3 ? <Trophy className="h-4 w-4 text-amber-600 mx-auto" /> : 
-                   `#${entry.rank}`}
-                </div>
-                
-                <div className="col-span-1 flex justify-center">
-                  {entry.movement === 'up' ? <TrendingUp className="h-4 w-4 text-profit" /> :
-                   entry.movement === 'down' ? <TrendingDown className="h-4 w-4 text-loss" /> :
-                   <Minus className="h-4 w-4 text-muted-foreground/30" />}
-                </div>
+      {/* Podium (Top 3) */}
+      {!loading && globalEntries.length > 2 && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8 items-end">
+             {[globalEntries[1], globalEntries[0], globalEntries[2]].map((entry, i) => (
+                 <Card key={entry.rank} className={`relative flex flex-col items-center p-6 border-border/50 ${entry.rank === 1 ? 'border-primary/50 shadow-lg bg-primary/5 h-[320px] justify-center' : 'h-[280px] bg-card/50 justify-center'}`}>
+                     <div className={`absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full p-3 border-4 border-background ${entry.rank === 1 ? 'bg-yellow-100 text-yellow-600' : entry.rank === 2 ? 'bg-gray-100 text-gray-500' : 'bg-orange-100 text-orange-600'}`}>
+                        <Trophy className="h-6 w-6" />
+                     </div>
+                     <Avatar className="h-20 w-20 border-4 border-background mb-4">
+                        <AvatarFallback className="text-xl">{entry.user.name.slice(0, 2)}</AvatarFallback>
+                     </Avatar>
+                     <div className="text-center space-y-1">
+                        <div className="font-bold text-lg">{entry.user.name}</div>
+                        <Badge variant="secondary" className="font-mono text-xs">{entry.stats.solved} Solved</Badge>
+                     </div>
+                 </Card>
+             ))}
+          </div>
+      )}
 
-                <div className="col-span-4 flex items-center gap-3">
-                  <Avatar className="h-8 w-8 border border-border">
-                    <AvatarImage src={entry.user.avatarUrl} />
-                    <AvatarFallback className="text-xs bg-secondary text-secondary-foreground">
-                      {entry.user.name?.[0]?.toUpperCase() || '?'}
-                    </AvatarFallback>
-                  </Avatar>
-                  <span className="font-semibold tracking-tight truncate">{entry.user.name}</span>
-                  {entry.rank <= 3 && <Badge variant="outline" className="ml-2 text-[10px] h-4 px-1 border-primary/30 text-primary">ELITE</Badge>}
-                </div>
-
-                <div className="col-span-2 text-right text-foreground font-bold">
-                    {formatCost(entry.stats?.avgCost || 0)}
-                </div>
-
-                <div className="col-span-2 text-right text-muted-foreground">
-                    {entry.stats?.solved} <span className="text-[10px] opacity-50">SOLVED</span>
-                </div>
-                
-                <div className="col-span-2 text-right">
-                   <div className="flex items-center justify-end gap-1 text-data">
-                     <Zap className="h-3 w-3" />
-                     <span>{(100 - (index * 2)).toFixed(1)}%</span> 
-                     {/* Fake efficacy metric for now */}
-                   </div>
-                </div>
-              </motion.div>
-            ))
-          )}
-        </div>
-        </div>
-        </div>
+      {/* Main Table */}
+      <Card>
+        <CardHeader>
+          <CardTitle>All Participants</CardTitle>
+          <CardDescription>Ranked by problems solved and total efficiency.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-[80px]">Rank</TableHead>
+                <TableHead>Engineer</TableHead>
+                <TableHead className="text-right">Problems Solved</TableHead>
+                <TableHead className="text-right">Avg. Cost/Run</TableHead>
+                <TableHead className="text-right">Efficiency Score</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {loading ? (
+                Array.from({ length: 5 }).map((_, i) => (
+                  <TableRow key={i}>
+                    <TableCell><div className="h-4 w-4 bg-muted animate-pulse rounded" /></TableCell>
+                    <TableCell><div className="h-4 w-32 bg-muted animate-pulse rounded" /></TableCell>
+                    <TableCell className="text-right"><div className="h-4 w-8 bg-muted animate-pulse rounded ml-auto" /></TableCell>
+                    <TableCell className="text-right"><div className="h-4 w-16 bg-muted animate-pulse rounded ml-auto" /></TableCell>
+                    <TableCell className="text-right"><div className="h-4 w-12 bg-muted animate-pulse rounded ml-auto" /></TableCell>
+                  </TableRow>
+                ))
+              ) : (
+                globalEntries.map((entry) => (
+                  <TableRow key={entry.rank}>
+                    <TableCell className="font-medium">
+                        <div className="flex items-center justify-center h-8 w-8 rounded-full bg-muted/50 text-xs text-muted-foreground">
+                            {entry.rank}
+                        </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-3">
+                        <Avatar className="h-8 w-8">
+                          <AvatarFallback>{entry.user.name.slice(0, 2)}</AvatarFallback>
+                        </Avatar>
+                        <span className="font-medium">{entry.user.name}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-right font-mono">{entry.stats.solved}</TableCell>
+                    <TableCell className="text-right font-mono text-muted-foreground">
+                        ${entry.stats.avgCost.toFixed(4)}
+                    </TableCell>
+                    <TableCell className="text-right">
+                        <Badge variant="outline" className="font-mono text-xs bg-primary/5 text-primary border-primary/20">
+                            {(entry.stats.solved * 100 / (entry.stats.avgCost * 1000 + 1)).toFixed(0)}
+                        </Badge>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
       </Card>
     </div>
   );

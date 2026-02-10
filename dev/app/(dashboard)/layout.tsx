@@ -35,7 +35,10 @@ export default async function DashboardLayout({
           </div>
           
           <div className="flex items-center gap-4">
-            <BalanceTicker />
+            <div className="flex items-center gap-2 px-3 py-1 bg-secondary/50 rounded-full border border-border/50">
+                <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Credits</span>
+                <span className="text-sm font-bold text-foreground">1,250</span>
+            </div>
             <div className="h-6 w-[1px] bg-border/50 mx-2"></div>
             <UserNav user={user} />
           </div>
