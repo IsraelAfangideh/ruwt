@@ -20,14 +20,65 @@ const requestSchema = z.object({
 });
 
 export async function POST(req: NextRequest) {
+  console.log('API: /api/ai/chat called');
+
+  // MOCK MODE HANDLER
+  if (process.env.NEXT_PUBLIC_MOCK_MODE === 'true') {
+    console.log('API: Running in MOCK MODE');
+    
+    const body = await req.json();
+    const { messages } = body;
+    const lastMessage = messages[messages.length - 1];
+    
+    const encoder = new TextEncoder();
+    const stream = new ReadableStream({
+      async start(controller) {
+        const mockResponse = `[MOCK] I received your message: "${lastMessage.content}". \n\nHere is a mock code solution for the challenge:\n\n\`\`\`javascript\nfunction add(a, b) {\n  return a + b;\n}\n\`\`\`\n\nRun the tests to verify this solution!`;
+        
+        // Simulate streaming delay
+        const chunks = mockResponse.split(/(.{5})/); // Split into small chunks
+        for (const chunk of chunks) {
+          if (!chunk) continue;
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'chunk', content: chunk })}\n\n`));
+          await new Promise(resolve => setTimeout(resolve, 50));
+        }
+        
+        controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+          type: 'done',
+          inputTokens: 10,
+          outputTokens: 50,
+          cost: 0,
+          model: 'mock-model',
+        })}\n\n`));
+        controller.close();
+      }
+    });
+
+    return new Response(stream, {
+      headers: {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+      },
+    });
+  }
+
   try {
     // Authenticate user
+    console.log('API: Authenticating...');
     const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+    if (authError) {
+      console.error('API: Auth error:', authError);
+      return NextResponse.json({ error: 'Auth error', details: authError.message }, { status: 401 });
+    }
 
     if (!user) {
+      console.error('API: No user found');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+    console.log('API: User authenticated:', user.id);
 
     // Parse and validate request
     const body = await req.json();
@@ -51,6 +102,7 @@ export async function POST(req: NextRequest) {
     const estimatedCost = calculateCost(model, estimatedInputTokens, estimatedOutputTokens);
 
     // Get user's profile and check credits
+    console.log('API: Fetching profile...');
     const [profile] = await db
       .select()
       .from(profiles)
@@ -58,8 +110,10 @@ export async function POST(req: NextRequest) {
       .limit(1);
 
     if (!profile) {
+      console.error('API: Profile not found for user:', user.id);
       return NextResponse.json({ error: 'Profile not found' }, { status: 404 });
     }
+    console.log('API: Profile found, credits:', profile.credits);
 
     if (profile.credits < estimatedCost) {
       return NextResponse.json({ 
@@ -182,9 +236,9 @@ export async function POST(req: NextRequest) {
       },
     });
   } catch (error) {
-    console.error('AI chat error:', error);
+    console.error('AI chat error (500):', error);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Internal server error', details: error instanceof Error ? error.message : String(error) },
       { status: 500 }
     );
   }
