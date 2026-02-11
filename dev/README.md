@@ -53,7 +53,13 @@ npx wrangler d1 execute ruwt-dev --remote --file=./drizzle/migrations-d1/0000_in
 
 For local dev, use `--local` instead of `--remote` and run migrations against the local D1.
 
-5. (Optional) Seed challenges (run against your DB via a small script or D1 dashboard). The schema supports `challenges`, `profiles`, `attempts`, `ai_calls`, `transactions`.
+5. (Optional) Seed challenges into D1:
+
+```bash
+npm run db:seed-d1   # generates scripts/seed-d1.sql
+npx wrangler d1 execute ruwt-dev --remote --file=./scripts/seed-d1.sql   # remote
+# or --local for local D1
+```
 
 6. Run the app:
 
@@ -73,12 +79,53 @@ Or use `wrangler pages dev` with the correct `--d1` binding and point Vite’s p
 npm run build
 ```
 
-Deploy `dist/` to Cloudflare Pages (e.g. connect the repo or `npx wrangler pages deploy dist`). Configure D1 binding `DB` and env vars (Supabase, Stripe, Cloudflare AI, Judge0) in the dashboard or `wrangler.toml`.
+## Deploying (going live)
 
-## Environment
+### 1. GitHub Actions (recommended)
+
+Push to `main` (when `dev/**` changes) or run **Actions → Deploy Dev (Cloudflare Pages) → Run workflow**.
+
+**Required repo secrets:**
+
+| Secret | Used for |
+|--------|----------|
+| `CLOUDFLARE_ACCOUNT_ID` | Wrangler deploy |
+| `CLOUDFLARE_API_TOKEN` | Wrangler deploy (needs Pages + D1) |
+| `VITE_SUPABASE_URL` | Build-time client env (auth) |
+| `VITE_SUPABASE_ANON_KEY` | Build-time client env (auth) |
+
+After the first successful deploy, the site is at **https://ruwt-dev.pages.dev**.
+
+### 2. One-time: D1 migrations and seed (remote)
+
+Run once against production D1 (same DB as in `wrangler.toml`):
+
+```bash
+cd dev
+npx wrangler d1 execute ruwt-dev --remote --file=./drizzle/migrations-d1/0000_initial.sql
+npm run db:seed-d1
+npx wrangler d1 execute ruwt-dev --remote --file=./scripts/seed-d1.sql
+```
+
+### 3. Functions env vars (production)
+
+In **Cloudflare Dashboard → Pages → ruwt-dev → Settings → Environment variables** (Production), set:
+
+- **Required for auth:** `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` (same values as build; used by Functions to validate sessions).
+- **Optional:** `STRIPE_WEBHOOK_SECRET`, `STRIPE_SECRET_KEY` (payments), `OPENAI_API_KEY` or `ANTHROPIC_API_KEY` (if `/api/ai/chat` uses them), `JUDGE0_API_URL`, `JUDGE0_API_KEY` (submissions).
+
+D1 is already bound via `wrangler.toml` (`DB`); no dashboard binding needed if you deploy with the same config.
+
+### 4. Custom domain (optional)
+
+In **Pages → ruwt-dev → Custom domains**, add your domain and follow DNS instructions.
+
+---
+
+## Environment (reference)
 
 - **Client (Vite):** `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` (see `.env.example`).
-- **Cloudflare Pages / Functions:** In dashboard or `.dev.vars`: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_SECRET_KEY`, `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_API_TOKEN`, `JUDGE0_API_URL`, `JUDGE0_API_KEY`. D1 is bound in `wrangler.toml` as `DB`.
+- **Cloudflare Pages / Functions:** In dashboard or `.dev.vars`: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_SECRET_KEY`, `JUDGE0_API_URL`, `JUDGE0_API_KEY`, and AI provider keys if used. D1 is bound in `wrangler.toml` as `DB`.
 
 ## Project structure
 
