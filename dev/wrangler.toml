@@ -5,7 +5,7 @@ pages_build_output_dir = "dist"
 [[d1_databases]]
 binding = "DB"
 database_name = "ruwt-dev"
-database_id = "REPLACE_WITH_DATABASE_ID"
+database_id = "27b64c12-c858-473d-8a40-d202d01d32aa"
 # After creating: wrangler d1 create ruwt-dev
 # Then: wrangler d1 execute ruwt-dev --remote --file=./drizzle/migrations-d1/0000_initial.sql
 
