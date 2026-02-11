@@ -120,6 +120,13 @@ D1 is already bound via `wrangler.toml` (`DB`); no dashboard binding needed if y
 
 In **Pages → ruwt-dev → Custom domains**, add your domain and follow DNS instructions.
 
+### If you use Cloudflare Git integration (dashboard "Connect to Git")
+
+- **Root directory:** `dev` (so build runs inside `dev/`).
+- **Build command:** `npm run build`
+- **Build output directory:** `dist`
+- **Do not** set a custom deploy command to `npx wrangler deploy` (that is for Workers). Either leave the deploy command **blank** (Pages will deploy the build output) or use `npx wrangler pages deploy dist --project-name=ruwt-dev`. If you see "run a Workers-specific command in a Pages project", remove or change the deploy command in **Pages → your project → Settings → Builds & deployments**.
+
 ---
 
 ## Environment (reference)
