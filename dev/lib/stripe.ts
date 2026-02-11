@@ -26,7 +26,7 @@ export const stripe = {
   },
 };
 
-// Credit packages available for purchase
+// Credit packages for individual developers (practice)
 export const CREDIT_PACKAGES = [
   {
     id: 'credits_500',
@@ -52,7 +52,37 @@ export const CREDIT_PACKAGES = [
   },
 ] as const;
 
+// Assessment packs for teams/hiring managers
+export const ASSESSMENT_PACKS = [
+  {
+    id: 'assess_10',
+    name: '10 Assessments',
+    count: 10,
+    price: 9900, // $99.00 in cents
+    pricePerAssessment: '$9.90',
+    description: 'Get started with assessments',
+  },
+  {
+    id: 'assess_50',
+    name: '50 Assessments',
+    count: 50,
+    price: 39900, // $399.00 in cents
+    pricePerAssessment: '$7.98',
+    description: 'Most popular',
+    popular: true,
+  },
+  {
+    id: 'assess_200',
+    name: '200 Assessments',
+    count: 200,
+    price: 99900, // $999.00 in cents
+    pricePerAssessment: '$5.00',
+    description: 'Best value',
+  },
+] as const;
+
 export type CreditPackage = (typeof CREDIT_PACKAGES)[number];
+export type AssessmentPack = (typeof ASSESSMENT_PACKS)[number];
 
 // Convert credits to dollars for display
 export function creditsToDollars(credits: number): string {

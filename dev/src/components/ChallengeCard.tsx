@@ -14,6 +14,15 @@ export interface Challenge {
   maxTokens?: number | null;
   maxCost?: number | null;
   wallClockLimit?: number | null;
+  category?: string | null;
+  skillTested?: string | null;
+}
+
+function categoryLabel(cat: string | null | undefined) {
+  if (cat === 'model_selection') return 'Model Selection';
+  if (cat === 'prompt_efficiency') return 'Prompt Efficiency';
+  if (cat === 'iterative_debugging') return 'Debugging';
+  return null;
 }
 
 export function ChallengeCard({ challenge }: { challenge: Challenge }) {
@@ -21,6 +30,11 @@ export function ChallengeCard({ challenge }: { challenge: Challenge }) {
   const c = useColors();
 
   const diffColor = challenge.difficulty === 'easy' ? c.success : challenge.difficulty === 'medium' ? c.accent : c.destructive;
+  const catLabel = categoryLabel(challenge.category);
+  const catColor = challenge.category === 'model_selection' ? c.accent
+    : challenge.category === 'prompt_efficiency' ? c.success
+    : challenge.category === 'iterative_debugging' ? c.destructive
+    : c.textMuted;
 
   return (
     <Card style={[styles.card, { borderColor: c.border }]}>
@@ -29,11 +43,19 @@ export function ChallengeCard({ challenge }: { challenge: Challenge }) {
           <Badge variant="outline" style={{ borderColor: diffColor }}>
             <Text style={[styles.diffText, { color: diffColor }]}>{challenge.difficulty}</Text>
           </Badge>
+          {catLabel && (
+            <Badge variant="outline" style={{ borderColor: catColor }}>
+              <Text style={[styles.diffText, { color: catColor }]}>{catLabel}</Text>
+            </Badge>
+          )}
         </View>
         <CardTitle>{challenge.title}</CardTitle>
         <CardDescription numberOfLines={2}>{challenge.description}</CardDescription>
       </CardHeader>
       <CardContent>
+        {challenge.skillTested && (
+          <Text style={[styles.skill, { color: c.textMuted }]}>{challenge.skillTested}</Text>
+        )}
         <Text style={[styles.meta, { color: c.textMuted }]}>
           Efficiency goal: ${challenge.maxCost != null ? (challenge.maxCost / 10000).toFixed(4) : 'N/A'}
         </Text>
@@ -54,8 +76,9 @@ export function ChallengeCard({ challenge }: { challenge: Challenge }) {
 
 const styles = StyleSheet.create({
   card: { flex: 1, minWidth: 280 },
-  badgeRow: { flexDirection: 'row', marginBottom: spacing.xs },
+  badgeRow: { flexDirection: 'row', gap: spacing.xs, marginBottom: spacing.xs },
   diffText: { fontSize: fontSizes.xs, fontWeight: '600', textTransform: 'capitalize' },
+  skill: { fontSize: fontSizes.xs, fontStyle: 'italic', marginBottom: spacing.xs },
   meta: { fontSize: fontSizes.xs },
   footer: { borderTopWidth: 1, paddingTop: spacing.sm, marginTop: spacing.sm },
 });

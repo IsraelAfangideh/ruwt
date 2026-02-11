@@ -16,37 +16,40 @@ export function LandingScreen() {
         <Text style={[styles.logo, { color: c.text }]}>Ruwt</Text>
         <View style={styles.headerActions}>
           <Button variant="ghost" onPress={() => navigation.navigate('Login' as never)}>Sign in</Button>
-          <Button onPress={() => navigation.navigate('Register' as never)}>Get Started</Button>
+          <Button onPress={() => navigation.navigate('Register' as never)}>For Teams</Button>
         </View>
       </View>
 
       <View style={styles.hero}>
-        <Badge variant="secondary">Beta</Badge>
+        <Badge variant="secondary">Now in Beta</Badge>
         <Text style={[styles.heroTitle, { color: c.text }]}>
-          AI Coding Competitions{'\n'}
-          <Text style={{ color: c.primary }}>Where Cost is King</Text>
+          AI-Efficiency Assessment{'\n'}
+          <Text style={{ color: c.accent }}>for Engineering Teams</Text>
         </Text>
         <Text style={[styles.heroSub, { color: c.textMuted }]}>
-          Solve coding challenges by prompting AI models. The twist? Every token costs real money. Win by producing working code at the lowest financial cost.
+          Measure how efficiently your candidates use AI to solve real problems. Not just correctness — cost, model selection, and prompt strategy matter.
         </Text>
         <View style={styles.heroButtons}>
-          <Button size="lg" onPress={() => navigation.navigate('Register' as never)}>Start Competing</Button>
-          <Button size="lg" variant="outline" onPress={() => navigation.navigate('Leaderboard' as never)}>View Leaderboard</Button>
+          <Button size="lg" onPress={() => navigation.navigate('Register' as never)}>Start Free Practice</Button>
+          <Button size="lg" variant="outline" onPress={() => navigation.navigate('Register' as never)}>For Hiring Managers</Button>
         </View>
       </View>
 
       <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: c.text }]}>How It Works</Text>
+        <Text style={[styles.sectionTitle, { color: c.text }]}>What We Measure</Text>
+        <Text style={[styles.sectionSub, { color: c.textMuted }]}>
+          Three dimensions of AI proficiency that predict real-world engineering efficiency.
+        </Text>
         <View style={styles.cards}>
           {[
-            { step: '1', title: 'Pick a Challenge', desc: 'Browse coding challenges of varying difficulty. Each has constraints like token limits or time caps.' },
-            { step: '2', title: 'Prompt AI Models', desc: 'Choose from budget to premium models. Each token costs real money. Be strategic with your prompts.' },
-            { step: '3', title: 'Submit & Compete', desc: 'Your code is tested automatically. If it passes, your cost is recorded on the leaderboard.' },
+            { step: '1', title: 'Model Selection', desc: 'Does the candidate know when to use a cheap model vs. a premium one? Using GPT-4o for FizzBuzz is a red flag.' },
+            { step: '2', title: 'Prompt Efficiency', desc: 'Can they get working code in fewer tokens? Concise, structured prompts beat verbose ones every time.' },
+            { step: '3', title: 'Iterative Debugging', desc: 'When AI output has bugs, can they diagnose and fix cheaply — or do they burn tokens on full rewrites?' },
           ].map((item) => (
             <Card key={item.step} style={styles.card}>
               <CardHeader>
-                <View style={[styles.stepNum, { backgroundColor: c.primary + '20' }]}>
-                  <Text style={[styles.stepText, { color: c.primary }]}>{item.step}</Text>
+                <View style={[styles.stepNum, { backgroundColor: c.accent + '20' }]}>
+                  <Text style={[styles.stepText, { color: c.accent }]}>{item.step}</Text>
                 </View>
                 <CardTitle>{item.title}</CardTitle>
                 <CardDescription>{item.desc}</CardDescription>
@@ -57,38 +60,103 @@ export function LandingScreen() {
       </View>
 
       <View style={[styles.section, styles.sectionAlt, { backgroundColor: c.muted + '40' }]}>
-        <Text style={[styles.sectionTitle, { color: c.text }]}>Choose Your Strategy</Text>
-        <Text style={[styles.sectionSub, { color: c.textMuted }]}>
-          Multiple AI models at different price points. Cheap models are risky but cost-effective. Premium models are reliable but expensive.
-        </Text>
-        <View style={styles.tiers}>
+        <Text style={[styles.sectionTitle, { color: c.text }]}>How It Works for Teams</Text>
+        <View style={styles.cards}>
           {[
-            { badge: 'Budget', title: 'Llama 3.1 / Mistral', desc: '$0.01-0.02 per 1M tokens', body: 'Open-source models via Cloudflare. Cheap but may struggle with complex tasks.' },
-            { badge: 'Mid Tier', title: 'GPT-4o-mini / Haiku', desc: '$0.15-0.80 per 1M tokens', body: 'Balanced cost and quality. Good for most challenges.', highlight: true },
-            { badge: 'Premium', title: 'GPT-4o / Claude Sonnet', desc: '$2.50-15.00 per 1M tokens', body: 'Top-tier reasoning. Expensive but reliable for hard problems.' },
-          ].map((t) => (
-            <Card key={t.badge} style={[styles.tierCard, t.highlight && { borderColor: c.accent, borderWidth: 2 }]}>
+            { step: '1', title: 'Create an Assessment', desc: 'Pick from our curated challenge library. Set a time limit. Choose which AI skills to test.' },
+            { step: '2', title: 'Invite Candidates', desc: 'Send a unique assessment link. Candidates log in and work through challenges with real AI models.' },
+            { step: '3', title: 'Review Results', desc: 'See exactly how each candidate used AI — which models, how many tokens, total cost, and pass rate.' },
+          ].map((item) => (
+            <Card key={item.step} style={styles.card}>
               <CardHeader>
-                <Badge variant={t.highlight ? 'default' : 'outline'}>{t.badge}</Badge>
-                <CardTitle>{t.title}</CardTitle>
-                <CardDescription>{t.desc}</CardDescription>
+                <View style={[styles.stepNum, { backgroundColor: c.accent + '20' }]}>
+                  <Text style={[styles.stepText, { color: c.accent }]}>{item.step}</Text>
+                </View>
+                <CardTitle>{item.title}</CardTitle>
+                <CardDescription>{item.desc}</CardDescription>
               </CardHeader>
-              <CardContent>
-                <Text style={[styles.tierBody, { color: c.textMuted }]}>{t.body}</Text>
-              </CardContent>
             </Card>
           ))}
         </View>
       </View>
 
+      <View style={styles.section}>
+        <Text style={[styles.sectionTitle, { color: c.text }]}>How It Works for Developers</Text>
+        <View style={styles.cards}>
+          {[
+            { step: '1', title: 'Practice Free', desc: 'Get 100 free AI credits on signup. Solve challenges and learn to use AI models efficiently.' },
+            { step: '2', title: 'Take Assessments', desc: 'When a company invites you, complete their assessment. Your AI efficiency is your competitive edge.' },
+            { step: '3', title: 'Build Your Score', desc: 'Climb the leaderboard. The best AI-efficient engineers stand out to hiring teams.' },
+          ].map((item) => (
+            <Card key={item.step} style={styles.card}>
+              <CardHeader>
+                <View style={[styles.stepNum, { backgroundColor: c.accent + '20' }]}>
+                  <Text style={[styles.stepText, { color: c.accent }]}>{item.step}</Text>
+                </View>
+                <CardTitle>{item.title}</CardTitle>
+                <CardDescription>{item.desc}</CardDescription>
+              </CardHeader>
+            </Card>
+          ))}
+        </View>
+      </View>
+
+      <View style={[styles.section, styles.sectionAlt, { backgroundColor: c.muted + '40' }]}>
+        <Text style={[styles.sectionTitle, { color: c.text }]}>Pricing</Text>
+        <Text style={[styles.sectionSub, { color: c.textMuted }]}>
+          Free for developers. Simple per-assessment pricing for teams.
+        </Text>
+        <View style={styles.tiers}>
+          <Card style={styles.tierCard}>
+            <CardHeader>
+              <Badge variant="outline">Free</Badge>
+              <CardTitle>Developer Practice</CardTitle>
+              <CardDescription>$0 / forever</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Text style={[styles.tierBody, { color: c.textMuted }]}>
+                100 free AI credits on signup. Practice challenges across all categories. Build your efficiency score.
+              </Text>
+            </CardContent>
+          </Card>
+          <Card style={[styles.tierCard, { borderColor: c.accent, borderWidth: 2 }]}>
+            <CardHeader>
+              <Badge variant="default">Team</Badge>
+              <CardTitle>Assessment Packs</CardTitle>
+              <CardDescription>From $99 / 10 assessments</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Text style={[styles.tierBody, { color: c.textMuted }]}>
+                Create custom assessments. Invite unlimited candidates. Full results dashboard with candidate comparison.
+              </Text>
+            </CardContent>
+          </Card>
+          <Card style={styles.tierCard}>
+            <CardHeader>
+              <Badge variant="outline">Enterprise</Badge>
+              <CardTitle>Custom</CardTitle>
+              <CardDescription>Contact us</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Text style={[styles.tierBody, { color: c.textMuted }]}>
+                Custom challenge libraries. SSO integration. Dedicated support. Volume pricing.
+              </Text>
+            </CardContent>
+          </Card>
+        </View>
+      </View>
+
       <View style={styles.cta}>
-        <Text style={[styles.ctaTitle, { color: c.text }]}>Ready to Compete?</Text>
-        <Text style={[styles.ctaSub, { color: c.textMuted }]}>Join the competition and prove you can code efficiently with AI.</Text>
-        <Button size="lg" onPress={() => navigation.navigate('Register' as never)}>Create Free Account</Button>
+        <Text style={[styles.ctaTitle, { color: c.text }]}>Ready to find AI-efficient engineers?</Text>
+        <Text style={[styles.ctaSub, { color: c.textMuted }]}>Your team spent $40K on API calls last month. Do you know which developers are efficient?</Text>
+        <View style={styles.heroButtons}>
+          <Button size="lg" onPress={() => navigation.navigate('Register' as never)}>Get Started Free</Button>
+          <Button size="lg" variant="outline" onPress={() => navigation.navigate('Register' as never)}>Book a Demo</Button>
+        </View>
       </View>
 
       <View style={[styles.footer, { borderTopColor: c.border }]}>
-        <Text style={[styles.footerText, { color: c.textMuted }]}>© {new Date().getFullYear()} Ruwt. All rights reserved.</Text>
+        <Text style={[styles.footerText, { color: c.textMuted }]}>{'\u00A9'} {new Date().getFullYear()} Ruwt. All rights reserved.</Text>
       </View>
     </ScrollView>
   );
@@ -169,8 +237,8 @@ const styles = StyleSheet.create({
     paddingVertical: spacing['2xl'],
     alignItems: 'center',
   },
-  ctaTitle: { fontSize: fontSizes['3xl'], fontWeight: '700', marginBottom: spacing.sm, fontFamily: fontFamily.body },
-  ctaSub: { marginBottom: spacing.lg, fontFamily: fontFamily.body },
+  ctaTitle: { fontSize: fontSizes['3xl'], fontWeight: '700', marginBottom: spacing.sm, fontFamily: fontFamily.body, textAlign: 'center' },
+  ctaSub: { marginBottom: spacing.lg, fontFamily: fontFamily.body, textAlign: 'center', maxWidth: 500 },
   footer: {
     padding: spacing.lg,
     borderTopWidth: 1,

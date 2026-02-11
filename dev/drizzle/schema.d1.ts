@@ -12,6 +12,8 @@ export const profiles = sqliteTable('profiles', {
   name: text('name'),
   avatarUrl: text('avatar_url'),
   credits: integer('credits').default(0).notNull(),
+  accountType: text('account_type').default('individual').notNull(), // 'individual' | 'team'
+  assessmentCredits: integer('assessment_credits').default(0).notNull(),
   createdAt: text('created_at').default(sql`(datetime('now'))`).notNull(),
 });
 
@@ -29,6 +31,9 @@ export const challenges = sqliteTable('challenges', {
   maxTokens: integer('max_tokens'),
   maxCost: integer('max_cost'),
   wallClockLimit: integer('wall_clock_limit'),
+
+  category: text('category').default('practice'), // 'practice' | 'model_selection' | 'prompt_efficiency' | 'iterative_debugging'
+  skillTested: text('skill_tested'),
 
   createdAt: text('created_at').default(sql`(datetime('now'))`).notNull(),
 });
@@ -48,6 +53,8 @@ export const attempts = sqliteTable('attempts', {
   expiresAt: text('expires_at'),
   violatedConstraint: text('violated_constraint'),
 
+  assessmentSessionId: text('assessment_session_id'),
+
   createdAt: text('created_at').default(sql`(datetime('now'))`).notNull(),
   submittedAt: text('submitted_at'),
 });
@@ -65,11 +72,58 @@ export const aiCalls = sqliteTable('ai_calls', {
 export const transactions = sqliteTable('transactions', {
   id: text('id').primaryKey(),
   userId: text('user_id').notNull().references(() => profiles.id),
-  type: text('type').notNull(), // 'purchase' | 'ai_usage' | 'refund'
+  type: text('type').notNull(), // 'purchase' | 'ai_usage' | 'refund' | 'signup_bonus' | 'assessment_purchase'
   amount: integer('amount').notNull(),
   stripeId: text('stripe_id'),
   createdAt: text('created_at').default(sql`(datetime('now'))`).notNull(),
 });
+
+// --- Assessment tables ---
+
+export const assessments = sqliteTable('assessments', {
+  id: text('id').primaryKey(),
+  title: text('title').notNull(),
+  description: text('description'),
+  timeLimit: integer('time_limit').notNull(), // seconds
+  status: text('status').default('draft').notNull(), // 'draft' | 'active' | 'archived'
+  createdBy: text('created_by').notNull().references(() => profiles.id),
+  createdAt: text('created_at').default(sql`(datetime('now'))`).notNull(),
+});
+
+export const assessmentChallenges = sqliteTable('assessment_challenges', {
+  id: text('id').primaryKey(),
+  assessmentId: text('assessment_id').notNull().references(() => assessments.id),
+  challengeId: text('challenge_id').notNull().references(() => challenges.id),
+  sortOrder: integer('sort_order').default(0).notNull(),
+});
+
+export const assessmentInvites = sqliteTable('assessment_invites', {
+  id: text('id').primaryKey(),
+  assessmentId: text('assessment_id').notNull().references(() => assessments.id),
+  candidateEmail: text('candidate_email'),
+  token: text('token').notNull().unique(),
+  status: text('status').default('pending').notNull(), // 'pending' | 'started' | 'completed' | 'expired'
+  expiresAt: text('expires_at'),
+  createdAt: text('created_at').default(sql`(datetime('now'))`).notNull(),
+});
+
+export const assessmentSessions = sqliteTable('assessment_sessions', {
+  id: text('id').primaryKey(),
+  assessmentId: text('assessment_id').notNull().references(() => assessments.id),
+  inviteId: text('invite_id').references(() => assessmentInvites.id),
+  userId: text('user_id').notNull().references(() => profiles.id),
+  status: text('status').default('in_progress').notNull(), // 'in_progress' | 'completed' | 'expired' | 'abandoned'
+  currentChallengeIndex: integer('current_challenge_index').default(0).notNull(),
+  totalCost: integer('total_cost').default(0).notNull(),
+  totalTokens: integer('total_tokens').default(0).notNull(),
+  startedAt: text('started_at').default(sql`(datetime('now'))`).notNull(),
+  completedAt: text('completed_at'),
+  expiresAt: text('expires_at').notNull(),
+  shareToken: text('share_token').unique(),
+  createdAt: text('created_at').default(sql`(datetime('now'))`).notNull(),
+});
+
+// --- Type exports ---
 
 export type Profile = typeof profiles.$inferSelect;
 export type NewProfile = typeof profiles.$inferInsert;
@@ -81,8 +135,21 @@ export type AiCall = typeof aiCalls.$inferSelect;
 export type NewAiCall = typeof aiCalls.$inferInsert;
 export type Transaction = typeof transactions.$inferSelect;
 export type NewTransaction = typeof transactions.$inferInsert;
+export type Assessment = typeof assessments.$inferSelect;
+export type NewAssessment = typeof assessments.$inferInsert;
+export type AssessmentChallenge = typeof assessmentChallenges.$inferSelect;
+export type NewAssessmentChallenge = typeof assessmentChallenges.$inferInsert;
+export type AssessmentInvite = typeof assessmentInvites.$inferSelect;
+export type NewAssessmentInvite = typeof assessmentInvites.$inferInsert;
+export type AssessmentSession = typeof assessmentSessions.$inferSelect;
+export type NewAssessmentSession = typeof assessmentSessions.$inferInsert;
 
 export type Difficulty = 'easy' | 'medium' | 'hard';
 export type AttemptStatus = 'in_progress' | 'submitted' | 'passed' | 'failed' | 'constraint_violated';
-export type TransactionType = 'purchase' | 'ai_usage' | 'refund';
+export type TransactionType = 'purchase' | 'ai_usage' | 'refund' | 'signup_bonus' | 'assessment_purchase';
 export type ConstraintType = 'tokens' | 'cost' | 'time';
+export type ChallengeCategory = 'practice' | 'model_selection' | 'prompt_efficiency' | 'iterative_debugging';
+export type AssessmentStatus = 'draft' | 'active' | 'archived';
+export type InviteStatus = 'pending' | 'started' | 'completed' | 'expired';
+export type SessionStatus = 'in_progress' | 'completed' | 'expired' | 'abandoned';
+export type AccountType = 'individual' | 'team';

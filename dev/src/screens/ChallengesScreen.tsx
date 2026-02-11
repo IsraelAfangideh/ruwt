@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { View, Text, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, Text, ActivityIndicator, StyleSheet, Pressable } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { createClient } from '@/lib/supabase/client';
 import { DashboardLayout } from '@/components/DashboardLayout';
@@ -8,11 +8,19 @@ import { ChallengeCard, type Challenge } from '@/components/ChallengeCard';
 import { useColors } from '@/theme';
 import { spacing, fontSizes, fontFamily } from '@/theme/tokens';
 
+const CATEGORIES = [
+  { key: 'all', label: 'All' },
+  { key: 'model_selection', label: 'Model Selection' },
+  { key: 'prompt_efficiency', label: 'Prompt Efficiency' },
+  { key: 'iterative_debugging', label: 'Debugging' },
+] as const;
+
 export function ChallengesScreen() {
   const navigation = useNavigation();
   const [user, setUser] = useState<any>(null);
   const [challenges, setChallenges] = useState<Challenge[]>([]);
   const [loading, setLoading] = useState(true);
+  const [activeCategory, setActiveCategory] = useState('all');
   const supabase = createClient();
   const c = useColors();
 
@@ -48,24 +56,57 @@ export function ChallengesScreen() {
 
   if (!user) return null;
 
+  const filtered = activeCategory === 'all'
+    ? challenges
+    : challenges.filter((ch) => ch.category === activeCategory);
+
   return (
     <DashboardLayout user={user}>
       <View style={[styles.section, { borderBottomColor: c.border }]}>
         <Text style={[styles.title, { color: c.text }]}>Problem Sets</Text>
         <Text style={[styles.subtitle, { color: c.textMuted }]}>
-          Master the art of prompt engineering through practical challenges.
+          Master the art of AI-efficient problem solving across three skill dimensions.
         </Text>
       </View>
-      {challenges.length === 0 ? (
+
+      <View style={styles.tabs}>
+        {CATEGORIES.map((cat) => {
+          const isActive = activeCategory === cat.key;
+          return (
+            <Pressable
+              key={cat.key}
+              onPress={() => setActiveCategory(cat.key)}
+              style={[
+                styles.tab,
+                {
+                  borderBottomColor: isActive ? c.accent : 'transparent',
+                  borderBottomWidth: 2,
+                },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.tabText,
+                  { color: isActive ? c.text : c.textMuted },
+                ]}
+              >
+                {cat.label}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
+
+      {filtered.length === 0 ? (
         <Card style={[styles.empty, { borderStyle: 'dashed', backgroundColor: c.muted + '20' }]}>
           <CardContent style={styles.emptyContent}>
             <Text style={[styles.emptyTitle, { color: c.text }]}>No Challenges Available</Text>
-            <Text style={[styles.emptySub, { color: c.textMuted }]}>Check back later for new course modules.</Text>
+            <Text style={[styles.emptySub, { color: c.textMuted }]}>Check back later for new challenges.</Text>
           </CardContent>
         </Card>
       ) : (
         <View style={styles.grid}>
-          {challenges.map((ch) => (
+          {filtered.map((ch) => (
             <ChallengeCard key={ch.id} challenge={ch} />
           ))}
         </View>
@@ -76,9 +117,12 @@ export function ChallengesScreen() {
 
 const styles = StyleSheet.create({
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  section: { marginBottom: spacing.lg, paddingBottom: spacing.md, borderBottomWidth: 1, borderBottomColor: 'transparent' },
+  section: { marginBottom: spacing.md, paddingBottom: spacing.md, borderBottomWidth: 1, borderBottomColor: 'transparent' },
   title: { fontSize: fontSizes['3xl'], fontWeight: '700', fontFamily: fontFamily.body },
   subtitle: { fontSize: fontSizes.sm, marginTop: spacing.xs },
+  tabs: { flexDirection: 'row', gap: spacing.md, marginBottom: spacing.lg },
+  tab: { paddingBottom: spacing.sm },
+  tabText: { fontSize: fontSizes.sm, fontWeight: '600' },
   empty: { borderWidth: 2 },
   emptyContent: { alignItems: 'center', paddingVertical: spacing['2xl'] },
   emptyTitle: { fontSize: fontSizes.lg, fontWeight: '600' },

@@ -13,6 +13,12 @@ export const linking: LinkingOptions<ReactNavigation.RootParamList> = {
       Profile: 'profile',
       Settings: 'settings',
       Arena: 'arena/:challengeId',
+      Assessments: 'assessments',
+      AssessmentBuilder: 'assessments/build/:assessmentId?',
+      AssessmentResultsDashboard: 'assessments/:assessmentId/results',
+      AssessmentLanding: 'assess/:token',
+      AssessmentFlow: 'assess/session/:sessionId',
+      AssessmentResults: 'results/:shareToken',
     },
   },
 };
