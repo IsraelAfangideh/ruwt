@@ -1,0 +1,196 @@
+/**
+ * POST /api/assess/start
+ * Start an assessment session from an invite token.
+ * Auth required (candidate).
+ */
+import { eq, and, asc } from 'drizzle-orm';
+import { z } from 'zod';
+import { getDb } from '../../_shared/db';
+import { getUser } from '../../_shared/auth';
+import {
+  assessments,
+  assessmentInvites,
+  assessmentSessions,
+  assessmentChallenges,
+  challenges,
+  attempts,
+  profiles,
+} from '../../../drizzle/schema.d1';
+
+const startSchema = z.object({
+  token: z.string().min(1),
+});
+
+export async function onRequestPost(context: { request: Request; env: Env }) {
+  try {
+    const user = await getUser(context.request, context.env);
+    if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+
+    const body = await context.request.json().catch(() => ({}));
+    const parsed = startSchema.safeParse(body);
+    if (!parsed.success) {
+      return Response.json(
+        { error: 'Invalid request', details: parsed.error.issues },
+        { status: 400 }
+      );
+    }
+
+    const db = getDb(context.env);
+
+    // Ensure profile exists
+    await db
+      .insert(profiles)
+      .values({
+        id: user.id,
+        email: user.email ?? '',
+        name: (user.user_metadata?.full_name ?? user.user_metadata?.name) as string | null ?? null,
+        avatarUrl: (user.user_metadata?.avatar_url as string) ?? null,
+        credits: 100, // Free tier signup bonus
+      })
+      .onConflictDoNothing({ target: profiles.id });
+
+    // Find invite
+    const [invite] = await db
+      .select()
+      .from(assessmentInvites)
+      .where(eq(assessmentInvites.token, parsed.data.token))
+      .limit(1);
+
+    if (!invite) {
+      return Response.json({ error: 'Invalid invite link' }, { status: 404 });
+    }
+
+    if (invite.status !== 'pending' && invite.status !== 'started') {
+      return Response.json({ error: 'This invite has already been used or expired' }, { status: 400 });
+    }
+
+    if (invite.expiresAt && new Date(invite.expiresAt) < new Date()) {
+      await db
+        .update(assessmentInvites)
+        .set({ status: 'expired' })
+        .where(eq(assessmentInvites.id, invite.id));
+      return Response.json({ error: 'This invite has expired' }, { status: 400 });
+    }
+
+    // Check if user already has a session for this assessment
+    const [existingSession] = await db
+      .select()
+      .from(assessmentSessions)
+      .where(
+        and(
+          eq(assessmentSessions.assessmentId, invite.assessmentId),
+          eq(assessmentSessions.userId, user.id)
+        )
+      )
+      .limit(1);
+
+    if (existingSession) {
+      // Return existing session
+      const challengeList = await db
+        .select({ challenge: challenges })
+        .from(assessmentChallenges)
+        .innerJoin(challenges, eq(assessmentChallenges.challengeId, challenges.id))
+        .where(eq(assessmentChallenges.assessmentId, invite.assessmentId))
+        .orderBy(asc(assessmentChallenges.sortOrder));
+
+      const currentChallenge = challengeList[existingSession.currentChallengeIndex]?.challenge ?? null;
+
+      return Response.json({
+        session: existingSession,
+        currentChallenge,
+        totalChallenges: challengeList.length,
+        isExisting: true,
+      });
+    }
+
+    // Get assessment
+    const [assessment] = await db
+      .select()
+      .from(assessments)
+      .where(eq(assessments.id, invite.assessmentId))
+      .limit(1);
+
+    if (!assessment || assessment.status !== 'active') {
+      return Response.json({ error: 'Assessment is not available' }, { status: 400 });
+    }
+
+    // Get challenges
+    const challengeList = await db
+      .select({ challenge: challenges })
+      .from(assessmentChallenges)
+      .innerJoin(challenges, eq(assessmentChallenges.challengeId, challenges.id))
+      .where(eq(assessmentChallenges.assessmentId, assessment.id))
+      .orderBy(asc(assessmentChallenges.sortOrder));
+
+    if (challengeList.length === 0) {
+      return Response.json({ error: 'Assessment has no challenges' }, { status: 400 });
+    }
+
+    // Create session
+    const sessionId = crypto.randomUUID();
+    const expiresAt = new Date();
+    expiresAt.setSeconds(expiresAt.getSeconds() + assessment.timeLimit);
+    const shareToken = crypto.randomUUID().replace(/-/g, '').slice(0, 16);
+
+    await db.insert(assessmentSessions).values({
+      id: sessionId,
+      assessmentId: assessment.id,
+      inviteId: invite.id,
+      userId: user.id,
+      status: 'in_progress',
+      currentChallengeIndex: 0,
+      totalCost: 0,
+      totalTokens: 0,
+      expiresAt: expiresAt.toISOString(),
+      shareToken,
+    });
+
+    // Update invite status
+    await db
+      .update(assessmentInvites)
+      .set({ status: 'started' })
+      .where(eq(assessmentInvites.id, invite.id));
+
+    // Create first attempt
+    const firstChallenge = challengeList[0].challenge;
+    const testCases = JSON.parse(firstChallenge.testCases) as unknown[];
+    const attemptId = crypto.randomUUID();
+
+    await db.insert(attempts).values({
+      id: attemptId,
+      userId: user.id,
+      challengeId: firstChallenge.id,
+      status: 'in_progress',
+      totalCost: 0,
+      inputTokens: 0,
+      outputTokens: 0,
+      passedTests: 0,
+      totalTests: Array.isArray(testCases) ? testCases.length : 0,
+      expiresAt: expiresAt.toISOString(),
+      assessmentSessionId: sessionId,
+    });
+
+    const [session] = await db
+      .select()
+      .from(assessmentSessions)
+      .where(eq(assessmentSessions.id, sessionId))
+      .limit(1);
+
+    const [attempt] = await db
+      .select()
+      .from(attempts)
+      .where(eq(attempts.id, attemptId))
+      .limit(1);
+
+    return Response.json({
+      session,
+      attempt,
+      currentChallenge: firstChallenge,
+      totalChallenges: challengeList.length,
+      isExisting: false,
+    }, { status: 201 });
+  } catch (error) {
+    console.error('Start assessment error:', error);
+    return Response.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}

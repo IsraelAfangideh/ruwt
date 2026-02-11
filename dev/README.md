@@ -1,84 +1,171 @@
 # ruwt.dev
 
-Ruwt is a competitive coding platform where success is measured in dollars, not just runtime. Developers solve challenges by prompting AI models, with every token and model choice carrying a real-world price tag. The goal is to produce working code for the absolute lowest financial cost, turning engineering efficiency into a game of arbitrage.
+Ruwt is a competitive coding platform where success is measured in dollars, not just runtime. Developers solve challenges by prompting AI models, with every token and model choice carrying a real-world price tag.
 
-## Tech Stack
+## Stack
 
-- **Framework:** Next.js 14+ (App Router)
-- **Language:** TypeScript
-- **Backend:** Supabase (PostgreSQL + Auth + Realtime)
-- **ORM:** Drizzle
+- **Frontend:** React (react-native-web) + Vite
+- **Hosting:** Cloudflare Pages (static + **Functions**)
+- **Database:** Cloudflare **D1** (SQLite)
+- **Auth:** **Supabase** only (GitHub / Google / email)
 - **Payments:** Stripe
-- **AI Providers:** OpenAI, Anthropic, Cloudflare Workers AI
-- **Editor:** Monaco Editor
-- **Terminal:** xterm.js
-- **Sandbox:** WebContainers
+- **AI:** Cloudflare Workers AI (and optionally OpenAI/Anthropic via env)
+- **Editor:** Monaco; **Terminal:** xterm.js; **Sandbox:** WebContainers (client)
 
-## Getting Started
+## Getting started
 
 ### Prerequisites
 
 - Node.js 18+
-- npm or pnpm
-- Supabase account
-- Stripe account
-- API keys for OpenAI, Anthropic, and/or Cloudflare
+- Supabase project (for auth)
+- Cloudflare account (Pages + D1)
 
 ### Setup
 
-1. Clone the repository and install dependencies:
+1. Install dependencies:
 
 ```bash
 cd dev
 npm install
 ```
 
-2. Copy the environment template:
+2. Copy env and fill in:
 
 ```bash
 cp .env.example .env.local
 ```
 
-3. Fill in your environment variables in `.env.local`
+Set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` for the client. For local Functions (wrangler), use `.dev.vars` or `wrangler.toml` vars.
 
-4. Set up the database:
+3. Create the D1 database:
 
 ```bash
-npx drizzle-kit generate
-npx drizzle-kit push
+npx wrangler d1 create ruwt-dev
 ```
 
-5. Run the development server:
+Add the returned `database_id` to `wrangler.toml` under `[[d1_databases]]` (replace `REPLACE_WITH_DATABASE_ID`).
+
+4. Run migrations:
 
 ```bash
+npx wrangler d1 execute ruwt-dev --remote --file=./drizzle/migrations-d1/0000_initial.sql
+```
+
+For local dev, use `--local` instead of `--remote` and run migrations against the local D1.
+
+5. (Optional) Seed challenges into D1:
+
+```bash
+npm run db:seed-d1   # generates scripts/seed-d1.sql
+npx wrangler d1 execute ruwt-dev --remote --file=./scripts/seed-d1.sql   # remote
+# or --local for local D1
+```
+
+6. Run the app:
+
+```bash
+# Terminal 1: Vite dev server (proxies /api to Functions)
 npm run dev
+
+# Terminal 2: Cloudflare Pages dev (serves Functions + D1)
+npx wrangler pages dev dist --compatibility-date=2024-01-01 --d1=DB=ruwt-dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) to see the app.
+Or use `wrangler pages dev` with the correct `--d1` binding and point Vite’s proxy to the port wrangler uses (e.g. 8788).
 
-## Project Structure
+7. Build for production:
+
+```bash
+npm run build
+```
+
+## Deploying (going live)
+
+### 1. GitHub Actions (recommended)
+
+Push to `main` (when `dev/**` changes) or run **Actions → Deploy Dev (Cloudflare Pages) → Run workflow**.
+
+**Required repo secrets:**
+
+| Secret | Used for |
+|--------|----------|
+| `CLOUDFLARE_ACCOUNT_ID` | Wrangler deploy |
+| `CLOUDFLARE_API_TOKEN` | Wrangler deploy (needs Pages + D1) |
+| `VITE_SUPABASE_URL` | Build-time client env (auth) |
+| `VITE_SUPABASE_ANON_KEY` | Build-time client env (auth) |
+
+After the first successful deploy, the site is at **https://ruwt-dev.pages.dev**.
+
+### 2. One-time: D1 migrations and seed (remote)
+
+Run once against production D1 (same DB as in `wrangler.toml`):
+
+```bash
+cd dev
+npx wrangler d1 execute ruwt-dev --remote --file=./drizzle/migrations-d1/0000_initial.sql
+npm run db:seed-d1
+npx wrangler d1 execute ruwt-dev --remote --file=./scripts/seed-d1.sql
+```
+
+### 3. Functions env vars (production)
+
+In **Cloudflare Dashboard → Pages → ruwt-dev → Settings → Environment variables** (Production), set:
+
+- **Required for auth:** `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` (same values as build; used by Functions to validate sessions).
+- **Optional:** `STRIPE_WEBHOOK_SECRET`, `STRIPE_SECRET_KEY` (payments), `OPENAI_API_KEY` or `ANTHROPIC_API_KEY` (if `/api/ai/chat` uses them), `JUDGE0_API_URL`, `JUDGE0_API_KEY` (submissions).
+
+D1 is already bound via `wrangler.toml` (`DB`); no dashboard binding needed if you deploy with the same config.
+
+### 4. Custom domain (optional)
+
+In **Pages → ruwt-dev → Custom domains**, add your domain and follow DNS instructions.
+
+### If you use Cloudflare Git integration (dashboard "Connect to Git")
+
+- **Root directory:** `dev` (so build runs inside `dev/`).
+- **Build command:** `npm run build`
+- **Build output directory:** `dist`
+- **Do not** set a custom deploy command to `npx wrangler deploy` (that is for Workers). Either leave the deploy command **blank** (Pages will deploy the build output) or use `npx wrangler pages deploy dist --project-name=ruwt-dev`. If you see "run a Workers-specific command in a Pages project", remove or change the deploy command in **Pages → your project → Settings → Builds & deployments**.
+
+---
+
+## Environment (reference)
+
+- **Client (Vite):** `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` (see `.env.example`).
+- **Cloudflare Pages / Functions:** In dashboard or `.dev.vars`: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_SECRET_KEY`, `JUDGE0_API_URL`, `JUDGE0_API_KEY`, and AI provider keys if used. D1 is bound in `wrangler.toml` as `DB`.
+
+## Project structure
 
 ```
 dev/
-├── app/                    # Next.js App Router
-│   ├── (auth)/            # Auth pages (login, register)
-│   ├── (dashboard)/       # Protected dashboard pages
-│   ├── arena/             # Challenge IDE
-│   └── api/               # API routes
-├── components/            # React components
-│   ├── ui/               # shadcn/ui components
-│   ├── editor/           # Monaco editor components
-│   └── ai/               # AI-related components
-├── lib/                   # Utility libraries
-│   ├── supabase/         # Supabase clients
-│   ├── ai/               # AI providers & pricing
-│   └── ...
-└── drizzle/              # Database schema & migrations
+├── src/                 # Vite + react-native-web app
+│   ├── screens/
+│   ├── components/
+│   ├── navigation/
+│   └── theme/
+├── functions/           # Cloudflare Pages Functions (API)
+│   ├── _shared/         # db, auth, constraints, judge, ai
+│   └── api/             # leaderboard, attempts, submissions, ai/chat, challenges, profile, webhooks/stripe
+├── drizzle/
+│   ├── schema.ts        # Postgres (legacy/Next)
+│   ├── schema.d1.ts     # D1 (SQLite) schema
+│   └── migrations-d1/   # D1 SQL migrations
+├── lib/                 # Shared libs (ai, judge, stripe, supabase)
+└── components/          # Legacy DOM components (Monaco, Terminal, etc.)
 ```
 
-## Environment Variables
+## API (Functions)
 
-See `.env.example` for all required environment variables.
+- `GET /api/challenges` – list challenges (D1)
+- `GET /api/challenges/:id` – one challenge
+- `GET /api/leaderboard` – global or `?challengeId=`
+- `POST/GET /api/attempts` – create/list attempts (auth)
+- `POST/GET /api/submissions` – submit solution / get status (auth, Judge0)
+- `POST /api/ai/chat` – streaming chat (auth, credits; Cloudflare AI models in Workers)
+- `GET /api/profile` – current user profile (auth)
+- `POST /api/webhooks/stripe` – Stripe webhook (credits)
+
+Auth is done via Supabase session (cookie). App data (challenges, attempts, profiles, etc.) lives in D1.
 
 ## License
 
