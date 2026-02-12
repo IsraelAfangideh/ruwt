@@ -62,8 +62,7 @@ export function LoginScreen() {
             </View>
           ) : null}
           <View style={styles.oauthRow}>
-            <Button variant="outline" onPress={() => handleOAuth('github')} disabled={loading}>GitHub</Button>
-            <Button variant="outline" onPress={() => handleOAuth('google')} disabled={loading}>Google</Button>
+            <Button variant="outline" onPress={() => handleOAuth('github')} disabled={loading} fullWidth>GitHub</Button>
           </View>
           <View style={styles.sepWrap}>
             <Separator />

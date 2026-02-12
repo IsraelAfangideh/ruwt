@@ -9,13 +9,9 @@ database_id = "27b64c12-c858-473d-8a40-d202d01d32aa"
 # After creating: wrangler d1 create ruwt-dev
 # Then: wrangler d1 execute ruwt-dev --remote --file=./drizzle/migrations-d1/0000_initial.sql
 
-# Optional: bindings for production (set in dashboard or .dev.vars for local)
-# [vars]
-# VITE_SUPABASE_URL = ""
-# VITE_SUPABASE_ANON_KEY = ""
-# STRIPE_WEBHOOK_SECRET = ""
-# STRIPE_SECRET_KEY = ""
-# CLOUDFLARE_ACCOUNT_ID = ""
-# CLOUDFLARE_API_TOKEN = ""
-# JUDGE0_API_URL = ""
-# JUDGE0_API_KEY = ""
+# Public (non-secret) vars needed by Pages Functions at runtime.
+# Secrets (Stripe keys, API tokens) must be set in dashboard or via
+# `npx wrangler pages secret put <NAME>`.
+[vars]
+VITE_SUPABASE_URL = "https://fzncpdelyfuvdeqmwznx.supabase.co"
+VITE_SUPABASE_ANON_KEY = "sb_publishable_tjjTFEzLtcwHrrS9qpkhdQ_rfGJHIsy"

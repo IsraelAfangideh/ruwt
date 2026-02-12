@@ -1,8 +1,9 @@
-import { createClient as createSupabaseClient } from '@supabase/supabase-js';
+import { createBrowserClient } from '@supabase/ssr';
+import type { SupabaseClient } from '@supabase/supabase-js';
 
-let supabaseClient: ReturnType<typeof createSupabaseClient> | null = null;
+let supabaseClient: SupabaseClient | null = null;
 
-export function createClient() {
+export function createClient(): SupabaseClient {
   if (supabaseClient) return supabaseClient;
 
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
@@ -16,11 +17,15 @@ export function createClient() {
         signUp: () => Promise.reject(new Error('Supabase not configured')),
         signOut: () => Promise.reject(new Error('Supabase not configured')),
         getUser: () => Promise.resolve({ data: { user: null }, error: null }),
+        exchangeCodeForSession: () => Promise.reject(new Error('Supabase not configured')),
+        onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
       },
       from: () => ({ select: () => ({ order: () => Promise.resolve({ data: null, error: null }) }) }),
-    } as unknown as ReturnType<typeof createSupabaseClient>;
+    } as unknown as SupabaseClient;
   }
 
-  supabaseClient = createSupabaseClient(supabaseUrl, supabaseKey);
+  // createBrowserClient stores session in cookies (not localStorage),
+  // so the server-side Functions can read it from the Cookie header.
+  supabaseClient = createBrowserClient(supabaseUrl, supabaseKey);
   return supabaseClient;
 }
