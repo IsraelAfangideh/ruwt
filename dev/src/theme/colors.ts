@@ -62,5 +62,19 @@ export const colors = {
   },
 };
 
+export const arena = {
+  bg: '#0d1117',
+  surface: '#161b22',
+  surfaceHover: '#1c2128',
+  border: 'rgba(240,246,252,0.1)',
+  text: '#e6edf3',
+  textMuted: '#7d8590',
+  textSubtle: '#484f58',
+  accent: '#c9a962',
+  accentBg: 'rgba(201,169,98,0.12)',
+  success: '#3fb950',
+  error: '#f85149',
+};
+
 export type ColorScheme = typeof colors.light;
 export type ThemeMode = 'light' | 'dark';
