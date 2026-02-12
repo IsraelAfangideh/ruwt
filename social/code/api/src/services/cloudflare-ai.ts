@@ -102,7 +102,10 @@ export async function callCloudflareAI(
     throw new Error(`Cloudflare AI error: ${msg}`);
   }
 
-  return data.result.response;
+  // Cloudflare may return response as a parsed object (when model outputs JSON)
+  // or as a string. Always return a string for consistent downstream handling.
+  const response = data.result.response;
+  return typeof response === 'string' ? response : JSON.stringify(response);
 }
 
 /**
