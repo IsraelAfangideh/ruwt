@@ -1,23 +1,25 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import * as schema from '../db/schema';
 import { eq } from 'drizzle-orm';
-import { 
-  generateRewritePrompt, 
-  REWRITE_IDENTITY, 
-  RewriteChatRequest, 
-  RewriteChatResponse 
+import {
+  generateRewritePrompt,
+  REWRITE_IDENTITY,
+  RewriteChatRequest,
+  RewriteChatResponse
 } from '@ruwt/shared';
-import { getGeminiModelCandidates, isGeminiModelNotFoundError } from './gemini';
+import {
+  getModelCandidates,
+  isModelNotFoundError,
+  callCloudflareAI,
+  convertHistory,
+  type CloudflareAIMessage,
+} from './cloudflare-ai';
 
 // Initialize DB
 const connectionString = process.env.DATABASE_URL || 'postgres://postgres:password@127.0.0.1:5432/ruwt';
 const client = postgres(connectionString);
 const db = drizzle(client, { schema });
-
-// Initialize AI
-const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GENERATIVE_AI_API_KEY || '');
 
 export async function chatWithRewrite(payload: RewriteChatRequest): Promise<RewriteChatResponse | null> {
   const { message, userId, history, tone } = payload;
@@ -25,17 +27,17 @@ export async function chatWithRewrite(payload: RewriteChatRequest): Promise<Rewr
 
   try {
     // 1. Fetch Context
-    const runner = await db.query.runners.findFirst({ 
-      where: eq(schema.runners.name, runnerName) 
+    const runner = await db.query.runners.findFirst({
+      where: eq(schema.runners.name, runnerName)
     });
-    
-    if (!runner) { 
-      console.error('Runner not found:', runnerName); 
-      return null; 
+
+    if (!runner) {
+      console.error('Runner not found:', runnerName);
+      return null;
     }
 
-    const userMemories = await db.query.memories.findMany({ 
-      where: eq(schema.memories.userId, userId) 
+    const userMemories = await db.query.memories.findMany({
+      where: eq(schema.memories.userId, userId)
     });
     const memoryContent = userMemories.map(m => m.content);
 
@@ -53,32 +55,26 @@ export async function chatWithRewrite(payload: RewriteChatRequest): Promise<Rewr
       }
     }
 
-    // 3. Call AI with JSON Enforcement (retry with fallback model on 404 "model not found")
-    const modelCandidates = getGeminiModelCandidates();
+    // 3. Build messages in OpenAI-compatible format
+    const messages: CloudflareAIMessage[] = [
+      { role: 'system', content: systemInstruction },
+      ...convertHistory(validHistory),
+      { role: 'user', content: message },
+    ];
+
+    // 4. Call Cloudflare AI with model fallback
+    const modelCandidates = getModelCandidates();
     let responseText: string | null = null;
     let lastError: unknown = null;
 
     for (const modelName of modelCandidates) {
       try {
-        const model = genAI.getGenerativeModel({ 
-          model: modelName,
-          systemInstruction: systemInstruction,
-          generationConfig: {
-            responseMimeType: "application/json", // Forces strict-ish JSON output
-          }
-        });
-
-        const chat = model.startChat({
-          history: validHistory, 
-        });
-
-        const result = await chat.sendMessage(message);
-        responseText = result.response.text();
+        responseText = await callCloudflareAI(modelName, messages);
         break;
       } catch (err) {
         lastError = err;
-        if (isGeminiModelNotFoundError(err)) {
-          console.warn(`Rewrite: Gemini model "${modelName}" not available, trying next candidate...`);
+        if (isModelNotFoundError(err)) {
+          console.warn(`Rewrite: model "${modelName}" not available, trying next candidate...`);
           continue;
         }
         throw err;
@@ -86,11 +82,11 @@ export async function chatWithRewrite(payload: RewriteChatRequest): Promise<Rewr
     }
 
     if (responseText == null) {
-      console.error('Rewrite: all Gemini model candidates failed:', modelCandidates);
-      throw lastError ?? new Error('Rewrite: all Gemini model candidates failed');
+      console.error('Rewrite: all model candidates failed:', modelCandidates);
+      throw lastError ?? new Error('Rewrite: all model candidates failed');
     }
 
-    // 4. Parse JSON Response (Robust)
+    // 5. Parse JSON Response (Robust)
     let explanation: string | undefined;
     let proposedRewrite: string | undefined;
 
@@ -102,7 +98,7 @@ export async function chatWithRewrite(payload: RewriteChatRequest): Promise<Rewr
       console.error("Failed to parse AI JSON response:", responseText);
       // Fallback: If JSON fails, treat the whole text as the explanation (safeguard)
       explanation = "I had trouble processing that specifically, but let's try to be kind.";
-      proposedRewrite = responseText; 
+      proposedRewrite = responseText;
     }
 
     // It's considered "Blocked"/Intercepted if we have a rewrite (which we always should now)

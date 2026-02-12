@@ -1,4 +1,3 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import * as schema from '../db/schema';
@@ -9,15 +8,18 @@ import {
   RespondChatRequest,
   RespondChatResponse
 } from '@ruwt/shared';
-import { getGeminiModelCandidates, isGeminiModelNotFoundError } from './gemini';
+import {
+  getModelCandidates,
+  isModelNotFoundError,
+  callCloudflareAI,
+  convertHistory,
+  type CloudflareAIMessage,
+} from './cloudflare-ai';
 
 // Initialize DB
 const connectionString = process.env.DATABASE_URL || 'postgres://postgres:password@127.0.0.1:5432/ruwt';
 const client = postgres(connectionString);
 const db = drizzle(client, { schema });
-
-// Initialize AI
-const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GENERATIVE_AI_API_KEY || '');
 
 export async function chatWithRespond(payload: RespondChatRequest): Promise<RespondChatResponse | null> {
   const { message, userId, history, tone } = payload;
@@ -53,32 +55,26 @@ export async function chatWithRespond(payload: RespondChatRequest): Promise<Resp
       }
     }
 
-    // 3. Call AI with JSON Enforcement (retry with fallback model on 404 "model not found")
-    const modelCandidates = getGeminiModelCandidates();
+    // 3. Build messages in OpenAI-compatible format
+    const messages: CloudflareAIMessage[] = [
+      { role: 'system', content: systemInstruction },
+      ...convertHistory(validHistory),
+      { role: 'user', content: message },
+    ];
+
+    // 4. Call Cloudflare AI with model fallback
+    const modelCandidates = getModelCandidates();
     let responseText: string | null = null;
     let lastError: unknown = null;
 
     for (const modelName of modelCandidates) {
       try {
-        const model = genAI.getGenerativeModel({
-          model: modelName,
-          systemInstruction: systemInstruction,
-          generationConfig: {
-            responseMimeType: "application/json",
-          }
-        });
-
-        const chat = model.startChat({
-          history: validHistory,
-        });
-
-        const result = await chat.sendMessage(message);
-        responseText = result.response.text();
+        responseText = await callCloudflareAI(modelName, messages);
         break;
       } catch (err) {
         lastError = err;
-        if (isGeminiModelNotFoundError(err)) {
-          console.warn(`Respond: Gemini model "${modelName}" not available, trying next candidate...`);
+        if (isModelNotFoundError(err)) {
+          console.warn(`Respond: model "${modelName}" not available, trying next candidate...`);
           continue;
         }
         throw err;
@@ -86,11 +82,11 @@ export async function chatWithRespond(payload: RespondChatRequest): Promise<Resp
     }
 
     if (responseText == null) {
-      console.error('Respond: all Gemini model candidates failed:', modelCandidates);
-      throw lastError ?? new Error('Respond: all Gemini model candidates failed');
+      console.error('Respond: all model candidates failed:', modelCandidates);
+      throw lastError ?? new Error('Respond: all model candidates failed');
     }
 
-    // 4. Parse JSON Response (Robust)
+    // 5. Parse JSON Response (Robust)
     let explanation: string | undefined;
     let proposedResponse: string | undefined;
 

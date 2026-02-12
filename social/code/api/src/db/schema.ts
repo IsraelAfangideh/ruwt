@@ -6,8 +6,7 @@ export const runners = pgTable('runners', {
   kind: text('kind').notNull().default('rewrite'),
   personality: text('personality').notNull(),
   systemPrompt: text('system_prompt').notNull(),
-  // Vector embedding for personality matching (768 dims for Google Gemini embeddings typically, or 1536 for OpenAI)
-  // We'll keep it flexible, but noting the shift to Google AI might imply different dimensions if we use their embeddings.
+  // Vector embedding for personality matching (1536 dims, standard for OpenAI-compatible embeddings)
   embedding: vector('embedding', { dimensions: 1536 }), 
 });
 
