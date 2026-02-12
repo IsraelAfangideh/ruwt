@@ -26,6 +26,13 @@ ruwt/
 - **Key architecture decisions**:
   - Client uses `@supabase/ssr` `createBrowserClient` (stores session in cookies, not localStorage) so server-side Functions can validate auth via Cookie header
   - Server-side auth: `functions/_shared/auth.ts` → `createSupabaseFromRequest()` reads cookies → `supabase.auth.getUser()`
+  - OAuth callback (`CallbackScreen`) does NOT manually read `?code=` from URL — `createBrowserClient` auto-detects and exchanges it via PKCE before React effects run. Callback listens to `onAuthStateChange` + `getSession()` instead.
+  - OAuth `redirectTo` (post-login destination) is stored in `localStorage`, not URL query params, to keep the callback URL clean for Supabase PKCE flow
+- **Design system**: Warm cream/dark palette with gold accent, shared with `/social`
+  - Theme: `dev/src/theme/colors.ts` (light/dark), `tokens.ts` (spacing, radii, fonts)
+  - Fonts: Cormorant Garamond (display), Libre Franklin (body)
+  - Cards use subtle shadows for depth, tinted pill badges for difficulty/category
+  - Manual deploy from CLI: `CLOUDFLARE_API_TOKEN=... npx wrangler pages deploy dist --project-name=ruwt-dev --branch=main --commit-dirty=true`
 
 ## /social — Ruwt Social Network
 
@@ -71,3 +78,14 @@ ruwt/
 - Do NOT add `[vars]` to `dev/wrangler.toml` for vars already set in Cloudflare Dashboard — causes "Binding name already in use" deploy failures
 - The `/social` shared types keep Gemini-style history format to avoid breaking the mobile app; conversion happens server-side
 - Cloudflare Workers AI returns `result.response` as a parsed object (not string) when model outputs JSON — always stringify
+- Cloudflare Pages deploys from CLI associate with the current git branch; custom domains serve `main` branch only. Use `--branch=main` when deploying manually from `develop`.
+- Supabase GoTrue caches auth config at startup. Updating config via Management API does NOT restart GoTrue — must pause/restore the project from the dashboard to pick up changes like `site_url`.
+
+## Knowledge Sharing
+
+When you discover something non-obvious (gotchas, architecture decisions, debug findings, deploy quirks), update this file or your auto-memory notes so future Claude instances benefit. Specifically:
+
+- **This file (`CLAUDE.md`)**: Add project-level facts — infrastructure config, architectural decisions, deploy procedures, service quirks. Keep it concise and factual.
+- **Auto-memory (`~/.claude/projects/.../memory/MEMORY.md`)**: Add working patterns, user preferences, and recurring pitfalls you've confirmed across interactions.
+
+Don't wait to be asked — if you hit a wall and solve it, document the fix here before moving on.

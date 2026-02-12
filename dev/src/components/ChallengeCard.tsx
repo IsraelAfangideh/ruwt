@@ -1,10 +1,8 @@
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/Card';
-import { Badge } from '@/components/ui/Badge';
-import { Button } from '@/components/ui/Button';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/Card';
 import { useColors } from '@/theme';
-import { spacing, fontSizes } from '@/theme/tokens';
+import { spacing, fontSizes, fontFamily, radii } from '@/theme/tokens';
 
 export interface Challenge {
   id: string;
@@ -29,56 +27,75 @@ export function ChallengeCard({ challenge }: { challenge: Challenge }) {
   const navigation = useNavigation();
   const c = useColors();
 
-  const diffColor = challenge.difficulty === 'easy' ? c.success : challenge.difficulty === 'medium' ? c.accent : c.destructive;
+  const diffColor = challenge.difficulty === 'easy' ? c.success
+    : challenge.difficulty === 'medium' ? c.accent
+    : c.destructive;
+  const diffBg = challenge.difficulty === 'easy' ? c.successBg
+    : challenge.difficulty === 'medium' ? c.accentBg
+    : c.errorBg;
+
   const catLabel = categoryLabel(challenge.category);
   const catColor = challenge.category === 'model_selection' ? c.accent
     : challenge.category === 'prompt_efficiency' ? c.success
     : challenge.category === 'iterative_debugging' ? c.destructive
     : c.textMuted;
+  const catBg = challenge.category === 'model_selection' ? c.accentBg
+    : challenge.category === 'prompt_efficiency' ? c.successBg
+    : challenge.category === 'iterative_debugging' ? c.errorBg
+    : 'transparent';
 
   return (
-    <Card style={[styles.card, { borderColor: c.border }]}>
-      <CardHeader>
-        <View style={styles.badgeRow}>
-          <Badge variant="outline" style={{ borderColor: diffColor }}>
-            <Text style={[styles.diffText, { color: diffColor }]}>{challenge.difficulty}</Text>
-          </Badge>
-          {catLabel && (
-            <Badge variant="outline" style={{ borderColor: catColor }}>
-              <Text style={[styles.diffText, { color: catColor }]}>{catLabel}</Text>
-            </Badge>
+    <Pressable
+      onPress={() => (navigation.navigate as any)('Arena', { challengeId: challenge.id })}
+      style={({ pressed }: { pressed: boolean }) => [styles.pressable, pressed && styles.pressed]}
+    >
+      <Card style={styles.card}>
+        <CardHeader>
+          <View style={styles.badgeRow}>
+            <View style={[styles.pill, { backgroundColor: diffBg }]}>
+              <Text style={[styles.pillText, { color: diffColor }]}>
+                {challenge.difficulty.charAt(0).toUpperCase() + challenge.difficulty.slice(1)}
+              </Text>
+            </View>
+            {catLabel && (
+              <View style={[styles.pill, { backgroundColor: catBg }]}>
+                <Text style={[styles.pillText, { color: catColor }]}>{catLabel}</Text>
+              </View>
+            )}
+          </View>
+          <CardTitle>{challenge.title}</CardTitle>
+          <CardDescription numberOfLines={2}>{challenge.description}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {challenge.skillTested && (
+            <Text style={[styles.skill, { color: c.textMuted }]}>{challenge.skillTested}</Text>
           )}
+          <Text style={[styles.meta, { color: c.textSubtle }]}>
+            Efficiency goal: ${challenge.maxCost != null ? (challenge.maxCost / 10000).toFixed(4) : 'N/A'}
+          </Text>
+        </CardContent>
+        <View style={styles.footer}>
+          <Text style={[styles.cta, { color: c.accent }]}>Start Problem  →</Text>
         </View>
-        <CardTitle>{challenge.title}</CardTitle>
-        <CardDescription numberOfLines={2}>{challenge.description}</CardDescription>
-      </CardHeader>
-      <CardContent>
-        {challenge.skillTested && (
-          <Text style={[styles.skill, { color: c.textMuted }]}>{challenge.skillTested}</Text>
-        )}
-        <Text style={[styles.meta, { color: c.textMuted }]}>
-          Efficiency goal: ${challenge.maxCost != null ? (challenge.maxCost / 10000).toFixed(4) : 'N/A'}
-        </Text>
-      </CardContent>
-      <CardFooter style={styles.footer}>
-        <Button
-          variant="secondary"
-          size="sm"
-          onPress={() => navigation.navigate('Arena', { challengeId: challenge.id })}
-          fullWidth
-        >
-          Start Problem →
-        </Button>
-      </CardFooter>
-    </Card>
+      </Card>
+    </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  card: { flex: 1, minWidth: 280 },
-  badgeRow: { flexDirection: 'row', gap: spacing.xs, marginBottom: spacing.xs },
-  diffText: { fontSize: fontSizes.xs, fontWeight: '600', textTransform: 'capitalize' },
-  skill: { fontSize: fontSizes.xs, fontStyle: 'italic', marginBottom: spacing.xs },
+  pressable: { flex: 1, minWidth: 280 },
+  pressed: { opacity: 0.92, transform: [{ scale: 0.98 }] },
+  card: { flex: 1 },
+  badgeRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.xs },
+  pill: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: radii.full,
+  },
+  pillText: { fontSize: fontSizes.xs, fontWeight: '600', fontFamily: fontFamily.body },
+  skill: { fontSize: fontSizes.xs, fontStyle: 'italic' },
   meta: { fontSize: fontSizes.xs },
-  footer: { borderTopWidth: 1, paddingTop: spacing.sm, marginTop: spacing.sm },
+  footer: { marginTop: spacing.xs, alignItems: 'flex-start' },
+  cta: { fontSize: fontSizes.sm, fontWeight: '600', fontFamily: fontFamily.body },
 });
