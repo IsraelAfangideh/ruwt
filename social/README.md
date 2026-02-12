@@ -25,7 +25,7 @@ In the physical world, couriers (*ratzim* in Hebrew) delivered messages personal
 
 - **Mediated Communication:** The "Rewrite" runner intercepts messages to ensure they align with the goal of kindness.
 - **Mobile Client:** A React Native (Expo) app for 1-on-1 interaction with the Runner.
-- **Backend Brain:** Hono + Postgres + Gemini 2.0 Flash to power the Runner's "instincts."
+- **Backend Brain:** Hono + Postgres + Cloudflare Workers AI (open source models) to power the Runner's "instincts."
 
 *Note: Cities, Closes, and Direct Messaging logic are part of the broader spec and are currently in development.*
 
@@ -38,7 +38,7 @@ This is a **Bun** monorepo containing the following workspaces:
 - **`api`**: The backend logic and "Brain" of the Runners.
   - **Framework**: Hono
   - **Database**: Postgres with `pgvector` (via Drizzle ORM)
-  - **AI**: Google Gemini 2.0 Flash
+  - **AI**: Cloudflare Workers AI (Llama 3.3, open source models)
 - **`mobile`**: The React Native mobile client (Expo).
 - **`web`**: Marketing website (static, hosted on Cloudflare Pages).
 - **`shared`**: Shared types, schemas, and prompts.
@@ -75,7 +75,7 @@ This is a **Bun** monorepo containing the following workspaces:
 ### Prerequisites
 - [Bun](https://bun.sh/) (v1.0+)
 - Docker & Docker Compose (for Postgres/pgvector)
-- Google Generative AI API Key
+- Cloudflare account with Workers AI access
 
 ### Installation
 
@@ -95,7 +95,8 @@ This is a **Bun** monorepo containing the following workspaces:
    Create a `.env` file in `social/code/api` (and `social/code/mobile` if needed) with the following:
    ```env
    DATABASE_URL=postgres://postgres:password@localhost:5433/ruwt
-   GOOGLE_GENERATIVE_AI_API_KEY=your_key_here
+   CLOUDFLARE_ACCOUNT_ID=your_account_id_here
+   CLOUDFLARE_API_TOKEN=your_api_token_here
    ```
 
 4. **Start the Database**
