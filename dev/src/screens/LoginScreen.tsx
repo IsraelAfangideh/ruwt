@@ -38,10 +38,13 @@ export function LoginScreen() {
     setLoading(true);
     setError(null);
     const origin = typeof window !== 'undefined' ? window.location.origin : '';
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('oauth_redirect', redirectTo);
+    }
     const { error: err } = await supabase.auth.signInWithOAuth({
       provider,
       options: {
-        redirectTo: `${origin}/callback?redirectTo=${encodeURIComponent(redirectTo)}`,
+        redirectTo: `${origin}/callback`,
       },
     });
     if (err) setError(err.message);
