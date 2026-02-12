@@ -1,19 +1,14 @@
 import { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, Text, ActivityIndicator } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { Button } from '@/components/ui/Button';
-import { Badge } from '@/components/ui/Badge';
-import { Separator } from '@/components/ui/Separator';
 import { ArenaIDE, type ArenaChallenge, type ArenaAttempt } from '@/components/ArenaIDE';
-import { useColors } from '@/theme';
-import { spacing, fontSizes, fontFamily } from '@/theme/tokens';
+import { arena } from '@/theme/colors';
 
 export function ArenaScreen() {
   const navigation = useNavigation();
   const route = useRoute();
   const params = (route.params || {}) as { challengeId?: string };
   const challengeId = params.challengeId ?? '';
-  const c = useColors();
 
   const [challenge, setChallenge] = useState<ArenaChallenge | null>(null);
   const [attempt, setAttempt] = useState<ArenaAttempt | null>(null);
@@ -124,51 +119,150 @@ export function ArenaScreen() {
     }
   }, [code, language, onSubmit]);
 
+  // Loading state
   if (loading) {
     return (
-      <View style={[styles.center, { backgroundColor: c.bg }]}>
-        <ActivityIndicator size="large" color={c.accent} />
-        <Text style={[styles.loadingText, { color: c.textMuted }]}>Loading arena…</Text>
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: arena.bg }}>
+        <ActivityIndicator size="large" color={arena.accent} />
+        <Text style={{ marginTop: 8, fontSize: 13, color: arena.textMuted }}>Loading arena...</Text>
       </View>
     );
   }
 
+  // Error state
   if (error || !challenge || !attempt) {
     return (
-      <View style={[styles.center, { backgroundColor: c.bg }]}>
-        <Text style={[styles.errorText, { color: c.destructive }]}>{error || 'Missing challenge or attempt'}</Text>
-        <Button variant="outline" onPress={() => navigation.navigate('Challenges' as never)} style={{ marginTop: spacing.md }}>
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: arena.bg }}>
+        <Text style={{ fontSize: 14, color: arena.error, marginBottom: 12 }}>{error || 'Missing challenge or attempt'}</Text>
+        <button
+          style={{
+            background: 'transparent',
+            border: `1px solid ${arena.border}`,
+            borderRadius: 6,
+            color: arena.text,
+            padding: '8px 16px',
+            fontSize: 13,
+            cursor: 'pointer',
+          }}
+          onClick={() => navigation.navigate('Challenges' as never)}
+        >
           Back to Challenges
-        </Button>
+        </button>
       </View>
     );
   }
 
+  const difficultyColor =
+    challenge.difficulty === 'easy' ? arena.success :
+    challenge.difficulty === 'hard' ? arena.error : arena.accent;
+
   return (
-    <View style={[styles.page, { backgroundColor: c.bg }]}>
-      <View style={[styles.header, { borderBottomColor: c.border }]}>
-        <View style={styles.headerLeft}>
-          <Button variant="ghost" size="sm" onPress={() => navigation.navigate('Challenges' as never)}>
+    <div style={{
+      display: 'flex',
+      flexDirection: 'column',
+      height: '100vh',
+      background: arena.bg,
+      color: arena.text,
+      overflow: 'hidden',
+    }}>
+      {/* Header — 44px */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        height: 44,
+        padding: '0 12px',
+        background: arena.surface,
+        borderBottom: `1px solid ${arena.border}`,
+        flexShrink: 0,
+      }}>
+        {/* Left: Back + Title */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
+          <button
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: arena.textMuted,
+              fontSize: 13,
+              cursor: 'pointer',
+              padding: '4px 8px',
+              fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+            }}
+            onClick={() => navigation.navigate('Challenges' as never)}
+          >
             ← Back
-          </Button>
-          <Separator vertical />
-          <View>
-            <Text style={[styles.challengeTitle, { color: c.text }]} numberOfLines={1}>
-              {challenge.title}
-            </Text>
-            <Badge variant="outline">{challenge.difficulty}</Badge>
-          </View>
-        </View>
-        <View style={styles.headerRight}>
-          <Button variant="outline" size="sm" onPress={handleRun} disabled={isRunning}>
+          </button>
+          <span style={{
+            width: 1,
+            height: 20,
+            background: arena.border,
+          }} />
+          <span style={{
+            fontSize: 14,
+            fontWeight: 600,
+            color: arena.text,
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+          }}>
+            {challenge.title}
+          </span>
+          <span style={{
+            fontSize: 11,
+            fontWeight: 600,
+            color: difficultyColor,
+            padding: '2px 8px',
+            borderRadius: 9999,
+            border: `1px solid ${difficultyColor}40`,
+            background: `${difficultyColor}15`,
+            fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+            textTransform: 'lowercase',
+          }}>
+            {challenge.difficulty}
+          </span>
+        </div>
+
+        {/* Right: Actions */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <button
+            style={{
+              background: 'transparent',
+              border: `1px solid ${arena.border}`,
+              borderRadius: 6,
+              color: arena.text,
+              padding: '5px 14px',
+              fontSize: 12,
+              fontWeight: 500,
+              cursor: isRunning ? 'not-allowed' : 'pointer',
+              opacity: isRunning ? 0.5 : 1,
+            }}
+            onClick={handleRun}
+            disabled={isRunning}
+          >
             Run Tests
-          </Button>
-          <Button size="sm" onPress={handleSubmit} disabled={isRunning}>
-            Submit Solution
-          </Button>
-        </View>
-      </View>
-      <View style={styles.body}>
+          </button>
+          <button
+            style={{
+              background: arena.accent,
+              border: 'none',
+              borderRadius: 6,
+              color: '#0d1117',
+              padding: '5px 14px',
+              fontSize: 12,
+              fontWeight: 600,
+              cursor: isRunning ? 'not-allowed' : 'pointer',
+              opacity: isRunning ? 0.5 : 1,
+            }}
+            onClick={handleSubmit}
+            disabled={isRunning}
+          >
+            Submit
+          </button>
+        </div>
+      </div>
+
+      {/* IDE Body */}
+      <div style={{ flex: 1, minHeight: 0, position: 'relative' }}>
         <ArenaIDE
           challenge={challenge}
           attempt={attempt}
@@ -181,26 +275,7 @@ export function ArenaScreen() {
           onAttemptUpdate={(next) => setAttempt(next)}
           runResult={runResult}
         />
-      </View>
-    </View>
+      </div>
+    </div>
   );
 }
-
-const styles = StyleSheet.create({
-  page: { flex: 1 },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  loadingText: { marginTop: spacing.sm, fontSize: fontSizes.sm },
-  errorText: { fontSize: fontSizes.md },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderBottomWidth: 1,
-  },
-  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
-  headerRight: { flexDirection: 'row', gap: spacing.sm },
-  challengeTitle: { fontSize: fontSizes.md, fontWeight: '600', fontFamily: fontFamily.body },
-  body: { flex: 1, minHeight: 0 },
-});

@@ -1,12 +1,9 @@
 /**
- * Arena IDE: Monaco editor, xterm terminal, chat, cost, constraints.
- * Lazy-loaded; mounts DOM-dependent editor and terminal inside a div.
+ * Arena IDE: Monaco editor + xterm terminal (left), AI chat (right), status bar (bottom).
+ * Dark IDE aesthetic inspired by Claude Code / Cursor.
  */
-import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { View, Text, TextInput, StyleSheet, ScrollView } from 'react-native';
-import { Button } from '@/components/ui/Button';
-import { useColors } from '@/theme';
-import { spacing } from '@/theme/tokens';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import { arena } from '@/theme/colors';
 
 function formatCost(cents: number): string {
   const d = cents / 10000;
@@ -18,6 +15,112 @@ function formatTime(seconds: number): string {
   const s = seconds % 60;
   return `${m}:${s.toString().padStart(2, '0')}`;
 }
+
+/* ─── Simple Markdown Renderer ────────────────────────────────────── */
+
+function renderMarkdown(text: string): React.ReactNode[] {
+  const blocks: React.ReactNode[] = [];
+  const lines = text.split('\n');
+  let i = 0;
+
+  while (i < lines.length) {
+    // fenced code block
+    if (lines[i].startsWith('```')) {
+      const lang = lines[i].slice(3).trim();
+      const codeLines: string[] = [];
+      i++;
+      while (i < lines.length && !lines[i].startsWith('```')) {
+        codeLines.push(lines[i]);
+        i++;
+      }
+      i++; // skip closing ```
+      blocks.push(
+        <div key={blocks.length} style={mdStyles.codeBlock}>
+          {lang && <div style={mdStyles.codeLang}>{lang}</div>}
+          <pre style={mdStyles.codePre}>{codeLines.join('\n')}</pre>
+        </div>
+      );
+      continue;
+    }
+
+    // regular line — parse inline elements
+    blocks.push(
+      <div key={blocks.length} style={mdStyles.paragraph}>
+        {renderInline(lines[i])}
+      </div>
+    );
+    i++;
+  }
+  return blocks;
+}
+
+function renderInline(text: string): React.ReactNode[] {
+  const parts: React.ReactNode[] = [];
+  // match **bold** and `code`
+  const regex = /(\*\*(.+?)\*\*|`([^`]+)`)/g;
+  let last = 0;
+  let match: RegExpExecArray | null;
+
+  while ((match = regex.exec(text)) !== null) {
+    if (match.index > last) {
+      parts.push(<span key={parts.length}>{text.slice(last, match.index)}</span>);
+    }
+    if (match[2]) {
+      // bold
+      parts.push(<strong key={parts.length}>{match[2]}</strong>);
+    } else if (match[3]) {
+      // inline code
+      parts.push(
+        <code key={parts.length} style={mdStyles.inlineCode}>{match[3]}</code>
+      );
+    }
+    last = match.index + match[0].length;
+  }
+  if (last < text.length) {
+    parts.push(<span key={parts.length}>{text.slice(last)}</span>);
+  }
+  return parts.length ? parts : [<span key={0}>{text || '\u00A0'}</span>];
+}
+
+const mdStyles: Record<string, React.CSSProperties> = {
+  codeBlock: {
+    background: '#0d1117',
+    borderRadius: 6,
+    margin: '6px 0',
+    overflow: 'hidden',
+    border: `1px solid ${arena.border}`,
+  },
+  codeLang: {
+    fontSize: 11,
+    color: arena.textMuted,
+    padding: '4px 10px',
+    borderBottom: `1px solid ${arena.border}`,
+    fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+  },
+  codePre: {
+    margin: 0,
+    padding: '10px 12px',
+    fontSize: 13,
+    lineHeight: '1.45',
+    color: arena.text,
+    fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+    overflowX: 'auto',
+    whiteSpace: 'pre',
+  },
+  inlineCode: {
+    background: 'rgba(240,246,252,0.08)',
+    padding: '2px 5px',
+    borderRadius: 3,
+    fontSize: '0.9em',
+    fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+  },
+  paragraph: {
+    lineHeight: '1.5',
+    minHeight: '1.2em',
+  },
+};
+
+/* ─── Types ───────────────────────────────────────────────────────── */
 
 export interface ArenaChallenge {
   id: string;
@@ -54,6 +157,8 @@ interface ArenaIDEProps {
   runResult?: { passed: boolean; passedTests: number; totalTests: number } | null;
 }
 
+/* ─── Component ───────────────────────────────────────────────────── */
+
 export function ArenaIDE({
   challenge,
   attempt,
@@ -61,18 +166,13 @@ export function ArenaIDE({
   code,
   onCodeChange,
   language,
-  onRunTests: _onRunTests,
-  onSubmit: _onSubmit,
   onAttemptUpdate,
   runResult,
 }: ArenaIDEProps) {
-  void _onRunTests;
-  void _onSubmit;
-  const c = useColors();
   const [totalCost, setTotalCost] = useState(attempt.totalCost);
   const [inputTokens, setInputTokens] = useState(attempt.inputTokens);
   const [outputTokens, setOutputTokens] = useState(attempt.outputTokens);
-  const [messages, setMessages] = useState<{ role: 'user' | 'assistant'; content: string }[]>([]);
+  const [messages, setMessages] = useState<{ role: 'system' | 'user' | 'assistant'; content: string }[]>([]);
   const [streamingContent, setStreamingContent] = useState('');
   const [chatInput, setChatInput] = useState('');
   const [isLoadingChat, setIsLoadingChat] = useState(false);
@@ -81,11 +181,29 @@ export function ArenaIDE({
   const [terminalReady, setTerminalReady] = useState(false);
   const editorRootRef = useRef<{ unmount: () => void } | null>(null);
   const terminalInstanceRef = useRef<{ dispose: () => void } | null>(null);
+  const chatScrollRef = useRef<HTMLDivElement>(null);
 
   const attemptId = attempt.id;
   const expiresAt = attempt.expiresAt ? new Date(attempt.expiresAt) : null;
-  const [timeLeft, setTimeLeft] = useState<number | null>(expiresAt ? Math.max(0, Math.floor((expiresAt.getTime() - Date.now()) / 1000)) : null);
+  const [timeLeft, setTimeLeft] = useState<number | null>(
+    expiresAt ? Math.max(0, Math.floor((expiresAt.getTime() - Date.now()) / 1000)) : null
+  );
 
+  // Build system prompt from challenge context
+  const systemPrompt = useMemo(() => {
+    return `You are an AI coding assistant helping a user solve a programming challenge in the Ruwt Arena.
+
+Challenge: "${challenge.title}"
+Difficulty: ${challenge.difficulty}
+Language: ${language}
+
+Description:
+${challenge.description}
+
+Help the user understand the problem, suggest approaches, debug their code, and explain concepts. Be concise and focus on the specific challenge. When showing code, use fenced code blocks with the language tag.`;
+  }, [challenge.title, challenge.difficulty, challenge.description, language]);
+
+  // Timer
   useEffect(() => {
     if (!expiresAt) return;
     const tick = () => {
@@ -97,6 +215,13 @@ export function ArenaIDE({
     return () => clearInterval(id);
   }, [expiresAt]);
 
+  // Auto-scroll chat
+  useEffect(() => {
+    if (chatScrollRef.current) {
+      chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
+    }
+  }, [messages, streamingContent]);
+
   const sendMessage = useCallback(async () => {
     const text = chatInput.trim();
     if (!text || isLoadingChat || !attemptId) return;
@@ -106,7 +231,13 @@ export function ArenaIDE({
     setIsLoadingChat(true);
     setStreamingContent('');
 
-    const chatMessages = [...messages, userMsg].map((msg) => ({ role: msg.role, content: msg.content }));
+    // Build messages array with system prompt
+    const chatMessages = [
+      { role: 'system' as const, content: systemPrompt },
+      ...messages.filter((m) => m.role !== 'system').map((msg) => ({ role: msg.role, content: msg.content })),
+      { role: 'user' as const, content: text },
+    ];
+
     try {
       const res = await fetch('/api/ai/chat', {
         method: 'POST',
@@ -120,7 +251,7 @@ export function ArenaIDE({
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        setMessages((m) => [...m, { role: 'assistant', content: `Error: ${err.error || res.statusText}` }]);
+        setMessages((m) => [...m, { role: 'assistant', content: `Error: ${(err as { error?: string }).error || res.statusText}` }]);
         return;
       }
       const reader = res.body?.getReader();
@@ -133,7 +264,15 @@ export function ArenaIDE({
         const lines = chunk.split('\n').filter((l) => l.startsWith('data: '));
         for (const line of lines) {
           try {
-            const data = JSON.parse(line.slice(6)) as { type: string; content?: string; inputTokens?: number; outputTokens?: number; cost?: number; violation?: string; message?: string };
+            const data = JSON.parse(line.slice(6)) as {
+              type: string;
+              content?: string;
+              inputTokens?: number;
+              outputTokens?: number;
+              cost?: number;
+              violation?: string;
+              message?: string;
+            };
             if (data.type === 'chunk' && data.content) {
               assistantContent += data.content;
               setStreamingContent(assistantContent);
@@ -154,7 +293,7 @@ export function ArenaIDE({
             } else if (data.type === 'constraint_warning') {
               assistantContent += `\n[Constraint: ${data.message}]`;
             }
-          } catch (_) {}
+          } catch (_) { /* skip malformed SSE */ }
         }
       }
       setMessages((m) => [...m, { role: 'assistant', content: assistantContent || '(no response)' }]);
@@ -164,8 +303,9 @@ export function ArenaIDE({
     } finally {
       setIsLoadingChat(false);
     }
-  }, [chatInput, isLoadingChat, attemptId, model, messages, attempt, onAttemptUpdate]);
+  }, [chatInput, isLoadingChat, attemptId, model, messages, attempt, onAttemptUpdate, systemPrompt]);
 
+  // Mount Monaco editor
   useEffect(() => {
     const mountId = 'arena-monaco-mount';
     const el = document.getElementById(mountId);
@@ -174,7 +314,6 @@ export function ArenaIDE({
     Promise.all([import('@monaco-editor/react'), import('react-dom/client')]).then(([{ default: Editor }, { createRoot }]) => {
       const root = document.createElement('div');
       root.style.height = '100%';
-      root.style.minHeight = '300px';
       el.appendChild(root);
       const client = createRoot(root);
       client.render(
@@ -184,7 +323,15 @@ export function ArenaIDE({
           value: code,
           onChange: (v: string | undefined) => v != null && onCodeChange(v),
           theme: 'vs-dark',
-          options: { minimap: { enabled: false }, fontSize: 14 },
+          options: {
+            minimap: { enabled: false },
+            fontSize: 14,
+            fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+            lineNumbers: 'on',
+            renderLineHighlight: 'line',
+            scrollBeyondLastLine: false,
+            padding: { top: 8 },
+          },
         })
       );
       setEditorReady(true);
@@ -194,6 +341,7 @@ export function ArenaIDE({
     return () => { unmount?.(); };
   }, []);
 
+  // Mount xterm terminal
   useEffect(() => {
     const mountId = 'arena-terminal-mount';
     const el = document.getElementById(mountId);
@@ -204,14 +352,14 @@ export function ArenaIDE({
       const FitAddonClass = (AddonFit as { FitAddon: new () => unknown }).FitAddon;
       const fitAddon = new FitAddonClass();
       const terminal = new Terminal({
-        theme: { background: '#0a0a0a', foreground: '#fff' },
-        fontFamily: 'Menlo, monospace',
+        theme: { background: arena.bg, foreground: arena.text, cursor: arena.accent },
+        fontFamily: 'Menlo, Monaco, "Courier New", monospace',
         fontSize: 13,
       });
       terminal.loadAddon(fitAddon as never);
       terminal.open(el);
       (fitAddon as { fit: () => void }).fit();
-      terminal.writeln('\x1b[1;32mRuwt Terminal\x1b[0m');
+      terminal.writeln('\x1b[1;33mRuwt Arena\x1b[0m — Output');
       terminal.write('$ ');
       setTerminalReady(true);
       terminalInstanceRef.current = terminal;
@@ -226,134 +374,406 @@ export function ArenaIDE({
     return () => { cleanup?.(); };
   }, []);
 
-  const constraints = [];
-  if (challenge.maxTokens != null) {
-    constraints.push({
-      type: 'tokens' as const,
-      current: inputTokens + outputTokens,
-      max: challenge.maxTokens,
-      label: 'Tokens',
-    });
-  }
-  if (challenge.maxCost != null) {
-    constraints.push({
-      type: 'cost' as const,
-      current: totalCost,
-      max: challenge.maxCost,
-      label: 'Cost',
-    });
-  }
-  if (challenge.wallClockLimit != null && timeLeft != null) {
-    constraints.push({
-      type: 'time' as const,
-      current: challenge.wallClockLimit - timeLeft,
-      max: challenge.wallClockLimit,
-      label: 'Time',
-    });
-  }
+  // Handle Enter key in chat input
+  const handleInputKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+      }
+    },
+    [sendMessage]
+  );
+
+  const totalTokens = inputTokens + outputTokens;
+  const wallLimit = challenge.wallClockLimit;
 
   return (
-    <View style={[styles.container, { backgroundColor: c.bg }]}>
-      <View style={[styles.main, { borderColor: c.border }]}>
-        <View style={styles.editorRow}>
-          <View style={styles.editorWrap}>
-            <View nativeID="arena-monaco-mount" style={{ flex: 1, minHeight: 300 }} />
+    <div style={s.container}>
+      {/* Main content area */}
+      <div style={s.mainRow}>
+        {/* Left: Editor + Terminal */}
+        <div style={s.leftPane}>
+          <div style={s.editorWrap}>
+            <div id="arena-monaco-mount" style={s.editorMount} />
             {!editorReady && (
-              <View style={[StyleSheet.absoluteFill, { justifyContent: 'center', alignItems: 'center', backgroundColor: c.muted + '40' }]}>
-                <Text style={{ color: c.textMuted }}>Loading editor...</Text>
-              </View>
+              <div style={s.editorLoading}>
+                <span style={{ color: arena.textMuted, fontSize: 13 }}>Loading editor...</span>
+              </div>
             )}
-          </View>
-          <View style={[styles.terminalWrap, { backgroundColor: '#0a0a0a', borderColor: c.border }]}>
-            <View nativeID="arena-terminal-mount" style={{ flex: 1 }} />
+          </div>
+          <div style={s.terminalWrap}>
+            <div style={s.terminalHeader}>
+              <span style={s.terminalHeaderText}>Output</span>
+            </div>
+            <div id="arena-terminal-mount" style={s.terminalMount} />
             {!terminalReady && (
-              <View style={[StyleSheet.absoluteFill, { justifyContent: 'center', alignItems: 'center' }]}>
-                <Text style={[styles.terminalPlaceholder, { color: c.textMuted }]}>Terminal</Text>
-              </View>
+              <div style={s.terminalLoading}>
+                <span style={{ color: arena.textMuted, fontSize: 12 }}>Terminal</span>
+              </div>
             )}
-          </View>
-        </View>
-        <View style={[styles.panel, { borderLeftColor: c.border, backgroundColor: c.bg }]}>
-          <ScrollView style={styles.chatScroll} contentContainerStyle={styles.chatContent}>
-            <Text style={[styles.panelTitle, { color: c.text }]}>Chat</Text>
-            {messages.map((msg, i) => (
-              <View key={i} style={[styles.bubble, msg.role === 'user' ? { alignSelf: 'flex-end', backgroundColor: c.accent + '30' } : { alignSelf: 'flex-start', backgroundColor: c.muted + '40' }]}>
-                <Text style={[styles.bubbleText, { color: c.text }]}>{msg.content}</Text>
-              </View>
+          </div>
+        </div>
+
+        {/* Right: Chat Panel */}
+        <div style={s.rightPane}>
+          {/* Chat header */}
+          <div style={s.chatHeader}>
+            <span style={s.chatHeaderTitle}>AI Assistant</span>
+            <span style={s.chatHeaderModel}>@llama-8b</span>
+          </div>
+
+          {/* Chat messages */}
+          <div ref={chatScrollRef} style={s.chatScroll}>
+            {messages.filter((m) => m.role !== 'system').length === 0 && !streamingContent && (
+              <div style={s.chatEmpty}>
+                <span style={{ color: arena.textSubtle, fontSize: 13 }}>
+                  Ask the AI for help with this challenge...
+                </span>
+              </div>
+            )}
+            {messages.filter((m) => m.role !== 'system').map((msg, i) => (
+              <div key={i} style={msg.role === 'user' ? s.userMessage : s.aiMessage}>
+                <div style={s.messageLabel}>
+                  <span style={msg.role === 'user' ? s.userLabel : s.aiLabel}>
+                    {msg.role === 'user' ? 'You' : 'AI'}
+                  </span>
+                </div>
+                <div style={msg.role === 'user' ? s.userContent : s.aiContent}>
+                  {msg.role === 'assistant' ? renderMarkdown(msg.content) : msg.content}
+                </div>
+              </div>
             ))}
-            {streamingContent ? (
-              <View style={[styles.bubble, { alignSelf: 'flex-start', backgroundColor: c.muted + '40' }]}>
-                <Text style={[styles.bubbleText, { color: c.text }]}>{streamingContent}</Text>
-              </View>
-            ) : null}
-            <View style={[styles.chatInputRow, { borderColor: c.border }]}>
-              <TextInput
-                style={[styles.chatInput, { color: c.text, borderColor: c.border }]}
-                placeholder="Message AI..."
-                placeholderTextColor={c.textMuted}
-                value={chatInput}
-                onChangeText={setChatInput}
-                onSubmitEditing={sendMessage}
-                editable={!isLoadingChat}
-              />
-              <Button size="sm" onPress={sendMessage} disabled={!chatInput.trim() || isLoadingChat}>
-                Send
-              </Button>
-            </View>
-          </ScrollView>
-          <View style={[styles.costSection, { borderTopColor: c.border }]}>
-            <Text style={[styles.panelTitle, { color: c.text }]}>Cost</Text>
-            <Text style={[styles.costLine, { color: c.text }]}>{formatCost(totalCost)} session</Text>
-            <Text style={[styles.costLine, { color: c.textMuted }]}>{inputTokens + outputTokens} tokens · {userCredits} credits left</Text>
-          </View>
-          {constraints.length > 0 && (
-            <View style={[styles.constraintSection, { borderTopColor: c.border }]}>
-              <Text style={[styles.panelTitle, { color: c.text }]}>Constraints</Text>
-              {constraints.map((con, i) => (
-                <View key={i} style={styles.constraintRow}>
-                  <Text style={[styles.constraintLabel, { color: c.textMuted }]}>{con.label}</Text>
-                  <Text style={[styles.constraintVal, { color: c.text }]}>
-                    {con.type === 'cost' ? `${formatCost(con.current)} / ${formatCost(con.max)}` : con.type === 'time' ? `${formatTime(con.current)} / ${formatTime(con.max)}` : `${con.current} / ${con.max}`}
-                  </Text>
-                </View>
-              ))}
-            </View>
-          )}
-        </View>
-      </View>
+            {streamingContent && (
+              <div style={s.aiMessage}>
+                <div style={s.messageLabel}>
+                  <span style={s.aiLabel}>AI</span>
+                  <span style={s.streamingDot}>●</span>
+                </div>
+                <div style={s.aiContent}>{renderMarkdown(streamingContent)}</div>
+              </div>
+            )}
+          </div>
+
+          {/* Chat input */}
+          <div style={s.chatInputWrap}>
+            <input
+              type="text"
+              style={s.chatInput}
+              placeholder="Ask about this problem..."
+              value={chatInput}
+              onChange={(e) => setChatInput(e.target.value)}
+              onKeyDown={handleInputKeyDown}
+              disabled={isLoadingChat}
+            />
+            <button
+              style={{
+                ...s.sendButton,
+                opacity: !chatInput.trim() || isLoadingChat ? 0.4 : 1,
+              }}
+              onClick={sendMessage}
+              disabled={!chatInput.trim() || isLoadingChat}
+            >
+              ▸
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Result banner overlay */}
       {runResult && (
-        <View style={[styles.resultBar, runResult.passed ? { backgroundColor: c.success + '30' } : { backgroundColor: c.destructive + '30' }]}>
-          <Text style={[styles.resultText, { color: c.text }]}>
-            {runResult.passed ? 'All tests passed!' : 'Some tests failed.'} ({runResult.passedTests}/{runResult.totalTests})
-          </Text>
-        </View>
+        <div style={{
+          ...s.resultBanner,
+          background: runResult.passed
+            ? 'rgba(63,185,80,0.15)'
+            : 'rgba(248,81,73,0.15)',
+          borderColor: runResult.passed ? arena.success : arena.error,
+        }}>
+          <span style={{
+            color: runResult.passed ? arena.success : arena.error,
+            fontWeight: 600,
+            fontSize: 13,
+            fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+          }}>
+            {runResult.passed ? '✓ All tests passed' : '✗ Some tests failed'} ({runResult.passedTests}/{runResult.totalTests})
+          </span>
+        </div>
       )}
-    </View>
+
+      {/* Status bar */}
+      <div style={s.statusBar}>
+        <span style={s.statusItem}>
+          <span style={s.statusDot}>●</span>
+          <span style={s.statusValue}>{formatCost(totalCost)}</span>
+        </span>
+        <span style={s.statusSep}>·</span>
+        <span style={s.statusItem}>
+          <span style={s.statusLabel}>{totalTokens.toLocaleString()}</span>
+          <span style={s.statusLabel}> tok</span>
+        </span>
+        {wallLimit != null && timeLeft != null && (
+          <>
+            <span style={s.statusSep}>·</span>
+            <span style={s.statusItem}>
+              <span style={s.statusValue}>{formatTime(wallLimit - timeLeft)}</span>
+              <span style={s.statusLabel}> / {formatTime(wallLimit)}</span>
+            </span>
+          </>
+        )}
+        <span style={s.statusSep}>·</span>
+        <span style={s.statusItem}>
+          <span style={s.statusValue}>{userCredits.toLocaleString()}</span>
+          <span style={s.statusLabel}> cr</span>
+        </span>
+      </div>
+    </div>
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1 },
-  main: { flex: 1, flexDirection: 'row', borderTopWidth: 1 },
-  editorRow: { flex: 1, flexDirection: 'column', minWidth: 0 },
-  editorWrap: { flex: 1, minHeight: 280 },
-  editorPlaceholder: { position: 'absolute', top: spacing.md, left: spacing.md },
-  terminalWrap: { height: 200, borderTopWidth: 1, padding: spacing.sm },
-  terminalPlaceholder: { fontSize: 12 },
-  panel: { width: 320, borderLeftWidth: 1 },
-  chatScroll: { flex: 1 },
-  chatContent: { padding: spacing.md, paddingBottom: spacing.xl },
-  panelTitle: { fontSize: 14, fontWeight: '600', marginBottom: spacing.sm },
-  bubble: { padding: spacing.sm, borderRadius: 8, maxWidth: '90%', marginBottom: spacing.xs },
-  bubbleText: { fontSize: 13 },
-  chatInputRow: { flexDirection: 'row', gap: spacing.sm, padding: spacing.sm, borderTopWidth: 1 },
-  chatInput: { flex: 1, borderWidth: 1, borderRadius: 6, paddingHorizontal: spacing.sm, paddingVertical: spacing.xs, fontSize: 14 },
-  costSection: { padding: spacing.md, borderTopWidth: 1 },
-  costLine: { fontSize: 12, marginBottom: 2 },
-  constraintSection: { padding: spacing.md, borderTopWidth: 1 },
-  constraintRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 },
-  constraintLabel: { fontSize: 12 },
-  constraintVal: { fontSize: 12 },
-  resultBar: { padding: spacing.sm, paddingHorizontal: spacing.md },
-  resultText: { fontSize: 14, fontWeight: '600' },
-});
+/* ─── Styles ──────────────────────────────────────────────────────── */
+
+const s: Record<string, React.CSSProperties> = {
+  container: {
+    display: 'flex',
+    flexDirection: 'column',
+    flex: 1,
+    background: arena.bg,
+    color: arena.text,
+    overflow: 'hidden',
+    height: '100%',
+  },
+
+  // Main layout
+  mainRow: {
+    display: 'flex',
+    flex: 1,
+    minHeight: 0,
+    overflow: 'hidden',
+  },
+  leftPane: {
+    display: 'flex',
+    flexDirection: 'column',
+    flex: 3,
+    minWidth: 0,
+    borderRight: `1px solid ${arena.border}`,
+  },
+  rightPane: {
+    display: 'flex',
+    flexDirection: 'column',
+    flex: 2,
+    minWidth: 280,
+    maxWidth: 480,
+  },
+
+  // Editor
+  editorWrap: {
+    flex: 1,
+    position: 'relative',
+    minHeight: 200,
+  },
+  editorMount: {
+    width: '100%',
+    height: '100%',
+  },
+  editorLoading: {
+    position: 'absolute',
+    inset: 0,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    background: arena.bg,
+  },
+
+  // Terminal
+  terminalWrap: {
+    height: 180,
+    borderTop: `1px solid ${arena.border}`,
+    display: 'flex',
+    flexDirection: 'column',
+  },
+  terminalHeader: {
+    padding: '4px 12px',
+    borderBottom: `1px solid ${arena.border}`,
+    background: arena.surface,
+  },
+  terminalHeaderText: {
+    fontSize: 11,
+    fontWeight: 600,
+    color: arena.textMuted,
+    fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+    textTransform: 'uppercase' as const,
+    letterSpacing: '0.5px',
+  },
+  terminalMount: {
+    flex: 1,
+    padding: 4,
+  },
+  terminalLoading: {
+    position: 'absolute',
+    inset: 0,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  // Chat panel
+  chatHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: '8px 14px',
+    borderBottom: `1px solid ${arena.border}`,
+    background: arena.surface,
+  },
+  chatHeaderTitle: {
+    fontSize: 13,
+    fontWeight: 600,
+    color: arena.text,
+  },
+  chatHeaderModel: {
+    fontSize: 11,
+    color: arena.textMuted,
+    fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+  },
+  chatScroll: {
+    flex: 1,
+    overflowY: 'auto',
+    padding: '12px 14px',
+  },
+  chatEmpty: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: '100%',
+    minHeight: 100,
+  },
+
+  // Messages
+  userMessage: {
+    marginBottom: 16,
+    padding: '8px 10px',
+    borderRadius: 6,
+    background: 'rgba(201,169,98,0.08)',
+  },
+  aiMessage: {
+    marginBottom: 16,
+    padding: '0 2px',
+  },
+  messageLabel: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 4,
+  },
+  userLabel: {
+    fontSize: 11,
+    fontWeight: 700,
+    color: arena.accent,
+    fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+    textTransform: 'uppercase' as const,
+    letterSpacing: '0.5px',
+  },
+  aiLabel: {
+    fontSize: 11,
+    fontWeight: 700,
+    color: arena.textMuted,
+    fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+    textTransform: 'uppercase' as const,
+    letterSpacing: '0.5px',
+  },
+  streamingDot: {
+    fontSize: 8,
+    color: arena.accent,
+    animation: 'pulse 1s infinite',
+  },
+  userContent: {
+    fontSize: 13,
+    lineHeight: '1.5',
+    color: arena.text,
+  },
+  aiContent: {
+    fontSize: 13,
+    lineHeight: '1.5',
+    color: arena.text,
+    fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+  },
+
+  // Chat input
+  chatInputWrap: {
+    display: 'flex',
+    alignItems: 'center',
+    padding: '8px 10px',
+    borderTop: `1px solid ${arena.border}`,
+    background: arena.surface,
+    gap: 8,
+  },
+  chatInput: {
+    flex: 1,
+    background: arena.bg,
+    border: `1px solid ${arena.border}`,
+    borderRadius: 6,
+    padding: '8px 12px',
+    fontSize: 13,
+    color: arena.text,
+    outline: 'none',
+    fontFamily: 'inherit',
+  },
+  sendButton: {
+    background: 'transparent',
+    border: `1px solid ${arena.border}`,
+    borderRadius: 6,
+    color: arena.accent,
+    fontSize: 16,
+    width: 34,
+    height: 34,
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  // Result banner
+  resultBanner: {
+    position: 'absolute',
+    top: 48,
+    left: '50%',
+    transform: 'translateX(-50%)',
+    padding: '8px 20px',
+    borderRadius: 6,
+    border: '1px solid',
+    zIndex: 10,
+    backdropFilter: 'blur(8px)',
+  },
+
+  // Status bar
+  statusBar: {
+    display: 'flex',
+    alignItems: 'center',
+    height: 28,
+    padding: '0 14px',
+    gap: 6,
+    borderTop: `1px solid ${arena.border}`,
+    background: arena.surface,
+    fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+    fontSize: 11,
+    flexShrink: 0,
+  },
+  statusItem: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 4,
+  },
+  statusDot: {
+    fontSize: 8,
+    color: arena.success,
+  },
+  statusValue: {
+    color: arena.accent,
+  },
+  statusLabel: {
+    color: arena.textMuted,
+  },
+  statusSep: {
+    color: arena.textSubtle,
+  },
+};

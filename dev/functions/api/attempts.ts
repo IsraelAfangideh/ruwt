@@ -6,10 +6,10 @@ import { eq, and, desc } from 'drizzle-orm';
 import { z } from 'zod';
 import { getDb } from '../_shared/db';
 import { getUser } from '../_shared/auth';
-import { attempts, challenges, profiles } from '../../drizzle/schema.d1';
+import { attempts, challenges, profiles, transactions } from '../../drizzle/schema.d1';
 
 const createAttemptSchema = z.object({
-  challengeId: z.string().uuid(),
+  challengeId: z.string().min(1),
 });
 
 export async function onRequestPost(context: { request: Request; env: Env }) {
@@ -29,16 +29,27 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
     const { challengeId } = parsed.data;
     const db = getDb(context.env);
 
-    await db
+    const SIGNUP_BONUS = 50000;
+    const insertResult = await db
       .insert(profiles)
       .values({
         id: user.id,
         email: user.email ?? '',
         name: (user.user_metadata?.full_name ?? user.user_metadata?.name) as string | null ?? null,
         avatarUrl: (user.user_metadata?.avatar_url as string) ?? null,
-        credits: 0,
+        credits: SIGNUP_BONUS,
       })
       .onConflictDoNothing({ target: profiles.id });
+
+    // If a new profile was created, record the signup bonus transaction
+    if (insertResult.meta?.changes && insertResult.meta.changes > 0) {
+      await db.insert(transactions).values({
+        id: crypto.randomUUID(),
+        userId: user.id,
+        type: 'signup_bonus',
+        amount: SIGNUP_BONUS,
+      });
+    }
 
     const [challenge] = await db
       .select()
