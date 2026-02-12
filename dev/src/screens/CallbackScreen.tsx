@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { View, Text, ActivityIndicator, StyleSheet } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { createClient } from '@/lib/supabase/client';
@@ -8,30 +8,56 @@ export function CallbackScreen() {
   const navigation = useNavigation();
   const [status, setStatus] = useState<'loading' | 'ok' | 'error'>('loading');
   const c = useColors();
-
-  const supabase = createClient();
+  const handled = useRef(false);
 
   useEffect(() => {
-    const run = async () => {
-      const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
-      const redirectTo = urlParams?.get('redirectTo') ?? 'Challenges';
-      const code = urlParams?.get('code');
+    const supabase = createClient();
 
-      if (!code) {
-        setStatus('error');
-        return;
-      }
+    // Read redirect target from localStorage (set by LoginScreen) or URL param as fallback
+    const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+    const redirectTo =
+      (typeof window !== 'undefined' && localStorage.getItem('oauth_redirect')) ||
+      urlParams?.get('redirectTo') ||
+      'Challenges';
 
-      const { error } = await supabase.auth.exchangeCodeForSession(code);
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('oauth_redirect');
+    }
 
-      if (error) {
-        setStatus('error');
-        return;
-      }
+    const navigate = () => {
+      if (handled.current) return;
+      handled.current = true;
       setStatus('ok');
       navigation.reset({ index: 0, routes: [{ name: redirectTo as never }] });
     };
-    run();
+
+    // createBrowserClient auto-detects ?code= or #access_token= in the URL
+    // and exchanges them for a session. We just listen for the result.
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && session) {
+        navigate();
+      }
+    });
+
+    // Also check if session already exists (auto-exchange may have completed)
+    supabase.auth.getSession().then(({ data }) => {
+      if (data.session) {
+        navigate();
+      }
+    });
+
+    // Timeout: if no session after 8s, show error
+    const timeout = setTimeout(() => {
+      if (!handled.current) {
+        subscription.unsubscribe();
+        setStatus('error');
+      }
+    }, 8000);
+
+    return () => {
+      clearTimeout(timeout);
+      subscription.unsubscribe();
+    };
   }, [navigation]);
 
   if (status === 'error') {
