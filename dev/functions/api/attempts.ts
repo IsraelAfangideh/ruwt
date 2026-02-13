@@ -10,6 +10,7 @@ import { attempts, challenges, profiles, transactions } from '../../drizzle/sche
 
 const createAttemptSchema = z.object({
   challengeId: z.string().min(1),
+  timed: z.boolean().optional().default(true),
 });
 
 export async function onRequestPost(context: { request: Request; env: Env }) {
@@ -26,7 +27,7 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
       );
     }
 
-    const { challengeId } = parsed.data;
+    const { challengeId, timed } = parsed.data;
     const db = getDb(context.env);
 
     const SIGNUP_BONUS = 50000;
@@ -74,15 +75,23 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
       .limit(1);
 
     if (existingAttempt) {
-      return Response.json({
-        attempt: existingAttempt,
-        challenge,
-        isExisting: true,
-      });
+      // If the attempt has expired, mark it as such and create a new one
+      if (existingAttempt.expiresAt && new Date(existingAttempt.expiresAt) < new Date()) {
+        await db
+          .update(attempts)
+          .set({ status: 'expired' })
+          .where(eq(attempts.id, existingAttempt.id));
+      } else {
+        return Response.json({
+          attempt: existingAttempt,
+          challenge,
+          isExisting: true,
+        });
+      }
     }
 
     let expiresAt: string | null = null;
-    if (challenge.wallClockLimit) {
+    if (timed && challenge.wallClockLimit) {
       const exp = new Date();
       exp.setSeconds(exp.getSeconds() + challenge.wallClockLimit);
       expiresAt = exp.toISOString();

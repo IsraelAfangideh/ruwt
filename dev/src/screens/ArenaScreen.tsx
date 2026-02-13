@@ -4,6 +4,14 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { ArenaIDE, type ArenaChallenge, type ArenaAttempt } from '@/components/ArenaIDE';
 import { arena } from '@/theme/colors';
 
+function formatWallClock(seconds: number): string {
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  if (m > 0 && s > 0) return `${m}m ${s}s`;
+  if (m > 0) return `${m}m`;
+  return `${s}s`;
+}
+
 export function ArenaScreen() {
   const navigation = useNavigation();
   const route = useRoute();
@@ -16,10 +24,12 @@ export function ArenaScreen() {
   const [code, setCode] = useState('');
   const [language] = useState('javascript');
   const [loading, setLoading] = useState(true);
+  const [starting, setStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isRunning, setIsRunning] = useState(false);
   const [runResult, setRunResult] = useState<{ passed: boolean; passedTests: number; totalTests: number } | null>(null);
 
+  // Load challenge + profile on mount (but don't create attempt yet)
   useEffect(() => {
     if (!challengeId) {
       setError('No challenge selected');
@@ -45,20 +55,6 @@ export function ArenaScreen() {
           const prof = await profRes.json();
           setUserCredits(prof.credits ?? 0);
         }
-        const attemptRes = await fetch('/api/attempts', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ challengeId }),
-        });
-        if (cancelled) return;
-        if (!attemptRes.ok) {
-          setError('Failed to start attempt');
-          setLoading(false);
-          return;
-        }
-        const attemptData = await attemptRes.json();
-        setAttempt(attemptData.attempt);
-        setCode(attemptData.challenge?.starterCode || '// your code here');
       } catch (e) {
         if (!cancelled) {
           setError(e instanceof Error ? e.message : 'Something went wrong');
@@ -69,6 +65,37 @@ export function ArenaScreen() {
     })();
     return () => { cancelled = true; };
   }, [challengeId]);
+
+  const startAttempt = useCallback(async (timed: boolean) => {
+    setStarting(true);
+    setError(null);
+    try {
+      const res = await fetch('/api/attempts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ challengeId, timed }),
+      });
+      if (!res.ok) {
+        setError('Failed to start attempt');
+        return;
+      }
+      const data = await res.json();
+      setAttempt(data.attempt);
+      setCode(data.challenge?.starterCode || '// your code here');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to start attempt');
+    } finally {
+      setStarting(false);
+    }
+  }, [challengeId]);
+
+  const onRestart = useCallback(() => {
+    setAttempt(null);
+    setCode('');
+    setRunResult(null);
+    setIsRunning(false);
+    setError(null);
+  }, []);
 
   const onRunTests = useCallback(
     async (sourceCode: string, language: string) => {
@@ -129,11 +156,11 @@ export function ArenaScreen() {
     );
   }
 
-  // Error state
-  if (error || !challenge || !attempt) {
+  // Error state (no challenge)
+  if (error && !challenge) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: arena.bg }}>
-        <Text style={{ fontSize: 14, color: arena.error, marginBottom: 12 }}>{error || 'Missing challenge or attempt'}</Text>
+        <Text style={{ fontSize: 14, color: arena.error, marginBottom: 12 }}>{error}</Text>
         <button
           style={{
             background: 'transparent',
@@ -152,9 +179,167 @@ export function ArenaScreen() {
     );
   }
 
+  if (!challenge) return null;
+
   const difficultyColor =
     challenge.difficulty === 'easy' ? arena.success :
     challenge.difficulty === 'hard' ? arena.error : arena.accent;
+
+  // Pre-attempt screen — show challenge info + timed/untimed choice
+  if (!attempt) {
+    return (
+      <div style={{
+        display: 'flex',
+        flexDirection: 'column',
+        height: '100vh',
+        background: arena.bg,
+        color: arena.text,
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}>
+        <div style={{
+          maxWidth: 520,
+          width: '100%',
+          padding: '0 24px',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+        }}>
+          {/* Difficulty badge */}
+          <span style={{
+            fontSize: 11,
+            fontWeight: 600,
+            color: difficultyColor,
+            padding: '2px 10px',
+            borderRadius: 9999,
+            border: `1px solid ${difficultyColor}40`,
+            background: `${difficultyColor}15`,
+            fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+            textTransform: 'lowercase',
+            marginBottom: 12,
+          }}>
+            {challenge.difficulty}
+          </span>
+
+          {/* Title */}
+          <h1 style={{
+            fontSize: 24,
+            fontWeight: 700,
+            color: arena.text,
+            margin: '0 0 8px',
+            textAlign: 'center',
+            fontFamily: '"Cormorant Garamond", Georgia, serif',
+          }}>
+            {challenge.title}
+          </h1>
+
+          {/* Description */}
+          <p style={{
+            fontSize: 14,
+            color: arena.textMuted,
+            lineHeight: '1.6',
+            textAlign: 'center',
+            margin: '0 0 24px',
+            maxWidth: 440,
+          }}>
+            {challenge.description.length > 200
+              ? challenge.description.slice(0, 200) + '...'
+              : challenge.description}
+          </p>
+
+          {/* Limits info */}
+          <div style={{
+            display: 'flex',
+            gap: 16,
+            marginBottom: 32,
+            fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+            fontSize: 12,
+            color: arena.textMuted,
+          }}>
+            {challenge.wallClockLimit && (
+              <span>{formatWallClock(challenge.wallClockLimit)} time limit</span>
+            )}
+            {challenge.maxTokens && (
+              <span>{challenge.maxTokens.toLocaleString()} max tokens</span>
+            )}
+            {challenge.maxCost && (
+              <span>${(challenge.maxCost / 10000).toFixed(2)} max cost</span>
+            )}
+          </div>
+
+          {/* Error from failed attempt start */}
+          {error && (
+            <p style={{ fontSize: 13, color: arena.error, marginBottom: 16 }}>{error}</p>
+          )}
+
+          {/* Action buttons */}
+          <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+            <button
+              style={{
+                background: arena.accent,
+                border: 'none',
+                borderRadius: 8,
+                color: '#0d1117',
+                padding: '10px 24px',
+                fontSize: 14,
+                fontWeight: 600,
+                cursor: starting ? 'not-allowed' : 'pointer',
+                opacity: starting ? 0.6 : 1,
+              }}
+              onClick={() => startAttempt(true)}
+              disabled={starting}
+            >
+              {starting ? 'Starting...' : 'Start Timed'}
+            </button>
+            <button
+              style={{
+                background: 'transparent',
+                border: `1px solid ${arena.border}`,
+                borderRadius: 8,
+                color: arena.textMuted,
+                padding: '10px 24px',
+                fontSize: 14,
+                fontWeight: 500,
+                cursor: starting ? 'not-allowed' : 'pointer',
+                opacity: starting ? 0.6 : 1,
+              }}
+              onClick={() => startAttempt(false)}
+              disabled={starting}
+            >
+              Start Untimed
+            </button>
+          </div>
+
+          <p style={{
+            fontSize: 11,
+            color: arena.textSubtle,
+            marginTop: 12,
+            textAlign: 'center',
+          }}>
+            Untimed attempts are marked separately on the leaderboard
+          </p>
+
+          {/* Back link */}
+          <button
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: arena.textSubtle,
+              fontSize: 12,
+              cursor: 'pointer',
+              marginTop: 24,
+              fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+            }}
+            onClick={() => navigation.navigate('Challenges' as never)}
+          >
+            &larr; Back to Challenges
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const isUntimed = challenge.wallClockLimit != null && !attempt.expiresAt;
 
   return (
     <div style={{
@@ -190,7 +375,7 @@ export function ArenaScreen() {
             }}
             onClick={() => navigation.navigate('Challenges' as never)}
           >
-            ← Back
+            &larr; Back
           </button>
           <span style={{
             width: 1,
@@ -220,6 +405,21 @@ export function ArenaScreen() {
           }}>
             {challenge.difficulty}
           </span>
+          {isUntimed && (
+            <span style={{
+              fontSize: 11,
+              fontWeight: 600,
+              color: arena.textMuted,
+              padding: '2px 8px',
+              borderRadius: 9999,
+              border: `1px solid ${arena.textSubtle}`,
+              fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+              textTransform: 'uppercase',
+              letterSpacing: '0.5px',
+            }}>
+              untimed
+            </span>
+          )}
         </div>
 
         {/* Right: Actions */}
@@ -274,6 +474,7 @@ export function ArenaScreen() {
           onSubmit={onSubmit}
           onAttemptUpdate={(next) => setAttempt(next)}
           runResult={runResult}
+          onRestart={onRestart}
         />
       </div>
     </div>

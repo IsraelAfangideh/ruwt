@@ -120,6 +120,14 @@ const mdStyles: Record<string, React.CSSProperties> = {
   },
 };
 
+/* ─── Constraint violation messages ──────────────────────────────── */
+
+const constraintMessages: Record<string, string> = {
+  time: 'Time limit reached — you can review your code but can\'t make more AI requests.',
+  tokens: 'Token limit reached for this attempt.',
+  cost: 'Cost limit reached for this attempt.',
+};
+
 /* ─── Types ───────────────────────────────────────────────────────── */
 
 export interface ArenaChallenge {
@@ -155,6 +163,7 @@ interface ArenaIDEProps {
   onSubmit: (sourceCode: string, language: string) => Promise<{ passed: boolean; passedTests: number; totalTests: number }>;
   onAttemptUpdate?: (attempt: ArenaAttempt) => void;
   runResult?: { passed: boolean; passedTests: number; totalTests: number } | null;
+  onRestart?: () => void;
 }
 
 /* ─── Component ───────────────────────────────────────────────────── */
@@ -168,17 +177,20 @@ export function ArenaIDE({
   language,
   onAttemptUpdate,
   runResult,
+  onRestart,
 }: ArenaIDEProps) {
   const [totalCost, setTotalCost] = useState(attempt.totalCost);
   const [inputTokens, setInputTokens] = useState(attempt.inputTokens);
   const [outputTokens, setOutputTokens] = useState(attempt.outputTokens);
-  const [messages, setMessages] = useState<{ role: 'system' | 'user' | 'assistant'; content: string }[]>([]);
+  const [messages, setMessages] = useState<{ role: 'system' | 'user' | 'assistant'; content: string; isConstraint?: boolean }[]>([]);
   const [streamingContent, setStreamingContent] = useState('');
   const [chatInput, setChatInput] = useState('');
   const [isLoadingChat, setIsLoadingChat] = useState(false);
   const [model] = useState('@cf/meta/llama-3.1-8b-instruct');
   const [editorReady, setEditorReady] = useState(false);
   const [terminalReady, setTerminalReady] = useState(false);
+  const [isExpired, setIsExpired] = useState(false);
+  const [showExpiryOverlay, setShowExpiryOverlay] = useState(false);
   const editorRootRef = useRef<{ unmount: () => void } | null>(null);
   const terminalInstanceRef = useRef<{ dispose: () => void } | null>(null);
   const chatScrollRef = useRef<HTMLDivElement>(null);
@@ -209,11 +221,15 @@ Help the user understand the problem, suggest approaches, debug their code, and 
     const tick = () => {
       const left = Math.max(0, Math.floor((expiresAt.getTime() - Date.now()) / 1000));
       setTimeLeft(left);
+      if (left === 0 && !isExpired) {
+        setIsExpired(true);
+        setShowExpiryOverlay(true);
+      }
     };
     tick();
     const id = setInterval(tick, 1000);
     return () => clearInterval(id);
-  }, [expiresAt]);
+  }, [expiresAt, isExpired]);
 
   // Auto-scroll chat
   useEffect(() => {
@@ -225,6 +241,18 @@ Help the user understand the problem, suggest approaches, debug their code, and 
   const sendMessage = useCallback(async () => {
     const text = chatInput.trim();
     if (!text || isLoadingChat || !attemptId) return;
+
+    // Block chat if expired
+    if (isExpired) {
+      setMessages((m) => [...m, {
+        role: 'assistant',
+        content: constraintMessages.time,
+        isConstraint: true,
+      }]);
+      setChatInput('');
+      return;
+    }
+
     setChatInput('');
     const userMsg = { role: 'user' as const, content: text };
     setMessages((m) => [...m, userMsg]);
@@ -234,7 +262,7 @@ Help the user understand the problem, suggest approaches, debug their code, and 
     // Build messages array with system prompt
     const chatMessages = [
       { role: 'system' as const, content: systemPrompt },
-      ...messages.filter((m) => m.role !== 'system').map((msg) => ({ role: msg.role, content: msg.content })),
+      ...messages.filter((m) => m.role !== 'system' && !m.isConstraint).map((msg) => ({ role: msg.role, content: msg.content })),
       { role: 'user' as const, content: text },
     ];
 
@@ -250,8 +278,18 @@ Help the user understand the problem, suggest approaches, debug their code, and 
         }),
       });
       if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        setMessages((m) => [...m, { role: 'assistant', content: `Error: ${(err as { error?: string }).error || res.statusText}` }]);
+        const err = await res.json().catch(() => ({})) as { error?: string; violation?: string };
+        // Friendly constraint error messages
+        if (res.status === 403 && err.violation) {
+          const friendlyMsg = constraintMessages[err.violation] || `Constraint reached: ${err.violation}`;
+          setMessages((m) => [...m, { role: 'assistant', content: friendlyMsg, isConstraint: true }]);
+          if (err.violation === 'time') {
+            setIsExpired(true);
+            setShowExpiryOverlay(true);
+          }
+        } else {
+          setMessages((m) => [...m, { role: 'assistant', content: `Error: ${err.error || res.statusText}` }]);
+        }
         return;
       }
       const reader = res.body?.getReader();
@@ -303,7 +341,7 @@ Help the user understand the problem, suggest approaches, debug their code, and 
     } finally {
       setIsLoadingChat(false);
     }
-  }, [chatInput, isLoadingChat, attemptId, model, messages, attempt, onAttemptUpdate, systemPrompt]);
+  }, [chatInput, isLoadingChat, attemptId, model, messages, attempt, onAttemptUpdate, systemPrompt, isExpired]);
 
   // Mount Monaco editor
   useEffect(() => {
@@ -386,7 +424,28 @@ Help the user understand the problem, suggest approaches, debug their code, and 
   );
 
   const totalTokens = inputTokens + outputTokens;
-  const wallLimit = challenge.wallClockLimit;
+  const chatDisabled = isExpired && !showExpiryOverlay;
+
+  // Timer urgency: > 2min = normal, < 2min = warning, < 30s = critical
+  const timerUrgency: 'normal' | 'warning' | 'critical' =
+    timeLeft == null ? 'normal' :
+    timeLeft <= 30 ? 'critical' :
+    timeLeft <= 120 ? 'warning' : 'normal';
+
+  const timerPillStyle: React.CSSProperties | undefined =
+    timerUrgency === 'critical' ? {
+      background: arena.error,
+      color: '#fff',
+      padding: '1px 8px',
+      borderRadius: 9999,
+      fontWeight: 700,
+    } : timerUrgency === 'warning' ? {
+      background: arena.accent,
+      color: '#0d1117',
+      padding: '1px 8px',
+      borderRadius: 9999,
+      fontWeight: 600,
+    } : undefined;
 
   return (
     <div style={s.container}>
@@ -432,18 +491,28 @@ Help the user understand the problem, suggest approaches, debug their code, and 
                 </span>
               </div>
             )}
-            {messages.filter((m) => m.role !== 'system').map((msg, i) => (
-              <div key={i} style={msg.role === 'user' ? s.userMessage : s.aiMessage}>
-                <div style={s.messageLabel}>
-                  <span style={msg.role === 'user' ? s.userLabel : s.aiLabel}>
-                    {msg.role === 'user' ? 'You' : 'AI'}
-                  </span>
+            {messages.filter((m) => m.role !== 'system').map((msg, i) => {
+              if (msg.isConstraint) {
+                return (
+                  <div key={i} style={s.constraintMessage}>
+                    <span style={s.constraintIcon}>!</span>
+                    <span style={s.constraintText}>{msg.content}</span>
+                  </div>
+                );
+              }
+              return (
+                <div key={i} style={msg.role === 'user' ? s.userMessage : s.aiMessage}>
+                  <div style={s.messageLabel}>
+                    <span style={msg.role === 'user' ? s.userLabel : s.aiLabel}>
+                      {msg.role === 'user' ? 'You' : 'AI'}
+                    </span>
+                  </div>
+                  <div style={msg.role === 'user' ? s.userContent : s.aiContent}>
+                    {msg.role === 'assistant' ? renderMarkdown(msg.content) : msg.content}
+                  </div>
                 </div>
-                <div style={msg.role === 'user' ? s.userContent : s.aiContent}>
-                  {msg.role === 'assistant' ? renderMarkdown(msg.content) : msg.content}
-                </div>
-              </div>
-            ))}
+              );
+            })}
             {streamingContent && (
               <div style={s.aiMessage}>
                 <div style={s.messageLabel}>
@@ -460,21 +529,21 @@ Help the user understand the problem, suggest approaches, debug their code, and 
             <input
               type="text"
               style={s.chatInput}
-              placeholder="Ask about this problem..."
+              placeholder={chatDisabled ? 'Chat disabled — time expired' : 'Ask about this problem...'}
               value={chatInput}
               onChange={(e) => setChatInput(e.target.value)}
               onKeyDown={handleInputKeyDown}
-              disabled={isLoadingChat}
+              disabled={isLoadingChat || chatDisabled}
             />
             <button
               style={{
                 ...s.sendButton,
-                opacity: !chatInput.trim() || isLoadingChat ? 0.4 : 1,
+                opacity: !chatInput.trim() || isLoadingChat || chatDisabled ? 0.4 : 1,
               }}
               onClick={sendMessage}
-              disabled={!chatInput.trim() || isLoadingChat}
+              disabled={!chatInput.trim() || isLoadingChat || chatDisabled}
             >
-              ▸
+              &#9658;
             </button>
           </div>
         </div>
@@ -495,32 +564,83 @@ Help the user understand the problem, suggest approaches, debug their code, and 
             fontSize: 13,
             fontFamily: 'Menlo, Monaco, "Courier New", monospace',
           }}>
-            {runResult.passed ? '✓ All tests passed' : '✗ Some tests failed'} ({runResult.passedTests}/{runResult.totalTests})
+            {runResult.passed ? '\u2713 All tests passed' : '\u2717 Some tests failed'} ({runResult.passedTests}/{runResult.totalTests})
           </span>
+        </div>
+      )}
+
+      {/* Expiry overlay */}
+      {showExpiryOverlay && (
+        <div style={s.expiryOverlay}>
+          <div style={s.expiryCard}>
+            <h2 style={s.expiryTitle}>Time's Up!</h2>
+            <div style={s.expiryStats}>
+              <div style={s.expiryStat}>
+                <span style={s.expiryStatValue}>{totalTokens.toLocaleString()}</span>
+                <span style={s.expiryStatLabel}>tokens used</span>
+              </div>
+              <div style={s.expiryStat}>
+                <span style={s.expiryStatValue}>{formatCost(totalCost)}</span>
+                <span style={s.expiryStatLabel}>cost</span>
+              </div>
+              {runResult && (
+                <div style={s.expiryStat}>
+                  <span style={{
+                    ...s.expiryStatValue,
+                    color: runResult.passed ? arena.success : arena.error,
+                  }}>
+                    {runResult.passedTests}/{runResult.totalTests}
+                  </span>
+                  <span style={s.expiryStatLabel}>tests passed</span>
+                </div>
+              )}
+            </div>
+            <div style={s.expiryActions}>
+              <button
+                style={s.expiryReviewBtn}
+                onClick={() => setShowExpiryOverlay(false)}
+              >
+                Review Code
+              </button>
+              {onRestart && (
+                <button
+                  style={s.expiryRestartBtn}
+                  onClick={onRestart}
+                >
+                  Start New Attempt
+                </button>
+              )}
+            </div>
+          </div>
         </div>
       )}
 
       {/* Status bar */}
       <div style={s.statusBar}>
         <span style={s.statusItem}>
-          <span style={s.statusDot}>●</span>
+          <span style={s.statusDot}>&#9679;</span>
           <span style={s.statusValue}>{formatCost(totalCost)}</span>
         </span>
-        <span style={s.statusSep}>·</span>
+        <span style={s.statusSep}>&middot;</span>
         <span style={s.statusItem}>
           <span style={s.statusLabel}>{totalTokens.toLocaleString()}</span>
           <span style={s.statusLabel}> tok</span>
         </span>
-        {wallLimit != null && timeLeft != null && (
+        {timeLeft != null && (
           <>
-            <span style={s.statusSep}>·</span>
-            <span style={s.statusItem}>
-              <span style={s.statusValue}>{formatTime(wallLimit - timeLeft)}</span>
-              <span style={s.statusLabel}> / {formatTime(wallLimit)}</span>
+            <span style={s.statusSep}>&middot;</span>
+            <span style={{
+              ...s.statusItem,
+              ...timerPillStyle,
+            }}>
+              <span style={timerPillStyle ? undefined : s.statusValue}>
+                {formatTime(timeLeft)}
+              </span>
+              <span style={timerPillStyle ? { opacity: 0.8 } : s.statusLabel}> left</span>
             </span>
           </>
         )}
-        <span style={s.statusSep}>·</span>
+        <span style={s.statusSep}>&middot;</span>
         <span style={s.statusItem}>
           <span style={s.statusValue}>{userCredits.toLocaleString()}</span>
           <span style={s.statusLabel}> cr</span>
@@ -541,6 +661,7 @@ const s: Record<string, React.CSSProperties> = {
     color: arena.text,
     overflow: 'hidden',
     height: '100%',
+    position: 'relative',
   },
 
   // Main layout
@@ -659,6 +780,35 @@ const s: Record<string, React.CSSProperties> = {
     marginBottom: 16,
     padding: '0 2px',
   },
+  constraintMessage: {
+    marginBottom: 16,
+    padding: '8px 12px',
+    borderRadius: 6,
+    background: 'rgba(248,81,73,0.08)',
+    border: `1px solid rgba(248,81,73,0.2)`,
+    display: 'flex',
+    alignItems: 'flex-start',
+    gap: 8,
+  },
+  constraintIcon: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 18,
+    height: 18,
+    borderRadius: 9999,
+    background: arena.error,
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: 700,
+    flexShrink: 0,
+    marginTop: 1,
+  },
+  constraintText: {
+    fontSize: 13,
+    lineHeight: '1.5',
+    color: arena.error,
+  },
   messageLabel: {
     display: 'flex',
     alignItems: 'center',
@@ -743,6 +893,81 @@ const s: Record<string, React.CSSProperties> = {
     border: '1px solid',
     zIndex: 10,
     backdropFilter: 'blur(8px)',
+  },
+
+  // Expiry overlay
+  expiryOverlay: {
+    position: 'absolute',
+    inset: 0,
+    background: 'rgba(13,17,23,0.85)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 50,
+    backdropFilter: 'blur(4px)',
+  },
+  expiryCard: {
+    background: arena.surface,
+    border: `1px solid ${arena.border}`,
+    borderRadius: 12,
+    padding: '32px 40px',
+    maxWidth: 400,
+    width: '90%',
+    textAlign: 'center' as const,
+  },
+  expiryTitle: {
+    fontSize: 22,
+    fontWeight: 700,
+    color: arena.error,
+    margin: '0 0 20px',
+    fontFamily: '"Cormorant Garamond", Georgia, serif',
+  },
+  expiryStats: {
+    display: 'flex',
+    justifyContent: 'center',
+    gap: 24,
+    marginBottom: 28,
+  },
+  expiryStat: {
+    display: 'flex',
+    flexDirection: 'column' as const,
+    alignItems: 'center',
+    gap: 4,
+  },
+  expiryStatValue: {
+    fontSize: 16,
+    fontWeight: 600,
+    color: arena.accent,
+    fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+  },
+  expiryStatLabel: {
+    fontSize: 11,
+    color: arena.textMuted,
+  },
+  expiryActions: {
+    display: 'flex',
+    gap: 12,
+    justifyContent: 'center',
+  },
+  expiryReviewBtn: {
+    background: 'transparent',
+    border: `1px solid ${arena.border}`,
+    borderRadius: 8,
+    color: arena.text,
+    padding: '8px 20px',
+    fontSize: 13,
+    fontWeight: 500,
+    cursor: 'pointer',
+  },
+  expiryRestartBtn: {
+    background: arena.accent,
+    border: 'none',
+    borderRadius: 8,
+    color: '#0d1117',
+    padding: '8px 20px',
+    fontSize: 13,
+    fontWeight: 600,
+    cursor: 'pointer',
   },
 
   // Status bar
