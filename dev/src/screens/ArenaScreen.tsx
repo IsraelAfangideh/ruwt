@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { View, Text, ActivityIndicator } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { ArenaIDE, type ArenaChallenge, type ArenaAttempt } from '@/components/ArenaIDE';
+import { ArenaIDE, type ArenaChallenge, type ArenaAttempt, type TestCaseResult } from '@/components/ArenaIDE';
 import { arena } from '@/theme/colors';
 
 function formatWallClock(seconds: number): string {
@@ -27,7 +27,7 @@ export function ArenaScreen() {
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isRunning, setIsRunning] = useState(false);
-  const [runResult, setRunResult] = useState<{ passed: boolean; passedTests: number; totalTests: number } | null>(null);
+  const [runResult, setRunResult] = useState<{ passed: boolean; passedTests: number; totalTests: number; results?: TestCaseResult[] } | null>(null);
 
   // Load challenge + profile on mount (but don't create attempt yet)
   useEffect(() => {
@@ -129,7 +129,7 @@ export function ArenaScreen() {
     setRunResult(null);
     try {
       const r = await onRunTests(code, language);
-      setRunResult({ passed: r.passed, passedTests: r.passedTests, totalTests: r.totalTests });
+      setRunResult({ passed: r.passed, passedTests: r.passedTests, totalTests: r.totalTests, results: r.results as TestCaseResult[] | undefined });
     } finally {
       setIsRunning(false);
     }
@@ -474,6 +474,7 @@ export function ArenaScreen() {
           onSubmit={onSubmit}
           onAttemptUpdate={(next) => setAttempt(next)}
           runResult={runResult}
+          isRunning={isRunning}
           onRestart={onRestart}
         />
       </div>

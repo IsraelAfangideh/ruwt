@@ -1,9 +1,11 @@
 /**
- * Arena IDE: Monaco editor + xterm terminal (left), AI chat (right), status bar (bottom).
+ * Arena IDE: Monaco editor + test output (left), tabbed Description/Chat (right), status bar (bottom).
  * Dark IDE aesthetic inspired by Claude Code / Cursor.
  */
-import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo, Suspense } from 'react';
 import { arena } from '@/theme/colors';
+
+const MonacoEditor = React.lazy(() => import('@monaco-editor/react'));
 
 function formatCost(cents: number): string {
   const d = cents / 10000;
@@ -130,6 +132,16 @@ const constraintMessages: Record<string, string> = {
 
 /* ─── Types ───────────────────────────────────────────────────────── */
 
+export interface TestCaseResult {
+  passed: boolean;
+  input: string;
+  expectedOutput: string;
+  actualOutput: string;
+  error?: string | null;
+  time?: string;
+  memory?: number;
+}
+
 export interface ArenaChallenge {
   id: string;
   title: string;
@@ -162,8 +174,152 @@ interface ArenaIDEProps {
   onRunTests: (sourceCode: string, language: string) => Promise<{ passed: boolean; passedTests: number; totalTests: number; results?: unknown[] }>;
   onSubmit: (sourceCode: string, language: string) => Promise<{ passed: boolean; passedTests: number; totalTests: number }>;
   onAttemptUpdate?: (attempt: ArenaAttempt) => void;
-  runResult?: { passed: boolean; passedTests: number; totalTests: number } | null;
+  runResult?: {
+    passed: boolean;
+    passedTests: number;
+    totalTests: number;
+    results?: TestCaseResult[];
+  } | null;
+  isRunning?: boolean;
   onRestart?: () => void;
+}
+
+/* ─── Sub-components ──────────────────────────────────────────────── */
+
+function DescriptionPanel({ challenge }: { challenge: ArenaChallenge }) {
+  let testCases: Array<{ input: string; expectedOutput: string }> = [];
+  try {
+    testCases = JSON.parse(challenge.testCases);
+  } catch { /* ignore */ }
+  const examples = testCases.slice(0, 2);
+
+  return (
+    <div style={s.descriptionScroll}>
+      <div style={s.descriptionText}>
+        {renderMarkdown(challenge.description)}
+      </div>
+
+      {examples.length > 0 && (
+        <div style={{ marginTop: 20 }}>
+          <div style={s.sectionLabel}>Examples</div>
+          {examples.map((tc, i) => (
+            <div key={i} style={s.exampleBlock}>
+              <div style={s.exampleLabel}>Input:</div>
+              <div style={s.exampleValue}>{tc.input || '(none)'}</div>
+              <div style={{ ...s.exampleLabel, marginTop: 6 }}>Output:</div>
+              <div style={{ ...s.exampleValue, color: arena.success }}>{tc.expectedOutput}</div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {(challenge.maxTokens != null || challenge.maxCost != null || challenge.wallClockLimit != null) && (
+        <div style={{ marginTop: 20 }}>
+          <div style={s.sectionLabel}>Constraints</div>
+          <div style={s.constraintsList}>
+            {challenge.wallClockLimit != null && <div>Time limit: {formatTime(challenge.wallClockLimit)}</div>}
+            {challenge.maxTokens != null && <div>Max tokens: {challenge.maxTokens.toLocaleString()}</div>}
+            {challenge.maxCost != null && <div>Max cost: ${(challenge.maxCost / 10000).toFixed(2)}</div>}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function OutputPanel({ runResult, isRunning, expandedTests, onToggleTest }: {
+  runResult?: ArenaIDEProps['runResult'];
+  isRunning?: boolean;
+  expandedTests: Set<number>;
+  onToggleTest: (i: number) => void;
+}) {
+  if (!isRunning && !runResult) {
+    return (
+      <div style={s.outputWrap}>
+        <div style={s.outputHeader}>
+          <span style={s.outputHeaderText}>Output</span>
+        </div>
+        <div style={s.outputEmpty}>
+          <span style={{ fontSize: 12, color: arena.textSubtle }}>
+            Click &ldquo;Run Tests&rdquo; to check your solution
+          </span>
+        </div>
+      </div>
+    );
+  }
+
+  if (isRunning) {
+    return (
+      <div style={s.outputWrap}>
+        <div style={s.outputHeader}>
+          <span style={s.outputHeaderText}>Output</span>
+        </div>
+        <div style={s.outputEmpty}>
+          <span style={{ color: arena.accent, marginRight: 8 }}>{'\u25CF'}</span>
+          <span style={{ fontSize: 12, color: arena.textMuted }}>Running tests...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (!runResult) return null;
+
+  return (
+    <div style={s.outputWrap}>
+      {/* Summary bar */}
+      <div style={{
+        ...s.outputHeader,
+        background: runResult.passed ? 'rgba(63,185,80,0.08)' : 'rgba(248,81,73,0.08)',
+      }}>
+        <span style={{
+          fontSize: 12,
+          fontWeight: 600,
+          color: runResult.passed ? arena.success : arena.error,
+          fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+        }}>
+          {runResult.passed ? '\u2713 All tests passed' : '\u2717 Some tests failed'} ({runResult.passedTests}/{runResult.totalTests})
+        </span>
+      </div>
+      {/* Individual test results */}
+      <div style={s.outputScroll}>
+        {runResult.results?.map((tc, i) => (
+          <div key={i} style={{ borderBottom: `1px solid ${arena.border}` }}>
+            <div onClick={() => onToggleTest(i)} style={s.testRow}>
+              <span style={{ color: arena.textSubtle, fontSize: 10, width: 12, flexShrink: 0 }}>
+                {expandedTests.has(i) ? '\u25BE' : '\u25B8'}
+              </span>
+              <span style={{ color: tc.passed ? arena.success : arena.error, flexShrink: 0 }}>
+                {tc.passed ? '\u2713' : '\u2717'}
+              </span>
+              <span style={{ color: arena.text }}>Test {i + 1}</span>
+              {tc.time && (
+                <span style={{ marginLeft: 'auto', color: arena.textSubtle }}>{tc.time}s</span>
+              )}
+            </div>
+            {expandedTests.has(i) && (
+              <div style={s.testDetail}>
+                <div>
+                  <span style={{ color: arena.textMuted }}>Input: </span>
+                  <span style={{ color: arena.text }}>{tc.input || '(none)'}</span>
+                </div>
+                <div>
+                  <span style={{ color: arena.textMuted }}>Expected: </span>
+                  <span style={{ color: arena.success }}>{tc.expectedOutput}</span>
+                </div>
+                <div>
+                  <span style={{ color: arena.textMuted }}>Actual: </span>
+                  <span style={{ color: tc.passed ? arena.success : arena.error }}>{tc.actualOutput || '(empty)'}</span>
+                </div>
+                {tc.error && (
+                  <div style={{ marginTop: 4, color: arena.error }}>Error: {tc.error}</div>
+                )}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 /* ─── Component ───────────────────────────────────────────────────── */
@@ -177,6 +333,7 @@ export function ArenaIDE({
   language,
   onAttemptUpdate,
   runResult,
+  isRunning,
   onRestart,
 }: ArenaIDEProps) {
   const [totalCost, setTotalCost] = useState(attempt.totalCost);
@@ -187,12 +344,14 @@ export function ArenaIDE({
   const [chatInput, setChatInput] = useState('');
   const [isLoadingChat, setIsLoadingChat] = useState(false);
   const [model] = useState('@cf/meta/llama-3.1-8b-instruct');
-  const [editorReady, setEditorReady] = useState(false);
-  const [terminalReady, setTerminalReady] = useState(false);
   const [isExpired, setIsExpired] = useState(false);
   const [showExpiryOverlay, setShowExpiryOverlay] = useState(false);
-  const editorRootRef = useRef<{ unmount: () => void } | null>(null);
-  const terminalInstanceRef = useRef<{ dispose: () => void } | null>(null);
+  const [activeTab, setActiveTab] = useState<'description' | 'chat'>('description');
+  const [hasUnreadChat, setHasUnreadChat] = useState(false);
+  const [expandedTests, setExpandedTests] = useState<Set<number>>(new Set());
+
+  const activeTabRef = useRef<'description' | 'chat'>('description');
+  activeTabRef.current = activeTab;
   const chatScrollRef = useRef<HTMLDivElement>(null);
 
   const attemptId = attempt.id;
@@ -237,6 +396,36 @@ Help the user understand the problem, suggest approaches, debug their code, and 
       chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
     }
   }, [messages, streamingContent]);
+
+  // Auto-expand failed tests when results arrive
+  useEffect(() => {
+    if (runResult?.results) {
+      const failed = new Set<number>();
+      runResult.results.forEach((r, i) => { if (!r.passed) failed.add(i); });
+      setExpandedTests(failed);
+    }
+  }, [runResult]);
+
+  // Track unread chat messages
+  const prevMsgCountRef = useRef(0);
+  useEffect(() => {
+    if (messages.length > prevMsgCountRef.current) {
+      const lastMsg = messages[messages.length - 1];
+      if (lastMsg && lastMsg.role === 'assistant' && activeTabRef.current !== 'chat') {
+        setHasUnreadChat(true);
+      }
+    }
+    prevMsgCountRef.current = messages.length;
+  }, [messages]);
+
+  const toggleTest = useCallback((i: number) => {
+    setExpandedTests((prev) => {
+      const next = new Set(prev);
+      if (next.has(i)) next.delete(i);
+      else next.add(i);
+      return next;
+    });
+  }, []);
 
   const sendMessage = useCallback(async () => {
     const text = chatInput.trim();
@@ -343,75 +532,6 @@ Help the user understand the problem, suggest approaches, debug their code, and 
     }
   }, [chatInput, isLoadingChat, attemptId, model, messages, attempt, onAttemptUpdate, systemPrompt, isExpired]);
 
-  // Mount Monaco editor
-  useEffect(() => {
-    const mountId = 'arena-monaco-mount';
-    const el = document.getElementById(mountId);
-    if (!el) return;
-    let unmount: (() => void) | undefined;
-    Promise.all([import('@monaco-editor/react'), import('react-dom/client')]).then(([{ default: Editor }, { createRoot }]) => {
-      const root = document.createElement('div');
-      root.style.height = '100%';
-      el.appendChild(root);
-      const client = createRoot(root);
-      client.render(
-        React.createElement(Editor, {
-          height: '100%',
-          language,
-          value: code,
-          onChange: (v: string | undefined) => v != null && onCodeChange(v),
-          theme: 'vs-dark',
-          options: {
-            minimap: { enabled: false },
-            fontSize: 14,
-            fontFamily: 'Menlo, Monaco, "Courier New", monospace',
-            lineNumbers: 'on',
-            renderLineHighlight: 'line',
-            scrollBeyondLastLine: false,
-            padding: { top: 8 },
-          },
-        })
-      );
-      setEditorReady(true);
-      editorRootRef.current = { unmount: () => { client.unmount(); root.remove(); } };
-      unmount = () => { editorRootRef.current?.unmount(); };
-    });
-    return () => { unmount?.(); };
-  }, []);
-
-  // Mount xterm terminal
-  useEffect(() => {
-    const mountId = 'arena-terminal-mount';
-    const el = document.getElementById(mountId);
-    if (!el) return;
-    let cleanup: (() => void) | undefined;
-    Promise.all([import('@xterm/xterm'), import('@xterm/addon-fit')]).then(([XTerm, AddonFit]) => {
-      const Terminal = XTerm.Terminal;
-      const FitAddonClass = (AddonFit as { FitAddon: new () => unknown }).FitAddon;
-      const fitAddon = new FitAddonClass();
-      const terminal = new Terminal({
-        theme: { background: arena.bg, foreground: arena.text, cursor: arena.accent },
-        fontFamily: 'Menlo, Monaco, "Courier New", monospace',
-        fontSize: 13,
-      });
-      terminal.loadAddon(fitAddon as never);
-      terminal.open(el);
-      (fitAddon as { fit: () => void }).fit();
-      terminal.writeln('\x1b[1;33mRuwt Arena\x1b[0m — Output');
-      terminal.write('$ ');
-      setTerminalReady(true);
-      terminalInstanceRef.current = terminal;
-      const onResize = () => (fitAddon as { fit: () => void }).fit();
-      window.addEventListener('resize', onResize);
-      cleanup = () => {
-        window.removeEventListener('resize', onResize);
-        terminal.dispose();
-        terminalInstanceRef.current = null;
-      };
-    });
-    return () => { cleanup?.(); };
-  }, []);
-
   // Handle Enter key in chat input
   const handleInputKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -451,123 +571,133 @@ Help the user understand the problem, suggest approaches, debug their code, and 
     <div style={s.container}>
       {/* Main content area */}
       <div style={s.mainRow}>
-        {/* Left: Editor + Terminal */}
+        {/* Left: Editor + Output */}
         <div style={s.leftPane}>
           <div style={s.editorWrap}>
-            <div id="arena-monaco-mount" style={s.editorMount} />
-            {!editorReady && (
+            <Suspense fallback={
               <div style={s.editorLoading}>
                 <span style={{ color: arena.textMuted, fontSize: 13 }}>Loading editor...</span>
               </div>
-            )}
+            }>
+              <MonacoEditor
+                height="100%"
+                language={language}
+                value={code}
+                onChange={(v: string | undefined) => v != null && onCodeChange(v)}
+                theme="vs-dark"
+                options={{
+                  minimap: { enabled: false },
+                  fontSize: 14,
+                  fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+                  lineNumbers: 'on' as const,
+                  renderLineHighlight: 'line' as const,
+                  scrollBeyondLastLine: false,
+                  padding: { top: 8 },
+                  automaticLayout: true,
+                }}
+              />
+            </Suspense>
           </div>
-          <div style={s.terminalWrap}>
-            <div style={s.terminalHeader}>
-              <span style={s.terminalHeaderText}>Output</span>
-            </div>
-            <div id="arena-terminal-mount" style={s.terminalMount} />
-            {!terminalReady && (
-              <div style={s.terminalLoading}>
-                <span style={{ color: arena.textMuted, fontSize: 12 }}>Terminal</span>
-              </div>
-            )}
-          </div>
+          <OutputPanel
+            runResult={runResult}
+            isRunning={isRunning}
+            expandedTests={expandedTests}
+            onToggleTest={toggleTest}
+          />
         </div>
 
-        {/* Right: Chat Panel */}
+        {/* Right: Tabbed Panel (Description / AI Chat) */}
         <div style={s.rightPane}>
-          {/* Chat header */}
-          <div style={s.chatHeader}>
-            <span style={s.chatHeaderTitle}>AI Assistant</span>
-            <span style={s.chatHeaderModel}>@llama-8b</span>
-          </div>
-
-          {/* Chat messages */}
-          <div ref={chatScrollRef} style={s.chatScroll}>
-            {messages.filter((m) => m.role !== 'system').length === 0 && !streamingContent && (
-              <div style={s.chatEmpty}>
-                <span style={{ color: arena.textSubtle, fontSize: 13 }}>
-                  Ask the AI for help with this challenge...
-                </span>
-              </div>
-            )}
-            {messages.filter((m) => m.role !== 'system').map((msg, i) => {
-              if (msg.isConstraint) {
-                return (
-                  <div key={i} style={s.constraintMessage}>
-                    <span style={s.constraintIcon}>!</span>
-                    <span style={s.constraintText}>{msg.content}</span>
-                  </div>
-                );
-              }
-              return (
-                <div key={i} style={msg.role === 'user' ? s.userMessage : s.aiMessage}>
-                  <div style={s.messageLabel}>
-                    <span style={msg.role === 'user' ? s.userLabel : s.aiLabel}>
-                      {msg.role === 'user' ? 'You' : 'AI'}
-                    </span>
-                  </div>
-                  <div style={msg.role === 'user' ? s.userContent : s.aiContent}>
-                    {msg.role === 'assistant' ? renderMarkdown(msg.content) : msg.content}
-                  </div>
-                </div>
-              );
-            })}
-            {streamingContent && (
-              <div style={s.aiMessage}>
-                <div style={s.messageLabel}>
-                  <span style={s.aiLabel}>AI</span>
-                  <span style={s.streamingDot}>●</span>
-                </div>
-                <div style={s.aiContent}>{renderMarkdown(streamingContent)}</div>
-              </div>
-            )}
-          </div>
-
-          {/* Chat input */}
-          <div style={s.chatInputWrap}>
-            <input
-              type="text"
-              style={s.chatInput}
-              placeholder={chatDisabled ? 'Chat disabled — time expired' : 'Ask about this problem...'}
-              value={chatInput}
-              onChange={(e) => setChatInput(e.target.value)}
-              onKeyDown={handleInputKeyDown}
-              disabled={isLoadingChat || chatDisabled}
-            />
+          {/* Tab bar */}
+          <div style={s.tabBar}>
             <button
-              style={{
-                ...s.sendButton,
-                opacity: !chatInput.trim() || isLoadingChat || chatDisabled ? 0.4 : 1,
-              }}
-              onClick={sendMessage}
-              disabled={!chatInput.trim() || isLoadingChat || chatDisabled}
+              style={activeTab === 'description' ? s.tabActive : s.tab}
+              onClick={() => setActiveTab('description')}
             >
-              &#9658;
+              Description
+            </button>
+            <button
+              style={activeTab === 'chat' ? s.tabActive : s.tab}
+              onClick={() => { setActiveTab('chat'); setHasUnreadChat(false); }}
+            >
+              AI Chat
+              {hasUnreadChat && <span style={s.unreadDot} />}
             </button>
           </div>
+
+          {/* Tab content */}
+          {activeTab === 'description' ? (
+            <DescriptionPanel challenge={challenge} />
+          ) : (
+            <>
+              {/* Chat messages */}
+              <div ref={chatScrollRef} style={s.chatScroll}>
+                {messages.filter((m) => m.role !== 'system').length === 0 && !streamingContent && (
+                  <div style={s.chatEmpty}>
+                    <span style={{ color: arena.textSubtle, fontSize: 13 }}>
+                      Ask the AI for help with this challenge...
+                    </span>
+                  </div>
+                )}
+                {messages.filter((m) => m.role !== 'system').map((msg, i) => {
+                  if (msg.isConstraint) {
+                    return (
+                      <div key={i} style={s.constraintMessage}>
+                        <span style={s.constraintIcon}>!</span>
+                        <span style={s.constraintText}>{msg.content}</span>
+                      </div>
+                    );
+                  }
+                  return (
+                    <div key={i} style={msg.role === 'user' ? s.userMessage : s.aiMessage}>
+                      <div style={s.messageLabel}>
+                        <span style={msg.role === 'user' ? s.userLabel : s.aiLabel}>
+                          {msg.role === 'user' ? 'You' : 'AI'}
+                        </span>
+                      </div>
+                      <div style={msg.role === 'user' ? s.userContent : s.aiContent}>
+                        {msg.role === 'assistant' ? renderMarkdown(msg.content) : msg.content}
+                      </div>
+                    </div>
+                  );
+                })}
+                {streamingContent && (
+                  <div style={s.aiMessage}>
+                    <div style={s.messageLabel}>
+                      <span style={s.aiLabel}>AI</span>
+                      <span style={s.streamingDot}>{'\u25CF'}</span>
+                    </div>
+                    <div style={s.aiContent}>{renderMarkdown(streamingContent)}</div>
+                  </div>
+                )}
+              </div>
+
+              {/* Chat input */}
+              <div style={s.chatInputWrap}>
+                <input
+                  type="text"
+                  style={s.chatInput}
+                  placeholder={chatDisabled ? 'Chat disabled \u2014 time expired' : 'Ask about this problem...'}
+                  value={chatInput}
+                  onChange={(e) => setChatInput(e.target.value)}
+                  onKeyDown={handleInputKeyDown}
+                  disabled={isLoadingChat || chatDisabled}
+                />
+                <button
+                  style={{
+                    ...s.sendButton,
+                    opacity: !chatInput.trim() || isLoadingChat || chatDisabled ? 0.4 : 1,
+                  }}
+                  onClick={sendMessage}
+                  disabled={!chatInput.trim() || isLoadingChat || chatDisabled}
+                >
+                  &#9658;
+                </button>
+              </div>
+            </>
+          )}
         </div>
       </div>
-
-      {/* Result banner overlay */}
-      {runResult && (
-        <div style={{
-          ...s.resultBanner,
-          background: runResult.passed
-            ? 'rgba(63,185,80,0.15)'
-            : 'rgba(248,81,73,0.15)',
-          borderColor: runResult.passed ? arena.success : arena.error,
-        }}>
-          <span style={{
-            color: runResult.passed ? arena.success : arena.error,
-            fontWeight: 600,
-            fontSize: 13,
-            fontFamily: 'Menlo, Monaco, "Courier New", monospace',
-          }}>
-            {runResult.passed ? '\u2713 All tests passed' : '\u2717 Some tests failed'} ({runResult.passedTests}/{runResult.totalTests})
-          </span>
-        </div>
-      )}
 
       {/* Expiry overlay */}
       {showExpiryOverlay && (
@@ -692,10 +822,6 @@ const s: Record<string, React.CSSProperties> = {
     position: 'relative',
     minHeight: 200,
   },
-  editorMount: {
-    width: '100%',
-    height: '100%',
-  },
   editorLoading: {
     position: 'absolute',
     inset: 0,
@@ -705,19 +831,21 @@ const s: Record<string, React.CSSProperties> = {
     background: arena.bg,
   },
 
-  // Terminal
-  terminalWrap: {
-    height: 180,
+  // Output panel
+  outputWrap: {
+    height: 200,
     borderTop: `1px solid ${arena.border}`,
     display: 'flex',
     flexDirection: 'column',
+    flexShrink: 0,
   },
-  terminalHeader: {
+  outputHeader: {
     padding: '4px 12px',
     borderBottom: `1px solid ${arena.border}`,
     background: arena.surface,
+    flexShrink: 0,
   },
-  terminalHeaderText: {
+  outputHeaderText: {
     fontSize: 11,
     fontWeight: 600,
     color: arena.textMuted,
@@ -725,37 +853,122 @@ const s: Record<string, React.CSSProperties> = {
     textTransform: 'uppercase' as const,
     letterSpacing: '0.5px',
   },
-  terminalMount: {
+  outputEmpty: {
     flex: 1,
-    padding: 4,
-  },
-  terminalLoading: {
-    position: 'absolute',
-    inset: 0,
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
   },
-
-  // Chat panel
-  chatHeader: {
+  outputScroll: {
+    flex: 1,
+    overflowY: 'auto',
+  },
+  testRow: {
     display: 'flex',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: '8px 14px',
-    borderBottom: `1px solid ${arena.border}`,
-    background: arena.surface,
-  },
-  chatHeaderTitle: {
-    fontSize: 13,
-    fontWeight: 600,
-    color: arena.text,
-  },
-  chatHeaderModel: {
-    fontSize: 11,
-    color: arena.textMuted,
+    padding: '6px 12px',
+    cursor: 'pointer',
+    gap: 8,
+    fontSize: 12,
     fontFamily: 'Menlo, Monaco, "Courier New", monospace',
   },
+  testDetail: {
+    padding: '4px 12px 10px 34px',
+    fontSize: 12,
+    fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+    lineHeight: '1.6',
+  },
+
+  // Tab bar
+  tabBar: {
+    display: 'flex',
+    borderBottom: `1px solid ${arena.border}`,
+    background: arena.surface,
+    flexShrink: 0,
+  },
+  tab: {
+    flex: 1,
+    padding: '8px 14px',
+    fontSize: 12,
+    fontWeight: 500,
+    color: arena.textMuted,
+    background: 'transparent',
+    border: 'none',
+    borderBottom: '2px solid transparent',
+    cursor: 'pointer',
+    fontFamily: 'inherit',
+    position: 'relative' as const,
+  },
+  tabActive: {
+    flex: 1,
+    padding: '8px 14px',
+    fontSize: 12,
+    fontWeight: 600,
+    color: arena.accent,
+    background: 'transparent',
+    border: 'none',
+    borderBottom: `2px solid ${arena.accent}`,
+    cursor: 'pointer',
+    fontFamily: 'inherit',
+    position: 'relative' as const,
+  },
+  unreadDot: {
+    display: 'inline-block',
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    background: arena.accent,
+    marginLeft: 6,
+    verticalAlign: 'middle',
+  },
+
+  // Description panel
+  descriptionScroll: {
+    flex: 1,
+    overflowY: 'auto',
+    padding: '16px 18px',
+  },
+  descriptionText: {
+    fontSize: 13,
+    lineHeight: '1.6',
+    color: arena.text,
+  },
+  sectionLabel: {
+    fontSize: 11,
+    fontWeight: 600,
+    color: arena.textMuted,
+    textTransform: 'uppercase' as const,
+    letterSpacing: '0.5px',
+    marginBottom: 10,
+    fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+  },
+  exampleBlock: {
+    marginBottom: 12,
+    background: arena.surface,
+    border: `1px solid ${arena.border}`,
+    borderRadius: 6,
+    padding: '10px 12px',
+    fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+    fontSize: 12,
+  },
+  exampleLabel: {
+    color: arena.textMuted,
+    marginBottom: 2,
+    fontSize: 11,
+  },
+  exampleValue: {
+    color: arena.text,
+    whiteSpace: 'pre-wrap',
+    wordBreak: 'break-all',
+  },
+  constraintsList: {
+    fontSize: 12,
+    color: arena.textMuted,
+    lineHeight: '1.8',
+    fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+  },
+
+  // Chat panel
   chatScroll: {
     flex: 1,
     overflowY: 'auto',
@@ -834,7 +1047,6 @@ const s: Record<string, React.CSSProperties> = {
   streamingDot: {
     fontSize: 8,
     color: arena.accent,
-    animation: 'pulse 1s infinite',
   },
   userContent: {
     fontSize: 13,
@@ -856,6 +1068,7 @@ const s: Record<string, React.CSSProperties> = {
     borderTop: `1px solid ${arena.border}`,
     background: arena.surface,
     gap: 8,
+    flexShrink: 0,
   },
   chatInput: {
     flex: 1,
@@ -880,19 +1093,6 @@ const s: Record<string, React.CSSProperties> = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-  },
-
-  // Result banner
-  resultBanner: {
-    position: 'absolute',
-    top: 48,
-    left: '50%',
-    transform: 'translateX(-50%)',
-    padding: '8px 20px',
-    borderRadius: 6,
-    border: '1px solid',
-    zIndex: 10,
-    backdropFilter: 'blur(8px)',
   },
 
   // Expiry overlay

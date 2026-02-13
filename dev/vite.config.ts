@@ -22,7 +22,6 @@ export default defineConfig({
       output: {
         manualChunks: {
           monaco: ['@monaco-editor/react'],
-          xterm: ['@xterm/xterm', '@xterm/addon-fit'],
         },
       },
     },
