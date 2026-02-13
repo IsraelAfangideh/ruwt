@@ -20,15 +20,38 @@ function formatTime(seconds: number): string {
 
 /* ─── Simple Markdown Renderer ────────────────────────────────────── */
 
+function CodeBlock({ lang, code }: { lang: string; code: string }) {
+  const [copied, setCopied] = React.useState(false);
+  const handleCopy = () => {
+    navigator.clipboard.writeText(code).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    });
+  };
+  return (
+    <div style={mdStyles.codeBlock}>
+      <div style={mdStyles.codeHeader}>
+        {lang && <span style={mdStyles.codeLang}>{lang}</span>}
+        <button onClick={handleCopy} style={mdStyles.copyBtn}>
+          {copied ? 'Copied!' : 'Copy'}
+        </button>
+      </div>
+      <pre style={mdStyles.codePre}>{code}</pre>
+    </div>
+  );
+}
+
 function renderMarkdown(text: string): React.ReactNode[] {
   const blocks: React.ReactNode[] = [];
   const lines = text.split('\n');
   let i = 0;
 
   while (i < lines.length) {
+    const line = lines[i];
+
     // fenced code block
-    if (lines[i].startsWith('```')) {
-      const lang = lines[i].slice(3).trim();
+    if (line.startsWith('```')) {
+      const lang = line.slice(3).trim();
       const codeLines: string[] = [];
       i++;
       while (i < lines.length && !lines[i].startsWith('```')) {
@@ -36,19 +59,53 @@ function renderMarkdown(text: string): React.ReactNode[] {
         i++;
       }
       i++; // skip closing ```
+      blocks.push(<CodeBlock key={blocks.length} lang={lang} code={codeLines.join('\n')} />);
+      continue;
+    }
+
+    // headings
+    const headingMatch = line.match(/^(#{1,3})\s+(.+)$/);
+    if (headingMatch) {
+      const level = headingMatch[1].length as 1 | 2 | 3;
+      const headingStyle = level === 1 ? mdStyles.h1 : level === 2 ? mdStyles.h2 : mdStyles.h3;
       blocks.push(
-        <div key={blocks.length} style={mdStyles.codeBlock}>
-          {lang && <div style={mdStyles.codeLang}>{lang}</div>}
-          <pre style={mdStyles.codePre}>{codeLines.join('\n')}</pre>
+        <div key={blocks.length} style={headingStyle}>
+          {renderInline(headingMatch[2])}
         </div>
       );
+      i++;
+      continue;
+    }
+
+    // unordered list item
+    if (/^[\-\*]\s+/.test(line)) {
+      blocks.push(
+        <div key={blocks.length} style={mdStyles.listItem}>
+          <span style={mdStyles.listBullet}>{'\u2022'}</span>
+          <span>{renderInline(line.replace(/^[\-\*]\s+/, ''))}</span>
+        </div>
+      );
+      i++;
+      continue;
+    }
+
+    // ordered list item
+    if (/^\d+\.\s+/.test(line)) {
+      const num = line.match(/^(\d+)\./)?.[1] || '1';
+      blocks.push(
+        <div key={blocks.length} style={mdStyles.listItem}>
+          <span style={mdStyles.listNum}>{num}.</span>
+          <span>{renderInline(line.replace(/^\d+\.\s+/, ''))}</span>
+        </div>
+      );
+      i++;
       continue;
     }
 
     // regular line — parse inline elements
     blocks.push(
       <div key={blocks.length} style={mdStyles.paragraph}>
-        {renderInline(lines[i])}
+        {renderInline(line)}
       </div>
     );
     i++;
@@ -58,8 +115,8 @@ function renderMarkdown(text: string): React.ReactNode[] {
 
 function renderInline(text: string): React.ReactNode[] {
   const parts: React.ReactNode[] = [];
-  // match **bold** and `code`
-  const regex = /(\*\*(.+?)\*\*|`([^`]+)`)/g;
+  // match **bold**, *italic*/_italic_, `code`, and [text](url)
+  const regex = /(\*\*(.+?)\*\*|\*(.+?)\*|_(.+?)_|`([^`]+)`|\[([^\]]+)\]\(([^)]+)\))/g;
   let last = 0;
   let match: RegExpExecArray | null;
 
@@ -71,9 +128,22 @@ function renderInline(text: string): React.ReactNode[] {
       // bold
       parts.push(<strong key={parts.length}>{match[2]}</strong>);
     } else if (match[3]) {
+      // italic with *
+      parts.push(<em key={parts.length}>{match[3]}</em>);
+    } else if (match[4]) {
+      // italic with _
+      parts.push(<em key={parts.length}>{match[4]}</em>);
+    } else if (match[5]) {
       // inline code
       parts.push(
-        <code key={parts.length} style={mdStyles.inlineCode}>{match[3]}</code>
+        <code key={parts.length} style={mdStyles.inlineCode}>{match[5]}</code>
+      );
+    } else if (match[6] && match[7]) {
+      // link
+      parts.push(
+        <a key={parts.length} href={match[7]} target="_blank" rel="noopener noreferrer" style={mdStyles.link}>
+          {match[6]}
+        </a>
       );
     }
     last = match.index + match[0].length;
@@ -91,12 +161,29 @@ const mdStyles: Record<string, React.CSSProperties> = {
     margin: '6px 0',
     overflow: 'hidden',
     border: `1px solid ${arena.border}`,
+    position: 'relative',
+  },
+  codeHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: '4px 10px',
+    borderBottom: `1px solid ${arena.border}`,
+    minHeight: 24,
   },
   codeLang: {
     fontSize: 11,
     color: arena.textMuted,
-    padding: '4px 10px',
-    borderBottom: `1px solid ${arena.border}`,
+    fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+  },
+  copyBtn: {
+    background: 'transparent',
+    border: `1px solid ${arena.border}`,
+    borderRadius: 4,
+    color: arena.textMuted,
+    fontSize: 10,
+    padding: '2px 8px',
+    cursor: 'pointer',
     fontFamily: 'Menlo, Monaco, "Courier New", monospace',
   },
   codePre: {
@@ -116,9 +203,52 @@ const mdStyles: Record<string, React.CSSProperties> = {
     fontSize: '0.9em',
     fontFamily: 'Menlo, Monaco, "Courier New", monospace',
   },
+  link: {
+    color: arena.accent,
+    textDecoration: 'underline',
+    textUnderlineOffset: '2px',
+  },
   paragraph: {
     lineHeight: '1.5',
     minHeight: '1.2em',
+  },
+  h1: {
+    fontSize: 18,
+    fontWeight: 700,
+    lineHeight: '1.4',
+    margin: '16px 0 8px',
+    color: arena.text,
+  },
+  h2: {
+    fontSize: 16,
+    fontWeight: 600,
+    lineHeight: '1.4',
+    margin: '12px 0 6px',
+    color: arena.text,
+  },
+  h3: {
+    fontSize: 14,
+    fontWeight: 600,
+    lineHeight: '1.4',
+    margin: '10px 0 4px',
+    color: arena.text,
+  },
+  listItem: {
+    display: 'flex',
+    gap: 8,
+    lineHeight: '1.5',
+    paddingLeft: 4,
+  },
+  listBullet: {
+    color: arena.textMuted,
+    flexShrink: 0,
+    width: 12,
+  },
+  listNum: {
+    color: arena.textMuted,
+    flexShrink: 0,
+    width: 16,
+    textAlign: 'right' as const,
   },
 };
 
@@ -227,6 +357,66 @@ function DescriptionPanel({ challenge }: { challenge: ArenaChallenge }) {
   );
 }
 
+function TestRow({ tc, index, expanded, onToggle }: {
+  tc: TestCaseResult;
+  index: number;
+  expanded: boolean;
+  onToggle: () => void;
+}) {
+  const [hovered, setHovered] = React.useState(false);
+
+  const formatMeta = () => {
+    const parts: string[] = [];
+    if (tc.time) parts.push(`${tc.time}s`);
+    if (tc.memory != null) parts.push(`${(tc.memory / 1024).toFixed(1)}MB`);
+    return parts.join(' \u00B7 ');
+  };
+
+  return (
+    <div style={{ borderBottom: `1px solid ${arena.border}` }}>
+      <div
+        onClick={onToggle}
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
+        style={{
+          ...s.testRow,
+          background: hovered ? arena.surfaceHover : 'transparent',
+        }}
+      >
+        <span style={{ color: arena.textSubtle, fontSize: 10, width: 12, flexShrink: 0 }}>
+          {expanded ? '\u25BE' : '\u25B8'}
+        </span>
+        <span style={{ color: tc.passed ? arena.success : arena.error, flexShrink: 0 }}>
+          {tc.passed ? '\u2713' : '\u2717'}
+        </span>
+        <span style={{ color: arena.text }}>Test {index + 1}</span>
+        {formatMeta() && (
+          <span style={{ marginLeft: 'auto', color: arena.textSubtle }}>{formatMeta()}</span>
+        )}
+      </div>
+      {expanded && (
+        <div style={s.testDetail}>
+          <div>
+            <span style={{ color: arena.textMuted }}>Input: </span>
+            <span style={{ color: arena.text }}>{tc.input || '(none)'}</span>
+          </div>
+          <div>
+            <span style={{ color: arena.textMuted }}>Expected: </span>
+            <span style={{ color: arena.success }}>{tc.expectedOutput}</span>
+          </div>
+          <div>
+            <span style={{ color: arena.textMuted }}>Actual: </span>
+            <span style={{ color: tc.passed ? arena.success : arena.error }}>{tc.actualOutput || '(empty)'}</span>
+          </div>
+          {tc.error && (
+            <div style={{ marginTop: 4, color: arena.error, whiteSpace: 'pre-wrap' }}>Error: {tc.error}</div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function OutputPanel({ runResult, isRunning, expandedTests, onToggleTest }: {
   runResult?: ArenaIDEProps['runResult'];
   isRunning?: boolean;
@@ -283,39 +473,13 @@ function OutputPanel({ runResult, isRunning, expandedTests, onToggleTest }: {
       {/* Individual test results */}
       <div style={s.outputScroll}>
         {runResult.results?.map((tc, i) => (
-          <div key={i} style={{ borderBottom: `1px solid ${arena.border}` }}>
-            <div onClick={() => onToggleTest(i)} style={s.testRow}>
-              <span style={{ color: arena.textSubtle, fontSize: 10, width: 12, flexShrink: 0 }}>
-                {expandedTests.has(i) ? '\u25BE' : '\u25B8'}
-              </span>
-              <span style={{ color: tc.passed ? arena.success : arena.error, flexShrink: 0 }}>
-                {tc.passed ? '\u2713' : '\u2717'}
-              </span>
-              <span style={{ color: arena.text }}>Test {i + 1}</span>
-              {tc.time && (
-                <span style={{ marginLeft: 'auto', color: arena.textSubtle }}>{tc.time}s</span>
-              )}
-            </div>
-            {expandedTests.has(i) && (
-              <div style={s.testDetail}>
-                <div>
-                  <span style={{ color: arena.textMuted }}>Input: </span>
-                  <span style={{ color: arena.text }}>{tc.input || '(none)'}</span>
-                </div>
-                <div>
-                  <span style={{ color: arena.textMuted }}>Expected: </span>
-                  <span style={{ color: arena.success }}>{tc.expectedOutput}</span>
-                </div>
-                <div>
-                  <span style={{ color: arena.textMuted }}>Actual: </span>
-                  <span style={{ color: tc.passed ? arena.success : arena.error }}>{tc.actualOutput || '(empty)'}</span>
-                </div>
-                {tc.error && (
-                  <div style={{ marginTop: 4, color: arena.error }}>Error: {tc.error}</div>
-                )}
-              </div>
-            )}
-          </div>
+          <TestRow
+            key={i}
+            tc={tc}
+            index={i}
+            expanded={expandedTests.has(i)}
+            onToggle={() => onToggleTest(i)}
+          />
         ))}
       </div>
     </div>
@@ -343,7 +507,7 @@ export function ArenaIDE({
   const [streamingContent, setStreamingContent] = useState('');
   const [chatInput, setChatInput] = useState('');
   const [isLoadingChat, setIsLoadingChat] = useState(false);
-  const [model] = useState('@cf/meta/llama-3.1-8b-instruct');
+  const [model] = useState('@cf/meta/llama-3.3-70b-instruct-fp8-fast');
   const [isExpired, setIsExpired] = useState(false);
   const [showExpiryOverlay, setShowExpiryOverlay] = useState(false);
   const [activeTab, setActiveTab] = useState<'description' | 'chat'>('description');
@@ -833,7 +997,8 @@ const s: Record<string, React.CSSProperties> = {
 
   // Output panel
   outputWrap: {
-    height: 200,
+    minHeight: 160,
+    maxHeight: '40%',
     borderTop: `1px solid ${arena.border}`,
     display: 'flex',
     flexDirection: 'column',

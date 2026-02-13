@@ -8,7 +8,7 @@ import { getDb } from '../../_shared/db';
 import { getUser } from '../../_shared/auth';
 import { validateConstraints, checkPreCallConstraints } from '../../_shared/constraints';
 import { getModelPricing, calculateCost, countMessageTokens } from '../../_shared/ai-pricing';
-import { streamCloudflareAI } from '../../_shared/ai-stream';
+import { streamCloudflareAIWithFallback } from '../../_shared/ai-stream';
 import { profiles, attempts, aiCalls } from '../../../drizzle/schema.d1';
 
 const requestSchema = z.object({
@@ -115,19 +115,19 @@ export async function onRequestPost(context: {
     const stream = new ReadableStream({
       async start(controller) {
         try {
-          const gen = streamCloudflareAI(
+          const gen = streamCloudflareAIWithFallback(
             context.env,
             model,
             messages,
             { maxTokens, temperature }
           );
 
-          let result: { inputTokens: number; outputTokens: number } | null =
+          let result: { inputTokens: number; outputTokens: number; model: string } | null =
             null;
           while (true) {
             const { value, done } = await gen.next();
             if (done) {
-              result = value as { inputTokens: number; outputTokens: number };
+              result = value as { inputTokens: number; outputTokens: number; model: string };
               break;
             }
             controller.enqueue(
@@ -139,8 +139,10 @@ export async function onRequestPost(context: {
 
           if (!result) throw new Error('No result from stream');
 
+          // Use the actual model that responded (may differ from requested if fallback kicked in)
+          const actualModel = result.model;
           const actualCost = calculateCost(
-            model,
+            actualModel,
             result.inputTokens,
             result.outputTokens
           );
@@ -163,7 +165,7 @@ export async function onRequestPost(context: {
             await db.insert(aiCalls).values({
               id: crypto.randomUUID(),
               attemptId,
-              model,
+              model: actualModel,
               inputTokens: result.inputTokens,
               outputTokens: result.outputTokens,
               cost: actualCost,
@@ -190,7 +192,7 @@ export async function onRequestPost(context: {
                 inputTokens: result.inputTokens,
                 outputTokens: result.outputTokens,
                 cost: actualCost,
-                model,
+                model: actualModel,
               })}\n\n`
             )
           );

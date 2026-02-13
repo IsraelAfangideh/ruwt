@@ -9,6 +9,7 @@ const MODEL_PRICING: Record<
   'gpt-4o-mini': { input: 0.15, output: 0.6, provider: 'openai' },
   'claude-sonnet-4-20250514': { input: 3, output: 15, provider: 'anthropic' },
   'claude-3-5-haiku-20241022': { input: 0.8, output: 4, provider: 'anthropic' },
+  '@cf/meta/llama-3.3-70b-instruct-fp8-fast': { input: 0.02, output: 0.02, provider: 'cloudflare' },
   '@cf/meta/llama-3.1-70b-instruct': { input: 0.02, output: 0.02, provider: 'cloudflare' },
   '@cf/meta/llama-3.1-8b-instruct': { input: 0.01, output: 0.01, provider: 'cloudflare' },
   '@cf/mistral/mistral-7b-instruct-v0.2': { input: 0.01, output: 0.01, provider: 'cloudflare' },

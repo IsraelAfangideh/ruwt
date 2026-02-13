@@ -12,6 +12,5 @@ interface Env {
   CLOUDFLARE_API_TOKEN?: string;
   OPENAI_API_KEY?: string;
   ANTHROPIC_API_KEY?: string;
-  JUDGE0_API_URL?: string;
-  JUDGE0_API_KEY?: string;
+  PISTON_API_URL?: string;
 }

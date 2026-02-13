@@ -1,13 +1,16 @@
 /**
- * Judge0 client for Cloudflare Functions. Uses env for API URL/KEY.
+ * Code execution via Piston API (free, no key needed).
+ * Drop-in replacement for the old Judge0 client — same exports.
+ * https://github.com/engineer-man/piston
  */
-const LANGUAGE_IDS: Record<string, number> = {
-  javascript: 63,
-  typescript: 74,
-  python: 71,
+
+const LANGUAGE_VERSIONS: Record<string, { language: string; version: string }> = {
+  javascript: { language: 'javascript', version: '18.15.0' },
+  typescript: { language: 'typescript', version: '5.0.3' },
+  python: { language: 'python', version: '3.10.0' },
 };
 
-export type SupportedLanguage = keyof typeof LANGUAGE_IDS;
+export type SupportedLanguage = keyof typeof LANGUAGE_VERSIONS;
 
 export interface TestCaseResult {
   passed: boolean;
@@ -27,108 +30,59 @@ export interface TestResult {
   results: TestCaseResult[];
 }
 
-interface JudgeEnv {
-  JUDGE0_API_URL?: string;
-  JUDGE0_API_KEY?: string;
+interface PistonEnv {
+  PISTON_API_URL?: string;
 }
 
-async function makeRequest(
-  env: JudgeEnv,
-  endpoint: string,
-  options: RequestInit = {}
-): Promise<Response> {
-  const baseUrl = env.JUDGE0_API_URL || 'https://judge0-ce.p.rapidapi.com';
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-    ...(options.headers as Record<string, string>),
-  };
-  if (env.JUDGE0_API_KEY) {
-    headers['X-RapidAPI-Key'] = env.JUDGE0_API_KEY;
-    headers['X-RapidAPI-Host'] = new URL(baseUrl).hostname;
-  }
-  const response = await fetch(`${baseUrl}${endpoint}`, { ...options, headers });
-  if (!response.ok) {
-    const err = await response.text();
-    throw new Error(`Judge0 API error: ${response.status} - ${err}`);
-  }
-  return response;
+interface PistonRunResult {
+  stdout: string;
+  stderr: string;
+  code: number;
+  signal: string | null;
+  output: string;
 }
 
-async function createSubmission(
-  env: JudgeEnv,
-  request: {
-    sourceCode: string;
-    languageId: number;
-    stdin?: string;
-    expectedOutput?: string;
-    cpuTimeLimit?: number;
-    memoryLimit?: number;
-  }
-): Promise<string> {
-  const res = await makeRequest(env, '/submissions?base64_encoded=false&wait=false', {
-    method: 'POST',
-    body: JSON.stringify({
-      source_code: request.sourceCode,
-      language_id: request.languageId,
-      stdin: request.stdin || '',
-      expected_output: request.expectedOutput,
-      cpu_time_limit: request.cpuTimeLimit || 5,
-      memory_limit: request.memoryLimit || 256000,
-    }),
-  });
-  const data = (await res.json()) as { token: string };
-  return data.token;
+interface PistonResponse {
+  language: string;
+  version: string;
+  run: PistonRunResult;
+  compile?: PistonRunResult;
 }
 
-async function getSubmission(env: JudgeEnv, token: string) {
-  const res = await makeRequest(env, `/submissions/${token}?base64_encoded=false&fields=*`);
-  return res.json();
-}
-
-async function waitForSubmission(
-  env: JudgeEnv,
-  token: string,
-  maxAttempts = 30,
-  delayMs = 1000
-) {
-  for (let i = 0; i < maxAttempts; i++) {
-    const result = (await getSubmission(env, token)) as {
-      status: { id: number };
-      stdout: string | null;
-      stderr: string | null;
-      compile_output: string | null;
-      time: string | null;
-      memory: number | null;
-    };
-    if (result.status.id > 2) return result;
-    await new Promise((r) => setTimeout(r, delayMs));
-  }
-  throw new Error('Submission timed out');
-}
-
-async function runCode(
-  env: JudgeEnv,
+async function executeCode(
+  env: PistonEnv,
   sourceCode: string,
   language: SupportedLanguage,
   stdin?: string,
-  expectedOutput?: string,
-  options?: { cpuTimeLimit?: number; memoryLimit?: number }
-) {
-  const languageId = LANGUAGE_IDS[language];
-  if (!languageId) throw new Error(`Unsupported language: ${language}`);
-  const token = await createSubmission(env, {
-    sourceCode,
-    languageId,
-    stdin,
-    expectedOutput,
-    cpuTimeLimit: options?.cpuTimeLimit,
-    memoryLimit: options?.memoryLimit,
+  options?: { runTimeout?: number }
+): Promise<PistonResponse> {
+  const langConfig = LANGUAGE_VERSIONS[language];
+  if (!langConfig) throw new Error(`Unsupported language: ${language}`);
+
+  const baseUrl = env.PISTON_API_URL || 'https://emkc.org/api/v2/piston';
+
+  const response = await fetch(`${baseUrl}/execute`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      language: langConfig.language,
+      version: langConfig.version,
+      files: [{ content: sourceCode }],
+      stdin: stdin || '',
+      run_timeout: options?.runTimeout || 5000,
+    }),
   });
-  return waitForSubmission(env, token);
+
+  if (!response.ok) {
+    const err = await response.text();
+    throw new Error(`Piston API error: ${response.status} - ${err}`);
+  }
+
+  return response.json() as Promise<PistonResponse>;
 }
 
 export async function runTestCases(
-  env: JudgeEnv,
+  env: PistonEnv,
   sourceCode: string,
   language: SupportedLanguage,
   testCases: Array<{ input: string; expectedOutput: string }>,
@@ -137,28 +91,34 @@ export async function runTestCases(
   const results: TestCaseResult[] = [];
   let passedCount = 0;
 
+  // Convert cpuTimeLimit (seconds) to Piston's run_timeout (milliseconds)
+  const runTimeout = options?.cpuTimeLimit ? options.cpuTimeLimit * 1000 : 5000;
+
   for (const testCase of testCases) {
     try {
-      const result = (await runCode(
+      const result = await executeCode(
         env,
         sourceCode,
         language,
         testCase.input,
-        testCase.expectedOutput,
-        options
-      )) as { stdout: string | null; stderr: string | null; compile_output: string | null; time: string | null; memory: number | null };
-      const actualOutput = (result.stdout || '').trim();
+        { runTimeout }
+      );
+
+      const compileError = result.compile?.stderr || '';
+      const runtimeError = result.run.stderr || '';
+      const errorText = compileError || runtimeError || undefined;
+
+      const actualOutput = (result.run.stdout || '').trim();
       const expected = testCase.expectedOutput.trim();
-      const passed = actualOutput === expected;
+      const passed = actualOutput === expected && result.run.code === 0;
       if (passed) passedCount++;
+
       results.push({
         passed,
         input: testCase.input,
         expectedOutput: expected,
         actualOutput,
-        error: result.stderr || result.compile_output || undefined,
-        time: result.time || undefined,
-        memory: result.memory ?? undefined,
+        error: errorText,
       });
     } catch (err) {
       results.push({
