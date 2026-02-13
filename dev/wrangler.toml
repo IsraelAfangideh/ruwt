@@ -9,5 +9,7 @@ database_id = "27b64c12-c858-473d-8a40-d202d01d32aa"
 # After creating: wrangler d1 create ruwt-dev
 # Then: wrangler d1 execute ruwt-dev --remote --file=./drizzle/migrations-d1/0000_initial.sql
 
-# Runtime vars for Pages Functions are set in Cloudflare Dashboard.
-# Secrets (Stripe keys, API tokens): dashboard or `npx wrangler pages secret put <NAME>`.
+# Runtime vars for Pages Functions.
+# Non-secrets go here; secrets are set via wrangler pages secret put in the deploy workflow.
+[vars]
+CLOUDFLARE_ACCOUNT_ID = "32f5999dbd09eae38c1de8c15de98d48"
