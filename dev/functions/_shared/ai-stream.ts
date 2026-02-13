@@ -59,13 +59,19 @@ export async function* streamCloudflareAI(
   let fullContent = '';
   const inputText = messages.map((m) => m.content).join(' ');
 
+  let buffer = '';
   try {
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
-      const chunk = decoder.decode(value, { stream: true });
-      const lines = chunk.split('\n').filter((l) => l.startsWith('data: '));
-      for (const line of lines) {
+      buffer += decoder.decode(value, { stream: true });
+
+      // Split by newline; keep last part as potentially incomplete line
+      const parts = buffer.split('\n');
+      buffer = parts.pop() ?? '';
+
+      for (const line of parts) {
+        if (!line.startsWith('data: ')) continue;
         const data = line.slice(6);
         if (data === '[DONE]') continue;
         try {
@@ -77,6 +83,20 @@ export async function* streamCloudflareAI(
         } catch {
           // skip
         }
+      }
+    }
+
+    // Process any remaining buffered line
+    if (buffer.startsWith('data: ')) {
+      const data = buffer.slice(6);
+      if (data !== '[DONE]') {
+        try {
+          const parsed = JSON.parse(data) as { response?: string };
+          if (parsed.response) {
+            fullContent += parsed.response;
+            yield parsed.response;
+          }
+        } catch { /* skip */ }
       }
     }
   } finally {
@@ -150,13 +170,19 @@ export async function* streamCloudflareAIWithFallback(
     let fullContent = '';
     const inputText = messages.map((m) => m.content).join(' ');
 
+    let buffer = '';
     try {
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
-        const chunk = decoder.decode(value, { stream: true });
-        const lines = chunk.split('\n').filter((l) => l.startsWith('data: '));
-        for (const line of lines) {
+        buffer += decoder.decode(value, { stream: true });
+
+        // Split by newline; keep last part as potentially incomplete line
+        const parts = buffer.split('\n');
+        buffer = parts.pop() ?? '';
+
+        for (const line of parts) {
+          if (!line.startsWith('data: ')) continue;
           const data = line.slice(6);
           if (data === '[DONE]') continue;
           try {
@@ -168,6 +194,20 @@ export async function* streamCloudflareAIWithFallback(
           } catch {
             // skip
           }
+        }
+      }
+
+      // Process any remaining buffered line
+      if (buffer.startsWith('data: ')) {
+        const data = buffer.slice(6);
+        if (data !== '[DONE]') {
+          try {
+            const parsed = JSON.parse(data) as { response?: string };
+            if (parsed.response) {
+              fullContent += parsed.response;
+              yield parsed.response;
+            }
+          } catch { /* skip */ }
         }
       }
     } finally {

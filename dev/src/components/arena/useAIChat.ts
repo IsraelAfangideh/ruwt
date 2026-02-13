@@ -67,14 +67,19 @@ export function useAIChat(options: UseAIChatOptions) {
         const reader = res.body?.getReader();
         const decoder = new TextDecoder();
         let fullContent = '';
+        let buffer = '';
 
         while (reader) {
           const { done, value } = await reader.read();
           if (done) break;
-          const chunk = decoder.decode(value, { stream: true });
-          const lines = chunk.split('\n').filter((l) => l.startsWith('data: '));
+          buffer += decoder.decode(value, { stream: true });
 
-          for (const line of lines) {
+          // Split by newline; keep last part as potentially incomplete line
+          const parts = buffer.split('\n');
+          buffer = parts.pop() ?? '';
+
+          for (const line of parts) {
+            if (!line.startsWith('data: ')) continue;
             try {
               const data: SSEChunkData = JSON.parse(line.slice(6));
               if (data.type === 'chunk' && data.content) {
@@ -89,6 +94,19 @@ export function useAIChat(options: UseAIChatOptions) {
               }
             } catch { /* skip malformed SSE */ }
           }
+        }
+
+        // Process any remaining buffered line
+        if (buffer.startsWith('data: ')) {
+          try {
+            const data: SSEChunkData = JSON.parse(buffer.slice(6));
+            if (data.type === 'chunk' && data.content) {
+              fullContent += data.content;
+              onChunk(fullContent);
+            } else if (data.type === 'done') {
+              onCostUpdate?.(data.cost ?? 0, data.inputTokens ?? 0, data.outputTokens ?? 0);
+            }
+          } catch { /* skip */ }
         }
 
         onDone(fullContent || '(no response)');
