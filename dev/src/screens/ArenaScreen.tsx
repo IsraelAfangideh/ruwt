@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { View, Text, ActivityIndicator } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { ArenaIDE, type ArenaChallenge, type ArenaAttempt } from '@/components/ArenaIDE';
+import { ArenaIDE, type ArenaChallenge, type ArenaAttempt, type TestResults, type PastAttempt } from '@/components/ArenaIDE';
 import { arena } from '@/theme/colors';
 
 function formatWallClock(seconds: number): string {
@@ -27,6 +27,34 @@ export function ArenaScreen() {
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isRunning, setIsRunning] = useState(false);
+  const [testResults, setTestResults] = useState<TestResults | null>(null);
+  const [pastAttempts, setPastAttempts] = useState<PastAttempt[]>([]);
+
+  // Fetch past attempts for this challenge
+  const fetchPastAttempts = useCallback(async () => {
+    if (!challengeId) return;
+    try {
+      const res = await fetch(`/api/attempts?challengeId=${challengeId}`);
+      if (res.ok) {
+        const data = await res.json();
+        setPastAttempts(
+          (data.attempts ?? [])
+            .filter((a: PastAttempt) => a.status !== 'in_progress')
+            .map((a: PastAttempt & { challenge?: unknown }) => ({
+              id: a.id,
+              status: a.status,
+              passedTests: a.passedTests,
+              totalTests: a.totalTests,
+              totalCost: a.totalCost,
+              inputTokens: a.inputTokens,
+              outputTokens: a.outputTokens,
+              createdAt: a.createdAt,
+              submittedAt: a.submittedAt,
+            }))
+        );
+      }
+    } catch { /* ignore */ }
+  }, [challengeId]);
 
   // Load challenge + profile on mount (but don't create attempt yet)
   useEffect(() => {
@@ -65,6 +93,11 @@ export function ArenaScreen() {
     return () => { cancelled = true; };
   }, [challengeId]);
 
+  // Fetch past attempts when challenge loads or after submission
+  useEffect(() => {
+    if (challenge) fetchPastAttempts();
+  }, [challenge, fetchPastAttempts]);
+
   const startAttempt = useCallback(async (timed: boolean) => {
     setStarting(true);
     setError(null);
@@ -81,6 +114,7 @@ export function ArenaScreen() {
       const data = await res.json();
       setAttempt(data.attempt);
       setCode(data.challenge?.starterCode || '// your code here');
+      setTestResults(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to start attempt');
     } finally {
@@ -93,33 +127,57 @@ export function ArenaScreen() {
     setCode('');
     setIsRunning(false);
     setError(null);
+    setTestResults(null);
   }, []);
 
   const onRunTests = useCallback(
-    async (sourceCode: string, language: string) => {
+    async (sourceCode: string, lang: string) => {
       if (!attempt?.id) return { passed: false, passedTests: 0, totalTests: 0, results: [] };
       const res = await fetch('/api/submissions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ attemptId: attempt.id, sourceCode, language }),
+        body: JSON.stringify({ attemptId: attempt.id, sourceCode, language: lang, mode: 'test' }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Submit failed');
-      return {
+      if (!res.ok) throw new Error(data.error || 'Test run failed');
+      const result = {
         passed: data.success ?? false,
         passedTests: data.passedTests ?? 0,
         totalTests: data.totalTests ?? 0,
-        results: data.results,
+        results: data.results ?? [],
       };
+      setTestResults({ ...result, isSubmission: false });
+      return result;
     },
     [attempt?.id]
   );
 
   const onSubmit = useCallback(
     async (sourceCode: string, lang: string) => {
-      return onRunTests(sourceCode, lang);
+      if (!attempt?.id) return { passed: false, passedTests: 0, totalTests: 0, results: [] };
+      const res = await fetch('/api/submissions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ attemptId: attempt.id, sourceCode, language: lang, mode: 'submit' }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Submit failed');
+      const result = {
+        passed: data.success ?? false,
+        passedTests: data.passedTests ?? 0,
+        totalTests: data.totalTests ?? 0,
+        results: data.results ?? [],
+      };
+      setTestResults({ ...result, isSubmission: true });
+      // Update attempt state from response (may be a new auto-created attempt)
+      if (data.attempt) {
+        setAttempt((prev) => prev ? { ...prev, ...data.attempt } : prev);
+      }
+      // Refresh past attempts list
+      fetchPastAttempts();
+      return result;
     },
-    [onRunTests]
+    [attempt?.id, fetchPastAttempts]
   );
 
   // Execute code via Piston API (public, no server endpoint needed)
@@ -465,7 +523,7 @@ export function ArenaScreen() {
             onClick={handleRun}
             disabled={isRunning}
           >
-            Run Tests
+            {isRunning ? 'Running...' : 'Run Tests'}
           </button>
           <button
             style={{
@@ -501,6 +559,9 @@ export function ArenaScreen() {
           onAttemptUpdate={(next) => setAttempt(next)}
           onRestart={onRestart}
           onRunCode={onRunCode}
+          testResults={testResults}
+          onDismissResults={() => setTestResults(null)}
+          pastAttempts={pastAttempts}
         />
       </div>
     </div>

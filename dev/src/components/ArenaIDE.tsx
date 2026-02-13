@@ -267,6 +267,26 @@ export interface ArenaAttempt {
   expiresAt: string | null;
 }
 
+export interface TestResults {
+  passed: boolean;
+  passedTests: number;
+  totalTests: number;
+  results: Array<{ passed: boolean; input: string; expectedOutput: string; actualOutput: string; error?: string }>;
+  isSubmission: boolean;
+}
+
+export interface PastAttempt {
+  id: string;
+  status: string;
+  passedTests: number;
+  totalTests: number;
+  totalCost: number;
+  inputTokens: number;
+  outputTokens: number;
+  createdAt: string;
+  submittedAt: string | null;
+}
+
 interface ArenaIDEProps {
   challenge: ArenaChallenge;
   attempt: ArenaAttempt;
@@ -279,25 +299,34 @@ interface ArenaIDEProps {
   onAttemptUpdate?: (attempt: ArenaAttempt) => void;
   onRestart?: () => void;
   onRunCode: (sourceCode: string, language: string) => Promise<{ stdout: string; stderr: string; exitCode: number }>;
+  testResults?: TestResults | null;
+  onDismissResults?: () => void;
+  pastAttempts?: PastAttempt[];
 }
 
 /* ─── Code extraction helper ─────────────────────────────────────── */
 
-function extractLastCodeBlock(text: string, language: string): string | null {
+function extractBestCodeBlock(text: string, language: string): string | null {
   const regex = /```(\w*)\n([\s\S]*?)```/g;
   let match: RegExpExecArray | null;
-  let lastMatch: string | null = null;
-  let lastLangMatch: string | null = null;
+  let bestMatch: string | null = null;
+  let bestLangMatch: string | null = null;
+  let bestLen = 0;
+  let bestLangLen = 0;
 
   while ((match = regex.exec(text)) !== null) {
     const lang = match[1].toLowerCase();
     const code = match[2];
-    lastMatch = code;
-    if (lang === language || lang === '') {
-      lastLangMatch = code;
+    if (code.length > bestLen) {
+      bestMatch = code;
+      bestLen = code.length;
+    }
+    if ((lang === language || lang === '') && code.length > bestLangLen) {
+      bestLangMatch = code;
+      bestLangLen = code.length;
     }
   }
-  return lastLangMatch ?? lastMatch;
+  return bestLangMatch ?? bestMatch;
 }
 
 /* ─── Notification Toast ─────────────────────────────────────────── */
@@ -311,9 +340,142 @@ function CodeUpdateToast({ visible }: { visible: boolean }) {
   );
 }
 
+/* ─── Results Bar ────────────────────────────────────────────────── */
+
+function ResultsBar({ results, onDismiss }: { results: TestResults; onDismiss?: () => void }) {
+  const [expanded, setExpanded] = useState(false);
+  const allPassed = results.passed;
+  const barBg = allPassed ? 'rgba(63,185,80,0.12)' : 'rgba(248,81,73,0.12)';
+  const barBorder = allPassed ? 'rgba(63,185,80,0.3)' : 'rgba(248,81,73,0.3)';
+  const barColor = allPassed ? arena.success : arena.error;
+
+  return (
+    <div style={{ borderTop: `1px solid ${barBorder}`, background: barBg, flexShrink: 0 }}>
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        padding: '6px 14px', minHeight: 32,
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ color: barColor, fontWeight: 700, fontSize: 13, fontFamily: 'Menlo, Monaco, "Courier New", monospace' }}>
+            {allPassed ? '\u2713' : '\u2717'} {results.passedTests}/{results.totalTests} passed
+          </span>
+          {results.isSubmission && (
+            <span style={{
+              fontSize: 11, fontWeight: 600, color: barColor,
+              padding: '1px 8px', borderRadius: 9999,
+              border: `1px solid ${barBorder}`, background: barBg,
+              fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+            }}>
+              {allPassed ? 'Submitted \u2014 Passed!' : 'Submitted \u2014 Failed'}
+            </span>
+          )}
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <button
+            onClick={() => setExpanded(!expanded)}
+            style={{
+              background: 'transparent', border: `1px solid ${arena.border}`,
+              borderRadius: 4, color: arena.textMuted, fontSize: 10,
+              padding: '2px 8px', cursor: 'pointer',
+              fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+            }}
+          >
+            {expanded ? '\u25B2 Hide' : '\u25BC Details'}
+          </button>
+          {onDismiss && (
+            <button
+              onClick={onDismiss}
+              style={{
+                background: 'transparent', border: 'none', color: arena.textMuted,
+                fontSize: 14, cursor: 'pointer', padding: '0 4px',
+              }}
+            >
+              \u00D7
+            </button>
+          )}
+        </div>
+      </div>
+      {expanded && (
+        <div style={{ padding: '0 14px 8px', fontSize: 12, fontFamily: 'Menlo, Monaco, "Courier New", monospace' }}>
+          {results.results.map((r, i) => (
+            <div key={i} style={{
+              padding: '4px 0', borderTop: i > 0 ? `1px solid ${arena.border}` : undefined,
+              color: r.passed ? arena.success : arena.error,
+            }}>
+              <span>{r.passed ? '\u2713' : '\u2717'} Test {i + 1}: </span>
+              <span style={{ color: arena.textMuted }}>
+                {r.input.length > 40 ? r.input.slice(0, 40) + '...' : r.input}
+              </span>
+              {!r.passed && (
+                <div style={{ color: arena.textMuted, paddingLeft: 16, fontSize: 11, marginTop: 2 }}>
+                  expected <span style={{ color: arena.success }}>{r.expectedOutput}</span>
+                  {' '}got <span style={{ color: arena.error }}>{r.actualOutput || '(empty)'}</span>
+                  {r.error && <div style={{ color: arena.error, marginTop: 2 }}>{r.error}</div>}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ─── Sub-components ──────────────────────────────────────────────── */
 
-function DescriptionPanel({ challenge }: { challenge: ArenaChallenge }) {
+function PastAttemptsSection({ attempts: pastAttempts }: { attempts: PastAttempt[] }) {
+  if (!pastAttempts.length) return null;
+
+  return (
+    <div style={{ marginTop: 20 }}>
+      <div style={s.sectionLabel}>Past Attempts</div>
+      {pastAttempts.map((a) => {
+        const statusColor = a.status === 'passed' ? arena.success : a.status === 'failed' ? arena.error : arena.accent;
+        const costStr = formatCost(a.totalCost);
+        const tokens = a.inputTokens + a.outputTokens;
+        const timeAgo = getTimeAgo(a.createdAt);
+        return (
+          <div key={a.id} style={{
+            marginBottom: 8, background: arena.surface,
+            border: `1px solid ${arena.border}`, borderRadius: 6,
+            padding: '8px 12px', fontSize: 12,
+            fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+              <span style={{
+                fontSize: 10, fontWeight: 600, color: statusColor,
+                padding: '1px 6px', borderRadius: 9999,
+                border: `1px solid ${statusColor}40`, background: `${statusColor}15`,
+              }}>
+                {a.status}
+              </span>
+              <span style={{ color: arena.textMuted }}>
+                {a.passedTests}/{a.totalTests} passed
+              </span>
+              <span style={{ color: arena.textSubtle, marginLeft: 'auto' }}>{timeAgo}</span>
+            </div>
+            <div style={{ color: arena.textMuted, fontSize: 11 }}>
+              Cost: {costStr} &middot; {tokens.toLocaleString()} tok
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function getTimeAgo(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  return `${days}d ago`;
+}
+
+function DescriptionPanel({ challenge, pastAttempts }: { challenge: ArenaChallenge; pastAttempts?: PastAttempt[] }) {
   let testCases: Array<{ input: string; expectedOutput: string }> = [];
   try {
     testCases = JSON.parse(challenge.testCases);
@@ -350,6 +512,8 @@ function DescriptionPanel({ challenge }: { challenge: ArenaChallenge }) {
           </div>
         </div>
       )}
+
+      {pastAttempts && <PastAttemptsSection attempts={pastAttempts} />}
     </div>
   );
 }
@@ -367,6 +531,9 @@ export function ArenaIDE({
   onRestart,
   onRunTests,
   onRunCode,
+  testResults,
+  onDismissResults,
+  pastAttempts,
 }: ArenaIDEProps) {
   const [totalCost, setTotalCost] = useState(attempt.totalCost);
   const [inputTokens, setInputTokens] = useState(attempt.inputTokens);
@@ -434,7 +601,7 @@ export function ArenaIDE({
 
   // Auto-apply code from AI response
   const applyCodeFromResponse = useCallback((responseText: string) => {
-    const codeBlock = extractLastCodeBlock(responseText, language);
+    const codeBlock = extractBestCodeBlock(responseText, language);
     if (codeBlock) {
       fs.setSolutionCode(codeBlock);
       flashToast();
@@ -651,7 +818,7 @@ Help the user understand the problem, suggest approaches, debug their code, and 
 
           {/* Tab content */}
           {activeTab === 'description' ? (
-            <DescriptionPanel challenge={challenge} />
+            <DescriptionPanel challenge={challenge} pastAttempts={pastAttempts} />
           ) : (
             <>
               {/* Chat messages */}
@@ -779,6 +946,9 @@ Help the user understand the problem, suggest approaches, debug their code, and 
           </div>
         </div>
       </div>
+
+      {/* Test results bar */}
+      {testResults && <ResultsBar results={testResults} onDismiss={onDismissResults} />}
 
       {/* Expiry overlay */}
       {showExpiryOverlay && (

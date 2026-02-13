@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
-import { ArenaIDE, type ArenaChallenge, type ArenaAttempt } from '@/components/ArenaIDE';
+import { ArenaIDE, type ArenaChallenge, type ArenaAttempt, type TestResults } from '@/components/ArenaIDE';
 import { useColors } from '@/theme';
 import { spacing, fontSizes, fontFamily } from '@/theme/tokens';
 
@@ -35,7 +35,7 @@ export function AssessmentFlowScreen() {
   const [totalChallenges, setTotalChallenges] = useState(0);
   const [progress, setProgress] = useState<ChallengeProgress[]>([]);
   const [timeLeft, setTimeLeft] = useState('');
-  const [runResult, setRunResult] = useState<{ passed: boolean; passedTests: number; totalTests: number } | null>(null);
+  const [testResults, setTestResults] = useState<TestResults | null>(null);
   const [advancing, setAdvancing] = useState(false);
   const [shareToken, setShareToken] = useState<string | null>(null);
 
@@ -94,7 +94,29 @@ export function AssessmentFlowScreen() {
       const res = await fetch('/api/submissions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ attemptId: attempt.id, sourceCode, language: lang }),
+        body: JSON.stringify({ attemptId: attempt.id, sourceCode, language: lang, mode: 'test' }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Test run failed');
+      const result = {
+        passed: data.success ?? false,
+        passedTests: data.passedTests ?? 0,
+        totalTests: data.totalTests ?? 0,
+        results: data.results ?? [],
+      };
+      setTestResults({ ...result, isSubmission: false });
+      return result;
+    },
+    [attempt?.id]
+  );
+
+  const onSubmit = useCallback(
+    async (sourceCode: string, lang: string) => {
+      if (!attempt?.id) return { passed: false, passedTests: 0, totalTests: 0, results: [] };
+      const res = await fetch('/api/submissions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ attemptId: attempt.id, sourceCode, language: lang, mode: 'submit' }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Submit failed');
@@ -102,9 +124,9 @@ export function AssessmentFlowScreen() {
         passed: data.success ?? false,
         passedTests: data.passedTests ?? 0,
         totalTests: data.totalTests ?? 0,
-        results: data.results,
+        results: data.results ?? [],
       };
-      setRunResult(result);
+      setTestResults({ ...result, isSubmission: true });
       return result;
     },
     [attempt?.id]
@@ -120,7 +142,7 @@ export function AssessmentFlowScreen() {
         setAttempt(data.attempt);
         setCode(data.challenge.starterCode || '// your code here');
         setChallengeIndex(data.challengeIndex);
-        setRunResult(null);
+        setTestResults(null);
       }
     } catch (_) {}
     setAdvancing(false);
@@ -179,7 +201,7 @@ export function AssessmentFlowScreen() {
   }
 
   const isLastChallenge = challengeIndex >= totalChallenges - 1;
-  const currentPassed = runResult?.passed ?? false;
+  const currentPassed = testResults?.passed ?? false;
 
   return (
     <View style={[styles.page, { backgroundColor: c.bg }]}>
@@ -245,8 +267,10 @@ export function AssessmentFlowScreen() {
           onCodeChange={setCode}
           language={language}
           onRunTests={onRunTests}
-          onSubmit={onRunTests}
+          onSubmit={onSubmit}
           onAttemptUpdate={(next) => setAttempt(next)}
+          testResults={testResults}
+          onDismissResults={() => setTestResults(null)}
           onRunCode={async (sourceCode, lang) => {
             const res = await fetch('https://emkc.org/api/v2/piston/execute', {
               method: 'POST',
