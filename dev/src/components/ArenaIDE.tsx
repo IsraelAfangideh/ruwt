@@ -1,9 +1,14 @@
 /**
- * Arena IDE: Monaco editor + test output (left), tabbed Description/Chat (right), status bar (bottom).
- * Dark IDE aesthetic inspired by Claude Code / Cursor.
+ * Arena IDE: Left sidebar (Description/Chat), right pane (Monaco + Terminal).
+ * AI auto-apply: code blocks from chat responses are applied to the editor.
+ * Terminal: virtual shell with `ruwt` TUI mode for AI assistance.
  */
 import React, { useState, useRef, useEffect, useCallback, useMemo, Suspense } from 'react';
 import { arena } from '@/theme/colors';
+import { VirtualFileSystem } from './arena/VirtualFileSystem';
+import { useCodeSync } from './arena/useCodeSync';
+import { useAIChat } from './arena/useAIChat';
+import { TerminalPanel, type TerminalPanelHandle } from './arena/TerminalPanel';
 
 const MonacoEditor = React.lazy(() => import('@monaco-editor/react'));
 
@@ -212,50 +217,18 @@ const mdStyles: Record<string, React.CSSProperties> = {
     lineHeight: '1.5',
     minHeight: '1.2em',
   },
-  h1: {
-    fontSize: 18,
-    fontWeight: 700,
-    lineHeight: '1.4',
-    margin: '16px 0 8px',
-    color: arena.text,
-  },
-  h2: {
-    fontSize: 16,
-    fontWeight: 600,
-    lineHeight: '1.4',
-    margin: '12px 0 6px',
-    color: arena.text,
-  },
-  h3: {
-    fontSize: 14,
-    fontWeight: 600,
-    lineHeight: '1.4',
-    margin: '10px 0 4px',
-    color: arena.text,
-  },
-  listItem: {
-    display: 'flex',
-    gap: 8,
-    lineHeight: '1.5',
-    paddingLeft: 4,
-  },
-  listBullet: {
-    color: arena.textMuted,
-    flexShrink: 0,
-    width: 12,
-  },
-  listNum: {
-    color: arena.textMuted,
-    flexShrink: 0,
-    width: 16,
-    textAlign: 'right' as const,
-  },
+  h1: { fontSize: 18, fontWeight: 700, lineHeight: '1.4', margin: '16px 0 8px', color: arena.text },
+  h2: { fontSize: 16, fontWeight: 600, lineHeight: '1.4', margin: '12px 0 6px', color: arena.text },
+  h3: { fontSize: 14, fontWeight: 600, lineHeight: '1.4', margin: '10px 0 4px', color: arena.text },
+  listItem: { display: 'flex', gap: 8, lineHeight: '1.5', paddingLeft: 4 },
+  listBullet: { color: arena.textMuted, flexShrink: 0, width: 12 },
+  listNum: { color: arena.textMuted, flexShrink: 0, width: 16, textAlign: 'right' as const },
 };
 
 /* ─── Constraint violation messages ──────────────────────────────── */
 
 const constraintMessages: Record<string, string> = {
-  time: 'Time limit reached — you can review your code but can\'t make more AI requests.',
+  time: 'Time limit reached \u2014 you can review your code but can\'t make more AI requests.',
   tokens: 'Token limit reached for this attempt.',
   cost: 'Cost limit reached for this attempt.',
 };
@@ -304,14 +277,38 @@ interface ArenaIDEProps {
   onRunTests: (sourceCode: string, language: string) => Promise<{ passed: boolean; passedTests: number; totalTests: number; results?: unknown[] }>;
   onSubmit: (sourceCode: string, language: string) => Promise<{ passed: boolean; passedTests: number; totalTests: number }>;
   onAttemptUpdate?: (attempt: ArenaAttempt) => void;
-  runResult?: {
-    passed: boolean;
-    passedTests: number;
-    totalTests: number;
-    results?: TestCaseResult[];
-  } | null;
-  isRunning?: boolean;
   onRestart?: () => void;
+  onRunCode: (sourceCode: string, language: string) => Promise<{ stdout: string; stderr: string; exitCode: number }>;
+}
+
+/* ─── Code extraction helper ─────────────────────────────────────── */
+
+function extractLastCodeBlock(text: string, language: string): string | null {
+  const regex = /```(\w*)\n([\s\S]*?)```/g;
+  let match: RegExpExecArray | null;
+  let lastMatch: string | null = null;
+  let lastLangMatch: string | null = null;
+
+  while ((match = regex.exec(text)) !== null) {
+    const lang = match[1].toLowerCase();
+    const code = match[2];
+    lastMatch = code;
+    if (lang === language || lang === '') {
+      lastLangMatch = code;
+    }
+  }
+  return lastLangMatch ?? lastMatch;
+}
+
+/* ─── Notification Toast ─────────────────────────────────────────── */
+
+function CodeUpdateToast({ visible }: { visible: boolean }) {
+  if (!visible) return null;
+  return (
+    <div style={s.toast}>
+      <span style={{ color: arena.success }}>{'\u2713'}</span> Code updated
+    </div>
+  );
 }
 
 /* ─── Sub-components ──────────────────────────────────────────────── */
@@ -357,135 +354,6 @@ function DescriptionPanel({ challenge }: { challenge: ArenaChallenge }) {
   );
 }
 
-function TestRow({ tc, index, expanded, onToggle }: {
-  tc: TestCaseResult;
-  index: number;
-  expanded: boolean;
-  onToggle: () => void;
-}) {
-  const [hovered, setHovered] = React.useState(false);
-
-  const formatMeta = () => {
-    const parts: string[] = [];
-    if (tc.time) parts.push(`${tc.time}s`);
-    if (tc.memory != null) parts.push(`${(tc.memory / 1024).toFixed(1)}MB`);
-    return parts.join(' \u00B7 ');
-  };
-
-  return (
-    <div style={{ borderBottom: `1px solid ${arena.border}` }}>
-      <div
-        onClick={onToggle}
-        onMouseEnter={() => setHovered(true)}
-        onMouseLeave={() => setHovered(false)}
-        style={{
-          ...s.testRow,
-          background: hovered ? arena.surfaceHover : 'transparent',
-        }}
-      >
-        <span style={{ color: arena.textSubtle, fontSize: 10, width: 12, flexShrink: 0 }}>
-          {expanded ? '\u25BE' : '\u25B8'}
-        </span>
-        <span style={{ color: tc.passed ? arena.success : arena.error, flexShrink: 0 }}>
-          {tc.passed ? '\u2713' : '\u2717'}
-        </span>
-        <span style={{ color: arena.text }}>Test {index + 1}</span>
-        {formatMeta() && (
-          <span style={{ marginLeft: 'auto', color: arena.textSubtle }}>{formatMeta()}</span>
-        )}
-      </div>
-      {expanded && (
-        <div style={s.testDetail}>
-          <div>
-            <span style={{ color: arena.textMuted }}>Input: </span>
-            <span style={{ color: arena.text }}>{tc.input || '(none)'}</span>
-          </div>
-          <div>
-            <span style={{ color: arena.textMuted }}>Expected: </span>
-            <span style={{ color: arena.success }}>{tc.expectedOutput}</span>
-          </div>
-          <div>
-            <span style={{ color: arena.textMuted }}>Actual: </span>
-            <span style={{ color: tc.passed ? arena.success : arena.error }}>{tc.actualOutput || '(empty)'}</span>
-          </div>
-          {tc.error && (
-            <div style={{ marginTop: 4, color: arena.error, whiteSpace: 'pre-wrap' }}>Error: {tc.error}</div>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function OutputPanel({ runResult, isRunning, expandedTests, onToggleTest }: {
-  runResult?: ArenaIDEProps['runResult'];
-  isRunning?: boolean;
-  expandedTests: Set<number>;
-  onToggleTest: (i: number) => void;
-}) {
-  if (!isRunning && !runResult) {
-    return (
-      <div style={s.outputWrap}>
-        <div style={s.outputHeader}>
-          <span style={s.outputHeaderText}>Output</span>
-        </div>
-        <div style={s.outputEmpty}>
-          <span style={{ fontSize: 12, color: arena.textSubtle }}>
-            Click &ldquo;Run Tests&rdquo; to check your solution
-          </span>
-        </div>
-      </div>
-    );
-  }
-
-  if (isRunning) {
-    return (
-      <div style={s.outputWrap}>
-        <div style={s.outputHeader}>
-          <span style={s.outputHeaderText}>Output</span>
-        </div>
-        <div style={s.outputEmpty}>
-          <span style={{ color: arena.accent, marginRight: 8 }}>{'\u25CF'}</span>
-          <span style={{ fontSize: 12, color: arena.textMuted }}>Running tests...</span>
-        </div>
-      </div>
-    );
-  }
-
-  if (!runResult) return null;
-
-  return (
-    <div style={s.outputWrap}>
-      {/* Summary bar */}
-      <div style={{
-        ...s.outputHeader,
-        background: runResult.passed ? 'rgba(63,185,80,0.08)' : 'rgba(248,81,73,0.08)',
-      }}>
-        <span style={{
-          fontSize: 12,
-          fontWeight: 600,
-          color: runResult.passed ? arena.success : arena.error,
-          fontFamily: 'Menlo, Monaco, "Courier New", monospace',
-        }}>
-          {runResult.passed ? '\u2713 All tests passed' : '\u2717 Some tests failed'} ({runResult.passedTests}/{runResult.totalTests})
-        </span>
-      </div>
-      {/* Individual test results */}
-      <div style={s.outputScroll}>
-        {runResult.results?.map((tc, i) => (
-          <TestRow
-            key={i}
-            tc={tc}
-            index={i}
-            expanded={expandedTests.has(i)}
-            onToggle={() => onToggleTest(i)}
-          />
-        ))}
-      </div>
-    </div>
-  );
-}
-
 /* ─── Component ───────────────────────────────────────────────────── */
 
 export function ArenaIDE({
@@ -496,9 +364,9 @@ export function ArenaIDE({
   onCodeChange,
   language,
   onAttemptUpdate,
-  runResult,
-  isRunning,
   onRestart,
+  onRunTests,
+  onRunCode,
 }: ArenaIDEProps) {
   const [totalCost, setTotalCost] = useState(attempt.totalCost);
   const [inputTokens, setInputTokens] = useState(attempt.inputTokens);
@@ -512,11 +380,18 @@ export function ArenaIDE({
   const [showExpiryOverlay, setShowExpiryOverlay] = useState(false);
   const [activeTab, setActiveTab] = useState<'description' | 'chat'>('description');
   const [hasUnreadChat, setHasUnreadChat] = useState(false);
-  const [expandedTests, setExpandedTests] = useState<Set<number>>(new Set());
+  const [showToast, setShowToast] = useState(false);
+  const [terminalHeight, setTerminalHeight] = useState(250);
 
   const activeTabRef = useRef<'description' | 'chat'>('description');
   activeTabRef.current = activeTab;
   const chatScrollRef = useRef<HTMLDivElement>(null);
+  const editorRef = useRef<unknown>(null);
+  const terminalRef = useRef<TerminalPanelHandle>(null);
+  const isExpiredRef = useRef(false);
+  isExpiredRef.current = isExpired;
+  const isDragging = useRef(false);
+  const rightPaneRef = useRef<HTMLDivElement>(null);
 
   const attemptId = attempt.id;
   const expiresAt = attempt.expiresAt ? new Date(attempt.expiresAt) : null;
@@ -524,8 +399,56 @@ export function ArenaIDE({
     expiresAt ? Math.max(0, Math.floor((expiresAt.getTime() - Date.now()) / 1000)) : null
   );
 
-  // Build system prompt from challenge context
-  const systemPrompt = useMemo(() => {
+  // Virtual filesystem
+  const fs = useMemo(() => new VirtualFileSystem(language, code), []);
+
+  // Bidirectional sync: Monaco <-> VFS
+  const { handleEditorChange } = useCodeSync(editorRef as React.RefObject<never>, fs, onCodeChange);
+
+  // AI chat hook
+  const handleCostUpdate = useCallback((cost: number, inTok: number, outTok: number) => {
+    setTotalCost((prev) => prev + cost);
+    setInputTokens((prev) => prev + inTok);
+    setOutputTokens((prev) => prev + outTok);
+    if (onAttemptUpdate) {
+      onAttemptUpdate({
+        ...attempt,
+        totalCost: attempt.totalCost + cost,
+        inputTokens: attempt.inputTokens + inTok,
+        outputTokens: attempt.outputTokens + outTok,
+      });
+    }
+  }, [attempt, onAttemptUpdate]);
+
+  const { streamChat, abort: abortChat } = useAIChat({
+    attemptId,
+    model,
+    onCostUpdate: handleCostUpdate,
+  });
+
+  // Show toast notification
+  const flashToast = useCallback(() => {
+    setShowToast(true);
+    setTimeout(() => setShowToast(false), 2000);
+  }, []);
+
+  // Auto-apply code from AI response
+  const applyCodeFromResponse = useCallback((responseText: string) => {
+    const codeBlock = extractLastCodeBlock(responseText, language);
+    if (codeBlock) {
+      fs.setSolutionCode(codeBlock);
+      flashToast();
+    }
+  }, [language, fs, flashToast]);
+
+  // Handle code applied from terminal (RuwtTUI)
+  const handleTerminalCodeApplied = useCallback(() => {
+    flashToast();
+  }, [flashToast]);
+
+  // Build system prompt with current code
+  const buildSystemPrompt = useCallback(() => {
+    const currentCode = fs.getSolutionCode();
     return `You are an AI coding assistant helping a user solve a programming challenge in the Ruwt Arena.
 
 Challenge: "${challenge.title}"
@@ -535,8 +458,14 @@ Language: ${language}
 Description:
 ${challenge.description}
 
-Help the user understand the problem, suggest approaches, debug their code, and explain concepts. Be concise and focus on the specific challenge. When showing code, use fenced code blocks with the language tag.`;
-  }, [challenge.title, challenge.difficulty, challenge.description, language]);
+The user's current code:
+\`\`\`${language}
+${currentCode}
+\`\`\`
+
+When modifying code, output the COMPLETE file in a single fenced code block with the language tag.
+Help the user understand the problem, suggest approaches, debug their code, and explain concepts. Be concise.`;
+  }, [challenge.title, challenge.difficulty, challenge.description, language, fs]);
 
   // Timer
   useEffect(() => {
@@ -544,15 +473,16 @@ Help the user understand the problem, suggest approaches, debug their code, and 
     const tick = () => {
       const left = Math.max(0, Math.floor((expiresAt.getTime() - Date.now()) / 1000));
       setTimeLeft(left);
-      if (left === 0 && !isExpired) {
+      if (left === 0 && !isExpiredRef.current) {
         setIsExpired(true);
+        isExpiredRef.current = true;
         setShowExpiryOverlay(true);
       }
     };
     tick();
     const id = setInterval(tick, 1000);
     return () => clearInterval(id);
-  }, [expiresAt, isExpired]);
+  }, [expiresAt]);
 
   // Auto-scroll chat
   useEffect(() => {
@@ -560,15 +490,6 @@ Help the user understand the problem, suggest approaches, debug their code, and 
       chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
     }
   }, [messages, streamingContent]);
-
-  // Auto-expand failed tests when results arrive
-  useEffect(() => {
-    if (runResult?.results) {
-      const failed = new Set<number>();
-      runResult.results.forEach((r, i) => { if (!r.passed) failed.add(i); });
-      setExpandedTests(failed);
-    }
-  }, [runResult]);
 
   // Track unread chat messages
   const prevMsgCountRef = useRef(0);
@@ -582,20 +503,11 @@ Help the user understand the problem, suggest approaches, debug their code, and 
     prevMsgCountRef.current = messages.length;
   }, [messages]);
 
-  const toggleTest = useCallback((i: number) => {
-    setExpandedTests((prev) => {
-      const next = new Set(prev);
-      if (next.has(i)) next.delete(i);
-      else next.add(i);
-      return next;
-    });
-  }, []);
-
+  // Send sidebar chat message
   const sendMessage = useCallback(async () => {
     const text = chatInput.trim();
     if (!text || isLoadingChat || !attemptId) return;
 
-    // Block chat if expired
     if (isExpired) {
       setMessages((m) => [...m, {
         role: 'assistant',
@@ -612,91 +524,42 @@ Help the user understand the problem, suggest approaches, debug their code, and 
     setIsLoadingChat(true);
     setStreamingContent('');
 
-    // Build messages array with system prompt
-    const chatMessages = [
-      { role: 'system' as const, content: systemPrompt },
+    const chatMessages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [
+      { role: 'system', content: buildSystemPrompt() },
       ...messages.filter((m) => m.role !== 'system' && !m.isConstraint).map((msg) => ({ role: msg.role, content: msg.content })),
-      { role: 'user' as const, content: text },
+      { role: 'user', content: text },
     ];
 
-    try {
-      const res = await fetch('/api/ai/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model,
-          messages: chatMessages,
-          attemptId,
-          maxTokens: 2048,
-        }),
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({})) as { error?: string; violation?: string };
-        // Friendly constraint error messages
-        if (res.status === 403 && err.violation) {
-          const friendlyMsg = constraintMessages[err.violation] || `Constraint reached: ${err.violation}`;
-          setMessages((m) => [...m, { role: 'assistant', content: friendlyMsg, isConstraint: true }]);
-          if (err.violation === 'time') {
-            setIsExpired(true);
-            setShowExpiryOverlay(true);
-          }
-        } else {
-          setMessages((m) => [...m, { role: 'assistant', content: `Error: ${err.error || res.statusText}` }]);
+    await streamChat(chatMessages, {
+      onChunk: (fullContent) => {
+        setStreamingContent(fullContent);
+      },
+      onDone: (fullContent) => {
+        setMessages((m) => [...m, { role: 'assistant', content: fullContent }]);
+        setStreamingContent('');
+        setIsLoadingChat(false);
+        // Auto-apply code blocks
+        applyCodeFromResponse(fullContent);
+      },
+      onError: (error) => {
+        setMessages((m) => [...m, { role: 'assistant', content: `Request failed: ${error}` }]);
+        setStreamingContent('');
+        setIsLoadingChat(false);
+      },
+      onConstraint: (violation, message) => {
+        const friendlyMsg = constraintMessages[violation] || message;
+        setMessages((m) => [...m, { role: 'assistant', content: friendlyMsg, isConstraint: true }]);
+        setStreamingContent('');
+        setIsLoadingChat(false);
+        if (violation === 'time') {
+          setIsExpired(true);
+          isExpiredRef.current = true;
+          setShowExpiryOverlay(true);
         }
-        return;
-      }
-      const reader = res.body?.getReader();
-      const decoder = new TextDecoder();
-      let assistantContent = '';
-      while (reader) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        const chunk = decoder.decode(value, { stream: true });
-        const lines = chunk.split('\n').filter((l) => l.startsWith('data: '));
-        for (const line of lines) {
-          try {
-            const data = JSON.parse(line.slice(6)) as {
-              type: string;
-              content?: string;
-              inputTokens?: number;
-              outputTokens?: number;
-              cost?: number;
-              violation?: string;
-              message?: string;
-            };
-            if (data.type === 'chunk' && data.content) {
-              assistantContent += data.content;
-              setStreamingContent(assistantContent);
-            } else if (data.type === 'done') {
-              setTotalCost((prev) => prev + (data.cost ?? 0));
-              setInputTokens((prev) => prev + (data.inputTokens ?? 0));
-              setOutputTokens((prev) => prev + (data.outputTokens ?? 0));
-              if (onAttemptUpdate) {
-                onAttemptUpdate({
-                  ...attempt,
-                  totalCost: attempt.totalCost + (data.cost ?? 0),
-                  inputTokens: attempt.inputTokens + (data.inputTokens ?? 0),
-                  outputTokens: attempt.outputTokens + (data.outputTokens ?? 0),
-                });
-              }
-            } else if (data.type === 'error') {
-              assistantContent += `\n[Error: ${data.message}]`;
-            } else if (data.type === 'constraint_warning') {
-              assistantContent += `\n[Constraint: ${data.message}]`;
-            }
-          } catch (_) { /* skip malformed SSE */ }
-        }
-      }
-      setMessages((m) => [...m, { role: 'assistant', content: assistantContent || '(no response)' }]);
-      setStreamingContent('');
-    } catch (e) {
-      setMessages((m) => [...m, { role: 'assistant', content: `Request failed: ${e instanceof Error ? e.message : String(e)}` }]);
-    } finally {
-      setIsLoadingChat(false);
-    }
-  }, [chatInput, isLoadingChat, attemptId, model, messages, attempt, onAttemptUpdate, systemPrompt, isExpired]);
+      },
+    });
+  }, [chatInput, isLoadingChat, attemptId, messages, buildSystemPrompt, streamChat, isExpired, applyCodeFromResponse]);
 
-  // Handle Enter key in chat input
   const handleInputKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLInputElement>) => {
       if (e.key === 'Enter' && !e.shiftKey) {
@@ -707,10 +570,50 @@ Help the user understand the problem, suggest approaches, debug their code, and 
     [sendMessage]
   );
 
+  // Drag-to-resize between editor and terminal
+  const handleDragStart = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    isDragging.current = true;
+    const startY = e.clientY;
+    const startHeight = terminalHeight;
+
+    const onMouseMove = (ev: MouseEvent) => {
+      if (!isDragging.current) return;
+      const delta = startY - ev.clientY;
+      const paneHeight = rightPaneRef.current?.clientHeight ?? 600;
+      const newHeight = Math.max(150, Math.min(paneHeight - 200, startHeight + delta));
+      setTerminalHeight(newHeight);
+    };
+
+    const onMouseUp = () => {
+      isDragging.current = false;
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+
+    document.body.style.cursor = 'row-resize';
+    document.body.style.userSelect = 'none';
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+  }, [terminalHeight]);
+
+  // Shell callbacks for terminal
+  const shellCallbacks = useMemo(() => ({
+    onRunCode,
+    onRunTests: onRunTests as (code: string, language: string) => Promise<{
+      passed: boolean;
+      passedTests: number;
+      totalTests: number;
+      results?: Array<{ passed: boolean; input: string; expectedOutput: string; actualOutput: string; error?: string | null }>;
+    }>,
+  }), [onRunCode, onRunTests]);
+
   const totalTokens = inputTokens + outputTokens;
   const chatDisabled = isExpired && !showExpiryOverlay;
 
-  // Timer urgency: > 2min = normal, < 2min = warning, < 30s = critical
+  // Timer urgency
   const timerUrgency: 'normal' | 'warning' | 'critical' =
     timeLeft == null ? 'normal' :
     timeLeft <= 30 ? 'critical' :
@@ -718,60 +621,17 @@ Help the user understand the problem, suggest approaches, debug their code, and 
 
   const timerPillStyle: React.CSSProperties | undefined =
     timerUrgency === 'critical' ? {
-      background: arena.error,
-      color: '#fff',
-      padding: '1px 8px',
-      borderRadius: 9999,
-      fontWeight: 700,
+      background: arena.error, color: '#fff', padding: '1px 8px', borderRadius: 9999, fontWeight: 700,
     } : timerUrgency === 'warning' ? {
-      background: arena.accent,
-      color: '#0d1117',
-      padding: '1px 8px',
-      borderRadius: 9999,
-      fontWeight: 600,
+      background: arena.accent, color: '#0d1117', padding: '1px 8px', borderRadius: 9999, fontWeight: 600,
     } : undefined;
 
   return (
     <div style={s.container}>
       {/* Main content area */}
       <div style={s.mainRow}>
-        {/* Left: Editor + Output */}
-        <div style={s.leftPane}>
-          <div style={s.editorWrap}>
-            <Suspense fallback={
-              <div style={s.editorLoading}>
-                <span style={{ color: arena.textMuted, fontSize: 13 }}>Loading editor...</span>
-              </div>
-            }>
-              <MonacoEditor
-                height="100%"
-                language={language}
-                value={code}
-                onChange={(v: string | undefined) => v != null && onCodeChange(v)}
-                theme="vs-dark"
-                options={{
-                  minimap: { enabled: false },
-                  fontSize: 14,
-                  fontFamily: 'Menlo, Monaco, "Courier New", monospace',
-                  lineNumbers: 'on' as const,
-                  renderLineHighlight: 'line' as const,
-                  scrollBeyondLastLine: false,
-                  padding: { top: 8 },
-                  automaticLayout: true,
-                }}
-              />
-            </Suspense>
-          </div>
-          <OutputPanel
-            runResult={runResult}
-            isRunning={isRunning}
-            expandedTests={expandedTests}
-            onToggleTest={toggleTest}
-          />
-        </div>
-
-        {/* Right: Tabbed Panel (Description / AI Chat) */}
-        <div style={s.rightPane}>
+        {/* LEFT SIDEBAR: Description/Chat tabs */}
+        <div style={s.sidebar}>
           {/* Tab bar */}
           <div style={s.tabBar}>
             <button
@@ -861,6 +721,63 @@ Help the user understand the problem, suggest approaches, debug their code, and 
             </>
           )}
         </div>
+
+        {/* RIGHT PANE: Editor + Terminal */}
+        <div ref={rightPaneRef} style={s.rightPane}>
+          {/* Editor */}
+          <div style={s.editorWrap}>
+            <CodeUpdateToast visible={showToast} />
+            <Suspense fallback={
+              <div style={s.editorLoading}>
+                <span style={{ color: arena.textMuted, fontSize: 13 }}>Loading editor...</span>
+              </div>
+            }>
+              <MonacoEditor
+                height="100%"
+                language={language}
+                value={code}
+                onChange={handleEditorChange}
+                onMount={(editor: unknown) => { editorRef.current = editor; }}
+                theme="vs-dark"
+                options={{
+                  minimap: { enabled: false },
+                  fontSize: 14,
+                  fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+                  lineNumbers: 'on' as const,
+                  renderLineHighlight: 'line' as const,
+                  scrollBeyondLastLine: false,
+                  padding: { top: 8 },
+                  automaticLayout: true,
+                }}
+              />
+            </Suspense>
+          </div>
+
+          {/* Drag handle */}
+          <div
+            style={s.dragHandle}
+            onMouseDown={handleDragStart}
+          />
+
+          {/* Terminal */}
+          <div style={{ ...s.terminalWrap, height: terminalHeight }}>
+            <div style={s.terminalHeader}>
+              <span style={s.terminalHeaderText}>Terminal</span>
+            </div>
+            <TerminalPanel
+              ref={terminalRef}
+              fs={fs}
+              language={language}
+              challengeTitle={challenge.title}
+              challengeDescription={challenge.description}
+              shellCallbacks={shellCallbacks}
+              streamChat={streamChat}
+              abortChat={abortChat}
+              onCodeApplied={handleTerminalCodeApplied}
+              isExpired={() => isExpiredRef.current}
+            />
+          </div>
+        </div>
       </div>
 
       {/* Expiry overlay */}
@@ -877,17 +794,6 @@ Help the user understand the problem, suggest approaches, debug their code, and 
                 <span style={s.expiryStatValue}>{formatCost(totalCost)}</span>
                 <span style={s.expiryStatLabel}>cost</span>
               </div>
-              {runResult && (
-                <div style={s.expiryStat}>
-                  <span style={{
-                    ...s.expiryStatValue,
-                    color: runResult.passed ? arena.success : arena.error,
-                  }}>
-                    {runResult.passedTests}/{runResult.totalTests}
-                  </span>
-                  <span style={s.expiryStatLabel}>tests passed</span>
-                </div>
-              )}
             </div>
             <div style={s.expiryActions}>
               <button
@@ -923,10 +829,7 @@ Help the user understand the problem, suggest approaches, debug their code, and 
         {timeLeft != null && (
           <>
             <span style={s.statusSep}>&middot;</span>
-            <span style={{
-              ...s.statusItem,
-              ...timerPillStyle,
-            }}>
+            <span style={{ ...s.statusItem, ...timerPillStyle }}>
               <span style={timerPillStyle ? undefined : s.statusValue}>
                 {formatTime(timeLeft)}
               </span>
@@ -965,19 +868,23 @@ const s: Record<string, React.CSSProperties> = {
     minHeight: 0,
     overflow: 'hidden',
   },
-  leftPane: {
-    display: 'flex',
-    flexDirection: 'column',
-    flex: 3,
-    minWidth: 0,
-    borderRight: `1px solid ${arena.border}`,
-  },
-  rightPane: {
+
+  // Left sidebar
+  sidebar: {
     display: 'flex',
     flexDirection: 'column',
     flex: 2,
     minWidth: 280,
     maxWidth: 480,
+    borderRight: `1px solid ${arena.border}`,
+  },
+
+  // Right pane: editor + terminal
+  rightPane: {
+    display: 'flex',
+    flexDirection: 'column',
+    flex: 3,
+    minWidth: 0,
   },
 
   // Editor
@@ -995,53 +902,55 @@ const s: Record<string, React.CSSProperties> = {
     background: arena.bg,
   },
 
-  // Output panel
-  outputWrap: {
-    minHeight: 160,
-    maxHeight: '40%',
+  // Toast notification
+  toast: {
+    position: 'absolute',
+    top: 8,
+    right: 16,
+    zIndex: 20,
+    background: arena.surface,
+    border: `1px solid ${arena.border}`,
+    borderRadius: 6,
+    padding: '6px 14px',
+    fontSize: 12,
+    fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+    color: arena.text,
+    display: 'flex',
+    alignItems: 'center',
+    gap: 6,
+    boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+  },
+
+  // Drag handle between editor and terminal
+  dragHandle: {
+    height: 4,
+    background: arena.surface,
+    cursor: 'row-resize',
+    flexShrink: 0,
     borderTop: `1px solid ${arena.border}`,
+    borderBottom: `1px solid ${arena.border}`,
+  },
+
+  // Terminal
+  terminalWrap: {
     display: 'flex',
     flexDirection: 'column',
+    minHeight: 150,
     flexShrink: 0,
   },
-  outputHeader: {
-    padding: '4px 12px',
-    borderBottom: `1px solid ${arena.border}`,
+  terminalHeader: {
+    padding: '3px 12px',
     background: arena.surface,
+    borderBottom: `1px solid ${arena.border}`,
     flexShrink: 0,
   },
-  outputHeaderText: {
+  terminalHeaderText: {
     fontSize: 11,
     fontWeight: 600,
     color: arena.textMuted,
     fontFamily: 'Menlo, Monaco, "Courier New", monospace',
     textTransform: 'uppercase' as const,
     letterSpacing: '0.5px',
-  },
-  outputEmpty: {
-    flex: 1,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  outputScroll: {
-    flex: 1,
-    overflowY: 'auto',
-  },
-  testRow: {
-    display: 'flex',
-    alignItems: 'center',
-    padding: '6px 12px',
-    cursor: 'pointer',
-    gap: 8,
-    fontSize: 12,
-    fontFamily: 'Menlo, Monaco, "Courier New", monospace',
-  },
-  testDetail: {
-    padding: '4px 12px 10px 34px',
-    fontSize: 12,
-    fontFamily: 'Menlo, Monaco, "Courier New", monospace',
-    lineHeight: '1.6',
   },
 
   // Tab bar

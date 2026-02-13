@@ -247,7 +247,20 @@ export function AssessmentFlowScreen() {
           onRunTests={onRunTests}
           onSubmit={onRunTests}
           onAttemptUpdate={(next) => setAttempt(next)}
-          runResult={runResult}
+          onRunCode={async (sourceCode, lang) => {
+            const res = await fetch('https://emkc.org/api/v2/piston/execute', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                language: lang === 'javascript' ? 'javascript' : lang,
+                version: lang === 'javascript' ? '18.15.0' : '*',
+                files: [{ content: sourceCode }],
+              }),
+            });
+            const data = await res.json();
+            const run = data.run || {};
+            return { stdout: run.stdout || '', stderr: run.stderr || '', exitCode: run.code ?? 0 };
+          }}
         />
       </View>
     </View>

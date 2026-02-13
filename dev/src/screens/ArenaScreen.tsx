@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { View, Text, ActivityIndicator } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { ArenaIDE, type ArenaChallenge, type ArenaAttempt, type TestCaseResult } from '@/components/ArenaIDE';
+import { ArenaIDE, type ArenaChallenge, type ArenaAttempt } from '@/components/ArenaIDE';
 import { arena } from '@/theme/colors';
 
 function formatWallClock(seconds: number): string {
@@ -27,7 +27,6 @@ export function ArenaScreen() {
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isRunning, setIsRunning] = useState(false);
-  const [runResult, setRunResult] = useState<{ passed: boolean; passedTests: number; totalTests: number; results?: TestCaseResult[] } | null>(null);
 
   // Load challenge + profile on mount (but don't create attempt yet)
   useEffect(() => {
@@ -92,7 +91,6 @@ export function ArenaScreen() {
   const onRestart = useCallback(() => {
     setAttempt(null);
     setCode('');
-    setRunResult(null);
     setIsRunning(false);
     setError(null);
   }, []);
@@ -124,12 +122,42 @@ export function ArenaScreen() {
     [onRunTests]
   );
 
+  // Execute code via Piston API (public, no server endpoint needed)
+  const PISTON_LANGUAGES: Record<string, { language: string; version: string }> = {
+    javascript: { language: 'javascript', version: '18.15.0' },
+    typescript: { language: 'typescript', version: '5.0.3' },
+    python: { language: 'python', version: '3.10.0' },
+    java: { language: 'java', version: '15.0.2' },
+    c: { language: 'c', version: '10.2.0' },
+    cpp: { language: 'c++', version: '10.2.0' },
+    go: { language: 'go', version: '1.16.2' },
+    rust: { language: 'rust', version: '1.68.2' },
+  };
+
+  const onRunCode = useCallback(async (sourceCode: string, lang: string) => {
+    const pistonLang = PISTON_LANGUAGES[lang] || PISTON_LANGUAGES.javascript;
+    const res = await fetch('https://emkc.org/api/v2/piston/execute', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        language: pistonLang.language,
+        version: pistonLang.version,
+        files: [{ content: sourceCode }],
+      }),
+    });
+    const data = await res.json();
+    const run = data.run || {};
+    return {
+      stdout: run.stdout || '',
+      stderr: run.stderr || '',
+      exitCode: run.code ?? (run.signal ? 1 : 0),
+    };
+  }, []);
+
   const handleRun = useCallback(async () => {
     setIsRunning(true);
-    setRunResult(null);
     try {
-      const r = await onRunTests(code, language);
-      setRunResult({ passed: r.passed, passedTests: r.passedTests, totalTests: r.totalTests, results: r.results as TestCaseResult[] | undefined });
+      await onRunTests(code, language);
     } finally {
       setIsRunning(false);
     }
@@ -137,10 +165,8 @@ export function ArenaScreen() {
 
   const handleSubmit = useCallback(async () => {
     setIsRunning(true);
-    setRunResult(null);
     try {
-      const r = await onSubmit(code, language);
-      setRunResult({ passed: r.passed, passedTests: r.passedTests, totalTests: r.totalTests });
+      await onSubmit(code, language);
     } finally {
       setIsRunning(false);
     }
@@ -473,9 +499,8 @@ export function ArenaScreen() {
           onRunTests={onRunTests}
           onSubmit={onSubmit}
           onAttemptUpdate={(next) => setAttempt(next)}
-          runResult={runResult}
-          isRunning={isRunning}
           onRestart={onRestart}
+          onRunCode={onRunCode}
         />
       </div>
     </div>
