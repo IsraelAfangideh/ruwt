@@ -1,16 +1,46 @@
-# ruwt.dev
+# ruwt.dev — AI-Efficiency Assessment Platform
 
 Ruwt is a competitive coding platform where success is measured in dollars, not just runtime. Developers solve challenges by prompting AI models, with every token and model choice carrying a real-world price tag.
+
+## How It Works
+
+1. **Land on ruwt.dev** — landing page explains the three dimensions being measured: Model Selection, Prompt Efficiency, and Iterative Debugging.
+
+2. **Register / Login** — GitHub OAuth or email/password. New users get **50,000 free credits**.
+
+3. **Browse Challenges** (`/challenges`) — filter by category (Model Selection, Prompt Efficiency, Debugging). Each card shows difficulty, category, and an efficiency cost goal.
+
+4. **Pick a challenge** — read the full description and constraints (time limit, max tokens, max cost), then choose:
+   - **Start Timed** — countdown begins, pressure's on
+   - **Start Untimed** — no timer, marked separately on the leaderboard
+
+5. **The Arena IDE** — the core experience:
+   - **Left side**: Monaco code editor + Output panel (per-test results)
+   - **Right side**: Tabbed panel — Description tab (problem + examples + constraints) and AI Chat tab (Llama 8B assistant, costs credits/tokens)
+   - **Status bar**: real-time cost, token count, time remaining, credits
+
+6. **Iterate** — read the problem, write code, ask the AI for hints, run tests, see which fail, fix, repeat. Every AI chat message costs you — the leaderboard rewards efficiency, not just correctness.
+
+7. **Run Tests** — per-test pass/fail with input, expected output, and actual output. Failed tests auto-expand for quick debugging.
+
+8. **Submit** — finalizes your attempt as `passed` or `failed`.
+
+9. **Leaderboard** (`/leaderboard`) — ranked by challenges solved, then by average cost. Cheapest solvers win.
+
+### The Core Loop
+
+> "How good are you at using AI?" — can you pick the right prompts, avoid unnecessary back-and-forth, and solve problems with minimal AI cost? That's the skill being ranked.
 
 ## Stack
 
 - **Frontend:** React (react-native-web) + Vite
 - **Hosting:** Cloudflare Pages (static + **Functions**)
-- **Database:** Cloudflare **D1** (SQLite)
-- **Auth:** **Supabase** only (GitHub / Google / email)
+- **Database:** Cloudflare **D1** (SQLite) + Drizzle ORM
+- **Auth:** Supabase (GitHub OAuth + email/password)
 - **Payments:** Stripe
-- **AI:** Cloudflare Workers AI (and optionally OpenAI/Anthropic via env)
-- **Editor:** Monaco; **Terminal:** xterm.js; **Sandbox:** WebContainers (client)
+- **AI Chat:** Cloudflare Workers AI (Llama 3.1 8B)
+- **Code Execution:** Judge0 API
+- **Editor:** Monaco (React.lazy)
 
 ## Getting started
 
