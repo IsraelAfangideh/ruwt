@@ -185,12 +185,14 @@ export async function runTestCases(
         error: errorText,
       });
     } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : 'Unknown error';
+      console.error(`Test case failed (execution error): ${errorMsg}`);
       results.push({
         passed: false,
         input: testCase.input,
         expectedOutput: testCase.expectedOutput,
         actualOutput: '',
-        error: err instanceof Error ? err.message : 'Unknown error',
+        error: `Execution error: ${errorMsg}`,
       });
     }
   }

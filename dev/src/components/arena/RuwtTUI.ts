@@ -169,8 +169,9 @@ export class RuwtTUI {
 
   private buildSystemPrompt(): string {
     const currentCode = this.fs.getSolutionCode();
-    return `You are ruwt, an AI coding assistant in a terminal.
-Challenge: "${this.challengeTitle}" | Language: ${this.language}
+    return `You are a coding agent in a terminal. Write code, not explanations.
+
+Challenge: "${this.challengeTitle}" (${this.language})
 
 ${this.challengeDescription}
 
@@ -179,8 +180,12 @@ Current code:
 ${currentCode}
 \`\`\`
 
-When modifying code, output the COMPLETE file in a single fenced code block. No partial snippets.
-Be concise. Plain text for terminal output.`;
+Rules:
+- Output the COMPLETE file in a single fenced code block. No partial snippets.
+- 1-2 sentences max. No step-by-step explanations, no complexity analysis.
+- If asked to solve, just write the solution.
+- If debugging, state the bug in one line, then provide fixed code.
+- Plain text only (terminal output).`;
   }
 
   private async sendMessage(text: string): Promise<void> {

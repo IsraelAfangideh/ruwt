@@ -343,7 +343,7 @@ function CodeUpdateToast({ visible }: { visible: boolean }) {
 /* ─── Results Bar ────────────────────────────────────────────────── */
 
 function ResultsBar({ results, onDismiss }: { results: TestResults; onDismiss?: () => void }) {
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(!results.passed); // auto-expand on failure
   const allPassed = results.passed;
   const barBg = allPassed ? 'rgba(63,185,80,0.12)' : 'rgba(248,81,73,0.12)';
   const barBorder = allPassed ? 'rgba(63,185,80,0.3)' : 'rgba(248,81,73,0.3)';
@@ -523,7 +523,6 @@ function DescriptionPanel({ challenge, pastAttempts }: { challenge: ArenaChallen
 export function ArenaIDE({
   challenge,
   attempt,
-  userCredits,
   code,
   onCodeChange,
   language,
@@ -562,9 +561,6 @@ export function ArenaIDE({
 
   const attemptId = attempt.id;
   const expiresAt = attempt.expiresAt ? new Date(attempt.expiresAt) : null;
-  const [timeLeft, setTimeLeft] = useState<number | null>(
-    expiresAt ? Math.max(0, Math.floor((expiresAt.getTime() - Date.now()) / 1000)) : null
-  );
 
   // Virtual filesystem
   const fs = useMemo(() => new VirtualFileSystem(language, code), []);
@@ -613,33 +609,37 @@ export function ArenaIDE({
     flashToast();
   }, [flashToast]);
 
-  // Build system prompt with current code
+  // Build system prompt with current code — agentic style (Cursor-like)
   const buildSystemPrompt = useCallback(() => {
     const currentCode = fs.getSolutionCode();
-    return `You are an AI coding assistant helping a user solve a programming challenge in the Ruwt Arena.
+    return `You are a coding agent. You write code, not explanations.
 
-Challenge: "${challenge.title}"
-Difficulty: ${challenge.difficulty}
+Challenge: "${challenge.title}" (${challenge.difficulty})
 Language: ${language}
 
 Description:
 ${challenge.description}
 
-The user's current code:
+Current code:
 \`\`\`${language}
 ${currentCode}
 \`\`\`
 
-When modifying code, output the COMPLETE file in a single fenced code block with the language tag.
-Help the user understand the problem, suggest approaches, debug their code, and explain concepts. Be concise.`;
+Rules:
+- Output the COMPLETE updated file in a single \`\`\`${language} code block. No partial snippets.
+- Be extremely concise. 1-2 sentences max before/after the code block if needed.
+- Do NOT explain the approach step-by-step. Do NOT list time/space complexity.
+- Do NOT use headings, numbered lists, or bullet points.
+- If the user says "solve it" or similar, just write the solution directly.
+- If debugging, state the bug in one line, then provide the fixed code.
+- Think of yourself as a pair programmer who writes code, not a tutor who explains.`;
   }, [challenge.title, challenge.difficulty, challenge.description, language, fs]);
 
-  // Timer
+  // Timer (expiry detection only — display moved to ArenaScreen header)
   useEffect(() => {
     if (!expiresAt) return;
     const tick = () => {
       const left = Math.max(0, Math.floor((expiresAt.getTime() - Date.now()) / 1000));
-      setTimeLeft(left);
       if (left === 0 && !isExpiredRef.current) {
         setIsExpired(true);
         isExpiredRef.current = true;
@@ -779,19 +779,6 @@ Help the user understand the problem, suggest approaches, debug their code, and 
 
   const totalTokens = inputTokens + outputTokens;
   const chatDisabled = isExpired && !showExpiryOverlay;
-
-  // Timer urgency
-  const timerUrgency: 'normal' | 'warning' | 'critical' =
-    timeLeft == null ? 'normal' :
-    timeLeft <= 30 ? 'critical' :
-    timeLeft <= 120 ? 'warning' : 'normal';
-
-  const timerPillStyle: React.CSSProperties | undefined =
-    timerUrgency === 'critical' ? {
-      background: arena.error, color: '#fff', padding: '1px 8px', borderRadius: 9999, fontWeight: 700,
-    } : timerUrgency === 'warning' ? {
-      background: arena.accent, color: '#0d1117', padding: '1px 8px', borderRadius: 9999, fontWeight: 600,
-    } : undefined;
 
   return (
     <div style={s.container}>
@@ -985,34 +972,7 @@ Help the user understand the problem, suggest approaches, debug their code, and 
         </div>
       )}
 
-      {/* Status bar */}
-      <div style={s.statusBar}>
-        <span style={s.statusItem}>
-          <span style={s.statusDot}>&#9679;</span>
-          <span style={s.statusValue}>{formatCost(totalCost)}</span>
-        </span>
-        <span style={s.statusSep}>&middot;</span>
-        <span style={s.statusItem}>
-          <span style={s.statusLabel}>{totalTokens.toLocaleString()}</span>
-          <span style={s.statusLabel}> tok</span>
-        </span>
-        {timeLeft != null && (
-          <>
-            <span style={s.statusSep}>&middot;</span>
-            <span style={{ ...s.statusItem, ...timerPillStyle }}>
-              <span style={timerPillStyle ? undefined : s.statusValue}>
-                {formatTime(timeLeft)}
-              </span>
-              <span style={timerPillStyle ? { opacity: 0.8 } : s.statusLabel}> left</span>
-            </span>
-          </>
-        )}
-        <span style={s.statusSep}>&middot;</span>
-        <span style={s.statusItem}>
-          <span style={s.statusValue}>{userCredits.toLocaleString()}</span>
-          <span style={s.statusLabel}> cr</span>
-        </span>
-      </div>
+      {/* Stats moved to header in ArenaScreen */}
     </div>
   );
 }
@@ -1414,35 +1374,4 @@ const s: Record<string, React.CSSProperties> = {
     cursor: 'pointer',
   },
 
-  // Status bar
-  statusBar: {
-    display: 'flex',
-    alignItems: 'center',
-    height: 28,
-    padding: '0 14px',
-    gap: 6,
-    borderTop: `1px solid ${arena.border}`,
-    background: arena.surface,
-    fontFamily: 'Menlo, Monaco, "Courier New", monospace',
-    fontSize: 11,
-    flexShrink: 0,
-  },
-  statusItem: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 4,
-  },
-  statusDot: {
-    fontSize: 8,
-    color: arena.success,
-  },
-  statusValue: {
-    color: arena.accent,
-  },
-  statusLabel: {
-    color: arena.textMuted,
-  },
-  statusSep: {
-    color: arena.textSubtle,
-  },
 };

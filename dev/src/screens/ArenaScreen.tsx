@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { View, Text, ActivityIndicator } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { ArenaIDE, type ArenaChallenge, type ArenaAttempt, type TestResults, type PastAttempt } from '@/components/ArenaIDE';
@@ -10,6 +10,17 @@ function formatWallClock(seconds: number): string {
   if (m > 0 && s > 0) return `${m}m ${s}s`;
   if (m > 0) return `${m}m`;
   return `${s}s`;
+}
+
+function formatCost(cents: number): string {
+  const d = cents / 10000;
+  return d < 0.01 ? `$${d.toFixed(4)}` : `$${d.toFixed(2)}`;
+}
+
+function formatTime(seconds: number): string {
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return `${m}:${s.toString().padStart(2, '0')}`;
 }
 
 export function ArenaScreen() {
@@ -216,6 +227,14 @@ export function ArenaScreen() {
     setIsRunning(true);
     try {
       await onRunTests(code, language);
+    } catch (err) {
+      setTestResults({
+        passed: false,
+        passedTests: 0,
+        totalTests: 0,
+        results: [{ passed: false, input: '', expectedOutput: '', actualOutput: '', error: err instanceof Error ? err.message : 'Run failed' }],
+        isSubmission: false,
+      });
     } finally {
       setIsRunning(false);
     }
@@ -225,6 +244,14 @@ export function ArenaScreen() {
     setIsRunning(true);
     try {
       await onSubmit(code, language);
+    } catch (err) {
+      setTestResults({
+        passed: false,
+        passedTests: 0,
+        totalTests: 0,
+        results: [{ passed: false, input: '', expectedOutput: '', actualOutput: '', error: err instanceof Error ? err.message : 'Submit failed' }],
+        isSubmission: true,
+      });
     } finally {
       setIsRunning(false);
     }
@@ -425,6 +452,32 @@ export function ArenaScreen() {
 
   const isUntimed = challenge.wallClockLimit != null && !attempt.expiresAt;
 
+  // Timer for stats display
+  const expiresAt = attempt.expiresAt ? new Date(attempt.expiresAt) : null;
+  const [timeLeft, setTimeLeft] = useState<number | null>(
+    expiresAt ? Math.max(0, Math.floor((expiresAt.getTime() - Date.now()) / 1000)) : null
+  );
+  const isExpiredRef = useRef(false);
+
+  useEffect(() => {
+    if (!expiresAt) return;
+    const tick = () => {
+      const left = Math.max(0, Math.floor((expiresAt.getTime() - Date.now()) / 1000));
+      setTimeLeft(left);
+      if (left === 0) isExpiredRef.current = true;
+    };
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [expiresAt]);
+
+  const totalTokens = (attempt.inputTokens || 0) + (attempt.outputTokens || 0);
+
+  const timerUrgency: 'normal' | 'warning' | 'critical' =
+    timeLeft == null ? 'normal' :
+    timeLeft <= 30 ? 'critical' :
+    timeLeft <= 120 ? 'warning' : 'normal';
+
   return (
     <div style={{
       display: 'flex',
@@ -434,13 +487,13 @@ export function ArenaScreen() {
       color: arena.text,
       overflow: 'hidden',
     }}>
-      {/* Header — 44px */}
+      {/* Header — 48px */}
       <div style={{
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        height: 44,
-        padding: '0 12px',
+        height: 48,
+        padding: '0 16px',
         background: arena.surface,
         borderBottom: `1px solid ${arena.border}`,
         flexShrink: 0,
@@ -506,42 +559,85 @@ export function ArenaScreen() {
           )}
         </div>
 
-        {/* Right: Actions */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <button
-            style={{
-              background: 'transparent',
-              border: `1px solid ${arena.border}`,
-              borderRadius: 6,
-              color: arena.text,
-              padding: '5px 14px',
-              fontSize: 12,
-              fontWeight: 500,
-              cursor: isRunning ? 'not-allowed' : 'pointer',
-              opacity: isRunning ? 0.5 : 1,
-            }}
-            onClick={handleRun}
-            disabled={isRunning}
-          >
-            {isRunning ? 'Running...' : 'Run Tests'}
-          </button>
-          <button
-            style={{
-              background: arena.accent,
-              border: 'none',
-              borderRadius: 6,
-              color: '#0d1117',
-              padding: '5px 14px',
-              fontSize: 12,
-              fontWeight: 600,
-              cursor: isRunning ? 'not-allowed' : 'pointer',
-              opacity: isRunning ? 0.5 : 1,
-            }}
-            onClick={handleSubmit}
-            disabled={isRunning}
-          >
-            Submit
-          </button>
+        {/* Right: Stats + Actions */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          {/* Stats */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 14,
+            fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+            fontSize: 13,
+          }}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+              <span style={{ fontSize: 9, color: arena.success }}>{'\u25CF'}</span>
+              <span style={{ color: arena.accent, fontWeight: 600 }}>{formatCost(attempt.totalCost)}</span>
+            </span>
+            <span style={{ color: arena.textSubtle }}>{'\u00B7'}</span>
+            <span style={{ color: arena.textMuted }}>
+              <span style={{ fontWeight: 600, color: arena.text }}>{totalTokens.toLocaleString()}</span> tok
+            </span>
+            {timeLeft != null && (
+              <>
+                <span style={{ color: arena.textSubtle }}>{'\u00B7'}</span>
+                <span style={{
+                  fontWeight: 700,
+                  ...(timerUrgency === 'critical' ? {
+                    background: arena.error, color: '#fff', padding: '2px 10px', borderRadius: 9999,
+                  } : timerUrgency === 'warning' ? {
+                    background: arena.accent, color: '#0d1117', padding: '2px 10px', borderRadius: 9999,
+                  } : { color: arena.text }),
+                }}>
+                  {formatTime(timeLeft)} <span style={{ fontWeight: 400, opacity: 0.7 }}>left</span>
+                </span>
+              </>
+            )}
+            <span style={{ color: arena.textSubtle }}>{'\u00B7'}</span>
+            <span style={{ color: arena.textMuted }}>
+              <span style={{ fontWeight: 600, color: arena.accent }}>{userCredits.toLocaleString()}</span> cr
+            </span>
+          </div>
+
+          {/* Divider */}
+          <span style={{ width: 1, height: 24, background: arena.border }} />
+
+          {/* Actions */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <button
+              style={{
+                background: 'transparent',
+                border: `1px solid ${arena.border}`,
+                borderRadius: 6,
+                color: arena.text,
+                padding: '6px 16px',
+                fontSize: 13,
+                fontWeight: 500,
+                cursor: isRunning ? 'not-allowed' : 'pointer',
+                opacity: isRunning ? 0.5 : 1,
+              }}
+              onClick={handleRun}
+              disabled={isRunning}
+            >
+              {isRunning ? 'Running...' : 'Run Tests'}
+            </button>
+            <button
+              style={{
+                background: arena.accent,
+                border: 'none',
+                borderRadius: 6,
+                color: '#0d1117',
+                padding: '6px 16px',
+                fontSize: 13,
+                fontWeight: 600,
+                cursor: isRunning ? 'not-allowed' : 'pointer',
+                opacity: isRunning ? 0.5 : 1,
+              }}
+              onClick={handleSubmit}
+              disabled={isRunning}
+            >
+              Submit
+            </button>
+          </div>
         </div>
       </div>
 
