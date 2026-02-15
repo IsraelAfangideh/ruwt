@@ -109,15 +109,46 @@ function extractFunctionName(sourceCode: string, language: SupportedLanguage): s
   return null;
 }
 
-function wrapWithHarness(sourceCode: string, language: SupportedLanguage): string {
+/**
+ * Escape a string for embedding as a JavaScript string literal (single-quoted).
+ */
+function escapeJSString(s: string): string {
+  return s
+    .replace(/\\/g, '\\\\')
+    .replace(/'/g, "\\'")
+    .replace(/\n/g, '\\n')
+    .replace(/\r/g, '\\r')
+    .replace(/\t/g, '\\t');
+}
+
+/**
+ * Escape a string for embedding as a Python string literal (single-quoted).
+ */
+function escapePyString(s: string): string {
+  return s
+    .replace(/\\/g, '\\\\')
+    .replace(/'/g, "\\'")
+    .replace(/\n/g, '\\n')
+    .replace(/\r/g, '\\r')
+    .replace(/\t/g, '\\t');
+}
+
+/**
+ * Build executable code for a single test case.
+ * Embeds the test input directly in the code (no stdin needed).
+ * Piston's sandbox doesn't support /dev/stdin, so we avoid it entirely.
+ */
+function buildTestCode(sourceCode: string, language: SupportedLanguage, input: string): string {
   const funcName = extractFunctionName(sourceCode, language);
   if (!funcName) return sourceCode; // can't wrap — run as-is
 
   if (language === 'python') {
+    const escaped = escapePyString(input);
     return `${sourceCode}
 
-import sys as __sys, json as __json
-__lines = __sys.stdin.read().strip().split('\\n')
+import json as __json
+__input = '${escaped}'
+__lines = __input.strip().split('\\n')
 __args = []
 for __l in __lines:
     try:
@@ -133,9 +164,11 @@ if __result is not None:
   // JavaScript / TypeScript
   // Strip module.exports line so it doesn't interfere
   const cleaned = sourceCode.replace(/module\.exports\s*=\s*[^;]+;?/g, '');
+  const escaped = escapeJSString(input);
   return `${cleaned}
 
-const __lines = require('fs').readFileSync('/dev/stdin','utf8').trim().split('\\n');
+const __input = '${escaped}';
+const __lines = __input.trim().split('\\n');
 const __args = __lines.map(__l => { try { return JSON.parse(__l); } catch(e) { return __l; } });
 const __result = ${funcName}(...__args);
 if (__result !== undefined) console.log(typeof __result === 'string' ? __result : JSON.stringify(__result));
@@ -155,16 +188,16 @@ export async function runTestCases(
   // Convert cpuTimeLimit (seconds) to Piston's run_timeout (milliseconds)
   const runTimeout = options?.cpuTimeLimit ? options.cpuTimeLimit * 1000 : 5000;
 
-  // Wrap user code with harness that calls the function with stdin args
-  const wrappedCode = wrapWithHarness(sourceCode, language);
-
   for (const testCase of testCases) {
     try {
+      // Build code with embedded input for each test case (no stdin)
+      const testCode = buildTestCode(sourceCode, language, testCase.input);
+
       const result = await executeCode(
         env,
-        wrappedCode,
+        testCode,
         language,
-        testCase.input,
+        undefined,
         { runTimeout }
       );
 
