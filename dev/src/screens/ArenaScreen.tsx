@@ -40,6 +40,8 @@ export function ArenaScreen() {
   const [isRunning, setIsRunning] = useState(false);
   const [testResults, setTestResults] = useState<TestResults | null>(null);
   const [pastAttempts, setPastAttempts] = useState<PastAttempt[]>([]);
+  const [timeLeft, setTimeLeft] = useState<number | null>(null);
+  const isExpiredRef = useRef(false);
 
   // Fetch past attempts for this challenge
   const fetchPastAttempts = useCallback(async () => {
@@ -108,6 +110,23 @@ export function ArenaScreen() {
   useEffect(() => {
     if (challenge) fetchPastAttempts();
   }, [challenge, fetchPastAttempts]);
+
+  // Timer for stats display (must be before early returns to avoid hook order issues)
+  const expiresAt = attempt?.expiresAt ? new Date(attempt.expiresAt) : null;
+  useEffect(() => {
+    if (!expiresAt) {
+      setTimeLeft(null);
+      return;
+    }
+    const tick = () => {
+      const left = Math.max(0, Math.floor((expiresAt.getTime() - Date.now()) / 1000));
+      setTimeLeft(left);
+      if (left === 0) isExpiredRef.current = true;
+    };
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [expiresAt?.getTime()]);
 
   const startAttempt = useCallback(async (timed: boolean) => {
     setStarting(true);
@@ -451,26 +470,6 @@ export function ArenaScreen() {
   }
 
   const isUntimed = challenge.wallClockLimit != null && !attempt.expiresAt;
-
-  // Timer for stats display
-  const expiresAt = attempt.expiresAt ? new Date(attempt.expiresAt) : null;
-  const [timeLeft, setTimeLeft] = useState<number | null>(
-    expiresAt ? Math.max(0, Math.floor((expiresAt.getTime() - Date.now()) / 1000)) : null
-  );
-  const isExpiredRef = useRef(false);
-
-  useEffect(() => {
-    if (!expiresAt) return;
-    const tick = () => {
-      const left = Math.max(0, Math.floor((expiresAt.getTime() - Date.now()) / 1000));
-      setTimeLeft(left);
-      if (left === 0) isExpiredRef.current = true;
-    };
-    tick();
-    const id = setInterval(tick, 1000);
-    return () => clearInterval(id);
-  }, [expiresAt]);
-
   const totalTokens = (attempt.inputTokens || 0) + (attempt.outputTokens || 0);
 
   const timerUrgency: 'normal' | 'warning' | 'critical' =
