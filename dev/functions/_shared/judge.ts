@@ -83,6 +83,17 @@ async function executeCode(
 
 /* ─── Harness wrapping ─────────────────────────────────────────── */
 
+/**
+ * Extract all exported function names from module.exports = { a, b, c }.
+ * Returns null if not a multi-export pattern.
+ */
+function extractMultiExportNames(sourceCode: string): string[] | null {
+  const m = sourceCode.match(/module\.exports\s*=\s*\{([^}]+)\}/);
+  if (!m) return null;
+  const names = m[1].split(',').map(s => s.trim().split(/\s*:\s*/)[0].trim()).filter(Boolean);
+  return names.length > 1 ? names : null;
+}
+
 function extractFunctionName(sourceCode: string, language: SupportedLanguage): string | null {
   // 1. module.exports = { funcName } or module.exports = { funcName: funcName }
   let m = sourceCode.match(/module\.exports\s*=\s*\{\s*(\w+)/);
@@ -139,11 +150,13 @@ function escapePyString(s: string): string {
  * Piston's sandbox doesn't support /dev/stdin, so we avoid it entirely.
  */
 function buildTestCode(sourceCode: string, language: SupportedLanguage, input: string): string {
+  const multiExports = extractMultiExportNames(sourceCode);
   const funcName = extractFunctionName(sourceCode, language);
-  if (!funcName) return sourceCode; // can't wrap — run as-is
+  if (!funcName && !multiExports) return sourceCode; // can't wrap — run as-is
 
   if (language === 'python') {
     const escaped = escapePyString(input);
+    // TODO: multi-export dispatch for Python if needed
     return `${sourceCode}
 
 import json as __json
@@ -165,6 +178,25 @@ if __result is not None:
   // Strip module.exports line so it doesn't interfere
   const cleaned = sourceCode.replace(/module\.exports\s*=\s*[^;]+;?/g, '');
   const escaped = escapeJSString(input);
+
+  // Multi-function export: first input line = function name, rest = args
+  if (multiExports) {
+    return `${cleaned}
+
+const __input = '${escaped}';
+const __lines = __input.trim().split('\\n');
+const __funcName = __lines[0];
+const __argLines = __lines.slice(1);
+const __args = __argLines.map(__l => { try { return JSON.parse(__l); } catch(e) { return __l; } });
+const __dispatch = { ${multiExports.join(', ')} };
+const __fn = __dispatch[__funcName];
+if (!__fn) throw new Error('Unknown function: ' + __funcName);
+const __result = __fn(...__args);
+if (__result !== undefined) console.log(typeof __result === 'string' ? __result : JSON.stringify(__result));
+`;
+  }
+
+  // Single function export: all input lines = args
   return `${cleaned}
 
 const __input = '${escaped}';
