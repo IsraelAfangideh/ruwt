@@ -47,6 +47,7 @@ jobs:
           echo "${{ secrets.CLOUDFLARE_WORKERS_AI_TOKEN }}" | npx wrangler pages secret put CLOUDFLARE_API_TOKEN --project-name=ruwt-dev
           echo "${{ secrets.VITE_SUPABASE_URL }}" | npx wrangler pages secret put VITE_SUPABASE_URL --project-name=ruwt-dev
           echo "${{ secrets.VITE_SUPABASE_ANON_KEY }}" | npx wrangler pages secret put VITE_SUPABASE_ANON_KEY --project-name=ruwt-dev
+          echo "https://ruwt-exec.fly.dev/api/v2/piston" | npx wrangler pages secret put PISTON_API_URL --project-name=ruwt-dev
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
