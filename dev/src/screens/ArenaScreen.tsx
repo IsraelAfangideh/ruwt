@@ -224,7 +224,7 @@ export function ArenaScreen() {
 
   const onRunCode = useCallback(async (sourceCode: string, lang: string) => {
     const pistonLang = PISTON_LANGUAGES[lang] || PISTON_LANGUAGES.javascript;
-    const res = await fetch('https://emkc.org/api/v2/piston/execute', {
+    const res = await fetch('/api/execute', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

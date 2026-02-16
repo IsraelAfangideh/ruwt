@@ -59,7 +59,7 @@ async function executeCode(
   const langConfig = LANGUAGE_VERSIONS[language];
   if (!langConfig) throw new Error(`Unsupported language: ${language}`);
 
-  const baseUrl = env.PISTON_API_URL || 'https://emkc.org/api/v2/piston';
+  const baseUrl = env.PISTON_API_URL || 'https://ruwt-exec.fly.dev/api/v2/piston';
 
   const response = await fetch(`${baseUrl}/execute`, {
     method: 'POST',
