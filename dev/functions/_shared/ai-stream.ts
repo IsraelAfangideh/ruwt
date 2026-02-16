@@ -14,6 +14,24 @@ interface Message {
 
 import { getModelPricing, getTierFallbackChain } from './ai-pricing';
 
+/**
+ * Extract text content from a parsed SSE chunk.
+ * Handles both Cloudflare-native format ({ response: "..." })
+ * and OpenAI-compatible format ({ choices: [{ delta: { content: "..." } }] }).
+ */
+function extractChunkContent(parsed: Record<string, unknown>): string | null {
+  // Cloudflare-native format
+  if (typeof parsed.response === 'string') return parsed.response;
+  // OpenAI-compatible format
+  if (Array.isArray(parsed.choices) && parsed.choices.length > 0) {
+    const delta = (parsed.choices[0] as Record<string, unknown>)?.delta;
+    if (delta && typeof (delta as Record<string, unknown>).content === 'string') {
+      return (delta as Record<string, unknown>).content as string;
+    }
+  }
+  return null;
+}
+
 // Default fallback: full chain from premium down
 const DEFAULT_FALLBACK_CHAIN = [
   '@cf/meta/llama-3.3-70b-instruct-fp8-fast',
@@ -82,10 +100,11 @@ export async function* streamCloudflareAI(
         const data = line.slice(6);
         if (data === '[DONE]') continue;
         try {
-          const parsed = JSON.parse(data) as { response?: string };
-          if (parsed.response) {
-            fullContent += parsed.response;
-            yield parsed.response;
+          const parsed = JSON.parse(data);
+          const content = extractChunkContent(parsed);
+          if (content) {
+            fullContent += content;
+            yield content;
           }
         } catch {
           // skip
@@ -98,10 +117,11 @@ export async function* streamCloudflareAI(
       const data = buffer.slice(6);
       if (data !== '[DONE]') {
         try {
-          const parsed = JSON.parse(data) as { response?: string };
-          if (parsed.response) {
-            fullContent += parsed.response;
-            yield parsed.response;
+          const parsed = JSON.parse(data);
+          const content = extractChunkContent(parsed);
+          if (content) {
+            fullContent += content;
+            yield content;
           }
         } catch { /* skip */ }
       }
@@ -197,10 +217,11 @@ export async function* streamCloudflareAIWithFallback(
           const data = line.slice(6);
           if (data === '[DONE]') continue;
           try {
-            const parsed = JSON.parse(data) as { response?: string };
-            if (parsed.response) {
-              fullContent += parsed.response;
-              yield parsed.response;
+            const parsed = JSON.parse(data);
+            const content = extractChunkContent(parsed);
+            if (content) {
+              fullContent += content;
+              yield content;
             }
           } catch {
             // skip
@@ -213,10 +234,11 @@ export async function* streamCloudflareAIWithFallback(
         const data = buffer.slice(6);
         if (data !== '[DONE]') {
           try {
-            const parsed = JSON.parse(data) as { response?: string };
-            if (parsed.response) {
-              fullContent += parsed.response;
-              yield parsed.response;
+            const parsed = JSON.parse(data);
+            const content = extractChunkContent(parsed);
+            if (content) {
+              fullContent += content;
+              yield content;
             }
           } catch { /* skip */ }
         }
