@@ -63,21 +63,21 @@ const MODEL_PRICING: Record<string, ModelPricing> = {
     displayName: 'Mistral 7B',
     description: 'Fast budget option with good instruction following',
   },
-  '@cf/google/gemma-7b-it': {
-    input: 0.005,
-    output: 0.005,
+  '@cf/ibm-granite/granite-4.0-h-micro': {
+    input: 0.017,
+    output: 0.112,
     provider: 'cloudflare',
     tier: 'micro',
-    displayName: 'Gemma 7B',
+    displayName: 'Granite Micro',
     description: 'Ultra-cheap, simple tasks only',
   },
-  '@hf/thebloke/deepseek-coder-6.7b-instruct-awq': {
-    input: 0.005,
-    output: 0.005,
+  '@cf/meta/llama-3.2-1b-instruct': {
+    input: 0.027,
+    output: 0.201,
     provider: 'cloudflare',
     tier: 'micro',
-    displayName: 'DeepSeek Coder 6.7B',
-    description: 'Code-specialized, ultra-cheap',
+    displayName: 'Llama 3.2 1B',
+    description: 'Tiny and fast, basic tasks',
   },
 };
 

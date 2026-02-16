@@ -21,7 +21,8 @@ const DEFAULT_FALLBACK_CHAIN = [
   '@cf/qwen/qwen1.5-14b-chat-awq',
   '@cf/meta/llama-3.1-8b-instruct',
   '@cf/mistral/mistral-7b-instruct-v0.2',
-  '@cf/google/gemma-7b-it',
+  '@cf/ibm-granite/granite-4.0-h-micro',
+  '@cf/meta/llama-3.2-1b-instruct',
 ];
 
 export async function* streamCloudflareAI(
@@ -159,11 +160,13 @@ export async function* streamCloudflareAIWithFallback(
 
     if (!response.ok) {
       const err = await response.text();
-      const isModelNotFound =
+      const isModelUnavailable =
         response.status === 404 ||
+        response.status === 400 ||
         err.toLowerCase().includes('model not found') ||
-        err.toLowerCase().includes('not found');
-      if (isModelNotFound && modelId !== models[models.length - 1]) {
+        err.toLowerCase().includes('not found') ||
+        err.toLowerCase().includes('no route');
+      if (isModelUnavailable && modelId !== models[models.length - 1]) {
         lastError = `${modelId}: ${response.status} - ${err}`;
         continue; // try next model
       }
