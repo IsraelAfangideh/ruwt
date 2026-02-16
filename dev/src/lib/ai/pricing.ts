@@ -1,9 +1,9 @@
 /**
  * Client-side model pricing for display. Mirrors server ai-pricing.ts.
- * 3-tier game pricing: premium ($$$), mid ($$), budget ($).
+ * 5-tier game pricing: reasoning ($$$$$), premium ($$$), mid ($$), budget ($), micro (¢).
  */
 
-export type ModelTier = 'premium' | 'mid' | 'budget';
+export type ModelTier = 'reasoning' | 'premium' | 'mid' | 'budget' | 'micro';
 
 export interface ModelInfo {
   id: string;
@@ -12,9 +12,19 @@ export interface ModelInfo {
   input: number;
   output: number;
   costIndicator: string;
+  description: string;
 }
 
 const MODELS: ModelInfo[] = [
+  {
+    id: '@cf/deepseek-ai/deepseek-r1-distill-qwen-32b',
+    displayName: 'DeepSeek R1 32B',
+    tier: 'reasoning',
+    input: 0.50,
+    output: 4.88,
+    costIndicator: '$$$$$',
+    description: 'Reasoning-optimized, best for complex logic',
+  },
   {
     id: '@cf/meta/llama-3.3-70b-instruct-fp8-fast',
     displayName: 'Llama 3.3 70B',
@@ -22,6 +32,7 @@ const MODELS: ModelInfo[] = [
     input: 0.50,
     output: 0.60,
     costIndicator: '$$$',
+    description: 'Best overall quality, fast inference',
   },
   {
     id: '@cf/meta/llama-3.1-70b-instruct',
@@ -30,6 +41,16 @@ const MODELS: ModelInfo[] = [
     input: 0.10,
     output: 0.12,
     costIndicator: '$$',
+    description: 'Strong mid-range, good balance',
+  },
+  {
+    id: '@cf/qwen/qwen1.5-14b-chat-awq',
+    displayName: 'Qwen 1.5 14B',
+    tier: 'mid',
+    input: 0.08,
+    output: 0.12,
+    costIndicator: '$$',
+    description: 'Fast mid-range, good at code',
   },
   {
     id: '@cf/meta/llama-3.1-8b-instruct',
@@ -38,6 +59,7 @@ const MODELS: ModelInfo[] = [
     input: 0.01,
     output: 0.01,
     costIndicator: '$',
+    description: 'Cheap and capable for straightforward tasks',
   },
   {
     id: '@cf/mistral/mistral-7b-instruct-v0.2',
@@ -46,15 +68,41 @@ const MODELS: ModelInfo[] = [
     input: 0.01,
     output: 0.01,
     costIndicator: '$',
+    description: 'Fast budget option',
+  },
+  {
+    id: '@cf/google/gemma-7b-it',
+    displayName: 'Gemma 7B',
+    tier: 'micro',
+    input: 0.005,
+    output: 0.005,
+    costIndicator: '\u00A2',
+    description: 'Ultra-cheap, simple tasks only',
+  },
+  {
+    id: '@hf/thebloke/deepseek-coder-6.7b-instruct-awq',
+    displayName: 'DeepSeek Coder 6.7B',
+    tier: 'micro',
+    input: 0.005,
+    output: 0.005,
+    costIndicator: '\u00A2',
+    description: 'Code-specialized, ultra-cheap',
   },
 ];
 
-/** One model per tier for the tier selector (the primary model for each tier). */
+/** One model per tier for the tier selector (the primary/default model for each tier). */
 export const TIER_MODELS: Record<ModelTier, ModelInfo> = {
-  premium: MODELS[0],
-  mid: MODELS[1],
-  budget: MODELS[2],
+  reasoning: MODELS[0],
+  premium: MODELS[1],
+  mid: MODELS[2],
+  budget: MODELS[4],
+  micro: MODELS[6],
 };
+
+/** All models available for a given tier. */
+export function getModelsForTier(tier: ModelTier): ModelInfo[] {
+  return MODELS.filter((m) => m.tier === tier);
+}
 
 export function getAllModels(): ModelInfo[] {
   return MODELS;
@@ -67,4 +115,24 @@ export function getModelById(id: string): ModelInfo | undefined {
 export function formatCostFromHundredths(hundredths: number): string {
   const dollars = hundredths / 10000;
   return dollars < 0.01 ? `$${dollars.toFixed(4)}` : `$${dollars.toFixed(2)}`;
+}
+
+export function tierColor(tier: ModelTier): string {
+  switch (tier) {
+    case 'reasoning': return '#a78bfa'; // purple
+    case 'premium': return '#da8ee7';   // pink
+    case 'mid': return '#c9a962';       // gold
+    case 'budget': return '#3fb950';    // green
+    case 'micro': return '#8b949e';     // gray
+  }
+}
+
+export function tierLabel(tier: ModelTier): string {
+  switch (tier) {
+    case 'reasoning': return 'Reasoning';
+    case 'premium': return 'Premium';
+    case 'mid': return 'Mid';
+    case 'budget': return 'Budget';
+    case 'micro': return 'Micro';
+  }
 }

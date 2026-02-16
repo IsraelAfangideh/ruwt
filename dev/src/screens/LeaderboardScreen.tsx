@@ -1,11 +1,14 @@
 import { useEffect, useState } from 'react';
-import { View, Text, ActivityIndicator, ScrollView, StyleSheet } from 'react-native';
+import { View, Text, ActivityIndicator, ScrollView, StyleSheet, Pressable } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { createClient } from '@/lib/supabase/client';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { Card } from '@/components/ui/Card';
 import { Avatar } from '@/components/ui/Avatar';
 import { Button } from '@/components/ui/Button';
+import { PlatformStats } from '@/components/PlatformStats';
+import { ActivityFeed } from '@/components/ActivityFeed';
+import { ReplayViewer } from '@/components/ReplayViewer';
 import { useColors } from '@/theme';
 import { spacing, fontSizes, fontFamily } from '@/theme/tokens';
 
@@ -18,6 +21,7 @@ type GlobalEntry = {
 type ChallengeEntry = {
   rank: number;
   user: { id: string; name: string; avatarUrl?: string | null };
+  attemptId: string;
   cost: number;
   tokens: number;
   submittedAt: string | null;
@@ -30,18 +34,32 @@ type ChallengeInfo = {
 };
 
 type Tab = 'global' | 'challenge';
+type Period = 'all' | 'month' | 'week';
 
 export function LeaderboardScreen() {
   const navigation = useNavigation();
   const [user, setUser] = useState<any>(null);
   const [tab, setTab] = useState<Tab>('global');
+  const [period, setPeriod] = useState<Period>('all');
   const [globalEntries, setGlobalEntries] = useState<GlobalEntry[]>([]);
   const [challengeEntries, setChallengeEntries] = useState<ChallengeEntry[]>([]);
   const [challenges, setChallenges] = useState<ChallengeInfo[]>([]);
   const [selectedChallenge, setSelectedChallenge] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [challengeLoading, setChallengeLoading] = useState(false);
+  const [replayAttemptId, setReplayAttemptId] = useState<string | null>(null);
   const c = useColors();
+
+  const fetchGlobal = async (p: Period) => {
+    const base = typeof window !== 'undefined' ? window.location.origin : '';
+    try {
+      const r = await fetch(`${base}/api/leaderboard?limit=50&period=${p}`);
+      if (r.ok) {
+        const data = await r.json() as { entries: GlobalEntry[] };
+        setGlobalEntries(data.entries ?? []);
+      }
+    } catch {}
+  };
 
   useEffect(() => {
     const init = async () => {
@@ -54,14 +72,10 @@ export function LeaderboardScreen() {
       setUser(u);
       const base = typeof window !== 'undefined' ? window.location.origin : '';
       try {
-        const [lbRes, chRes] = await Promise.all([
-          fetch(`${base}/api/leaderboard?limit=50`),
+        const [, chRes] = await Promise.all([
+          fetchGlobal('all'),
           fetch(`${base}/api/challenges`),
         ]);
-        if (lbRes.ok) {
-          const data = await lbRes.json() as { entries: GlobalEntry[] };
-          setGlobalEntries(data.entries ?? []);
-        }
         if (chRes.ok) {
           const chData = await chRes.json() as ChallengeInfo[];
           setChallenges(chData);
@@ -72,12 +86,21 @@ export function LeaderboardScreen() {
     init();
   }, [navigation]);
 
-  const fetchChallengeLeaderboard = async (challengeId: string) => {
+  const handlePeriodChange = (p: Period) => {
+    setPeriod(p);
+    if (tab === 'global') {
+      fetchGlobal(p);
+    } else if (selectedChallenge) {
+      fetchChallengeLeaderboard(selectedChallenge, p);
+    }
+  };
+
+  const fetchChallengeLeaderboard = async (challengeId: string, p?: Period) => {
     if (!challengeId) { setChallengeEntries([]); return; }
     setChallengeLoading(true);
     try {
       const base = typeof window !== 'undefined' ? window.location.origin : '';
-      const r = await fetch(`${base}/api/leaderboard?challengeId=${challengeId}&limit=50`);
+      const r = await fetch(`${base}/api/leaderboard?challengeId=${challengeId}&limit=50&period=${p || period}`);
       if (r.ok) {
         const data = await r.json() as { entries: ChallengeEntry[] };
         setChallengeEntries(data.entries ?? []);
@@ -110,7 +133,27 @@ export function LeaderboardScreen() {
     <DashboardLayout user={user}>
       <Text style={[styles.title, { color: c.text }]}>Leaderboard</Text>
 
-      {/* Tab bar */}
+      {/* Platform stats */}
+      <View style={styles.statsWrap}>
+        <PlatformStats />
+      </View>
+
+      {/* Period tabs */}
+      <View style={[styles.periodBar, { borderBottomColor: c.border }]}>
+        {([['all', 'All Time'], ['month', 'This Month'], ['week', 'This Week']] as const).map(([key, label]) => (
+          <Pressable
+            key={key}
+            onPress={() => handlePeriodChange(key)}
+            style={[styles.periodTab, { borderBottomColor: period === key ? c.accent : 'transparent' }]}
+          >
+            <Text style={{ fontSize: fontSizes.xs, fontWeight: period === key ? '700' : '500', color: period === key ? c.text : c.textMuted }}>
+              {label}
+            </Text>
+          </Pressable>
+        ))}
+      </View>
+
+      {/* Main tab bar */}
       <View style={[styles.tabBar, { borderBottomColor: c.border }]}>
         <Button
           variant={tab === 'global' ? 'default' : 'ghost'}
@@ -180,6 +223,11 @@ export function LeaderboardScreen() {
                 </View>
               ))}
             </View>
+
+            {/* Activity feed below */}
+            <View style={styles.activitySection}>
+              <ActivityFeed limit={10} />
+            </View>
           </ScrollView>
         )
       ) : (
@@ -231,11 +279,22 @@ export function LeaderboardScreen() {
                   </View>
                   <Text style={[styles.stat, { color: c.accent }]}>{formatCost(e.cost)}</Text>
                   <Text style={[styles.stat, { color: c.textMuted }]}>{e.tokens.toLocaleString()} tok</Text>
+                  <Pressable
+                    onPress={() => setReplayAttemptId(e.attemptId)}
+                    style={[styles.replayBtn, { borderColor: c.border }]}
+                  >
+                    <Text style={{ fontSize: fontSizes.xs, color: c.textMuted }}>Replay</Text>
+                  </Pressable>
                 </View>
               ))}
             </View>
           )}
         </ScrollView>
+      )}
+
+      {/* Replay modal */}
+      {replayAttemptId && (
+        <ReplayViewer attemptId={replayAttemptId} onClose={() => setReplayAttemptId(null)} />
       )}
     </DashboardLayout>
   );
@@ -244,6 +303,9 @@ export function LeaderboardScreen() {
 const styles = StyleSheet.create({
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: spacing.lg },
   title: { fontSize: fontSizes['3xl'], fontWeight: '700', marginBottom: spacing.md, fontFamily: fontFamily.body },
+  statsWrap: { marginBottom: spacing.lg },
+  periodBar: { flexDirection: 'row', gap: spacing.md, marginBottom: spacing.sm, paddingBottom: spacing.sm, borderBottomWidth: 1 },
+  periodTab: { paddingBottom: spacing.xs, borderBottomWidth: 2 },
   tabBar: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.lg, paddingBottom: spacing.sm, borderBottomWidth: 1 },
   empty: { padding: spacing.lg },
   emptyText: { textAlign: 'center' },
@@ -277,4 +339,11 @@ const styles = StyleSheet.create({
   nameCell: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   name: { flex: 1, fontSize: fontSizes.sm },
   stat: { width: 80, fontSize: fontSizes.xs, textAlign: 'right' },
+  replayBtn: {
+    borderWidth: 1,
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  activitySection: { marginTop: spacing.xl, paddingTop: spacing.lg },
 });

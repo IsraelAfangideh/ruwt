@@ -38,6 +38,7 @@ export interface StreamCallbacks {
   onDone: (fullContent: string, meta?: MessageMeta) => void;
   onError: (error: string) => void;
   onConstraint?: (violation: string, message: string) => void;
+  userMessage?: string;
 }
 
 export function useAIChat(options: UseAIChatOptions) {
@@ -46,7 +47,7 @@ export function useAIChat(options: UseAIChatOptions) {
 
   const streamChat = useCallback(
     async (messages: ChatMessage[], callbacks: StreamCallbacks) => {
-      const { onChunk, onDone, onError, onConstraint } = callbacks;
+      const { onChunk, onDone, onError, onConstraint, userMessage } = callbacks;
 
       // Abort any existing stream
       abortRef.current?.abort();
@@ -57,7 +58,7 @@ export function useAIChat(options: UseAIChatOptions) {
         const res = await fetch('/api/ai/chat', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ model, messages, attemptId, maxTokens }),
+          body: JSON.stringify({ model, messages, attemptId, maxTokens, userMessage }),
           signal: controller.signal,
         });
 

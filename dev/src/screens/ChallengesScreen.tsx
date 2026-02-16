@@ -13,6 +13,7 @@ const CATEGORIES = [
   { key: 'model_selection', label: 'Model Selection' },
   { key: 'prompt_efficiency', label: 'Prompt Efficiency' },
   { key: 'iterative_debugging', label: 'Debugging' },
+  { key: 'multi_model_strategy', label: 'Multi-Model' },
 ] as const;
 
 export function ChallengesScreen() {

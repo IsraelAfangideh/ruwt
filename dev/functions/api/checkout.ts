@@ -12,9 +12,9 @@ interface CreditPackage {
 }
 
 const CREDIT_PACKAGES: CreditPackage[] = [
-  { id: 'credits-500', credits: 500, priceInCents: 500, label: '500 Credits' },
-  { id: 'credits-2000', credits: 2000, priceInCents: 1500, label: '2,000 Credits' },
-  { id: 'credits-5000', credits: 5000, priceInCents: 3000, label: '5,000 Credits' },
+  { id: 'credits-5000', credits: 5000, priceInCents: 499, label: '5,000 Credits' },
+  { id: 'credits-25000', credits: 25000, priceInCents: 1499, label: '25,000 Credits' },
+  { id: 'credits-100000', credits: 100000, priceInCents: 3999, label: '100,000 Credits' },
 ];
 
 export async function onRequestPost(context: {

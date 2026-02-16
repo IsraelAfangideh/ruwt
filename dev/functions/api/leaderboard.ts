@@ -1,10 +1,24 @@
 /**
  * GET /api/leaderboard
  * Global or challenge-specific leaderboard from D1.
+ * Supports period filter: all (default) | month | week.
  */
-import { eq, and, desc, sql } from 'drizzle-orm';
+import { eq, and, desc, sql, gte } from 'drizzle-orm';
 import { getDb } from '../_shared/db';
 import { attempts, profiles } from '../../drizzle/schema.d1';
+
+function getPeriodThreshold(period: string): string | null {
+  const now = new Date();
+  if (period === 'week') {
+    now.setDate(now.getDate() - 7);
+    return now.toISOString();
+  }
+  if (period === 'month') {
+    now.setMonth(now.getMonth() - 1);
+    return now.toISOString();
+  }
+  return null;
+}
 
 export async function onRequestGet(context: { request: Request; env: Env }) {
   try {
@@ -12,9 +26,19 @@ export async function onRequestGet(context: { request: Request; env: Env }) {
     const db = getDb(env);
     const url = new URL(context.request.url);
     const challengeId = url.searchParams.get('challengeId');
+    const period = url.searchParams.get('period') || 'all';
     const limit = Math.min(parseInt(url.searchParams.get('limit') || '50', 10), 100);
+    const threshold = getPeriodThreshold(period);
 
     if (challengeId) {
+      const conditions = [
+        eq(attempts.challengeId, challengeId),
+        eq(attempts.status, 'passed'),
+      ];
+      if (threshold) {
+        conditions.push(gte(attempts.submittedAt, threshold));
+      }
+
       const results = await db
         .select({
           attemptId: attempts.id,
@@ -29,18 +53,14 @@ export async function onRequestGet(context: { request: Request; env: Env }) {
         })
         .from(attempts)
         .innerJoin(profiles, eq(attempts.userId, profiles.id))
-        .where(
-          and(
-            eq(attempts.challengeId, challengeId),
-            eq(attempts.status, 'passed')
-          )
-        )
+        .where(and(...conditions))
         .orderBy(attempts.totalCost)
         .limit(limit);
 
       return Response.json({
         type: 'challenge',
         challengeId,
+        period,
         entries: results.map((r, i) => ({
           rank: i + 1,
           user: {
@@ -56,29 +76,35 @@ export async function onRequestGet(context: { request: Request; env: Env }) {
       });
     }
 
+    // Global leaderboard with optional period filter
+    const periodFilter = threshold
+      ? sql`AND ${attempts.submittedAt} >= ${threshold}`
+      : sql``;
+
     const results = await db
       .select({
         userId: profiles.id,
         userName: profiles.name,
         userEmail: profiles.email,
         avatarUrl: profiles.avatarUrl,
-        solvedCount: sql<number>`COUNT(DISTINCT CASE WHEN ${attempts.status} = 'passed' THEN ${attempts.challengeId} END)`,
-        totalAttempts: sql<number>`COUNT(${attempts.id})`,
-        avgCost: sql<number>`AVG(CASE WHEN ${attempts.status} = 'passed' THEN ${attempts.totalCost} END)`,
-        totalCost: sql<number>`SUM(${attempts.totalCost})`,
+        solvedCount: sql<number>`COUNT(DISTINCT CASE WHEN ${attempts.status} = 'passed' ${periodFilter} THEN ${attempts.challengeId} END)`,
+        totalAttempts: sql<number>`COUNT(CASE WHEN 1=1 ${periodFilter} THEN ${attempts.id} END)`,
+        avgCost: sql<number>`AVG(CASE WHEN ${attempts.status} = 'passed' ${periodFilter} THEN ${attempts.totalCost} END)`,
+        totalCost: sql<number>`SUM(CASE WHEN 1=1 ${periodFilter} THEN ${attempts.totalCost} ELSE 0 END)`,
       })
       .from(profiles)
       .leftJoin(attempts, eq(profiles.id, attempts.userId))
       .groupBy(profiles.id, profiles.name, profiles.email, profiles.avatarUrl)
-      .having(sql`COUNT(DISTINCT CASE WHEN ${attempts.status} = 'passed' THEN ${attempts.challengeId} END) > 0`)
+      .having(sql`COUNT(DISTINCT CASE WHEN ${attempts.status} = 'passed' ${periodFilter} THEN ${attempts.challengeId} END) > 0`)
       .orderBy(
-        desc(sql`COUNT(DISTINCT CASE WHEN ${attempts.status} = 'passed' THEN ${attempts.challengeId} END)`),
-        sql`AVG(CASE WHEN ${attempts.status} = 'passed' THEN ${attempts.totalCost} END)`
+        desc(sql`COUNT(DISTINCT CASE WHEN ${attempts.status} = 'passed' ${periodFilter} THEN ${attempts.challengeId} END)`),
+        sql`AVG(CASE WHEN ${attempts.status} = 'passed' ${periodFilter} THEN ${attempts.totalCost} END)`
       )
       .limit(limit);
 
     return Response.json({
       type: 'global',
+      period,
       entries: results.map((r, index) => ({
         rank: index + 1,
         user: {

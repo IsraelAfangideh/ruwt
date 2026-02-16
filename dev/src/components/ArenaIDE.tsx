@@ -9,7 +9,7 @@ import { VirtualFileSystem } from './arena/VirtualFileSystem';
 import { useCodeSync } from './arena/useCodeSync';
 import { useAIChat, type MessageMeta } from './arena/useAIChat';
 import { TerminalPanel, type TerminalPanelHandle } from './arena/TerminalPanel';
-import { TIER_MODELS, getModelById, type ModelTier } from '@/lib/ai/pricing';
+import { TIER_MODELS, getModelById, getModelsForTier, tierColor, tierLabel, type ModelTier } from '@/lib/ai/pricing';
 
 const MonacoEditor = React.lazy(() => import('@monaco-editor/react'));
 
@@ -544,6 +544,7 @@ export function ArenaIDE({
   const [isLoadingChat, setIsLoadingChat] = useState(false);
   const [model, setModel] = useState('@cf/meta/llama-3.1-8b-instruct');
   const [selectedTier, setSelectedTier] = useState<ModelTier>('budget');
+  const [tierDropdownOpen, setTierDropdownOpen] = useState(false);
   const [isExpired, setIsExpired] = useState(false);
   const [showExpiryOverlay, setShowExpiryOverlay] = useState(false);
   const [activeTab, setActiveTab] = useState<'description' | 'chat'>('description');
@@ -700,6 +701,7 @@ Rules:
     ];
 
     await streamChat(chatMessages, {
+      userMessage: text,
       onChunk: (fullContent) => {
         setStreamingContent(fullContent);
       },
@@ -816,8 +818,8 @@ Rules:
                   <div style={s.chatEmpty}>
                     <span style={{ color: arena.textSubtle, fontSize: 13, textAlign: 'center', lineHeight: '1.6', padding: '0 12px' }}>
                       Choose a model tier below, then ask for help.{'\n'}
-                      Budget ($) is cheap but less capable.{'\n'}
-                      Premium ($$$) is powerful but costs more.
+                      Micro/Budget = cheap, Mid = balanced,{'\n'}
+                      Premium/Reasoning = powerful but costly.
                     </span>
                   </div>
                 )}
@@ -839,7 +841,7 @@ Rules:
                         </span>
                         {msg.role === 'assistant' && modelInfo && (
                           <span style={s.msgTierBadge}>
-                            <span style={{ ...s.tierDot, background: msg.meta!.cost > 0 ? (modelInfo.tier === 'premium' ? '#da8ee7' : modelInfo.tier === 'mid' ? arena.accent : arena.success) : arena.textSubtle }} />
+                            <span style={{ ...s.tierDot, background: msg.meta!.cost > 0 ? tierColor(modelInfo.tier) : arena.textSubtle }} />
                             {modelInfo.displayName}
                           </span>
                         )}
@@ -869,31 +871,62 @@ Rules:
                 )}
               </div>
 
-              {/* Model selector */}
+              {/* Model selector — 5 tiers */}
               <div style={s.tierBar}>
-                {(['budget', 'mid', 'premium'] as ModelTier[]).map((tier) => {
+                {(['micro', 'budget', 'mid', 'premium', 'reasoning'] as ModelTier[]).map((tier) => {
                   const m = TIER_MODELS[tier];
                   const isActive = selectedTier === tier;
-                  const tierColor = tier === 'premium' ? '#da8ee7' : tier === 'mid' ? arena.accent : arena.success;
+                  const tc = tierColor(tier);
+                  const modelsInTier = getModelsForTier(tier);
+                  const hasMultiple = modelsInTier.length > 1;
                   return (
-                    <button
-                      key={tier}
-                      style={{
-                        ...s.tierPill,
-                        background: isActive ? `${tierColor}20` : 'transparent',
-                        borderColor: isActive ? tierColor : arena.border,
-                        color: isActive ? tierColor : arena.textMuted,
-                        opacity: isLoadingChat ? 0.5 : 1,
-                      }}
-                      disabled={isLoadingChat}
-                      onClick={() => {
-                        setSelectedTier(tier);
-                        setModel(m.id);
-                      }}
-                    >
-                      <span style={{ fontWeight: 600 }}>{tier === 'budget' ? '$' : tier === 'mid' ? '$$' : '$$$'}</span>
-                      {' '}{m.displayName}
-                    </button>
+                    <div key={tier} style={{ position: 'relative', flex: 1 }}>
+                      <button
+                        style={{
+                          ...s.tierPill,
+                          width: '100%',
+                          background: isActive ? `${tc}20` : 'transparent',
+                          borderColor: isActive ? tc : arena.border,
+                          color: isActive ? tc : arena.textMuted,
+                          opacity: isLoadingChat ? 0.5 : 1,
+                        }}
+                        disabled={isLoadingChat}
+                        onClick={() => {
+                          if (isActive && hasMultiple) {
+                            setTierDropdownOpen(!tierDropdownOpen);
+                          } else {
+                            setSelectedTier(tier);
+                            setModel(m.id);
+                            setTierDropdownOpen(false);
+                          }
+                        }}
+                      >
+                        <span style={{ fontWeight: 600 }}>{m.costIndicator}</span>
+                        {' '}{tierLabel(tier)}
+                        {hasMultiple && isActive && <span style={{ fontSize: 8, marginLeft: 2 }}>{'\u25BC'}</span>}
+                      </button>
+                      {isActive && tierDropdownOpen && hasMultiple && (
+                        <div style={s.tierDropdown}>
+                          {modelsInTier.map((mi) => (
+                            <button
+                              key={mi.id}
+                              style={{
+                                ...s.tierDropdownItem,
+                                background: model === mi.id ? `${tc}15` : 'transparent',
+                                color: model === mi.id ? tc : arena.text,
+                              }}
+                              onClick={() => {
+                                setModel(mi.id);
+                                setTierDropdownOpen(false);
+                              }}
+                            >
+                              <span style={{ fontWeight: 500 }}>{mi.displayName}</span>
+                              <span style={{ fontSize: 10, color: arena.textSubtle }}>{mi.description}</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   );
                 })}
               </div>
@@ -1332,6 +1365,34 @@ const s: Record<string, React.CSSProperties> = {
     fontFamily: 'Menlo, Monaco, "Courier New", monospace',
     textAlign: 'center' as const,
     transition: 'all 0.15s',
+  },
+
+  // Tier dropdown
+  tierDropdown: {
+    position: 'absolute' as const,
+    bottom: '100%',
+    left: 0,
+    right: 0,
+    background: arena.surface,
+    border: `1px solid ${arena.border}`,
+    borderRadius: 6,
+    marginBottom: 4,
+    zIndex: 30,
+    overflow: 'hidden',
+    boxShadow: '0 -4px 12px rgba(0,0,0,0.3)',
+  },
+  tierDropdownItem: {
+    display: 'flex',
+    flexDirection: 'column' as const,
+    gap: 2,
+    padding: '6px 10px',
+    fontSize: 11,
+    border: 'none',
+    borderBottom: `1px solid ${arena.border}`,
+    cursor: 'pointer',
+    fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+    textAlign: 'left' as const,
+    width: '100%',
   },
 
   // Per-message cost

@@ -3,6 +3,8 @@ import { useNavigation } from '@react-navigation/native';
 import { Button } from '@/components/ui/Button';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
+import { PlatformStats } from '@/components/PlatformStats';
+import { FeaturedReplay } from '@/components/FeaturedReplay';
 import { useColors } from '@/theme';
 import { spacing, fontSizes, fontFamily } from '@/theme/tokens';
 
@@ -33,6 +35,11 @@ export function LandingScreen() {
           <Button size="lg" onPress={() => navigation.navigate('Register' as never)}>Start Free Practice</Button>
           <Button size="lg" variant="outline" onPress={() => navigation.navigate('Register' as never)}>For Hiring Managers</Button>
         </View>
+      </View>
+
+      {/* Live platform stats */}
+      <View style={styles.section}>
+        <PlatformStats />
       </View>
 
       {/* Try a Challenge CTA */}
@@ -80,12 +87,21 @@ export function LandingScreen() {
         </View>
       </View>
 
+      {/* Featured replay */}
+      <View style={styles.section}>
+        <Text style={[styles.sectionTitle, { color: c.text }]}>See It In Action</Text>
+        <Text style={[styles.sectionSub, { color: c.textMuted }]}>
+          How a top solver completed a challenge for under $0.01.
+        </Text>
+        <FeaturedReplay />
+      </View>
+
       <View style={[styles.section, styles.sectionAlt, { backgroundColor: c.muted + '40' }]}>
         <Text style={[styles.sectionTitle, { color: c.text }]}>How It Works</Text>
         <View style={styles.cards}>
           {[
-            { step: '1', title: 'Pick a Challenge', desc: 'Browse 30 challenges across model selection, prompt efficiency, and debugging. Choose timed or untimed.' },
-            { step: '2', title: 'Solve with AI', desc: 'Use the Arena IDE with real AI models. Switch between Budget ($), Mid ($$), and Premium ($$$) tiers strategically.' },
+            { step: '1', title: 'Pick a Challenge', desc: 'Browse 50 challenges across model selection, prompt efficiency, debugging, and multi-model strategy. Choose timed or untimed.' },
+            { step: '2', title: 'Solve with AI', desc: 'Use the Arena IDE with 8 real AI models across 5 tiers. Switch between Micro, Budget, Mid, Premium, and Reasoning strategically.' },
             { step: '3', title: 'Climb the Leaderboard', desc: 'Submit your solution. You\'re ranked by cost efficiency — solve it correctly with the least spend.' },
           ].map((item) => (
             <Card key={item.step} style={styles.card}>
@@ -103,11 +119,14 @@ export function LandingScreen() {
 
       <View style={styles.section}>
         <Text style={[styles.sectionTitle, { color: c.text }]}>For Hiring Managers</Text>
+        <Text style={[styles.sectionSub, { color: c.textMuted }]}>
+          The only assessment that measures how efficiently candidates use AI tools. See real data — not self-reported skills.
+        </Text>
         <View style={styles.cards}>
           {[
-            { step: '1', title: 'Create an Assessment', desc: 'Pick from our curated challenge library. Set a time limit. Choose which AI skills to test.' },
-            { step: '2', title: 'Invite Candidates', desc: 'Send a unique assessment link. Candidates work through challenges with real AI models.' },
-            { step: '3', title: 'Review Results', desc: 'See exactly how each candidate used AI — which models, how many tokens, total cost, and pass rate.' },
+            { step: '1', title: 'Create an Assessment', desc: 'Choose from 4 pre-built templates or pick from 50 challenges. Set time limits. Test the AI skills you care about.' },
+            { step: '2', title: 'Invite Candidates', desc: 'Send a unique assessment link. Candidates work through challenges with real AI models — no simulations.' },
+            { step: '3', title: 'Review Results', desc: 'Sort by cost, tokens, or time. Expand rows to see per-challenge model usage. Export to CSV for your ATS.' },
           ].map((item) => (
             <Card key={item.step} style={styles.card}>
               <CardHeader>
@@ -122,10 +141,30 @@ export function LandingScreen() {
         </View>
       </View>
 
+      {/* Trust signals */}
+      <View style={[styles.section, styles.sectionAlt, { backgroundColor: c.muted + '20' }]}>
+        <Text style={[styles.sectionTitle, { color: c.text }]}>Built on Trust</Text>
+        <View style={styles.trustGrid}>
+          {[
+            { title: 'Powered by Cloudflare', desc: 'Enterprise-grade infrastructure. Edge-deployed globally for low latency.' },
+            { title: 'Open Source Models', desc: 'No vendor lock-in. All models are open-weight and community-audited.' },
+            { title: 'Your Data Stays Private', desc: 'Code runs in sandboxed execution. We never store your solutions beyond the session.' },
+            { title: 'Real Leaderboard', desc: 'Rankings are based on actual AI costs — no gamification tricks or vanity metrics.' },
+          ].map((item) => (
+            <Card key={item.title} style={styles.trustCard}>
+              <CardHeader>
+                <CardTitle>{item.title}</CardTitle>
+                <CardDescription>{item.desc}</CardDescription>
+              </CardHeader>
+            </Card>
+          ))}
+        </View>
+      </View>
+
       <View style={[styles.section, styles.sectionAlt, { backgroundColor: c.muted + '40' }]}>
         <Text style={[styles.sectionTitle, { color: c.text }]}>Pricing</Text>
         <Text style={[styles.sectionSub, { color: c.textMuted }]}>
-          Free for developers. Simple per-assessment pricing for teams.
+          Free for developers. Simple pricing for hiring teams.
         </Text>
         <View style={styles.tiers}>
           <Card style={styles.tierCard}>
@@ -136,19 +175,31 @@ export function LandingScreen() {
             </CardHeader>
             <CardContent>
               <Text style={[styles.tierBody, { color: c.textMuted }]}>
-                50,000 free AI credits on signup. Practice challenges across all categories. Build your efficiency score.
+                5,000 free AI credits on signup. All 50 challenges across every category. Public leaderboard ranking.
+              </Text>
+            </CardContent>
+          </Card>
+          <Card style={styles.tierCard}>
+            <CardHeader>
+              <Badge variant="outline">Free Trial</Badge>
+              <CardTitle>Hiring — Free Trial</CardTitle>
+              <CardDescription>$0 / month</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Text style={[styles.tierBody, { color: c.textMuted }]}>
+                1 assessment, 3 challenges, 5 candidates. Full results dashboard with model usage analytics.
               </Text>
             </CardContent>
           </Card>
           <Card style={[styles.tierCard, { borderColor: c.accent, borderWidth: 2 }]}>
             <CardHeader>
-              <Badge variant="default">Team</Badge>
-              <CardTitle>Assessment Packs</CardTitle>
-              <CardDescription>From $99 / 10 assessments</CardDescription>
+              <Badge variant="default">Pro</Badge>
+              <CardTitle>Hiring — Pro</CardTitle>
+              <CardDescription>$49 / month</CardDescription>
             </CardHeader>
             <CardContent>
               <Text style={[styles.tierBody, { color: c.textMuted }]}>
-                Create custom assessments. Invite unlimited candidates. Full results dashboard with candidate comparison.
+                Unlimited assessments. All 50 challenges. Up to 50 candidates. Per-candidate AI analytics, comparison, and CSV export.
               </Text>
             </CardContent>
           </Card>
@@ -160,7 +211,7 @@ export function LandingScreen() {
             </CardHeader>
             <CardContent>
               <Text style={[styles.tierBody, { color: c.textMuted }]}>
-                Custom challenge libraries. SSO integration. Dedicated support. Volume pricing.
+                Custom challenge libraries. API access. SSO integration. Dedicated support. Volume pricing.
               </Text>
             </CardContent>
           </Card>
@@ -169,9 +220,21 @@ export function LandingScreen() {
 
       <View style={styles.cta}>
         <Text style={[styles.ctaTitle, { color: c.text }]}>Ready to prove your AI skills?</Text>
-        <Text style={[styles.ctaSub, { color: c.textMuted }]}>50,000 free credits. 30 challenges. No credit card required.</Text>
+        <Text style={[styles.ctaSub, { color: c.textMuted }]}>5,000 free credits. 50 challenges. 8 AI models. No credit card required.</Text>
         <View style={styles.heroButtons}>
           <Button size="lg" onPress={() => navigation.navigate('Register' as never)}>Get Started Free</Button>
+          <Button size="lg" variant="outline" onPress={() => navigation.navigate('Register' as never)}>Book a Demo</Button>
+        </View>
+      </View>
+
+      {/* Hiring CTA */}
+      <View style={[styles.section, styles.sectionAlt, { backgroundColor: c.accent + '08' }]}>
+        <Text style={[styles.sectionTitle, { color: c.text }]}>Stop Guessing. Start Measuring.</Text>
+        <Text style={[styles.sectionSub, { color: c.textMuted }]}>
+          Traditional coding tests don't measure AI fluency. Ruwt shows you exactly how candidates use AI — which models they pick, how they prompt, and what they spend. Real data for real hiring decisions.
+        </Text>
+        <View style={styles.heroButtons}>
+          <Button size="lg" onPress={() => navigation.navigate('Register' as never)}>Start Free Assessment</Button>
           <Button size="lg" variant="outline" onPress={() => navigation.navigate('Register' as never)}>Book a Demo</Button>
         </View>
       </View>
@@ -252,8 +315,17 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
   stepText: { fontSize: fontSizes.xl, fontWeight: '700' },
-  tiers: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md, justifyContent: 'center', maxWidth: 900, alignSelf: 'center' },
-  tierCard: { flex: 1, minWidth: 240 },
+  trustGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.md,
+    justifyContent: 'center',
+    maxWidth: 800,
+    alignSelf: 'center',
+  },
+  trustCard: { flex: 1, minWidth: 200 },
+  tiers: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md, justifyContent: 'center', maxWidth: 1100, alignSelf: 'center' },
+  tierCard: { flex: 1, minWidth: 220 },
   tierBody: { fontSize: fontSizes.sm },
   cta: {
     paddingVertical: spacing['2xl'],

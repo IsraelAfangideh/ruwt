@@ -54,6 +54,7 @@ export const attempts = sqliteTable('attempts', {
   violatedConstraint: text('violated_constraint'),
 
   assessmentSessionId: text('assessment_session_id'),
+  replayPublic: integer('replay_public').default(1).notNull(),
 
   createdAt: text('created_at').default(sql`(datetime('now'))`).notNull(),
   submittedAt: text('submitted_at'),
@@ -123,6 +124,21 @@ export const assessmentSessions = sqliteTable('assessment_sessions', {
   createdAt: text('created_at').default(sql`(datetime('now'))`).notNull(),
 });
 
+// --- Replay / message history ---
+
+export const attemptMessages = sqliteTable('attempt_messages', {
+  id: text('id').primaryKey(),
+  attemptId: text('attempt_id').notNull().references(() => attempts.id),
+  role: text('role').notNull(), // 'user' | 'assistant'
+  content: text('content').notNull(),
+  model: text('model'),
+  inputTokens: integer('input_tokens'),
+  outputTokens: integer('output_tokens'),
+  cost: integer('cost'),
+  sequence: integer('sequence').notNull(),
+  createdAt: text('created_at').default(sql`(datetime('now'))`).notNull(),
+});
+
 // --- Type exports ---
 
 export type Profile = typeof profiles.$inferSelect;
@@ -143,12 +159,14 @@ export type AssessmentInvite = typeof assessmentInvites.$inferSelect;
 export type NewAssessmentInvite = typeof assessmentInvites.$inferInsert;
 export type AssessmentSession = typeof assessmentSessions.$inferSelect;
 export type NewAssessmentSession = typeof assessmentSessions.$inferInsert;
+export type AttemptMessage = typeof attemptMessages.$inferSelect;
+export type NewAttemptMessage = typeof attemptMessages.$inferInsert;
 
 export type Difficulty = 'easy' | 'medium' | 'hard';
 export type AttemptStatus = 'in_progress' | 'submitted' | 'passed' | 'failed' | 'constraint_violated';
 export type TransactionType = 'purchase' | 'ai_usage' | 'refund' | 'signup_bonus' | 'assessment_purchase';
 export type ConstraintType = 'tokens' | 'cost' | 'time';
-export type ChallengeCategory = 'practice' | 'model_selection' | 'prompt_efficiency' | 'iterative_debugging';
+export type ChallengeCategory = 'practice' | 'model_selection' | 'prompt_efficiency' | 'iterative_debugging' | 'multi_model_strategy';
 export type AssessmentStatus = 'draft' | 'active' | 'archived';
 export type InviteStatus = 'pending' | 'started' | 'completed' | 'expired';
 export type SessionStatus = 'in_progress' | 'completed' | 'expired' | 'abandoned';

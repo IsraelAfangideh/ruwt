@@ -14,12 +14,14 @@ export interface Challenge {
   wallClockLimit?: number | null;
   category?: string | null;
   skillTested?: string | null;
+  stats?: { solvers: number; avgCost: number | null } | null;
 }
 
 function categoryLabel(cat: string | null | undefined) {
   if (cat === 'model_selection') return 'Model Selection';
   if (cat === 'prompt_efficiency') return 'Prompt Efficiency';
   if (cat === 'iterative_debugging') return 'Debugging';
+  if (cat === 'multi_model_strategy') return 'Multi-Model';
   return null;
 }
 
@@ -38,10 +40,12 @@ export function ChallengeCard({ challenge }: { challenge: Challenge }) {
   const catColor = challenge.category === 'model_selection' ? c.accent
     : challenge.category === 'prompt_efficiency' ? c.success
     : challenge.category === 'iterative_debugging' ? c.destructive
+    : challenge.category === 'multi_model_strategy' ? '#a78bfa'
     : c.textMuted;
   const catBg = challenge.category === 'model_selection' ? c.accentBg
     : challenge.category === 'prompt_efficiency' ? c.successBg
     : challenge.category === 'iterative_debugging' ? c.errorBg
+    : challenge.category === 'multi_model_strategy' ? '#a78bfa15'
     : 'transparent';
 
   return (
@@ -75,6 +79,12 @@ export function ChallengeCard({ challenge }: { challenge: Challenge }) {
           </Text>
         </CardContent>
         <View style={styles.footer}>
+          {challenge.stats && challenge.stats.solvers > 0 && (
+            <Text style={[styles.statsLine, { color: c.textSubtle }]}>
+              {challenge.stats.solvers} solver{challenge.stats.solvers !== 1 ? 's' : ''}
+              {challenge.stats.avgCost != null && ` · avg ${(challenge.stats.avgCost / 10000) < 0.01 ? `$${(challenge.stats.avgCost / 10000).toFixed(4)}` : `$${(challenge.stats.avgCost / 10000).toFixed(2)}`}`}
+            </Text>
+          )}
           <Text style={[styles.cta, { color: c.accent }]}>Start Problem  →</Text>
         </View>
       </Card>
@@ -96,6 +106,7 @@ const styles = StyleSheet.create({
   pillText: { fontSize: fontSizes.xs, fontWeight: '600', fontFamily: fontFamily.body },
   skill: { fontSize: fontSizes.xs, fontStyle: 'italic' },
   meta: { fontSize: fontSizes.xs },
+  statsLine: { fontSize: fontSizes.xs, marginBottom: spacing.xs },
   footer: { marginTop: spacing.xs, alignItems: 'flex-start' },
   cta: { fontSize: fontSizes.sm, fontWeight: '600', fontFamily: fontFamily.body },
 });

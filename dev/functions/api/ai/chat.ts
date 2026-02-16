@@ -9,7 +9,7 @@ import { getUser } from '../../_shared/auth';
 import { validateConstraints, checkPreCallConstraints } from '../../_shared/constraints';
 import { getModelPricing, calculateCost, countMessageTokens } from '../../_shared/ai-pricing';
 import { streamCloudflareAIWithFallback } from '../../_shared/ai-stream';
-import { profiles, attempts, aiCalls } from '../../../drizzle/schema.d1';
+import { profiles, attempts, aiCalls, attemptMessages } from '../../../drizzle/schema.d1';
 
 const requestSchema = z.object({
   model: z.string(),
@@ -20,6 +20,7 @@ const requestSchema = z.object({
     })
   ),
   attemptId: z.string().uuid().nullable().optional(),
+  userMessage: z.string().optional(),
   maxTokens: z.number().optional(),
   temperature: z.number().optional(),
 });
@@ -43,7 +44,7 @@ export async function onRequestPost(context: {
       );
     }
 
-    const { model, messages, attemptId, maxTokens, temperature } = parsed.data;
+    const { model, messages, attemptId, userMessage, maxTokens, temperature } = parsed.data;
 
     const pricing = getModelPricing(model);
     if (!pricing) {
@@ -52,7 +53,7 @@ export async function onRequestPost(context: {
     if (pricing.provider !== 'cloudflare') {
       return Response.json(
         {
-          error: 'Invalid model. Select a model from the model selector (Budget, Mid, or Premium tier).',
+          error: 'Invalid model. Select a model from the model selector (Micro, Budget, Mid, Premium, or Reasoning tier).',
         },
         { status: 400 }
       );
@@ -114,6 +115,25 @@ export async function onRequestPost(context: {
     const stream = new ReadableStream({
       async start(controller) {
         try {
+          // Store user message for replay if we have an attemptId and userMessage
+          let nextSequence = 0;
+          if (attemptId && userMessage) {
+            const seqResult = await db
+              .select({ maxSeq: sql<number>`COALESCE(MAX(${attemptMessages.sequence}), -1)` })
+              .from(attemptMessages)
+              .where(eq(attemptMessages.attemptId, attemptId));
+            nextSequence = (seqResult[0]?.maxSeq ?? -1) + 1;
+
+            await db.insert(attemptMessages).values({
+              id: crypto.randomUUID(),
+              attemptId,
+              role: 'user',
+              content: userMessage,
+              sequence: nextSequence,
+            });
+            nextSequence++;
+          }
+
           const gen = streamCloudflareAIWithFallback(
             context.env,
             model,
@@ -123,12 +143,14 @@ export async function onRequestPost(context: {
 
           let result: { inputTokens: number; outputTokens: number; model: string } | null =
             null;
+          let fullContent = '';
           while (true) {
             const { value, done } = await gen.next();
             if (done) {
               result = value as { inputTokens: number; outputTokens: number; model: string };
               break;
             }
+            fullContent += value;
             controller.enqueue(
               encoder.encode(
                 `data: ${JSON.stringify({ type: 'chunk', content: value })}\n\n`
@@ -169,6 +191,21 @@ export async function onRequestPost(context: {
               outputTokens: result.outputTokens,
               cost: actualCost,
             });
+
+            // Store assistant message for replay
+            if (userMessage) {
+              await db.insert(attemptMessages).values({
+                id: crypto.randomUUID(),
+                attemptId,
+                role: 'assistant',
+                content: fullContent,
+                model: actualModel,
+                inputTokens: result.inputTokens,
+                outputTokens: result.outputTokens,
+                cost: actualCost,
+                sequence: nextSequence,
+              });
+            }
 
             const postCheck = await validateConstraints(db, attemptId);
             if (!postCheck.valid) {

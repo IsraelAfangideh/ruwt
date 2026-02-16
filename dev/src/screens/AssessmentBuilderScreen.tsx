@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { useColors } from '@/theme';
 import { spacing, fontSizes, fontFamily } from '@/theme/tokens';
+import { ASSESSMENT_TEMPLATES, type AssessmentTemplate } from '@/lib/assessment-templates';
 
 interface Challenge {
   id: string;
@@ -80,6 +81,17 @@ export function AssessmentBuilderScreen() {
     setSelectedChallengeIds((prev) =>
       prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
     );
+  };
+
+  const applyTemplate = (template: AssessmentTemplate) => {
+    setTitle(template.name + ' Assessment');
+    setDescription(template.description);
+    setTimeLimitMinutes(String(template.timeLimitMinutes));
+    // Match challenges by title
+    const matchedIds = allChallenges
+      .filter((ch) => template.challengeTitles.includes(ch.title))
+      .map((ch) => ch.id);
+    setSelectedChallengeIds(matchedIds);
   };
 
   const handleSave = useCallback(async () => {
@@ -159,6 +171,7 @@ export function AssessmentBuilderScreen() {
     if (cat === 'model_selection') return c.accent;
     if (cat === 'prompt_efficiency') return c.success;
     if (cat === 'iterative_debugging') return c.destructive;
+    if (cat === 'multi_model_strategy') return '#a78bfa';
     return c.textMuted;
   };
 
@@ -166,6 +179,7 @@ export function AssessmentBuilderScreen() {
     if (cat === 'model_selection') return 'Model Selection';
     if (cat === 'prompt_efficiency') return 'Prompt Efficiency';
     if (cat === 'iterative_debugging') return 'Iterative Debugging';
+    if (cat === 'multi_model_strategy') return 'Multi-Model';
     return 'Practice';
   };
 
@@ -183,6 +197,31 @@ export function AssessmentBuilderScreen() {
           {params.assessmentId ? 'Edit Assessment' : 'Create Assessment'}
         </Text>
       </View>
+
+      {/* Template selector */}
+      {!params.assessmentId && (
+        <View style={styles.templateSection}>
+          <Text style={[styles.sectionLabel, { color: c.text }]}>Start from a Template</Text>
+          <View style={styles.templateGrid}>
+            {ASSESSMENT_TEMPLATES.map((t) => (
+              <Pressable key={t.id} onPress={() => applyTemplate(t)}>
+                <Card style={[styles.templateCard, { borderColor: c.border }]}>
+                  <CardHeader>
+                    <CardTitle>{t.name}</CardTitle>
+                    <CardDescription>{t.description}</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <Text style={{ fontSize: fontSizes.xs, color: c.textMuted }}>
+                      {t.challengeTitles.length} challenges {'\u00B7'} {t.timeLimitMinutes} min
+                    </Text>
+                  </CardContent>
+                </Card>
+              </Pressable>
+            ))}
+          </View>
+          <View style={[styles.divider, { borderBottomColor: c.border }]} />
+        </View>
+      )}
 
       <View style={styles.form}>
         <Input
@@ -315,4 +354,8 @@ const styles = StyleSheet.create({
   inviteLabel: { fontWeight: '600', marginBottom: spacing.xs },
   inviteUrl: { fontSize: fontSizes.sm, fontFamily: 'monospace', marginBottom: spacing.sm },
   inviteHint: { fontSize: fontSizes.xs },
+  templateSection: { marginBottom: spacing.lg },
+  templateGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md },
+  templateCard: { minWidth: 220, flex: 1, borderWidth: 1 },
+  divider: { borderBottomWidth: 1, marginTop: spacing.lg },
 });

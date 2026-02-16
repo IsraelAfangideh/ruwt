@@ -12,6 +12,7 @@ import {
   assessmentChallenges,
   attempts,
   profiles,
+  aiCalls,
 } from '../../../../drizzle/schema.d1';
 
 export async function onRequestGet(context: { request: Request; env: Env; params: { id: string } }) {
@@ -56,7 +57,7 @@ export async function onRequestGet(context: { request: Request; env: Env; params
       .where(eq(assessmentSessions.assessmentId, context.params.id))
       .orderBy(desc(assessmentSessions.startedAt));
 
-    // For each session, get per-challenge attempt results
+    // For each session, get per-challenge attempt results with AI analytics
     const results = await Promise.all(
       sessions.map(async ({ session, user: candidate }) => {
         const sessionAttempts = await db
@@ -65,6 +66,37 @@ export async function onRequestGet(context: { request: Request; env: Env; params
           .where(eq(attempts.assessmentSessionId, session.id));
 
         const challengesPassed = sessionAttempts.filter((a) => a.status === 'passed').length;
+
+        // Aggregate AI calls by model for each attempt
+        const attemptDetails = await Promise.all(
+          sessionAttempts.map(async (a) => {
+            const calls = await db
+              .select()
+              .from(aiCalls)
+              .where(eq(aiCalls.attemptId, a.id));
+
+            const modelUsage: Record<string, { calls: number; cost: number; tokens: number }> = {};
+            for (const call of calls) {
+              if (!modelUsage[call.model]) {
+                modelUsage[call.model] = { calls: 0, cost: 0, tokens: 0 };
+              }
+              modelUsage[call.model].calls++;
+              modelUsage[call.model].cost += call.cost;
+              modelUsage[call.model].tokens += call.inputTokens + call.outputTokens;
+            }
+
+            return {
+              challengeId: a.challengeId,
+              status: a.status,
+              totalCost: a.totalCost,
+              inputTokens: a.inputTokens,
+              outputTokens: a.outputTokens,
+              passedTests: a.passedTests,
+              totalTests: a.totalTests,
+              modelUsage,
+            };
+          })
+        );
 
         return {
           session: {
@@ -79,15 +111,7 @@ export async function onRequestGet(context: { request: Request; env: Env; params
           candidate,
           challengesPassed,
           totalChallenges,
-          attempts: sessionAttempts.map((a) => ({
-            challengeId: a.challengeId,
-            status: a.status,
-            totalCost: a.totalCost,
-            inputTokens: a.inputTokens,
-            outputTokens: a.outputTokens,
-            passedTests: a.passedTests,
-            totalTests: a.totalTests,
-          })),
+          attempts: attemptDetails,
         };
       })
     );

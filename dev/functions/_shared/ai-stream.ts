@@ -18,7 +18,10 @@ import { getModelPricing, getTierFallbackChain } from './ai-pricing';
 const DEFAULT_FALLBACK_CHAIN = [
   '@cf/meta/llama-3.3-70b-instruct-fp8-fast',
   '@cf/meta/llama-3.1-70b-instruct',
+  '@cf/qwen/qwen1.5-14b-chat-awq',
   '@cf/meta/llama-3.1-8b-instruct',
+  '@cf/mistral/mistral-7b-instruct-v0.2',
+  '@cf/google/gemma-7b-it',
 ];
 
 export async function* streamCloudflareAI(
