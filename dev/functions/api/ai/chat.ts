@@ -52,8 +52,7 @@ export async function onRequestPost(context: {
     if (pricing.provider !== 'cloudflare') {
       return Response.json(
         {
-          error: 'Only Cloudflare AI models are supported in this environment',
-          supported: 'Use model IDs starting with @cf/',
+          error: 'Invalid model. Select a model from the model selector (Budget, Mid, or Premium tier).',
         },
         { status: 400 }
       );

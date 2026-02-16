@@ -7,8 +7,9 @@ import React, { useState, useRef, useEffect, useCallback, useMemo, Suspense } fr
 import { arena } from '@/theme/colors';
 import { VirtualFileSystem } from './arena/VirtualFileSystem';
 import { useCodeSync } from './arena/useCodeSync';
-import { useAIChat } from './arena/useAIChat';
+import { useAIChat, type MessageMeta } from './arena/useAIChat';
 import { TerminalPanel, type TerminalPanelHandle } from './arena/TerminalPanel';
+import { TIER_MODELS, getModelById, type ModelTier } from '@/lib/ai/pricing';
 
 const MonacoEditor = React.lazy(() => import('@monaco-editor/react'));
 
@@ -537,11 +538,12 @@ export function ArenaIDE({
   const [totalCost, setTotalCost] = useState(attempt.totalCost);
   const [inputTokens, setInputTokens] = useState(attempt.inputTokens);
   const [outputTokens, setOutputTokens] = useState(attempt.outputTokens);
-  const [messages, setMessages] = useState<{ role: 'system' | 'user' | 'assistant'; content: string; isConstraint?: boolean }[]>([]);
+  const [messages, setMessages] = useState<{ role: 'system' | 'user' | 'assistant'; content: string; isConstraint?: boolean; meta?: MessageMeta }[]>([]);
   const [streamingContent, setStreamingContent] = useState('');
   const [chatInput, setChatInput] = useState('');
   const [isLoadingChat, setIsLoadingChat] = useState(false);
-  const [model] = useState('@cf/meta/llama-3.3-70b-instruct-fp8-fast');
+  const [model, setModel] = useState('@cf/meta/llama-3.1-8b-instruct');
+  const [selectedTier, setSelectedTier] = useState<ModelTier>('budget');
   const [isExpired, setIsExpired] = useState(false);
   const [showExpiryOverlay, setShowExpiryOverlay] = useState(false);
   const [activeTab, setActiveTab] = useState<'description' | 'chat'>('description');
@@ -701,8 +703,8 @@ Rules:
       onChunk: (fullContent) => {
         setStreamingContent(fullContent);
       },
-      onDone: (fullContent) => {
-        setMessages((m) => [...m, { role: 'assistant', content: fullContent }]);
+      onDone: (fullContent, meta) => {
+        setMessages((m) => [...m, { role: 'assistant', content: fullContent, meta }]);
         setStreamingContent('');
         setIsLoadingChat(false);
         // Auto-apply code blocks
@@ -812,8 +814,10 @@ Rules:
               <div ref={chatScrollRef} style={s.chatScroll}>
                 {messages.filter((m) => m.role !== 'system').length === 0 && !streamingContent && (
                   <div style={s.chatEmpty}>
-                    <span style={{ color: arena.textSubtle, fontSize: 13 }}>
-                      Ask the AI for help with this challenge...
+                    <span style={{ color: arena.textSubtle, fontSize: 13, textAlign: 'center', lineHeight: '1.6', padding: '0 12px' }}>
+                      Choose a model tier below, then ask for help.{'\n'}
+                      Budget ($) is cheap but less capable.{'\n'}
+                      Premium ($$$) is powerful but costs more.
                     </span>
                   </div>
                 )}
@@ -826,16 +830,28 @@ Rules:
                       </div>
                     );
                   }
+                  const modelInfo = msg.meta ? getModelById(msg.meta.model) : undefined;
                   return (
                     <div key={i} style={msg.role === 'user' ? s.userMessage : s.aiMessage}>
                       <div style={s.messageLabel}>
                         <span style={msg.role === 'user' ? s.userLabel : s.aiLabel}>
                           {msg.role === 'user' ? 'You' : 'AI'}
                         </span>
+                        {msg.role === 'assistant' && modelInfo && (
+                          <span style={s.msgTierBadge}>
+                            <span style={{ ...s.tierDot, background: msg.meta!.cost > 0 ? (modelInfo.tier === 'premium' ? '#da8ee7' : modelInfo.tier === 'mid' ? arena.accent : arena.success) : arena.textSubtle }} />
+                            {modelInfo.displayName}
+                          </span>
+                        )}
                       </div>
                       <div style={msg.role === 'user' ? s.userContent : s.aiContent}>
                         {msg.role === 'assistant' ? renderMarkdown(msg.content) : msg.content}
                       </div>
+                      {msg.meta && (
+                        <div style={s.msgCostLine}>
+                          {modelInfo?.displayName || 'AI'} {'\u00B7'} {msg.meta.tokens.toLocaleString()} tok {'\u00B7'} {formatCost(msg.meta.cost)}
+                        </div>
+                      )}
                     </div>
                   );
                 })}
@@ -844,10 +860,42 @@ Rules:
                     <div style={s.messageLabel}>
                       <span style={s.aiLabel}>AI</span>
                       <span style={s.streamingDot}>{'\u25CF'}</span>
+                      <span style={{ fontSize: 10, color: arena.textSubtle }}>
+                        {getModelById(model)?.displayName || 'AI'} thinking...
+                      </span>
                     </div>
                     <div style={s.aiContent}>{renderMarkdown(streamingContent)}</div>
                   </div>
                 )}
+              </div>
+
+              {/* Model selector */}
+              <div style={s.tierBar}>
+                {(['budget', 'mid', 'premium'] as ModelTier[]).map((tier) => {
+                  const m = TIER_MODELS[tier];
+                  const isActive = selectedTier === tier;
+                  const tierColor = tier === 'premium' ? '#da8ee7' : tier === 'mid' ? arena.accent : arena.success;
+                  return (
+                    <button
+                      key={tier}
+                      style={{
+                        ...s.tierPill,
+                        background: isActive ? `${tierColor}20` : 'transparent',
+                        borderColor: isActive ? tierColor : arena.border,
+                        color: isActive ? tierColor : arena.textMuted,
+                        opacity: isLoadingChat ? 0.5 : 1,
+                      }}
+                      disabled={isLoadingChat}
+                      onClick={() => {
+                        setSelectedTier(tier);
+                        setModel(m.id);
+                      }}
+                    >
+                      <span style={{ fontWeight: 600 }}>{tier === 'budget' ? '$' : tier === 'mid' ? '$$' : '$$$'}</span>
+                      {' '}{m.displayName}
+                    </button>
+                  );
+                })}
               </div>
 
               {/* Chat input */}
@@ -1262,6 +1310,50 @@ const s: Record<string, React.CSSProperties> = {
     lineHeight: '1.5',
     color: arena.text,
     fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+  },
+
+  // Tier selector
+  tierBar: {
+    display: 'flex',
+    gap: 6,
+    padding: '6px 10px',
+    borderTop: `1px solid ${arena.border}`,
+    background: arena.surface,
+    flexShrink: 0,
+  },
+  tierPill: {
+    flex: 1,
+    padding: '5px 8px',
+    fontSize: 11,
+    borderRadius: 6,
+    border: `1px solid ${arena.border}`,
+    background: 'transparent',
+    cursor: 'pointer',
+    fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+    textAlign: 'center' as const,
+    transition: 'all 0.15s',
+  },
+
+  // Per-message cost
+  msgCostLine: {
+    fontSize: 10,
+    color: arena.textSubtle,
+    marginTop: 4,
+    fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+  },
+  msgTierBadge: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 4,
+    fontSize: 10,
+    color: arena.textMuted,
+    fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+  },
+  tierDot: {
+    display: 'inline-block',
+    width: 6,
+    height: 6,
+    borderRadius: 3,
   },
 
   // Chat input

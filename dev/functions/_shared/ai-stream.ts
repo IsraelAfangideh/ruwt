@@ -12,6 +12,9 @@ interface Message {
   content: string;
 }
 
+import { getModelPricing, getTierFallbackChain } from './ai-pricing';
+
+// Default fallback: full chain from premium down
 const DEFAULT_FALLBACK_CHAIN = [
   '@cf/meta/llama-3.3-70b-instruct-fp8-fast',
   '@cf/meta/llama-3.1-70b-instruct',
@@ -120,7 +123,9 @@ export async function* streamCloudflareAIWithFallback(
   options?: { maxTokens?: number; temperature?: number },
   fallbackChain?: string[]
 ): AsyncGenerator<string, { inputTokens: number; outputTokens: number; model: string }> {
-  const chain = fallbackChain || DEFAULT_FALLBACK_CHAIN;
+  // Build tier-aware fallback chain: only fall to same tier or lower
+  const pricing = getModelPricing(requestedModel);
+  const chain = fallbackChain || (pricing ? getTierFallbackChain(pricing.tier) : DEFAULT_FALLBACK_CHAIN);
   // Build ordered list: requested model first, then fallbacks (deduped)
   const models = [requestedModel, ...chain.filter((m) => m !== requestedModel)];
 

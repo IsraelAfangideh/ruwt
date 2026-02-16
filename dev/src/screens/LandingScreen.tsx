@@ -16,18 +16,18 @@ export function LandingScreen() {
         <Text style={[styles.logo, { color: c.text }]}>Ruwt</Text>
         <View style={styles.headerActions}>
           <Button variant="ghost" onPress={() => navigation.navigate('Login' as never)}>Sign in</Button>
-          <Button onPress={() => navigation.navigate('Register' as never)}>For Teams</Button>
+          <Button onPress={() => navigation.navigate('Register' as never)}>Get Started</Button>
         </View>
       </View>
 
       <View style={styles.hero}>
         <Badge variant="secondary">Now in Beta</Badge>
         <Text style={[styles.heroTitle, { color: c.text }]}>
-          AI-Efficiency Assessment{'\n'}
-          <Text style={{ color: c.accent }}>for Engineering Teams</Text>
+          Prove You Can Use AI{'\n'}
+          <Text style={{ color: c.accent }}>Better Than Anyone</Text>
         </Text>
         <Text style={[styles.heroSub, { color: c.textMuted }]}>
-          Measure how efficiently your candidates use AI to solve real problems. Not just correctness — cost, model selection, and prompt strategy matter.
+          Solve coding challenges using real AI models. The twist: you're ranked by how efficiently you use them. Pick the right model, craft concise prompts, debug cheaply.
         </Text>
         <View style={styles.heroButtons}>
           <Button size="lg" onPress={() => navigation.navigate('Register' as never)}>Start Free Practice</Button>
@@ -35,16 +35,37 @@ export function LandingScreen() {
         </View>
       </View>
 
+      {/* Try a Challenge CTA */}
+      <View style={[styles.section, { paddingTop: 0 }]}>
+        <Card style={[styles.tryChallengeCard, { borderColor: c.accent, borderWidth: 1 }]}>
+          <CardHeader>
+            <Badge variant="default">Beginner Friendly</Badge>
+            <CardTitle>String Formatter</CardTitle>
+            <CardDescription>
+              Convert strings to title case. A simple task — but can you solve it using the cheapest AI model?
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button
+              variant="outline"
+              onPress={() => navigation.navigate('Register' as never)}
+            >
+              Try This Challenge
+            </Button>
+          </CardContent>
+        </Card>
+      </View>
+
       <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: c.text }]}>What We Measure</Text>
+        <Text style={[styles.sectionTitle, { color: c.text }]}>Three Skills That Matter</Text>
         <Text style={[styles.sectionSub, { color: c.textMuted }]}>
-          Three dimensions of AI proficiency that predict real-world engineering efficiency.
+          We measure the AI skills that predict real-world engineering efficiency.
         </Text>
         <View style={styles.cards}>
           {[
-            { step: '1', title: 'Model Selection', desc: 'Does the candidate know when to use a cheap model vs. a premium one? Using GPT-4o for FizzBuzz is a red flag.' },
-            { step: '2', title: 'Prompt Efficiency', desc: 'Can they get working code in fewer tokens? Concise, structured prompts beat verbose ones every time.' },
-            { step: '3', title: 'Iterative Debugging', desc: 'When AI output has bugs, can they diagnose and fix cheaply — or do they burn tokens on full rewrites?' },
+            { step: '$', title: 'Model Selection', desc: 'Know when a $0.01 model works and when you need a $0.50 one. Using premium for FizzBuzz is a red flag.' },
+            { step: '\u270F', title: 'Prompt Efficiency', desc: 'Get working code in fewer tokens. Concise, structured prompts beat verbose walls of text every time.' },
+            { step: '\u{1F41B}', title: 'Iterative Debugging', desc: 'When AI code has bugs, diagnose and fix cheaply. Don\'t burn tokens asking for full rewrites.' },
           ].map((item) => (
             <Card key={item.step} style={styles.card}>
               <CardHeader>
@@ -60,12 +81,12 @@ export function LandingScreen() {
       </View>
 
       <View style={[styles.section, styles.sectionAlt, { backgroundColor: c.muted + '40' }]}>
-        <Text style={[styles.sectionTitle, { color: c.text }]}>How It Works for Teams</Text>
+        <Text style={[styles.sectionTitle, { color: c.text }]}>How It Works</Text>
         <View style={styles.cards}>
           {[
-            { step: '1', title: 'Create an Assessment', desc: 'Pick from our curated challenge library. Set a time limit. Choose which AI skills to test.' },
-            { step: '2', title: 'Invite Candidates', desc: 'Send a unique assessment link. Candidates log in and work through challenges with real AI models.' },
-            { step: '3', title: 'Review Results', desc: 'See exactly how each candidate used AI — which models, how many tokens, total cost, and pass rate.' },
+            { step: '1', title: 'Pick a Challenge', desc: 'Browse 30 challenges across model selection, prompt efficiency, and debugging. Choose timed or untimed.' },
+            { step: '2', title: 'Solve with AI', desc: 'Use the Arena IDE with real AI models. Switch between Budget ($), Mid ($$), and Premium ($$$) tiers strategically.' },
+            { step: '3', title: 'Climb the Leaderboard', desc: 'Submit your solution. You\'re ranked by cost efficiency — solve it correctly with the least spend.' },
           ].map((item) => (
             <Card key={item.step} style={styles.card}>
               <CardHeader>
@@ -81,12 +102,12 @@ export function LandingScreen() {
       </View>
 
       <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: c.text }]}>How It Works for Developers</Text>
+        <Text style={[styles.sectionTitle, { color: c.text }]}>For Hiring Managers</Text>
         <View style={styles.cards}>
           {[
-            { step: '1', title: 'Practice Free', desc: 'Get 100 free AI credits on signup. Solve challenges and learn to use AI models efficiently.' },
-            { step: '2', title: 'Take Assessments', desc: 'When a company invites you, complete their assessment. Your AI efficiency is your competitive edge.' },
-            { step: '3', title: 'Build Your Score', desc: 'Climb the leaderboard. The best AI-efficient engineers stand out to hiring teams.' },
+            { step: '1', title: 'Create an Assessment', desc: 'Pick from our curated challenge library. Set a time limit. Choose which AI skills to test.' },
+            { step: '2', title: 'Invite Candidates', desc: 'Send a unique assessment link. Candidates work through challenges with real AI models.' },
+            { step: '3', title: 'Review Results', desc: 'See exactly how each candidate used AI — which models, how many tokens, total cost, and pass rate.' },
           ].map((item) => (
             <Card key={item.step} style={styles.card}>
               <CardHeader>
@@ -115,7 +136,7 @@ export function LandingScreen() {
             </CardHeader>
             <CardContent>
               <Text style={[styles.tierBody, { color: c.textMuted }]}>
-                100 free AI credits on signup. Practice challenges across all categories. Build your efficiency score.
+                50,000 free AI credits on signup. Practice challenges across all categories. Build your efficiency score.
               </Text>
             </CardContent>
           </Card>
@@ -147,8 +168,8 @@ export function LandingScreen() {
       </View>
 
       <View style={styles.cta}>
-        <Text style={[styles.ctaTitle, { color: c.text }]}>Ready to find AI-efficient engineers?</Text>
-        <Text style={[styles.ctaSub, { color: c.textMuted }]}>Your team spent $40K on API calls last month. Do you know which developers are efficient?</Text>
+        <Text style={[styles.ctaTitle, { color: c.text }]}>Ready to prove your AI skills?</Text>
+        <Text style={[styles.ctaSub, { color: c.textMuted }]}>50,000 free credits. 30 challenges. No credit card required.</Text>
         <View style={styles.heroButtons}>
           <Button size="lg" onPress={() => navigation.navigate('Register' as never)}>Get Started Free</Button>
           <Button size="lg" variant="outline" onPress={() => navigation.navigate('Register' as never)}>Book a Demo</Button>
@@ -221,6 +242,7 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
   },
   card: { flex: 1, minWidth: 240 },
+  tryChallengeCard: { maxWidth: 500, alignSelf: 'center', width: '100%' },
   stepNum: {
     width: 48,
     height: 48,

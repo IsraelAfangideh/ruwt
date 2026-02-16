@@ -1,22 +1,73 @@
 /**
  * Model pricing and token helpers for AI chat (Workers-safe, no Node).
+ * 3-tier game pricing: premium ($$$), mid ($$), budget ($).
  */
-const MODEL_PRICING: Record<
-  string,
-  { input: number; output: number; provider: string }
-> = {
-  'gpt-4o': { input: 2.5, output: 10, provider: 'openai' },
-  'gpt-4o-mini': { input: 0.15, output: 0.6, provider: 'openai' },
-  'claude-sonnet-4-20250514': { input: 3, output: 15, provider: 'anthropic' },
-  'claude-3-5-haiku-20241022': { input: 0.8, output: 4, provider: 'anthropic' },
-  '@cf/meta/llama-3.3-70b-instruct-fp8-fast': { input: 0.02, output: 0.02, provider: 'cloudflare' },
-  '@cf/meta/llama-3.1-70b-instruct': { input: 0.02, output: 0.02, provider: 'cloudflare' },
-  '@cf/meta/llama-3.1-8b-instruct': { input: 0.01, output: 0.01, provider: 'cloudflare' },
-  '@cf/mistral/mistral-7b-instruct-v0.2': { input: 0.01, output: 0.01, provider: 'cloudflare' },
+
+export type ModelTier = 'premium' | 'mid' | 'budget';
+
+export interface ModelPricing {
+  input: number;
+  output: number;
+  provider: string;
+  tier: ModelTier;
+  displayName: string;
+}
+
+const MODEL_PRICING: Record<string, ModelPricing> = {
+  '@cf/meta/llama-3.3-70b-instruct-fp8-fast': {
+    input: 0.50,
+    output: 0.60,
+    provider: 'cloudflare',
+    tier: 'premium',
+    displayName: 'Llama 3.3 70B',
+  },
+  '@cf/meta/llama-3.1-70b-instruct': {
+    input: 0.10,
+    output: 0.12,
+    provider: 'cloudflare',
+    tier: 'mid',
+    displayName: 'Llama 3.1 70B',
+  },
+  '@cf/meta/llama-3.1-8b-instruct': {
+    input: 0.01,
+    output: 0.01,
+    provider: 'cloudflare',
+    tier: 'budget',
+    displayName: 'Llama 3.1 8B',
+  },
+  '@cf/mistral/mistral-7b-instruct-v0.2': {
+    input: 0.01,
+    output: 0.01,
+    provider: 'cloudflare',
+    tier: 'budget',
+    displayName: 'Mistral 7B',
+  },
 };
 
-export function getModelPricing(model: string) {
+export function getModelPricing(model: string): ModelPricing | undefined {
   return MODEL_PRICING[model];
+}
+
+/** Returns all models sorted by tier (premium first). */
+export function getCloudflareModels(): Array<{ id: string } & ModelPricing> {
+  const tierOrder: Record<ModelTier, number> = { premium: 0, mid: 1, budget: 2 };
+  return Object.entries(MODEL_PRICING)
+    .map(([id, p]) => ({ id, ...p }))
+    .sort((a, b) => tierOrder[a.tier] - tierOrder[b.tier]);
+}
+
+/** Get fallback chain for a given tier (same tier or lower only). */
+export function getTierFallbackChain(tier: ModelTier): string[] {
+  const tierOrder: ModelTier[] = ['premium', 'mid', 'budget'];
+  const startIdx = tierOrder.indexOf(tier);
+  const allowedTiers = new Set(tierOrder.slice(startIdx));
+  return Object.entries(MODEL_PRICING)
+    .filter(([, p]) => allowedTiers.has(p.tier))
+    .sort((a, b) => {
+      const tierOrd: Record<ModelTier, number> = { premium: 0, mid: 1, budget: 2 };
+      return tierOrd[a[1].tier] - tierOrd[b[1].tier];
+    })
+    .map(([id]) => id);
 }
 
 export function calculateCost(

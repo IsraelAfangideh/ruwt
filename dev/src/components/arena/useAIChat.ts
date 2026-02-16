@@ -15,8 +15,15 @@ interface SSEChunkData {
   inputTokens?: number;
   outputTokens?: number;
   cost?: number;
+  model?: string;
   violation?: string;
   message?: string;
+}
+
+export interface MessageMeta {
+  model: string;
+  cost: number;
+  tokens: number;
 }
 
 export interface UseAIChatOptions {
@@ -28,7 +35,7 @@ export interface UseAIChatOptions {
 
 export interface StreamCallbacks {
   onChunk: (content: string) => void;
-  onDone: (fullContent: string) => void;
+  onDone: (fullContent: string, meta?: MessageMeta) => void;
   onError: (error: string) => void;
   onConstraint?: (violation: string, message: string) => void;
 }
@@ -68,6 +75,7 @@ export function useAIChat(options: UseAIChatOptions) {
         const decoder = new TextDecoder();
         let fullContent = '';
         let buffer = '';
+        let messageMeta: MessageMeta | undefined;
 
         while (reader) {
           const { done, value } = await reader.read();
@@ -87,6 +95,11 @@ export function useAIChat(options: UseAIChatOptions) {
                 onChunk(fullContent);
               } else if (data.type === 'done') {
                 onCostUpdate?.(data.cost ?? 0, data.inputTokens ?? 0, data.outputTokens ?? 0);
+                messageMeta = {
+                  model: data.model || model,
+                  cost: data.cost ?? 0,
+                  tokens: (data.inputTokens ?? 0) + (data.outputTokens ?? 0),
+                };
               } else if (data.type === 'error') {
                 fullContent += `\n[Error: ${data.message}]`;
               } else if (data.type === 'constraint_warning') {
@@ -105,11 +118,16 @@ export function useAIChat(options: UseAIChatOptions) {
               onChunk(fullContent);
             } else if (data.type === 'done') {
               onCostUpdate?.(data.cost ?? 0, data.inputTokens ?? 0, data.outputTokens ?? 0);
+              messageMeta = {
+                model: data.model || model,
+                cost: data.cost ?? 0,
+                tokens: (data.inputTokens ?? 0) + (data.outputTokens ?? 0),
+              };
             }
           } catch { /* skip */ }
         }
 
-        onDone(fullContent || '(no response)');
+        onDone(fullContent || '(no response)', messageMeta);
       } catch (e) {
         if ((e as Error).name === 'AbortError') {
           onDone('[interrupted]');

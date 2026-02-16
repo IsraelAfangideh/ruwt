@@ -289,3 +289,647 @@ Use AI strategically: describe the specific failures rather than asking for a fu
 }
 
 module.exports = { EventEmitter };', '[{"input":"basic-on-emit","expectedOutput":"hello"},{"input":"multiple-listeners","expectedOutput":"a,b"},{"input":"emit-with-args","expectedOutput":"1,2,3"},{"input":"off-removes-listener","expectedOutput":"1"},{"input":"off-removes-only-first","expectedOutput":"2"},{"input":"once-fires-once","expectedOutput":"1"},{"input":"once-removable","expectedOutput":"0"},{"input":"emit-returns-boolean","expectedOutput":"true,false"},{"input":"chaining","expectedOutput":"true"},{"input":"listener-count","expectedOutput":"2,1,0"}]', 5000, 256, NULL, 5000, 2400, 'iterative_debugging', 'Surgical debugging with cost awareness');
+INSERT OR REPLACE INTO challenges (id, title, description, difficulty, starter_code, test_cases, exec_time_limit, exec_memory_limit, max_tokens, max_cost, wall_clock_limit, category, skill_tested) VALUES ('fizzbuzz-budget', 'FizzBuzz Budget', 'Write a function that takes a number and returns:
+- "Fizz" if divisible by 3
+- "Buzz" if divisible by 5
+- "FizzBuzz" if divisible by both 3 and 5
+- The number as a string otherwise
+
+Example:
+fizzBuzz(15) → "FizzBuzz"
+fizzBuzz(3) → "Fizz"
+fizzBuzz(7) → "7"
+
+This is the simplest possible task. The cost limit is extremely tight — you MUST use the cheapest model available. Any premium model usage will blow the budget.', 'easy', 'function fizzBuzz(n) {
+  // Your code here
+}
+
+module.exports = { fizzBuzz };', '[{"input":"15","expectedOutput":"FizzBuzz"},{"input":"3","expectedOutput":"Fizz"},{"input":"5","expectedOutput":"Buzz"},{"input":"7","expectedOutput":"7"},{"input":"30","expectedOutput":"FizzBuzz"}]', 5000, 256, NULL, 50, 600, 'model_selection', 'Using cheapest model for trivial tasks');
+INSERT OR REPLACE INTO challenges (id, title, description, difficulty, starter_code, test_cases, exec_time_limit, exec_memory_limit, max_tokens, max_cost, wall_clock_limit, category, skill_tested) VALUES ('json-transformer', 'JSON Transformer', 'Write a function that flattens a nested JSON object into a single-level object with dot-notation keys.
+
+Rules:
+- Nested object keys are joined with "."
+- Array elements use their index as the key segment
+- Primitive values (string, number, boolean, null) are leaf values
+- Empty objects and arrays should not appear in output
+
+Examples:
+flattenJSON({a: {b: 1}}) → {"a.b": 1}
+flattenJSON({a: [1, 2]}) → {"a.0": 1, "a.1": 2}
+flattenJSON({a: {b: {c: "deep"}}}) → {"a.b.c": "deep"}
+
+Input is a JSON string. Output is the flattened JSON string.
+
+Mid-range complexity — a mid-tier model should handle this well. Don''t overspend on premium.', 'medium', 'function flattenJSON(obj) {
+  // Your code here
+}
+
+module.exports = { flattenJSON };', '[{"input":"{\"a\":{\"b\":1}}","expectedOutput":"{\"a.b\":1}"},{"input":"{\"a\":[1,2,3]}","expectedOutput":"{\"a.0\":1,\"a.1\":2,\"a.2\":3}"},{"input":"{\"a\":{\"b\":{\"c\":\"deep\"}},\"d\":4}","expectedOutput":"{\"a.b.c\":\"deep\",\"d\":4}"},{"input":"{\"users\":[{\"name\":\"Alice\"},{\"name\":\"Bob\"}]}","expectedOutput":"{\"users.0.name\":\"Alice\",\"users.1.name\":\"Bob\"}"}]', 5000, 256, NULL, 1500, 900, 'model_selection', 'Choosing mid-tier models for moderate complexity');
+INSERT OR REPLACE INTO challenges (id, title, description, difficulty, starter_code, test_cases, exec_time_limit, exec_memory_limit, max_tokens, max_cost, wall_clock_limit, category, skill_tested) VALUES ('recursive-tree-traversal', 'Recursive Tree Traversal', 'Implement DFS (depth-first search) and BFS (breadth-first search) on a tree.
+
+Each tree node has the shape: { val: number, children: Node[] }
+
+- dfs(root) returns values in pre-order depth-first order
+- bfs(root) returns values in level-order breadth-first order
+- Return an empty array if root is null
+
+Input format: first line is "dfs" or "bfs", second line is the tree as JSON.
+Output: JSON array of values.
+
+Example tree: {"val":1,"children":[{"val":2,"children":[]},{"val":3,"children":[{"val":4,"children":[]}]}]}
+DFS: [1,2,3,4]
+BFS: [1,2,3,4]
+
+This is a medium-complexity algorithm task. Choose your model tier based on the cost-quality tradeoff.', 'medium', 'function dfs(root) {
+  // Your code here
+}
+
+function bfs(root) {
+  // Your code here
+}
+
+module.exports = { dfs, bfs };', '[{"input":"dfs\n{\"val\":1,\"children\":[{\"val\":2,\"children\":[]},{\"val\":3,\"children\":[{\"val\":4,\"children\":[]}]}]}","expectedOutput":"[1,2,3,4]"},{"input":"bfs\n{\"val\":1,\"children\":[{\"val\":2,\"children\":[]},{\"val\":3,\"children\":[{\"val\":4,\"children\":[]}]}]}","expectedOutput":"[1,2,3,4]"},{"input":"dfs\n{\"val\":1,\"children\":[{\"val\":2,\"children\":[{\"val\":5,\"children\":[]},{\"val\":6,\"children\":[]}]},{\"val\":3,\"children\":[]},{\"val\":4,\"children\":[{\"val\":7,\"children\":[]}]}]}","expectedOutput":"[1,2,5,6,3,4,7]"},{"input":"bfs\n{\"val\":1,\"children\":[{\"val\":2,\"children\":[{\"val\":5,\"children\":[]},{\"val\":6,\"children\":[]}]},{\"val\":3,\"children\":[]},{\"val\":4,\"children\":[{\"val\":7,\"children\":[]}]}]}","expectedOutput":"[1,2,3,4,5,6,7]"},{"input":"dfs\nnull","expectedOutput":"[]"}]', 5000, 256, NULL, 2500, 1200, 'model_selection', 'Balancing cost vs capability for algorithm tasks');
+INSERT OR REPLACE INTO challenges (id, title, description, difficulty, starter_code, test_cases, exec_time_limit, exec_memory_limit, max_tokens, max_cost, wall_clock_limit, category, skill_tested) VALUES ('state-machine', 'State Machine', 'Build a finite state machine (FSM). Implement createMachine(config) that returns a machine object.
+
+Config shape:
+{
+  initial: string,          // starting state
+  states: {
+    [stateName]: {
+      on: { [event]: string }  // event → next state mapping
+    }
+  }
+}
+
+The returned machine should have:
+- transition(event) — transition to the next state based on the event. If the event is not defined for the current state, stay in the current state.
+- getState() — return the current state name.
+
+Input format: config JSON on first line, one event per subsequent line. Output: the final state after all transitions.
+
+Example:
+Config: {"initial":"idle","states":{"idle":{"on":{"START":"running"}},"running":{"on":{"STOP":"idle","PAUSE":"paused"}},"paused":{"on":{"RESUME":"running","STOP":"idle"}}}}
+Events: START, PAUSE, RESUME, STOP
+Output: idle
+
+This is a complex design pattern. You''ll need a capable model to get it right.', 'hard', 'function createMachine(config) {
+  // Your code here
+}
+
+module.exports = { createMachine };', '[{"input":"{\"initial\":\"idle\",\"states\":{\"idle\":{\"on\":{\"START\":\"running\"}},\"running\":{\"on\":{\"STOP\":\"idle\",\"PAUSE\":\"paused\"}},\"paused\":{\"on\":{\"RESUME\":\"running\",\"STOP\":\"idle\"}}}}\nSTART\nPAUSE\nRESUME\nSTOP","expectedOutput":"idle"},{"input":"{\"initial\":\"locked\",\"states\":{\"locked\":{\"on\":{\"COIN\":\"unlocked\"}},\"unlocked\":{\"on\":{\"PUSH\":\"locked\"}}}}\nCOIN\nPUSH","expectedOutput":"locked"},{"input":"{\"initial\":\"green\",\"states\":{\"green\":{\"on\":{\"NEXT\":\"yellow\"}},\"yellow\":{\"on\":{\"NEXT\":\"red\"}},\"red\":{\"on\":{\"NEXT\":\"green\"}}}}\nNEXT\nNEXT\nNEXT","expectedOutput":"green"},{"input":"{\"initial\":\"off\",\"states\":{\"off\":{\"on\":{\"TOGGLE\":\"on\"}},\"on\":{\"on\":{\"TOGGLE\":\"off\"}}}}\nTOGGLE","expectedOutput":"on"},{"input":"{\"initial\":\"idle\",\"states\":{\"idle\":{\"on\":{\"START\":\"running\"}},\"running\":{\"on\":{\"STOP\":\"idle\"}}}}\nINVALID_EVENT","expectedOutput":"idle"},{"input":"{\"initial\":\"a\",\"states\":{\"a\":{\"on\":{\"GO\":\"b\"}},\"b\":{\"on\":{\"GO\":\"c\"}},\"c\":{\"on\":{\"GO\":\"a\"}}}}\nGO\nGO\nGO\nGO\nGO","expectedOutput":"c"}]', 5000, 256, NULL, 8000, 1800, 'model_selection', 'Investing in premium models for design patterns');
+INSERT OR REPLACE INTO challenges (id, title, description, difficulty, starter_code, test_cases, exec_time_limit, exec_memory_limit, max_tokens, max_cost, wall_clock_limit, category, skill_tested) VALUES ('interpreter', 'Expression Interpreter', 'Build a simple expression interpreter that supports:
+- Arithmetic: +, -, *, / (standard precedence, parentheses)
+- Variables: let x = 5
+- Multiple statements separated by newlines
+- Return the value of the last expression
+
+Rules:
+- Division is integer division (floor toward zero)
+- Variables are case-sensitive
+- Undefined variables should throw/return "ERROR"
+- Nested parentheses must work
+
+Example:
+Program:
+let x = 10
+let y = 3
+x * y + 2
+
+Output: 32
+
+Program:
+let a = (2 + 3) * 4
+a / 2
+
+Output: 10
+
+This is a hard problem requiring parsing and evaluation. Choose a powerful model — but remember the cost limit.', 'hard', 'function evaluate(program) {
+  // Your code here
+}
+
+module.exports = { evaluate };', '[{"input":"let x = 10\nlet y = 3\nx * y + 2","expectedOutput":"32"},{"input":"let a = (2 + 3) * 4\na / 2","expectedOutput":"10"},{"input":"5 + 3 * 2","expectedOutput":"11"},{"input":"let x = 7\nlet y = x + 3\ny * 2","expectedOutput":"20"},{"input":"(1 + 2) * (3 + 4)","expectedOutput":"21"},{"input":"let a = 10\nlet b = 3\na / b","expectedOutput":"3"}]', 5000, 256, NULL, 15000, 2400, 'model_selection', 'Allocating budget to genuinely hard problems');
+INSERT OR REPLACE INTO challenges (id, title, description, difficulty, starter_code, test_cases, exec_time_limit, exec_memory_limit, max_tokens, max_cost, wall_clock_limit, category, skill_tested) VALUES ('cost-optimizer', 'Cost Optimizer', 'Build a module with 3 simple utility functions:
+
+1. isPalindrome(str) — Returns true if the string reads the same forwards and backwards (case-insensitive, ignore non-alphanumeric characters).
+
+2. capitalize(str) — Capitalizes the first letter of each word, lowercases the rest.
+
+3. sum(arr) — Returns the sum of an array of numbers.
+
+Input format: first line is the function name ("isPalindrome", "capitalize", or "sum"), second line is the argument.
+
+For isPalindrome: input is a string, output is "true" or "false".
+For capitalize: input is a string, output is the capitalized string.
+For sum: input is a JSON array, output is the number.
+
+There is NO cost limit — but the leaderboard ranks by total cost spent. These are trivial functions that don''t need premium models. Test how strategically you can switch between model tiers.', 'hard', 'function isPalindrome(str) {
+  // Your code here
+}
+
+function capitalize(str) {
+  // Your code here
+}
+
+function sum(arr) {
+  // Your code here
+}
+
+module.exports = { isPalindrome, capitalize, sum };', '[{"input":"isPalindrome\nA man, a plan, a canal: Panama","expectedOutput":"true"},{"input":"isPalindrome\nhello world","expectedOutput":"false"},{"input":"capitalize\nhello world foo bar","expectedOutput":"Hello World Foo Bar"},{"input":"sum\n[1,2,3,4,5]","expectedOutput":"15"},{"input":"isPalindrome\nracecar","expectedOutput":"true"}]', 5000, 256, NULL, NULL, 1800, 'model_selection', 'Strategic model switching for mixed-difficulty tasks');
+INSERT OR REPLACE INTO challenges (id, title, description, difficulty, starter_code, test_cases, exec_time_limit, exec_memory_limit, max_tokens, max_cost, wall_clock_limit, category, skill_tested) VALUES ('array-flatten', 'Array Flatten', 'Write a function that deeply flattens a nested array of any depth.
+
+Examples:
+flatten([1, [2, [3, [4]]]]) → [1, 2, 3, 4]
+flatten([[1, 2], [3, [4, 5]]]) → [1, 2, 3, 4, 5]
+flatten([]) → []
+flatten([1, 2, 3]) → [1, 2, 3]
+
+Input is a JSON array. Output is the flattened JSON array.
+
+Very tight token limit. This is a well-known operation — describe it in as few tokens as possible.', 'easy', 'function flatten(arr) {
+  // Your code here
+}
+
+module.exports = { flatten };', '[{"input":"[1,[2,[3,[4]]]]","expectedOutput":"[1,2,3,4]"},{"input":"[[1,2],[3,[4,5]]]","expectedOutput":"[1,2,3,4,5]"},{"input":"[]","expectedOutput":"[]"},{"input":"[1,2,3]","expectedOutput":"[1,2,3]"},{"input":"[[[1]],[[2]],[[3]]]","expectedOutput":"[1,2,3]"}]', 5000, 256, 2000, NULL, 600, 'prompt_efficiency', 'Minimal prompting for simple tasks');
+INSERT OR REPLACE INTO challenges (id, title, description, difficulty, starter_code, test_cases, exec_time_limit, exec_memory_limit, max_tokens, max_cost, wall_clock_limit, category, skill_tested) VALUES ('debounce-throttle', 'Debounce & Throttle', 'Implement debounce and throttle functions.
+
+debounce(fn, ms): Returns a function that delays invoking fn until ms milliseconds have elapsed since the last call. If called again before the delay expires, the timer resets.
+
+throttle(fn, ms): Returns a function that invokes fn at most once per ms milliseconds. Subsequent calls within the interval are ignored.
+
+Both returned functions should pass through arguments to the original fn.
+
+Input format: test name string that describes the scenario.
+Output format: the expected call count as a number.
+
+Test scenarios are evaluated by a test harness that simulates timing.
+
+Moderate token limit — describe both functions clearly and concisely in a single prompt exchange.', 'medium', 'function debounce(fn, ms) {
+  // Your code here
+}
+
+function throttle(fn, ms) {
+  // Your code here
+}
+
+module.exports = { debounce, throttle };', '[{"input":"debounce-basic\n3\n100","expectedOutput":"1"},{"input":"debounce-reset\n5\n50","expectedOutput":"1"},{"input":"throttle-basic\n3\n100","expectedOutput":"1"},{"input":"throttle-spaced\n3\n50","expectedOutput":"3"},{"input":"debounce-args\nhello\n100","expectedOutput":"hello"}]', 5000, 256, 4000, NULL, 1200, 'prompt_efficiency', 'Concise specification of timing behavior');
+INSERT OR REPLACE INTO challenges (id, title, description, difficulty, starter_code, test_cases, exec_time_limit, exec_memory_limit, max_tokens, max_cost, wall_clock_limit, category, skill_tested) VALUES ('deep-clone', 'Deep Clone', 'Write a function that creates a deep clone of an object.
+
+Requirements:
+- Handle nested objects and arrays
+- Handle Date objects (clone as new Date with same time)
+- Handle null and primitive values
+- The clone must be fully independent (no shared references)
+- No need to handle circular references, functions, or symbols
+
+Input is a JSON string. Output is the JSON string of the cloned object.
+
+Tight token limit — this is a well-known utility. Keep your prompts minimal.', 'easy', 'function deepClone(obj) {
+  // Your code here
+}
+
+module.exports = { deepClone };', '[{"input":"{\"a\":1,\"b\":{\"c\":2}}","expectedOutput":"{\"a\":1,\"b\":{\"c\":2}}"},{"input":"{\"arr\":[1,[2,3],{\"x\":4}]}","expectedOutput":"{\"arr\":[1,[2,3],{\"x\":4}]}"},{"input":"null","expectedOutput":"null"},{"input":"{\"a\":{\"b\":{\"c\":{\"d\":\"deep\"}}}}","expectedOutput":"{\"a\":{\"b\":{\"c\":{\"d\":\"deep\"}}}}"},{"input":"[1,2,3]","expectedOutput":"[1,2,3]"}]', 5000, 256, 3000, NULL, 600, 'prompt_efficiency', 'Minimal prompting for utility functions');
+INSERT OR REPLACE INTO challenges (id, title, description, difficulty, starter_code, test_cases, exec_time_limit, exec_memory_limit, max_tokens, max_cost, wall_clock_limit, category, skill_tested) VALUES ('promise-pool', 'Promise Pool', 'Implement a promise pool with a concurrency limit.
+
+promisePool(fns, limit):
+- fns: array of functions that return promises
+- limit: maximum number of promises running concurrently
+- Returns a promise that resolves to an array of results in the original order
+- If any promise rejects, the pool should reject with that error
+
+Example:
+const fns = [
+  () => delay(100).then(() => ''a''),
+  () => delay(50).then(() => ''b''),
+  () => delay(75).then(() => ''c''),
+];
+await promisePool(fns, 2); // [''a'', ''b'', ''c''] — runs at most 2 at a time
+
+Input format: test name describing the scenario.
+Output format: JSON array of results or error message.
+
+Moderate token limit — be precise about concurrency semantics.', 'medium', 'function promisePool(fns, limit) {
+  // Your code here
+}
+
+module.exports = { promisePool };', '[{"input":"basic\n3\n2","expectedOutput":"[1,2,3]"},{"input":"single-concurrency\n3\n1","expectedOutput":"[1,2,3]"},{"input":"all-concurrent\n3\n3","expectedOutput":"[1,2,3]"},{"input":"empty\n0\n2","expectedOutput":"[]"}]', 5000, 256, 5000, NULL, 1200, 'prompt_efficiency', 'Precise specification of async concurrency');
+INSERT OR REPLACE INTO challenges (id, title, description, difficulty, starter_code, test_cases, exec_time_limit, exec_memory_limit, max_tokens, max_cost, wall_clock_limit, category, skill_tested) VALUES ('template-engine', 'Template Engine', 'Build a simple Mustache-style template engine.
+
+Supported syntax:
+- {{var}} — Replace with the value of var from the data object. Support dot notation for nested access (e.g., {{user.name}}).
+- {{#if cond}}...{{/if}} — Render inner content only if cond is truthy in data.
+- {{#each arr}}...{{/each}} — Repeat inner content for each element. Inside, {{.}} refers to the current item, {{@index}} to the index.
+
+Rules:
+- Missing variables render as empty string
+- Nested directives should work
+- Whitespace in tags should be trimmed: {{ var }} is same as {{var}}
+
+Input format: template on first line, data JSON on second line.
+Output: rendered string.
+
+Example:
+Template: Hello {{name}}!
+Data: {"name":"World"}
+Output: Hello World!
+
+Moderate token limit — structure your prompt carefully to cover all syntax features.', 'medium', 'function render(template, data) {
+  // Your code here
+}
+
+module.exports = { render };', '[{"input":"Hello {{name}}!\n{\"name\":\"World\"}","expectedOutput":"Hello World!"},{"input":"{{#if show}}visible{{/if}}\n{\"show\":true}","expectedOutput":"visible"},{"input":"{{#if show}}visible{{/if}}\n{\"show\":false}","expectedOutput":""},{"input":"{{#each items}}{{.}} {{/each}}\n{\"items\":[\"a\",\"b\",\"c\"]}","expectedOutput":"a b c "},{"input":"{{user.name}} is {{user.age}}\n{\"user\":{\"name\":\"Alice\",\"age\":30}}","expectedOutput":"Alice is 30"}]', 5000, 256, 6000, NULL, 1500, 'prompt_efficiency', 'Structured prompting for template syntax');
+INSERT OR REPLACE INTO challenges (id, title, description, difficulty, starter_code, test_cases, exec_time_limit, exec_memory_limit, max_tokens, max_cost, wall_clock_limit, category, skill_tested) VALUES ('linked-list-operations', 'Linked List Operations', 'Implement four linked list operations. Lists use the shape { val: any, next: Node | null }.
+
+1. fromArray(arr) — Convert an array to a linked list.
+2. toArray(list) — Convert a linked list to an array.
+3. reverse(list) — Reverse a linked list in place, return new head.
+4. merge(l1, l2) — Merge two sorted linked lists into one sorted list.
+
+Input format: first line is the function name, subsequent lines are arguments as JSON arrays.
+Output: JSON array (all results converted via toArray).
+
+Examples:
+fromArray([1,2,3]) → list with 1→2→3
+toArray(fromArray([1,2,3])) → [1,2,3]
+reverse(fromArray([1,2,3])) → [3,2,1]
+merge(fromArray([1,3,5]), fromArray([2,4,6])) → [1,2,3,4,5,6]
+
+Moderate token limit — four functions but all are well-known. Be concise.', 'easy', 'function fromArray(arr) {
+  // Your code here
+}
+
+function toArray(list) {
+  // Your code here
+}
+
+function reverse(list) {
+  // Your code here
+}
+
+function merge(l1, l2) {
+  // Your code here
+}
+
+module.exports = { fromArray, toArray, reverse, merge };', '[{"input":"toArray\n[1,2,3]","expectedOutput":"[1,2,3]"},{"input":"reverse\n[1,2,3]","expectedOutput":"[3,2,1]"},{"input":"merge\n[1,3,5]\n[2,4,6]","expectedOutput":"[1,2,3,4,5,6]"},{"input":"reverse\n[]","expectedOutput":"[]"},{"input":"merge\n[1,2]\n[]","expectedOutput":"[1,2]"},{"input":"toArray\n[42]","expectedOutput":"[42]"}]', 5000, 256, 4000, NULL, 900, 'prompt_efficiency', 'Concise specification of multiple related functions');
+INSERT OR REPLACE INTO challenges (id, title, description, difficulty, starter_code, test_cases, exec_time_limit, exec_memory_limit, max_tokens, max_cost, wall_clock_limit, category, skill_tested) VALUES ('schema-validator', 'Schema Validator', 'Write a function that validates an object against a schema definition.
+
+Schema format:
+{
+  type: "string" | "number" | "boolean" | "object" | "array",
+  required?: boolean,          // default false
+  minLength?: number,          // for strings
+  min?: number,                // for numbers
+  max?: number,                // for numbers
+  properties?: { [key]: Schema }, // for objects (nested validation)
+  items?: Schema               // for arrays (validate each element)
+}
+
+Return { valid: boolean, errors: string[] } where errors describe what failed.
+Error format: "fieldName: error description" (use dot notation for nested fields).
+
+Example:
+Schema: { type: "object", properties: { name: { type: "string", required: true, minLength: 1 }, age: { type: "number", min: 0 } } }
+Object: { name: "", age: -1 }
+Result: { valid: false, errors: ["name: must have minimum length 1", "age: must be at least 0"] }
+
+Input format: object JSON on first line, schema JSON on second line.
+Output: JSON of validation result.
+
+Hard challenge with a generous token limit — but efficiency still matters on the leaderboard.', 'hard', 'function validate(obj, schema) {
+  // Your code here
+}
+
+module.exports = { validate };', '[{"input":"{\"name\":\"Alice\",\"age\":30}\n{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\",\"required\":true},\"age\":{\"type\":\"number\",\"min\":0}}}","expectedOutput":"{\"valid\":true,\"errors\":[]}"},{"input":"{\"name\":\"\",\"age\":-1}\n{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\",\"required\":true,\"minLength\":1},\"age\":{\"type\":\"number\",\"min\":0}}}","expectedOutput":"{\"valid\":false,\"errors\":[\"name: must have minimum length 1\",\"age: must be at least 0\"]}"},{"input":"{\"tags\":[\"a\",\"b\",3]}\n{\"type\":\"object\",\"properties\":{\"tags\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}}}}","expectedOutput":"{\"valid\":false,\"errors\":[\"tags.2: expected type string\"]}"},{"input":"{}\n{\"type\":\"object\",\"properties\":{\"email\":{\"type\":\"string\",\"required\":true}}}","expectedOutput":"{\"valid\":false,\"errors\":[\"email: is required\"]}"},{"input":"42\n{\"type\":\"number\",\"min\":0,\"max\":100}","expectedOutput":"{\"valid\":true,\"errors\":[]}"}]', 5000, 256, 8000, NULL, 1800, 'prompt_efficiency', 'Comprehensive specification in limited tokens');
+INSERT OR REPLACE INTO challenges (id, title, description, difficulty, starter_code, test_cases, exec_time_limit, exec_memory_limit, max_tokens, max_cost, wall_clock_limit, category, skill_tested) VALUES ('broken-cache', 'Broken Cache', 'This LRU cache implementation has 2 bugs:
+
+Bug 1: Eviction removes the NEWEST entry instead of the OLDEST (least recently used).
+Bug 2: The capacity check is off by one — allows one extra entry before evicting.
+
+The LRU cache should:
+- get(key): return value if exists (and mark as recently used), or -1 if not found
+- put(key, value): insert or update. If at capacity, evict the least recently used entry first.
+
+Input format: capacity on first line, then one operation per line: "get key" or "put key value".
+Output: for get operations, output the value (or -1). Multiple outputs separated by commas.
+
+Example (capacity 2):
+put 1 10
+put 2 20
+get 1 → 10
+put 3 30 (evicts key 2, not key 1)
+get 2 → -1
+
+Find and fix both bugs. Use AI efficiently — describe the specific bugs rather than asking for a rewrite.', 'easy', 'class LRUCache {
+  constructor(capacity) {
+    this.capacity = capacity;
+    this.cache = new Map();
+  }
+
+  get(key) {
+    if (!this.cache.has(key)) return -1;
+    const val = this.cache.get(key);
+    this.cache.delete(key);
+    this.cache.set(key, val);
+    return val;
+  }
+
+  put(key, value) {
+    if (this.cache.has(key)) {
+      this.cache.delete(key);
+    }
+    this.cache.set(key, value);
+    if (this.cache.size > this.capacity + 1) { // Bug 2: off by one, should be > this.capacity
+      const newest = [...this.cache.keys()].pop(); // Bug 1: removes newest, should remove oldest (.shift() or .next())
+      this.cache.delete(newest);
+    }
+  }
+}
+
+module.exports = { LRUCache };', '[{"input":"2\nput 1 10\nput 2 20\nget 1\nput 3 30\nget 2","expectedOutput":"10,-1"},{"input":"1\nput 1 10\nput 2 20\nget 1\nget 2","expectedOutput":"-1,20"},{"input":"2\nput 1 10\nget 1\nput 2 20\nput 3 30\nget 1","expectedOutput":"10,-1"},{"input":"3\nput 1 1\nput 2 2\nput 3 3\nput 4 4\nget 1\nget 4","expectedOutput":"-1,4"},{"input":"2\nput 1 10\nput 1 20\nget 1","expectedOutput":"20"}]', 5000, 256, NULL, 500, 600, 'iterative_debugging', 'Targeted debugging of data structure bugs');
+INSERT OR REPLACE INTO challenges (id, title, description, difficulty, starter_code, test_cases, exec_time_limit, exec_memory_limit, max_tokens, max_cost, wall_clock_limit, category, skill_tested) VALUES ('buggy-promise-chain', 'Buggy Promise Chain', 'This async waterfall function is supposed to run an array of async functions in sequence, passing each result to the next. It has 3 bugs:
+
+Bug 1: Doesn''t await properly — returns before all functions complete.
+Bug 2: Swallows errors instead of propagating them.
+Bug 3: Passes results in wrong order (passes input instead of previous output).
+
+waterfall(fns, initial):
+- fns: array of async functions, each takes previous result and returns next
+- initial: starting value passed to first function
+- Returns: promise resolving to final result
+- Should reject if any function throws/rejects
+
+Input format: test scenario name.
+Output: the expected final result or "ERROR" if it should reject.
+
+Use AI to identify and fix each bug precisely.', 'medium', 'async function waterfall(fns, initial) {
+  let result = initial;
+  const promises = [];
+  for (const fn of fns) {
+    try {
+      promises.push(fn(initial)); // Bug 3: should pass result, not initial
+    } catch (e) {
+      // Bug 2: swallows errors silently
+    }
+  }
+  Promise.all(promises); // Bug 1: doesn''t await, and should be sequential not parallel
+  return result;
+}
+
+module.exports = { waterfall };', '[{"input":"basic-chain\n1\nadd2\nmul3","expectedOutput":"9"},{"input":"single-fn\n5\nadd10","expectedOutput":"15"},{"input":"error-propagation\n1\nadd2\nthrow\nmul3","expectedOutput":"ERROR"},{"input":"empty-fns\n42","expectedOutput":"42"},{"input":"string-chain\nhello\nappend-world\nuppercase","expectedOutput":"HELLO WORLD"}]', 5000, 256, NULL, 2500, 1200, 'iterative_debugging', 'Debugging async control flow');
+INSERT OR REPLACE INTO challenges (id, title, description, difficulty, starter_code, test_cases, exec_time_limit, exec_memory_limit, max_tokens, max_cost, wall_clock_limit, category, skill_tested) VALUES ('leaky-rate-limiter', 'Leaky Rate Limiter', 'This token bucket rate limiter has 3 bugs:
+
+Bug 1: Token refill calculation is inverted — subtracts tokens instead of adding them.
+Bug 2: Doesn''t check for negative token count after consumption.
+Bug 3: Time delta calculation uses wrong units (seconds vs milliseconds).
+
+The rate limiter should:
+- Start with maxTokens tokens
+- Refill at refillRate tokens per second
+- tryConsume(tokens): return true if enough tokens, false otherwise
+- Never exceed maxTokens even after refill
+
+Input format: first line is "maxTokens refillRate", then one operation per line: "consume N" or "wait ms".
+Output: for each consume, "true" or "false", comma-separated.
+
+Find and fix all 3 bugs. Be specific in your AI prompts about what''s broken.', 'medium', 'class RateLimiter {
+  constructor(maxTokens, refillRate) {
+    this.maxTokens = maxTokens;
+    this.tokens = maxTokens;
+    this.refillRate = refillRate;
+    this.lastRefill = Date.now();
+  }
+
+  refill() {
+    const now = Date.now();
+    const elapsed = now - this.lastRefill; // Bug 3: elapsed is in ms, but refillRate is per second
+    const tokensToAdd = elapsed * this.refillRate;
+    this.tokens = Math.min(this.maxTokens, this.tokens - tokensToAdd); // Bug 1: subtracts instead of adds
+    this.lastRefill = now;
+  }
+
+  tryConsume(tokens) {
+    this.refill();
+    this.tokens -= tokens; // Bug 2: consumes even if not enough, no check
+    return true;
+  }
+}
+
+module.exports = { RateLimiter };', '[{"input":"10 2\nconsume 5\nconsume 5\nconsume 1","expectedOutput":"true,true,false"},{"input":"5 1\nconsume 5\nwait 3000\nconsume 3","expectedOutput":"true,true"},{"input":"10 5\nconsume 10\nconsume 1","expectedOutput":"true,false"},{"input":"3 1\nconsume 1\nconsume 1\nconsume 1\nconsume 1","expectedOutput":"true,true,true,false"},{"input":"10 10\nconsume 10\nwait 1000\nconsume 10","expectedOutput":"true,true"}]', 5000, 256, NULL, 3000, 1200, 'iterative_debugging', 'Debugging numerical and timing bugs');
+INSERT OR REPLACE INTO challenges (id, title, description, difficulty, starter_code, test_cases, exec_time_limit, exec_memory_limit, max_tokens, max_cost, wall_clock_limit, category, skill_tested) VALUES ('broken-iterator', 'Broken Iterator', 'This custom range iterator has 3 bugs:
+
+Bug 1: Off-by-one on end — excludes the end value when it should include it.
+Bug 2: Step handling is wrong — doesn''t use step value, always increments by 1.
+Bug 3: Doesn''t handle reverse ranges (when start > end with negative step).
+
+range(start, end, step) should return an iterable that yields numbers from start to end (inclusive), stepping by step.
+
+Default step is 1 (or -1 if start > end).
+
+Examples:
+range(1, 5) → [1, 2, 3, 4, 5]
+range(0, 10, 3) → [0, 3, 6, 9]
+range(5, 1) → [5, 4, 3, 2, 1]
+range(10, 0, -2) → [10, 8, 6, 4, 2, 0]
+
+Input: start, end, and optional step as space-separated values on one line.
+Output: JSON array of values.
+
+Fix all 3 bugs precisely.', 'easy', 'function range(start, end, step) {
+  if (step === undefined) step = 1; // Bug 3: doesn''t default to -1 when start > end
+  return {
+    [Symbol.iterator]() {
+      let current = start;
+      return {
+        next() {
+          if (current < end) { // Bug 1: should be <= for inclusive end (and >= for reverse)
+            const value = current;
+            current = current + 1; // Bug 2: should use step
+            return { value, done: false };
+          }
+          return { done: true };
+        }
+      };
+    }
+  };
+}
+
+module.exports = { range };', '[{"input":"1 5","expectedOutput":"[1,2,3,4,5]"},{"input":"0 10 3","expectedOutput":"[0,3,6,9]"},{"input":"5 1","expectedOutput":"[5,4,3,2,1]"},{"input":"10 0 -2","expectedOutput":"[10,8,6,4,2,0]"},{"input":"3 3","expectedOutput":"[3]"}]', 5000, 256, NULL, 500, 600, 'iterative_debugging', 'Fixing iteration logic bugs');
+INSERT OR REPLACE INTO challenges (id, title, description, difficulty, starter_code, test_cases, exec_time_limit, exec_memory_limit, max_tokens, max_cost, wall_clock_limit, category, skill_tested) VALUES ('flaky-queue', 'Flaky Queue', 'This priority queue (min-heap) has 3 bugs:
+
+Bug 1: Comparison is reversed — acts as max-heap instead of min-heap.
+Bug 2: Dequeue doesn''t properly maintain the heap property (sift-down is broken).
+Bug 3: Peek returns the last element instead of the first (root).
+
+The priority queue should:
+- enqueue(value, priority): add item with given priority (lower number = higher priority)
+- dequeue(): remove and return the value with the lowest priority number
+- peek(): return the value with the lowest priority number without removing it
+- size(): return the number of items
+
+Input: one operation per line after first line. "enqueue value priority", "dequeue", "peek", "size".
+Output: for dequeue/peek/size, output values comma-separated. Enqueue produces no output.
+
+Fix all 3 bugs. Use AI to pinpoint each issue.', 'medium', 'class PriorityQueue {
+  constructor() {
+    this.heap = [];
+  }
+
+  enqueue(value, priority) {
+    this.heap.push({ value, priority });
+    this._siftUp(this.heap.length - 1);
+  }
+
+  dequeue() {
+    if (this.heap.length === 0) return undefined;
+    const top = this.heap[0];
+    const last = this.heap.pop();
+    if (this.heap.length > 0) {
+      this.heap[0] = last;
+      this._siftDown(0);
+    }
+    return top.value;
+  }
+
+  peek() {
+    if (this.heap.length === 0) return undefined;
+    return this.heap[this.heap.length - 1].value; // Bug 3: should be this.heap[0]
+  }
+
+  size() {
+    return this.heap.length;
+  }
+
+  _siftUp(i) {
+    while (i > 0) {
+      const parent = Math.floor((i - 1) / 2);
+      if (this.heap[parent].priority > this.heap[i].priority) { // Bug 1: > should be < for max-heap bug (currently correct for min-heap, but _siftDown has reversed comparison)
+        [this.heap[parent], this.heap[i]] = [this.heap[i], this.heap[parent]];
+        i = parent;
+      } else {
+        break;
+      }
+    }
+  }
+
+  _siftDown(i) {
+    const n = this.heap.length;
+    while (true) {
+      let smallest = i;
+      const left = 2 * i + 1;
+      const right = 2 * i + 2;
+      if (left < n && this.heap[left].priority > this.heap[smallest].priority) { // Bug 1: reversed comparison
+        smallest = left;
+      }
+      if (right < n && this.heap[right].priority > this.heap[smallest].priority) { // Bug 1: reversed comparison
+        smallest = right;
+      }
+      if (smallest !== i) {
+        [this.heap[smallest], this.heap[i]] = [this.heap[i], this.heap[smallest]];
+        i = i; // Bug 2: should be i = smallest to continue sifting down
+      } else {
+        break;
+      }
+    }
+  }
+}
+
+module.exports = { PriorityQueue };', '[{"input":"enqueue a 3\nenqueue b 1\nenqueue c 2\ndequeue","expectedOutput":"b"},{"input":"enqueue x 5\nenqueue y 1\npeek","expectedOutput":"y"},{"input":"enqueue a 3\nenqueue b 1\nenqueue c 2\ndequeue\ndequeue\ndequeue","expectedOutput":"b,c,a"},{"input":"enqueue a 1\nsize\ndequeue\nsize","expectedOutput":"1,a,0"},{"input":"enqueue a 2\nenqueue b 2\nenqueue c 1\ndequeue\ndequeue","expectedOutput":"c,a"},{"input":"enqueue z 10\nenqueue y 5\nenqueue x 1\nenqueue w 3\ndequeue\ndequeue","expectedOutput":"x,w"}]', 5000, 256, NULL, 3000, 1200, 'iterative_debugging', 'Debugging heap/priority queue invariants');
+INSERT OR REPLACE INTO challenges (id, title, description, difficulty, starter_code, test_cases, exec_time_limit, exec_memory_limit, max_tokens, max_cost, wall_clock_limit, category, skill_tested) VALUES ('corrupted-trie', 'Corrupted Trie', 'This Trie implementation has 3 bugs:
+
+Bug 1: insert() doesn''t mark the end of a word — the isEnd flag is never set.
+Bug 2: search() doesn''t check the isEnd flag — returns true for any prefix.
+Bug 3: startsWith() traversal is wrong — checks wrong child node, fails for valid prefixes.
+
+The Trie should support:
+- insert(word): add a word to the trie
+- search(word): return true only if the exact word was inserted
+- startsWith(prefix): return true if any inserted word starts with the prefix
+
+Input format: one operation per line: "insert word", "search word", "startsWith prefix".
+Output: for search/startsWith, output "true" or "false", comma-separated.
+
+Fix all 3 bugs. Be surgical — don''t rewrite the whole thing.', 'hard', 'class TrieNode {
+  constructor() {
+    this.children = {};
+    this.isEnd = false;
+  }
+}
+
+class Trie {
+  constructor() {
+    this.root = new TrieNode();
+  }
+
+  insert(word) {
+    let node = this.root;
+    for (const ch of word) {
+      if (!node.children[ch]) {
+        node.children[ch] = new TrieNode();
+      }
+      node = node.children[ch];
+    }
+    // Bug 1: missing node.isEnd = true
+  }
+
+  search(word) {
+    let node = this.root;
+    for (const ch of word) {
+      if (!node.children[ch]) return false;
+      node = node.children[ch];
+    }
+    return true; // Bug 2: should return node.isEnd
+  }
+
+  startsWith(prefix) {
+    let node = this.root;
+    for (const ch of prefix) {
+      if (!node.children[ch + ''x'']) return false; // Bug 3: appends ''x'' to character, wrong lookup
+      node = node.children[ch];
+    }
+    return true;
+  }
+}
+
+module.exports = { Trie };', '[{"input":"insert apple\nsearch apple\nsearch app","expectedOutput":"true,false"},{"input":"insert apple\nstartsWith app\nstartsWith apl","expectedOutput":"true,false"},{"input":"insert cat\ninsert car\nsearch cat\nsearch car\nsearch ca","expectedOutput":"true,true,false"},{"input":"insert hello\ninsert help\nstartsWith hel\nstartsWith hex","expectedOutput":"true,false"},{"input":"search missing","expectedOutput":"false"},{"input":"insert a\ninsert ab\nsearch a\nsearch ab\nsearch abc","expectedOutput":"true,true,false"}]', 5000, 256, NULL, 5000, 1800, 'iterative_debugging', 'Debugging tree data structure invariants');
+INSERT OR REPLACE INTO challenges (id, title, description, difficulty, starter_code, test_cases, exec_time_limit, exec_memory_limit, max_tokens, max_cost, wall_clock_limit, category, skill_tested) VALUES ('broken-differ', 'Broken Differ', 'This object diff function returns the differences between two objects but has 3 bugs:
+
+Bug 1: Doesn''t handle nested objects — only compares top-level keys.
+Bug 2: Arrays are compared by reference instead of by value (deep equality).
+Bug 3: Type coercion issues — treats "1" (string) and 1 (number) as equal.
+
+The diff function should return:
+- added: keys present in b but not in a
+- removed: keys present in a but not in b
+- changed: keys present in both but with different values (use deep equality)
+
+For nested objects, use dot notation in the key names.
+
+Input format: object a JSON on first line, object b JSON on second line.
+Output: JSON of { added: {...}, removed: {...}, changed: {...} } with keys sorted alphabetically.
+
+Fix all 3 bugs. Use targeted AI prompts for each issue.', 'hard', 'function diff(a, b) {
+  const added = {};
+  const removed = {};
+  const changed = {};
+
+  // Check keys in a
+  for (const key of Object.keys(a)) {
+    if (!(key in b)) {
+      removed[key] = a[key];
+    } else if (a[key] != b[key]) { // Bug 3: loose equality, should be !== with deep comparison
+      // Bug 1: doesn''t recurse into nested objects
+      changed[key] = { from: a[key], to: b[key] };
+    }
+  }
+
+  // Check keys in b
+  for (const key of Object.keys(b)) {
+    if (!(key in a)) {
+      added[key] = b[key];
+    }
+  }
+
+  // Bug 2: arrays compared by reference (a[key] != b[key] is reference check for arrays/objects)
+  return { added, removed, changed };
+}
+
+module.exports = { diff };', '[{"input":"{\"a\":1,\"b\":2}\n{\"b\":3,\"c\":4}","expectedOutput":"{\"added\":{\"c\":4},\"removed\":{\"a\":1},\"changed\":{\"b\":{\"from\":2,\"to\":3}}}"},{"input":"{\"x\":1}\n{\"x\":1}","expectedOutput":"{\"added\":{},\"removed\":{},\"changed\":{}}"},{"input":"{\"a\":\"1\"}\n{\"a\":1}","expectedOutput":"{\"added\":{},\"removed\":{},\"changed\":{\"a\":{\"from\":\"1\",\"to\":1}}}"},{"input":"{\"arr\":[1,2,3]}\n{\"arr\":[1,2,3]}","expectedOutput":"{\"added\":{},\"removed\":{},\"changed\":{}}"},{"input":"{\"nested\":{\"x\":1}}\n{\"nested\":{\"x\":2}}","expectedOutput":"{\"added\":{},\"removed\":{},\"changed\":{\"nested.x\":{\"from\":1,\"to\":2}}}"},{"input":"{}\n{\"a\":1,\"b\":2}","expectedOutput":"{\"added\":{\"a\":1,\"b\":2},\"removed\":{},\"changed\":{}}"}]', 5000, 256, NULL, 6000, 2400, 'iterative_debugging', 'Debugging deep comparison and recursion bugs');
