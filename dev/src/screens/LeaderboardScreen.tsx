@@ -278,7 +278,7 @@ export function LeaderboardScreen() {
                     <Text style={[styles.name, { color: c.text }]} numberOfLines={1}>{e.user.name}</Text>
                   </View>
                   <Text style={[styles.stat, { color: c.accent }]}>{formatCost(e.cost)}</Text>
-                  <Text style={[styles.stat, { color: c.textMuted }]}>{e.tokens.toLocaleString()} tok</Text>
+                  <Text style={[styles.stat, { color: c.textMuted }]}>{e.tokens.toLocaleString()} {e.tokens === 1 ? 'token' : 'tokens'}</Text>
                   <Pressable
                     onPress={() => setReplayAttemptId(e.attemptId)}
                     style={[styles.replayBtn, { borderColor: c.border }]}

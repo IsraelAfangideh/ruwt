@@ -28,8 +28,8 @@ export function PlatformStats() {
   if (!stats) return null;
 
   const items = [
-    { label: 'Users', value: stats.users.toLocaleString() },
-    { label: 'Challenges Solved', value: stats.solves.toLocaleString() },
+    { label: stats.users === 1 ? 'User' : 'Users', value: stats.users.toLocaleString() },
+    { label: stats.solves === 1 ? 'Challenge Solved' : 'Challenges Solved', value: stats.solves.toLocaleString() },
     { label: 'Total AI Spend', value: formatCostFromHundredths(stats.totalSpend) },
   ];
 

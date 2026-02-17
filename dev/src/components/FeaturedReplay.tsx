@@ -101,7 +101,7 @@ export function FeaturedReplay() {
                   )}
                   {(msg.cost ?? 0) > 0 && (
                     <Text style={{ fontSize: fontSizes.xs, color: c.textMuted, marginLeft: 'auto' }}>
-                      {tokens > 0 ? `${tokens} tok \u00B7 ` : ''}{formatCostFromHundredths(msg.cost!)}
+                      {tokens > 0 ? `${tokens} ${tokens === 1 ? 'token' : 'tokens'} \u00B7 ` : ''}{formatCostFromHundredths(msg.cost!)}
                     </Text>
                   )}
                 </View>

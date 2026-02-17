@@ -456,7 +456,7 @@ function PastAttemptsSection({ attempts: pastAttempts }: { attempts: PastAttempt
               <span style={{ color: arena.textSubtle, marginLeft: 'auto' }}>{timeAgo}</span>
             </div>
             <div style={{ color: arena.textMuted, fontSize: 11 }}>
-              Cost: {costStr} &middot; {tokens.toLocaleString()} tok
+              Cost: {costStr} &middot; {tokens.toLocaleString()} {tokens === 1 ? 'token' : 'tokens'}
             </div>
           </div>
         );
@@ -851,7 +851,7 @@ Rules:
                       </div>
                       {msg.meta && (
                         <div style={s.msgCostLine}>
-                          {modelInfo?.displayName || 'AI'} {'\u00B7'} {msg.meta.tokens.toLocaleString()} tokens {'\u00B7'} {formatCost(msg.meta.cost)}
+                          {modelInfo?.displayName || 'AI'} {'\u00B7'} {msg.meta.tokens.toLocaleString()} {msg.meta.tokens === 1 ? 'token' : 'tokens'} {'\u00B7'} {formatCost(msg.meta.cost)}
                         </div>
                       )}
                     </div>

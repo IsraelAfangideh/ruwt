@@ -580,7 +580,7 @@ export function ArenaScreen() {
             </span>
             <span style={{ color: arena.textSubtle }}>{'\u00B7'}</span>
             <span style={{ color: arena.textMuted }}>
-              <span style={{ fontWeight: 600, color: arena.text }}>{totalTokens.toLocaleString()}</span> tokens
+              <span style={{ fontWeight: 600, color: arena.text }}>{totalTokens.toLocaleString()}</span> {totalTokens === 1 ? 'token' : 'tokens'}
             </span>
             {timeLeft != null && (
               <>
