@@ -4,4 +4,5 @@
 ALTER TABLE attempts ADD COLUMN used_byok INTEGER DEFAULT 0 NOT NULL;
 ALTER TABLE challenges ADD COLUMN sort_order INTEGER DEFAULT 0;
 ALTER TABLE challenges ADD COLUMN tier TEXT DEFAULT 'core';
-ALTER TABLE profiles ADD COLUMN username TEXT UNIQUE;
+ALTER TABLE profiles ADD COLUMN username TEXT;
+CREATE UNIQUE INDEX idx_profiles_username ON profiles(username);
