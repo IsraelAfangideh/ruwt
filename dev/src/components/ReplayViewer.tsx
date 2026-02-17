@@ -3,6 +3,7 @@
  */
 import { useState, useEffect } from 'react';
 import { View, Text, ScrollView, ActivityIndicator, Pressable, StyleSheet } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import { useColors } from '@/theme';
 import { spacing, fontSizes, fontFamily } from '@/theme/tokens';
 import { getModelById, tierColor, formatCostFromHundredths } from '@/lib/ai/pricing';
@@ -40,6 +41,7 @@ interface ReplayViewerProps {
 
 export function ReplayViewer({ attemptId, onClose }: ReplayViewerProps) {
   const c = useColors();
+  const navigation = useNavigation();
   const [data, setData] = useState<ReplayData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -79,6 +81,12 @@ export function ReplayViewer({ attemptId, onClose }: ReplayViewerProps) {
               </Text>
             )}
           </View>
+          <Pressable
+            onPress={() => { onClose(); (navigation.navigate as any)('Replay', { attemptId }); }}
+            style={styles.fullReplayBtn}
+          >
+            <Text style={{ color: c.accent, fontSize: fontSizes.xs, fontWeight: '600' }}>Open full replay</Text>
+          </Pressable>
           <Pressable onPress={onClose} style={styles.closeBtn}>
             <Text style={{ color: c.textMuted, fontSize: 20 }}>{'\u00D7'}</Text>
           </Pressable>
@@ -185,6 +193,7 @@ const styles = StyleSheet.create({
   },
   modalTitle: { fontSize: fontSizes.lg, fontWeight: '700', fontFamily: fontFamily.body },
   modalSubtitle: { fontSize: fontSizes.xs, marginTop: 2 },
+  fullReplayBtn: { padding: spacing.sm, marginRight: spacing.xs },
   closeBtn: { padding: spacing.sm },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: spacing.xl },
   summary: { padding: spacing.md, borderBottomWidth: 1 },

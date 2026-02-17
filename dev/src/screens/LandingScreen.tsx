@@ -1,4 +1,4 @@
-import { View, Text, ScrollView, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, Pressable, StyleSheet } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Button } from '@/components/ui/Button';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/Card';
@@ -33,8 +33,12 @@ export function LandingScreen() {
         </Text>
         <View style={styles.heroButtons}>
           <Button size="lg" onPress={() => navigation.navigate('Register' as never)}>Start Free Practice</Button>
-          <Button size="lg" variant="outline" onPress={() => navigation.navigate('Register' as never)}>For Hiring Managers</Button>
         </View>
+        <Pressable onPress={() => navigation.navigate('Register' as never)} style={styles.hiringLink}>
+          <Text style={[styles.hiringLinkText, { color: c.textMuted }]}>
+            Hiring manager? See how it works →
+          </Text>
+        </Pressable>
       </View>
 
       {/* Live platform stats */}
@@ -100,7 +104,7 @@ export function LandingScreen() {
         <Text style={[styles.sectionTitle, { color: c.text }]}>How It Works</Text>
         <View style={styles.cards}>
           {[
-            { step: '1', title: 'Pick a Challenge', desc: 'Browse 50 challenges across model selection, prompt efficiency, debugging, and multi-model strategy. Choose timed or untimed.' },
+            { step: '1', title: 'Pick a Challenge', desc: 'Browse 60+ challenges across model selection, prompt efficiency, debugging, and multi-model strategy. Choose timed or untimed.' },
             { step: '2', title: 'Solve with AI', desc: 'Use the Arena IDE with 8 real AI models across 5 tiers. Switch between Micro, Budget, Mid, Premium, and Reasoning strategically.' },
             { step: '3', title: 'Climb the Leaderboard', desc: 'Submit your solution. You\'re ranked by cost efficiency — solve it correctly with the least spend.' },
           ].map((item) => (
@@ -124,7 +128,7 @@ export function LandingScreen() {
         </Text>
         <View style={styles.cards}>
           {[
-            { step: '1', title: 'Create an Assessment', desc: 'Choose from 4 pre-built templates or pick from 50 challenges. Set time limits. Test the AI skills you care about.' },
+            { step: '1', title: 'Create an Assessment', desc: 'Choose from 4 pre-built templates or pick from 60+ challenges. Set time limits. Test the AI skills you care about.' },
             { step: '2', title: 'Invite Candidates', desc: 'Send a unique assessment link. Candidates work through challenges with real AI models — no simulations.' },
             { step: '3', title: 'Review Results', desc: 'Sort by cost, tokens, or time. Expand rows to see per-challenge model usage. Export to CSV for your ATS.' },
           ].map((item) => (
@@ -175,7 +179,7 @@ export function LandingScreen() {
             </CardHeader>
             <CardContent>
               <Text style={[styles.tierBody, { color: c.textMuted }]}>
-                5,000 free AI credits on signup. All 50 challenges across every category. Public leaderboard ranking.
+                5,000 free AI credits on signup. All 60+ challenges across every category. Public leaderboard ranking.
               </Text>
             </CardContent>
           </Card>
@@ -199,7 +203,7 @@ export function LandingScreen() {
             </CardHeader>
             <CardContent>
               <Text style={[styles.tierBody, { color: c.textMuted }]}>
-                Unlimited assessments. All 50 challenges. Up to 50 candidates. Per-candidate AI analytics, comparison, and CSV export.
+                Unlimited assessments. All 60+ challenges. Up to 50 candidates. Per-candidate AI analytics, comparison, and CSV export.
               </Text>
             </CardContent>
           </Card>
@@ -220,7 +224,7 @@ export function LandingScreen() {
 
       <View style={styles.cta}>
         <Text style={[styles.ctaTitle, { color: c.text }]}>Ready to prove your AI skills?</Text>
-        <Text style={[styles.ctaSub, { color: c.textMuted }]}>5,000 free credits. 50 challenges. 8 AI models. No credit card required.</Text>
+        <Text style={[styles.ctaSub, { color: c.textMuted }]}>5,000 free credits. 60+ challenges. 8 AI models. No credit card required.</Text>
         <View style={styles.heroButtons}>
           <Button size="lg" onPress={() => navigation.navigate('Register' as never)}>Get Started Free</Button>
           <Button size="lg" variant="outline" onPress={() => navigation.navigate('Register' as never)}>Book a Demo</Button>
@@ -280,6 +284,8 @@ const styles = StyleSheet.create({
     fontFamily: fontFamily.body,
   },
   heroButtons: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md, justifyContent: 'center' },
+  hiringLink: { marginTop: spacing.md },
+  hiringLinkText: { fontSize: fontSizes.sm, fontFamily: fontFamily.body },
   section: { padding: spacing.lg, paddingVertical: spacing.xl },
   sectionAlt: { marginHorizontal: 0 },
   sectionTitle: {

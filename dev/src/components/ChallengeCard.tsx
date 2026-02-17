@@ -22,6 +22,7 @@ function categoryLabel(cat: string | null | undefined) {
   if (cat === 'prompt_efficiency') return 'Prompt Efficiency';
   if (cat === 'iterative_debugging') return 'Debugging';
   if (cat === 'multi_model_strategy') return 'Multi-Model';
+  if (cat === 'real_world') return 'Real-World';
   return null;
 }
 
@@ -41,11 +42,13 @@ export function ChallengeCard({ challenge }: { challenge: Challenge }) {
     : challenge.category === 'prompt_efficiency' ? c.success
     : challenge.category === 'iterative_debugging' ? c.destructive
     : challenge.category === 'multi_model_strategy' ? '#a78bfa'
+    : challenge.category === 'real_world' ? '#f59e0b'
     : c.textMuted;
   const catBg = challenge.category === 'model_selection' ? c.accentBg
     : challenge.category === 'prompt_efficiency' ? c.successBg
     : challenge.category === 'iterative_debugging' ? c.errorBg
     : challenge.category === 'multi_model_strategy' ? '#a78bfa15'
+    : challenge.category === 'real_world' ? '#f59e0b15'
     : 'transparent';
 
   return (

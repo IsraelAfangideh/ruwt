@@ -42,6 +42,7 @@ export function ArenaScreen() {
   const [pastAttempts, setPastAttempts] = useState<PastAttempt[]>([]);
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const isExpiredRef = useRef(false);
+  const [successOverlay, setSuccessOverlay] = useState<{ attemptId: string; passed: boolean } | null>(null);
 
   // Fetch past attempts for this challenge
   const fetchPastAttempts = useCallback(async () => {
@@ -200,8 +201,13 @@ export function ArenaScreen() {
       };
       setTestResults({ ...result, isSubmission: true });
       // Update attempt state from response (may be a new auto-created attempt)
+      const finalAttemptId = data.attempt?.id || attempt.id;
       if (data.attempt) {
         setAttempt((prev) => prev ? { ...prev, ...data.attempt } : prev);
+      }
+      // Show success overlay for passed submissions
+      if (result.passed) {
+        setSuccessOverlay({ attemptId: finalAttemptId, passed: true });
       }
       // Refresh past attempts list
       fetchPastAttempts();
@@ -658,6 +664,115 @@ export function ArenaScreen() {
           onDismissResults={() => setTestResults(null)}
           pastAttempts={pastAttempts}
         />
+
+        {/* Success overlay after passed submission */}
+        {successOverlay && (
+          <div style={{
+            position: 'absolute',
+            top: 0, left: 0, right: 0, bottom: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            background: 'rgba(13,17,23,0.85)',
+            zIndex: 200,
+          }}>
+            <div style={{
+              background: arena.surface,
+              border: `1px solid ${arena.border}`,
+              borderRadius: 12,
+              padding: 32,
+              maxWidth: 420,
+              width: '90%',
+              textAlign: 'center',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: 16,
+            }}>
+              <span style={{ fontSize: 32 }}>{'\u2705'}</span>
+              <h2 style={{
+                fontSize: 20,
+                fontWeight: 700,
+                color: arena.success,
+                margin: 0,
+                fontFamily: '"Cormorant Garamond", Georgia, serif',
+              }}>
+                Challenge Passed!
+              </h2>
+              <p style={{ fontSize: 13, color: arena.textMuted, margin: 0 }}>
+                Total cost: {formatCost(attempt?.totalCost ?? 0)}
+              </p>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, width: '100%', marginTop: 8 }}>
+                <button
+                  style={{
+                    background: arena.accent,
+                    border: 'none',
+                    borderRadius: 8,
+                    color: '#0d1117',
+                    padding: '10px 20px',
+                    fontSize: 14,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    width: '100%',
+                  }}
+                  onClick={() => {
+                    setSuccessOverlay(null);
+                    (navigation.navigate as any)('Replay', { attemptId: successOverlay.attemptId });
+                  }}
+                >
+                  View Your Replay
+                </button>
+                <button
+                  style={{
+                    background: 'transparent',
+                    border: `1px solid ${arena.border}`,
+                    borderRadius: 8,
+                    color: arena.text,
+                    padding: '10px 20px',
+                    fontSize: 14,
+                    fontWeight: 500,
+                    cursor: 'pointer',
+                    width: '100%',
+                  }}
+                  onClick={async () => {
+                    try {
+                      const res = await fetch(`/api/leaderboard?challengeId=${challengeId}&limit=1`);
+                      if (res.ok) {
+                        const lb = await res.json();
+                        const top = lb.entries?.[0];
+                        if (top?.attemptId) {
+                          setSuccessOverlay(null);
+                          (navigation.navigate as any)('Replay', { attemptId: top.attemptId });
+                          return;
+                        }
+                      }
+                    } catch {}
+                    setSuccessOverlay(null);
+                  }}
+                >
+                  See How #1 Solved This
+                </button>
+                <button
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    color: arena.textMuted,
+                    fontSize: 13,
+                    cursor: 'pointer',
+                    padding: '8px 0',
+                  }}
+                  onClick={() => {
+                    setSuccessOverlay(null);
+                    navigation.navigate('Challenges' as never);
+                  }}
+                >
+                  Back to Challenges
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

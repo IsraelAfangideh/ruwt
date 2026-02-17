@@ -19,7 +19,7 @@ Ruwt measures how efficiently you use AI to solve coding challenges. The leaderb
 
 1. **Land on ruwt.dev** — the landing page explains the three dimensions being measured: Model Selection, Prompt Efficiency, and Iterative Debugging.
 
-2. **Register / Login** — GitHub OAuth or email/password. New users get **50,000 free credits**.
+2. **Register / Login** — GitHub OAuth or email/password. New users get **5,000 free credits**.
 
 3. **Browse Challenges** (`/challenges`) — filter by category (Model Selection, Prompt Efficiency, Debugging). Each card shows difficulty, category, and an efficiency cost goal.
 
