@@ -477,6 +477,8 @@ export function ArenaScreen() {
 
   const isUntimed = challenge.wallClockLimit != null && !attempt.expiresAt;
   const totalTokens = (attempt.inputTokens || 0) + (attempt.outputTokens || 0);
+  const costLimitReached = challenge.maxCost != null && attempt.totalCost >= challenge.maxCost;
+  const tokenLimitReached = challenge.maxTokens != null && totalTokens >= challenge.maxTokens;
 
   const timerUrgency: 'normal' | 'warning' | 'critical' =
     timeLeft == null ? 'normal' :
@@ -575,12 +577,13 @@ export function ArenaScreen() {
             fontSize: 13,
           }}>
             <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-              <span style={{ fontSize: 9, color: arena.success }}>{'\u25CF'}</span>
-              <span style={{ color: arena.accent, fontWeight: 600 }}>{formatCost(attempt.totalCost)}</span>
+              <span style={{ fontSize: 9, color: costLimitReached ? arena.error : arena.success }}>{'\u25CF'}</span>
+              <span style={{ color: costLimitReached ? arena.error : arena.accent, fontWeight: 600 }}>{formatCost(attempt.totalCost)}</span>
+              <span style={{ color: costLimitReached ? arena.error : arena.textMuted, fontSize: 12 }}>{costLimitReached ? 'limit reached' : 'spent'}</span>
             </span>
             <span style={{ color: arena.textSubtle }}>{'\u00B7'}</span>
             <span style={{ color: arena.textMuted }}>
-              <span style={{ fontWeight: 600, color: arena.text }}>{totalTokens.toLocaleString()}</span> {totalTokens === 1 ? 'token' : 'tokens'}
+              <span style={{ fontWeight: 600, color: tokenLimitReached ? arena.error : arena.text }}>{totalTokens.toLocaleString()}</span> {totalTokens === 1 ? 'token' : 'tokens'} <span style={{ color: tokenLimitReached ? arena.error : arena.textMuted }}>{tokenLimitReached ? '\u2014 limit reached' : 'spent'}</span>
             </span>
             {timeLeft != null && (
               <>

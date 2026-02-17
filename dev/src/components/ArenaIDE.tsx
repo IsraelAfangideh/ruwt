@@ -547,6 +547,7 @@ export function ArenaIDE({
   const [tierDropdownOpen, setTierDropdownOpen] = useState(false);
   const [isExpired, setIsExpired] = useState(false);
   const [showExpiryOverlay, setShowExpiryOverlay] = useState(false);
+  const [aiLimitReached, setAiLimitReached] = useState(false);
   const [activeTab, setActiveTab] = useState<'description' | 'chat'>('description');
   const [hasUnreadChat, setHasUnreadChat] = useState(false);
   const [showToast, setShowToast] = useState(false);
@@ -688,6 +689,16 @@ Rules:
       return;
     }
 
+    if (aiLimitReached) {
+      setMessages((m) => [...m, {
+        role: 'assistant',
+        content: 'AI limit reached \u2014 budget exhausted for this attempt.',
+        isConstraint: true,
+      }]);
+      setChatInput('');
+      return;
+    }
+
     setChatInput('');
     const userMsg = { role: 'user' as const, content: text };
     setMessages((m) => [...m, userMsg]);
@@ -727,9 +738,12 @@ Rules:
           isExpiredRef.current = true;
           setShowExpiryOverlay(true);
         }
+        if (violation === 'cost' || violation === 'tokens') {
+          setAiLimitReached(true);
+        }
       },
     });
-  }, [chatInput, isLoadingChat, attemptId, messages, buildSystemPrompt, streamChat, isExpired, applyCodeFromResponse]);
+  }, [chatInput, isLoadingChat, attemptId, messages, buildSystemPrompt, streamChat, isExpired, aiLimitReached, applyCodeFromResponse]);
 
   const handleInputKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -782,7 +796,7 @@ Rules:
   }), [onRunCode, onRunTests]);
 
   const totalTokens = inputTokens + outputTokens;
-  const chatDisabled = isExpired && !showExpiryOverlay;
+  const chatDisabled = (isExpired && !showExpiryOverlay) || aiLimitReached;
 
   return (
     <div style={s.container}>
@@ -936,7 +950,7 @@ Rules:
                 <input
                   type="text"
                   style={s.chatInput}
-                  placeholder={chatDisabled ? 'Chat disabled \u2014 time expired' : 'Ask about this problem...'}
+                  placeholder={chatDisabled ? (aiLimitReached ? 'AI limit reached \u2014 budget exhausted' : 'Chat disabled \u2014 time expired') : 'Ask about this problem...'}
                   value={chatInput}
                   onChange={(e) => setChatInput(e.target.value)}
                   onKeyDown={handleInputKeyDown}
