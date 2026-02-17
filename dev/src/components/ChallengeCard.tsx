@@ -54,10 +54,11 @@ export function ChallengeCard({ challenge }: { challenge: Challenge }) {
     : 'transparent';
 
   const isRealWorld = challenge.category === 'real_world';
-  const ticketId = isRealWorld ? `TICKET-${Math.abs(challenge.id.charCodeAt(0) * 31 + challenge.id.charCodeAt(1) * 17) % 9000 + 1000}` : null;
-  const priorityLabel = isRealWorld
-    ? challenge.difficulty === 'hard' ? 'P1' : challenge.difficulty === 'medium' ? 'P2' : 'P3'
-    : null;
+
+  // Strip markdown headings (## Task:, ## Bug:, etc.) from description for card preview
+  const cleanDescription = challenge.description
+    .replace(/^#{1,3}\s+[^\n]*\n?/gm, '')
+    .trim();
 
   return (
     <Pressable
@@ -77,19 +78,9 @@ export function ChallengeCard({ challenge }: { challenge: Challenge }) {
                 <Text style={[styles.pillText, { color: catColor }]}>{catLabel}</Text>
               </View>
             )}
-            {ticketId && (
-              <View style={[styles.pill, { backgroundColor: '#f59e0b15' }]}>
-                <Text style={[styles.pillText, { color: '#f59e0b' }]}>{ticketId}</Text>
-              </View>
-            )}
-            {priorityLabel && (
-              <View style={[styles.pill, { backgroundColor: priorityLabel === 'P1' ? '#ef444420' : priorityLabel === 'P2' ? '#f59e0b20' : '#3b82f620' }]}>
-                <Text style={[styles.pillText, { color: priorityLabel === 'P1' ? '#ef4444' : priorityLabel === 'P2' ? '#f59e0b' : '#3b82f6' }]}>{priorityLabel}</Text>
-              </View>
-            )}
           </View>
           <CardTitle>{challenge.title}</CardTitle>
-          <CardDescription numberOfLines={2}>{challenge.description}</CardDescription>
+          <CardDescription numberOfLines={2}>{cleanDescription}</CardDescription>
         </CardHeader>
         <CardContent>
           {challenge.skillTested && (

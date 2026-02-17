@@ -76,10 +76,7 @@ export function LandingScreen() {
       <View style={[styles.section, { paddingTop: 0 }]}>
         <Card style={[styles.tryChallengeCard, { borderColor: '#f59e0b', borderWidth: 1, borderLeftWidth: 4 }]}>
           <CardHeader>
-            <View style={{ flexDirection: 'row', gap: 8, marginBottom: 4 }}>
-              <Badge variant="default">Real-World</Badge>
-              <Badge variant="outline">TICKET-2847</Badge>
-            </View>
+            <Badge variant="default">Real-World</Badge>
             <CardTitle>Fix the Connection Pool Race Condition</CardTitle>
             <CardDescription>
               A Jira-style engineering ticket. Debug a real race condition — but can you do it cheaply with the right AI model?
