@@ -145,13 +145,14 @@ const MODELS: ModelInfo[] = [
   },
 ];
 
-/** One model per tier for the tier selector (the primary/default model for each tier). */
+/** One model per tier for the tier selector (the primary/default Cloudflare model for each tier). */
+const cfModels = MODELS.filter((m) => !m.provider);
 export const TIER_MODELS: Record<ModelTier, ModelInfo> = {
-  reasoning: MODELS[0],
-  premium: MODELS[1],
-  mid: MODELS[2],
-  budget: MODELS[4],
-  micro: MODELS[6],
+  reasoning: cfModels.find((m) => m.tier === 'reasoning')!,
+  premium: cfModels.find((m) => m.tier === 'premium')!,
+  mid: cfModels.find((m) => m.tier === 'mid')!,
+  budget: cfModels.find((m) => m.tier === 'budget')!,
+  micro: cfModels.find((m) => m.tier === 'micro')!,
 };
 
 /** All models available for a given tier. */
