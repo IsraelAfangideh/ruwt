@@ -150,8 +150,16 @@ function escapePyString(s: string): string {
  * Piston's sandbox doesn't support /dev/stdin, so we avoid it entirely.
  */
 function buildTestCode(sourceCode: string, language: SupportedLanguage, input: string): string {
-  const multiExports = extractMultiExportNames(sourceCode);
-  const funcName = extractFunctionName(sourceCode, language);
+  let multiExports = extractMultiExportNames(sourceCode);
+  let funcName = extractFunctionName(sourceCode, language);
+
+  // If exports include 'solve', use it as the single dispatch function
+  // This allows challenges to define a solve(testName) that handles test routing
+  if (multiExports && multiExports.includes('solve')) {
+    funcName = 'solve';
+    multiExports = null;
+  }
+
   if (!funcName && !multiExports) return sourceCode; // can't wrap — run as-is
 
   if (language === 'python') {
@@ -192,7 +200,7 @@ const __dispatch = { ${multiExports.join(', ')} };
 const __fn = __dispatch[__funcName];
 if (!__fn) throw new Error('Unknown function: ' + __funcName);
 const __result = __fn(...__args);
-if (__result !== undefined) console.log(typeof __result === 'string' ? __result : JSON.stringify(__result));
+Promise.resolve(__result).then(__r => { if (__r !== undefined) console.log(typeof __r === 'string' ? __r : JSON.stringify(__r)); });
 `;
   }
 
@@ -203,7 +211,7 @@ const __input = '${escaped}';
 const __lines = __input.trim().split('\\n');
 const __args = __lines.map(__l => { try { return JSON.parse(__l); } catch(e) { return __l; } });
 const __result = ${funcName}(...__args);
-if (__result !== undefined) console.log(typeof __result === 'string' ? __result : JSON.stringify(__result));
+Promise.resolve(__result).then(__r => { if (__r !== undefined) console.log(typeof __r === 'string' ? __r : JSON.stringify(__r)); });
 `;
 }
 

@@ -851,7 +851,7 @@ Rules:
                       </div>
                       {msg.meta && (
                         <div style={s.msgCostLine}>
-                          {modelInfo?.displayName || 'AI'} {'\u00B7'} {msg.meta.tokens.toLocaleString()} tok {'\u00B7'} {formatCost(msg.meta.cost)}
+                          {modelInfo?.displayName || 'AI'} {'\u00B7'} {msg.meta.tokens.toLocaleString()} tokens {'\u00B7'} {formatCost(msg.meta.cost)}
                         </div>
                       )}
                     </div>
