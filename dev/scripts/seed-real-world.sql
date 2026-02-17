@@ -236,7 +236,68 @@ function resetCounter() {
   connectionCounter = 0;
 }
 
-module.exports = { ConnectionPool, resetCounter };',
+async function solve(testName) {
+  connectionCounter = 0;
+  switch(testName) {
+    case ''basic-acquire-release'': {
+      const pool = new ConnectionPool({ maxSize: 3 });
+      const conn = await pool.acquire();
+      await conn.query(''SELECT 1'');
+      pool.release(conn);
+      const s = pool.stats;
+      return (s.totalAcquires === 1 && s.totalReleases === 1) ? ''acquired-and-released'' : ''FAIL'';
+    }
+    case ''concurrent-acquire-respects-max'': {
+      const pool = new ConnectionPool({ maxSize: 2, acquireTimeout: 200 });
+      const c1 = await pool.acquire();
+      const c2 = await pool.acquire();
+      let timedOut = false;
+      try { await pool.acquire(); } catch(e) { timedOut = true; }
+      pool.release(c1); pool.release(c2);
+      return timedOut ? ''max-pool-size-respected'' : ''FAIL'';
+    }
+    case ''released-connection-reused'': {
+      const pool = new ConnectionPool({ maxSize: 2 });
+      const c1 = await pool.acquire();
+      const id1 = c1.id;
+      pool.release(c1);
+      const c2 = await pool.acquire();
+      const reused = c2.id === id1;
+      const flagOk = c2.inUse === true;
+      pool.release(c2);
+      return (reused && flagOk) ? ''connection-reused'' : ''FAIL'';
+    }
+    case ''destroy-rejects-pending-waiters'': {
+      const pool = new ConnectionPool({ maxSize: 1, acquireTimeout: 2000 });
+      await pool.acquire();
+      let rejected = false;
+      const waiter = pool.acquire().catch(() => { rejected = true; });
+      await new Promise(r => setTimeout(r, 20));
+      await pool.destroy();
+      await new Promise(r => setTimeout(r, 20));
+      return rejected ? ''waiters-rejected'' : ''FAIL'';
+    }
+    case ''connection-inuse-flag-correct'': {
+      const pool = new ConnectionPool({ maxSize: 2 });
+      const conn = await pool.acquire();
+      const afterAcquire = conn.inUse;
+      pool.release(conn);
+      const afterRelease = conn.inUse;
+      return (afterAcquire === true && afterRelease === false) ? ''inuse-flag-correct'' : ''FAIL'';
+    }
+    case ''no-double-release'': {
+      const pool = new ConnectionPool({ maxSize: 2 });
+      const conn = await pool.acquire();
+      pool.release(conn);
+      let caught = false;
+      try { pool.release(conn); } catch(e) { caught = true; }
+      return (caught || pool.idleConnections.length <= 1) ? ''double-release-guarded'' : ''FAIL'';
+    }
+    default: return ''unknown-test'';
+  }
+}
+
+module.exports = { solve };',
 '[{"input":"basic-acquire-release","expectedOutput":"acquired-and-released"},{"input":"concurrent-acquire-respects-max","expectedOutput":"max-pool-size-respected"},{"input":"released-connection-reused","expectedOutput":"connection-reused"},{"input":"destroy-rejects-pending-waiters","expectedOutput":"waiters-rejected"},{"input":"connection-inuse-flag-correct","expectedOutput":"inuse-flag-correct"},{"input":"no-double-release","expectedOutput":"double-release-guarded"}]',
 10000, 256, NULL, 10000, 2400, 'real_world', 'Reading existing code and finding concurrency bugs');
 
@@ -446,7 +507,60 @@ class Router {
   }
 }
 
-module.exports = { Router };',
+async function solve(testName) {
+  switch(testName) {
+    case ''get-static-route'': {
+      const r = new Router();
+      r.get(''/hello'', (req, res) => res.send(''Hello World''));
+      const result = await r.handle({ url: ''/hello'', method: ''GET'' });
+      return result.body === ''Hello World'' ? ''static-route-works'' : ''FAIL'';
+    }
+    case ''post-route'': {
+      const r = new Router();
+      r.post(''/data'', (req, res) => res.json({ received: true }));
+      const result = await r.handle({ url: ''/data'', method: ''POST'' });
+      return result.body === ''{"received":true}'' ? ''post-route-works'' : ''FAIL'';
+    }
+    case ''path-params-extracted'': {
+      const r = new Router();
+      r.get(''/users/:id'', (req, res) => res.send(''user-'' + req.params.id));
+      const result = await r.handle({ url: ''/users/42'', method: ''GET'' });
+      return result.body === ''user-42'' ? ''params-extracted'' : ''FAIL'';
+    }
+    case ''query-string-parsed'': {
+      const r = new Router();
+      r.get(''/search'', (req, res) => res.json(req.query));
+      const result = await r.handle({ url: ''/search?q=hello&page=2'', method: ''GET'' });
+      const q = JSON.parse(result.body);
+      return (q.q === ''hello'' && q.page === ''2'') ? ''query-parsed'' : ''FAIL'';
+    }
+    case ''middleware-next-chains'': {
+      const r = new Router();
+      let order = '''';
+      r.use((req, res, next) => { order += ''A''; next(); });
+      r.use((req, res, next) => { order += ''B''; next(); });
+      r.get(''/'', (req, res) => { order += ''C''; res.send(order); });
+      await r.handle({ url: ''/'', method: ''GET'' });
+      return order === ''ABC'' ? ''middleware-chains'' : ''FAIL'';
+    }
+    case ''middleware-and-route'': {
+      const r = new Router();
+      let order = '''';
+      r.use((req, res, next) => { order += ''MW-''; next(); });
+      r.get(''/test'', (req, res) => { order += ''ROUTE''; res.send(order); });
+      await r.handle({ url: ''/test'', method: ''GET'' });
+      return order === ''MW-ROUTE'' ? ''middleware-then-route'' : ''FAIL'';
+    }
+    case ''not-found'': {
+      const r = new Router();
+      const result = await r.handle({ url: ''/nope'', method: ''GET'' });
+      return result.status === 404 ? ''404-returned'' : ''FAIL'';
+    }
+    default: return ''unknown-test'';
+  }
+}
+
+module.exports = { solve };',
 '[{"input":"get-static-route","expectedOutput":"static-route-works"},{"input":"post-route","expectedOutput":"post-route-works"},{"input":"path-params-extracted","expectedOutput":"params-extracted"},{"input":"query-string-parsed","expectedOutput":"query-parsed"},{"input":"middleware-next-chains","expectedOutput":"middleware-chains"},{"input":"middleware-and-route","expectedOutput":"middleware-then-route"},{"input":"not-found","expectedOutput":"404-returned"}]',
 10000, 256, NULL, 3000, 2400, 'real_world', 'Targeted debugging — fix only what''s broken');
 
@@ -681,7 +795,47 @@ function processFile(filename) {
   });
 }
 
-module.exports = { processFile, readFile, parseContent, validateData, transformData, writeFile };',
+async function solve(testName) {
+  switch(testName) {
+    case ''process-json-file'': {
+      const result = await processFile(''users.json'');
+      return (result.pipeline === ''complete'' && result.success) ? ''pipeline-complete-json'' : ''FAIL'';
+    }
+    case ''process-csv-file'': {
+      const result = await processFile(''products.csv'');
+      return (result.pipeline === ''complete'' && result.success) ? ''pipeline-complete-csv'' : ''FAIL'';
+    }
+    case ''file-not-found-error'': {
+      try { await processFile(''nonexistent.txt''); return ''FAIL''; }
+      catch(e) { return e.message.includes(''ENOENT'') ? ''ENOENT-error'' : ''FAIL''; }
+    }
+    case ''malformed-json-error'': {
+      try { await processFile(''malformed.json''); return ''FAIL''; }
+      catch(e) { return (e.message.includes(''Parse'') || e.message.includes(''parse'') || e.message.includes(''JSON'')) ? ''parse-error'' : ''FAIL''; }
+    }
+    case ''empty-file-error'': {
+      try { await processFile(''empty.json''); return ''FAIL''; }
+      catch(e) { return e.message.includes(''empty'') ? ''empty-file-error'' : ''FAIL''; }
+    }
+    case ''concurrent-processing'': {
+      const [r1, r2] = await Promise.all([processFile(''users.json''), processFile(''products.csv'')]);
+      return (r1.pipeline === ''complete'' && r2.pipeline === ''complete'') ? ''both-complete'' : ''FAIL'';
+    }
+    case ''all-functions-are-async'': {
+      const noCallbacks = (
+        readFile.length <= 1 &&
+        parseContent.length <= 2 &&
+        validateData.length <= 1 &&
+        transformData.length <= 1 &&
+        writeFile.length <= 2
+      );
+      return noCallbacks ? ''all-async'' : ''FAIL'';
+    }
+    default: return ''unknown-test'';
+  }
+}
+
+module.exports = { solve };',
 '[{"input":"process-json-file","expectedOutput":"pipeline-complete-json"},{"input":"process-csv-file","expectedOutput":"pipeline-complete-csv"},{"input":"file-not-found-error","expectedOutput":"ENOENT-error"},{"input":"malformed-json-error","expectedOutput":"parse-error"},{"input":"empty-file-error","expectedOutput":"empty-file-error"},{"input":"concurrent-processing","expectedOutput":"both-complete"},{"input":"all-functions-are-async","expectedOutput":"all-async"}]',
 10000, 256, NULL, 3000, 2400, 'real_world', 'Refactoring legacy patterns without breaking functionality');
 
@@ -883,7 +1037,68 @@ function resetDB() {
   nextId = 1;
 }
 
-module.exports = { registerUser, getUser, listUsers, deleteUser, resetDB };',
+function solve(testName) {
+  resetDB();
+  switch(testName) {
+    case ''valid-registration'': {
+      const r = registerUser({ email: ''test@example.com'', password: ''Test1234'', username: ''testuser'' });
+      return r.success ? ''registration-success'' : ''FAIL'';
+    }
+    case ''duplicate-email'': {
+      registerUser({ email: ''dup@example.com'', password: ''Test1234'', username: ''user1'' });
+      const r = registerUser({ email: ''dup@example.com'', password: ''Test1234'', username: ''user2'' });
+      return (!r.success && r.error === ''Email already registered'') ? ''email-already-registered'' : ''FAIL'';
+    }
+    case ''invalid-email-no-at'': {
+      const r = registerUser({ email: ''bademail.com'', password: ''Test1234'', username: ''testuser'' });
+      return (!r.success && r.error === ''Invalid email format'') ? ''invalid-email-format'' : ''FAIL'';
+    }
+    case ''invalid-email-no-dot'': {
+      const r = registerUser({ email: ''bad@emailcom'', password: ''Test1234'', username: ''testuser'' });
+      return (!r.success && r.error === ''Invalid email format'') ? ''invalid-email-format'' : ''FAIL'';
+    }
+    case ''weak-password-short'': {
+      const r = registerUser({ email: ''a@b.com'', password: ''Ab1'', username: ''testuser'' });
+      return (!r.success && r.error.includes(''Password'')) ? ''password-validation-error'' : ''FAIL'';
+    }
+    case ''weak-password-no-uppercase'': {
+      const r = registerUser({ email: ''a@b.com'', password: ''abcdefg1'', username: ''testuser'' });
+      return (!r.success && r.error.includes(''Password'')) ? ''password-validation-error'' : ''FAIL'';
+    }
+    case ''weak-password-no-digit'': {
+      const r = registerUser({ email: ''a@b.com'', password: ''Abcdefgh'', username: ''testuser'' });
+      return (!r.success && r.error.includes(''Password'')) ? ''password-validation-error'' : ''FAIL'';
+    }
+    case ''invalid-username-short'': {
+      const r = registerUser({ email: ''a@b.com'', password: ''Test1234'', username: ''ab'' });
+      return (!r.success && r.error.includes(''Username'')) ? ''username-validation-error'' : ''FAIL'';
+    }
+    case ''invalid-username-starts-number'': {
+      const r = registerUser({ email: ''a@b.com'', password: ''Test1234'', username: ''1abc'' });
+      return (!r.success && r.error.includes(''Username'')) ? ''username-validation-error'' : ''FAIL'';
+    }
+    case ''missing-email-field'': {
+      const r = registerUser({ password: ''Test1234'', username: ''testuser'' });
+      return (!r.success && r.error.includes(''Missing required field'')) ? ''missing-required-field'' : ''FAIL'';
+    }
+    case ''missing-password-field'': {
+      const r = registerUser({ email: ''a@b.com'', username: ''testuser'' });
+      return (!r.success && r.error.includes(''Missing required field'')) ? ''missing-required-field'' : ''FAIL'';
+    }
+    case ''existing-tests-still-pass'': {
+      const r1 = registerUser({ email: ''a@b.com'', password: ''Test1234'', username: ''validuser'' });
+      if (!r1.success) return ''FAIL'';
+      const list = listUsers();
+      if (!list.success || list.data.total !== 1) return ''FAIL'';
+      const del = deleteUser(r1.data.user.id);
+      if (!del.success) return ''FAIL'';
+      return ''all-existing-pass'';
+    }
+    default: return ''unknown-test'';
+  }
+}
+
+module.exports = { solve };',
 '[{"input":"valid-registration","expectedOutput":"registration-success"},{"input":"duplicate-email","expectedOutput":"email-already-registered"},{"input":"invalid-email-no-at","expectedOutput":"invalid-email-format"},{"input":"invalid-email-no-dot","expectedOutput":"invalid-email-format"},{"input":"weak-password-short","expectedOutput":"password-validation-error"},{"input":"weak-password-no-uppercase","expectedOutput":"password-validation-error"},{"input":"weak-password-no-digit","expectedOutput":"password-validation-error"},{"input":"invalid-username-short","expectedOutput":"username-validation-error"},{"input":"invalid-username-starts-number","expectedOutput":"username-validation-error"},{"input":"missing-email-field","expectedOutput":"missing-required-field"},{"input":"missing-password-field","expectedOutput":"missing-required-field"},{"input":"existing-tests-still-pass","expectedOutput":"all-existing-pass"}]',
 10000, 256, NULL, 3000, 2400, 'real_world', 'Adding features to existing code without regressions');
 
@@ -1045,7 +1260,64 @@ class SearchEngine {
   }
 }
 
-module.exports = { SearchEngine };',
+function solve(testName) {
+  switch(testName) {
+    case ''basic-single-word-search'': {
+      const se = new SearchEngine();
+      se.addDocument(''d1'', ''the quick brown fox'');
+      se.addDocument(''d2'', ''the lazy brown dog'');
+      se.addDocument(''d3'', ''hello world'');
+      const results = se.search(''brown'');
+      return (results.length === 2) ? ''matching-docs-returned'' : ''FAIL'';
+    }
+    case ''multi-word-search-ranking'': {
+      const se = new SearchEngine();
+      se.addDocument(''d1'', ''apple banana cherry'');
+      se.addDocument(''d2'', ''apple banana date'');
+      se.addDocument(''d3'', ''apple elderberry fig'');
+      const r = se.search(''apple banana'');
+      return (r.length === 3 && r[0].score === 2 && r[2].score === 1) ? ''ranked-by-score'' : ''FAIL'';
+    }
+    case ''case-insensitive-search'': {
+      const se = new SearchEngine();
+      se.addDocument(''d1'', ''Hello World'');
+      const r = se.search(''hello'');
+      return (r.length === 1 && r[0].id === ''d1'') ? ''case-insensitive-match'' : ''FAIL'';
+    }
+    case ''empty-query-returns-empty'': {
+      const se = new SearchEngine();
+      se.addDocument(''d1'', ''test doc'');
+      return se.search('''').length === 0 ? ''empty-array'' : ''FAIL'';
+    }
+    case ''remove-document-updates-index'': {
+      const se = new SearchEngine();
+      se.addDocument(''d1'', ''unique content here'');
+      se.removeDocument(''d1'');
+      return se.search(''unique'').length === 0 ? ''removed-doc-not-found'' : ''FAIL'';
+    }
+    case ''performance-1000-docs'': {
+      const se = new SearchEngine();
+      const words = [''alpha'',''beta'',''gamma'',''delta'',''epsilon'',''zeta'',''eta'',''theta'',''iota'',''kappa''];
+      for (let i = 0; i < 1000; i++) {
+        const dw = [];
+        for (let j = 0; j < 20; j++) dw.push(words[(i*7+j*3) % words.length]);
+        se.addDocument(''doc''+i, dw.join('' ''));
+      }
+      const start = Date.now();
+      for (let i = 0; i < 100; i++) se.search(words[i%words.length]+'' ''+words[(i+3)%words.length]);
+      return (Date.now()-start) < 500 ? ''under-500ms'' : ''FAIL'';
+    }
+    case ''update-document-reindexes'': {
+      const se = new SearchEngine();
+      se.addDocument(''d1'', ''old content here'');
+      se.addDocument(''d1'', ''new content now'');
+      return (se.search(''old'').length===0 && se.search(''new'').length===1) ? ''updated-results'' : ''FAIL'';
+    }
+    default: return ''unknown-test'';
+  }
+}
+
+module.exports = { solve };',
 '[{"input":"basic-single-word-search","expectedOutput":"matching-docs-returned"},{"input":"multi-word-search-ranking","expectedOutput":"ranked-by-score"},{"input":"case-insensitive-search","expectedOutput":"case-insensitive-match"},{"input":"empty-query-returns-empty","expectedOutput":"empty-array"},{"input":"remove-document-updates-index","expectedOutput":"removed-doc-not-found"},{"input":"performance-1000-docs","expectedOutput":"under-500ms"},{"input":"update-document-reindexes","expectedOutput":"updated-results"}]',
 10000, 256, NULL, 10000, 2400, 'real_world', 'Performance optimization with algorithmic improvements');
 
@@ -1303,7 +1575,68 @@ class MessageQueue {
   }
 }
 
-module.exports = { MessageQueue };',
+async function solve(testName) {
+  switch(testName) {
+    case ''basic-pub-sub'': {
+      const mq = new MessageQueue();
+      let received = null;
+      mq.subscribe(''test'', (msg) => { received = msg.payload; });
+      await mq.publish(''test'', ''hello'');
+      return received === ''hello'' ? ''message-delivered'' : ''FAIL'';
+    }
+    case ''multiple-subscribers-all-receive'': {
+      const mq = new MessageQueue();
+      let count = 0;
+      mq.subscribe(''test'', () => { count++; });
+      mq.subscribe(''test'', () => { count++; });
+      mq.subscribe(''test'', () => { count++; });
+      await mq.publish(''test'', ''data'');
+      return count === 3 ? ''all-received'' : ''FAIL'';
+    }
+    case ''unsubscribe-stops-delivery'': {
+      const mq = new MessageQueue();
+      let received = false;
+      const id = mq.subscribe(''test'', () => { received = true; });
+      mq.unsubscribe(id);
+      await mq.publish(''test'', ''data'');
+      return !received ? ''unsubscribed-no-delivery'' : ''FAIL'';
+    }
+    case ''failed-message-retries'': {
+      const mq = new MessageQueue({ maxRetries: 3, retryBaseDelay: 10 });
+      let attempts = 0;
+      mq.subscribe(''test'', () => { attempts++; if (attempts < 2) throw new Error(''fail''); });
+      await mq.publish(''test'', ''data'');
+      await new Promise(r => setTimeout(r, 150));
+      return attempts >= 2 ? ''retried-successfully'' : ''FAIL'';
+    }
+    case ''dead-letter-after-max-retries'': {
+      const mq = new MessageQueue({ maxRetries: 2, retryBaseDelay: 10 });
+      let attempts = 0;
+      mq.subscribe(''test'', () => { attempts++; throw new Error(''always fail''); });
+      await mq.publish(''test'', ''data'');
+      await new Promise(r => setTimeout(r, 300));
+      return (mq.getDeadLetters().length > 0 && attempts >= 3) ? ''in-dead-letter-queue'' : ''FAIL'';
+    }
+    case ''concurrent-publish'': {
+      const mq = new MessageQueue();
+      let count = 0;
+      mq.subscribe(''test'', () => { count++; });
+      await Promise.all([mq.publish(''test'',''1''),mq.publish(''test'',''2''),mq.publish(''test'',''3''),mq.publish(''test'',''4''),mq.publish(''test'',''5'')]);
+      return count === 5 ? ''all-messages-delivered'' : ''FAIL'';
+    }
+    case ''topic-filtering'': {
+      const mq = new MessageQueue();
+      let aCount = 0, bCount = 0;
+      mq.subscribe(''topicA'', () => { aCount++; });
+      mq.subscribe(''topicB'', () => { bCount++; });
+      await mq.publish(''topicA'', ''data'');
+      return (aCount === 1 && bCount === 0) ? ''only-matching-receive'' : ''FAIL'';
+    }
+    default: return ''unknown-test'';
+  }
+}
+
+module.exports = { solve };',
 '[{"input":"basic-pub-sub","expectedOutput":"message-delivered"},{"input":"multiple-subscribers-all-receive","expectedOutput":"all-received"},{"input":"unsubscribe-stops-delivery","expectedOutput":"unsubscribed-no-delivery"},{"input":"failed-message-retries","expectedOutput":"retried-successfully"},{"input":"dead-letter-after-max-retries","expectedOutput":"in-dead-letter-queue"},{"input":"concurrent-publish","expectedOutput":"all-messages-delivered"},{"input":"topic-filtering","expectedOutput":"only-matching-receive"}]',
 10000, 256, NULL, 10000, 2400, 'real_world', 'Debugging stateful systems with multiple interacting bugs');
 
@@ -1544,7 +1877,46 @@ function round4(n) {
   return Math.round(n * 10000) / 10000;
 }
 
-module.exports = { calculateDiscount, COUPONS, LOYALTY_TIERS };',
+function solve(testName) {
+  switch(testName) {
+    case ''single-volume-discount'': {
+      const r = calculateDiscount({ unitPrice: 10, quantity: 100 });
+      return r.finalPrice === 850 ? ''correct-volume-price'' : ''FAIL'';
+    }
+    case ''stacked-multiplicative'': {
+      const r = calculateDiscount({ unitPrice: 10, quantity: 50, couponCode: ''SAVE20'' });
+      return r.finalPrice === 360 ? ''multiplicative-result'' : ''FAIL'';
+    }
+    case ''coupon-plus-volume'': {
+      const r = calculateDiscount({ unitPrice: 100, quantity: 50, couponCode: ''SAVE20'' });
+      return r.finalPrice === 3600 ? ''multiplicative-coupon-volume'' : ''FAIL'';
+    }
+    case ''loyalty-gold-discount'': {
+      const r = calculateDiscount({ unitPrice: 100, quantity: 1, loyaltyTier: ''gold'' });
+      return r.finalPrice === 92 ? ''correct-loyalty-price'' : ''FAIL'';
+    }
+    case ''max-discount-cap'': {
+      const r = calculateDiscount({ unitPrice: 100, quantity: 100, couponCode: ''VIP50'', loyaltyTier: ''platinum'' });
+      return r.finalPrice >= 100 * 100 * 0.5 ? ''price-at-least-50-percent'' : ''FAIL'';
+    }
+    case ''zero-quantity-error'': {
+      const r = calculateDiscount({ unitPrice: 10, quantity: 0 });
+      return r.error ? ''invalid-quantity'' : ''FAIL'';
+    }
+    case ''no-discounts-full-price'': {
+      const r = calculateDiscount({ unitPrice: 25, quantity: 3 });
+      return r.finalPrice === 75 ? ''full-price'' : ''FAIL'';
+    }
+    case ''all-four-discounts'': {
+      const r = calculateDiscount({ unitPrice: 10, quantity: 50, couponCode: ''SAVE10'', loyaltyTier: ''silver'', date: ''2024-06-15'' });
+      const expected = Math.round(500 * 0.90 * 0.90 * 0.95 * 0.90 * 100) / 100;
+      return Math.abs(r.finalPrice - expected) < 0.01 ? ''all-multiplicative'' : ''FAIL'';
+    }
+    default: return ''unknown-test'';
+  }
+}
+
+module.exports = { solve };',
 '[{"input":"single-volume-discount","expectedOutput":"correct-volume-price"},{"input":"stacked-multiplicative","expectedOutput":"multiplicative-result"},{"input":"coupon-plus-volume","expectedOutput":"multiplicative-coupon-volume"},{"input":"loyalty-gold-discount","expectedOutput":"correct-loyalty-price"},{"input":"max-discount-cap","expectedOutput":"price-at-least-50-percent"},{"input":"zero-quantity-error","expectedOutput":"invalid-quantity"},{"input":"no-discounts-full-price","expectedOutput":"full-price"},{"input":"all-four-discounts","expectedOutput":"all-multiplicative"}]',
 10000, 256, NULL, 10000, 2400, 'real_world', 'Code review skills — identifying regressions in refactored code');
 
@@ -1797,7 +2169,46 @@ function formatResult(year, month, day, hour, minute, second) {
   };
 }
 
-module.exports = { parseDate };',
+function solve(testName) {
+  switch(testName) {
+    case ''iso-basic'': {
+      const r = parseDate(''2024-06-15'');
+      return (r.iso === ''2024-06-15T00:00:00'') ? ''2024-06-15T00:00:00'' : ''FAIL'';
+    }
+    case ''us-format'': {
+      const r = parseDate(''03/04/2024'', ''US'');
+      return (r.month === 3 && r.day === 4) ? ''2024-03-04'' : ''FAIL'';
+    }
+    case ''eu-format'': {
+      const r = parseDate(''03/04/2024'', ''EU'');
+      return (r.month === 4 && r.day === 3) ? ''2024-04-03'' : ''FAIL'';
+    }
+    case ''leap-year-feb29'': {
+      const r = parseDate(''2024-02-29'');
+      return (r.month === 2 && r.day === 29 && !r.error) ? ''2024-02-29'' : ''FAIL'';
+    }
+    case ''timezone-offset-positive'': {
+      const r = parseDate(''2024-01-15T12:00:00+05:30'');
+      return (r.hour === 6 && r.minute === 30) ? ''utc-conversion-correct'' : ''FAIL'';
+    }
+    case ''relative-yesterday'': {
+      const r = parseDate(''yesterday'');
+      const y = new Date(); y.setDate(y.getDate() - 1);
+      return (r.year === y.getFullYear() && r.month === y.getMonth()+1 && r.day === y.getDate()) ? ''correct-yesterday'' : ''FAIL'';
+    }
+    case ''written-format'': {
+      const r = parseDate(''January 15, 2024'');
+      return (r.month === 1 && r.day === 15 && r.year === 2024) ? ''january-15-2024'' : ''FAIL'';
+    }
+    case ''invalid-date'': {
+      const r = parseDate(''2024-02-30'');
+      return r.error ? ''error-invalid'' : ''FAIL'';
+    }
+    default: return ''unknown-test'';
+  }
+}
+
+module.exports = { solve };',
 '[{"input":"iso-basic","expectedOutput":"2024-06-15T00:00:00"},{"input":"us-format","expectedOutput":"2024-03-04"},{"input":"eu-format","expectedOutput":"2024-04-03"},{"input":"leap-year-feb29","expectedOutput":"2024-02-29"},{"input":"timezone-offset-positive","expectedOutput":"utc-conversion-correct"},{"input":"relative-yesterday","expectedOutput":"correct-yesterday"},{"input":"written-format","expectedOutput":"january-15-2024"},{"input":"invalid-date","expectedOutput":"error-invalid"}]',
 10000, 256, NULL, 500, 2400, 'real_world', 'Edge case debugging in parsing logic');
 
@@ -1969,7 +2380,65 @@ function createStore(initialState = {}) {
   };
 }
 
-module.exports = { createStore };',
+function solve(testName) {
+  switch(testName) {
+    case ''basic-get-set-state'': {
+      const store = createStore({ count: 0 });
+      store.setState({ count: 5 });
+      return store.getState().count === 5 ? ''state-updated'' : ''FAIL'';
+    }
+    case ''subscribe-fires-on-change'': {
+      const store = createStore({ x: 1 });
+      let called = false;
+      store.subscribe(() => { called = true; });
+      store.setState({ x: 2 });
+      return called ? ''listener-called'' : ''FAIL'';
+    }
+    case ''unsubscribe-stops-notifications'': {
+      const store = createStore({ x: 1 });
+      let count = 0;
+      const unsub = store.subscribe(() => { count++; });
+      store.setState({ x: 2 });
+      unsub();
+      store.setState({ x: 3 });
+      return count === 1 ? ''no-more-calls'' : ''FAIL'';
+    }
+    case ''computed-values-update'': {
+      const store = createStore({ a: 2, b: 3 });
+      store.computed(''sum'', (s) => s.a + s.b);
+      const v1 = store.getComputed(''sum'');
+      store.setState({ a: 10 });
+      const v2 = store.getComputed(''sum'');
+      return (v1 === 5 && v2 === 13) ? ''computed-correct'' : ''FAIL'';
+    }
+    case ''actions-modify-state'': {
+      const store = createStore({ count: 0 });
+      store.action(''inc'', (ctx, n) => ctx.setState({ count: ctx.getState().count + n }));
+      store.dispatch(''inc'', 5);
+      return store.getState().count === 5 ? ''action-applied'' : ''FAIL'';
+    }
+    case ''batch-single-notification'': {
+      const store = createStore({ a: 0, b: 0 });
+      let n = 0;
+      store.subscribe(() => { n++; });
+      store.batch(() => { store.setState({ a: 1 }); store.setState({ b: 2 }); store.setState({ a: 3 }); });
+      return n === 1 ? ''one-notification'' : ''FAIL'';
+    }
+    case ''nested-state-merge'': {
+      const store = createStore({ x: 1, y: 2, z: 3 });
+      store.setState({ x: 10 });
+      const s = store.getState();
+      return (s.x === 10 && s.y === 2 && s.z === 3) ? ''deep-merge-works'' : ''FAIL'';
+    }
+    case ''no-class-usage'': {
+      const src = createStore.toString();
+      return !src.includes(''new Store'') ? ''no-class-found'' : ''FAIL'';
+    }
+    default: return ''unknown-test'';
+  }
+}
+
+module.exports = { solve };',
 '[{"input":"basic-get-set-state","expectedOutput":"state-updated"},{"input":"subscribe-fires-on-change","expectedOutput":"listener-called"},{"input":"unsubscribe-stops-notifications","expectedOutput":"no-more-calls"},{"input":"computed-values-update","expectedOutput":"computed-correct"},{"input":"actions-modify-state","expectedOutput":"action-applied"},{"input":"batch-single-notification","expectedOutput":"one-notification"},{"input":"nested-state-merge","expectedOutput":"deep-merge-works"},{"input":"no-class-usage","expectedOutput":"no-class-found"}]',
 10000, 256, NULL, 3000, 2400, 'real_world', 'Pattern migration — OOP to functional');
 
@@ -2244,7 +2713,75 @@ class WebSocketServer {
   }
 }
 
-module.exports = { WebSocketServer };',
+async function solve(testName) {
+  switch(testName) {
+    case ''connect-disconnect-cleanup'': {
+      const srv = new WebSocketServer({ heartbeatInterval: 999999, connectionTimeout: 999999 });
+      const { connectionId } = srv.connect({ user: ''test'' });
+      srv.disconnect(connectionId);
+      srv.shutdown();
+      return srv.getSessionCount() === 0 ? ''session-removed'' : ''FAIL'';
+    }
+    case ''listeners-removed-on-disconnect'': {
+      const srv = new WebSocketServer({ heartbeatInterval: 999999, connectionTimeout: 999999 });
+      const before = srv.getListenerCount(''message'');
+      const { connectionId } = srv.connect();
+      srv.disconnect(connectionId);
+      const after = srv.getListenerCount(''message'');
+      srv.shutdown();
+      return after <= before ? ''no-listener-leak'' : ''FAIL'';
+    }
+    case ''timers-cleared-on-disconnect'': {
+      const srv = new WebSocketServer({ heartbeatInterval: 999999, connectionTimeout: 999999 });
+      const { connectionId } = srv.connect();
+      srv.disconnect(connectionId);
+      const stats = srv.getStats();
+      srv.shutdown();
+      return (stats.sessionCount === 0 && stats.listenerCounts.message === 0) ? ''timers-cleaned'' : ''FAIL'';
+    }
+    case ''message-buffer-capped'': {
+      const srv = new WebSocketServer({ heartbeatInterval: 999999, connectionTimeout: 999999, messageBufferSize: 5 });
+      const { connectionId } = srv.connect();
+      for (let i = 0; i < 20; i++) srv.send(connectionId, ''msg-''+i);
+      const conn = srv.connections.get(connectionId);
+      const ok = conn.messageBuffer.length <= 5;
+      srv.shutdown();
+      return ok ? ''buffer-bounded'' : ''FAIL'';
+    }
+    case ''shutdown-cleans-everything'': {
+      const srv = new WebSocketServer({ heartbeatInterval: 999999, connectionTimeout: 999999 });
+      srv.connect({ user: ''a'' });
+      srv.connect({ user: ''b'' });
+      srv.connect({ user: ''c'' });
+      srv.shutdown();
+      const stats = srv.getStats();
+      return (stats.sessionCount === 0 && stats.listenerCounts.message === 0) ? ''all-cleaned'' : ''FAIL'';
+    }
+    case ''rapid-connect-disconnect'': {
+      const srv = new WebSocketServer({ heartbeatInterval: 999999, connectionTimeout: 999999 });
+      for (let i = 0; i < 100; i++) {
+        const { connectionId } = srv.connect();
+        srv.disconnect(connectionId);
+      }
+      const ok = srv.getSessionCount() === 0 && srv.getListenerCount(''message'') === 0;
+      srv.shutdown();
+      return ok ? ''no-memory-growth'' : ''FAIL'';
+    }
+    case ''session-data-lifecycle'': {
+      const srv = new WebSocketServer({ heartbeatInterval: 999999, connectionTimeout: 999999 });
+      const { connectionId } = srv.connect({ user: ''test'' });
+      srv.setSessionData(connectionId, ''key'', ''value'');
+      const has = srv.getSession(connectionId) && srv.getSession(connectionId).data.key === ''value'';
+      srv.disconnect(connectionId);
+      const gone = srv.getSession(connectionId) === null;
+      srv.shutdown();
+      return (has && gone) ? ''data-cleaned-on-disconnect'' : ''FAIL'';
+    }
+    default: return ''unknown-test'';
+  }
+}
+
+module.exports = { solve };',
 '[{"input":"connect-disconnect-cleanup","expectedOutput":"session-removed"},{"input":"listeners-removed-on-disconnect","expectedOutput":"no-listener-leak"},{"input":"timers-cleared-on-disconnect","expectedOutput":"timers-cleaned"},{"input":"message-buffer-capped","expectedOutput":"buffer-bounded"},{"input":"shutdown-cleans-everything","expectedOutput":"all-cleaned"},{"input":"rapid-connect-disconnect","expectedOutput":"no-memory-growth"},{"input":"session-data-lifecycle","expectedOutput":"data-cleaned-on-disconnect"}]',
 10000, 256, NULL, 10000, 2400, 'real_world', 'Memory leak detection and resource cleanup');
 
@@ -2472,7 +3009,67 @@ class FlagEvaluator {
   }
 }
 
-module.exports = { FlagEvaluator };',
+function solve(testName) {
+  switch(testName) {
+    case ''boolean-flag-true'': {
+      const fe = new FlagEvaluator({ f1: { enabled: true, rules: [{ type: ''boolean'', value: true }] } });
+      return fe.evaluate(''f1'') === true ? ''true'' : ''FAIL'';
+    }
+    case ''boolean-flag-false'': {
+      const fe = new FlagEvaluator({ f1: { enabled: true, rules: [{ type: ''boolean'', value: false }] } });
+      return fe.evaluate(''f1'') === false ? ''false'' : ''FAIL'';
+    }
+    case ''environment-match'': {
+      const fe = new FlagEvaluator({ f1: { enabled: true, rules: [{ type: ''environment'', environments: [''prod''], value: true }] } });
+      return fe.evaluate(''f1'', { environment: ''prod'' }) === true ? ''true'' : ''FAIL'';
+    }
+    case ''environment-no-match'': {
+      const fe = new FlagEvaluator({ f1: { enabled: true, rules: [{ type: ''environment'', environments: [''prod''] }], defaultValue: false } });
+      return fe.evaluate(''f1'', { environment: ''staging'' }) === false ? ''default-value'' : ''FAIL'';
+    }
+    case ''percentage-rollout-deterministic'': {
+      const fe = new FlagEvaluator({ f1: { enabled: true, rules: [{ type: ''percentage'', percentage: 50 }] } });
+      const r1 = fe.evaluate(''f1'', { userId: ''userA'' });
+      const r2 = fe.evaluate(''f1'', { userId: ''userA'' });
+      return r1 === r2 ? ''consistent-result'' : ''FAIL'';
+    }
+    case ''percentage-zero-off'': {
+      const fe = new FlagEvaluator({ f1: { enabled: true, rules: [{ type: ''percentage'', percentage: 0 }], defaultValue: false } });
+      return fe.evaluate(''f1'', { userId: ''anyone'' }) === false ? ''false'' : ''FAIL'';
+    }
+    case ''percentage-hundred-on'': {
+      const fe = new FlagEvaluator({ f1: { enabled: true, rules: [{ type: ''percentage'', percentage: 100 }] } });
+      return fe.evaluate(''f1'', { userId: ''anyone'' }) === true ? ''true'' : ''FAIL'';
+    }
+    case ''user-target-by-id'': {
+      const fe = new FlagEvaluator({ f1: { enabled: true, rules: [{ type: ''userTarget'', userIds: [''u1'',''u2''] }] } });
+      return fe.evaluate(''f1'', { userId: ''u1'' }) === true ? ''true'' : ''FAIL'';
+    }
+    case ''user-target-by-attributes'': {
+      const fe = new FlagEvaluator({ f1: { enabled: true, rules: [{ type: ''userTarget'', attributes: { plan: ''pro'' } }] } });
+      return fe.evaluate(''f1'', { attributes: { plan: ''pro'' } }) === true ? ''true'' : ''FAIL'';
+    }
+    case ''date-range-active'': {
+      const fe = new FlagEvaluator({ f1: { enabled: true, rules: [{ type: ''dateRange'', startDate: ''2020-01-01'', endDate: ''2030-01-01'' }] } });
+      return fe.evaluate(''f1'', { now: Date.now() }) === true ? ''true'' : ''FAIL'';
+    }
+    case ''date-range-expired'': {
+      const fe = new FlagEvaluator({ f1: { enabled: true, rules: [{ type: ''dateRange'', startDate: ''2020-01-01'', endDate: ''2021-01-01'' }], defaultValue: false } });
+      return fe.evaluate(''f1'', { now: Date.now() }) === false ? ''false'' : ''FAIL'';
+    }
+    case ''flag-not-found'': {
+      const fe = new FlagEvaluator({});
+      return fe.evaluate(''nonexistent'') === false ? ''false'' : ''FAIL'';
+    }
+    case ''disabled-flag'': {
+      const fe = new FlagEvaluator({ f1: { enabled: false, rules: [{ type: ''boolean'', value: true }] } });
+      return fe.evaluate(''f1'') === false ? ''false'' : ''FAIL'';
+    }
+    default: return ''unknown-test'';
+  }
+}
+
+module.exports = { solve };',
 '[{"input":"boolean-flag-true","expectedOutput":"true"},{"input":"boolean-flag-false","expectedOutput":"false"},{"input":"environment-match","expectedOutput":"true"},{"input":"environment-no-match","expectedOutput":"default-value"},{"input":"percentage-rollout-deterministic","expectedOutput":"consistent-result"},{"input":"percentage-zero-off","expectedOutput":"false"},{"input":"percentage-hundred-on","expectedOutput":"true"},{"input":"user-target-by-id","expectedOutput":"true"},{"input":"user-target-by-attributes","expectedOutput":"true"},{"input":"date-range-active","expectedOutput":"true"},{"input":"date-range-expired","expectedOutput":"false"},{"input":"flag-not-found","expectedOutput":"false"},{"input":"disabled-flag","expectedOutput":"false"}]',
 10000, 256, NULL, 3000, 2400, 'real_world', 'Implementing features from specs in existing code');
 
@@ -2719,6 +3316,62 @@ function resetAll() {
   notifIdCounter = 0;
 }
 
-module.exports = { UserService, OrderService, NotificationService, resetAll };',
+function solve(testName) {
+  resetAll();
+  switch(testName) {
+    case ''create-user'': {
+      const u = UserService.createUser(''Alice'', ''alice@example.com'');
+      return (u.id && u.name === ''Alice'') ? ''user-created'' : ''FAIL'';
+    }
+    case ''create-order-sends-notification'': {
+      const u = UserService.createUser(''Bob'', ''bob@example.com'');
+      const o = OrderService.createOrder(u.id, [{ price: 10, quantity: 2 }]);
+      const notifs = NotificationService.getNotificationsForUser(u.id);
+      return (o.id && notifs.length > 0) ? ''order-with-notification'' : ''FAIL'';
+    }
+    case ''get-user-with-orders'': {
+      const u = UserService.createUser(''Carol'', ''carol@example.com'');
+      OrderService.createOrder(u.id, [{ price: 5, quantity: 1 }]);
+      const result = UserService.getUserWithOrders(u.id);
+      return (result && result.orders && result.orders.length === 1) ? ''user-and-orders'' : ''FAIL'';
+    }
+    case ''notification-has-email'': {
+      const u = UserService.createUser(''Dan'', ''dan@example.com'');
+      const o = OrderService.createOrder(u.id, [{ price: 15, quantity: 1 }]);
+      const notifs = NotificationService.getNotificationsForUser(u.id);
+      return (notifs.length > 0 && notifs[0].email === ''dan@example.com'') ? ''email-in-notification'' : ''FAIL'';
+    }
+    case ''full-flow'': {
+      const u = UserService.createUser(''Eve'', ''eve@example.com'');
+      const o = OrderService.createOrder(u.id, [{ price: 20, quantity: 3 }]);
+      OrderService.updateOrderStatus(o.id, ''shipped'');
+      const notifs = NotificationService.getNotificationsForUser(u.id);
+      return (notifs.length >= 2) ? ''create-order-notify-status'' : ''FAIL'';
+    }
+    case ''update-order-status-notifies'': {
+      const u = UserService.createUser(''Frank'', ''frank@example.com'');
+      const o = OrderService.createOrder(u.id, [{ price: 10, quantity: 1 }]);
+      OrderService.updateOrderStatus(o.id, ''delivered'');
+      const notifs = NotificationService.getNotificationsForUser(u.id);
+      const hasStatus = notifs.some(n => n.type === ''status_update'');
+      return hasStatus ? ''status-notification-sent'' : ''FAIL'';
+    }
+    case ''no-circular-undefined'': {
+      const u = UserService.createUser(''Test'', ''test@example.com'');
+      let allDefined = true;
+      try {
+        OrderService.createOrder(u.id, [{ price: 1, quantity: 1 }]);
+        UserService.getUserWithOrders(u.id);
+        NotificationService.notify(u.id, ''hello'');
+      } catch(e) {
+        if (e.message.includes(''is not a function'') || e.message.includes(''undefined'')) allDefined = false;
+      }
+      return allDefined ? ''all-functions-defined'' : ''FAIL'';
+    }
+    default: return ''unknown-test'';
+  }
+}
+
+module.exports = { solve };',
 '[{"input":"create-user","expectedOutput":"user-created"},{"input":"create-order-sends-notification","expectedOutput":"order-with-notification"},{"input":"get-user-with-orders","expectedOutput":"user-and-orders"},{"input":"notification-has-email","expectedOutput":"email-in-notification"},{"input":"full-flow","expectedOutput":"create-order-notify-status"},{"input":"update-order-status-notifies","expectedOutput":"status-notification-sent"},{"input":"no-circular-undefined","expectedOutput":"all-functions-defined"}]',
 10000, 256, NULL, 500, 2400, 'real_world', 'Dependency management and module restructuring');
