@@ -30,7 +30,7 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
     const { challengeId, timed } = parsed.data;
     const db = getDb(context.env);
 
-    const SIGNUP_BONUS = 5000;
+    const SIGNUP_BONUS = 50000;
     const insertResult = await db
       .insert(profiles)
       .values({
