@@ -17,6 +17,13 @@ const CATEGORIES = [
   { key: 'multi_model_strategy', label: 'Multi-Model' },
 ] as const;
 
+const TIER_ORDER = ['onboarding', 'core', 'headline'] as const;
+const TIER_META: Record<string, { label: string; description: string }> = {
+  onboarding: { label: 'Getting Started', description: 'Beginner-friendly challenges to learn the platform.' },
+  core: { label: 'Core Challenges', description: 'Standard challenges across all skill categories.' },
+  headline: { label: 'Headline Challenges', description: 'Advanced challenges for experienced AI practitioners.' },
+};
+
 export function ChallengesScreen() {
   const navigation = useNavigation();
   const [user, setUser] = useState<any>(null);
@@ -61,6 +68,15 @@ export function ChallengesScreen() {
   const filtered = activeCategory === 'all'
     ? challenges
     : challenges.filter((ch) => ch.category === activeCategory);
+
+  // Group by tier
+  const grouped = TIER_ORDER.map((tier) => ({
+    tier,
+    meta: TIER_META[tier],
+    items: filtered
+      .filter((ch) => (ch.tier || 'core') === tier)
+      .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0)),
+  })).filter((g) => g.items.length > 0);
 
   return (
     <DashboardLayout user={user}>
@@ -107,11 +123,17 @@ export function ChallengesScreen() {
           </CardContent>
         </Card>
       ) : (
-        <View style={styles.grid}>
-          {filtered.map((ch) => (
-            <ChallengeCard key={ch.id} challenge={ch} />
-          ))}
-        </View>
+        grouped.map((group) => (
+          <View key={group.tier} style={styles.tierSection}>
+            <Text style={[styles.tierTitle, { color: c.text }]}>{group.meta.label}</Text>
+            <Text style={[styles.tierDesc, { color: c.textMuted }]}>{group.meta.description}</Text>
+            <View style={styles.grid}>
+              {group.items.map((ch) => (
+                <ChallengeCard key={ch.id} challenge={ch} />
+              ))}
+            </View>
+          </View>
+        ))
       )}
     </DashboardLayout>
   );
@@ -129,5 +151,8 @@ const styles = StyleSheet.create({
   emptyContent: { alignItems: 'center', paddingVertical: spacing['2xl'] },
   emptyTitle: { fontSize: fontSizes.lg, fontWeight: '600' },
   emptySub: { fontSize: fontSizes.sm, marginTop: spacing.xs },
+  tierSection: { marginBottom: spacing.xl },
+  tierTitle: { fontSize: fontSizes.lg, fontWeight: '700', fontFamily: fontFamily.body, marginBottom: spacing.xs },
+  tierDesc: { fontSize: fontSizes.sm, marginBottom: spacing.md },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.lg },
 });

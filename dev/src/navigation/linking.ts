@@ -22,6 +22,9 @@ export const linking: LinkingOptions<ReactNavigation.RootParamList> = {
       AssessmentLanding: 'assess/:token',
       AssessmentFlow: 'assess/session/:sessionId',
       AssessmentResults: 'results/:shareToken',
+      Teams: 'teams',
+      GuestArena: 'try/:challengeId',
+      PublicProfile: 'u/:username',
     },
   },
 };

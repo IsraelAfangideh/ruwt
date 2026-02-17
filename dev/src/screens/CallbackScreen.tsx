@@ -28,6 +28,15 @@ export function CallbackScreen() {
       if (handled.current) return;
       handled.current = true;
       setStatus('ok');
+
+      // Check for pending guest challenge
+      const pendingChallenge = typeof window !== 'undefined' ? localStorage.getItem('ruwt_pending_challenge') : null;
+      if (pendingChallenge) {
+        localStorage.removeItem('ruwt_pending_challenge');
+        navigation.reset({ index: 0, routes: [{ name: 'Arena' as never, params: { challengeId: pendingChallenge } }] });
+        return;
+      }
+
       navigation.reset({ index: 0, routes: [{ name: redirectTo as never }] });
     };
 

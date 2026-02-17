@@ -2,6 +2,7 @@
  * GET /api/leaderboard
  * Global or challenge-specific leaderboard from D1.
  * Supports period filter: all (default) | month | week.
+ * Supports division filter: open (default, platform models only) | unlimited (all).
  */
 import { eq, and, desc, sql, gte } from 'drizzle-orm';
 import { getDb } from '../_shared/db';
@@ -28,6 +29,7 @@ export async function onRequestGet(context: { request: Request; env: Env }) {
     const challengeId = url.searchParams.get('challengeId');
     const period = url.searchParams.get('period') || 'all';
     const seasonParam = url.searchParams.get('season'); // 'current' | season ID | null
+    const division = url.searchParams.get('division') || 'open'; // 'open' | 'unlimited'
     const limit = Math.min(parseInt(url.searchParams.get('limit') || '50', 10), 100);
 
     // Resolve season filter — overrides period if specified
@@ -66,6 +68,9 @@ export async function onRequestGet(context: { request: Request; env: Env }) {
       if (threshold) {
         conditions.push(gte(attempts.submittedAt, threshold));
       }
+      if (division === 'open') {
+        conditions.push(eq(attempts.usedByok, 0));
+      }
 
       const results = await db
         .select({
@@ -74,6 +79,7 @@ export async function onRequestGet(context: { request: Request; env: Env }) {
           userName: profiles.name,
           userEmail: profiles.email,
           avatarUrl: profiles.avatarUrl,
+          username: profiles.username,
           totalCost: attempts.totalCost,
           inputTokens: attempts.inputTokens,
           outputTokens: attempts.outputTokens,
@@ -89,12 +95,14 @@ export async function onRequestGet(context: { request: Request; env: Env }) {
         type: 'challenge',
         challengeId,
         period,
+        division,
         entries: results.map((r, i) => ({
           rank: i + 1,
           user: {
             id: r.userId,
             name: r.userName || r.userEmail?.split('@')[0],
             avatarUrl: r.avatarUrl,
+            username: r.username,
           },
           attemptId: r.attemptId,
           cost: r.totalCost,
@@ -104,10 +112,16 @@ export async function onRequestGet(context: { request: Request; env: Env }) {
       });
     }
 
-    // Global leaderboard with optional period filter
+    // Global leaderboard with optional period + division filter
     const periodFilter = threshold
       ? sql`AND ${attempts.submittedAt} >= ${threshold}`
       : sql``;
+
+    const byokFilter = division === 'open'
+      ? sql`AND ${attempts.usedByok} = 0`
+      : sql``;
+
+    const combinedFilter = sql`${periodFilter} ${byokFilter}`;
 
     const results = await db
       .select({
@@ -115,30 +129,33 @@ export async function onRequestGet(context: { request: Request; env: Env }) {
         userName: profiles.name,
         userEmail: profiles.email,
         avatarUrl: profiles.avatarUrl,
-        solvedCount: sql<number>`COUNT(DISTINCT CASE WHEN ${attempts.status} = 'passed' ${periodFilter} THEN ${attempts.challengeId} END)`,
-        totalAttempts: sql<number>`COUNT(CASE WHEN 1=1 ${periodFilter} THEN ${attempts.id} END)`,
-        avgCost: sql<number>`AVG(CASE WHEN ${attempts.status} = 'passed' ${periodFilter} THEN ${attempts.totalCost} END)`,
-        totalCost: sql<number>`SUM(CASE WHEN 1=1 ${periodFilter} THEN ${attempts.totalCost} ELSE 0 END)`,
+        username: profiles.username,
+        solvedCount: sql<number>`COUNT(DISTINCT CASE WHEN ${attempts.status} = 'passed' ${combinedFilter} THEN ${attempts.challengeId} END)`,
+        totalAttempts: sql<number>`COUNT(CASE WHEN 1=1 ${combinedFilter} THEN ${attempts.id} END)`,
+        avgCost: sql<number>`AVG(CASE WHEN ${attempts.status} = 'passed' ${combinedFilter} THEN ${attempts.totalCost} END)`,
+        totalCost: sql<number>`SUM(CASE WHEN 1=1 ${combinedFilter} THEN ${attempts.totalCost} ELSE 0 END)`,
       })
       .from(profiles)
       .leftJoin(attempts, eq(profiles.id, attempts.userId))
-      .groupBy(profiles.id, profiles.name, profiles.email, profiles.avatarUrl)
-      .having(sql`COUNT(DISTINCT CASE WHEN ${attempts.status} = 'passed' ${periodFilter} THEN ${attempts.challengeId} END) > 0`)
+      .groupBy(profiles.id, profiles.name, profiles.email, profiles.avatarUrl, profiles.username)
+      .having(sql`COUNT(DISTINCT CASE WHEN ${attempts.status} = 'passed' ${combinedFilter} THEN ${attempts.challengeId} END) > 0`)
       .orderBy(
-        desc(sql`COUNT(DISTINCT CASE WHEN ${attempts.status} = 'passed' ${periodFilter} THEN ${attempts.challengeId} END)`),
-        sql`AVG(CASE WHEN ${attempts.status} = 'passed' ${periodFilter} THEN ${attempts.totalCost} END)`
+        desc(sql`COUNT(DISTINCT CASE WHEN ${attempts.status} = 'passed' ${combinedFilter} THEN ${attempts.challengeId} END)`),
+        sql`AVG(CASE WHEN ${attempts.status} = 'passed' ${combinedFilter} THEN ${attempts.totalCost} END)`
       )
       .limit(limit);
 
     return Response.json({
       type: 'global',
       period,
+      division,
       entries: results.map((r, index) => ({
         rank: index + 1,
         user: {
           id: r.userId,
           name: r.userName || r.userEmail?.split('@')[0],
           avatarUrl: r.avatarUrl,
+          username: r.username,
         },
         stats: {
           solved: Number(r.solvedCount),

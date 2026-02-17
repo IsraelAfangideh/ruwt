@@ -290,13 +290,14 @@ export interface PastAttempt {
 
 interface ArenaIDEProps {
   challenge: ArenaChallenge;
-  attempt: ArenaAttempt;
+  attempt?: ArenaAttempt | null;
+  guestMode?: boolean;
   userCredits: number;
   code: string;
   onCodeChange: (code: string) => void;
   language: string;
   onRunTests: (sourceCode: string, language: string) => Promise<{ passed: boolean; passedTests: number; totalTests: number; results?: unknown[] }>;
-  onSubmit: (sourceCode: string, language: string) => Promise<{ passed: boolean; passedTests: number; totalTests: number }>;
+  onSubmit?: (sourceCode: string, language: string) => Promise<{ passed: boolean; passedTests: number; totalTests: number }>;
   onAttemptUpdate?: (attempt: ArenaAttempt) => void;
   onRestart?: () => void;
   onRunCode: (sourceCode: string, language: string) => Promise<{ stdout: string; stderr: string; exitCode: number }>;
@@ -524,6 +525,7 @@ function DescriptionPanel({ challenge, pastAttempts }: { challenge: ArenaChallen
 export function ArenaIDE({
   challenge,
   attempt,
+  guestMode,
   code,
   onCodeChange,
   language,
@@ -535,9 +537,9 @@ export function ArenaIDE({
   onDismissResults,
   pastAttempts,
 }: ArenaIDEProps) {
-  const [totalCost, setTotalCost] = useState(attempt.totalCost);
-  const [inputTokens, setInputTokens] = useState(attempt.inputTokens);
-  const [outputTokens, setOutputTokens] = useState(attempt.outputTokens);
+  const [totalCost, setTotalCost] = useState(attempt?.totalCost ?? 0);
+  const [inputTokens, setInputTokens] = useState(attempt?.inputTokens ?? 0);
+  const [outputTokens, setOutputTokens] = useState(attempt?.outputTokens ?? 0);
   const [messages, setMessages] = useState<{ role: 'system' | 'user' | 'assistant'; content: string; isConstraint?: boolean; meta?: MessageMeta }[]>([]);
   const [streamingContent, setStreamingContent] = useState('');
   const [chatInput, setChatInput] = useState('');
@@ -565,8 +567,8 @@ export function ArenaIDE({
   const isDragging = useRef(false);
   const rightPaneRef = useRef<HTMLDivElement>(null);
 
-  const attemptId = attempt.id;
-  const expiresAt = attempt.expiresAt ? new Date(attempt.expiresAt) : null;
+  const attemptId = attempt?.id ?? '';
+  const expiresAt = attempt?.expiresAt ? new Date(attempt.expiresAt) : null;
 
   // Virtual filesystem
   const fs = useMemo(() => new VirtualFileSystem(language, code), []);
@@ -579,7 +581,7 @@ export function ArenaIDE({
     setTotalCost((prev) => prev + cost);
     setInputTokens((prev) => prev + inTok);
     setOutputTokens((prev) => prev + outTok);
-    if (onAttemptUpdate) {
+    if (onAttemptUpdate && attempt) {
       onAttemptUpdate({
         ...attempt,
         totalCost: attempt.totalCost + cost,
@@ -1014,19 +1016,19 @@ Rules:
                 <input
                   type="text"
                   style={s.chatInput}
-                  placeholder={chatDisabled ? (aiLimitReached ? 'AI limit reached \u2014 budget exhausted' : 'Chat disabled \u2014 time expired') : 'Ask about this problem...'}
+                  placeholder={guestMode ? 'Sign up to chat with AI' : chatDisabled ? (aiLimitReached ? 'AI limit reached \u2014 budget exhausted' : 'Chat disabled \u2014 time expired') : 'Ask about this problem...'}
                   value={chatInput}
                   onChange={(e) => setChatInput(e.target.value)}
                   onKeyDown={handleInputKeyDown}
-                  disabled={isLoadingChat || chatDisabled}
+                  disabled={isLoadingChat || chatDisabled || !!guestMode}
                 />
                 <button
                   style={{
                     ...s.sendButton,
-                    opacity: !chatInput.trim() || isLoadingChat || chatDisabled ? 0.4 : 1,
+                    opacity: !chatInput.trim() || isLoadingChat || chatDisabled || guestMode ? 0.4 : 1,
                   }}
                   onClick={sendMessage}
-                  disabled={!chatInput.trim() || isLoadingChat || chatDisabled}
+                  disabled={!chatInput.trim() || isLoadingChat || chatDisabled || !!guestMode}
                 >
                   &#9658;
                 </button>

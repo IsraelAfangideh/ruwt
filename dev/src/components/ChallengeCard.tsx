@@ -14,6 +14,8 @@ export interface Challenge {
   wallClockLimit?: number | null;
   category?: string | null;
   skillTested?: string | null;
+  tier?: string | null;
+  sortOrder?: number | null;
   stats?: { solvers: number; avgCost: number | null } | null;
 }
 

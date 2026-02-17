@@ -14,18 +14,20 @@ import { spacing, fontSizes, fontFamily } from '@/theme/tokens';
 
 type GlobalEntry = {
   rank: number;
-  user: { id: string; name: string; avatarUrl?: string | null };
+  user: { id: string; name: string; avatarUrl?: string | null; username?: string | null };
   stats?: { solved: number; attempts: number; avgCost: number; totalCost: number };
 };
 
 type ChallengeEntry = {
   rank: number;
-  user: { id: string; name: string; avatarUrl?: string | null };
+  user: { id: string; name: string; avatarUrl?: string | null; username?: string | null };
   attemptId: string;
   cost: number;
   tokens: number;
   submittedAt: string | null;
 };
+
+type Division = 'open' | 'unlimited';
 
 type ChallengeInfo = {
   id: string;
@@ -58,12 +60,13 @@ export function LeaderboardScreen() {
   const [replayAttemptId, setReplayAttemptId] = useState<string | null>(null);
   const [allSeasons, setAllSeasons] = useState<SeasonInfo[]>([]);
   const [selectedSeason, setSelectedSeason] = useState<string>('');
+  const [division, setDivision] = useState<Division>('open');
   const c = useColors();
 
-  const fetchGlobal = async (p: Period, seasonId?: string) => {
+  const fetchGlobal = async (p: Period, seasonId?: string, div?: Division) => {
     const base = typeof window !== 'undefined' ? window.location.origin : '';
     try {
-      let url = `${base}/api/leaderboard?limit=50&period=${p}`;
+      let url = `${base}/api/leaderboard?limit=50&period=${p}&division=${div || division}`;
       if (seasonId) url += `&season=${seasonId}`;
       const r = await fetch(url);
       if (r.ok) {
@@ -122,12 +125,12 @@ export function LeaderboardScreen() {
     }
   };
 
-  const fetchChallengeLeaderboard = async (challengeId: string, p?: Period) => {
+  const fetchChallengeLeaderboard = async (challengeId: string, p?: Period, div?: Division) => {
     if (!challengeId) { setChallengeEntries([]); return; }
     setChallengeLoading(true);
     try {
       const base = typeof window !== 'undefined' ? window.location.origin : '';
-      const r = await fetch(`${base}/api/leaderboard?challengeId=${challengeId}&limit=50&period=${p || period}`);
+      const r = await fetch(`${base}/api/leaderboard?challengeId=${challengeId}&limit=50&period=${p || period}&division=${div || division}`);
       if (r.ok) {
         const data = await r.json() as { entries: ChallengeEntry[] };
         setChallengeEntries(data.entries ?? []);
@@ -179,6 +182,31 @@ export function LeaderboardScreen() {
           </Pressable>
         ))}
       </View>
+
+      {/* Division toggle */}
+      <View style={[styles.periodBar, { borderBottomColor: c.border }]}>
+        {([['open', 'Open'], ['unlimited', 'Unlimited']] as const).map(([key, label]) => (
+          <Pressable
+            key={key}
+            onPress={() => {
+              setDivision(key);
+              if (tab === 'global') {
+                fetchGlobal(period, selectedSeason || undefined, key);
+              } else if (selectedChallenge) {
+                fetchChallengeLeaderboard(selectedChallenge, period, key);
+              }
+            }}
+            style={[styles.periodTab, { borderBottomColor: division === key ? c.accent : 'transparent' }]}
+          >
+            <Text style={{ fontSize: fontSizes.xs, fontWeight: division === key ? '700' : '500', color: division === key ? c.text : c.textMuted }}>
+              {label}
+            </Text>
+          </Pressable>
+        ))}
+      </View>
+      <Text style={{ fontSize: fontSizes.xs, color: c.textMuted, marginBottom: spacing.sm, paddingHorizontal: spacing.xs }}>
+        Open: Platform models only. Unlimited: All models including BYOK.
+      </Text>
 
       {/* Season filter */}
       {allSeasons.length > 0 && (
@@ -256,10 +284,10 @@ export function LeaderboardScreen() {
               {globalEntries.map((e) => (
                 <View key={e.user.id} style={[styles.row, { borderBottomColor: c.border }]}>
                   <Text style={[styles.rank, { color: c.textMuted }]}>{e.rank}</Text>
-                  <View style={styles.nameCell}>
+                  <Pressable style={styles.nameCell} onPress={() => e.user.username && (navigation.navigate as any)('PublicProfile', { username: e.user.username })}>
                     <Avatar src={e.user.avatarUrl} fallback={e.user.name?.[0] ?? '?'} size={28} />
-                    <Text style={[styles.name, { color: c.text }]} numberOfLines={1}>{e.user.name}</Text>
-                  </View>
+                    <Text style={[styles.name, { color: e.user.username ? c.accent : c.text }]} numberOfLines={1}>{e.user.name}</Text>
+                  </Pressable>
                   {e.stats ? (
                     <>
                       <Text style={[styles.stat, { color: c.text }]}>{e.stats.solved}</Text>
@@ -326,10 +354,10 @@ export function LeaderboardScreen() {
                   <Text style={[styles.rank, { color: e.rank <= 3 ? c.accent : c.textMuted }]}>
                     {e.rank <= 3 ? ['', '\uD83E\uDD47', '\uD83E\uDD48', '\uD83E\uDD49'][e.rank] : e.rank}
                   </Text>
-                  <View style={styles.nameCell}>
+                  <Pressable style={styles.nameCell} onPress={() => e.user.username && (navigation.navigate as any)('PublicProfile', { username: e.user.username })}>
                     <Avatar src={e.user.avatarUrl} fallback={e.user.name?.[0] ?? '?'} size={28} />
-                    <Text style={[styles.name, { color: c.text }]} numberOfLines={1}>{e.user.name}</Text>
-                  </View>
+                    <Text style={[styles.name, { color: e.user.username ? c.accent : c.text }]} numberOfLines={1}>{e.user.name}</Text>
+                  </Pressable>
                   <Text style={[styles.stat, { color: c.accent }]}>{formatCost(e.cost)}</Text>
                   <Text style={[styles.stat, { color: c.textMuted }]}>{e.tokens.toLocaleString()} {e.tokens === 1 ? 'token' : 'tokens'}</Text>
                   <Pressable

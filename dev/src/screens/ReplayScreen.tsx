@@ -1,6 +1,7 @@
 /**
  * ReplayScreen: Full-page replay viewer for a challenge attempt.
  * Route: /replay/:attemptId
+ * Supports ?embed=1 for compact iframe embedding.
  */
 import { useState, useEffect } from 'react';
 import { View, Text, ScrollView, ActivityIndicator, Pressable, StyleSheet } from 'react-native';
@@ -45,7 +46,11 @@ export function ReplayScreen() {
   const [data, setData] = useState<ReplayData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
+  const [copiedLink, setCopiedLink] = useState(false);
+  const [copiedEmbed, setCopiedEmbed] = useState(false);
+
+  // Detect embed mode
+  const isEmbed = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('embed') === '1';
 
   useEffect(() => {
     if (!attemptId) {
@@ -71,20 +76,35 @@ export function ReplayScreen() {
     load();
   }, [attemptId]);
 
-  const handleShare = async () => {
-    if (!data) return;
-    const shareText = [
-      `I solved "${data.challenge.title}" on ruwt.dev for ${formatCostFromHundredths(data.stats.totalCost)} using ${data.stats.modelsUsed.length} model${data.stats.modelsUsed.length !== 1 ? 's' : ''}`,
-      `${data.challenge.difficulty} | ${(data.attempt.inputTokens + data.attempt.outputTokens).toLocaleString()} tokens | ${data.stats.messageCount} AI messages`,
-      `Watch the replay: ${window.location.origin}/replay/${attemptId}`,
-    ].join('\n');
+  const replayUrl = typeof window !== 'undefined' ? `${window.location.origin}/replay/${attemptId}` : '';
+
+  const handleCopyLink = async () => {
     try {
-      await navigator.clipboard.writeText(shareText);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      // fallback
-    }
+      await navigator.clipboard.writeText(replayUrl);
+      setCopiedLink(true);
+      setTimeout(() => setCopiedLink(false), 2000);
+    } catch { /* fallback */ }
+  };
+
+  const handleShareTwitter = () => {
+    if (!data) return;
+    const text = `I solved "${data.challenge.title}" on ruwt.dev for ${formatCostFromHundredths(data.stats.totalCost)} using ${data.stats.modelsUsed.length} model${data.stats.modelsUsed.length !== 1 ? 's' : ''}`;
+    const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(replayUrl)}`;
+    window.open(url, '_blank');
+  };
+
+  const handleShareLinkedIn = () => {
+    const url = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(replayUrl)}`;
+    window.open(url, '_blank');
+  };
+
+  const handleCopyEmbed = async () => {
+    const embedCode = `<iframe src="${replayUrl}?embed=1" width="100%" height="600" frameborder="0" style="border:1px solid #30363d;border-radius:8px;"></iframe>`;
+    try {
+      await navigator.clipboard.writeText(embedCode);
+      setCopiedEmbed(true);
+      setTimeout(() => setCopiedEmbed(false), 2000);
+    } catch { /* fallback */ }
   };
 
   if (loading) {
@@ -108,6 +128,48 @@ export function ReplayScreen() {
 
   if (!data) return null;
 
+  // Embed mode: compact, no nav
+  if (isEmbed) {
+    return (
+      <ScrollView style={[styles.page, { backgroundColor: c.bg }]}>
+        <View style={[styles.summary, { backgroundColor: c.muted + '20', borderBottomColor: c.border }]}>
+          <Text style={[styles.summaryText, { color: c.text }]}>
+            {data.solver.name} solved "{data.challenge.title}" in {data.stats.messageCount} messages for {formatCostFromHundredths(data.stats.totalCost)}
+          </Text>
+        </View>
+        <View style={styles.timeline}>
+          {data.messages.map((msg, i) => {
+            const mi = msg.model ? getModelById(msg.model) : undefined;
+            return (
+              <View key={i} style={[styles.msgRow, { borderBottomColor: c.border }]}>
+                <View style={styles.msgHeader}>
+                  <View style={[styles.roleBadge, { backgroundColor: msg.role === 'user' ? c.accent + '20' : c.muted + '30' }]}>
+                    <Text style={{ fontSize: fontSizes.xs, fontWeight: '700', color: msg.role === 'user' ? c.accent : c.textMuted }}>
+                      {msg.role === 'user' ? 'USER' : 'AI'}
+                    </Text>
+                  </View>
+                  {mi && (
+                    <Text style={{ fontSize: fontSizes.xs, color: tierColor(mi.tier) }}>
+                      {mi.displayName}
+                    </Text>
+                  )}
+                </View>
+                <Text style={[styles.msgContent, { color: c.text }]} selectable>
+                  {msg.content.length > 2000 ? msg.content.slice(0, 2000) + '...' : msg.content}
+                </Text>
+              </View>
+            );
+          })}
+        </View>
+        <View style={{ alignItems: 'center', padding: spacing.md }}>
+          <Text style={{ color: c.textMuted, fontSize: fontSizes.xs }}>
+            View on <Text style={{ color: c.accent }} onPress={() => window.open(replayUrl, '_blank')}>ruwt.dev</Text>
+          </Text>
+        </View>
+      </ScrollView>
+    );
+  }
+
   return (
     <ScrollView style={[styles.page, { backgroundColor: c.bg }]}>
       {/* Header */}
@@ -121,9 +183,21 @@ export function ReplayScreen() {
           </Text>
         </View>
         <View style={styles.headerActions}>
-          <Pressable onPress={handleShare} style={[styles.shareBtn, { borderColor: c.border }]}>
+          {/* Share group */}
+          <Pressable onPress={handleCopyLink} style={[styles.shareBtn, { borderColor: c.border }]}>
             <Text style={{ color: c.text, fontSize: fontSizes.sm }}>
-              {copied ? 'Copied!' : 'Share'}
+              {copiedLink ? 'Copied!' : 'Copy Link'}
+            </Text>
+          </Pressable>
+          <Pressable onPress={handleShareTwitter} style={[styles.shareBtn, { borderColor: c.border }]}>
+            <Text style={{ color: c.text, fontSize: fontSizes.sm }}>Twitter</Text>
+          </Pressable>
+          <Pressable onPress={handleShareLinkedIn} style={[styles.shareBtn, { borderColor: c.border }]}>
+            <Text style={{ color: c.text, fontSize: fontSizes.sm }}>LinkedIn</Text>
+          </Pressable>
+          <Pressable onPress={handleCopyEmbed} style={[styles.shareBtn, { borderColor: c.border }]}>
+            <Text style={{ color: c.text, fontSize: fontSizes.sm }}>
+              {copiedEmbed ? 'Copied!' : 'Embed'}
             </Text>
           </Pressable>
           <Pressable onPress={() => navigation.goBack()} style={styles.closeBtn}>
@@ -216,7 +290,7 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     width: '100%',
   },
-  headerActions: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  headerActions: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, flexWrap: 'wrap' },
   title: { fontSize: fontSizes.xl, fontWeight: '700', fontFamily: fontFamily.body },
   subtitle: { fontSize: fontSizes.sm, marginTop: 2 },
   shareBtn: {

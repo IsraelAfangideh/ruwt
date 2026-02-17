@@ -24,6 +24,8 @@ export async function onRequestGet(context: { env: Env }) {
         wallClockLimit: challenges.wallClockLimit,
         category: challenges.category,
         skillTested: challenges.skillTested,
+        sortOrder: challenges.sortOrder,
+        tier: challenges.tier,
         createdAt: challenges.createdAt,
         solvers: sql<number>`COUNT(DISTINCT CASE WHEN ${attempts.status} = 'passed' THEN ${attempts.userId} END)`,
         avgCost: sql<number>`AVG(CASE WHEN ${attempts.status} = 'passed' THEN ${attempts.totalCost} END)`,
@@ -31,7 +33,7 @@ export async function onRequestGet(context: { env: Env }) {
       .from(challenges)
       .leftJoin(attempts, sql`${challenges.id} = ${attempts.challengeId}`)
       .groupBy(challenges.id)
-      .orderBy(challenges.createdAt);
+      .orderBy(challenges.sortOrder, challenges.createdAt);
 
     return Response.json(
       list.map((ch) => ({

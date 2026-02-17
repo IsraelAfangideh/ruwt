@@ -21,6 +21,9 @@ import { AssessmentResultsDashboardScreen } from '@/screens/AssessmentResultsDas
 import { AssessmentLandingScreen } from '@/screens/AssessmentLandingScreen';
 import { AssessmentFlowScreen } from '@/screens/AssessmentFlowScreen';
 import { AssessmentResultsScreen } from '@/screens/AssessmentResultsScreen';
+import { TeamsScreen } from '@/screens/TeamsScreen';
+import { GuestArenaScreen } from '@/screens/GuestArenaScreen';
+import { PublicProfileScreen } from '@/screens/PublicProfileScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -51,6 +54,9 @@ export function AppNavigator() {
         <Stack.Screen name="AssessmentLanding" component={AssessmentLandingScreen} />
         <Stack.Screen name="AssessmentFlow" component={AssessmentFlowScreen} />
         <Stack.Screen name="AssessmentResults" component={AssessmentResultsScreen} />
+        <Stack.Screen name="Teams" component={TeamsScreen} />
+        <Stack.Screen name="GuestArena" component={GuestArenaScreen} />
+        <Stack.Screen name="PublicProfile" component={PublicProfileScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

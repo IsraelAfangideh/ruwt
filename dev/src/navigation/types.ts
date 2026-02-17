@@ -17,6 +17,9 @@ export type RootStackParamList = {
   AssessmentLanding: { token: string };
   AssessmentFlow: { sessionId: string };
   AssessmentResults: { shareToken: string };
+  Teams: undefined;
+  GuestArena: { challengeId: string };
+  PublicProfile: { username: string };
 };
 
 declare global {

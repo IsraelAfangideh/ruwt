@@ -22,36 +22,50 @@ export function getPackageById(id: string): CreditPackage | undefined {
 }
 
 /**
- * B2B subscription tiers for hiring assessments.
+ * B2B assessment packs — credit-based pricing for hiring teams.
  */
-export interface SubscriptionTier {
+export interface AssessmentPack {
   id: string;
-  name: string;
-  priceInCents: number; // monthly
-  candidatesPerMonth: number | null; // null = unlimited
+  assessments: number | null; // null = enterprise/custom
+  priceInCents: number; // 0 = contact us
+  label: string;
+  badge?: string;
   features: string[];
 }
 
-export const SUBSCRIPTION_TIERS: SubscriptionTier[] = [
+export const ASSESSMENT_PACKS: AssessmentPack[] = [
   {
-    id: 'tier-starter',
-    name: 'Starter',
-    priceInCents: 19900,
-    candidatesPerMonth: 10,
-    features: ['Create assessments', 'Results dashboard', 'CSV export', 'All challenges'],
+    id: 'pack-10',
+    assessments: 10,
+    priceInCents: 9900,
+    label: '10 Assessments',
+    features: ['Create custom assessments', 'Results dashboard', 'CSV export', 'All 60+ challenges'],
   },
   {
-    id: 'tier-pro',
-    name: 'Pro',
-    priceInCents: 49900,
-    candidatesPerMonth: 50,
-    features: ['All Starter features', 'AI profile analytics', 'Candidate comparison', 'Priority support'],
+    id: 'pack-50',
+    assessments: 50,
+    priceInCents: 39900,
+    label: '50 Assessments',
+    badge: 'Popular',
+    features: ['Everything in 10-pack', 'AI profile analytics', 'Candidate comparison', 'Priority support'],
   },
   {
-    id: 'tier-enterprise',
-    name: 'Enterprise',
-    priceInCents: 0, // custom pricing
-    candidatesPerMonth: null,
-    features: ['Unlimited candidates', 'SSO', 'API access', 'Custom challenges', 'Dedicated support'],
+    id: 'pack-200',
+    assessments: 200,
+    priceInCents: 99900,
+    label: '200 Assessments',
+    badge: 'Best Value',
+    features: ['Everything in 50-pack', 'SSO integration', 'API access', 'Custom challenges'],
+  },
+  {
+    id: 'pack-enterprise',
+    assessments: null,
+    priceInCents: 0,
+    label: 'Enterprise',
+    features: ['Unlimited assessments', 'Dedicated support', 'Custom SLA', 'On-premise option'],
   },
 ];
+
+export function getAssessmentPackById(id: string): AssessmentPack | undefined {
+  return ASSESSMENT_PACKS.find((p) => p.id === id);
+}

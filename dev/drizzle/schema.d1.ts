@@ -14,6 +14,7 @@ export const profiles = sqliteTable('profiles', {
   credits: integer('credits').default(0).notNull(),
   accountType: text('account_type').default('individual').notNull(), // 'individual' | 'team'
   assessmentCredits: integer('assessment_credits').default(0).notNull(),
+  username: text('username').unique(),
   createdAt: text('created_at').default(sql`(datetime('now'))`).notNull(),
 });
 
@@ -35,6 +36,9 @@ export const challenges = sqliteTable('challenges', {
   category: text('category').default('practice'), // 'practice' | 'model_selection' | 'prompt_efficiency' | 'iterative_debugging'
   skillTested: text('skill_tested'),
 
+  sortOrder: integer('sort_order').default(0),
+  tier: text('tier').default('core'), // 'onboarding' | 'core' | 'headline'
+
   createdAt: text('created_at').default(sql`(datetime('now'))`).notNull(),
 });
 
@@ -55,6 +59,7 @@ export const attempts = sqliteTable('attempts', {
 
   assessmentSessionId: text('assessment_session_id'),
   replayPublic: integer('replay_public').default(1).notNull(),
+  usedByok: integer('used_byok').default(0).notNull(),
 
   createdAt: text('created_at').default(sql`(datetime('now'))`).notNull(),
   submittedAt: text('submitted_at'),
@@ -216,6 +221,7 @@ export type SessionStatus = 'in_progress' | 'completed' | 'expired' | 'abandoned
 export type AccountType = 'individual' | 'team';
 export type ApiKeyProvider = 'openai' | 'anthropic' | 'google';
 export type SeasonStatus = 'upcoming' | 'active' | 'completed';
+export type ChallengeTier = 'onboarding' | 'core' | 'headline';
 
 export type ApiKey = typeof apiKeys.$inferSelect;
 export type NewApiKey = typeof apiKeys.$inferInsert;

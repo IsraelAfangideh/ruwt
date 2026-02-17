@@ -263,6 +263,7 @@ export async function onRequestPost(context: {
           totalCost: sql`${attempts.totalCost} + ${actualCost}`,
           inputTokens: sql`${attempts.inputTokens} + ${result.inputTokens}`,
           outputTokens: sql`${attempts.outputTokens} + ${result.outputTokens}`,
+          usedByok: 1,
         })
         .where(eq(attempts.id, attemptId));
 

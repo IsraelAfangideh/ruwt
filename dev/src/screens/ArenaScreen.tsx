@@ -567,44 +567,62 @@ export function ArenaScreen() {
         </div>
 
         {/* Right: Stats + Actions */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-          {/* Stats */}
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 14,
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          {/* Hero cost */}
+          <span style={{
+            fontSize: 20,
+            fontWeight: 700,
+            color: costLimitReached ? arena.error : arena.accent,
             fontFamily: 'Menlo, Monaco, "Courier New", monospace',
-            fontSize: 13,
           }}>
-            <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-              <span style={{ fontSize: 9, color: costLimitReached ? arena.error : arena.success }}>{'\u25CF'}</span>
-              <span style={{ color: costLimitReached ? arena.error : arena.accent, fontWeight: 600 }}>{formatCost(attempt.totalCost)}</span>
-              <span style={{ color: costLimitReached ? arena.error : arena.textMuted, fontSize: 12 }}>{costLimitReached ? 'limit reached' : 'spent'}</span>
+            {formatCost(attempt.totalCost)}
+          </span>
+          <span style={{ fontSize: 11, color: costLimitReached ? arena.error : arena.textMuted }}>
+            {costLimitReached ? 'limit reached' : 'spent'}
+          </span>
+
+          {/* Token detail with hover popover */}
+          <span
+            style={{
+              fontSize: 11,
+              color: tokenLimitReached ? arena.error : arena.textMuted,
+              fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+              cursor: 'help',
+              position: 'relative',
+            }}
+            title={`Input: ${(attempt.inputTokens || 0).toLocaleString()} | Output: ${(attempt.outputTokens || 0).toLocaleString()} | Total: ${totalTokens.toLocaleString()}`}
+          >
+            {totalTokens.toLocaleString()} tok
+          </span>
+
+          {/* Timer — subtle when normal, bold pill when warning/critical */}
+          {timeLeft != null && (
+            <span style={{
+              fontSize: 12,
+              fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+              ...(timerUrgency === 'critical' ? {
+                fontWeight: 700, background: arena.error, color: '#fff', padding: '2px 10px', borderRadius: 9999,
+              } : timerUrgency === 'warning' ? {
+                fontWeight: 700, background: arena.accent, color: '#0d1117', padding: '2px 10px', borderRadius: 9999,
+              } : { color: arena.textMuted }),
+            }}>
+              {formatTime(timeLeft)}
             </span>
-            <span style={{ color: arena.textSubtle }}>{'\u00B7'}</span>
-            <span style={{ color: arena.textMuted }}>
-              <span style={{ fontWeight: 600, color: tokenLimitReached ? arena.error : arena.text }}>{totalTokens.toLocaleString()}</span> {totalTokens === 1 ? 'token' : 'tokens'} <span style={{ color: tokenLimitReached ? arena.error : arena.textMuted }}>{tokenLimitReached ? '\u2014 limit reached' : 'spent'}</span>
-            </span>
-            {timeLeft != null && (
-              <>
-                <span style={{ color: arena.textSubtle }}>{'\u00B7'}</span>
-                <span style={{
-                  fontWeight: 700,
-                  ...(timerUrgency === 'critical' ? {
-                    background: arena.error, color: '#fff', padding: '2px 10px', borderRadius: 9999,
-                  } : timerUrgency === 'warning' ? {
-                    background: arena.accent, color: '#0d1117', padding: '2px 10px', borderRadius: 9999,
-                  } : { color: arena.text }),
-                }}>
-                  {formatTime(timeLeft)} <span style={{ fontWeight: 400, opacity: 0.7 }}>left</span>
-                </span>
-              </>
-            )}
-            <span style={{ color: arena.textSubtle }}>{'\u00B7'}</span>
-            <span style={{ color: arena.textMuted }}>
-              <span style={{ fontWeight: 600, color: arena.accent }}>{userCredits.toLocaleString()}</span> cr
-            </span>
-          </div>
+          )}
+
+          {/* Credits badge */}
+          <span style={{
+            fontSize: 10,
+            fontWeight: 600,
+            color: arena.accent,
+            padding: '2px 8px',
+            borderRadius: 9999,
+            border: `1px solid ${arena.accent}40`,
+            background: `${arena.accent}10`,
+            fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+          }}>
+            {userCredits.toLocaleString()} cr
+          </span>
 
           {/* Divider */}
           <span style={{ width: 1, height: 24, background: arena.border }} />

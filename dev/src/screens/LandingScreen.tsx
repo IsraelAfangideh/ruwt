@@ -34,9 +34,14 @@ export function LandingScreen() {
         <View style={styles.heroButtons}>
           <Button size="lg" onPress={() => navigation.navigate('Register' as never)}>Start Free Practice</Button>
         </View>
-        <Pressable onPress={() => navigation.navigate('Register' as never)} style={styles.hiringLink}>
+        <Button variant="outline" size="lg" onPress={() => {
+          // Navigate to guest arena with a curated starter challenge
+          // Uses first available challenge as fallback; real onboarding challenge can be set later
+          (navigation.navigate as any)('GuestArena', { challengeId: 'onboarding-fizzbuzz' });
+        }}>Try a Challenge — No Sign Up</Button>
+        <Pressable onPress={() => navigation.navigate('Teams' as never)} style={styles.hiringLink}>
           <Text style={[styles.hiringLinkText, { color: c.textMuted }]}>
-            Hiring manager? See how it works →
+            Hiring manager? See how we assess AI skills {'\u2192'}
           </Text>
         </Pressable>
       </View>
@@ -145,29 +150,6 @@ export function LandingScreen() {
         </View>
       </View>
 
-      <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: c.text }]}>For Hiring Managers</Text>
-        <Text style={[styles.sectionSub, { color: c.textMuted }]}>
-          The only assessment that measures how efficiently candidates use AI tools. See real data — not self-reported skills.
-        </Text>
-        <View style={styles.cards}>
-          {[
-            { step: '1', title: 'Create an Assessment', desc: 'Choose from 4 pre-built templates or pick from 60+ challenges. Set time limits. Test the AI skills you care about.' },
-            { step: '2', title: 'Invite Candidates', desc: 'Send a unique assessment link. Candidates work through challenges with real AI models — no simulations.' },
-            { step: '3', title: 'Review Results', desc: 'Sort by cost, tokens, or time. Expand rows to see per-challenge model usage. Export to CSV for your ATS.' },
-          ].map((item) => (
-            <Card key={item.step} style={styles.card}>
-              <CardHeader>
-                <View style={[styles.stepNum, { backgroundColor: c.accent + '20' }]}>
-                  <Text style={[styles.stepText, { color: c.accent }]}>{item.step}</Text>
-                </View>
-                <CardTitle>{item.title}</CardTitle>
-                <CardDescription>{item.desc}</CardDescription>
-              </CardHeader>
-            </Card>
-          ))}
-        </View>
-      </View>
 
       {/* Trust signals */}
       <View style={[styles.section, styles.sectionAlt, { backgroundColor: c.muted + '20' }]}>
@@ -189,62 +171,6 @@ export function LandingScreen() {
         </View>
       </View>
 
-      <View style={[styles.section, styles.sectionAlt, { backgroundColor: c.muted + '40' }]}>
-        <Text style={[styles.sectionTitle, { color: c.text }]}>Pricing</Text>
-        <Text style={[styles.sectionSub, { color: c.textMuted }]}>
-          Free for developers. Simple pricing for hiring teams.
-        </Text>
-        <View style={styles.tiers}>
-          <Card style={styles.tierCard}>
-            <CardHeader>
-              <Badge variant="outline">Free</Badge>
-              <CardTitle>Developer</CardTitle>
-              <CardDescription>$0 / forever</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Text style={[styles.tierBody, { color: c.textMuted }]}>
-                Free unlimited practice. All 60+ challenges. Public leaderboard. Replays. No credit card.
-              </Text>
-            </CardContent>
-          </Card>
-          <Card style={styles.tierCard}>
-            <CardHeader>
-              <Badge variant="outline">Starter</Badge>
-              <CardTitle>Starter</CardTitle>
-              <CardDescription>$199 / month</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Text style={[styles.tierBody, { color: c.textMuted }]}>
-                10 candidates/month. Create assessments. Results dashboard. CSV export. All challenges.
-              </Text>
-            </CardContent>
-          </Card>
-          <Card style={[styles.tierCard, { borderColor: c.accent, borderWidth: 2 }]}>
-            <CardHeader>
-              <Badge variant="default">Pro</Badge>
-              <CardTitle>Pro</CardTitle>
-              <CardDescription>$499 / month</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Text style={[styles.tierBody, { color: c.textMuted }]}>
-                50 candidates/month. AI profile analytics. Candidate comparison. Priority support. All Starter features.
-              </Text>
-            </CardContent>
-          </Card>
-          <Card style={styles.tierCard}>
-            <CardHeader>
-              <Badge variant="outline">Enterprise</Badge>
-              <CardTitle>Enterprise</CardTitle>
-              <CardDescription>Contact us</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Text style={[styles.tierBody, { color: c.textMuted }]}>
-                Unlimited candidates. SSO. API access. Custom challenges. Dedicated support.
-              </Text>
-            </CardContent>
-          </Card>
-        </View>
-      </View>
 
       <View style={styles.cta}>
         <Text style={[styles.ctaTitle, { color: c.text }]}>Ready to prove your AI skills?</Text>
@@ -255,17 +181,6 @@ export function LandingScreen() {
         </View>
       </View>
 
-      {/* Hiring CTA */}
-      <View style={[styles.section, styles.sectionAlt, { backgroundColor: c.accent + '08' }]}>
-        <Text style={[styles.sectionTitle, { color: c.text }]}>Stop Guessing. Start Measuring.</Text>
-        <Text style={[styles.sectionSub, { color: c.textMuted }]}>
-          Traditional coding tests don't measure AI fluency. Ruwt shows you exactly how candidates use AI — which models they pick, how they prompt, and what they spend. Real data for real hiring decisions.
-        </Text>
-        <View style={styles.heroButtons}>
-          <Button size="lg" onPress={() => navigation.navigate('Register' as never)}>Start Free Assessment</Button>
-          <Button size="lg" variant="outline" onPress={() => navigation.navigate('Register' as never)}>Book a Demo</Button>
-        </View>
-      </View>
 
       <View style={[styles.footer, { borderTopColor: c.border }]}>
         <Text style={[styles.footerText, { color: c.textMuted }]}>{'\u00A9'} {new Date().getFullYear()} Ruwt. All rights reserved.</Text>
