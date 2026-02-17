@@ -36,6 +36,14 @@ type ChallengeInfo = {
 type Tab = 'global' | 'challenge';
 type Period = 'all' | 'month' | 'week';
 
+interface SeasonInfo {
+  id: string;
+  name: string;
+  status: string;
+  startsAt: string;
+  endsAt: string;
+}
+
 export function LeaderboardScreen() {
   const navigation = useNavigation();
   const [user, setUser] = useState<any>(null);
@@ -48,12 +56,16 @@ export function LeaderboardScreen() {
   const [loading, setLoading] = useState(true);
   const [challengeLoading, setChallengeLoading] = useState(false);
   const [replayAttemptId, setReplayAttemptId] = useState<string | null>(null);
+  const [allSeasons, setAllSeasons] = useState<SeasonInfo[]>([]);
+  const [selectedSeason, setSelectedSeason] = useState<string>('');
   const c = useColors();
 
-  const fetchGlobal = async (p: Period) => {
+  const fetchGlobal = async (p: Period, seasonId?: string) => {
     const base = typeof window !== 'undefined' ? window.location.origin : '';
     try {
-      const r = await fetch(`${base}/api/leaderboard?limit=50&period=${p}`);
+      let url = `${base}/api/leaderboard?limit=50&period=${p}`;
+      if (seasonId) url += `&season=${seasonId}`;
+      const r = await fetch(url);
       if (r.ok) {
         const data = await r.json() as { entries: GlobalEntry[] };
         setGlobalEntries(data.entries ?? []);
@@ -72,13 +84,18 @@ export function LeaderboardScreen() {
       setUser(u);
       const base = typeof window !== 'undefined' ? window.location.origin : '';
       try {
-        const [, chRes] = await Promise.all([
+        const [, chRes, seasonsRes] = await Promise.all([
           fetchGlobal('all'),
           fetch(`${base}/api/challenges`),
+          fetch(`${base}/api/seasons`),
         ]);
         if (chRes.ok) {
           const chData = await chRes.json() as ChallengeInfo[];
           setChallenges(chData);
+        }
+        if (seasonsRes.ok) {
+          const sData = await seasonsRes.json() as { seasons: SeasonInfo[] };
+          setAllSeasons(sData.seasons ?? []);
         }
       } catch {}
       setLoading(false);
@@ -88,10 +105,20 @@ export function LeaderboardScreen() {
 
   const handlePeriodChange = (p: Period) => {
     setPeriod(p);
+    setSelectedSeason(''); // Clear season filter when using period
     if (tab === 'global') {
       fetchGlobal(p);
     } else if (selectedChallenge) {
       fetchChallengeLeaderboard(selectedChallenge, p);
+    }
+  };
+
+  const handleSeasonChange = (seasonId: string) => {
+    setSelectedSeason(seasonId);
+    if (seasonId) {
+      fetchGlobal(period, seasonId);
+    } else {
+      fetchGlobal(period);
     }
   };
 
@@ -152,6 +179,32 @@ export function LeaderboardScreen() {
           </Pressable>
         ))}
       </View>
+
+      {/* Season filter */}
+      {allSeasons.length > 0 && (
+        <View style={styles.seasonBar}>
+          <select
+            value={selectedSeason}
+            onChange={(e: any) => handleSeasonChange(e.target.value)}
+            style={{
+              padding: '6px 10px',
+              fontSize: 13,
+              borderRadius: 6,
+              border: `1px solid ${c.border}`,
+              background: c.card,
+              color: c.text as string,
+              fontFamily: fontFamily.body,
+            }}
+          >
+            <option value="">All Time</option>
+            {allSeasons.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name} {s.status === 'active' ? '(Current)' : ''}
+              </option>
+            ))}
+          </select>
+        </View>
+      )}
 
       {/* Main tab bar */}
       <View style={[styles.tabBar, { borderBottomColor: c.border }]}>
@@ -306,6 +359,7 @@ const styles = StyleSheet.create({
   statsWrap: { marginBottom: spacing.lg },
   periodBar: { flexDirection: 'row', gap: spacing.md, marginBottom: spacing.sm, paddingBottom: spacing.sm, borderBottomWidth: 1 },
   periodTab: { paddingBottom: spacing.xs, borderBottomWidth: 2 },
+  seasonBar: { flexDirection: 'row', marginBottom: spacing.sm },
   tabBar: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.lg, paddingBottom: spacing.sm, borderBottomWidth: 1 },
   empty: { padding: spacing.lg },
   emptyText: { textAlign: 'center' },

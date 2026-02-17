@@ -3,9 +3,11 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { useColors } from '@/theme';
 import { spacing, fontSizes, fontFamily } from '@/theme/tokens';
 
-const navItems: { name: 'Challenges' | 'Leaderboard' | 'Profile'; label: string }[] = [
+const navItems: { name: 'Challenges' | 'DailyChallenge' | 'Leaderboard' | 'APIKeys' | 'Profile'; label: string }[] = [
   { name: 'Challenges', label: 'Challenges' },
+  { name: 'DailyChallenge', label: 'Daily' },
   { name: 'Leaderboard', label: 'Leaderboard' },
+  { name: 'APIKeys', label: 'API Keys' },
   { name: 'Profile', label: 'Profile' },
 ];
 

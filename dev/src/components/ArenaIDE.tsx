@@ -9,7 +9,7 @@ import { VirtualFileSystem } from './arena/VirtualFileSystem';
 import { useCodeSync } from './arena/useCodeSync';
 import { useAIChat, type MessageMeta } from './arena/useAIChat';
 import { TerminalPanel, type TerminalPanelHandle } from './arena/TerminalPanel';
-import { TIER_MODELS, getModelById, getModelsForTier, tierColor, tierLabel, type ModelTier } from '@/lib/ai/pricing';
+import { TIER_MODELS, getModelById, getModelsForTier, getBYOKModels, tierColor, tierLabel, type ModelTier } from '@/lib/ai/pricing';
 
 const MonacoEditor = React.lazy(() => import('@monaco-editor/react'));
 
@@ -552,6 +552,8 @@ export function ArenaIDE({
   const [hasUnreadChat, setHasUnreadChat] = useState(false);
   const [showToast, setShowToast] = useState(false);
   const [terminalHeight, setTerminalHeight] = useState(250);
+  const [byokProviders, setByokProviders] = useState<Set<string>>(new Set());
+  const [byokDropdownOpen, setByokDropdownOpen] = useState(false);
 
   const activeTabRef = useRef<'description' | 'chat'>('description');
   activeTabRef.current = activeTab;
@@ -654,6 +656,20 @@ Rules:
     const id = setInterval(tick, 1000);
     return () => clearInterval(id);
   }, [expiresAt]);
+
+  // Fetch BYOK API key providers
+  useEffect(() => {
+    const fetchByokKeys = async () => {
+      try {
+        const res = await fetch('/api/api-keys');
+        if (res.ok) {
+          const data = await res.json() as { keys: Array<{ provider: string }> };
+          setByokProviders(new Set((data.keys ?? []).map((k) => k.provider)));
+        }
+      } catch {}
+    };
+    fetchByokKeys();
+  }, []);
 
   // Auto-scroll chat
   useEffect(() => {
@@ -943,6 +959,54 @@ Rules:
                     </div>
                   );
                 })}
+                {/* BYOK models button */}
+                <div style={{ position: 'relative' }}>
+                  <button
+                    style={{
+                      ...s.tierPill,
+                      background: byokDropdownOpen ? '#6366f120' : 'transparent',
+                      borderColor: byokDropdownOpen ? '#6366f1' : arena.border,
+                      color: byokDropdownOpen ? '#6366f1' : arena.textMuted,
+                      opacity: isLoadingChat ? 0.5 : 1,
+                      whiteSpace: 'nowrap' as const,
+                    }}
+                    disabled={isLoadingChat}
+                    onClick={() => setByokDropdownOpen(!byokDropdownOpen)}
+                  >
+                    BYOK {'\u25BC'}
+                  </button>
+                  {byokDropdownOpen && (
+                    <div style={s.tierDropdown}>
+                      {getBYOKModels().map((mi) => {
+                        const hasKey = byokProviders.has(mi.provider!);
+                        return (
+                          <button
+                            key={mi.id}
+                            style={{
+                              ...s.tierDropdownItem,
+                              background: model === mi.id ? '#6366f115' : 'transparent',
+                              color: hasKey ? (model === mi.id ? '#6366f1' : arena.text) : arena.textSubtle,
+                              opacity: hasKey ? 1 : 0.5,
+                            }}
+                            disabled={!hasKey}
+                            onClick={() => {
+                              setModel(mi.id);
+                              setSelectedTier(mi.tier);
+                              setByokDropdownOpen(false);
+                            }}
+                          >
+                            <span style={{ fontWeight: 500 }}>
+                              {!hasKey && '\uD83D\uDD12 '}{mi.displayName}
+                            </span>
+                            <span style={{ fontSize: 10, color: arena.textSubtle }}>
+                              {hasKey ? mi.description : `Add ${mi.provider} key in Settings`}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* Chat input */}

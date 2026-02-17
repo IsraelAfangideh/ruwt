@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/Button';
 import { useColors } from '@/theme';
 import { spacing, fontSizes, fontFamily } from '@/theme/tokens';
 import { getModelById, tierColor } from '@/lib/ai/pricing';
+import { AIProfileRadar, type AIProfile } from '@/components/AIProfileRadar';
 
 interface AttemptDetail {
   challengeId: string;
@@ -57,6 +58,7 @@ export function AssessmentResultsDashboardScreen() {
   const [sortBy, setSortBy] = useState<SortKey>('cost');
   const [sortAsc, setSortAsc] = useState(true);
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
+  const [aiProfiles, setAiProfiles] = useState<Record<string, AIProfile>>({});
 
   useEffect(() => {
     const init = async () => {
@@ -67,8 +69,15 @@ export function AssessmentResultsDashboardScreen() {
       }
       setUser(u);
       try {
-        const res = await fetch(`/api/assessments/${params.assessmentId}/results`);
-        if (res.ok) setResults(await res.json());
+        const [resultsRes, analyticsRes] = await Promise.all([
+          fetch(`/api/assessments/${params.assessmentId}/results`),
+          fetch(`/api/assessments/${params.assessmentId}/analytics`),
+        ]);
+        if (resultsRes.ok) setResults(await resultsRes.json());
+        if (analyticsRes.ok) {
+          const analyticsData = await analyticsRes.json() as { profiles: Record<string, AIProfile> };
+          setAiProfiles(analyticsData.profiles ?? {});
+        }
       } catch (_) {}
       setLoading(false);
     };
@@ -257,9 +266,15 @@ export function AssessmentResultsDashboardScreen() {
                 </View>
               </Pressable>
 
-              {/* Expanded row: per-challenge AI analytics */}
+              {/* Expanded row: AI profile radar + per-challenge analytics */}
               {expandedRow === r.session.id && r.attempts && (
                 <View style={[styles.expandedRow, { backgroundColor: c.muted + '10', borderBottomColor: c.border }]}>
+                  {aiProfiles[r.session.id] && (
+                    <View style={styles.radarWrap}>
+                      <Text style={[styles.radarTitle, { color: c.text }]}>AI Profile</Text>
+                      <AIProfileRadar profile={aiProfiles[r.session.id]} size={240} />
+                    </View>
+                  )}
                   {r.attempts.map((a, i) => (
                     <View key={i} style={[styles.attemptRow, { borderBottomColor: c.border }]}>
                       <View style={styles.attemptHeader}>
@@ -331,4 +346,6 @@ const styles = StyleSheet.create({
   attemptChallenge: { fontSize: fontSizes.xs, fontWeight: '600' },
   modelUsageRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs, marginTop: spacing.xs },
   modelUsageBadge: { borderWidth: 1, borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2 },
+  radarWrap: { alignItems: 'center', marginBottom: spacing.md, paddingVertical: spacing.sm },
+  radarTitle: { fontSize: fontSizes.sm, fontWeight: '600', marginBottom: spacing.xs, fontFamily: fontFamily.body },
 });

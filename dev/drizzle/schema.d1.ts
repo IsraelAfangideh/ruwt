@@ -88,6 +88,7 @@ export const assessments = sqliteTable('assessments', {
   timeLimit: integer('time_limit').notNull(), // seconds
   status: text('status').default('draft').notNull(), // 'draft' | 'active' | 'archived'
   createdBy: text('created_by').notNull().references(() => profiles.id),
+  categoryWeights: text('category_weights'), // JSON: { modelSelection: number, promptEfficiency: number, debugging: number, strategy: number, speed: number }
   createdAt: text('created_at').default(sql`(datetime('now'))`).notNull(),
 });
 
@@ -139,6 +140,48 @@ export const attemptMessages = sqliteTable('attempt_messages', {
   createdAt: text('created_at').default(sql`(datetime('now'))`).notNull(),
 });
 
+// --- BYOK API Keys ---
+
+export const apiKeys = sqliteTable('api_keys', {
+  id: text('id').primaryKey(),
+  userId: text('user_id').notNull().references(() => profiles.id),
+  provider: text('provider').notNull(), // 'openai' | 'anthropic' | 'google'
+  encryptedKey: text('encrypted_key').notNull(),
+  label: text('label'),
+  createdAt: text('created_at').default(sql`(datetime('now'))`),
+});
+
+// --- Seasons ---
+
+export const seasons = sqliteTable('seasons', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  startsAt: text('starts_at').notNull(),
+  endsAt: text('ends_at').notNull(),
+  status: text('status').default('upcoming'), // 'upcoming' | 'active' | 'completed'
+  createdAt: text('created_at').default(sql`(datetime('now'))`),
+});
+
+// --- Daily Challenges ---
+
+export const dailyChallenges = sqliteTable('daily_challenges', {
+  id: text('id').primaryKey(),
+  challengeId: text('challenge_id').notNull().references(() => challenges.id),
+  date: text('date').notNull().unique(),
+  seasonId: text('season_id').references(() => seasons.id),
+  createdAt: text('created_at').default(sql`(datetime('now'))`),
+});
+
+// --- Replay Comments ---
+
+export const replayComments = sqliteTable('replay_comments', {
+  id: text('id').primaryKey(),
+  attemptId: text('attempt_id').notNull().references(() => attempts.id),
+  userId: text('user_id').notNull().references(() => profiles.id),
+  content: text('content').notNull(),
+  createdAt: text('created_at').default(sql`(datetime('now'))`),
+});
+
 // --- Type exports ---
 
 export type Profile = typeof profiles.$inferSelect;
@@ -171,3 +214,14 @@ export type AssessmentStatus = 'draft' | 'active' | 'archived';
 export type InviteStatus = 'pending' | 'started' | 'completed' | 'expired';
 export type SessionStatus = 'in_progress' | 'completed' | 'expired' | 'abandoned';
 export type AccountType = 'individual' | 'team';
+export type ApiKeyProvider = 'openai' | 'anthropic' | 'google';
+export type SeasonStatus = 'upcoming' | 'active' | 'completed';
+
+export type ApiKey = typeof apiKeys.$inferSelect;
+export type NewApiKey = typeof apiKeys.$inferInsert;
+export type Season = typeof seasons.$inferSelect;
+export type NewSeason = typeof seasons.$inferInsert;
+export type DailyChallenge = typeof dailyChallenges.$inferSelect;
+export type NewDailyChallenge = typeof dailyChallenges.$inferInsert;
+export type ReplayComment = typeof replayComments.$inferSelect;
+export type NewReplayComment = typeof replayComments.$inferInsert;

@@ -51,12 +51,18 @@ export function ChallengeCard({ challenge }: { challenge: Challenge }) {
     : challenge.category === 'real_world' ? '#f59e0b15'
     : 'transparent';
 
+  const isRealWorld = challenge.category === 'real_world';
+  const ticketId = isRealWorld ? `TICKET-${Math.abs(challenge.id.charCodeAt(0) * 31 + challenge.id.charCodeAt(1) * 17) % 9000 + 1000}` : null;
+  const priorityLabel = isRealWorld
+    ? challenge.difficulty === 'hard' ? 'P1' : challenge.difficulty === 'medium' ? 'P2' : 'P3'
+    : null;
+
   return (
     <Pressable
       onPress={() => (navigation.navigate as any)('Arena', { challengeId: challenge.id })}
       style={({ pressed }: { pressed: boolean }) => [styles.pressable, pressed && styles.pressed]}
     >
-      <Card style={styles.card}>
+      <Card style={[styles.card, isRealWorld && styles.realWorldCard]}>
         <CardHeader>
           <View style={styles.badgeRow}>
             <View style={[styles.pill, { backgroundColor: diffBg }]}>
@@ -67,6 +73,16 @@ export function ChallengeCard({ challenge }: { challenge: Challenge }) {
             {catLabel && (
               <View style={[styles.pill, { backgroundColor: catBg }]}>
                 <Text style={[styles.pillText, { color: catColor }]}>{catLabel}</Text>
+              </View>
+            )}
+            {ticketId && (
+              <View style={[styles.pill, { backgroundColor: '#f59e0b15' }]}>
+                <Text style={[styles.pillText, { color: '#f59e0b' }]}>{ticketId}</Text>
+              </View>
+            )}
+            {priorityLabel && (
+              <View style={[styles.pill, { backgroundColor: priorityLabel === 'P1' ? '#ef444420' : priorityLabel === 'P2' ? '#f59e0b20' : '#3b82f620' }]}>
+                <Text style={[styles.pillText, { color: priorityLabel === 'P1' ? '#ef4444' : priorityLabel === 'P2' ? '#f59e0b' : '#3b82f6' }]}>{priorityLabel}</Text>
               </View>
             )}
           </View>
@@ -99,6 +115,7 @@ const styles = StyleSheet.create({
   pressable: { flex: 1, minWidth: 280 },
   pressed: { opacity: 0.92, transform: [{ scale: 0.98 }] },
   card: { flex: 1 },
+  realWorldCard: { borderLeftWidth: 3, borderLeftColor: '#f59e0b' },
   badgeRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.xs },
   pill: {
     alignSelf: 'flex-start',

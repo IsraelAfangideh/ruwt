@@ -13,6 +13,8 @@ import { ProfileScreen } from '@/screens/ProfileScreen';
 import { SettingsScreen } from '@/screens/SettingsScreen';
 import { ArenaScreen } from '@/screens/ArenaScreen';
 import { ReplayScreen } from '@/screens/ReplayScreen';
+import { DailyChallengeScreen } from '@/screens/DailyChallengeScreen';
+import { APIKeysScreen } from '@/screens/APIKeysScreen';
 import { AssessmentListScreen } from '@/screens/AssessmentListScreen';
 import { AssessmentBuilderScreen } from '@/screens/AssessmentBuilderScreen';
 import { AssessmentResultsDashboardScreen } from '@/screens/AssessmentResultsDashboardScreen';
@@ -41,6 +43,8 @@ export function AppNavigator() {
         <Stack.Screen name="Settings" component={SettingsScreen} />
         <Stack.Screen name="Arena" component={ArenaScreen} />
         <Stack.Screen name="Replay" component={ReplayScreen} />
+        <Stack.Screen name="DailyChallenge" component={DailyChallengeScreen} />
+        <Stack.Screen name="APIKeys" component={APIKeysScreen} />
         <Stack.Screen name="Assessments" component={AssessmentListScreen} />
         <Stack.Screen name="AssessmentBuilder" component={AssessmentBuilderScreen} />
         <Stack.Screen name="AssessmentResultsDashboard" component={AssessmentResultsDashboardScreen} />

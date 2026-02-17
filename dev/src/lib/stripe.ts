@@ -1,5 +1,6 @@
 /**
- * Credit packages for purchase. Prices in cents (USD).
+ * Credit packages for assessment purchases. Prices in cents (USD).
+ * Individual practice is free; credits are only used for B2B assessments.
  */
 
 export interface CreditPackage {
@@ -19,3 +20,38 @@ export const CREDIT_PACKAGES: CreditPackage[] = [
 export function getPackageById(id: string): CreditPackage | undefined {
   return CREDIT_PACKAGES.find((p) => p.id === id);
 }
+
+/**
+ * B2B subscription tiers for hiring assessments.
+ */
+export interface SubscriptionTier {
+  id: string;
+  name: string;
+  priceInCents: number; // monthly
+  candidatesPerMonth: number | null; // null = unlimited
+  features: string[];
+}
+
+export const SUBSCRIPTION_TIERS: SubscriptionTier[] = [
+  {
+    id: 'tier-starter',
+    name: 'Starter',
+    priceInCents: 19900,
+    candidatesPerMonth: 10,
+    features: ['Create assessments', 'Results dashboard', 'CSV export', 'All challenges'],
+  },
+  {
+    id: 'tier-pro',
+    name: 'Pro',
+    priceInCents: 49900,
+    candidatesPerMonth: 50,
+    features: ['All Starter features', 'AI profile analytics', 'Candidate comparison', 'Priority support'],
+  },
+  {
+    id: 'tier-enterprise',
+    name: 'Enterprise',
+    priceInCents: 0, // custom pricing
+    candidatesPerMonth: null,
+    features: ['Unlimited candidates', 'SSO', 'API access', 'Custom challenges', 'Dedicated support'],
+  },
+];

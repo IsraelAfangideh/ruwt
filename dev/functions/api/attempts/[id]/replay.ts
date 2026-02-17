@@ -43,22 +43,9 @@ export async function onRequestGet(context: { request: Request; env: Env; params
     const isOwner = user?.id === attempt.userId;
 
     if (!isOwner) {
-      // Must be public, passed, and in top 50 for that challenge
+      // All passed attempts are publicly viewable by default (users can opt out via replay_public=0)
       if (!attempt.replayPublic || attempt.status !== 'passed') {
         return Response.json({ error: 'Replay not available' }, { status: 403 });
-      }
-
-      // Check if this attempt is in the top 50 for the challenge
-      const [rankResult] = await db
-        .select({
-          rank: sql<number>`(SELECT COUNT(*) + 1 FROM attempts a2 WHERE a2.challenge_id = ${attempt.challengeId} AND a2.status = 'passed' AND a2.total_cost < ${attempt.totalCost})`,
-        })
-        .from(attempts)
-        .where(eq(attempts.id, attemptId))
-        .limit(1);
-
-      if (!rankResult || rankResult.rank > 50) {
-        return Response.json({ error: 'Replay only available for top 50 attempts' }, { status: 403 });
       }
     }
 

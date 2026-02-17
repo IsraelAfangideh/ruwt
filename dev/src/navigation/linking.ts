@@ -14,6 +14,8 @@ export const linking: LinkingOptions<ReactNavigation.RootParamList> = {
       Settings: 'settings',
       Arena: 'arena/:challengeId',
       Replay: 'replay/:attemptId',
+      DailyChallenge: 'daily',
+      APIKeys: 'api-keys',
       Assessments: 'assessments',
       AssessmentBuilder: 'assessments/build/:assessmentId?',
       AssessmentResultsDashboard: 'assessments/:assessmentId/results',

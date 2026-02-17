@@ -3,6 +3,7 @@
  * Shared by sidebar chat and RuwtTUI.
  */
 import { useCallback, useRef } from 'react';
+import { getModelById, isBYOKModel } from '@/lib/ai/pricing';
 
 interface ChatMessage {
   role: 'system' | 'user' | 'assistant';
@@ -55,7 +56,12 @@ export function useAIChat(options: UseAIChatOptions) {
       abortRef.current = controller;
 
       try {
-        const res = await fetch('/api/ai/chat', {
+        // Determine if this is a BYOK model
+        const modelInfo = getModelById(model);
+        const isByok = modelInfo ? isBYOKModel(modelInfo) : false;
+        const endpoint = isByok ? '/api/ai/chat-byok' : '/api/ai/chat';
+
+        const res = await fetch(endpoint, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ model, messages, attemptId, maxTokens, userMessage }),
@@ -69,6 +75,30 @@ export function useAIChat(options: UseAIChatOptions) {
           } else {
             onError(err.error || res.statusText);
           }
+          return;
+        }
+
+        // BYOK returns JSON (non-streaming), Cloudflare returns SSE
+        if (isByok) {
+          const data = await res.json() as {
+            content: string;
+            inputTokens: number;
+            outputTokens: number;
+            cost: number;
+            model: string;
+            constraintWarning?: { violation: string; message: string };
+          };
+          onChunk(data.content);
+          onCostUpdate?.(data.cost, data.inputTokens, data.outputTokens);
+          const meta: MessageMeta = {
+            model: data.model,
+            cost: data.cost,
+            tokens: data.inputTokens + data.outputTokens,
+          };
+          if (data.constraintWarning) {
+            onConstraint?.(data.constraintWarning.violation, data.constraintWarning.message);
+          }
+          onDone(data.content || '(no response)', meta);
           return;
         }
 

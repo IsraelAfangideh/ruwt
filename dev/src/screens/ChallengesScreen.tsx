@@ -10,11 +10,11 @@ import { spacing, fontSizes, fontFamily } from '@/theme/tokens';
 
 const CATEGORIES = [
   { key: 'all', label: 'All' },
+  { key: 'real_world', label: 'Real-World' },
   { key: 'model_selection', label: 'Model Selection' },
   { key: 'prompt_efficiency', label: 'Prompt Efficiency' },
   { key: 'iterative_debugging', label: 'Debugging' },
   { key: 'multi_model_strategy', label: 'Multi-Model' },
-  { key: 'real_world', label: 'Real-World' },
 ] as const;
 
 export function ChallengesScreen() {
@@ -65,9 +65,9 @@ export function ChallengesScreen() {
   return (
     <DashboardLayout user={user}>
       <View style={[styles.section, { borderBottomColor: c.border }]}>
-        <Text style={[styles.title, { color: c.text }]}>Problem Sets</Text>
+        <Text style={[styles.title, { color: c.text }]}>Engineering Challenges</Text>
         <Text style={[styles.subtitle, { color: c.textMuted }]}>
-          Master the art of AI-efficient problem solving across three skill dimensions.
+          Real engineering problems. Real AI models. Ranked by efficiency.
         </Text>
       </View>
 

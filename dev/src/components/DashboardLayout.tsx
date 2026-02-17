@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { DashboardNav } from './DashboardNav';
@@ -16,6 +17,20 @@ interface DashboardLayoutProps {
 export function DashboardLayout({ user, children }: DashboardLayoutProps) {
   const navigation = useNavigation();
   const c = useColors();
+  const [accountType, setAccountType] = useState<string>('individual');
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const r = await fetch('/api/profile');
+        if (r.ok) {
+          const data = await r.json() as { accountType?: string };
+          if (data.accountType) setAccountType(data.accountType);
+        }
+      } catch {}
+    };
+    fetchProfile();
+  }, []);
 
   return (
     <View style={[styles.page, { backgroundColor: c.bg }]}>
@@ -32,7 +47,7 @@ export function DashboardLayout({ user, children }: DashboardLayoutProps) {
           <DashboardNav />
         </View>
         <View style={styles.headerRight}>
-          <BalanceTicker />
+          {accountType === 'team' && <BalanceTicker />}
           <ThemeToggle />
           <UserNav user={user} />
         </View>

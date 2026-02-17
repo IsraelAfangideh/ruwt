@@ -80,7 +80,21 @@ export async function onRequestPost(context: {
     if (!profile) {
       return Response.json({ error: 'Profile not found' }, { status: 404 });
     }
-    if (profile.credits < estimatedCost) {
+
+    // Check if this is an assessment attempt (B2B — credit-gated)
+    let isAssessmentAttempt = false;
+    if (attemptId) {
+      const [attempt] = await db
+        .select({ assessmentSessionId: attempts.assessmentSessionId })
+        .from(attempts)
+        .where(eq(attempts.id, attemptId))
+        .limit(1);
+      isAssessmentAttempt = !!attempt?.assessmentSessionId;
+    }
+
+    // Only enforce credit check for assessment attempts (B2B pays)
+    // Practice is free — cost is still tracked for leaderboard scoring
+    if (isAssessmentAttempt && profile.credits < estimatedCost) {
       return Response.json(
         {
           error: 'Insufficient credits',
@@ -168,10 +182,13 @@ export async function onRequestPost(context: {
             result.outputTokens
           );
 
-          await db
-            .update(profiles)
-            .set({ credits: sql`${profiles.credits} - ${actualCost}` })
-            .where(eq(profiles.id, user.id));
+          // Only deduct credits for assessment attempts (practice is free)
+          if (isAssessmentAttempt) {
+            await db
+              .update(profiles)
+              .set({ credits: sql`${profiles.credits} - ${actualCost}` })
+              .where(eq(profiles.id, user.id));
+          }
 
           if (attemptId) {
             await db

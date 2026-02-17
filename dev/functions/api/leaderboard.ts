@@ -5,7 +5,7 @@
  */
 import { eq, and, desc, sql, gte } from 'drizzle-orm';
 import { getDb } from '../_shared/db';
-import { attempts, profiles } from '../../drizzle/schema.d1';
+import { attempts, profiles, seasons } from '../../drizzle/schema.d1';
 
 function getPeriodThreshold(period: string): string | null {
   const now = new Date();
@@ -27,8 +27,36 @@ export async function onRequestGet(context: { request: Request; env: Env }) {
     const url = new URL(context.request.url);
     const challengeId = url.searchParams.get('challengeId');
     const period = url.searchParams.get('period') || 'all';
+    const seasonParam = url.searchParams.get('season'); // 'current' | season ID | null
     const limit = Math.min(parseInt(url.searchParams.get('limit') || '50', 10), 100);
-    const threshold = getPeriodThreshold(period);
+
+    // Resolve season filter — overrides period if specified
+    let threshold = getPeriodThreshold(period);
+    let seasonName: string | null = null;
+
+    if (seasonParam) {
+      if (seasonParam === 'current') {
+        const [activeSeason] = await db
+          .select()
+          .from(seasons)
+          .where(eq(seasons.status, 'active'))
+          .limit(1);
+        if (activeSeason) {
+          threshold = activeSeason.startsAt;
+          seasonName = activeSeason.name;
+        }
+      } else {
+        const [season] = await db
+          .select()
+          .from(seasons)
+          .where(eq(seasons.id, seasonParam))
+          .limit(1);
+        if (season) {
+          threshold = season.startsAt;
+          seasonName = season.name;
+        }
+      }
+    }
 
     if (challengeId) {
       const conditions = [

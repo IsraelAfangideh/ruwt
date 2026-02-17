@@ -72,9 +72,14 @@ export function ReplayScreen() {
   }, [attemptId]);
 
   const handleShare = async () => {
-    const url = `${window.location.origin}/replay/${attemptId}`;
+    if (!data) return;
+    const shareText = [
+      `I solved "${data.challenge.title}" on ruwt.dev for ${formatCostFromHundredths(data.stats.totalCost)} using ${data.stats.modelsUsed.length} model${data.stats.modelsUsed.length !== 1 ? 's' : ''}`,
+      `${data.challenge.difficulty} | ${(data.attempt.inputTokens + data.attempt.outputTokens).toLocaleString()} tokens | ${data.stats.messageCount} AI messages`,
+      `Watch the replay: ${window.location.origin}/replay/${attemptId}`,
+    ].join('\n');
     try {
-      await navigator.clipboard.writeText(url);
+      await navigator.clipboard.writeText(shareText);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {

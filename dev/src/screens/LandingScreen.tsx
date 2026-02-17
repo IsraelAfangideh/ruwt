@@ -41,6 +41,27 @@ export function LandingScreen() {
         </Pressable>
       </View>
 
+      {/* Daily Challenge CTA */}
+      <View style={[styles.section, { paddingBottom: 0 }]}>
+        <Card style={[styles.tryChallengeCard, { backgroundColor: c.muted + '30' }]}>
+          <CardHeader>
+            <Badge variant="default">Daily Challenge</Badge>
+            <CardTitle>Today's Challenge</CardTitle>
+            <CardDescription>
+              A new challenge every day. Compete against other developers for the lowest AI cost. Share your results.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button
+              variant="outline"
+              onPress={() => navigation.navigate('Register' as never)}
+            >
+              See Today's Challenge
+            </Button>
+          </CardContent>
+        </Card>
+      </View>
+
       {/* Live platform stats */}
       <View style={styles.section}>
         <PlatformStats />
@@ -48,12 +69,15 @@ export function LandingScreen() {
 
       {/* Try a Challenge CTA */}
       <View style={[styles.section, { paddingTop: 0 }]}>
-        <Card style={[styles.tryChallengeCard, { borderColor: c.accent, borderWidth: 1 }]}>
+        <Card style={[styles.tryChallengeCard, { borderColor: '#f59e0b', borderWidth: 1, borderLeftWidth: 4 }]}>
           <CardHeader>
-            <Badge variant="default">Beginner Friendly</Badge>
-            <CardTitle>String Formatter</CardTitle>
+            <View style={{ flexDirection: 'row', gap: 8, marginBottom: 4 }}>
+              <Badge variant="default">Real-World</Badge>
+              <Badge variant="outline">TICKET-2847</Badge>
+            </View>
+            <CardTitle>Fix the Connection Pool Race Condition</CardTitle>
             <CardDescription>
-              Convert strings to title case. A simple task — but can you solve it using the cheapest AI model?
+              A Jira-style engineering ticket. Debug a real race condition — but can you do it cheaply with the right AI model?
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -76,7 +100,7 @@ export function LandingScreen() {
           {[
             { step: '$', title: 'Model Selection', desc: 'Know when a $0.01 model works and when you need a $0.50 one. Using premium for FizzBuzz is a red flag.' },
             { step: '\u270F', title: 'Prompt Efficiency', desc: 'Get working code in fewer tokens. Concise, structured prompts beat verbose walls of text every time.' },
-            { step: '\u{1F41B}', title: 'Iterative Debugging', desc: 'When AI code has bugs, diagnose and fix cheaply. Don\'t burn tokens asking for full rewrites.' },
+            { step: '\u{1F41B}', title: 'Iterative Debugging', desc: 'Real engineering tickets. Diagnose and fix bugs cheaply — don\'t burn tokens asking for full rewrites.' },
           ].map((item) => (
             <Card key={item.step} style={styles.card}>
               <CardHeader>
@@ -95,7 +119,7 @@ export function LandingScreen() {
       <View style={styles.section}>
         <Text style={[styles.sectionTitle, { color: c.text }]}>See It In Action</Text>
         <Text style={[styles.sectionSub, { color: c.textMuted }]}>
-          How a top solver completed a challenge for under $0.01.
+          Watch how top solvers complete challenges for under $0.01. Every replay is public and shareable.
         </Text>
         <FeaturedReplay />
       </View>
@@ -174,48 +198,48 @@ export function LandingScreen() {
           <Card style={styles.tierCard}>
             <CardHeader>
               <Badge variant="outline">Free</Badge>
-              <CardTitle>Developer Practice</CardTitle>
+              <CardTitle>Developer</CardTitle>
               <CardDescription>$0 / forever</CardDescription>
             </CardHeader>
             <CardContent>
               <Text style={[styles.tierBody, { color: c.textMuted }]}>
-                5,000 free AI credits on signup. All 60+ challenges across every category. Public leaderboard ranking.
+                Free unlimited practice. All 60+ challenges. Public leaderboard. Replays. No credit card.
               </Text>
             </CardContent>
           </Card>
           <Card style={styles.tierCard}>
             <CardHeader>
-              <Badge variant="outline">Free Trial</Badge>
-              <CardTitle>Hiring — Free Trial</CardTitle>
-              <CardDescription>$0 / month</CardDescription>
+              <Badge variant="outline">Starter</Badge>
+              <CardTitle>Starter</CardTitle>
+              <CardDescription>$199 / month</CardDescription>
             </CardHeader>
             <CardContent>
               <Text style={[styles.tierBody, { color: c.textMuted }]}>
-                1 assessment, 3 challenges, 5 candidates. Full results dashboard with model usage analytics.
+                10 candidates/month. Create assessments. Results dashboard. CSV export. All challenges.
               </Text>
             </CardContent>
           </Card>
           <Card style={[styles.tierCard, { borderColor: c.accent, borderWidth: 2 }]}>
             <CardHeader>
               <Badge variant="default">Pro</Badge>
-              <CardTitle>Hiring — Pro</CardTitle>
-              <CardDescription>$49 / month</CardDescription>
+              <CardTitle>Pro</CardTitle>
+              <CardDescription>$499 / month</CardDescription>
             </CardHeader>
             <CardContent>
               <Text style={[styles.tierBody, { color: c.textMuted }]}>
-                Unlimited assessments. All 60+ challenges. Up to 50 candidates. Per-candidate AI analytics, comparison, and CSV export.
+                50 candidates/month. AI profile analytics. Candidate comparison. Priority support. All Starter features.
               </Text>
             </CardContent>
           </Card>
           <Card style={styles.tierCard}>
             <CardHeader>
               <Badge variant="outline">Enterprise</Badge>
-              <CardTitle>Custom</CardTitle>
+              <CardTitle>Enterprise</CardTitle>
               <CardDescription>Contact us</CardDescription>
             </CardHeader>
             <CardContent>
               <Text style={[styles.tierBody, { color: c.textMuted }]}>
-                Custom challenge libraries. API access. SSO integration. Dedicated support. Volume pricing.
+                Unlimited candidates. SSO. API access. Custom challenges. Dedicated support.
               </Text>
             </CardContent>
           </Card>
@@ -224,7 +248,7 @@ export function LandingScreen() {
 
       <View style={styles.cta}>
         <Text style={[styles.ctaTitle, { color: c.text }]}>Ready to prove your AI skills?</Text>
-        <Text style={[styles.ctaSub, { color: c.textMuted }]}>5,000 free credits. 60+ challenges. 8 AI models. No credit card required.</Text>
+        <Text style={[styles.ctaSub, { color: c.textMuted }]}>Free unlimited practice. 60+ challenges. 8 AI models. No credit card required.</Text>
         <View style={styles.heroButtons}>
           <Button size="lg" onPress={() => navigation.navigate('Register' as never)}>Get Started Free</Button>
           <Button size="lg" variant="outline" onPress={() => navigation.navigate('Register' as never)}>Book a Demo</Button>

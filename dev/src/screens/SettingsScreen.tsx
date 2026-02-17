@@ -15,6 +15,7 @@ export function SettingsScreen() {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [credits, setCredits] = useState<number | null>(null);
+  const [accountType, setAccountType] = useState<'individual' | 'team'>('individual');
   const [purchasing, setPurchasing] = useState<string | null>(null);
   const [showSuccess, setShowSuccess] = useState(false);
   const c = useColors();
@@ -29,13 +30,14 @@ export function SettingsScreen() {
       }
       setUser(u);
 
-      // Fetch profile for credits
+      // Fetch profile for credits and account type
       try {
         const base = typeof window !== 'undefined' ? window.location.origin : '';
         const r = await fetch(`${base}/api/profile`);
         if (r.ok) {
-          const data = await r.json() as { credits: number };
+          const data = await r.json() as { credits: number; accountType?: 'individual' | 'team' };
           setCredits(data.credits);
+          if (data.accountType) setAccountType(data.accountType);
         }
       } catch {}
 
@@ -93,41 +95,52 @@ export function SettingsScreen() {
       )}
 
       <ScrollView style={styles.scroll}>
-        <Card style={styles.card}>
-          <CardHeader>
-            <CardTitle>Credits</CardTitle>
-            <CardDescription>
-              {credits !== null
-                ? `You have ${credits.toLocaleString()} credits remaining.`
-                : 'Loading balance...'}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <View style={styles.packages}>
-              {CREDIT_PACKAGES.map((pkg) => (
-                <View key={pkg.id} style={[styles.pkgCard, { borderColor: c.border, backgroundColor: c.card }]}>
-                  {pkg.badge && (
-                    <Badge variant="default" style={styles.pkgBadge}>{pkg.badge}</Badge>
-                  )}
-                  <Text style={[styles.pkgCredits, { color: c.text }]}>{pkg.label}</Text>
-                  <Text style={[styles.pkgPrice, { color: c.accent }]}>
-                    ${(pkg.priceInCents / 100).toFixed(2)}
-                  </Text>
-                  <Text style={[styles.pkgUnit, { color: c.textMuted }]}>
-                    ${(pkg.priceInCents / pkg.credits).toFixed(2)}/credit
-                  </Text>
-                  <Button
-                    onPress={() => handleBuy(pkg)}
-                    disabled={purchasing !== null}
-                    style={styles.pkgBtn}
-                  >
-                    {purchasing === pkg.id ? 'Redirecting...' : 'Buy'}
-                  </Button>
-                </View>
-              ))}
-            </View>
-          </CardContent>
-        </Card>
+        {accountType === 'team' ? (
+          <Card style={styles.card}>
+            <CardHeader>
+              <CardTitle>Assessment Credits</CardTitle>
+              <CardDescription>
+                {credits !== null
+                  ? `You have ${credits.toLocaleString()} assessment credits remaining.`
+                  : 'Loading balance...'}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <View style={styles.packages}>
+                {CREDIT_PACKAGES.map((pkg) => (
+                  <View key={pkg.id} style={[styles.pkgCard, { borderColor: c.border, backgroundColor: c.card }]}>
+                    {pkg.badge && (
+                      <Badge variant="default" style={styles.pkgBadge}>{pkg.badge}</Badge>
+                    )}
+                    <Text style={[styles.pkgCredits, { color: c.text }]}>{pkg.label}</Text>
+                    <Text style={[styles.pkgPrice, { color: c.accent }]}>
+                      ${(pkg.priceInCents / 100).toFixed(2)}
+                    </Text>
+                    <Text style={[styles.pkgUnit, { color: c.textMuted }]}>
+                      ${(pkg.priceInCents / pkg.credits).toFixed(2)}/credit
+                    </Text>
+                    <Button
+                      onPress={() => handleBuy(pkg)}
+                      disabled={purchasing !== null}
+                      style={styles.pkgBtn}
+                    >
+                      {purchasing === pkg.id ? 'Redirecting...' : 'Buy'}
+                    </Button>
+                  </View>
+                ))}
+              </View>
+            </CardContent>
+          </Card>
+        ) : (
+          <Card style={styles.card}>
+            <CardHeader>
+              <CardTitle>Practice</CardTitle>
+              <CardDescription>
+                Free unlimited practice on all challenges. AI costs are tracked for leaderboard scoring but never charged.
+              </CardDescription>
+            </CardHeader>
+          </Card>
+        )}
         <Card style={styles.card}>
           <CardHeader>
             <CardTitle>Account</CardTitle>

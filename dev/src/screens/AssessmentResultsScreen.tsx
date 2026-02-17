@@ -5,6 +5,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { useColors } from '@/theme';
 import { spacing, fontSizes, fontFamily } from '@/theme/tokens';
+import { AIProfileRadar, type AIProfile } from '@/components/AIProfileRadar';
 
 interface ChallengeResult {
   challenge: {
@@ -149,6 +150,51 @@ export function AssessmentResultsScreen() {
           </Card>
         </View>
 
+        {/* AI Profile Radar */}
+        {data.challengeResults.length > 0 && (() => {
+          // Compute an approximate AI profile from challenge results
+          const totalCost = data.summary.totalCost;
+          const totalTokens = data.summary.totalTokens;
+          const modelsUsed = new Set<string>();
+          const tiers = new Set<string>();
+          let debugCost = 0;
+          let debugCount = 0;
+          for (const cr of data.challengeResults) {
+            for (const model of Object.keys(cr.modelUsage)) {
+              modelsUsed.add(model);
+              if (model.includes('70b') || model.includes('deepseek')) tiers.add('premium');
+              else if (model.includes('14b')) tiers.add('mid');
+              else if (model.includes('8b') || model.includes('7b')) tiers.add('budget');
+              else tiers.add('micro');
+            }
+            if (cr.challenge.category === 'iterative_debugging') {
+              debugCost += cr.cost;
+              debugCount++;
+            }
+          }
+          // Simple scoring (without percentiles since we don't have population data)
+          const costScore = Math.max(0, Math.min(100, 100 - (totalCost / 100)));
+          const tokenScore = Math.max(0, Math.min(100, 100 - (totalTokens / 1000)));
+          const debugScore = debugCount > 0 ? Math.max(0, Math.min(100, 100 - (debugCost / debugCount / 50))) : 50;
+          const strategyScore = Math.min(100, tiers.size * 25);
+          const passRate = data.summary.challengesPassed / Math.max(1, data.summary.totalChallenges);
+          const speedScore = Math.round(passRate * 80 + 20);
+
+          const profile: AIProfile = {
+            modelSelection: Math.round(costScore),
+            promptEfficiency: Math.round(tokenScore),
+            debugging: Math.round(debugScore),
+            strategy: strategyScore,
+            speed: speedScore,
+          };
+          return (
+            <View style={styles.radarSection}>
+              <Text style={[styles.sectionTitle, { color: c.text }]}>AI Profile</Text>
+              <AIProfileRadar profile={profile} size={280} />
+            </View>
+          );
+        })()}
+
         {/* Per-challenge breakdown */}
         <Text style={[styles.sectionTitle, { color: c.text }]}>Challenge Breakdown</Text>
         {data.challengeResults.map((cr) => (
@@ -253,6 +299,7 @@ const styles = StyleSheet.create({
   modelSection: { marginTop: spacing.md, paddingTop: spacing.md, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.1)' },
   modelTitle: { fontSize: fontSizes.xs, fontWeight: '600', marginBottom: spacing.xs },
   modelRow: { fontSize: fontSizes.xs, fontFamily: 'monospace' },
+  radarSection: { alignItems: 'center', marginBottom: spacing.xl },
   footer: { paddingVertical: spacing.lg, marginTop: spacing.xl, borderTopWidth: 1 },
   footerText: { fontSize: fontSizes.sm, textAlign: 'center' },
 });

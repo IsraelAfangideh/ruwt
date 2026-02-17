@@ -14,7 +14,51 @@ export interface ModelPricing {
   description: string;
 }
 
+export type BYOKProvider = 'openai' | 'anthropic' | 'google';
+
 const MODEL_PRICING: Record<string, ModelPricing> = {
+  // --- BYOK models (user provides API key) ---
+  'gpt-4o': {
+    input: 2.50,
+    output: 10.00,
+    provider: 'openai',
+    tier: 'premium',
+    displayName: 'GPT-4o',
+    description: 'OpenAI flagship, strong all-around (BYOK)',
+  },
+  'gpt-4o-mini': {
+    input: 0.15,
+    output: 0.60,
+    provider: 'openai',
+    tier: 'mid',
+    displayName: 'GPT-4o mini',
+    description: 'Fast and affordable OpenAI model (BYOK)',
+  },
+  'claude-sonnet-4-5-20250929': {
+    input: 3.00,
+    output: 15.00,
+    provider: 'anthropic',
+    tier: 'premium',
+    displayName: 'Claude Sonnet 4.5',
+    description: 'Anthropic best balance of quality and speed (BYOK)',
+  },
+  'claude-haiku-3-5-20241022': {
+    input: 0.80,
+    output: 4.00,
+    provider: 'anthropic',
+    tier: 'mid',
+    displayName: 'Claude Haiku 3.5',
+    description: 'Fast and affordable Anthropic model (BYOK)',
+  },
+  'gemini-2.0-flash': {
+    input: 0.10,
+    output: 0.40,
+    provider: 'google',
+    tier: 'mid',
+    displayName: 'Gemini 2.0 Flash',
+    description: 'Google fast and cheap model (BYOK)',
+  },
+  // --- Cloudflare Workers AI models ---
   '@cf/deepseek-ai/deepseek-r1-distill-qwen-32b': {
     input: 0.50,
     output: 4.88,
@@ -86,6 +130,17 @@ export function getModelPricing(model: string): ModelPricing | undefined {
 }
 
 /** Returns all models sorted by tier (reasoning first). */
+export function isBYOKModel(model: string): boolean {
+  const p = MODEL_PRICING[model];
+  return !!p && p.provider !== 'cloudflare';
+}
+
+export function getBYOKProvider(model: string): BYOKProvider | null {
+  const p = MODEL_PRICING[model];
+  if (!p || p.provider === 'cloudflare') return null;
+  return p.provider as BYOKProvider;
+}
+
 export function getCloudflareModels(): Array<{ id: string } & ModelPricing> {
   const tierOrder: Record<ModelTier, number> = { reasoning: 0, premium: 1, mid: 2, budget: 3, micro: 4 };
   return Object.entries(MODEL_PRICING)

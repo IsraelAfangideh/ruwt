@@ -5,6 +5,8 @@
 
 export type ModelTier = 'reasoning' | 'premium' | 'mid' | 'budget' | 'micro';
 
+export type BYOKProvider = 'openai' | 'anthropic' | 'google';
+
 export interface ModelInfo {
   id: string;
   displayName: string;
@@ -13,9 +15,62 @@ export interface ModelInfo {
   output: number;
   costIndicator: string;
   description: string;
+  provider?: BYOKProvider; // set for BYOK models
 }
 
 const MODELS: ModelInfo[] = [
+  // --- BYOK models ---
+  {
+    id: 'gpt-4o',
+    displayName: 'GPT-4o',
+    tier: 'premium',
+    input: 2.50,
+    output: 10.00,
+    costIndicator: '$$$',
+    description: 'OpenAI flagship (BYOK)',
+    provider: 'openai',
+  },
+  {
+    id: 'gpt-4o-mini',
+    displayName: 'GPT-4o mini',
+    tier: 'mid',
+    input: 0.15,
+    output: 0.60,
+    costIndicator: '$$',
+    description: 'Fast OpenAI model (BYOK)',
+    provider: 'openai',
+  },
+  {
+    id: 'claude-sonnet-4-5-20250929',
+    displayName: 'Claude Sonnet 4.5',
+    tier: 'premium',
+    input: 3.00,
+    output: 15.00,
+    costIndicator: '$$$',
+    description: 'Anthropic best balance (BYOK)',
+    provider: 'anthropic',
+  },
+  {
+    id: 'claude-haiku-3-5-20241022',
+    displayName: 'Claude Haiku 3.5',
+    tier: 'mid',
+    input: 0.80,
+    output: 4.00,
+    costIndicator: '$$',
+    description: 'Fast Anthropic model (BYOK)',
+    provider: 'anthropic',
+  },
+  {
+    id: 'gemini-2.0-flash',
+    displayName: 'Gemini 2.0 Flash',
+    tier: 'mid',
+    input: 0.10,
+    output: 0.40,
+    costIndicator: '$$',
+    description: 'Google fast model (BYOK)',
+    provider: 'google',
+  },
+  // --- Cloudflare Workers AI models ---
   {
     id: '@cf/deepseek-ai/deepseek-r1-distill-qwen-32b',
     displayName: 'DeepSeek R1 32B',
@@ -110,6 +165,18 @@ export function getAllModels(): ModelInfo[] {
 
 export function getModelById(id: string): ModelInfo | undefined {
   return MODELS.find((m) => m.id === id);
+}
+
+export function isBYOKModel(model: ModelInfo): boolean {
+  return !!model.provider;
+}
+
+export function getCloudflareModels(): ModelInfo[] {
+  return MODELS.filter((m) => !m.provider);
+}
+
+export function getBYOKModels(): ModelInfo[] {
+  return MODELS.filter((m) => !!m.provider);
 }
 
 export function formatCostFromHundredths(hundredths: number): string {

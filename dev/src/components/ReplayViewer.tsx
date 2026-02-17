@@ -45,6 +45,21 @@ export function ReplayViewer({ attemptId, onClose }: ReplayViewerProps) {
   const [data, setData] = useState<ReplayData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  const handleShare = async () => {
+    if (!data) return;
+    const shareText = [
+      `I solved "${data.challenge.title}" on ruwt.dev for ${formatCostFromHundredths(data.stats.totalCost)} using ${data.stats.modelsUsed.length} model${data.stats.modelsUsed.length !== 1 ? 's' : ''}`,
+      `${data.challenge.difficulty} | ${(data.attempt.inputTokens + data.attempt.outputTokens).toLocaleString()} tokens | ${data.stats.messageCount} AI messages`,
+      `Watch the replay: ${window.location.origin}/replay/${attemptId}`,
+    ].join('\n');
+    try {
+      await navigator.clipboard.writeText(shareText);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {}
+  };
 
   useEffect(() => {
     const load = async () => {
@@ -81,11 +96,16 @@ export function ReplayViewer({ attemptId, onClose }: ReplayViewerProps) {
               </Text>
             )}
           </View>
+          <Pressable onPress={handleShare} style={styles.fullReplayBtn}>
+            <Text style={{ color: c.accent, fontSize: fontSizes.xs, fontWeight: '600' }}>
+              {copied ? 'Copied!' : 'Share'}
+            </Text>
+          </Pressable>
           <Pressable
             onPress={() => { onClose(); (navigation.navigate as any)('Replay', { attemptId }); }}
             style={styles.fullReplayBtn}
           >
-            <Text style={{ color: c.accent, fontSize: fontSizes.xs, fontWeight: '600' }}>Open full replay</Text>
+            <Text style={{ color: c.accent, fontSize: fontSizes.xs, fontWeight: '600' }}>Full replay</Text>
           </Pressable>
           <Pressable onPress={onClose} style={styles.closeBtn}>
             <Text style={{ color: c.textMuted, fontSize: 20 }}>{'\u00D7'}</Text>
