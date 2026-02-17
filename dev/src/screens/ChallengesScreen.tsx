@@ -24,12 +24,20 @@ const TIER_META: Record<string, { label: string; description: string }> = {
   headline: { label: 'Headline Challenges', description: 'Advanced challenges for experienced AI practitioners.' },
 };
 
+function getInitialTab(): string {
+  if (typeof window === 'undefined') return 'all';
+  const params = new URLSearchParams(window.location.search);
+  const tab = params.get('tab');
+  if (tab && CATEGORIES.some((c) => c.key === tab)) return tab;
+  return 'all';
+}
+
 export function ChallengesScreen() {
   const navigation = useNavigation();
   const [user, setUser] = useState<any>(null);
   const [challenges, setChallenges] = useState<Challenge[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeCategory, setActiveCategory] = useState('all');
+  const [activeCategory, setActiveCategory] = useState(getInitialTab);
   const supabase = createClient();
   const c = useColors();
 
@@ -55,7 +63,18 @@ export function ChallengesScreen() {
     init();
   }, [navigation, supabase.auth]);
 
-  if (loading && !user) {
+  // Sync active tab to URL query param
+  const handleCategoryChange = (key: string) => {
+    setActiveCategory(key);
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      if (key === 'all') url.searchParams.delete('tab');
+      else url.searchParams.set('tab', key);
+      window.history.replaceState({}, '', url.toString());
+    }
+  };
+
+  if (loading) {
     return (
       <View style={[styles.center, { backgroundColor: c.bg }]}>
         <ActivityIndicator size="large" color={c.accent} />
@@ -93,7 +112,7 @@ export function ChallengesScreen() {
           return (
             <Pressable
               key={cat.key}
-              onPress={() => setActiveCategory(cat.key)}
+              onPress={() => handleCategoryChange(cat.key)}
               style={[
                 styles.tab,
                 {
