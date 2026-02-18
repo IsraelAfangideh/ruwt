@@ -253,6 +253,7 @@ export interface ArenaChallenge {
   title: string;
   description: string;
   difficulty: string;
+  category?: string | null;
   starterCode: string | null;
   testCases: string;
   maxTokens: number | null;
@@ -347,7 +348,7 @@ function CodeUpdateToast({ visible }: { visible: boolean }) {
 
 /* ─── Results Bar ────────────────────────────────────────────────── */
 
-function ResultsBar({ results, onDismiss }: { results: TestResults; onDismiss?: () => void }) {
+function ResultsBar({ results, onDismiss, onAskAI }: { results: TestResults; onDismiss?: () => void; onAskAI?: (prompt: string) => void }) {
   const [expanded, setExpanded] = useState(!results.passed); // auto-expand on failure
   const allPassed = results.passed;
   const barBg = allPassed ? 'rgba(63,185,80,0.12)' : 'rgba(248,81,73,0.12)';
@@ -420,6 +421,40 @@ function ResultsBar({ results, onDismiss }: { results: TestResults; onDismiss?: 
               )}
             </div>
           ))}
+          {/* Encouraging message + Ask AI button for failures */}
+          {!allPassed && onAskAI && (
+            <div style={{ marginTop: 8, paddingTop: 8, borderTop: `1px solid ${arena.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+              <span style={{ color: arena.textMuted, fontSize: 12 }}>
+                {results.passedTests > 0
+                  ? `${results.passedTests} of ${results.totalTests} tests passing \u2014 keep going!`
+                  : 'No tests passing yet. Try asking the AI to help debug.'}
+              </span>
+              <button
+                onClick={() => {
+                  const firstFail = results.results.find((r) => !r.passed);
+                  const failCount = results.totalTests - results.passedTests;
+                  const prompt = firstFail
+                    ? `My code fails ${failCount} test${failCount > 1 ? 's' : ''}. The first failing test expects "${firstFail.expectedOutput}" but got "${firstFail.actualOutput || '(empty)'}".${firstFail.error ? ` Error: ${firstFail.error}` : ''} Help me fix this.`
+                    : `My code fails all ${results.totalTests} tests. Help me fix it.`;
+                  onAskAI(prompt);
+                }}
+                style={{
+                  background: arena.accent,
+                  border: 'none',
+                  borderRadius: 6,
+                  color: '#0d1117',
+                  padding: '5px 12px',
+                  fontSize: 11,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                  fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+                }}
+              >
+                Ask AI for Help
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -575,6 +610,7 @@ export function ArenaIDE({
   const [mobilePanel, setMobilePanel] = useState<'sidebar' | 'editor'>('editor');
   const [terminalExpanded, setTerminalExpanded] = useState(false);
   const [terminalCollapsed, setTerminalCollapsed] = useState(false);
+  const [nudgeDismissed, setNudgeDismissed] = useState(false);
 
   const isMobile = useIsMobile();
   const activeTabRef = useRef<'description' | 'chat'>('description');
@@ -700,10 +736,11 @@ Rules:
     }
   }, [messages, streamingContent]);
 
-  // Track unread chat messages
+  // Track unread chat messages & auto-dismiss nudge
   const prevMsgCountRef = useRef(0);
   useEffect(() => {
     if (messages.length > prevMsgCountRef.current) {
+      setNudgeDismissed(true);
       const lastMsg = messages[messages.length - 1];
       if (lastMsg && lastMsg.role === 'assistant' && activeTabRef.current !== 'chat') {
         setHasUnreadChat(true);
@@ -871,11 +908,40 @@ Rules:
               <div ref={chatScrollRef} style={s.chatScroll}>
                 {messages.filter((m) => m.role !== 'system').length === 0 && !streamingContent && (
                   <div style={s.chatEmpty}>
-                    <span style={{ color: arena.textSubtle, fontSize: 13, textAlign: 'center', lineHeight: '1.6', padding: '0 12px' }}>
-                      Choose a model tier below, then ask for help.{'\n'}
-                      Micro/Budget = cheap, Mid = balanced,{'\n'}
-                      Premium/Reasoning = powerful but costly.
-                    </span>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: '0 12px', width: '100%', maxWidth: 360 }}>
+                      <span style={{ color: arena.textSubtle, fontSize: 12, textAlign: 'center', lineHeight: '1.5' }}>
+                        Practice is free — experiment with different models!
+                      </span>
+                      {[
+                        'Solve this problem step by step',
+                        'Explain the requirements first, then write the code',
+                        `Write a solution in ${language}`,
+                      ].map((prompt) => (
+                        <button
+                          key={prompt}
+                          style={{
+                            background: arena.surface,
+                            border: `1px solid ${arena.border}`,
+                            borderRadius: 8,
+                            padding: '10px 14px',
+                            fontSize: 13,
+                            color: arena.text,
+                            cursor: 'pointer',
+                            textAlign: 'left',
+                            fontFamily: 'inherit',
+                            transition: 'border-color 0.15s',
+                          }}
+                          onClick={() => setChatInput(prompt)}
+                          onMouseEnter={(e) => (e.currentTarget.style.borderColor = arena.accent)}
+                          onMouseLeave={(e) => (e.currentTarget.style.borderColor = arena.border)}
+                        >
+                          {prompt}
+                        </button>
+                      ))}
+                      <span style={{ color: arena.textSubtle, fontSize: 11, textAlign: 'center', lineHeight: '1.5', marginTop: 4 }}>
+                        Micro/Budget = cheap, Mid = balanced, Premium/Reasoning = powerful but costly.
+                      </span>
+                    </div>
                   </div>
                 )}
                 {messages.filter((m) => m.role !== 'system').map((msg, i) => {
@@ -1169,8 +1235,66 @@ Rules:
         </div>
       </div>
 
+      {/* First-attempt nudge — shown when no messages sent and no code written */}
+      {!nudgeDismissed && messages.length === 0 && code === (challenge.starterCode || '// your code here') && (
+        <div style={{
+          position: 'absolute',
+          bottom: isMobile ? 60 : 16,
+          left: isMobile ? 16 : '50%',
+          right: isMobile ? 16 : undefined,
+          transform: isMobile ? undefined : 'translateX(-50%)',
+          background: arena.surface,
+          border: `1px solid ${arena.accent}40`,
+          borderRadius: 10,
+          padding: '10px 18px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 10,
+          zIndex: 40,
+          boxShadow: '0 4px 16px rgba(0,0,0,0.3)',
+          animation: 'nudge-fade-in 0.3s ease',
+        }}>
+          <style>{`@keyframes nudge-fade-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }`}</style>
+          <span style={{ fontSize: 16 }}>{'\u{1F4AC}'}</span>
+          <span style={{ fontSize: 13, color: arena.text, flex: 1 }}>
+            Start by asking the AI to help you solve this problem
+          </span>
+          <button
+            style={{
+              background: arena.accent,
+              border: 'none',
+              borderRadius: 6,
+              color: '#0d1117',
+              padding: '6px 14px',
+              fontSize: 12,
+              fontWeight: 600,
+              cursor: 'pointer',
+              whiteSpace: 'nowrap',
+            }}
+            onClick={() => {
+              setActiveTab('chat');
+              if (isMobile) setMobilePanel('sidebar');
+              setNudgeDismissed(true);
+            }}
+          >
+            Open Chat
+          </button>
+          <button
+            onClick={() => setNudgeDismissed(true)}
+            style={{ background: 'transparent', border: 'none', color: arena.textMuted, fontSize: 14, cursor: 'pointer', padding: '0 4px' }}
+          >
+            {'\u00D7'}
+          </button>
+        </div>
+      )}
+
       {/* Test results bar */}
-      {testResults && <ResultsBar results={testResults} onDismiss={onDismissResults} />}
+      {testResults && <ResultsBar results={testResults} onDismiss={onDismissResults} onAskAI={(prompt) => {
+        setChatInput(prompt);
+        setActiveTab('chat');
+        if (isMobile) setMobilePanel('sidebar');
+        setNudgeDismissed(true);
+      }} />}
 
       {/* Mobile floating bottom tab bar */}
       {isMobile && (

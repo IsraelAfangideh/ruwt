@@ -45,7 +45,7 @@ export function OnboardingScreen() {
         if (res.ok) {
           const profile = await res.json();
           if (profile.onboardingCompleted === 1) {
-            navigation.reset({ index: 0, routes: [{ name: 'Challenges' as never }] });
+            navigation.reset({ index: 0, routes: [{ name: 'Dashboard' as never }] });
             return;
           }
         }
@@ -81,7 +81,7 @@ export function OnboardingScreen() {
       // Non-blocking — mark completed even if API fails
     }
     setSubmitting(false);
-    navigation.reset({ index: 0, routes: [{ name: 'Challenges' as never }] });
+    navigation.reset({ index: 0, routes: [{ name: 'Dashboard' as never }] });
   };
 
   if (loading) {
@@ -311,12 +311,12 @@ function StepComplete({
       {/* Credits card */}
       <Card style={{ borderColor: c.accent, borderWidth: 1 }}>
         <CardContent style={styles.creditsContent}>
-          <Text style={[styles.creditsAmount, { color: c.accent }]}>50,000</Text>
+          <Text style={[styles.creditsAmount, { color: c.accent }]}>Free Practice</Text>
           <Text style={[styles.creditsLabel, { color: c.textMuted }]}>
-            credits to get started
+            All practice challenges are 100% free — AI chat included.
           </Text>
           <Text style={[styles.creditsDetail, { color: c.textSubtle }]}>
-            That's enough for dozens of challenges. Spend wisely and you'll go even further.
+            Your 50,000 credits ($5.00) are reserved for team assessments and premium features.
           </Text>
         </CardContent>
       </Card>
@@ -343,7 +343,7 @@ function StepComplete({
 
       <View style={styles.buttonRow}>
         <Button size="lg" onPress={onFinish} disabled={submitting} fullWidth>
-          {submitting ? 'Loading...' : 'Explore Challenges'}
+          {submitting ? 'Loading...' : 'Go to Dashboard'}
         </Button>
       </View>
 

@@ -18,13 +18,13 @@ export function CallbackScreen() {
     const redirectTo =
       (typeof window !== 'undefined' && localStorage.getItem('oauth_redirect')) ||
       urlParams?.get('redirectTo') ||
-      'Challenges';
+      'Dashboard';
 
     if (typeof window !== 'undefined') {
       localStorage.removeItem('oauth_redirect');
     }
 
-    const navigate = () => {
+    const navigate = async () => {
       if (handled.current) return;
       handled.current = true;
       setStatus('ok');
@@ -35,6 +35,20 @@ export function CallbackScreen() {
         localStorage.removeItem('ruwt_pending_challenge');
         navigation.reset({ index: 0, routes: [{ name: 'Arena' as never, params: { challengeId: pendingChallenge } }] });
         return;
+      }
+
+      // Check onboarding status — route new users to Onboarding
+      try {
+        const profileRes = await fetch('/api/profile');
+        if (profileRes.ok) {
+          const profile = await profileRes.json();
+          if (profile.onboardingCompleted === 0) {
+            navigation.reset({ index: 0, routes: [{ name: 'Onboarding' as never }] });
+            return;
+          }
+        }
+      } catch {
+        // If profile check fails, continue with default redirect
       }
 
       navigation.reset({ index: 0, routes: [{ name: redirectTo as never }] });

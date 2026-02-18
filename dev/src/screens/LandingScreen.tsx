@@ -5,6 +5,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/com
 import { Badge } from '@/components/ui/Badge';
 import { PlatformStats } from '@/components/PlatformStats';
 import { FeaturedReplay } from '@/components/FeaturedReplay';
+import { ActivityFeed } from '@/components/ActivityFeed';
 import { useColors } from '@/theme';
 import { spacing, fontSizes, fontFamily } from '@/theme/tokens';
 
@@ -72,6 +73,16 @@ export function LandingScreen() {
         <PlatformStats />
       </View>
 
+      {/* Recent activity — only renders if there's data */}
+      <View style={[styles.section, { paddingTop: 0 }]}>
+        <View style={styles.activityWrap}>
+          <Text style={[styles.sectionTitle, { color: c.text, fontSize: fontSizes.xl, marginBottom: spacing.md }]}>
+            Developers are solving challenges right now
+          </Text>
+          <ActivityFeed limit={5} />
+        </View>
+      </View>
+
       {/* Try a Challenge CTA */}
       <View style={[styles.section, { paddingTop: 0 }]}>
         <Card style={[styles.tryChallengeCard, { borderColor: '#f59e0b', borderWidth: 1, borderLeftWidth: 4 }]}>
@@ -119,7 +130,7 @@ export function LandingScreen() {
 
       {/* Featured replay */}
       <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: c.text }]}>See It In Action</Text>
+        <Text style={[styles.sectionTitle, { color: c.text }]}>Watch How Top Solvers Think</Text>
         <Text style={[styles.sectionSub, { color: c.textMuted }]}>
           Watch how top solvers complete challenges for under $0.01. Every replay is public and shareable.
         </Text>
@@ -265,6 +276,7 @@ const styles = StyleSheet.create({
     maxWidth: 800,
     alignSelf: 'center',
   },
+  activityWrap: { maxWidth: 600, alignSelf: 'center', width: '100%' },
   trustCard: { flex: 1, minWidth: 200 },
   tiers: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md, justifyContent: 'center', maxWidth: 1100, alignSelf: 'center' },
   tierCard: { flex: 1, minWidth: 220 },

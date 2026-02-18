@@ -665,7 +665,7 @@ export function ArenaScreen() {
                   background: `${badgeColor}10`,
                   ...(userCredits < 5000 ? { animation: 'credit-pulse 2s ease-in-out infinite' } : {}),
                 }}>
-                  {userCredits.toLocaleString()} cr
+                  {userCredits.toLocaleString()} cr (${(userCredits / 10000).toFixed(2)})
                 </span>
               );
             })()}
@@ -812,7 +812,7 @@ export function ArenaScreen() {
                   fontFamily: 'Menlo, Monaco, "Courier New", monospace',
                   ...(userCredits < 5000 ? { animation: 'credit-pulse 2s ease-in-out infinite' } : {}),
                 }}>
-                  {userCredits.toLocaleString()} cr
+                  {userCredits.toLocaleString()} cr (${(userCredits / 10000).toFixed(2)})
                 </span>
               );
             })()}
@@ -1002,6 +1002,37 @@ export function ArenaScreen() {
                   }}
                 >
                   See How #1 Solved This
+                </button>
+                <button
+                  style={{
+                    background: 'transparent',
+                    border: `1px solid ${arena.border}`,
+                    borderRadius: 8,
+                    color: arena.text,
+                    padding: '10px 20px',
+                    fontSize: 14,
+                    fontWeight: 500,
+                    cursor: 'pointer',
+                    width: '100%',
+                  }}
+                  onClick={async () => {
+                    try {
+                      const res = await fetch(`/api/challenges`);
+                      if (res.ok) {
+                        const challenges = await res.json();
+                        const sameCat = challenges.filter((ch: any) => ch.category === challenge?.category && ch.id !== challengeId);
+                        if (sameCat.length > 0) {
+                          setSuccessOverlay(null);
+                          (navigation.navigate as any)('Arena', { challengeId: sameCat[0].id });
+                          return;
+                        }
+                      }
+                    } catch {}
+                    setSuccessOverlay(null);
+                    navigation.navigate('Challenges' as never);
+                  }}
+                >
+                  Try Next Challenge
                 </button>
                 <button
                   style={{

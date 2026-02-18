@@ -734,6 +734,13 @@ export function DashboardScreen() {
         const res = await fetch('/api/dashboard');
         if (res.ok) {
           const d = (await res.json()) as DashboardData;
+
+          // Onboarding gate: redirect new users to onboarding flow
+          if (d.profile.onboardingCompleted === 0) {
+            navigation.reset({ index: 0, routes: [{ name: 'Onboarding' as never }] });
+            return;
+          }
+
           setData(d);
           // Calculate seconds until midnight UTC for countdown
           const now = new Date();

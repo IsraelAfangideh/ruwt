@@ -3,7 +3,7 @@ import { View, Text, ActivityIndicator, ScrollView, StyleSheet, Pressable } from
 import { useNavigation } from '@react-navigation/native';
 import { createClient } from '@/lib/supabase/client';
 import { DashboardLayout } from '@/components/DashboardLayout';
-import { Card } from '@/components/ui/Card';
+
 import { Avatar } from '@/components/ui/Avatar';
 import { Button } from '@/components/ui/Button';
 import { PlatformStats } from '@/components/PlatformStats';
@@ -50,7 +50,7 @@ export function LeaderboardScreen() {
   const navigation = useNavigation();
   const [user, setUser] = useState<any>(null);
   const [tab, setTab] = useState<Tab>('global');
-  const [period, setPeriod] = useState<Period>('all');
+  const [period, setPeriod] = useState<Period>('week');
   const [globalEntries, setGlobalEntries] = useState<GlobalEntry[]>([]);
   const [challengeEntries, setChallengeEntries] = useState<ChallengeEntry[]>([]);
   const [challenges, setChallenges] = useState<ChallengeInfo[]>([]);
@@ -88,7 +88,7 @@ export function LeaderboardScreen() {
       const base = typeof window !== 'undefined' ? window.location.origin : '';
       try {
         const [, chRes, seasonsRes] = await Promise.all([
-          fetchGlobal('all'),
+          fetchGlobal('week'),
           fetch(`${base}/api/challenges`),
           fetch(`${base}/api/seasons`),
         ]);
@@ -255,9 +255,18 @@ export function LeaderboardScreen() {
       {tab === 'global' ? (
         /* Global leaderboard */
         globalEntries.length === 0 ? (
-          <Card style={styles.empty}>
-            <Text style={[styles.emptyText, { color: c.textMuted }]}>No rankings yet. Be the first to submit!</Text>
-          </Card>
+          <View style={{ padding: spacing.xl, alignItems: 'center', gap: spacing.md }}>
+            <Text style={{ fontSize: fontSizes.lg, fontWeight: '700', color: c.text, textAlign: 'center' }}>
+              {period === 'week' ? 'No solves this week yet.' : period === 'month' ? 'No solves this month yet.' : 'No rankings yet.'}
+            </Text>
+            <Text style={{ fontSize: fontSizes.sm, color: c.textMuted, textAlign: 'center' }}>
+              Be the first to claim the #1 spot.
+            </Text>
+            <Button onPress={() => navigation.navigate('Challenges' as never)}>Browse Challenges</Button>
+            <View style={{ marginTop: spacing.lg, width: '100%' }}>
+              <ActivityFeed limit={10} />
+            </View>
+          </View>
         ) : (
           <ScrollView style={styles.scroll}>
             <View style={styles.podium}>
@@ -344,9 +353,17 @@ export function LeaderboardScreen() {
               <ActivityIndicator size="small" color={c.accent} />
             </View>
           ) : selectedChallenge && challengeEntries.length === 0 ? (
-            <Card style={styles.empty}>
-              <Text style={[styles.emptyText, { color: c.textMuted }]}>No one has passed this challenge yet.</Text>
-            </Card>
+            <View style={{ padding: spacing.lg, alignItems: 'center', gap: spacing.sm }}>
+              <Text style={{ fontSize: fontSizes.md, fontWeight: '600', color: c.text, textAlign: 'center' }}>
+                Nobody has solved this challenge yet.
+              </Text>
+              <Text style={{ fontSize: fontSizes.sm, color: c.textMuted, textAlign: 'center' }}>
+                Be the first!
+              </Text>
+              <Button variant="outline" onPress={() => (navigation.navigate as any)('Arena', { challengeId: selectedChallenge })}>
+                Try This Challenge
+              </Button>
+            </View>
           ) : (
             <View style={styles.table}>
               {challengeEntries.map((e) => (

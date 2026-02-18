@@ -18,7 +18,7 @@ export function LoginScreen() {
   const navigation = useNavigation();
   const route = useRoute();
   const params = (route.params || {}) as { redirectTo?: string };
-  const redirectTo = params.redirectTo ?? 'Challenges';
+  const redirectTo = params.redirectTo ?? 'Dashboard';
   const supabase = createClient();
   const c = useColors();
 
