@@ -155,9 +155,9 @@ export const TIER_MODELS: Record<ModelTier, ModelInfo> = {
   micro: cfModels.find((m) => m.tier === 'micro')!,
 };
 
-/** All models available for a given tier. */
+/** Cloudflare models available for a given tier (excludes BYOK). */
 export function getModelsForTier(tier: ModelTier): ModelInfo[] {
-  return MODELS.filter((m) => m.tier === tier);
+  return MODELS.filter((m) => m.tier === tier && !m.provider);
 }
 
 export function getAllModels(): ModelInfo[] {

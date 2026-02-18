@@ -175,14 +175,7 @@ export async function onRequestPost(context: {
 
     const db = getDb(context.env);
 
-    // Get user's API key for this provider
-    const [userKey] = await db
-      .select()
-      .from(apiKeys)
-      .where(eq(apiKeys.userId, user.id))
-      .limit(10);
-
-    // Find key for this specific provider
+    // Find user's API key for this provider
     const allUserKeys = await db
       .select()
       .from(apiKeys)
