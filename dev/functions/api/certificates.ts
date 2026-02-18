@@ -4,7 +4,7 @@
  */
 import { eq, and, sql } from 'drizzle-orm';
 import { getDb } from '../_shared/db';
-import { createSupabaseFromRequest } from '../_shared/auth';
+import { getUser } from '../_shared/auth';
 import { certificates, attempts, challenges, profiles } from '../../drizzle/schema.d1';
 
 // Track definitions: which challenges must be completed for each certificate
@@ -43,8 +43,7 @@ const TRACKS: Record<string, { title: string; type: string; challengeIds?: strin
 
 export async function onRequestGet(context: { request: Request; env: Env }) {
   try {
-    const supabase = createSupabaseFromRequest(context.request, context.env);
-    const { data: { user } } = await supabase.auth.getUser();
+    const user = await getUser(context.request, context.env);
     if (!user) {
       return Response.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -70,8 +69,7 @@ export async function onRequestGet(context: { request: Request; env: Env }) {
 
 export async function onRequestPost(context: { request: Request; env: Env }) {
   try {
-    const supabase = createSupabaseFromRequest(context.request, context.env);
-    const { data: { user } } = await supabase.auth.getUser();
+    const user = await getUser(context.request, context.env);
     if (!user) {
       return Response.json({ error: 'Unauthorized' }, { status: 401 });
     }

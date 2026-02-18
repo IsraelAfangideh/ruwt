@@ -6,13 +6,12 @@
  */
 import { eq, and, sql } from 'drizzle-orm';
 import { getDb } from '../../_shared/db';
-import { createSupabaseFromRequest } from '../../_shared/auth';
+import { getUser } from '../../_shared/auth';
 import { attempts, challenges, profiles } from '../../../drizzle/schema.d1';
 
 export async function onRequestPost(context: { request: Request; env: Env }) {
   try {
-    const supabase = createSupabaseFromRequest(context.request, context.env);
-    const { data: { user } } = await supabase.auth.getUser();
+    const user = await getUser(context.request, context.env);
     if (!user) {
       return Response.json({ error: 'Unauthorized' }, { status: 401 });
     }
