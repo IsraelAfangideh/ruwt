@@ -17,6 +17,11 @@ export const profiles = sqliteTable('profiles', {
   username: text('username').unique(),
   bio: text('bio'),
   linkedinUrl: text('linkedin_url'),
+  currentStreak: integer('current_streak').default(0).notNull(),
+  longestStreak: integer('longest_streak').default(0).notNull(),
+  lastStreakDate: text('last_streak_date'), // YYYY-MM-DD of last daily solve
+  streakFreezes: integer('streak_freezes').default(0).notNull(),
+  onboardingCompleted: integer('onboarding_completed').default(0).notNull(),
   createdAt: text('created_at').default(sql`(datetime('now'))`).notNull(),
 });
 
@@ -204,6 +209,32 @@ export const certificates = sqliteTable('certificates', {
   earnedAt: text('earned_at').default(sql`(datetime('now'))`),
 });
 
+// --- Badges / Achievements ---
+
+export const badges = sqliteTable('badges', {
+  id: text('id').primaryKey(),
+  userId: text('user_id').notNull().references(() => profiles.id),
+  badgeType: text('badge_type').notNull(), // e.g. 'first_solve', 'streak_7', 'penny_pincher'
+  title: text('title').notNull(),
+  description: text('description').notNull(),
+  icon: text('icon').notNull(), // emoji or icon key
+  metadata: text('metadata'), // JSON — extra context like { streak: 30, challengeId: '...' }
+  earnedAt: text('earned_at').default(sql`(datetime('now'))`).notNull(),
+});
+
+// --- Notifications ---
+
+export const notifications = sqliteTable('notifications', {
+  id: text('id').primaryKey(),
+  userId: text('user_id').notNull().references(() => profiles.id),
+  type: text('type').notNull(), // 'badge_earned' | 'streak_reminder' | 'leaderboard_change' | 'new_challenge' | 'competitive_nudge'
+  title: text('title').notNull(),
+  body: text('body').notNull(),
+  metadata: text('metadata'), // JSON — link targets, badge IDs, etc.
+  read: integer('read').default(0).notNull(),
+  createdAt: text('created_at').default(sql`(datetime('now'))`).notNull(),
+});
+
 // --- Type exports ---
 
 export type Profile = typeof profiles.$inferSelect;
@@ -234,6 +265,8 @@ export type ConstraintType = 'tokens' | 'cost' | 'time';
 export type ChallengeCategory = 'practice' | 'model_selection' | 'prompt_efficiency' | 'iterative_debugging' | 'multi_model_strategy' | 'real_world' | 'qa_testing' | 'frontend' | 'backend_api' | 'data_engineering' | 'devops';
 export type ChallengeLanguage = 'javascript' | 'typescript' | 'python';
 export type CertificateType = 'track_completion' | 'daily_streak' | 'efficiency_master';
+export type BadgeType = 'first_solve' | 'streak_3' | 'streak_7' | 'streak_30' | 'streak_100' | 'penny_pincher' | 'speed_demon' | 'model_master' | 'polyglot' | 'clean_sweep_easy' | 'clean_sweep_medium' | 'ten_solves' | 'twenty_five_solves' | 'fifty_solves' | 'daily_warrior';
+export type NotificationType = 'badge_earned' | 'streak_reminder' | 'leaderboard_change' | 'new_challenge' | 'competitive_nudge';
 export type AssessmentStatus = 'draft' | 'active' | 'archived';
 export type InviteStatus = 'pending' | 'started' | 'completed' | 'expired';
 export type SessionStatus = 'in_progress' | 'completed' | 'expired' | 'abandoned';
@@ -252,3 +285,7 @@ export type ReplayComment = typeof replayComments.$inferSelect;
 export type NewReplayComment = typeof replayComments.$inferInsert;
 export type Certificate = typeof certificates.$inferSelect;
 export type NewCertificate = typeof certificates.$inferInsert;
+export type Badge = typeof badges.$inferSelect;
+export type NewBadge = typeof badges.$inferInsert;
+export type Notification = typeof notifications.$inferSelect;
+export type NewNotification = typeof notifications.$inferInsert;

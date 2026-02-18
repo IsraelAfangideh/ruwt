@@ -58,7 +58,7 @@ export async function onRequestGet(context: { request: Request; env: Env }) {
     return Response.json({
       certificates: certs.map((c) => ({
         ...c,
-        metadata: c.metadata ? JSON.parse(c.metadata) : null,
+        metadata: c.metadata ? (() => { try { return JSON.parse(c.metadata); } catch { return null; } })() : null,
       })),
     });
   } catch (error) {

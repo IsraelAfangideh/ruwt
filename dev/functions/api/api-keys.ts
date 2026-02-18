@@ -9,14 +9,27 @@ import { getDb } from '../_shared/db';
 import { getUser } from '../_shared/auth';
 import { apiKeys } from '../../drizzle/schema.d1';
 
-function encryptKey(key: string, encryptionKey: string): string {
-  const data = new TextEncoder().encode(key);
+async function deriveAESKey(encryptionKey: string): Promise<CryptoKey> {
   const keyBytes = new TextEncoder().encode(encryptionKey);
-  const result = new Uint8Array(data.length);
-  for (let i = 0; i < data.length; i++) {
-    result[i] = data[i] ^ keyBytes[i % keyBytes.length];
-  }
-  return btoa(String.fromCharCode(...result));
+  const hash = await crypto.subtle.digest('SHA-256', keyBytes);
+  return crypto.subtle.importKey('raw', hash, { name: 'AES-GCM' }, false, ['encrypt']);
+}
+
+async function encryptKey(key: string, encryptionKey: string): Promise<string> {
+  const aesKey = await deriveAESKey(encryptionKey);
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const plaintext = new TextEncoder().encode(key);
+  // AES-GCM encrypt returns ciphertext + 16-byte auth tag appended
+  const ciphertextWithTag = await crypto.subtle.encrypt(
+    { name: 'AES-GCM', iv },
+    aesKey,
+    plaintext,
+  );
+  // Concatenate: iv (12 bytes) + ciphertext + tag
+  const combined = new Uint8Array(iv.byteLength + ciphertextWithTag.byteLength);
+  combined.set(iv, 0);
+  combined.set(new Uint8Array(ciphertextWithTag), iv.byteLength);
+  return btoa(String.fromCharCode(...combined));
 }
 
 function maskKey(key: string): string {
@@ -69,7 +82,7 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
     }
 
     const { provider, key, label } = parsed.data;
-    const encrypted = encryptKey(key, context.env.ENCRYPTION_KEY);
+    const encrypted = await encryptKey(key, context.env.ENCRYPTION_KEY);
     const id = crypto.randomUUID();
 
     const db = getDb(context.env);

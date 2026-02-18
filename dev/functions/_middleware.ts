@@ -1,16 +1,60 @@
 /**
- * Cloudflare Pages middleware for OG meta tags on replay pages.
- * Intercepts bot user-agents on /replay/ paths to return rich link previews.
+ * Cloudflare Pages middleware.
+ * 1. Rate-limits /api/ routes via D1-backed sliding window.
+ * 2. Returns OG meta tags for bots on /replay/, /share/, /cert/ paths.
  * All other requests pass through to the SPA.
  */
 import { getDb } from './_shared/db';
 import { attempts, challenges, profiles } from '../drizzle/schema.d1';
 import { eq } from 'drizzle-orm';
+import { checkRateLimit, buildKey } from './_shared/rate-limit';
+import { getUser } from './_shared/auth';
 
 const BOT_UA_REGEX = /Twitterbot|LinkedInBot|Slackbot|facebookexternalhit|Discordbot|WhatsApp|TelegramBot/i;
 
 export async function onRequest(context: { request: Request; env: Env; next: () => Promise<Response> }) {
   const url = new URL(context.request.url);
+
+  // --- Rate limiting for /api/ routes ---
+  if (url.pathname.startsWith('/api/')) {
+    // Resolve identity: authenticated user ID or client IP
+    let userId: string | null = null;
+    try {
+      const user = await getUser(context.request, context.env);
+      userId = user?.id ?? null;
+    } catch {
+      // Auth check failed — continue with IP-based limiting
+    }
+
+    const ip =
+      context.request.headers.get('CF-Connecting-IP') ||
+      context.request.headers.get('X-Forwarded-For')?.split(',')[0]?.trim() ||
+      '0.0.0.0';
+
+    const key = buildKey(url.pathname, userId, ip);
+
+    try {
+      const result = await checkRateLimit(context.env.DB, key, url.pathname);
+
+      if (!result.allowed) {
+        const retryAfter = result.retryAfter ?? 60;
+        return new Response(
+          JSON.stringify({ error: 'Rate limit exceeded', retryAfter }),
+          {
+            status: 429,
+            headers: {
+              'Content-Type': 'application/json',
+              'Retry-After': String(retryAfter),
+            },
+          }
+        );
+      }
+    } catch (err) {
+      // If rate-limit check fails (e.g. table missing), allow the request
+      // through rather than breaking the entire API.
+      console.error('Rate limit check error:', err);
+    }
+  }
 
   // Intercept replay and share paths for bots
   const replayMatch = url.pathname.match(/^\/replay\/([^/]+)$/);

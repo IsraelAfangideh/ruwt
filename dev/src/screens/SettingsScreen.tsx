@@ -1,35 +1,28 @@
 import { useEffect, useState } from 'react';
-import { View, Text, ActivityIndicator, ScrollView, StyleSheet } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import { createClient } from '@/lib/supabase/client';
+import { View, Text, ScrollView, StyleSheet } from 'react-native';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
+import { Skeleton, SkeletonLines } from '@/components/ui/Skeleton';
 import { useColors } from '@/theme';
-import { spacing, fontSizes, fontFamily } from '@/theme/tokens';
+import { spacing, fontSizes, fontFamily, radii } from '@/theme/tokens';
 import { CREDIT_PACKAGES, type CreditPackage } from '@/lib/stripe';
+import { useToast } from '@/components/ui/Toast';
+import { useAuthGuard } from '@/hooks/useAuthGuard';
 
 export function SettingsScreen() {
-  const navigation = useNavigation();
-  const [user, setUser] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  const { user, loading: authLoading } = useAuthGuard();
   const [credits, setCredits] = useState<number | null>(null);
   const [accountType, setAccountType] = useState<'individual' | 'team'>('individual');
   const [purchasing, setPurchasing] = useState<string | null>(null);
   const [showSuccess, setShowSuccess] = useState(false);
   const c = useColors();
+  const { showToast } = useToast();
 
   useEffect(() => {
+    if (!user) return;
     const init = async () => {
-      const supabase = createClient();
-      const { data: { user: u } } = await supabase.auth.getUser();
-      if (!u) {
-        navigation.reset({ index: 0, routes: [{ name: 'Login' as never }] });
-        return;
-      }
-      setUser(u);
-
       // Fetch profile for credits and account type
       try {
         const base = typeof window !== 'undefined' ? window.location.origin : '';
@@ -39,7 +32,9 @@ export function SettingsScreen() {
           setCredits(data.credits);
           if (data.accountType) setAccountType(data.accountType);
         }
-      } catch {}
+      } catch {
+        showToast('Failed to load profile', 'error');
+      }
 
       // Check for purchase success
       if (typeof window !== 'undefined') {
@@ -51,10 +46,9 @@ export function SettingsScreen() {
         }
       }
 
-      setLoading(false);
     };
     init();
-  }, [navigation]);
+  }, [user]);
 
   const handleBuy = async (pkg: CreditPackage) => {
     setPurchasing(pkg.id);
@@ -68,19 +62,36 @@ export function SettingsScreen() {
       if (r.ok) {
         const data = await r.json() as { url: string };
         if (data.url) window.location.href = data.url;
+      } else {
+        showToast('Failed to start checkout. Please try again.', 'error');
       }
-    } catch {}
+    } catch {
+      showToast('Failed to start checkout. Please try again.', 'error');
+    }
     setPurchasing(null);
   };
 
-  if (loading && !user) {
+  if (authLoading || !user) {
     return (
-      <View style={[styles.center, { backgroundColor: c.bg }]}>
-        <ActivityIndicator size="large" color={c.accent} />
+      <View style={[styles.center, { backgroundColor: c.bg, padding: spacing.xl }]}>
+        <View style={{ width: '100%', maxWidth: 600 }}>
+          <Skeleton width={120} height={28} borderRadius={radii.sm} style={{ marginBottom: spacing.lg }} />
+          <Card style={styles.card}>
+            <CardContent>
+              <Skeleton width={160} height={18} borderRadius={radii.sm} />
+              <SkeletonLines lines={2} />
+            </CardContent>
+          </Card>
+          <Card style={styles.card}>
+            <CardContent>
+              <Skeleton width={100} height={18} borderRadius={radii.sm} />
+              <Skeleton width={220} height={14} borderRadius={radii.sm} />
+            </CardContent>
+          </Card>
+        </View>
       </View>
     );
   }
-  if (!user) return null;
 
   return (
     <DashboardLayout user={user}>

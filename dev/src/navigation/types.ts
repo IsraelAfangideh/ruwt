@@ -3,6 +3,8 @@ export type RootStackParamList = {
   Login: undefined;
   Register: undefined;
   Callback: undefined;
+  Onboarding: undefined;
+  Dashboard: undefined;
   Challenges: undefined;
   Leaderboard: undefined;
   Profile: undefined;
@@ -22,6 +24,7 @@ export type RootStackParamList = {
   PublicProfile: { username: string };
   Share: { attemptId: string };
   Certificate: { shareToken: string };
+  NotFound: undefined;
 };
 
 declare global {

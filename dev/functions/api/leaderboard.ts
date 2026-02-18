@@ -77,7 +77,6 @@ export async function onRequestGet(context: { request: Request; env: Env }) {
           attemptId: attempts.id,
           userId: attempts.userId,
           userName: profiles.name,
-          userEmail: profiles.email,
           avatarUrl: profiles.avatarUrl,
           username: profiles.username,
           totalCost: attempts.totalCost,
@@ -91,16 +90,24 @@ export async function onRequestGet(context: { request: Request; env: Env }) {
         .orderBy(attempts.totalCost)
         .limit(limit);
 
+      // Deduplicate: keep only cheapest attempt per user (results already sorted by cost)
+      const seen = new Set<string>();
+      const unique = results.filter((r) => {
+        if (seen.has(r.userId)) return false;
+        seen.add(r.userId);
+        return true;
+      });
+
       return Response.json({
         type: 'challenge',
         challengeId,
         period,
         division,
-        entries: results.map((r, i) => ({
+        entries: unique.map((r, i) => ({
           rank: i + 1,
           user: {
             id: r.userId,
-            name: r.userName || r.userEmail?.split('@')[0],
+            name: r.userName || r.username || 'Anonymous',
             avatarUrl: r.avatarUrl,
             username: r.username,
           },
@@ -127,7 +134,6 @@ export async function onRequestGet(context: { request: Request; env: Env }) {
       .select({
         userId: profiles.id,
         userName: profiles.name,
-        userEmail: profiles.email,
         avatarUrl: profiles.avatarUrl,
         username: profiles.username,
         solvedCount: sql<number>`COUNT(DISTINCT CASE WHEN ${attempts.status} = 'passed' ${combinedFilter} THEN ${attempts.challengeId} END)`,
@@ -137,7 +143,7 @@ export async function onRequestGet(context: { request: Request; env: Env }) {
       })
       .from(profiles)
       .leftJoin(attempts, eq(profiles.id, attempts.userId))
-      .groupBy(profiles.id, profiles.name, profiles.email, profiles.avatarUrl, profiles.username)
+      .groupBy(profiles.id, profiles.name, profiles.avatarUrl, profiles.username)
       .having(sql`COUNT(DISTINCT CASE WHEN ${attempts.status} = 'passed' ${combinedFilter} THEN ${attempts.challengeId} END) > 0`)
       .orderBy(
         desc(sql`COUNT(DISTINCT CASE WHEN ${attempts.status} = 'passed' ${combinedFilter} THEN ${attempts.challengeId} END)`),
@@ -153,7 +159,7 @@ export async function onRequestGet(context: { request: Request; env: Env }) {
         rank: index + 1,
         user: {
           id: r.userId,
-          name: r.userName || r.userEmail?.split('@')[0],
+          name: r.userName || r.username || 'Anonymous',
           avatarUrl: r.avatarUrl,
           username: r.username,
         },

@@ -1,41 +1,34 @@
-import { useEffect, useState } from 'react';
-import { View, Text, ActivityIndicator, StyleSheet } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import { createClient } from '@/lib/supabase/client';
+import { View, Text, StyleSheet } from 'react-native';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Avatar } from '@/components/ui/Avatar';
+import { Skeleton } from '@/components/ui/Skeleton';
 import { useColors } from '@/theme';
-import { spacing, fontSizes, fontFamily } from '@/theme/tokens';
+import { spacing, fontSizes, fontFamily, radii } from '@/theme/tokens';
+import { useAuthGuard } from '@/hooks/useAuthGuard';
+
+function ProfileSkeleton() {
+  const c = useColors();
+  return (
+    <View style={[styles.center, { backgroundColor: c.bg, padding: spacing.xl }]}>
+      <Card style={styles.card}>
+        <CardContent style={styles.profile}>
+          <Skeleton width={64} height={64} borderRadius={32} />
+          <Skeleton width={140} height={20} borderRadius={radii.sm} />
+          <Skeleton width={200} height={14} borderRadius={radii.sm} />
+        </CardContent>
+      </Card>
+    </View>
+  );
+}
 
 export function ProfileScreen() {
-  const navigation = useNavigation();
-  const [user, setUser] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  const { user, loading } = useAuthGuard();
   const c = useColors();
 
-  useEffect(() => {
-    const init = async () => {
-      const supabase = createClient();
-      const { data: { user: u } } = await supabase.auth.getUser();
-      if (!u) {
-        navigation.reset({ index: 0, routes: [{ name: 'Login' as never }] });
-        return;
-      }
-      setUser(u);
-      setLoading(false);
-    };
-    init();
-  }, [navigation]);
-
-  if (loading && !user) {
-    return (
-      <View style={[styles.center, { backgroundColor: c.bg }]}>
-        <ActivityIndicator size="large" color={c.accent} />
-      </View>
-    );
+  if (loading || !user) {
+    return <ProfileSkeleton />;
   }
-  if (!user) return null;
 
   const initials = user.user_metadata?.name
     ? (user.user_metadata.name as string).split(' ').map((n: string) => n[0]).join('').toUpperCase()

@@ -71,7 +71,7 @@ export async function onRequestGet(context: { env: Env; request: Request }) {
     return Response.json(
       filtered.map((ch) => ({
         ...ch,
-        tags: ch.tags ? JSON.parse(ch.tags) : [],
+        tags: ch.tags ? (() => { try { return JSON.parse(ch.tags); } catch { return []; } })() : [],
         stats: {
           solvers: Number(ch.solvers) || 0,
           avgCost: ch.avgCost != null ? Math.round(Number(ch.avgCost)) : null,

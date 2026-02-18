@@ -7,6 +7,8 @@ import { Card, CardContent } from '@/components/ui/Card';
 import { ChallengeCard, type Challenge } from '@/components/ChallengeCard';
 import { useColors } from '@/theme';
 import { spacing, fontSizes, fontFamily } from '@/theme/tokens';
+import { useToast } from '@/components/ui/Toast';
+import { useIsMobile } from '@/lib/useIsMobile';
 
 const CATEGORIES = [
   { key: 'all', label: 'All' },
@@ -58,6 +60,8 @@ export function ChallengesScreen() {
   const [activeLang, setActiveLang] = useState(getInitialLang);
   const supabase = createClient();
   const c = useColors();
+  const { showToast } = useToast();
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     const init = async () => {
@@ -75,6 +79,7 @@ export function ChallengesScreen() {
         }
       } catch (_) {
         setChallenges([]);
+        showToast('Failed to load challenges. Check your connection.', 'error');
       }
       setLoading(false);
     };
@@ -206,7 +211,7 @@ export function ChallengesScreen() {
           <View key={group.tier} style={styles.tierSection}>
             <Text style={[styles.tierTitle, { color: c.text }]}>{group.meta.label}</Text>
             <Text style={[styles.tierDesc, { color: c.textMuted }]}>{group.meta.description}</Text>
-            <View style={styles.grid}>
+            <View style={isMobile ? styles.gridMobile : styles.grid}>
               {group.items.map((ch) => (
                 <ChallengeCard key={ch.id} challenge={ch} />
               ))}
@@ -242,4 +247,5 @@ const styles = StyleSheet.create({
   tierTitle: { fontSize: fontSizes.lg, fontWeight: '700', fontFamily: fontFamily.body, marginBottom: spacing.xs },
   tierDesc: { fontSize: fontSizes.sm, marginBottom: spacing.md },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.lg },
+  gridMobile: { flexDirection: 'column', gap: spacing.md },
 });

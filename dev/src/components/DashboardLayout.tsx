@@ -5,6 +5,7 @@ import { DashboardNav } from './DashboardNav';
 import { UserNav } from './UserNav';
 import { BalanceTicker } from './BalanceTicker';
 import { ThemeToggle } from './ThemeToggle';
+import { NotificationBell } from './NotificationBell';
 import { useColors } from '@/theme';
 import { spacing, fontSizes, fontFamily } from '@/theme/tokens';
 import type { User } from '@supabase/supabase-js';
@@ -36,7 +37,7 @@ export function DashboardLayout({ user, children }: DashboardLayoutProps) {
     <View style={[styles.page, { backgroundColor: c.bg }]}>
       <View style={[styles.header, { backgroundColor: c.bg, borderBottomColor: c.border }]}>
         <View style={styles.headerLeft}>
-          <Pressable onPress={() => navigation.navigate('Challenges' as never)} style={styles.logo}>
+          <Pressable onPress={() => navigation.navigate('Dashboard' as never)} style={styles.logo}>
             <View style={[styles.logoBox, { backgroundColor: c.primary + '20', borderColor: c.accent }]}>
               <Text style={[styles.logoLetter, { color: c.primary }]}>R</Text>
             </View>
@@ -48,6 +49,7 @@ export function DashboardLayout({ user, children }: DashboardLayoutProps) {
         </View>
         <View style={styles.headerRight}>
           {accountType === 'team' && <BalanceTicker />}
+          <NotificationBell />
           <ThemeToggle />
           <UserNav user={user} />
         </View>

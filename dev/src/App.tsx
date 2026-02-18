@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { ThemeProvider, useTheme } from '@/theme';
+import { ToastProvider } from '@/components/ui/Toast';
 import { AppNavigator } from '@/navigation/AppNavigator';
 import './index.css';
 
@@ -15,8 +16,10 @@ function BodyTheme() {
 export default function App() {
   return (
     <ThemeProvider>
-      <BodyTheme />
-      <AppNavigator />
+      <ToastProvider>
+        <BodyTheme />
+        <AppNavigator />
+      </ToastProvider>
     </ThemeProvider>
   );
 }

@@ -8,6 +8,8 @@ export const linking: LinkingOptions<ReactNavigation.RootParamList> = {
       Login: 'login',
       Register: 'register',
       Callback: 'callback',
+      Onboarding: 'onboarding',
+      Dashboard: 'dashboard',
       Challenges: 'challenges',
       Leaderboard: 'leaderboard',
       Profile: 'profile',
@@ -27,6 +29,7 @@ export const linking: LinkingOptions<ReactNavigation.RootParamList> = {
       PublicProfile: 'u/:username',
       Share: 'share/:attemptId',
       Certificate: 'cert/:shareToken',
+      NotFound: '*',
     },
   },
 };

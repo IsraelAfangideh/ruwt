@@ -3,15 +3,15 @@
  * Route: /api-keys
  */
 import { useState, useEffect } from 'react';
-import { View, Text, ScrollView, ActivityIndicator, StyleSheet, TextInput } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import { createClient } from '@/lib/supabase/client';
+import { View, Text, ScrollView, StyleSheet, TextInput } from 'react-native';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
+import { Skeleton } from '@/components/ui/Skeleton';
 import { useColors } from '@/theme';
-import { spacing, fontSizes, fontFamily } from '@/theme/tokens';
+import { spacing, fontSizes, fontFamily, radii } from '@/theme/tokens';
+import { useAuthGuard } from '@/hooks/useAuthGuard';
 
 interface StoredKey {
   id: string;
@@ -27,10 +27,8 @@ const PROVIDERS = [
 ] as const;
 
 export function APIKeysScreen() {
-  const navigation = useNavigation();
+  const { user, loading: authLoading } = useAuthGuard();
   const c = useColors();
-  const [user, setUser] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
   const [keys, setKeys] = useState<StoredKey[]>([]);
   const [adding, setAdding] = useState<string | null>(null);
   const [keyInput, setKeyInput] = useState('');
@@ -48,19 +46,9 @@ export function APIKeysScreen() {
   };
 
   useEffect(() => {
-    const init = async () => {
-      const supabase = createClient();
-      const { data: { user: u } } = await supabase.auth.getUser();
-      if (!u) {
-        navigation.reset({ index: 0, routes: [{ name: 'Login' as never }] });
-        return;
-      }
-      setUser(u);
-      await fetchKeys();
-      setLoading(false);
-    };
-    init();
-  }, [navigation]);
+    if (!user) return;
+    fetchKeys();
+  }, [user]);
 
   const handleAdd = async (provider: string) => {
     if (!keyInput.trim()) return;
@@ -93,15 +81,27 @@ export function APIKeysScreen() {
     setDeleting(null);
   };
 
-  if (loading) {
+  if (authLoading || !user) {
     return (
-      <View style={[styles.center, { backgroundColor: c.bg }]}>
-        <ActivityIndicator size="large" color={c.accent} />
+      <View style={[styles.center, { backgroundColor: c.bg, padding: spacing.xl }]}>
+        <View style={{ width: '100%', maxWidth: 600 }}>
+          <Skeleton width={120} height={28} borderRadius={radii.sm} style={{ marginBottom: spacing.xs }} />
+          <Skeleton width={280} height={14} borderRadius={radii.sm} style={{ marginBottom: spacing.lg }} />
+          {[1, 2, 3].map((i) => (
+            <Card key={i} style={styles.card}>
+              <CardContent>
+                <View style={styles.cardHeader}>
+                  <Skeleton width={100} height={18} borderRadius={radii.sm} />
+                  <Skeleton width={80} height={22} borderRadius={radii.full} />
+                </View>
+                <Skeleton width={140} height={32} borderRadius={radii.md} style={{ marginTop: spacing.sm }} />
+              </CardContent>
+            </Card>
+          ))}
+        </View>
       </View>
     );
   }
-
-  if (!user) return null;
 
   return (
     <DashboardLayout user={user}>

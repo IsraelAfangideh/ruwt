@@ -25,16 +25,24 @@ const requestSchema = z.object({
   temperature: z.number().optional(),
 });
 
+async function deriveAESKey(encryptionKey: string): Promise<CryptoKey> {
+  const keyBytes = new TextEncoder().encode(encryptionKey);
+  const hash = await crypto.subtle.digest('SHA-256', keyBytes);
+  return crypto.subtle.importKey('raw', hash, { name: 'AES-GCM' }, false, ['decrypt']);
+}
+
 async function decryptKey(encrypted: string, encryptionKey: string): Promise<string> {
-  // Simple XOR-based encryption for D1 compatibility (no Web Crypto subtle in all CF environments)
-  // In production, use AES-256-GCM via Web Crypto API
-  const data = Uint8Array.from(atob(encrypted), (c) => c.charCodeAt(0));
-  const key = new TextEncoder().encode(encryptionKey);
-  const result = new Uint8Array(data.length);
-  for (let i = 0; i < data.length; i++) {
-    result[i] = data[i] ^ key[i % key.length];
-  }
-  return new TextDecoder().decode(result);
+  const combined = Uint8Array.from(atob(encrypted), (c) => c.charCodeAt(0));
+  // Format: iv (12 bytes) + ciphertext + auth tag (16 bytes, appended by AES-GCM)
+  const iv = combined.slice(0, 12);
+  const ciphertextWithTag = combined.slice(12);
+  const aesKey = await deriveAESKey(encryptionKey);
+  const plaintext = await crypto.subtle.decrypt(
+    { name: 'AES-GCM', iv },
+    aesKey,
+    ciphertextWithTag,
+  );
+  return new TextDecoder().decode(plaintext);
 }
 
 async function callOpenAI(apiKey: string, model: string, messages: any[], opts: { maxTokens?: number; temperature?: number }) {

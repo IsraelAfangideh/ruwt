@@ -10,6 +10,7 @@ import { useCodeSync } from './arena/useCodeSync';
 import { useAIChat, type MessageMeta } from './arena/useAIChat';
 import { TerminalPanel, type TerminalPanelHandle } from './arena/TerminalPanel';
 import { TIER_MODELS, getModelById, getModelsForTier, getBYOKModels, tierColor, tierLabel, type ModelTier } from '@/lib/ai/pricing';
+import { estimateChatCost, formatEstimatedCost } from '@/lib/cost-estimate';
 import { useIsMobile } from '@/lib/useIsMobile';
 
 const MonacoEditor = React.lazy(() => import('@monaco-editor/react'));
@@ -428,11 +429,24 @@ function ResultsBar({ results, onDismiss }: { results: TestResults; onDismiss?: 
 /* ─── Sub-components ──────────────────────────────────────────────── */
 
 function PastAttemptsSection({ attempts: pastAttempts }: { attempts: PastAttempt[] }) {
-  if (!pastAttempts.length) return null;
-
   return (
     <div style={{ marginTop: 20 }}>
       <div style={s.sectionLabel}>Past Attempts</div>
+      {!pastAttempts.length && (
+        <div style={{
+          padding: '16px 12px',
+          background: arena.surface,
+          border: `1px solid ${arena.border}`,
+          borderRadius: 6,
+          fontSize: 12,
+          lineHeight: '1.6',
+          color: arena.textMuted,
+          fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+          textAlign: 'center' as const,
+        }}>
+          No past attempts yet. Run tests or submit your solution to see history here.
+        </div>
+      )}
       {pastAttempts.map((a) => {
         const statusColor = a.status === 'passed' ? arena.success : a.status === 'failed' ? arena.error : arena.accent;
         const costStr = formatCost(a.totalCost);
@@ -560,6 +574,7 @@ export function ArenaIDE({
   const [byokDropdownOpen, setByokDropdownOpen] = useState(false);
   const [mobilePanel, setMobilePanel] = useState<'sidebar' | 'editor'>('editor');
   const [terminalExpanded, setTerminalExpanded] = useState(false);
+  const [terminalCollapsed, setTerminalCollapsed] = useState(false);
 
   const isMobile = useIsMobile();
   const activeTabRef = useRef<'description' | 'chat'>('description');
@@ -1024,19 +1039,33 @@ Rules:
 
               {/* Chat input */}
               <div style={s.chatInputWrap}>
-                <input
-                  type="text"
-                  style={isMobile ? { ...s.chatInput, padding: '10px 14px', fontSize: 16 } : s.chatInput}
-                  placeholder={guestMode ? 'Sign up to chat with AI' : chatDisabled ? (aiLimitReached ? 'AI limit reached \u2014 budget exhausted' : 'Chat disabled \u2014 time expired') : 'Ask about this problem...'}
-                  value={chatInput}
-                  onChange={(e) => setChatInput(e.target.value)}
-                  onKeyDown={handleInputKeyDown}
-                  disabled={isLoadingChat || chatDisabled || !!guestMode}
-                />
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  <input
+                    type="text"
+                    style={isMobile ? { ...s.chatInput, padding: '10px 14px', fontSize: 16, flex: 'none' } : { ...s.chatInput, flex: 'none' }}
+                    placeholder={guestMode ? 'Sign up to chat with AI' : chatDisabled ? (aiLimitReached ? 'AI limit reached \u2014 budget exhausted' : 'Chat disabled \u2014 time expired') : 'Ask about this problem...'}
+                    value={chatInput}
+                    onChange={(e) => setChatInput(e.target.value)}
+                    onKeyDown={handleInputKeyDown}
+                    disabled={isLoadingChat || chatDisabled || !!guestMode}
+                  />
+                  {/* Pre-call cost estimate */}
+                  {chatInput.trim() && !chatDisabled && !guestMode && (
+                    <span style={{
+                      fontSize: 10,
+                      color: arena.textSubtle,
+                      fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+                      paddingLeft: 2,
+                    }}>
+                      {formatEstimatedCost(estimateChatCost(chatInput, model))} estimated
+                    </span>
+                  )}
+                </div>
                 <button
                   style={{
                     ...s.sendButton,
                     opacity: !chatInput.trim() || isLoadingChat || chatDisabled || guestMode ? 0.4 : 1,
+                    alignSelf: 'flex-start',
                   }}
                   onClick={sendMessage}
                   disabled={!chatInput.trim() || isLoadingChat || chatDisabled || !!guestMode}
@@ -1097,20 +1126,32 @@ Rules:
           {/* Terminal */}
           <div style={{
             ...s.terminalWrap,
-            height: isMobile
-              ? (terminalExpanded ? '60vh' : 180)
-              : terminalHeight,
+            height: terminalCollapsed
+              ? 28
+              : isMobile
+                ? (terminalExpanded ? '60vh' : 180)
+                : terminalHeight,
+            minHeight: terminalCollapsed ? 28 : 150,
+            overflow: terminalCollapsed ? 'hidden' : undefined,
           }}>
             <div style={s.terminalHeader}>
               <span style={s.terminalHeaderText}>Terminal</span>
-              {isMobile && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                {isMobile && !terminalCollapsed && (
+                  <button
+                    style={s.terminalToggleBtn}
+                    onClick={() => setTerminalExpanded(!terminalExpanded)}
+                  >
+                    {terminalExpanded ? '\u25BC Shrink' : '\u25B2 Expand'}
+                  </button>
+                )}
                 <button
                   style={s.terminalToggleBtn}
-                  onClick={() => setTerminalExpanded(!terminalExpanded)}
+                  onClick={() => setTerminalCollapsed(!terminalCollapsed)}
                 >
-                  {terminalExpanded ? '\u25BC Collapse' : '\u25B2 Expand'}
+                  {terminalCollapsed ? '\u25B2' : '\u25BC'}
                 </button>
-              )}
+              </div>
             </div>
             <TerminalPanel
               ref={terminalRef}
@@ -1131,21 +1172,21 @@ Rules:
       {/* Test results bar */}
       {testResults && <ResultsBar results={testResults} onDismiss={onDismissResults} />}
 
-      {/* Mobile bottom tab bar */}
+      {/* Mobile floating bottom tab bar */}
       {isMobile && (
-        <div style={s.mobileTabBar}>
+        <div style={s.mobileFloatingBar}>
           <button
-            style={mobilePanel === 'sidebar' ? s.mobileTabActive : s.mobileTab}
+            style={mobilePanel === 'sidebar' ? s.mobileFloatingTabActive : s.mobileFloatingTab}
             onClick={() => { setMobilePanel('sidebar'); }}
           >
-            {activeTab === 'chat' ? 'AI Chat' : 'Description'}
-            {hasUnreadChat && mobilePanel === 'editor' && <span style={s.unreadDot} />}
+            <span>{activeTab === 'chat' ? 'AI Chat' : 'Description'}</span>
+            {hasUnreadChat && mobilePanel === 'editor' && <span style={s.mobileUnreadDot} />}
           </button>
           <button
-            style={mobilePanel === 'editor' ? s.mobileTabActive : s.mobileTab}
+            style={mobilePanel === 'editor' ? s.mobileFloatingTabActive : s.mobileFloatingTab}
             onClick={() => setMobilePanel('editor')}
           >
-            Editor
+            <span>Editor</span>
           </button>
         </div>
       )}
@@ -1694,40 +1735,61 @@ const s: Record<string, React.CSSProperties> = {
     cursor: 'pointer',
   },
 
-  // Mobile bottom tab bar
-  mobileTabBar: {
+  // Mobile floating bottom tab bar
+  mobileFloatingBar: {
     display: 'flex',
-    borderTop: `1px solid ${arena.border}`,
+    gap: 8,
+    padding: '6px 16px',
+    paddingBottom: 'max(6px, env(safe-area-inset-bottom))',
     background: arena.surface,
+    borderTop: `1px solid ${arena.border}`,
     flexShrink: 0,
   },
-  mobileTab: {
+  mobileFloatingTab: {
     flex: 1,
-    padding: '10px 0',
-    fontSize: 13,
+    display: 'flex',
+    flexDirection: 'column' as const,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 2,
+    padding: '8px 0',
+    fontSize: 11,
     fontWeight: 500,
     color: arena.textMuted,
     background: 'transparent',
-    border: 'none',
-    borderTop: '2px solid transparent',
+    border: `1px solid ${arena.border}`,
+    borderRadius: 8,
     cursor: 'pointer',
     fontFamily: 'Menlo, Monaco, "Courier New", monospace',
-    textAlign: 'center' as const,
     position: 'relative' as const,
   },
-  mobileTabActive: {
+  mobileFloatingTabActive: {
     flex: 1,
-    padding: '10px 0',
-    fontSize: 13,
+    display: 'flex',
+    flexDirection: 'column' as const,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 2,
+    padding: '8px 0',
+    fontSize: 11,
     fontWeight: 600,
     color: arena.accent,
-    background: 'transparent',
-    border: 'none',
-    borderTop: `2px solid ${arena.accent}`,
+    background: arena.accentBg,
+    border: `1px solid ${arena.accent}`,
+    borderRadius: 8,
     cursor: 'pointer',
     fontFamily: 'Menlo, Monaco, "Courier New", monospace',
-    textAlign: 'center' as const,
     position: 'relative' as const,
+  },
+  mobileUnreadDot: {
+    position: 'absolute' as const,
+    top: 4,
+    right: '25%',
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    background: arena.accent,
+    border: `1.5px solid ${arena.surface}`,
   },
 
 };

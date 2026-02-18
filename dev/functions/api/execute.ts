@@ -25,7 +25,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
       status: res.status,
       headers: {
         'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Origin': getAllowedOrigin(context.request),
       },
     });
   } catch (err) {
@@ -49,11 +49,19 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
   }
 };
 
-export const onRequestOptions: PagesFunction = async () => {
+const ALLOWED_ORIGINS = ['https://ruwt.dev', 'https://ruwt-dev.pages.dev', 'http://localhost:5173'];
+
+function getAllowedOrigin(request: Request): string {
+  const origin = request.headers.get('Origin') || '';
+  if (ALLOWED_ORIGINS.includes(origin)) return origin;
+  return ALLOWED_ORIGINS[0];
+}
+
+export const onRequestOptions: PagesFunction = async (context) => {
   return new Response(null, {
     status: 204,
     headers: {
-      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Origin': getAllowedOrigin(context.request),
       'Access-Control-Allow-Methods': 'POST, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type',
     },

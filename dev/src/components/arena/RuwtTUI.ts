@@ -41,7 +41,14 @@ export class RuwtTUI {
   private line = '';
   private cursorPos = 0;
   private isStreaming = false;
+  private static readonly MAX_HISTORY = 50;
   private history: Array<{ role: 'user' | 'assistant'; content: string }> = [];
+
+  private pruneHistory(): void {
+    if (this.history.length > RuwtTUI.MAX_HISTORY) {
+      this.history = this.history.slice(-RuwtTUI.MAX_HISTORY);
+    }
+  }
 
   constructor(options: RuwtTUIOptions) {
     this.term = options.term;
@@ -197,6 +204,7 @@ Rules:
 
     this.isStreaming = true;
     this.history.push({ role: 'user', content: text });
+    this.pruneHistory();
 
     const messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [
       { role: 'system', content: this.buildSystemPrompt() },
@@ -221,6 +229,7 @@ Rules:
       onDone: (fullContent: string) => {
         this.isStreaming = false;
         this.history.push({ role: 'assistant', content: fullContent });
+        this.pruneHistory();
 
         // Extract and apply code blocks
         const codeBlock = this.extractCodeBlock(fullContent);

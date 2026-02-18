@@ -4,6 +4,8 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { ArenaIDE, type ArenaChallenge, type ArenaAttempt, type TestResults, type PastAttempt } from '@/components/ArenaIDE';
 import { arena } from '@/theme/colors';
 import { useIsMobile } from '@/lib/useIsMobile';
+import { useAuthGuard } from '@/hooks/useAuthGuard';
+import { useToast } from '@/components/ui/Toast';
 
 function formatWallClock(seconds: number): string {
   const m = Math.floor(seconds / 60);
@@ -24,9 +26,17 @@ function formatTime(seconds: number): string {
   return `${m}:${s.toString().padStart(2, '0')}`;
 }
 
+/** Returns badge color based on credit balance thresholds. */
+function creditsBadgeColor(credits: number): string {
+  if (credits >= 20000) return arena.accent;   // gold — healthy
+  if (credits >= 5000) return '#e09040';        // orange — warning
+  return arena.error;                           // red — low
+}
+
 export function ArenaScreen() {
   const navigation = useNavigation();
   const route = useRoute();
+  const { loading: authLoading } = useAuthGuard();
   const params = (route.params || {}) as { challengeId?: string };
   const challengeId = params.challengeId ?? '';
 
@@ -45,6 +55,7 @@ export function ArenaScreen() {
   const isExpiredRef = useRef(false);
   const [successOverlay, setSuccessOverlay] = useState<{ attemptId: string; passed: boolean } | null>(null);
   const isMobile = useIsMobile();
+  const { showToast } = useToast();
 
   // Fetch past attempts for this challenge
   const fetchPastAttempts = useCallback(async () => {
@@ -69,7 +80,9 @@ export function ArenaScreen() {
             }))
         );
       }
-    } catch { /* ignore */ }
+    } catch {
+      showToast('Failed to load past attempts', 'error');
+    }
   }, [challengeId]);
 
   // Load challenge + profile on mount (but don't create attempt yet)
@@ -192,7 +205,7 @@ export function ArenaScreen() {
       const res = await fetch('/api/submissions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ attemptId: attempt.id, sourceCode, language: lang, mode: 'submit' }),
+        body: JSON.stringify({ attemptId: attempt.id, sourceCode, language: lang, mode: 'submit', idempotencyKey: `${attempt.id}-${Date.now()}` }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Submit failed');
@@ -284,6 +297,15 @@ export function ArenaScreen() {
       setIsRunning(false);
     }
   }, [code, language, onSubmit]);
+
+  // Auth loading state
+  if (authLoading) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: arena.bg }}>
+        <ActivityIndicator size="large" color={arena.accent} />
+      </View>
+    );
+  }
 
   // Loading state
   if (loading) {
@@ -505,6 +527,13 @@ export function ArenaScreen() {
       color: arena.text,
       overflow: 'hidden',
     }}>
+      {/* Pulse animation for low-credit badge */}
+      <style>{`
+        @keyframes credit-pulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.6; }
+        }
+      `}</style>
       {/* Header */}
       {isMobile ? (
         /* Mobile header — two rows */
@@ -622,17 +651,32 @@ export function ArenaScreen() {
             }}>
               {totalTokens.toLocaleString()} tok
             </span>
+            {(() => {
+              const badgeColor = creditsBadgeColor(userCredits);
+              return (
+                <span style={{
+                  marginLeft: 'auto',
+                  fontSize: 10,
+                  fontWeight: userCredits < 5000 ? 700 : 600,
+                  color: badgeColor,
+                  padding: '1px 6px',
+                  borderRadius: 9999,
+                  border: `1px solid ${badgeColor}40`,
+                  background: `${badgeColor}10`,
+                  ...(userCredits < 5000 ? { animation: 'credit-pulse 2s ease-in-out infinite' } : {}),
+                }}>
+                  {userCredits.toLocaleString()} cr
+                </span>
+              );
+            })()}
+            {/* Practice mode indicator */}
             <span style={{
-              marginLeft: 'auto',
-              fontSize: 10,
-              fontWeight: 600,
-              color: arena.accent,
-              padding: '1px 6px',
-              borderRadius: 9999,
-              border: `1px solid ${arena.accent}40`,
-              background: `${arena.accent}10`,
+              fontSize: 9,
+              color: arena.textSubtle,
+              fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+              whiteSpace: 'nowrap',
             }}>
-              {userCredits.toLocaleString()} cr
+              Free practice
             </span>
           </div>
         </div>
@@ -754,17 +798,33 @@ export function ArenaScreen() {
             )}
 
             {/* Credits badge */}
+            {(() => {
+              const badgeColor = creditsBadgeColor(userCredits);
+              return (
+                <span style={{
+                  fontSize: 10,
+                  fontWeight: userCredits < 5000 ? 700 : 600,
+                  color: badgeColor,
+                  padding: '2px 8px',
+                  borderRadius: 9999,
+                  border: `1px solid ${badgeColor}40`,
+                  background: `${badgeColor}10`,
+                  fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+                  ...(userCredits < 5000 ? { animation: 'credit-pulse 2s ease-in-out infinite' } : {}),
+                }}>
+                  {userCredits.toLocaleString()} cr
+                </span>
+              );
+            })()}
+
+            {/* Practice mode indicator */}
             <span style={{
               fontSize: 10,
-              fontWeight: 600,
-              color: arena.accent,
-              padding: '2px 8px',
-              borderRadius: 9999,
-              border: `1px solid ${arena.accent}40`,
-              background: `${arena.accent}10`,
+              color: arena.textSubtle,
               fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+              whiteSpace: 'nowrap',
             }}>
-              {userCredits.toLocaleString()} cr
+              Free practice — costs tracked for ranking only
             </span>
 
             {/* Divider */}

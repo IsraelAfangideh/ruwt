@@ -79,7 +79,13 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
       expiresAt = exp.toISOString();
     }
 
-    const testCases = JSON.parse(challenge.testCases) as unknown[];
+    let testCases: unknown[];
+    try {
+      testCases = JSON.parse(challenge.testCases);
+    } catch {
+      console.error('Corrupted testCases JSON for challenge:', challengeId);
+      return Response.json({ error: 'Challenge data is corrupted' }, { status: 500 });
+    }
     const totalTests = Array.isArray(testCases) ? testCases.length : 0;
 
     const attemptId = crypto.randomUUID();

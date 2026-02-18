@@ -44,7 +44,7 @@ export async function onRequestGet(context: {
       id: cert.id,
       type: cert.type,
       title: cert.title,
-      metadata: cert.metadata ? JSON.parse(cert.metadata) : null,
+      metadata: cert.metadata ? (() => { try { return JSON.parse(cert.metadata); } catch { return null; } })() : null,
       shareToken: cert.shareToken,
       earnedAt: cert.earnedAt,
       holder: holder || null,

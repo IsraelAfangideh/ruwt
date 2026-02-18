@@ -72,7 +72,13 @@ export async function onRequestPost(context: { request: Request; env: Env; param
 
     // Create attempt for next challenge
     const nextChallenge = challengeList[nextIndex].challenge;
-    const testCases = JSON.parse(nextChallenge.testCases) as unknown[];
+    let testCases: unknown[];
+    try {
+      testCases = JSON.parse(nextChallenge.testCases);
+    } catch {
+      console.error('Corrupted testCases JSON for challenge:', nextChallenge.id);
+      return Response.json({ error: 'Challenge data is corrupted' }, { status: 500 });
+    }
     const attemptId = crypto.randomUUID();
 
     await db.insert(attempts).values({

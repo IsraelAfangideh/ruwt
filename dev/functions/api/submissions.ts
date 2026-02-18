@@ -7,14 +7,21 @@ import { z } from 'zod';
 import { getDb } from '../_shared/db';
 import { getUser } from '../_shared/auth';
 import { runTestCases, type SupportedLanguage } from '../_shared/judge';
-import { attempts, challenges } from '../../drizzle/schema.d1';
+import { checkAndAwardBadges } from '../_shared/badges';
+import { updateStreak } from '../_shared/streaks';
+import { attempts, challenges, dailyChallenges } from '../../drizzle/schema.d1';
 
 const submissionSchema = z.object({
   attemptId: z.string().uuid(),
   sourceCode: z.string(),
   language: z.enum(['javascript', 'typescript', 'python']).default('javascript'),
   mode: z.enum(['test', 'submit']).default('submit'),
+  idempotencyKey: z.string().optional(),
 });
+
+// In-memory deduplication for concurrent submissions (per isolate lifetime)
+const recentSubmissions = new Map<string, { timestamp: number; result: object }>();
+const DEDUP_WINDOW_MS = 10_000; // 10 seconds
 
 export async function onRequestPost(context: { request: Request; env: Env }) {
   try {
@@ -30,7 +37,24 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
       );
     }
 
-    const { attemptId, sourceCode, language, mode } = parsed.data;
+    const { attemptId, sourceCode, language, mode, idempotencyKey } = parsed.data;
+
+    // Dedup: if same idempotency key was recently processed, return cached result
+    if (idempotencyKey) {
+      const cached = recentSubmissions.get(idempotencyKey);
+      if (cached && Date.now() - cached.timestamp < DEDUP_WINDOW_MS) {
+        return Response.json(cached.result);
+      }
+    }
+
+    // Prune old entries periodically (1% chance)
+    if (Math.random() < 0.01) {
+      const cutoff = Date.now() - DEDUP_WINDOW_MS;
+      for (const [key, val] of recentSubmissions) {
+        if (val.timestamp < cutoff) recentSubmissions.delete(key);
+      }
+    }
+
     const db = getDb(context.env);
 
     let [attempt] = await db
@@ -58,7 +82,13 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
         return Response.json({ error: 'Challenge not found' }, { status: 404 });
       }
 
-      const testCases = JSON.parse(challenge.testCases) as Array<{ input: string; expectedOutput: string }>;
+      let testCases: Array<{ input: string; expectedOutput: string }>;
+      try {
+        testCases = JSON.parse(challenge.testCases);
+      } catch {
+        console.error('Corrupted testCases JSON for challenge:', challenge.id);
+        return Response.json({ error: 'Challenge data is corrupted' }, { status: 500 });
+      }
       const testResult = await runTestCases(
         context.env,
         sourceCode,
@@ -144,7 +174,13 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
       return Response.json({ error: 'Challenge not found' }, { status: 404 });
     }
 
-    const testCases = JSON.parse(challenge.testCases) as Array<{ input: string; expectedOutput: string }>;
+    let testCases: Array<{ input: string; expectedOutput: string }>;
+    try {
+      testCases = JSON.parse(challenge.testCases);
+    } catch {
+      console.error('Corrupted testCases JSON for challenge:', challenge.id);
+      return Response.json({ error: 'Challenge data is corrupted' }, { status: 500 });
+    }
     const testResult = await runTestCases(
       context.env,
       sourceCode,
@@ -168,7 +204,30 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
       })
       .where(eq(attempts.id, attempt.id));
 
-    return Response.json({
+    // On successful solve, check badges and update streaks (non-blocking)
+    let newBadges: string[] = [];
+    let streakResult: { currentStreak: number; newBadges: string[] } | null = null;
+    if (testResult.passed) {
+      try {
+        newBadges = await checkAndAwardBadges(db, user.id);
+
+        // Check if this is a daily challenge solve — if so, update streak
+        const today = new Date().toISOString().split('T')[0];
+        const [todaysDaily] = await db
+          .select({ challengeId: dailyChallenges.challengeId })
+          .from(dailyChallenges)
+          .where(eq(dailyChallenges.date, today))
+          .limit(1);
+        if (todaysDaily && todaysDaily.challengeId === attempt.challengeId) {
+          streakResult = await updateStreak(db, user.id);
+          newBadges = [...newBadges, ...streakResult.newBadges];
+        }
+      } catch (e) {
+        console.error('Badge/streak check error (non-blocking):', e);
+      }
+    }
+
+    const responseBody = {
       success: testResult.passed,
       status,
       totalTests: testResult.totalTests,
@@ -190,7 +249,16 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
         inputTokens: attempt.inputTokens,
         outputTokens: attempt.outputTokens,
       },
-    });
+      newBadges,
+      streak: streakResult ? { currentStreak: streakResult.currentStreak } : null,
+    };
+
+    // Cache for idempotency dedup
+    if (idempotencyKey) {
+      recentSubmissions.set(idempotencyKey, { timestamp: Date.now(), result: responseBody });
+    }
+
+    return Response.json(responseBody);
   } catch (error) {
     console.error('Submission error:', error);
     return Response.json({ error: 'Internal server error' }, { status: 500 });
