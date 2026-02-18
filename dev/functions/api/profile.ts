@@ -5,6 +5,7 @@
 import { eq } from 'drizzle-orm';
 import { getDb } from '../_shared/db';
 import { getUser } from '../_shared/auth';
+import { ensureProfile } from '../_shared/ensure-profile';
 import { profiles } from '../../drizzle/schema.d1';
 
 export async function onRequestGet(context: { request: Request; env: Env }) {
@@ -13,6 +14,10 @@ export async function onRequestGet(context: { request: Request; env: Env }) {
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
     const db = getDb(context.env);
+
+    // Ensure profile exists (creates with signup bonus on first call)
+    await ensureProfile(db, user);
+
     const [profile] = await db
       .select()
       .from(profiles)

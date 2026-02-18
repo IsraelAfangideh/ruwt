@@ -6,7 +6,8 @@ import { eq, and, desc } from 'drizzle-orm';
 import { z } from 'zod';
 import { getDb } from '../_shared/db';
 import { getUser } from '../_shared/auth';
-import { attempts, challenges, profiles, transactions } from '../../drizzle/schema.d1';
+import { ensureProfile } from '../_shared/ensure-profile';
+import { attempts, challenges } from '../../drizzle/schema.d1';
 
 const createAttemptSchema = z.object({
   challengeId: z.string().min(1),
@@ -30,27 +31,8 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
     const { challengeId, timed } = parsed.data;
     const db = getDb(context.env);
 
-    const SIGNUP_BONUS = 50000;
-    const insertResult = await db
-      .insert(profiles)
-      .values({
-        id: user.id,
-        email: user.email ?? '',
-        name: (user.user_metadata?.full_name ?? user.user_metadata?.name) as string | null ?? null,
-        avatarUrl: (user.user_metadata?.avatar_url as string) ?? null,
-        credits: SIGNUP_BONUS,
-      })
-      .onConflictDoNothing({ target: profiles.id });
-
-    // If a new profile was created, record the signup bonus transaction
-    if (insertResult.meta?.changes && insertResult.meta.changes > 0) {
-      await db.insert(transactions).values({
-        id: crypto.randomUUID(),
-        userId: user.id,
-        type: 'signup_bonus',
-        amount: SIGNUP_BONUS,
-      });
-    }
+    // Ensure profile exists (creates with signup bonus on first call)
+    await ensureProfile(db, user);
 
     const [challenge] = await db
       .select()
