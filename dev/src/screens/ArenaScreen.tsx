@@ -3,6 +3,7 @@ import { View, Text, ActivityIndicator } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { ArenaIDE, type ArenaChallenge, type ArenaAttempt, type TestResults, type PastAttempt } from '@/components/ArenaIDE';
 import { arena } from '@/theme/colors';
+import { useIsMobile } from '@/lib/useIsMobile';
 
 function formatWallClock(seconds: number): string {
   const m = Math.floor(seconds / 60);
@@ -43,6 +44,7 @@ export function ArenaScreen() {
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const isExpiredRef = useRef(false);
   const [successOverlay, setSuccessOverlay] = useState<{ attemptId: string; passed: boolean } | null>(null);
+  const isMobile = useIsMobile();
 
   // Fetch past attempts for this challenge
   const fetchPastAttempts = useCallback(async () => {
@@ -410,7 +412,13 @@ export function ArenaScreen() {
           )}
 
           {/* Action buttons */}
-          <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+          <div style={{
+            display: 'flex',
+            flexDirection: isMobile ? 'column' : 'row',
+            gap: 12,
+            alignItems: 'center',
+            width: isMobile ? '100%' : 'auto',
+          }}>
             <button
               style={{
                 background: arena.accent,
@@ -422,6 +430,7 @@ export function ArenaScreen() {
                 fontWeight: 600,
                 cursor: starting ? 'not-allowed' : 'pointer',
                 opacity: starting ? 0.6 : 1,
+                width: isMobile ? '100%' : 'auto',
               }}
               onClick={() => startAttempt(true)}
               disabled={starting}
@@ -439,6 +448,7 @@ export function ArenaScreen() {
                 fontWeight: 500,
                 cursor: starting ? 'not-allowed' : 'pointer',
                 opacity: starting ? 0.6 : 1,
+                width: isMobile ? '100%' : 'auto',
               }}
               onClick={() => startAttempt(false)}
               disabled={starting}
@@ -495,157 +505,80 @@ export function ArenaScreen() {
       color: arena.text,
       overflow: 'hidden',
     }}>
-      {/* Header — 48px */}
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        height: 48,
-        padding: '0 16px',
-        background: arena.surface,
-        borderBottom: `1px solid ${arena.border}`,
-        flexShrink: 0,
-      }}>
-        {/* Left: Back + Title */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
-          <button
-            style={{
-              background: 'transparent',
-              border: 'none',
-              color: arena.textMuted,
+      {/* Header */}
+      {isMobile ? (
+        /* Mobile header — two rows */
+        <div style={{
+          background: arena.surface,
+          borderBottom: `1px solid ${arena.border}`,
+          flexShrink: 0,
+        }}>
+          {/* Row 1: Back, title, timer, actions */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            height: 40,
+            padding: '0 8px',
+            gap: 8,
+          }}>
+            <button
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: arena.textMuted,
+                fontSize: 13,
+                cursor: 'pointer',
+                padding: '4px 6px',
+                fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+                flexShrink: 0,
+              }}
+              onClick={() => navigation.navigate('Challenges' as never)}
+            >
+              &larr;
+            </button>
+            <span style={{
               fontSize: 13,
-              cursor: 'pointer',
-              padding: '4px 8px',
-              fontFamily: 'Menlo, Monaco, "Courier New", monospace',
-            }}
-            onClick={() => navigation.navigate('Challenges' as never)}
-          >
-            &larr; Back
-          </button>
-          <span style={{
-            width: 1,
-            height: 20,
-            background: arena.border,
-          }} />
-          <span style={{
-            fontSize: 14,
-            fontWeight: 600,
-            color: arena.text,
-            whiteSpace: 'nowrap',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-          }}>
-            {challenge.title}
-          </span>
-          <span style={{
-            fontSize: 11,
-            fontWeight: 600,
-            color: difficultyColor,
-            padding: '2px 8px',
-            borderRadius: 9999,
-            border: `1px solid ${difficultyColor}40`,
-            background: `${difficultyColor}15`,
-            fontFamily: 'Menlo, Monaco, "Courier New", monospace',
-            textTransform: 'lowercase',
-          }}>
-            {challenge.difficulty}
-          </span>
-          {isUntimed && (
-            <span style={{
-              fontSize: 11,
               fontWeight: 600,
-              color: arena.textMuted,
-              padding: '2px 8px',
-              borderRadius: 9999,
-              border: `1px solid ${arena.textSubtle}`,
-              fontFamily: 'Menlo, Monaco, "Courier New", monospace',
-              textTransform: 'uppercase',
-              letterSpacing: '0.5px',
+              color: arena.text,
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              flex: 1,
+              minWidth: 0,
             }}>
-              untimed
+              {challenge.title}
             </span>
-          )}
-        </div>
-
-        {/* Right: Stats + Actions */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          {/* Hero cost */}
-          <span style={{
-            fontSize: 20,
-            fontWeight: 700,
-            color: costLimitReached ? arena.error : arena.accent,
-            fontFamily: 'Menlo, Monaco, "Courier New", monospace',
-          }}>
-            {formatCost(attempt.totalCost)}
-          </span>
-          <span style={{ fontSize: 11, color: costLimitReached ? arena.error : arena.textMuted }}>
-            {costLimitReached ? 'limit reached' : 'spent'}
-          </span>
-
-          {/* Token detail with hover popover */}
-          <span
-            style={{
-              fontSize: 11,
-              color: tokenLimitReached ? arena.error : arena.textMuted,
-              fontFamily: 'Menlo, Monaco, "Courier New", monospace',
-              cursor: 'help',
-              position: 'relative',
-            }}
-            title={`Input: ${(attempt.inputTokens || 0).toLocaleString()} | Output: ${(attempt.outputTokens || 0).toLocaleString()} | Total: ${totalTokens.toLocaleString()}`}
-          >
-            {totalTokens.toLocaleString()} tok
-          </span>
-
-          {/* Timer — subtle when normal, bold pill when warning/critical */}
-          {timeLeft != null && (
-            <span style={{
-              fontSize: 12,
-              fontFamily: 'Menlo, Monaco, "Courier New", monospace',
-              ...(timerUrgency === 'critical' ? {
-                fontWeight: 700, background: arena.error, color: '#fff', padding: '2px 10px', borderRadius: 9999,
-              } : timerUrgency === 'warning' ? {
-                fontWeight: 700, background: arena.accent, color: '#0d1117', padding: '2px 10px', borderRadius: 9999,
-              } : { color: arena.textMuted }),
-            }}>
-              {formatTime(timeLeft)}
-            </span>
-          )}
-
-          {/* Credits badge */}
-          <span style={{
-            fontSize: 10,
-            fontWeight: 600,
-            color: arena.accent,
-            padding: '2px 8px',
-            borderRadius: 9999,
-            border: `1px solid ${arena.accent}40`,
-            background: `${arena.accent}10`,
-            fontFamily: 'Menlo, Monaco, "Courier New", monospace',
-          }}>
-            {userCredits.toLocaleString()} cr
-          </span>
-
-          {/* Divider */}
-          <span style={{ width: 1, height: 24, background: arena.border }} />
-
-          {/* Actions */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            {timeLeft != null && (
+              <span style={{
+                fontSize: 12,
+                fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+                flexShrink: 0,
+                ...(timerUrgency === 'critical' ? {
+                  fontWeight: 700, background: arena.error, color: '#fff', padding: '2px 8px', borderRadius: 9999,
+                } : timerUrgency === 'warning' ? {
+                  fontWeight: 700, background: arena.accent, color: '#0d1117', padding: '2px 8px', borderRadius: 9999,
+                } : { color: arena.textMuted }),
+              }}>
+                {formatTime(timeLeft)}
+              </span>
+            )}
             <button
               style={{
                 background: 'transparent',
                 border: `1px solid ${arena.border}`,
                 borderRadius: 6,
                 color: arena.text,
-                padding: '6px 16px',
-                fontSize: 13,
+                padding: '4px 10px',
+                fontSize: 12,
                 fontWeight: 500,
                 cursor: isRunning ? 'not-allowed' : 'pointer',
                 opacity: isRunning ? 0.5 : 1,
+                flexShrink: 0,
               }}
               onClick={handleRun}
               disabled={isRunning}
             >
-              {isRunning ? 'Running...' : 'Run Tests'}
+              {isRunning ? '...' : 'Run'}
             </button>
             <button
               style={{
@@ -653,11 +586,12 @@ export function ArenaScreen() {
                 border: 'none',
                 borderRadius: 6,
                 color: '#0d1117',
-                padding: '6px 16px',
-                fontSize: 13,
+                padding: '4px 10px',
+                fontSize: 12,
                 fontWeight: 600,
                 cursor: isRunning ? 'not-allowed' : 'pointer',
                 opacity: isRunning ? 0.5 : 1,
+                flexShrink: 0,
               }}
               onClick={handleSubmit}
               disabled={isRunning}
@@ -665,8 +599,217 @@ export function ArenaScreen() {
               Submit
             </button>
           </div>
+
+          {/* Row 2: Compact stats strip */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            height: 28,
+            padding: '0 10px',
+            gap: 12,
+            borderTop: `1px solid ${arena.border}`,
+            fontSize: 11,
+            fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+          }}>
+            <span style={{
+              fontWeight: 700,
+              color: costLimitReached ? arena.error : arena.accent,
+            }}>
+              {formatCost(attempt.totalCost)}
+            </span>
+            <span style={{
+              color: tokenLimitReached ? arena.error : arena.textMuted,
+            }}>
+              {totalTokens.toLocaleString()} tok
+            </span>
+            <span style={{
+              marginLeft: 'auto',
+              fontSize: 10,
+              fontWeight: 600,
+              color: arena.accent,
+              padding: '1px 6px',
+              borderRadius: 9999,
+              border: `1px solid ${arena.accent}40`,
+              background: `${arena.accent}10`,
+            }}>
+              {userCredits.toLocaleString()} cr
+            </span>
+          </div>
         </div>
-      </div>
+      ) : (
+        /* Desktop header — single 48px row */
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          height: 48,
+          padding: '0 16px',
+          background: arena.surface,
+          borderBottom: `1px solid ${arena.border}`,
+          flexShrink: 0,
+        }}>
+          {/* Left: Back + Title */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
+            <button
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: arena.textMuted,
+                fontSize: 13,
+                cursor: 'pointer',
+                padding: '4px 8px',
+                fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+              }}
+              onClick={() => navigation.navigate('Challenges' as never)}
+            >
+              &larr; Back
+            </button>
+            <span style={{
+              width: 1,
+              height: 20,
+              background: arena.border,
+            }} />
+            <span style={{
+              fontSize: 14,
+              fontWeight: 600,
+              color: arena.text,
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+            }}>
+              {challenge.title}
+            </span>
+            <span style={{
+              fontSize: 11,
+              fontWeight: 600,
+              color: difficultyColor,
+              padding: '2px 8px',
+              borderRadius: 9999,
+              border: `1px solid ${difficultyColor}40`,
+              background: `${difficultyColor}15`,
+              fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+              textTransform: 'lowercase',
+            }}>
+              {challenge.difficulty}
+            </span>
+            {isUntimed && (
+              <span style={{
+                fontSize: 11,
+                fontWeight: 600,
+                color: arena.textMuted,
+                padding: '2px 8px',
+                borderRadius: 9999,
+                border: `1px solid ${arena.textSubtle}`,
+                fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+                textTransform: 'uppercase',
+                letterSpacing: '0.5px',
+              }}>
+                untimed
+              </span>
+            )}
+          </div>
+
+          {/* Right: Stats + Actions */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            {/* Hero cost */}
+            <span style={{
+              fontSize: 20,
+              fontWeight: 700,
+              color: costLimitReached ? arena.error : arena.accent,
+              fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+            }}>
+              {formatCost(attempt.totalCost)}
+            </span>
+            <span style={{ fontSize: 11, color: costLimitReached ? arena.error : arena.textMuted }}>
+              {costLimitReached ? 'limit reached' : 'spent'}
+            </span>
+
+            {/* Token detail with hover popover */}
+            <span
+              style={{
+                fontSize: 11,
+                color: tokenLimitReached ? arena.error : arena.textMuted,
+                fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+                cursor: 'help',
+                position: 'relative',
+              }}
+              title={`Input: ${(attempt.inputTokens || 0).toLocaleString()} | Output: ${(attempt.outputTokens || 0).toLocaleString()} | Total: ${totalTokens.toLocaleString()}`}
+            >
+              {totalTokens.toLocaleString()} tok
+            </span>
+
+            {/* Timer — subtle when normal, bold pill when warning/critical */}
+            {timeLeft != null && (
+              <span style={{
+                fontSize: 12,
+                fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+                ...(timerUrgency === 'critical' ? {
+                  fontWeight: 700, background: arena.error, color: '#fff', padding: '2px 10px', borderRadius: 9999,
+                } : timerUrgency === 'warning' ? {
+                  fontWeight: 700, background: arena.accent, color: '#0d1117', padding: '2px 10px', borderRadius: 9999,
+                } : { color: arena.textMuted }),
+              }}>
+                {formatTime(timeLeft)}
+              </span>
+            )}
+
+            {/* Credits badge */}
+            <span style={{
+              fontSize: 10,
+              fontWeight: 600,
+              color: arena.accent,
+              padding: '2px 8px',
+              borderRadius: 9999,
+              border: `1px solid ${arena.accent}40`,
+              background: `${arena.accent}10`,
+              fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+            }}>
+              {userCredits.toLocaleString()} cr
+            </span>
+
+            {/* Divider */}
+            <span style={{ width: 1, height: 24, background: arena.border }} />
+
+            {/* Actions */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <button
+                style={{
+                  background: 'transparent',
+                  border: `1px solid ${arena.border}`,
+                  borderRadius: 6,
+                  color: arena.text,
+                  padding: '6px 16px',
+                  fontSize: 13,
+                  fontWeight: 500,
+                  cursor: isRunning ? 'not-allowed' : 'pointer',
+                  opacity: isRunning ? 0.5 : 1,
+                }}
+                onClick={handleRun}
+                disabled={isRunning}
+              >
+                {isRunning ? 'Running...' : 'Run Tests'}
+              </button>
+              <button
+                style={{
+                  background: arena.accent,
+                  border: 'none',
+                  borderRadius: 6,
+                  color: '#0d1117',
+                  padding: '6px 16px',
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: isRunning ? 'not-allowed' : 'pointer',
+                  opacity: isRunning ? 0.5 : 1,
+                }}
+                onClick={handleSubmit}
+                disabled={isRunning}
+              >
+                Submit
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* IDE Body */}
       <div style={{ flex: 1, minHeight: 0, position: 'relative' }}>

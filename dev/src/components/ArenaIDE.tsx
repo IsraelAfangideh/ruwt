@@ -10,6 +10,7 @@ import { useCodeSync } from './arena/useCodeSync';
 import { useAIChat, type MessageMeta } from './arena/useAIChat';
 import { TerminalPanel, type TerminalPanelHandle } from './arena/TerminalPanel';
 import { TIER_MODELS, getModelById, getModelsForTier, getBYOKModels, tierColor, tierLabel, type ModelTier } from '@/lib/ai/pricing';
+import { useIsMobile } from '@/lib/useIsMobile';
 
 const MonacoEditor = React.lazy(() => import('@monaco-editor/react'));
 
@@ -557,7 +558,10 @@ export function ArenaIDE({
   const [terminalHeight, setTerminalHeight] = useState(250);
   const [byokProviders, setByokProviders] = useState<Set<string>>(new Set());
   const [byokDropdownOpen, setByokDropdownOpen] = useState(false);
+  const [mobilePanel, setMobilePanel] = useState<'sidebar' | 'editor'>('editor');
+  const [terminalExpanded, setTerminalExpanded] = useState(false);
 
+  const isMobile = useIsMobile();
   const activeTabRef = useRef<'description' | 'chat'>('description');
   activeTabRef.current = activeTab;
   const chatScrollRef = useRef<HTMLDivElement>(null);
@@ -820,9 +824,12 @@ Rules:
   return (
     <div style={s.container}>
       {/* Main content area */}
-      <div style={s.mainRow}>
+      <div style={isMobile ? s.mainRowMobile : s.mainRow}>
         {/* LEFT SIDEBAR: Description/Chat tabs */}
-        <div style={s.sidebar}>
+        <div style={isMobile
+          ? { ...s.sidebarMobile, display: mobilePanel === 'sidebar' ? 'flex' : 'none' }
+          : s.sidebar
+        }>
           {/* Tab bar */}
           <div style={s.tabBar}>
             <button
@@ -905,7 +912,7 @@ Rules:
               </div>
 
               {/* Model selector — 5 tiers */}
-              <div style={s.tierBar}>
+              <div style={isMobile ? s.tierBarMobile : s.tierBar}>
                 {(['micro', 'budget', 'mid', 'premium', 'reasoning'] as ModelTier[]).map((tier) => {
                   const m = TIER_MODELS[tier];
                   const isActive = selectedTier === tier;
@@ -913,7 +920,10 @@ Rules:
                   const modelsInTier = getModelsForTier(tier);
                   const hasMultiple = modelsInTier.length > 1;
                   return (
-                    <div key={tier} style={{ position: 'relative', flex: 1 }}>
+                    <div key={tier} style={isMobile
+                      ? { position: 'relative', minWidth: 80, flexShrink: 0 }
+                      : { position: 'relative', flex: 1 }
+                    }>
                       <button
                         style={{
                           ...s.tierPill,
@@ -1016,7 +1026,7 @@ Rules:
               <div style={s.chatInputWrap}>
                 <input
                   type="text"
-                  style={s.chatInput}
+                  style={isMobile ? { ...s.chatInput, padding: '10px 14px', fontSize: 16 } : s.chatInput}
                   placeholder={guestMode ? 'Sign up to chat with AI' : chatDisabled ? (aiLimitReached ? 'AI limit reached \u2014 budget exhausted' : 'Chat disabled \u2014 time expired') : 'Ask about this problem...'}
                   value={chatInput}
                   onChange={(e) => setChatInput(e.target.value)}
@@ -1039,7 +1049,10 @@ Rules:
         </div>
 
         {/* RIGHT PANE: Editor + Terminal */}
-        <div ref={rightPaneRef} style={s.rightPane}>
+        <div ref={rightPaneRef} style={isMobile
+          ? { ...s.rightPane, display: mobilePanel === 'editor' ? 'flex' : 'none' }
+          : s.rightPane
+        }>
           {/* Editor */}
           <div style={s.editorWrap}>
             <CodeUpdateToast visible={showToast} />
@@ -1057,28 +1070,47 @@ Rules:
                 theme="vs-dark"
                 options={{
                   minimap: { enabled: false },
-                  fontSize: 14,
+                  fontSize: isMobile ? 13 : 14,
                   fontFamily: 'Menlo, Monaco, "Courier New", monospace',
-                  lineNumbers: 'on' as const,
+                  lineNumbers: isMobile ? ('off' as const) : ('on' as const),
                   renderLineHighlight: 'line' as const,
                   scrollBeyondLastLine: false,
                   padding: { top: 8 },
                   automaticLayout: true,
+                  wordWrap: isMobile ? ('on' as const) : ('off' as const),
+                  folding: isMobile ? false : true,
+                  glyphMargin: isMobile ? false : true,
+                  lineDecorationsWidth: isMobile ? 0 : 10,
                 }}
               />
             </Suspense>
           </div>
 
-          {/* Drag handle */}
-          <div
-            style={s.dragHandle}
-            onMouseDown={handleDragStart}
-          />
+          {/* Drag handle — hidden on mobile */}
+          {!isMobile && (
+            <div
+              style={s.dragHandle}
+              onMouseDown={handleDragStart}
+            />
+          )}
 
           {/* Terminal */}
-          <div style={{ ...s.terminalWrap, height: terminalHeight }}>
+          <div style={{
+            ...s.terminalWrap,
+            height: isMobile
+              ? (terminalExpanded ? '60vh' : 180)
+              : terminalHeight,
+          }}>
             <div style={s.terminalHeader}>
               <span style={s.terminalHeaderText}>Terminal</span>
+              {isMobile && (
+                <button
+                  style={s.terminalToggleBtn}
+                  onClick={() => setTerminalExpanded(!terminalExpanded)}
+                >
+                  {terminalExpanded ? '\u25BC Collapse' : '\u25B2 Expand'}
+                </button>
+              )}
             </div>
             <TerminalPanel
               ref={terminalRef}
@@ -1099,10 +1131,29 @@ Rules:
       {/* Test results bar */}
       {testResults && <ResultsBar results={testResults} onDismiss={onDismissResults} />}
 
+      {/* Mobile bottom tab bar */}
+      {isMobile && (
+        <div style={s.mobileTabBar}>
+          <button
+            style={mobilePanel === 'sidebar' ? s.mobileTabActive : s.mobileTab}
+            onClick={() => { setMobilePanel('sidebar'); }}
+          >
+            {activeTab === 'chat' ? 'AI Chat' : 'Description'}
+            {hasUnreadChat && mobilePanel === 'editor' && <span style={s.unreadDot} />}
+          </button>
+          <button
+            style={mobilePanel === 'editor' ? s.mobileTabActive : s.mobileTab}
+            onClick={() => setMobilePanel('editor')}
+          >
+            Editor
+          </button>
+        </div>
+      )}
+
       {/* Expiry overlay */}
       {showExpiryOverlay && (
         <div style={s.expiryOverlay}>
-          <div style={s.expiryCard}>
+          <div style={isMobile ? { ...s.expiryCard, padding: '24px 20px' } : s.expiryCard}>
             <h2 style={s.expiryTitle}>Time's Up!</h2>
             <div style={s.expiryStats}>
               <div style={s.expiryStat}>
@@ -1114,7 +1165,7 @@ Rules:
                 <span style={s.expiryStatLabel}>cost</span>
               </div>
             </div>
-            <div style={s.expiryActions}>
+            <div style={isMobile ? { ...s.expiryActions, flexDirection: 'column' } : s.expiryActions}>
               <button
                 style={s.expiryReviewBtn}
                 onClick={() => setShowExpiryOverlay(false)}
@@ -1160,6 +1211,12 @@ const s: Record<string, React.CSSProperties> = {
     minHeight: 0,
     overflow: 'hidden',
   },
+  mainRowMobile: {
+    display: 'flex',
+    flex: 1,
+    minHeight: 0,
+    overflow: 'hidden',
+  },
 
   // Left sidebar
   sidebar: {
@@ -1169,6 +1226,12 @@ const s: Record<string, React.CSSProperties> = {
     minWidth: 280,
     maxWidth: 480,
     borderRight: `1px solid ${arena.border}`,
+  },
+  sidebarMobile: {
+    display: 'flex',
+    flexDirection: 'column',
+    flex: 1,
+    width: '100%',
   },
 
   // Right pane: editor + terminal
@@ -1235,6 +1298,9 @@ const s: Record<string, React.CSSProperties> = {
     background: arena.surface,
     borderBottom: `1px solid ${arena.border}`,
     flexShrink: 0,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   terminalHeaderText: {
     fontSize: 11,
@@ -1243,6 +1309,16 @@ const s: Record<string, React.CSSProperties> = {
     fontFamily: 'Menlo, Monaco, "Courier New", monospace',
     textTransform: 'uppercase' as const,
     letterSpacing: '0.5px',
+  },
+  terminalToggleBtn: {
+    background: 'transparent',
+    border: `1px solid ${arena.border}`,
+    borderRadius: 4,
+    color: arena.textMuted,
+    fontSize: 10,
+    padding: '2px 8px',
+    cursor: 'pointer',
+    fontFamily: 'Menlo, Monaco, "Courier New", monospace',
   },
 
   // Tab bar
@@ -1435,6 +1511,16 @@ const s: Record<string, React.CSSProperties> = {
     background: arena.surface,
     flexShrink: 0,
   },
+  tierBarMobile: {
+    display: 'flex',
+    gap: 6,
+    padding: '6px 10px',
+    borderTop: `1px solid ${arena.border}`,
+    background: arena.surface,
+    flexShrink: 0,
+    overflowX: 'auto',
+    WebkitOverflowScrolling: 'touch',
+  } as React.CSSProperties,
   tierPill: {
     flex: 1,
     padding: '5px 8px',
@@ -1606,6 +1692,42 @@ const s: Record<string, React.CSSProperties> = {
     fontSize: 13,
     fontWeight: 600,
     cursor: 'pointer',
+  },
+
+  // Mobile bottom tab bar
+  mobileTabBar: {
+    display: 'flex',
+    borderTop: `1px solid ${arena.border}`,
+    background: arena.surface,
+    flexShrink: 0,
+  },
+  mobileTab: {
+    flex: 1,
+    padding: '10px 0',
+    fontSize: 13,
+    fontWeight: 500,
+    color: arena.textMuted,
+    background: 'transparent',
+    border: 'none',
+    borderTop: '2px solid transparent',
+    cursor: 'pointer',
+    fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+    textAlign: 'center' as const,
+    position: 'relative' as const,
+  },
+  mobileTabActive: {
+    flex: 1,
+    padding: '10px 0',
+    fontSize: 13,
+    fontWeight: 600,
+    color: arena.accent,
+    background: 'transparent',
+    border: 'none',
+    borderTop: `2px solid ${arena.accent}`,
+    cursor: 'pointer',
+    fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+    textAlign: 'center' as const,
+    position: 'relative' as const,
   },
 
 };
