@@ -20,7 +20,7 @@ export function GuestArenaScreen() {
 
   const [challenge, setChallenge] = useState<ArenaChallenge | null>(null);
   const [code, setCode] = useState('');
-  const [language] = useState('javascript');
+  const language = challenge?.language || 'javascript';
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showSignupOverlay, setShowSignupOverlay] = useState(false);

@@ -26,7 +26,10 @@ export async function onRequestGet(context: {
     if (!challenge) {
       return Response.json({ error: 'Challenge not found' }, { status: 404 });
     }
-    return Response.json(challenge);
+    return Response.json({
+      ...challenge,
+      tags: challenge.tags ? JSON.parse(challenge.tags) : [],
+    });
   } catch (error) {
     console.error('Challenge get error:', error);
     return Response.json({ error: 'Internal server error' }, { status: 500 });

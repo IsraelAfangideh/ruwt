@@ -15,6 +15,17 @@ const CATEGORIES = [
   { key: 'prompt_efficiency', label: 'Prompt Efficiency' },
   { key: 'iterative_debugging', label: 'Debugging' },
   { key: 'multi_model_strategy', label: 'Multi-Model' },
+  { key: 'qa_testing', label: 'QA Testing' },
+  { key: 'frontend', label: 'Frontend' },
+  { key: 'backend_api', label: 'Backend API' },
+  { key: 'data_engineering', label: 'Data' },
+  { key: 'devops', label: 'DevOps' },
+] as const;
+
+const LANGUAGES = [
+  { key: 'all', label: 'All Languages' },
+  { key: 'javascript', label: 'JavaScript' },
+  { key: 'python', label: 'Python' },
 ] as const;
 
 const TIER_ORDER = ['onboarding', 'core', 'headline'] as const;
@@ -32,12 +43,19 @@ function getInitialTab(): string {
   return 'all';
 }
 
+function getInitialLang(): string {
+  if (typeof window === 'undefined') return 'all';
+  const params = new URLSearchParams(window.location.search);
+  return params.get('lang') || 'all';
+}
+
 export function ChallengesScreen() {
   const navigation = useNavigation();
   const [user, setUser] = useState<any>(null);
   const [challenges, setChallenges] = useState<Challenge[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeCategory, setActiveCategory] = useState(getInitialTab);
+  const [activeLang, setActiveLang] = useState(getInitialLang);
   const supabase = createClient();
   const c = useColors();
 
@@ -63,15 +81,24 @@ export function ChallengesScreen() {
     init();
   }, [navigation, supabase.auth]);
 
-  // Sync active tab to URL query param
+  const syncUrlParams = (cat: string, lang: string) => {
+    if (typeof window === 'undefined') return;
+    const url = new URL(window.location.href);
+    if (cat === 'all') url.searchParams.delete('tab');
+    else url.searchParams.set('tab', cat);
+    if (lang === 'all') url.searchParams.delete('lang');
+    else url.searchParams.set('lang', lang);
+    window.history.replaceState({}, '', url.toString());
+  };
+
   const handleCategoryChange = (key: string) => {
     setActiveCategory(key);
-    if (typeof window !== 'undefined') {
-      const url = new URL(window.location.href);
-      if (key === 'all') url.searchParams.delete('tab');
-      else url.searchParams.set('tab', key);
-      window.history.replaceState({}, '', url.toString());
-    }
+    syncUrlParams(key, activeLang);
+  };
+
+  const handleLangChange = (key: string) => {
+    setActiveLang(key);
+    syncUrlParams(activeCategory, key);
   };
 
   if (loading) {
@@ -84,9 +111,13 @@ export function ChallengesScreen() {
 
   if (!user) return null;
 
-  const filtered = activeCategory === 'all'
-    ? challenges
-    : challenges.filter((ch) => ch.category === activeCategory);
+  let filtered = challenges;
+  if (activeCategory !== 'all') {
+    filtered = filtered.filter((ch) => ch.category === activeCategory);
+  }
+  if (activeLang !== 'all') {
+    filtered = filtered.filter((ch) => (ch.language || 'javascript') === activeLang);
+  }
 
   // Group by tier
   const grouped = TIER_ORDER.map((tier) => ({
@@ -106,6 +137,31 @@ export function ChallengesScreen() {
         </Text>
       </View>
 
+      {/* Language filter pills */}
+      <View style={styles.langRow}>
+        {LANGUAGES.map((lang) => {
+          const isActive = activeLang === lang.key;
+          return (
+            <Pressable
+              key={lang.key}
+              onPress={() => handleLangChange(lang.key)}
+              style={[
+                styles.langPill,
+                {
+                  backgroundColor: isActive ? c.accent : 'transparent',
+                  borderColor: isActive ? c.accent : c.border,
+                },
+              ]}
+            >
+              <Text style={[styles.langPillText, { color: isActive ? '#0d1117' : c.textMuted }]}>
+                {lang.label}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
+
+      {/* Category tabs */}
       <View style={styles.tabs}>
         {CATEGORIES.map((cat) => {
           const isActive = activeCategory === cat.key;
@@ -138,7 +194,11 @@ export function ChallengesScreen() {
         <Card style={[styles.empty, { borderStyle: 'dashed', backgroundColor: c.muted + '20' }]}>
           <CardContent style={styles.emptyContent}>
             <Text style={[styles.emptyTitle, { color: c.text }]}>No Challenges Available</Text>
-            <Text style={[styles.emptySub, { color: c.textMuted }]}>Check back later for new challenges.</Text>
+            <Text style={[styles.emptySub, { color: c.textMuted }]}>
+              {activeLang !== 'all' || activeCategory !== 'all'
+                ? 'Try adjusting your filters.'
+                : 'Check back later for new challenges.'}
+            </Text>
           </CardContent>
         </Card>
       ) : (
@@ -163,7 +223,15 @@ const styles = StyleSheet.create({
   section: { marginBottom: spacing.md, paddingBottom: spacing.md, borderBottomWidth: 1, borderBottomColor: 'transparent' },
   title: { fontSize: fontSizes['3xl'], fontWeight: '700', fontFamily: fontFamily.body },
   subtitle: { fontSize: fontSizes.sm, marginTop: spacing.xs },
-  tabs: { flexDirection: 'row', gap: spacing.md, marginBottom: spacing.lg },
+  langRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.md },
+  langPill: {
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 9999,
+    borderWidth: 1,
+  },
+  langPillText: { fontSize: fontSizes.xs, fontWeight: '600' },
+  tabs: { flexDirection: 'row', gap: spacing.md, marginBottom: spacing.lg, flexWrap: 'wrap' },
   tab: { paddingBottom: spacing.sm },
   tabText: { fontSize: fontSizes.sm, fontWeight: '600' },
   empty: { borderWidth: 2 },

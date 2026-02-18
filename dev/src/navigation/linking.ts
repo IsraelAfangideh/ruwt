@@ -25,6 +25,8 @@ export const linking: LinkingOptions<ReactNavigation.RootParamList> = {
       Teams: 'teams',
       GuestArena: 'try/:challengeId',
       PublicProfile: 'u/:username',
+      Share: 'share/:attemptId',
+      Certificate: 'cert/:shareToken',
     },
   },
 };

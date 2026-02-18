@@ -33,7 +33,7 @@ export function ArenaScreen() {
   const [attempt, setAttempt] = useState<ArenaAttempt | null>(null);
   const [userCredits, setUserCredits] = useState(0);
   const [code, setCode] = useState('');
-  const [language] = useState('javascript');
+  const language = challenge?.language || 'javascript';
   const [loading, setLoading] = useState(true);
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -144,7 +144,8 @@ export function ArenaScreen() {
       }
       const data = await res.json();
       setAttempt(data.attempt);
-      setCode(data.challenge?.starterCode || '// your code here');
+      const defaultComment = language === 'python' ? '# your code here' : '// your code here';
+      setCode(data.challenge?.starterCode || defaultComment);
       setTestResults(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to start attempt');
@@ -725,6 +726,31 @@ export function ArenaScreen() {
               </p>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10, width: '100%', marginTop: 8 }}>
+                <button
+                  style={{
+                    background: '#0A66C2',
+                    border: 'none',
+                    borderRadius: 8,
+                    color: '#fff',
+                    padding: '10px 20px',
+                    fontSize: 14,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    width: '100%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 8,
+                  }}
+                  onClick={() => {
+                    const shareUrl = `${window.location.origin}/share/${successOverlay.attemptId}`;
+                    const text = `I solved "${challenge.title}" on ruwt.dev for ${formatCost(attempt?.totalCost ?? 0)} with AI`;
+                    const linkedinUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(shareUrl)}&title=${encodeURIComponent(text)}`;
+                    window.open(linkedinUrl, '_blank', 'width=600,height=500');
+                  }}
+                >
+                  Share on LinkedIn
+                </button>
                 <button
                   style={{
                     background: arena.accent,

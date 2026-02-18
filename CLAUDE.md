@@ -34,6 +34,8 @@ ruwt/
   - Cards use subtle shadows for depth, tinted pill badges for difficulty/category
   - Manual deploy from CLI: `CLOUDFLARE_API_TOKEN=... npx wrangler pages deploy dist --project-name=ruwt-dev --branch=main --commit-dirty=true`
 
+Be sure that when we add challenges some of them are non trivial for models to solve and all of them reflect real world software engineering challenges. 
+
 ## /social — Ruwt Social Network
 
 - **Stack**: Hono API (Bun) on Fly.io, React Native (Expo) mobile app, Supabase Postgres

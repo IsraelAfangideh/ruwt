@@ -28,7 +28,7 @@ export function AssessmentFlowScreen() {
   const [challenge, setChallenge] = useState<ArenaChallenge | null>(null);
   const [attempt, setAttempt] = useState<ArenaAttempt | null>(null);
   const [code, setCode] = useState('');
-  const [language] = useState('javascript');
+  const language = challenge?.language || 'javascript';
   const [sessionStatus, setSessionStatus] = useState('in_progress');
   const [expiresAt, setExpiresAt] = useState<string | null>(null);
   const [challengeIndex, setChallengeIndex] = useState(0);

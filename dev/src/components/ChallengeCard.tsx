@@ -16,6 +16,8 @@ export interface Challenge {
   skillTested?: string | null;
   tier?: string | null;
   sortOrder?: number | null;
+  language?: string | null;
+  tags?: string[] | null;
   stats?: { solvers: number; avgCost: number | null } | null;
 }
 
@@ -25,6 +27,11 @@ function categoryLabel(cat: string | null | undefined) {
   if (cat === 'iterative_debugging') return 'Debugging';
   if (cat === 'multi_model_strategy') return 'Multi-Model';
   if (cat === 'real_world') return 'Real-World';
+  if (cat === 'qa_testing') return 'QA Testing';
+  if (cat === 'frontend') return 'Frontend';
+  if (cat === 'backend_api') return 'Backend API';
+  if (cat === 'data_engineering') return 'Data';
+  if (cat === 'devops') return 'DevOps';
   return null;
 }
 
@@ -45,13 +52,25 @@ export function ChallengeCard({ challenge }: { challenge: Challenge }) {
     : challenge.category === 'iterative_debugging' ? c.destructive
     : challenge.category === 'multi_model_strategy' ? '#a78bfa'
     : challenge.category === 'real_world' ? '#f59e0b'
+    : challenge.category === 'qa_testing' ? '#ec4899'
+    : challenge.category === 'frontend' ? '#06b6d4'
+    : challenge.category === 'backend_api' ? '#8b5cf6'
+    : challenge.category === 'data_engineering' ? '#10b981'
+    : challenge.category === 'devops' ? '#f97316'
     : c.textMuted;
   const catBg = challenge.category === 'model_selection' ? c.accentBg
     : challenge.category === 'prompt_efficiency' ? c.successBg
     : challenge.category === 'iterative_debugging' ? c.errorBg
     : challenge.category === 'multi_model_strategy' ? '#a78bfa15'
     : challenge.category === 'real_world' ? '#f59e0b15'
+    : challenge.category === 'qa_testing' ? '#ec489915'
+    : challenge.category === 'frontend' ? '#06b6d415'
+    : challenge.category === 'backend_api' ? '#8b5cf615'
+    : challenge.category === 'data_engineering' ? '#10b98115'
+    : challenge.category === 'devops' ? '#f9731615'
     : 'transparent';
+
+  const langLabel = challenge.language === 'python' ? 'Python' : challenge.language === 'typescript' ? 'TypeScript' : null;
 
   const isRealWorld = challenge.category === 'real_world';
 
@@ -76,6 +95,11 @@ export function ChallengeCard({ challenge }: { challenge: Challenge }) {
             {catLabel && (
               <View style={[styles.pill, { backgroundColor: catBg }]}>
                 <Text style={[styles.pillText, { color: catColor }]}>{catLabel}</Text>
+              </View>
+            )}
+            {langLabel && (
+              <View style={[styles.pill, { backgroundColor: '#3b82f615' }]}>
+                <Text style={[styles.pillText, { color: '#3b82f6' }]}>{langLabel}</Text>
               </View>
             )}
           </View>

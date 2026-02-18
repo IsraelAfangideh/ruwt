@@ -256,6 +256,7 @@ export interface ArenaChallenge {
   maxTokens: number | null;
   maxCost: number | null;
   wallClockLimit: number | null;
+  language?: string | null;
   expiresAt?: string | null;
 }
 

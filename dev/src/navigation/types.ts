@@ -20,6 +20,8 @@ export type RootStackParamList = {
   Teams: undefined;
   GuestArena: { challengeId: string };
   PublicProfile: { username: string };
+  Share: { attemptId: string };
+  Certificate: { shareToken: string };
 };
 
 declare global {

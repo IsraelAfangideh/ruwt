@@ -15,6 +15,8 @@ export const profiles = sqliteTable('profiles', {
   accountType: text('account_type').default('individual').notNull(), // 'individual' | 'team'
   assessmentCredits: integer('assessment_credits').default(0).notNull(),
   username: text('username').unique(),
+  bio: text('bio'),
+  linkedinUrl: text('linkedin_url'),
   createdAt: text('created_at').default(sql`(datetime('now'))`).notNull(),
 });
 
@@ -38,6 +40,9 @@ export const challenges = sqliteTable('challenges', {
 
   sortOrder: integer('sort_order').default(0),
   tier: text('tier').default('core'), // 'onboarding' | 'core' | 'headline'
+
+  language: text('language').default('javascript'), // 'javascript' | 'typescript' | 'python'
+  tags: text('tags'), // JSON array: ["backend","async","testing"]
 
   createdAt: text('created_at').default(sql`(datetime('now'))`).notNull(),
 });
@@ -187,6 +192,18 @@ export const replayComments = sqliteTable('replay_comments', {
   createdAt: text('created_at').default(sql`(datetime('now'))`),
 });
 
+// --- Certificates ---
+
+export const certificates = sqliteTable('certificates', {
+  id: text('id').primaryKey(),
+  userId: text('user_id').notNull().references(() => profiles.id),
+  type: text('type').notNull(), // 'track_completion' | 'daily_streak' | 'efficiency_master'
+  title: text('title').notNull(),
+  metadata: text('metadata'), // JSON
+  shareToken: text('share_token').unique(),
+  earnedAt: text('earned_at').default(sql`(datetime('now'))`),
+});
+
 // --- Type exports ---
 
 export type Profile = typeof profiles.$inferSelect;
@@ -214,7 +231,9 @@ export type Difficulty = 'easy' | 'medium' | 'hard';
 export type AttemptStatus = 'in_progress' | 'submitted' | 'passed' | 'failed' | 'constraint_violated';
 export type TransactionType = 'purchase' | 'ai_usage' | 'refund' | 'signup_bonus' | 'assessment_purchase';
 export type ConstraintType = 'tokens' | 'cost' | 'time';
-export type ChallengeCategory = 'practice' | 'model_selection' | 'prompt_efficiency' | 'iterative_debugging' | 'multi_model_strategy' | 'real_world';
+export type ChallengeCategory = 'practice' | 'model_selection' | 'prompt_efficiency' | 'iterative_debugging' | 'multi_model_strategy' | 'real_world' | 'qa_testing' | 'frontend' | 'backend_api' | 'data_engineering' | 'devops';
+export type ChallengeLanguage = 'javascript' | 'typescript' | 'python';
+export type CertificateType = 'track_completion' | 'daily_streak' | 'efficiency_master';
 export type AssessmentStatus = 'draft' | 'active' | 'archived';
 export type InviteStatus = 'pending' | 'started' | 'completed' | 'expired';
 export type SessionStatus = 'in_progress' | 'completed' | 'expired' | 'abandoned';
@@ -231,3 +250,5 @@ export type DailyChallenge = typeof dailyChallenges.$inferSelect;
 export type NewDailyChallenge = typeof dailyChallenges.$inferInsert;
 export type ReplayComment = typeof replayComments.$inferSelect;
 export type NewReplayComment = typeof replayComments.$inferInsert;
+export type Certificate = typeof certificates.$inferSelect;
+export type NewCertificate = typeof certificates.$inferInsert;
