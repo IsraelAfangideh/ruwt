@@ -27,7 +27,8 @@ export interface ApplyResult {
  */
 export function parseEditBlocks(text: string): EditBlock[] {
   const blocks: EditBlock[] = [];
-  const regex = /<<<<<<< SEARCH\n([\s\S]*?)\n=======\n([\s\S]*?)\n>>>>>>> REPLACE/g;
+  // \n? before ======= handles empty SEARCH (no extra newline between SEARCH and =======)
+  const regex = /<<<<<<< SEARCH\n([\s\S]*?)\n?=======\n([\s\S]*?)\n>>>>>>> REPLACE/g;
   let match: RegExpExecArray | null;
 
   while ((match = regex.exec(text)) !== null) {

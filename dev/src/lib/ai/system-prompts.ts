@@ -104,6 +104,7 @@ Rules:
 - SEARCH must exactly match existing code (including whitespace)
 - You may include multiple SEARCH/REPLACE blocks
 - For new code on an empty file, use a single block with empty SEARCH
+- Only edit the parts that need changing — do NOT replace existing working code
 - If you need to rewrite the entire file, you may use a single fenced code block instead`;
 
 const TOOL_USE_RULES = `

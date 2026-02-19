@@ -16,27 +16,60 @@ import { getModelPricing, getTierFallbackChain } from './ai-pricing';
 
 /**
  * Extract text content from a parsed SSE chunk.
- * Handles both Cloudflare-native format ({ response: "..." })
- * and OpenAI-compatible format ({ choices: [{ delta: { content: "..." } }] }).
+ * Handles three formats:
+ * 1. Cloudflare-native: { response: "..." }
+ * 2. OpenAI-compatible: { choices: [{ delta: { content: "..." } }] }
+ * 3. Reasoning models: { choices: [{ delta: { reasoning_content: "..." } }] }
+ *    (GLM-4.7, Qwen3 MoE send reasoning_content before content)
  */
 function extractChunkContent(parsed: Record<string, unknown>): string | null {
   // Cloudflare-native format
   if (typeof parsed.response === 'string') return parsed.response;
   // OpenAI-compatible format
   if (Array.isArray(parsed.choices) && parsed.choices.length > 0) {
-    const delta = (parsed.choices[0] as Record<string, unknown>)?.delta;
-    if (delta && typeof (delta as Record<string, unknown>).content === 'string') {
-      return (delta as Record<string, unknown>).content as string;
+    const delta = (parsed.choices[0] as Record<string, unknown>)?.delta as Record<string, unknown> | undefined;
+    if (delta) {
+      // Prefer content over reasoning_content
+      if (typeof delta.content === 'string' && delta.content) return delta.content as string;
+      // Fall back to reasoning_content for thinking-phase tokens
+      if (typeof delta.reasoning_content === 'string' && delta.reasoning_content) return delta.reasoning_content as string;
     }
   }
   return null;
 }
 
+/**
+ * Extract content from a non-streaming OpenAI-format response.
+ * Used for models that don't support SSE streaming (GPT-OSS).
+ */
+function extractNonStreamingContent(json: Record<string, unknown>): {
+  content: string; inputTokens: number; outputTokens: number;
+} | null {
+  const result = json.result as Record<string, unknown> | undefined;
+  if (!result || !Array.isArray(result.choices) || result.choices.length === 0) return null;
+  const msg = (result.choices[0] as Record<string, unknown>)?.message as Record<string, unknown> | undefined;
+  if (!msg) return null;
+  const content = (typeof msg.content === 'string' && msg.content)
+    ? msg.content
+    : (typeof msg.reasoning_content === 'string' ? msg.reasoning_content : null);
+  if (!content) return null;
+  const usage = result.usage as Record<string, number> | undefined;
+  return {
+    content,
+    inputTokens: usage?.prompt_tokens ?? Math.ceil(content.length / 4),
+    outputTokens: usage?.completion_tokens ?? Math.ceil(content.length / 4),
+  };
+}
+
 // Default fallback: full chain from premium down
 const DEFAULT_FALLBACK_CHAIN = [
+  '@cf/qwen/qwen2.5-coder-32b-instruct',
+  '@cf/mistralai/mistral-small-3.1-24b-instruct',
   '@cf/meta/llama-3.3-70b-instruct-fp8-fast',
+  '@cf/meta/llama-4-scout-17b-16e-instruct',
+  '@cf/openai/gpt-oss-20b',
   '@cf/meta/llama-3.1-70b-instruct',
-  '@cf/qwen/qwen1.5-14b-chat-awq',
+  '@cf/qwen/qwen3-30b-a3b-fp8',
   '@cf/meta/llama-3.1-8b-instruct',
   '@cf/mistral/mistral-7b-instruct-v0.2',
   '@cf/ibm-granite/granite-4.0-h-micro',
@@ -193,7 +226,57 @@ export async function* streamCloudflareAIWithFallback(
       throw new Error(`Cloudflare AI error: ${response.status} - ${err}`);
     }
 
-    // Model responded — stream it
+    const contentType = response.headers.get('content-type') || '';
+
+    // Some models (GPT-OSS) don't support streaming and return JSON
+    if (contentType.includes('application/json')) {
+      const json = await response.json() as Record<string, unknown>;
+      const extracted = extractNonStreamingContent(json);
+      if (extracted && extracted.content) {
+        yield extracted.content;
+        return {
+          inputTokens: extracted.inputTokens,
+          outputTokens: extracted.outputTokens,
+          model: modelId,
+        };
+      }
+      // Empty result — retry non-streaming explicitly
+      const retryResponse = await fetch(
+        `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/run/${modelId}`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${apiToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            messages,
+            max_tokens: options?.maxTokens ?? 2048,
+            temperature: options?.temperature ?? 0.7,
+          }),
+        }
+      );
+      if (retryResponse.ok) {
+        const retryJson = await retryResponse.json() as Record<string, unknown>;
+        const retryExtracted = extractNonStreamingContent(retryJson);
+        if (retryExtracted && retryExtracted.content) {
+          yield retryExtracted.content;
+          return {
+            inputTokens: retryExtracted.inputTokens,
+            outputTokens: retryExtracted.outputTokens,
+            model: modelId,
+          };
+        }
+      }
+      // Model returned empty — try next in fallback chain
+      if (modelId !== models[models.length - 1]) {
+        lastError = `${modelId}: empty response`;
+        continue;
+      }
+      throw new Error(`${modelId} returned empty response`);
+    }
+
+    // SSE streaming path
     const reader = response.body?.getReader();
     if (!reader) throw new Error('No response body');
 

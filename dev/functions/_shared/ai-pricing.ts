@@ -120,13 +120,51 @@ const MODEL_PRICING: Record<string, ModelPricing> = {
     source: 'byok',
   },
   // --- Cloudflare Workers AI models (free for practice) ---
+  // Reasoning tier
+  '@cf/openai/gpt-oss-120b': {
+    input: 0.35,
+    output: 0.75,
+    provider: 'cloudflare',
+    tier: 'reasoning',
+    displayName: 'GPT-OSS 120B',
+    description: 'OpenAI open-weight 120B, strongest reasoning',
+    source: 'cloudflare',
+  },
+  '@cf/qwen/qwq-32b': {
+    input: 0.66,
+    output: 1.00,
+    provider: 'cloudflare',
+    tier: 'reasoning',
+    displayName: 'QwQ 32B',
+    description: 'Dedicated reasoning model, competitive with o1-mini',
+    source: 'cloudflare',
+  },
   '@cf/deepseek-ai/deepseek-r1-distill-qwen-32b': {
     input: 0.50,
     output: 4.88,
     provider: 'cloudflare',
     tier: 'reasoning',
     displayName: 'DeepSeek R1 32B',
-    description: 'Reasoning-optimized, best for complex logic',
+    description: 'DeepSeek reasoning distilled from R1',
+    source: 'cloudflare',
+  },
+  // Premium tier
+  '@cf/qwen/qwen2.5-coder-32b-instruct': {
+    input: 0.66,
+    output: 1.00,
+    provider: 'cloudflare',
+    tier: 'premium',
+    displayName: 'Qwen2.5 Coder 32B',
+    description: 'Code-specialized, top-tier for coding tasks',
+    source: 'cloudflare',
+  },
+  '@cf/mistralai/mistral-small-3.1-24b-instruct': {
+    input: 0.35,
+    output: 0.56,
+    provider: 'cloudflare',
+    tier: 'premium',
+    displayName: 'Mistral Small 3.1',
+    description: 'Mistral 24B, 128k context window',
     source: 'cloudflare',
   },
   '@cf/meta/llama-3.3-70b-instruct-fp8-fast': {
@@ -135,7 +173,35 @@ const MODEL_PRICING: Record<string, ModelPricing> = {
     provider: 'cloudflare',
     tier: 'premium',
     displayName: 'Llama 3.3 70B',
-    description: 'Best overall quality, fast inference',
+    description: 'Meta 70B, fast fp8 inference',
+    source: 'cloudflare',
+  },
+  // Mid tier
+  '@cf/meta/llama-4-scout-17b-16e-instruct': {
+    input: 0.27,
+    output: 0.85,
+    provider: 'cloudflare',
+    tier: 'mid',
+    displayName: 'Llama 4 Scout',
+    description: 'Llama 4 MoE with 16 experts',
+    source: 'cloudflare',
+  },
+  '@cf/google/gemma-3-12b-it': {
+    input: 0.35,
+    output: 0.56,
+    provider: 'cloudflare',
+    tier: 'mid',
+    displayName: 'Gemma 3 12B',
+    description: 'Google Gemma 3, multimodal capable',
+    source: 'cloudflare',
+  },
+  '@cf/openai/gpt-oss-20b': {
+    input: 0.20,
+    output: 0.30,
+    provider: 'cloudflare',
+    tier: 'mid',
+    displayName: 'GPT-OSS 20B',
+    description: 'OpenAI open-weight 20B, fast and capable',
     source: 'cloudflare',
   },
   '@cf/meta/llama-3.1-70b-instruct': {
@@ -156,6 +222,25 @@ const MODEL_PRICING: Record<string, ModelPricing> = {
     description: 'Fast mid-range, good at code',
     source: 'cloudflare',
   },
+  // Budget tier
+  '@cf/qwen/qwen3-30b-a3b-fp8': {
+    input: 0.051,
+    output: 0.34,
+    provider: 'cloudflare',
+    tier: 'budget',
+    displayName: 'Qwen3 30B MoE',
+    description: 'Qwen3 MoE, ultra-cheap for its size',
+    source: 'cloudflare',
+  },
+  '@cf/zai-org/glm-4.7-flash': {
+    input: 0.06,
+    output: 0.40,
+    provider: 'cloudflare',
+    tier: 'budget',
+    displayName: 'GLM-4.7 Flash',
+    description: '131k context, fast and cheap',
+    source: 'cloudflare',
+  },
   '@cf/meta/llama-3.1-8b-instruct': {
     input: 0.01,
     output: 0.01,
@@ -174,6 +259,7 @@ const MODEL_PRICING: Record<string, ModelPricing> = {
     description: 'Fast budget option with good instruction following',
     source: 'cloudflare',
   },
+  // Micro tier
   '@cf/ibm-granite/granite-4.0-h-micro': {
     input: 0.017,
     output: 0.112,

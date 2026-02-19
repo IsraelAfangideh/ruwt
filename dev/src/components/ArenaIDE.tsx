@@ -14,7 +14,7 @@ import { estimateChatCost, formatEstimatedCost } from '@/lib/cost-estimate';
 import { useIsMobile } from '@/lib/useIsMobile';
 import { buildSystemPrompt, formatTestResultsForMessage, type AIMode, type TestResults as AITestResults } from '@/lib/ai/system-prompts';
 import { parseEditBlocks, applyEditBlocks, hasEditBlocks } from '@/lib/ai/diff-apply';
-import { parseToolCalls, stripToolCalls, hasToolCalls } from '@/lib/ai/tool-parser';
+import { stripToolCalls, hasToolCalls } from '@/lib/ai/tool-parser';
 import { ModeSelector } from './arena/ModeSelector';
 // PlanApproval will be used when plan mode rendering is added
 // import { PlanApproval, extractPlanBlock } from './arena/PlanApproval';
@@ -130,8 +130,9 @@ function renderMarkdown(text: string): React.ReactNode[] {
 
 function renderInline(text: string): React.ReactNode[] {
   const parts: React.ReactNode[] = [];
-  // match **bold**, *italic*/_italic_, `code`, and [text](url)
-  const regex = /(\*\*(.+?)\*\*|\*(.+?)\*|_(.+?)_|`([^`]+)`|\[([^\]]+)\]\(([^)]+)\))/g;
+  // match **bold**, *italic*/_italic_, ``code`` (double-backtick), `code` (single), and [text](url)
+  // Double-backtick checked first so inner single backticks are preserved.
+  const regex = /(\*\*(.+?)\*\*|\*(.+?)\*|_(.+?)_|``(.+?)``|`([^`]+)`|\[([^\]]+)\]\(([^)]+)\))/g;
   let last = 0;
   let match: RegExpExecArray | null;
 
@@ -149,15 +150,20 @@ function renderInline(text: string): React.ReactNode[] {
       // italic with _
       parts.push(<em key={parts.length}>{match[4]}</em>);
     } else if (match[5]) {
-      // inline code
+      // inline code (double-backtick — may contain single backticks)
       parts.push(
-        <code key={parts.length} style={mdStyles.inlineCode}>{match[5]}</code>
+        <code key={parts.length} style={mdStyles.inlineCode}>{match[5].trim()}</code>
       );
-    } else if (match[6] && match[7]) {
+    } else if (match[6]) {
+      // inline code (single-backtick)
+      parts.push(
+        <code key={parts.length} style={mdStyles.inlineCode}>{match[6]}</code>
+      );
+    } else if (match[7] && match[8]) {
       // link
       parts.push(
-        <a key={parts.length} href={match[7]} target="_blank" rel="noopener noreferrer" style={mdStyles.link}>
-          {match[6]}
+        <a key={parts.length} href={match[8]} target="_blank" rel="noopener noreferrer" style={mdStyles.link}>
+          {match[7]}
         </a>
       );
     }
@@ -330,6 +336,8 @@ function extractBestCodeBlock(text: string, language: string): string | null {
   while ((match = regex.exec(text)) !== null) {
     const lang = match[1].toLowerCase();
     const code = match[2];
+    // Skip code blocks that contain diff/SEARCH markers — these are edit instructions, not code
+    if (/<<<<<<< SEARCH|>>>>>>> REPLACE|^---\s+a\/|^\+\+\+\s+b\//m.test(code)) continue;
     if (code.length > bestLen) {
       bestMatch = code;
       bestLen = code.length;
@@ -687,10 +695,11 @@ export function ArenaIDE({
     setTimeout(() => setShowPasteBlocked(false), 3000);
   }, []);
 
-  // Auto-apply code from AI response — tries SEARCH/REPLACE first, falls back to code block
-  const applyCodeFromResponse = useCallback((responseText: string) => {
+  // Auto-apply code from AI response — tries SEARCH/REPLACE first, falls back to code block.
+  // Returns true if code was changed (used by agent loop to auto-run tests).
+  const applyCodeFromResponse = useCallback((responseText: string): boolean => {
     // Skip code application in ask mode
-    if (mode === 'ask') return;
+    if (mode === 'ask') return false;
 
     // Try SEARCH/REPLACE blocks first
     if (hasEditBlocks(responseText)) {
@@ -704,7 +713,19 @@ export function ArenaIDE({
             ? `${result.applied} edit(s) applied, ${result.failed} failed`
             : `${result.applied} edit(s) applied`;
           flashToast(msg);
-          return;
+          return true;
+        }
+        // All blocks failed — use the largest REPLACE section as full file replacement.
+        // The model intended to write this code; don't let it get lost.
+        if (result.failed > 0 && result.failedBlocks.length > 0) {
+          const largest = result.failedBlocks.reduce((a, b) =>
+            b.replace.length > a.replace.length ? b : a
+          );
+          if (largest.replace.trim()) {
+            fs.setSolutionCode(largest.replace);
+            flashToast('Edit match failed — replaced file');
+            return true;
+          }
         }
       }
     }
@@ -714,7 +735,9 @@ export function ArenaIDE({
     if (codeBlock) {
       fs.setSolutionCode(codeBlock);
       flashToast();
+      return true;
     }
+    return false;
   }, [language, fs, flashToast, mode]);
 
   // Handle code applied from terminal (RuwtTUI)
@@ -839,9 +862,10 @@ export function ArenaIDE({
     ];
 
     let toolLoopCount = 0;
-    const MAX_TOOL_LOOPS = 3;
+    const MAX_TOOL_LOOPS = 5;
     let conversationMessages = allMessages;
     let constraintHit = false;
+    let lastRoundAppliedCode = false;
 
     const runOneRound = async (msgs: Array<{ role: 'system' | 'user' | 'assistant'; content: string }>, isFollowUp: boolean): Promise<string | null> => {
       const chatMessages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [
@@ -859,7 +883,7 @@ export function ArenaIDE({
             const cleanContent = stripToolCalls(fullContent);
             setMessages((m) => [...m, { role: 'assistant', content: cleanContent, meta }]);
             setStreamingContent('');
-            applyCodeFromResponse(fullContent);
+            lastRoundAppliedCode = applyCodeFromResponse(fullContent);
             resolve(fullContent);
           },
           onError: (error) => {
@@ -891,45 +915,49 @@ export function ArenaIDE({
     // First round
     let aiResponse = await runOneRound(conversationMessages, false);
 
-    // Tool-use loop: if AI requests test run, execute and re-prompt
+    // Agent loop: auto-run tests when AI writes code OR explicitly requests tests.
+    // This makes ALL models work with the loop — no need for <ruwt:run_tests/> markers.
     while (
       aiResponse &&
-      hasToolCalls(aiResponse) &&
+      (hasToolCalls(aiResponse) || lastRoundAppliedCode) &&
       (mode === 'agent' || mode === 'debug') &&
       toolLoopCount < MAX_TOOL_LOOPS &&
-      !constraintHit
+      !constraintHit &&
+      onRunTests
     ) {
       toolLoopCount++;
+      lastRoundAppliedCode = false;
       setIsToolLooping(true);
 
-      // Run tests
-      const toolCalls = parseToolCalls(aiResponse);
-      if (toolCalls.some((tc) => tc.type === 'run_tests') && onRunTests) {
-        // Run tests with current code
-        const currentCode = fs.getSolutionCode();
-        try {
-          const testResult = await onRunTests(currentCode, language);
-          const asAITestResults: AITestResults = {
-            passed: testResult.passed,
-            passedTests: testResult.passedTests,
-            totalTests: testResult.totalTests,
-            results: (testResult.results || []) as AITestResults['results'],
-          };
+      // Run tests with current code
+      const currentCode = fs.getSolutionCode();
+      try {
+        const testResult = await onRunTests(currentCode, language);
+        const asAITestResults: AITestResults = {
+          passed: testResult.passed,
+          passedTests: testResult.passedTests,
+          totalTests: testResult.totalTests,
+          results: (testResult.results || []) as AITestResults['results'],
+        };
 
+        // If all tests pass, stop looping
+        if (testResult.passed) {
           const resultMsg = formatTestResultsForMessage(asAITestResults);
           setMessages((m) => [...m, { role: 'user', content: resultMsg }]);
-
-          // Add to conversation and re-prompt
-          conversationMessages = [
-            ...conversationMessages,
-            { role: 'assistant' as const, content: stripToolCalls(aiResponse!) },
-            { role: 'user' as const, content: resultMsg },
-          ];
-          aiResponse = await runOneRound(conversationMessages, true);
-        } catch {
           break;
         }
-      } else {
+
+        const resultMsg = formatTestResultsForMessage(asAITestResults);
+        setMessages((m) => [...m, { role: 'user', content: resultMsg }]);
+
+        // Add to conversation and re-prompt
+        conversationMessages = [
+          ...conversationMessages,
+          { role: 'assistant' as const, content: stripToolCalls(aiResponse!) },
+          { role: 'user' as const, content: resultMsg },
+        ];
+        aiResponse = await runOneRound(conversationMessages, true);
+      } catch {
         break;
       }
     }
