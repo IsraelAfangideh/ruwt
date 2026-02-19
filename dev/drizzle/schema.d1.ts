@@ -258,7 +258,7 @@ export type NewAssessmentSession = typeof assessmentSessions.$inferInsert;
 export type AttemptMessage = typeof attemptMessages.$inferSelect;
 export type NewAttemptMessage = typeof attemptMessages.$inferInsert;
 
-export type Difficulty = 'easy' | 'medium' | 'hard';
+export type Difficulty = 'sprint' | 'easy' | 'medium' | 'hard' | 'impossible';
 export type AttemptStatus = 'in_progress' | 'submitted' | 'passed' | 'failed' | 'constraint_violated';
 export type TransactionType = 'purchase' | 'ai_usage' | 'refund' | 'signup_bonus' | 'assessment_purchase';
 export type ConstraintType = 'tokens' | 'cost' | 'time';

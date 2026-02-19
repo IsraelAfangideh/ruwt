@@ -28,6 +28,7 @@ import { Avatar } from '@/components/ui/Avatar';
 import { Progress } from '@/components/ui/Progress';
 import { useColors } from '@/theme';
 import { spacing, fontSizes, fontFamily, radii } from '@/theme/tokens';
+import { getDifficultyStyle } from '@/lib/difficulty';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -306,7 +307,13 @@ function DailyChallengeSection({
         </View>
         <CardTitle style={styles.dailyTitle}>{dc.title}</CardTitle>
         <View style={styles.dailyPills}>
-          <Badge variant="outline">{dc.difficulty}</Badge>
+          <Badge
+            variant="outline"
+            style={{ borderColor: getDifficultyStyle(dc.difficulty).color, backgroundColor: getDifficultyStyle(dc.difficulty).bg }}
+            textStyle={{ color: getDifficultyStyle(dc.difficulty).color }}
+          >
+            {getDifficultyStyle(dc.difficulty).label}
+          </Badge>
           {dc.category && (
             <Badge variant="outline">{formatCategory(dc.category)}</Badge>
           )}

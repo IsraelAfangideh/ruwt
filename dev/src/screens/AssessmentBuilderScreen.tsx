@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/Input';
 import { useColors } from '@/theme';
 import { spacing, fontSizes, fontFamily } from '@/theme/tokens';
 import { ASSESSMENT_TEMPLATES, type AssessmentTemplate } from '@/lib/assessment-templates';
+import { getDifficultyStyle } from '@/lib/difficulty';
 
 interface Challenge {
   id: string;
@@ -266,26 +267,17 @@ export function AssessmentBuilderScreen() {
                       <Badge
                         variant="outline"
                         style={{
-                          borderColor:
-                            ch.difficulty === 'easy'
-                              ? c.success
-                              : ch.difficulty === 'medium'
-                              ? c.accent
-                              : c.destructive,
+                          borderColor: getDifficultyStyle(ch.difficulty).color,
+                          backgroundColor: getDifficultyStyle(ch.difficulty).bg,
                         }}
                       >
                         <Text
                           style={{
                             fontSize: fontSizes.xs,
-                            color:
-                              ch.difficulty === 'easy'
-                                ? c.success
-                                : ch.difficulty === 'medium'
-                                ? c.accent
-                                : c.destructive,
+                            color: getDifficultyStyle(ch.difficulty).color,
                           }}
                         >
-                          {ch.difficulty}
+                          {getDifficultyStyle(ch.difficulty).label}
                         </Text>
                       </Badge>
                       <Badge variant="outline" style={{ borderColor: categoryColor(ch.category) }}>

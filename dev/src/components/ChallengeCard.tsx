@@ -3,6 +3,7 @@ import { useNavigation } from '@react-navigation/native';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/Card';
 import { useColors } from '@/theme';
 import { spacing, fontSizes, fontFamily, radii } from '@/theme/tokens';
+import { getDifficultyStyle } from '@/lib/difficulty';
 
 export interface Challenge {
   id: string;
@@ -39,12 +40,9 @@ export function ChallengeCard({ challenge }: { challenge: Challenge }) {
   const navigation = useNavigation();
   const c = useColors();
 
-  const diffColor = challenge.difficulty === 'easy' ? c.success
-    : challenge.difficulty === 'medium' ? c.accent
-    : c.destructive;
-  const diffBg = challenge.difficulty === 'easy' ? c.successBg
-    : challenge.difficulty === 'medium' ? c.accentBg
-    : c.errorBg;
+  const diffStyle = getDifficultyStyle(challenge.difficulty);
+  const diffColor = diffStyle.color;
+  const diffBg = diffStyle.bg;
 
   const catLabel = categoryLabel(challenge.category);
   const catColor = challenge.category === 'model_selection' ? c.accent
@@ -89,7 +87,7 @@ export function ChallengeCard({ challenge }: { challenge: Challenge }) {
           <View style={styles.badgeRow}>
             <View style={[styles.pill, { backgroundColor: diffBg }]}>
               <Text style={[styles.pillText, { color: diffColor }]}>
-                {challenge.difficulty.charAt(0).toUpperCase() + challenge.difficulty.slice(1)}
+                {diffStyle.label}
               </Text>
             </View>
             {catLabel && (

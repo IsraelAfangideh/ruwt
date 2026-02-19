@@ -9,6 +9,7 @@ import { useColors } from '@/theme';
 import { spacing, fontSizes, fontFamily } from '@/theme/tokens';
 import { useToast } from '@/components/ui/Toast';
 import { useIsMobile } from '@/lib/useIsMobile';
+import { DIFFICULTIES, getDifficultyStyle } from '@/lib/difficulty';
 
 const CATEGORIES = [
   { key: 'all', label: 'All' },
@@ -51,6 +52,12 @@ function getInitialLang(): string {
   return params.get('lang') || 'all';
 }
 
+function getInitialDifficulty(): string {
+  if (typeof window === 'undefined') return 'all';
+  const params = new URLSearchParams(window.location.search);
+  return params.get('difficulty') || 'all';
+}
+
 export function ChallengesScreen() {
   const navigation = useNavigation();
   const [user, setUser] = useState<any>(null);
@@ -58,6 +65,7 @@ export function ChallengesScreen() {
   const [loading, setLoading] = useState(true);
   const [activeCategory, setActiveCategory] = useState(getInitialTab);
   const [activeLang, setActiveLang] = useState(getInitialLang);
+  const [activeDifficulty, setActiveDifficulty] = useState(getInitialDifficulty);
   const supabase = createClient();
   const c = useColors();
   const { showToast } = useToast();
@@ -86,24 +94,31 @@ export function ChallengesScreen() {
     init();
   }, [navigation, supabase.auth]);
 
-  const syncUrlParams = (cat: string, lang: string) => {
+  const syncUrlParams = (cat: string, lang: string, diff: string) => {
     if (typeof window === 'undefined') return;
     const url = new URL(window.location.href);
     if (cat === 'all') url.searchParams.delete('tab');
     else url.searchParams.set('tab', cat);
     if (lang === 'all') url.searchParams.delete('lang');
     else url.searchParams.set('lang', lang);
+    if (diff === 'all') url.searchParams.delete('difficulty');
+    else url.searchParams.set('difficulty', diff);
     window.history.replaceState({}, '', url.toString());
   };
 
   const handleCategoryChange = (key: string) => {
     setActiveCategory(key);
-    syncUrlParams(key, activeLang);
+    syncUrlParams(key, activeLang, activeDifficulty);
   };
 
   const handleLangChange = (key: string) => {
     setActiveLang(key);
-    syncUrlParams(activeCategory, key);
+    syncUrlParams(activeCategory, key, activeDifficulty);
+  };
+
+  const handleDifficultyChange = (key: string) => {
+    setActiveDifficulty(key);
+    syncUrlParams(activeCategory, activeLang, key);
   };
 
   if (loading) {
@@ -122,6 +137,9 @@ export function ChallengesScreen() {
   }
   if (activeLang !== 'all') {
     filtered = filtered.filter((ch) => (ch.language || 'javascript') === activeLang);
+  }
+  if (activeDifficulty !== 'all') {
+    filtered = filtered.filter((ch) => ch.difficulty === activeDifficulty);
   }
 
   // Group by tier
@@ -166,6 +184,31 @@ export function ChallengesScreen() {
         })}
       </View>
 
+      {/* Difficulty filter pills */}
+      <View style={styles.langRow}>
+        {DIFFICULTIES.map((diff) => {
+          const isActive = activeDifficulty === diff.key;
+          const diffStyle = diff.key === 'all' ? null : getDifficultyStyle(diff.key);
+          return (
+            <Pressable
+              key={diff.key}
+              onPress={() => handleDifficultyChange(diff.key)}
+              style={[
+                styles.langPill,
+                {
+                  backgroundColor: isActive ? (diffStyle?.color ?? c.accent) : 'transparent',
+                  borderColor: isActive ? (diffStyle?.color ?? c.accent) : c.border,
+                },
+              ]}
+            >
+              <Text style={[styles.langPillText, { color: isActive ? '#0d1117' : c.textMuted }]}>
+                {diff.label}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
+
       {/* Category tabs */}
       <View style={styles.tabs}>
         {CATEGORIES.map((cat) => {
@@ -200,7 +243,7 @@ export function ChallengesScreen() {
           <CardContent style={styles.emptyContent}>
             <Text style={[styles.emptyTitle, { color: c.text }]}>No Challenges Available</Text>
             <Text style={[styles.emptySub, { color: c.textMuted }]}>
-              {activeLang !== 'all' || activeCategory !== 'all'
+              {activeLang !== 'all' || activeCategory !== 'all' || activeDifficulty !== 'all'
                 ? 'Try adjusting your filters.'
                 : 'Check back later for new challenges.'}
             </Text>

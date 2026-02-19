@@ -4,6 +4,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { ArenaIDE, type ArenaChallenge, type ArenaAttempt, type TestResults, type PastAttempt } from '@/components/ArenaIDE';
 import { arena } from '@/theme/colors';
 import { useIsMobile } from '@/lib/useIsMobile';
+import { getDifficultyStyle } from '@/lib/difficulty';
 import { useAuthGuard } from '@/hooks/useAuthGuard';
 import { useToast } from '@/components/ui/Toast';
 
@@ -342,9 +343,8 @@ export function ArenaScreen() {
 
   if (!challenge) return null;
 
-  const difficultyColor =
-    challenge.difficulty === 'easy' ? arena.success :
-    challenge.difficulty === 'hard' ? arena.error : arena.accent;
+  const diffStyle = getDifficultyStyle(challenge.difficulty);
+  const difficultyColor = diffStyle.color;
 
   // Pre-attempt screen — show challenge info + timed/untimed choice
   if (!attempt) {
@@ -374,12 +374,12 @@ export function ArenaScreen() {
             padding: '2px 10px',
             borderRadius: 9999,
             border: `1px solid ${difficultyColor}40`,
-            background: `${difficultyColor}15`,
+            background: diffStyle.bg,
             fontFamily: 'Menlo, Monaco, "Courier New", monospace',
             textTransform: 'lowercase',
             marginBottom: 12,
           }}>
-            {challenge.difficulty}
+            {diffStyle.label}
           </span>
 
           {/* Title */}
@@ -730,11 +730,11 @@ export function ArenaScreen() {
               padding: '2px 8px',
               borderRadius: 9999,
               border: `1px solid ${difficultyColor}40`,
-              background: `${difficultyColor}15`,
+              background: diffStyle.bg,
               fontFamily: 'Menlo, Monaco, "Courier New", monospace',
               textTransform: 'lowercase',
             }}>
-              {challenge.difficulty}
+              {diffStyle.label}
             </span>
             {isUntimed && (
               <span style={{

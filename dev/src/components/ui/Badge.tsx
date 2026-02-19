@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, type ViewStyle } from 'react-native';
+import { View, Text, StyleSheet, type ViewStyle, type TextStyle } from 'react-native';
 import { useColors } from '@/theme';
 import { spacing, radii, fontSizes, fontFamily } from '@/theme/tokens';
 
@@ -8,7 +8,8 @@ export function Badge({
   children,
   variant = 'default',
   style,
-}: { children: React.ReactNode; variant?: Variant; style?: ViewStyle }) {
+  textStyle,
+}: { children: React.ReactNode; variant?: Variant; style?: ViewStyle; textStyle?: TextStyle }) {
   const c = useColors();
 
   const bg = variant === 'outline' ? 'transparent' : variant === 'secondary' ? c.secondary : c.accent;
@@ -16,7 +17,7 @@ export function Badge({
 
   return (
     <View style={[styles.badge, { backgroundColor: bg, borderColor: c.borderStrong }, style]}>
-      <Text style={[styles.text, { color }]}>{children}</Text>
+      <Text style={[styles.text, { color }, textStyle]}>{children}</Text>
     </View>
   );
 }

@@ -1,9 +1,13 @@
 /**
  * Terminal-based AI chat mode (Claude Code-style).
  * User types `ruwt` in shell to enter this mode.
+ * Supports modes: /agent /plan /debug /ask
  */
 import type { Terminal } from '@xterm/xterm';
 import type { VirtualFileSystem } from './VirtualFileSystem';
+import { buildSystemPrompt, formatTestResultsForMessage, type AIMode, type TestResults } from '../../lib/ai/system-prompts';
+import { parseEditBlocks, applyEditBlocks, hasEditBlocks } from '../../lib/ai/diff-apply';
+import { hasToolCalls, stripToolCalls } from '../../lib/ai/tool-parser';
 
 interface RuwtTUIOptions {
   term: Terminal;
@@ -11,6 +15,9 @@ interface RuwtTUIOptions {
   language: string;
   challengeTitle: string;
   challengeDescription: string;
+  challengeDifficulty: string;
+  challengeCategory: string | null;
+  challengeTestCases: string;
   streamChat: (
     messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }>,
     callbacks: {
@@ -23,8 +30,16 @@ interface RuwtTUIOptions {
   abort: () => void;
   onExit: () => void;
   onCodeApplied: (code: string) => void;
+  onRunTests?: (code: string, language: string) => Promise<{ passed: boolean; passedTests: number; totalTests: number; results?: unknown[] }>;
   isExpired: () => boolean;
 }
+
+const MODE_COLORS: Record<AIMode, string> = {
+  agent: '33',  // yellow/gold
+  plan: '34',   // blue
+  debug: '31',  // red
+  ask: '32',    // green
+};
 
 export class RuwtTUI {
   private term: Terminal;
@@ -32,15 +47,21 @@ export class RuwtTUI {
   private language: string;
   private challengeTitle: string;
   private challengeDescription: string;
+  private challengeDifficulty: string;
+  private challengeCategory: string | null;
+  private challengeTestCases: string;
   private streamChat: RuwtTUIOptions['streamChat'];
   private abortFn: () => void;
   private onExit: () => void;
   private onCodeApplied: (code: string) => void;
+  private onRunTests?: RuwtTUIOptions['onRunTests'];
   private isExpired: () => boolean;
 
   private line = '';
   private cursorPos = 0;
   private isStreaming = false;
+  private mode: AIMode = 'agent';
+  private lastTestResults: TestResults | null = null;
   private static readonly MAX_HISTORY = 50;
   private history: Array<{ role: 'user' | 'assistant'; content: string }> = [];
 
@@ -56,10 +77,14 @@ export class RuwtTUI {
     this.language = options.language;
     this.challengeTitle = options.challengeTitle;
     this.challengeDescription = options.challengeDescription;
+    this.challengeDifficulty = options.challengeDifficulty;
+    this.challengeCategory = options.challengeCategory;
+    this.challengeTestCases = options.challengeTestCases;
     this.streamChat = options.streamChat;
     this.abortFn = options.abort;
     this.onExit = options.onExit;
     this.onCodeApplied = options.onCodeApplied;
+    this.onRunTests = options.onRunTests;
     this.isExpired = options.isExpired;
   }
 
@@ -67,12 +92,14 @@ export class RuwtTUI {
     this.term.write('\r\n');
     this.term.write('\x1b[1;33m  ruwt\x1b[0m \x1b[90m\u2014 AI coding assistant\x1b[0m\r\n');
     this.term.write('\x1b[90m  Type your question, or \x1b[33mexit\x1b[90m to return to shell.\x1b[0m\r\n');
+    this.term.write('\x1b[90m  Modes: \x1b[33m/agent\x1b[90m \x1b[34m/plan\x1b[90m \x1b[31m/debug\x1b[90m \x1b[32m/ask\x1b[90m\x1b[0m\r\n');
     this.term.write('\x1b[90m  Ctrl+C to interrupt a response.\x1b[0m\r\n');
     this.printPrompt();
   }
 
   private printPrompt(): void {
-    this.term.write(`\r\n\x1b[33mruwt>\x1b[0m `);
+    const c = MODE_COLORS[this.mode];
+    this.term.write(`\r\n\x1b[${c}mruwt[${this.mode}]>\x1b[0m `);
   }
 
   handleInput(data: string): void {
@@ -141,6 +168,27 @@ export class RuwtTUI {
           continue;
         }
 
+        // Mode switching commands
+        if (text.startsWith('/')) {
+          const cmd = text.slice(1).toLowerCase();
+          if (['agent', 'plan', 'debug', 'ask'].includes(cmd)) {
+            this.mode = cmd as AIMode;
+            const c = MODE_COLORS[this.mode];
+            this.term.write(`\x1b[${c}m[mode: ${this.mode}]\x1b[0m`);
+            this.printPrompt();
+            continue;
+          }
+          if (cmd === 'mode') {
+            const c = MODE_COLORS[this.mode];
+            this.term.write(`\x1b[${c}mCurrent mode: ${this.mode}\x1b[0m`);
+            this.printPrompt();
+            continue;
+          }
+          this.term.write(`\x1b[31mUnknown command: ${text}\x1b[0m`);
+          this.printPrompt();
+          continue;
+        }
+
         this.sendMessage(text);
         continue;
       }
@@ -167,32 +215,57 @@ export class RuwtTUI {
   }
 
   private redrawLine(): void {
-    this.term.write(`\r\x1b[33mruwt>\x1b[0m ${this.line}\x1b[K`);
+    const c = MODE_COLORS[this.mode];
+    this.term.write(`\r\x1b[${c}mruwt[${this.mode}]>\x1b[0m ${this.line}\x1b[K`);
     const moveBack = this.line.length - this.cursorPos;
     if (moveBack > 0) {
       this.term.write(`\x1b[${moveBack}D`);
     }
   }
 
-  private buildSystemPrompt(): string {
-    const currentCode = this.fs.getSolutionCode();
-    return `You are a coding agent in a terminal. Write code, not explanations.
+  private buildModeSystemPrompt(): string {
+    return buildSystemPrompt({
+      mode: this.mode,
+      challengeTitle: this.challengeTitle,
+      challengeDescription: this.challengeDescription,
+      challengeDifficulty: this.challengeDifficulty,
+      challengeCategory: this.challengeCategory,
+      language: this.language,
+      currentCode: this.fs.getSolutionCode(),
+      testCases: this.challengeTestCases,
+      lastTestResults: this.lastTestResults,
+    });
+  }
 
-Challenge: "${this.challengeTitle}" (${this.language})
+  private applyCodeFromResponse(responseText: string): void {
+    // Skip in ask mode
+    if (this.mode === 'ask') return;
 
-${this.challengeDescription}
+    // Try SEARCH/REPLACE blocks first
+    if (hasEditBlocks(responseText)) {
+      const blocks = parseEditBlocks(responseText);
+      if (blocks.length > 0) {
+        const currentCode = this.fs.getSolutionCode();
+        const result = applyEditBlocks(currentCode, blocks);
+        if (result.applied > 0) {
+          this.fs.setSolutionCode(result.newCode);
+          this.onCodeApplied(result.newCode);
+          const msg = result.failed > 0
+            ? `${result.applied} edit(s) applied, ${result.failed} failed`
+            : `${result.applied} edit(s) applied`;
+          this.term.write(`\r\n\r\n\x1b[32m\u2713 ${msg}\x1b[0m`);
+          return;
+        }
+      }
+    }
 
-Current code:
-\`\`\`${this.language}
-${currentCode}
-\`\`\`
-
-Rules:
-- Output the COMPLETE file in a single fenced code block. No partial snippets.
-- 1-2 sentences max. No step-by-step explanations, no complexity analysis.
-- If asked to solve, just write the solution.
-- If debugging, state the bug in one line, then provide fixed code.
-- Plain text only (terminal output).`;
+    // Fallback: extract largest code block
+    const codeBlock = this.extractCodeBlock(responseText);
+    if (codeBlock) {
+      this.fs.setSolutionCode(codeBlock);
+      this.onCodeApplied(codeBlock);
+      this.term.write('\r\n\r\n\x1b[32m\u2713 Applied to editor\x1b[0m');
+    }
   }
 
   private async sendMessage(text: string): Promise<void> {
@@ -207,7 +280,7 @@ Rules:
     this.pruneHistory();
 
     const messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [
-      { role: 'system', content: this.buildSystemPrompt() },
+      { role: 'system', content: this.buildModeSystemPrompt() },
       ...this.history.map((m) => ({
         role: m.role as 'user' | 'assistant',
         content: m.content,
@@ -216,47 +289,93 @@ Rules:
 
     this.term.write('\r\n');
     let lastChunkLen = 0;
+    let toolLoopCount = 0;
+    const MAX_TOOL_LOOPS = 3;
 
-    await this.streamChat(messages, {
-      onChunk: (fullContent: string) => {
-        // Write only the new portion
-        const newPart = fullContent.slice(lastChunkLen);
-        lastChunkLen = fullContent.length;
-        // Convert \n to \r\n for terminal
-        const termText = newPart.replace(/\n/g, '\r\n');
-        this.term.write(termText);
-      },
-      onDone: (fullContent: string) => {
-        this.isStreaming = false;
-        this.history.push({ role: 'assistant', content: fullContent });
+    const runOneRound = async (msgs: typeof messages): Promise<string | null> => {
+      lastChunkLen = 0;
+      return new Promise((resolve) => {
+        this.streamChat(msgs, {
+          onChunk: (fullContent: string) => {
+            const cleaned = stripToolCalls(fullContent);
+            const newPart = cleaned.slice(lastChunkLen);
+            lastChunkLen = cleaned.length;
+            const termText = newPart.replace(/\n/g, '\r\n');
+            this.term.write(termText);
+          },
+          onDone: (fullContent: string) => {
+            this.isStreaming = false;
+            const cleaned = stripToolCalls(fullContent);
+            this.history.push({ role: 'assistant', content: cleaned });
+            this.pruneHistory();
+            this.applyCodeFromResponse(fullContent);
+            resolve(fullContent);
+          },
+          onError: (error: string) => {
+            this.isStreaming = false;
+            this.term.write(`\r\n\x1b[31mError: ${error}\x1b[0m`);
+            resolve(null);
+          },
+          onConstraint: (violation: string, message: string) => {
+            this.isStreaming = false;
+            this.term.write(`\r\n\x1b[31m${message}\x1b[0m`);
+            if (violation === 'time') {
+              this.term.write('\r\n\x1b[90mReturning to shell...\x1b[0m');
+              this.onExit();
+            }
+            resolve(null);
+          },
+        });
+      });
+    };
+
+    let aiResponse = await runOneRound(messages);
+
+    // Tool-use loop
+    while (
+      aiResponse &&
+      hasToolCalls(aiResponse) &&
+      (this.mode === 'agent' || this.mode === 'debug') &&
+      toolLoopCount < MAX_TOOL_LOOPS &&
+      this.onRunTests
+    ) {
+      toolLoopCount++;
+      this.term.write('\r\n\r\n\x1b[33m[running tests...]\x1b[0m\r\n');
+
+      try {
+        const currentCode = this.fs.getSolutionCode();
+        const testResult = await this.onRunTests(currentCode, this.language);
+        this.lastTestResults = {
+          passed: testResult.passed,
+          passedTests: testResult.passedTests,
+          totalTests: testResult.totalTests,
+          results: (testResult.results || []) as TestResults['results'],
+        };
+
+        const resultMsg = formatTestResultsForMessage(this.lastTestResults);
+        this.term.write(`\x1b[90m${resultMsg.replace(/\n/g, '\r\n')}\x1b[0m\r\n`);
+
+        this.history.push({ role: 'user', content: resultMsg });
         this.pruneHistory();
 
-        // Extract and apply code blocks
-        const codeBlock = this.extractCodeBlock(fullContent);
-        if (codeBlock) {
-          this.fs.setSolutionCode(codeBlock);
-          this.onCodeApplied(codeBlock);
-          this.term.write('\r\n\r\n\x1b[32m\u2713 Applied to editor\x1b[0m');
-        }
+        this.isStreaming = true;
+        const followUpMessages: typeof messages = [
+          { role: 'system', content: this.buildModeSystemPrompt() },
+          ...this.history.map((m) => ({
+            role: m.role as 'user' | 'assistant',
+            content: m.content,
+          })),
+        ];
+        aiResponse = await runOneRound(followUpMessages);
+      } catch {
+        this.term.write('\r\n\x1b[31mTest execution failed\x1b[0m');
+        break;
+      }
+    }
 
-        this.printPrompt();
-      },
-      onError: (error: string) => {
-        this.isStreaming = false;
-        this.term.write(`\r\n\x1b[31mError: ${error}\x1b[0m`);
-        this.printPrompt();
-      },
-      onConstraint: (violation: string, message: string) => {
-        this.isStreaming = false;
-        this.term.write(`\r\n\x1b[31m${message}\x1b[0m`);
-        if (violation === 'time') {
-          this.term.write('\r\n\x1b[90mReturning to shell...\x1b[0m');
-          this.onExit();
-        } else {
-          this.printPrompt();
-        }
-      },
-    });
+    if (!this.isStreaming) {
+      this.printPrompt();
+    }
   }
 
   private extractCodeBlock(text: string): string | null {

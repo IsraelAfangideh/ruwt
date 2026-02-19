@@ -12,6 +12,13 @@ import { TerminalPanel, type TerminalPanelHandle } from './arena/TerminalPanel';
 import { TIER_MODELS, getModelById, getModelsForTier, getBYOKModels, tierColor, tierLabel, type ModelTier } from '@/lib/ai/pricing';
 import { estimateChatCost, formatEstimatedCost } from '@/lib/cost-estimate';
 import { useIsMobile } from '@/lib/useIsMobile';
+import { buildSystemPrompt, formatTestResultsForMessage, type AIMode, type TestResults as AITestResults } from '@/lib/ai/system-prompts';
+import { parseEditBlocks, applyEditBlocks, hasEditBlocks } from '@/lib/ai/diff-apply';
+import { parseToolCalls, stripToolCalls, hasToolCalls } from '@/lib/ai/tool-parser';
+import { ModeSelector } from './arena/ModeSelector';
+// PlanApproval will be used when plan mode rendering is added
+// import { PlanApproval, extractPlanBlock } from './arena/PlanApproval';
+import { Notepad } from './arena/Notepad';
 
 const MonacoEditor = React.lazy(() => import('@monaco-editor/react'));
 
@@ -337,11 +344,20 @@ function extractBestCodeBlock(text: string, language: string): string | null {
 
 /* ─── Notification Toast ─────────────────────────────────────────── */
 
-function CodeUpdateToast({ visible }: { visible: boolean }) {
+function CodeUpdateToast({ visible, message }: { visible: boolean; message?: string }) {
   if (!visible) return null;
   return (
     <div style={s.toast}>
-      <span style={{ color: arena.success }}>{'\u2713'}</span> Code updated
+      <span style={{ color: arena.success }}>{'\u2713'}</span> {message || 'Code updated'}
+    </div>
+  );
+}
+
+function PasteBlockedToast({ visible }: { visible: boolean }) {
+  if (!visible) return null;
+  return (
+    <div style={{ ...s.toast, borderLeft: `3px solid ${arena.error}` }}>
+      <span style={{ color: arena.error }}>{'\u2718'}</span> No pasting in the Arena — let your AI write the code.
     </div>
   );
 }
@@ -601,9 +617,11 @@ export function ArenaIDE({
   const [isExpired, setIsExpired] = useState(false);
   const [showExpiryOverlay, setShowExpiryOverlay] = useState(false);
   const [aiLimitReached, setAiLimitReached] = useState(false);
-  const [activeTab, setActiveTab] = useState<'description' | 'chat'>('description');
+  const [activeTab, setActiveTab] = useState<'description' | 'chat' | 'notepad'>('description');
   const [hasUnreadChat, setHasUnreadChat] = useState(false);
   const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
+  const [showPasteBlocked, setShowPasteBlocked] = useState(false);
   const [terminalHeight, setTerminalHeight] = useState(250);
   const [byokProviders, setByokProviders] = useState<Set<string>>(new Set());
   const [byokDropdownOpen, setByokDropdownOpen] = useState(false);
@@ -611,9 +629,13 @@ export function ArenaIDE({
   const [terminalExpanded, setTerminalExpanded] = useState(false);
   const [terminalCollapsed, setTerminalCollapsed] = useState(false);
   const [nudgeDismissed, setNudgeDismissed] = useState(false);
+  const [mode, setMode] = useState<AIMode>('agent');
+  const [notepadContent, setNotepadContent] = useState('');
+  const [isToolLooping, setIsToolLooping] = useState(false);
+  const pendingTestContextRef = useRef<AITestResults | null>(null);
 
   const isMobile = useIsMobile();
-  const activeTabRef = useRef<'description' | 'chat'>('description');
+  const activeTabRef = useRef<'description' | 'chat' | 'notepad'>('description');
   activeTabRef.current = activeTab;
   const chatScrollRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<unknown>(null);
@@ -654,50 +676,80 @@ export function ArenaIDE({
   });
 
   // Show toast notification
-  const flashToast = useCallback(() => {
+  const flashToast = useCallback((msg?: string) => {
+    setToastMessage(msg || '');
     setShowToast(true);
     setTimeout(() => setShowToast(false), 2000);
   }, []);
 
-  // Auto-apply code from AI response
+  const showPasteBlockedToast = useCallback(() => {
+    setShowPasteBlocked(true);
+    setTimeout(() => setShowPasteBlocked(false), 3000);
+  }, []);
+
+  // Auto-apply code from AI response — tries SEARCH/REPLACE first, falls back to code block
   const applyCodeFromResponse = useCallback((responseText: string) => {
+    // Skip code application in ask mode
+    if (mode === 'ask') return;
+
+    // Try SEARCH/REPLACE blocks first
+    if (hasEditBlocks(responseText)) {
+      const blocks = parseEditBlocks(responseText);
+      if (blocks.length > 0) {
+        const currentCode = fs.getSolutionCode();
+        const result = applyEditBlocks(currentCode, blocks);
+        if (result.applied > 0) {
+          fs.setSolutionCode(result.newCode);
+          const msg = result.failed > 0
+            ? `${result.applied} edit(s) applied, ${result.failed} failed`
+            : `${result.applied} edit(s) applied`;
+          flashToast(msg);
+          return;
+        }
+      }
+    }
+
+    // Fallback: extract largest code block (backward compat)
     const codeBlock = extractBestCodeBlock(responseText, language);
     if (codeBlock) {
       fs.setSolutionCode(codeBlock);
       flashToast();
     }
-  }, [language, fs, flashToast]);
+  }, [language, fs, flashToast, mode]);
 
   // Handle code applied from terminal (RuwtTUI)
   const handleTerminalCodeApplied = useCallback(() => {
     flashToast();
   }, [flashToast]);
 
-  // Build system prompt with current code — agentic style (Cursor-like)
-  const buildSystemPrompt = useCallback(() => {
-    const currentCode = fs.getSolutionCode();
-    return `You are a coding agent. You write code, not explanations.
+  // Build system prompt — mode-aware with test context injection
+  const buildModeSystemPrompt = useCallback(() => {
+    return buildSystemPrompt({
+      mode,
+      challengeTitle: challenge.title,
+      challengeDescription: challenge.description,
+      challengeDifficulty: challenge.difficulty,
+      challengeCategory: challenge.category || null,
+      language,
+      currentCode: fs.getSolutionCode(),
+      testCases: challenge.testCases || '[]',
+      lastTestResults: pendingTestContextRef.current || (testResults as AITestResults | undefined) || null,
+    });
+  }, [mode, challenge.title, challenge.description, challenge.difficulty, challenge.category, language, fs, challenge.testCases, testResults]);
 
-Challenge: "${challenge.title}" (${challenge.difficulty})
-Language: ${language}
+  // Notepad localStorage persistence
+  useEffect(() => {
+    if (attemptId) {
+      const saved = localStorage.getItem(`notepad-${attemptId}`);
+      if (saved) setNotepadContent(saved);
+    }
+  }, [attemptId]);
 
-Description:
-${challenge.description}
-
-Current code:
-\`\`\`${language}
-${currentCode}
-\`\`\`
-
-Rules:
-- Output the COMPLETE updated file in a single \`\`\`${language} code block. No partial snippets.
-- Be extremely concise. 1-2 sentences max before/after the code block if needed.
-- Do NOT explain the approach step-by-step. Do NOT list time/space complexity.
-- Do NOT use headings, numbered lists, or bullet points.
-- If the user says "solve it" or similar, just write the solution directly.
-- If debugging, state the bug in one line, then provide the fixed code.
-- Think of yourself as a pair programmer who writes code, not a tutor who explains.`;
-  }, [challenge.title, challenge.difficulty, challenge.description, language, fs]);
+  useEffect(() => {
+    if (attemptId && notepadContent) {
+      localStorage.setItem(`notepad-${attemptId}`, notepadContent);
+    }
+  }, [notepadContent, attemptId]);
 
   // Timer (expiry detection only — display moved to ArenaScreen header)
   useEffect(() => {
@@ -749,7 +801,7 @@ Rules:
     prevMsgCountRef.current = messages.length;
   }, [messages]);
 
-  // Send sidebar chat message
+  // Send sidebar chat message — with tool-use orchestration loop
   const sendMessage = useCallback(async () => {
     const text = chatInput.trim();
     if (!text || isLoadingChat || !attemptId) return;
@@ -780,45 +832,113 @@ Rules:
     setIsLoadingChat(true);
     setStreamingContent('');
 
-    const chatMessages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [
-      { role: 'system', content: buildSystemPrompt() },
+    // Build the conversation with mode-aware system prompt
+    const allMessages = [
       ...messages.filter((m) => m.role !== 'system' && !m.isConstraint).map((msg) => ({ role: msg.role, content: msg.content })),
-      { role: 'user', content: text },
+      { role: 'user' as const, content: text },
     ];
 
-    await streamChat(chatMessages, {
-      userMessage: text,
-      onChunk: (fullContent) => {
-        setStreamingContent(fullContent);
-      },
-      onDone: (fullContent, meta) => {
-        setMessages((m) => [...m, { role: 'assistant', content: fullContent, meta }]);
-        setStreamingContent('');
-        setIsLoadingChat(false);
-        // Auto-apply code blocks
-        applyCodeFromResponse(fullContent);
-      },
-      onError: (error) => {
-        setMessages((m) => [...m, { role: 'assistant', content: `Request failed: ${error}` }]);
-        setStreamingContent('');
-        setIsLoadingChat(false);
-      },
-      onConstraint: (violation, message) => {
-        const friendlyMsg = constraintMessages[violation] || message;
-        setMessages((m) => [...m, { role: 'assistant', content: friendlyMsg, isConstraint: true }]);
-        setStreamingContent('');
-        setIsLoadingChat(false);
-        if (violation === 'time') {
-          setIsExpired(true);
-          isExpiredRef.current = true;
-          setShowExpiryOverlay(true);
+    let toolLoopCount = 0;
+    const MAX_TOOL_LOOPS = 3;
+    let conversationMessages = allMessages;
+    let constraintHit = false;
+
+    const runOneRound = async (msgs: Array<{ role: 'system' | 'user' | 'assistant'; content: string }>, isFollowUp: boolean): Promise<string | null> => {
+      const chatMessages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [
+        { role: 'system', content: buildModeSystemPrompt() },
+        ...msgs,
+      ];
+
+      return new Promise((resolve) => {
+        streamChat(chatMessages, {
+          userMessage: isFollowUp ? undefined : text,
+          onChunk: (fullContent) => {
+            setStreamingContent(stripToolCalls(fullContent));
+          },
+          onDone: (fullContent, meta) => {
+            const cleanContent = stripToolCalls(fullContent);
+            setMessages((m) => [...m, { role: 'assistant', content: cleanContent, meta }]);
+            setStreamingContent('');
+            applyCodeFromResponse(fullContent);
+            resolve(fullContent);
+          },
+          onError: (error) => {
+            setMessages((m) => [...m, { role: 'assistant', content: `Request failed: ${error}` }]);
+            setStreamingContent('');
+            setIsLoadingChat(false);
+            resolve(null);
+          },
+          onConstraint: (violation, message) => {
+            const friendlyMsg = constraintMessages[violation] || message;
+            setMessages((m) => [...m, { role: 'assistant', content: friendlyMsg, isConstraint: true }]);
+            setStreamingContent('');
+            constraintHit = true;
+            if (violation === 'time') {
+              setIsExpired(true);
+              isExpiredRef.current = true;
+              setShowExpiryOverlay(true);
+            }
+            if (violation === 'cost' || violation === 'tokens') {
+              setAiLimitReached(true);
+            }
+            setIsLoadingChat(false);
+            resolve(null);
+          },
+        });
+      });
+    };
+
+    // First round
+    let aiResponse = await runOneRound(conversationMessages, false);
+
+    // Tool-use loop: if AI requests test run, execute and re-prompt
+    while (
+      aiResponse &&
+      hasToolCalls(aiResponse) &&
+      (mode === 'agent' || mode === 'debug') &&
+      toolLoopCount < MAX_TOOL_LOOPS &&
+      !constraintHit
+    ) {
+      toolLoopCount++;
+      setIsToolLooping(true);
+
+      // Run tests
+      const toolCalls = parseToolCalls(aiResponse);
+      if (toolCalls.some((tc) => tc.type === 'run_tests') && onRunTests) {
+        // Run tests with current code
+        const currentCode = fs.getSolutionCode();
+        try {
+          const testResult = await onRunTests(currentCode, language);
+          const asAITestResults: AITestResults = {
+            passed: testResult.passed,
+            passedTests: testResult.passedTests,
+            totalTests: testResult.totalTests,
+            results: (testResult.results || []) as AITestResults['results'],
+          };
+
+          const resultMsg = formatTestResultsForMessage(asAITestResults);
+          setMessages((m) => [...m, { role: 'user', content: resultMsg }]);
+
+          // Add to conversation and re-prompt
+          conversationMessages = [
+            ...conversationMessages,
+            { role: 'assistant' as const, content: stripToolCalls(aiResponse!) },
+            { role: 'user' as const, content: resultMsg },
+          ];
+          aiResponse = await runOneRound(conversationMessages, true);
+        } catch {
+          break;
         }
-        if (violation === 'cost' || violation === 'tokens') {
-          setAiLimitReached(true);
-        }
-      },
-    });
-  }, [chatInput, isLoadingChat, attemptId, messages, buildSystemPrompt, streamChat, isExpired, aiLimitReached, applyCodeFromResponse]);
+      } else {
+        break;
+      }
+    }
+
+    setIsToolLooping(false);
+    setIsLoadingChat(false);
+    // Clear pending test context after use
+    pendingTestContextRef.current = null;
+  }, [chatInput, isLoadingChat, attemptId, messages, buildModeSystemPrompt, streamChat, isExpired, aiLimitReached, applyCodeFromResponse, mode, onRunTests, testResults]);
 
   const handleInputKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -897,13 +1017,23 @@ Rules:
               AI Chat
               {hasUnreadChat && <span style={s.unreadDot} />}
             </button>
+            <button
+              style={activeTab === 'notepad' ? s.tabActive : s.tab}
+              onClick={() => setActiveTab('notepad')}
+            >
+              Notepad
+            </button>
           </div>
 
           {/* Tab content */}
           {activeTab === 'description' ? (
             <DescriptionPanel challenge={challenge} pastAttempts={pastAttempts} />
+          ) : activeTab === 'notepad' ? (
+            <Notepad value={notepadContent} onChange={setNotepadContent} />
           ) : (
             <>
+              {/* Mode selector */}
+              <ModeSelector mode={mode} onModeChange={setMode} disabled={isLoadingChat} />
               {/* Chat messages */}
               <div ref={chatScrollRef} style={s.chatScroll}>
                 {messages.filter((m) => m.role !== 'system').length === 0 && !streamingContent && (
@@ -978,13 +1108,24 @@ Rules:
                     </div>
                   );
                 })}
+                {isToolLooping && !streamingContent && (
+                  <div style={{ ...s.aiMessage, opacity: 0.7 }}>
+                    <div style={s.messageLabel}>
+                      <span style={s.aiLabel}>AI</span>
+                      <span style={s.streamingDot}>{'\u25CF'}</span>
+                      <span style={{ fontSize: 10, color: arena.accent }}>
+                        Running tests...
+                      </span>
+                    </div>
+                  </div>
+                )}
                 {streamingContent && (
                   <div style={s.aiMessage}>
                     <div style={s.messageLabel}>
                       <span style={s.aiLabel}>AI</span>
                       <span style={s.streamingDot}>{'\u25CF'}</span>
                       <span style={{ fontSize: 10, color: arena.textSubtle }}>
-                        {getModelById(model)?.displayName || 'AI'} thinking...
+                        {getModelById(model)?.displayName || 'AI'} {isToolLooping ? 'fixing...' : 'thinking...'}
                       </span>
                     </div>
                     <div style={s.aiContent}>{renderMarkdown(streamingContent)}</div>
@@ -1150,7 +1291,8 @@ Rules:
         }>
           {/* Editor */}
           <div style={s.editorWrap}>
-            <CodeUpdateToast visible={showToast} />
+            <CodeUpdateToast visible={showToast} message={toastMessage} />
+            <PasteBlockedToast visible={showPasteBlocked} />
             <Suspense fallback={
               <div style={s.editorLoading}>
                 <span style={{ color: arena.textMuted, fontSize: 13 }}>Loading editor...</span>
@@ -1161,7 +1303,18 @@ Rules:
                 language={language}
                 value={code}
                 onChange={handleEditorChange}
-                onMount={(editor: unknown) => { editorRef.current = editor; }}
+                onMount={(editor: any) => {
+                  editorRef.current = editor;
+                  // Paste prevention — capture phase blocks before Monaco handles it
+                  const dom = editor.getDomNode?.();
+                  if (dom) {
+                    dom.addEventListener('paste', (e: ClipboardEvent) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      showPasteBlockedToast();
+                    }, true);
+                  }
+                }}
                 theme="vs-dark"
                 options={{
                   minimap: { enabled: false },
@@ -1225,10 +1378,14 @@ Rules:
               language={language}
               challengeTitle={challenge.title}
               challengeDescription={challenge.description}
+              challengeDifficulty={challenge.difficulty}
+              challengeCategory={challenge.category || null}
+              challengeTestCases={challenge.testCases || '[]'}
               shellCallbacks={shellCallbacks}
               streamChat={streamChat}
               abortChat={abortChat}
               onCodeApplied={handleTerminalCodeApplied}
+              onRunTests={onRunTests}
               isExpired={() => isExpiredRef.current}
             />
           </div>
@@ -1290,6 +1447,9 @@ Rules:
 
       {/* Test results bar */}
       {testResults && <ResultsBar results={testResults} onDismiss={onDismissResults} onAskAI={(prompt) => {
+        // Inject test results into AI context and switch to debug mode
+        pendingTestContextRef.current = testResults as AITestResults;
+        setMode('debug');
         setChatInput(prompt);
         setActiveTab('chat');
         if (isMobile) setMobilePanel('sidebar');
@@ -1303,7 +1463,7 @@ Rules:
             style={mobilePanel === 'sidebar' ? s.mobileFloatingTabActive : s.mobileFloatingTab}
             onClick={() => { setMobilePanel('sidebar'); }}
           >
-            <span>{activeTab === 'chat' ? 'AI Chat' : 'Description'}</span>
+            <span>{activeTab === 'chat' ? 'AI Chat' : activeTab === 'notepad' ? 'Notepad' : 'Description'}</span>
             {hasUnreadChat && mobilePanel === 'editor' && <span style={s.mobileUnreadDot} />}
           </button>
           <button

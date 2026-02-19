@@ -11,6 +11,7 @@ import { View, Text, ActivityIndicator } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { ArenaIDE, type ArenaChallenge } from '@/components/ArenaIDE';
 import { arena } from '@/theme/colors';
+import { getDifficultyStyle } from '@/lib/difficulty';
 
 export function GuestArenaScreen() {
   const navigation = useNavigation();
@@ -129,9 +130,8 @@ export function GuestArenaScreen() {
     );
   }
 
-  const difficultyColor =
-    challenge.difficulty === 'easy' ? arena.success :
-    challenge.difficulty === 'hard' ? arena.error : arena.accent;
+  const diffStyle = getDifficultyStyle(challenge.difficulty);
+  const difficultyColor = diffStyle.color;
 
   return (
     <div style={{
@@ -186,11 +186,11 @@ export function GuestArenaScreen() {
             padding: '2px 8px',
             borderRadius: 9999,
             border: `1px solid ${difficultyColor}40`,
-            background: `${difficultyColor}15`,
+            background: diffStyle.bg,
             fontFamily: 'Menlo, Monaco, "Courier New", monospace',
             textTransform: 'lowercase',
           }}>
-            {challenge.difficulty}
+            {diffStyle.label}
           </span>
           <span style={{
             fontSize: 11,

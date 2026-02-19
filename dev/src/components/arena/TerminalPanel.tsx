@@ -20,6 +20,9 @@ interface TerminalPanelProps {
   language: string;
   challengeTitle: string;
   challengeDescription: string;
+  challengeDifficulty: string;
+  challengeCategory: string | null;
+  challengeTestCases: string;
   shellCallbacks: Omit<ShellCallbacks, 'onEnterRuwt'>;
   streamChat: (
     messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }>,
@@ -32,6 +35,7 @@ interface TerminalPanelProps {
   ) => Promise<void>;
   abortChat: () => void;
   onCodeApplied: (code: string) => void;
+  onRunTests?: (code: string, language: string) => Promise<{ passed: boolean; passedTests: number; totalTests: number; results?: unknown[] }>;
   isExpired: () => boolean;
 }
 
@@ -39,7 +43,8 @@ export const TerminalPanel = React.forwardRef<TerminalPanelHandle, TerminalPanel
   function TerminalPanel(props, ref) {
     const {
       fs, language, challengeTitle, challengeDescription,
-      shellCallbacks, streamChat, abortChat, onCodeApplied, isExpired,
+      challengeDifficulty, challengeCategory, challengeTestCases,
+      shellCallbacks, streamChat, abortChat, onCodeApplied, onRunTests, isExpired,
     } = props;
 
     const containerRef = useRef<HTMLDivElement>(null);
@@ -65,6 +70,8 @@ export const TerminalPanel = React.forwardRef<TerminalPanelHandle, TerminalPanel
     onCodeAppliedRef.current = onCodeApplied;
     const isExpiredRef = useRef(isExpired);
     isExpiredRef.current = isExpired;
+    const onRunTestsRef = useRef(onRunTests);
+    onRunTestsRef.current = onRunTests;
 
     const enterRuwt = useCallback(() => {
       modeRef.current = 'ruwt';
@@ -74,6 +81,9 @@ export const TerminalPanel = React.forwardRef<TerminalPanelHandle, TerminalPanel
         language,
         challengeTitle,
         challengeDescription,
+        challengeDifficulty,
+        challengeCategory,
+        challengeTestCases,
         streamChat: (...args) => streamChatRef.current(...args),
         abort: () => abortChatRef.current(),
         onExit: () => {
@@ -83,10 +93,11 @@ export const TerminalPanel = React.forwardRef<TerminalPanelHandle, TerminalPanel
           shellRef.current?.printPrompt();
         },
         onCodeApplied: (code) => onCodeAppliedRef.current(code),
+        onRunTests: (...args) => onRunTestsRef.current?.(...args) as any,
         isExpired: () => isExpiredRef.current(),
       });
       tuiRef.current.enter();
-    }, [fs, language, challengeTitle, challengeDescription]);
+    }, [fs, language, challengeTitle, challengeDescription, challengeDifficulty, challengeCategory, challengeTestCases]);
 
     useEffect(() => {
       if (!containerRef.current) return;

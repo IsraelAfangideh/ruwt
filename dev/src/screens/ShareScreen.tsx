@@ -7,6 +7,7 @@ import { View, Text, ActivityIndicator, StyleSheet } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { useColors } from '@/theme';
 import { spacing, fontSizes, fontFamily } from '@/theme/tokens';
+import { getDifficultyStyle } from '@/lib/difficulty';
 
 interface ShareData {
   attemptId: string;
@@ -83,9 +84,8 @@ export function ShareScreen() {
     );
   }
 
-  const diffColor = data.challenge?.difficulty === 'easy' ? c.success
-    : data.challenge?.difficulty === 'hard' ? c.destructive
-    : c.accent;
+  const diffStyle = getDifficultyStyle(data.challenge?.difficulty || 'medium');
+  const diffColor = diffStyle.color;
 
   return (
     <View style={[styles.container, { backgroundColor: c.bg }]}>
@@ -102,9 +102,9 @@ export function ShareScreen() {
 
         <View style={styles.badges}>
           {data.challenge?.difficulty && (
-            <View style={[styles.badge, { borderColor: diffColor }]}>
+            <View style={[styles.badge, { borderColor: diffColor, backgroundColor: diffStyle.bg }]}>
               <Text style={[styles.badgeText, { color: diffColor }]}>
-                {data.challenge.difficulty}
+                {diffStyle.label}
               </Text>
             </View>
           )}
