@@ -1,6 +1,5 @@
 /**
- * Unified SSE streaming for all AI models.
- * All models (Cloudflare, hosted, BYOK) go through /api/ai/chat with SSE.
+ * SSE streaming for Cloudflare AI models via /api/ai/chat.
  */
 import { useCallback, useRef } from 'react';
 

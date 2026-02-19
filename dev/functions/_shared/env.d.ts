@@ -10,10 +10,6 @@ interface Env {
   STRIPE_SECRET_KEY?: string;
   CLOUDFLARE_ACCOUNT_ID?: string;
   CLOUDFLARE_API_TOKEN?: string;
-  OPENAI_API_KEY?: string;
-  ANTHROPIC_API_KEY?: string;
   PISTON_API_URL?: string;
-  ENCRYPTION_KEY?: string;
-  GOOGLE_AI_API_KEY?: string;
   ADMIN_USER_IDS?: string;
 }

@@ -9,7 +9,7 @@ import { VirtualFileSystem } from './arena/VirtualFileSystem';
 import { useCodeSync } from './arena/useCodeSync';
 import { useAIChat, type MessageMeta } from './arena/useAIChat';
 import { TerminalPanel, type TerminalPanelHandle } from './arena/TerminalPanel';
-import { TIER_MODELS, getModelById, getModelsForTier, getHostedModelsForTier, getBYOKModels, getBYOKEquivalent, tierColor, tierLabel, type ModelTier } from '@/lib/ai/pricing';
+import { TIER_MODELS, getModelById, getModelsForTier, tierColor, tierLabel, type ModelTier } from '@/lib/ai/pricing';
 import { estimateChatCost, formatEstimatedCost } from '@/lib/cost-estimate';
 import { useIsMobile } from '@/lib/useIsMobile';
 import { buildSystemPrompt, formatTestResultsForMessage, type AIMode, type TestResults as AITestResults } from '@/lib/ai/system-prompts';
@@ -631,8 +631,6 @@ export function ArenaIDE({
   const [toastMessage, setToastMessage] = useState('');
   const [showPasteBlocked, setShowPasteBlocked] = useState(false);
   const [terminalHeight, setTerminalHeight] = useState(250);
-  const [byokProviders, setByokProviders] = useState<Set<string>>(new Set());
-  const [byokDropdownOpen, setByokDropdownOpen] = useState(false);
   const [mobilePanel, setMobilePanel] = useState<'sidebar' | 'editor'>('editor');
   const [terminalExpanded, setTerminalExpanded] = useState(false);
   const [terminalCollapsed, setTerminalCollapsed] = useState(false);
@@ -789,20 +787,6 @@ export function ArenaIDE({
     const id = setInterval(tick, 1000);
     return () => clearInterval(id);
   }, [expiresAt]);
-
-  // Fetch BYOK API key providers
-  useEffect(() => {
-    const fetchByokKeys = async () => {
-      try {
-        const res = await fetch('/api/api-keys');
-        if (res.ok) {
-          const data = await res.json() as { keys: Array<{ provider: string }> };
-          setByokProviders(new Set((data.keys ?? []).map((k) => k.provider)));
-        }
-      } catch {}
-    };
-    fetchByokKeys();
-  }, []);
 
   // Auto-scroll chat
   useEffect(() => {
@@ -1168,8 +1152,7 @@ export function ArenaIDE({
                   const isActive = selectedTier === tier;
                   const tc = tierColor(tier);
                   const modelsInTier = getModelsForTier(tier);
-                  const hostedInTier = getHostedModelsForTier(tier);
-                  const hasMultiple = modelsInTier.length > 1 || hostedInTier.length > 0;
+                  const hasMultiple = modelsInTier.length > 1;
                   return (
                     <div key={tier} style={isMobile
                       ? { position: 'relative', minWidth: 80, flexShrink: 0 }
@@ -1218,99 +1201,11 @@ export function ArenaIDE({
                               <span style={{ fontSize: 10, color: arena.textSubtle }}>{mi.description}</span>
                             </button>
                           ))}
-                          {hostedInTier.length > 0 && modelsInTier.length > 0 && (
-                            <div style={{ height: 1, background: arena.border, margin: '4px 0' }} />
-                          )}
-                          {hostedInTier.map((mi) => {
-                            const byokEquiv = getBYOKEquivalent(mi);
-                            const hasByokKey = mi.hostedProvider && byokProviders.has(mi.hostedProvider);
-                            return (
-                              <button
-                                key={mi.id}
-                                style={{
-                                  ...s.tierDropdownItem,
-                                  background: model === mi.id ? `${tc}15` : 'transparent',
-                                  color: model === mi.id ? tc : arena.text,
-                                }}
-                                onClick={() => {
-                                  setModel(mi.id);
-                                  setSelectedTier(mi.tier);
-                                  setTierDropdownOpen(false);
-                                }}
-                              >
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                  <span style={{ fontWeight: 500 }}>{mi.displayName}</span>
-                                  <span style={{
-                                    fontSize: 9, fontWeight: 700,
-                                    color: '#d4a574', background: '#d4a57415',
-                                    border: '1px solid #d4a57440',
-                                    padding: '1px 5px', borderRadius: 4, lineHeight: '14px',
-                                  }}>PRO</span>
-                                </div>
-                                <span style={{ fontSize: 10, color: arena.textSubtle }}>
-                                  {mi.description}
-                                  {hasByokKey && byokEquiv && (
-                                    <span style={{ color: '#3fb950', marginLeft: 4 }}>
-                                      Save ~50% with your key
-                                    </span>
-                                  )}
-                                </span>
-                              </button>
-                            );
-                          })}
                         </div>
                       )}
                     </div>
                   );
                 })}
-                {/* BYOK models button */}
-                <div style={{ position: 'relative' }}>
-                  <button
-                    style={{
-                      ...s.tierPill,
-                      background: byokDropdownOpen ? '#6366f120' : 'transparent',
-                      borderColor: byokDropdownOpen ? '#6366f1' : arena.border,
-                      color: byokDropdownOpen ? '#6366f1' : arena.textMuted,
-                      opacity: isLoadingChat ? 0.5 : 1,
-                      whiteSpace: 'nowrap' as const,
-                    }}
-                    disabled={isLoadingChat}
-                    onClick={() => setByokDropdownOpen(!byokDropdownOpen)}
-                  >
-                    BYOK {'\u25BC'}
-                  </button>
-                  {byokDropdownOpen && (
-                    <div style={s.tierDropdown}>
-                      {getBYOKModels().map((mi) => {
-                        const hasKey = byokProviders.has(mi.provider!);
-                        return (
-                          <button
-                            key={mi.id}
-                            style={{
-                              ...s.tierDropdownItem,
-                              background: model === mi.id ? '#6366f115' : 'transparent',
-                              color: hasKey ? (model === mi.id ? '#6366f1' : arena.text) : arena.textSubtle,
-                              opacity: hasKey ? 1 : 0.5,
-                            }}
-                            disabled={!hasKey}
-                            onClick={() => {
-                              setModel(mi.id);
-                              setSelectedTier(mi.tier);
-                              setByokDropdownOpen(false);
-                            }}
-                          >
-                            <span style={{ fontWeight: 500 }}>
-                              {!hasKey && '\uD83D\uDD12 '}{mi.displayName}
-                            </span>
-                            <span style={{ fontSize: 10, color: arena.textSubtle }}>
-                              {hasKey ? mi.description : `Add ${mi.provider} key in Settings`}
-                            </span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
               </div>
 
               {/* Chat input */}

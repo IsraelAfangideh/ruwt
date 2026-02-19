@@ -205,7 +205,7 @@ export function LeaderboardScreen() {
         ))}
       </View>
       <Text style={{ fontSize: fontSizes.xs, color: c.textMuted, marginBottom: spacing.sm, paddingHorizontal: spacing.xs }}>
-        Open: Platform models only. Unlimited: All models including BYOK.
+        Open: Cloudflare models only. Unlimited: All models.
       </Text>
 
       {/* Season filter */}

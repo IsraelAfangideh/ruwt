@@ -42,7 +42,7 @@ interface RateLimitTier {
 const TIERS: RateLimitTier[] = [
   {
     // Expensive AI chat endpoints
-    routes: ['/api/ai/chat', '/api/ai/chat-byok'],
+    routes: ['/api/ai/chat'],
     limit: 30,
     windowSeconds: 60,
   },

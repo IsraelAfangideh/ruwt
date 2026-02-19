@@ -71,8 +71,6 @@ export async function onRequestGet(context: { request: Request; env: Env }) {
       if (division === 'open') {
         conditions.push(eq(attempts.usedByok, 0));
         conditions.push(eq(attempts.usedHosted, 0));
-      } else if (division === 'pro') {
-        conditions.push(eq(attempts.usedByok, 0));
       }
 
       const results = await db
@@ -130,8 +128,6 @@ export async function onRequestGet(context: { request: Request; env: Env }) {
     let divisionFilter;
     if (division === 'open') {
       divisionFilter = sql`AND ${attempts.usedByok} = 0 AND ${attempts.usedHosted} = 0`;
-    } else if (division === 'pro') {
-      divisionFilter = sql`AND ${attempts.usedByok} = 0`;
     } else {
       divisionFilter = sql``;
     }

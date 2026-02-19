@@ -55,8 +55,9 @@
 - Second LinkedIn post (DeepSeek comparison): live
 
 ### Results
-- Signups today: 1 (Chandra Kethi-Reddy — from LinkedIn post comment → reply → signup)
-- Total users: 3
+- Signups today: 2 (Chandra Kethi-Reddy, David Ingraham — both from LinkedIn DMs)
+- Total users: 4 (Israel, Nick, Chandra, David)
+- Remaining to goal: 6 more users
 
 ---
 

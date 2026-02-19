@@ -12,7 +12,6 @@ export type RootStackParamList = {
   Arena: { challengeId: string };
   Replay: { attemptId: string };
   DailyChallenge: undefined;
-  APIKeys: undefined;
   Assessments: undefined;
   AssessmentBuilder: { assessmentId?: string };
   AssessmentResultsDashboard: { assessmentId: string };

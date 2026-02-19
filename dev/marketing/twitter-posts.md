@@ -30,13 +30,7 @@ Current leaderboard is wide open. Come take the top spot.
 
 ### Hook 4: Builder Story (short)
 
-I built a platform where developers compete on AI efficiency.
 
-Not speed. Not lines of code. How cheaply you can get a correct solution using AI.
-
-Turns out the skill gap is massive.
-
-ruwt.dev — free to try.
 
 ### Hook 5: Question
 
