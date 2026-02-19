@@ -9,7 +9,7 @@ import { VirtualFileSystem } from './arena/VirtualFileSystem';
 import { useCodeSync } from './arena/useCodeSync';
 import { useAIChat, type MessageMeta } from './arena/useAIChat';
 import { TerminalPanel, type TerminalPanelHandle } from './arena/TerminalPanel';
-import { TIER_MODELS, getModelById, getModelsForTier, getBYOKModels, tierColor, tierLabel, type ModelTier } from '@/lib/ai/pricing';
+import { TIER_MODELS, getModelById, getModelsForTier, getHostedModelsForTier, getBYOKModels, getBYOKEquivalent, tierColor, tierLabel, type ModelTier } from '@/lib/ai/pricing';
 import { estimateChatCost, formatEstimatedCost } from '@/lib/cost-estimate';
 import { useIsMobile } from '@/lib/useIsMobile';
 import { buildSystemPrompt, formatTestResultsForMessage, type AIMode, type TestResults as AITestResults } from '@/lib/ai/system-prompts';
@@ -1040,7 +1040,7 @@ export function ArenaIDE({
                   <div style={s.chatEmpty}>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: '0 12px', width: '100%', maxWidth: 360 }}>
                       <span style={{ color: arena.textSubtle, fontSize: 12, textAlign: 'center', lineHeight: '1.5' }}>
-                        Practice is free — experiment with different models!
+                        Practice is free with open-source models. Pro models cost credits.
                       </span>
                       {[
                         'Solve this problem step by step',
@@ -1140,7 +1140,8 @@ export function ArenaIDE({
                   const isActive = selectedTier === tier;
                   const tc = tierColor(tier);
                   const modelsInTier = getModelsForTier(tier);
-                  const hasMultiple = modelsInTier.length > 1;
+                  const hostedInTier = getHostedModelsForTier(tier);
+                  const hasMultiple = modelsInTier.length > 1 || hostedInTier.length > 0;
                   return (
                     <div key={tier} style={isMobile
                       ? { position: 'relative', minWidth: 80, flexShrink: 0 }
@@ -1189,6 +1190,46 @@ export function ArenaIDE({
                               <span style={{ fontSize: 10, color: arena.textSubtle }}>{mi.description}</span>
                             </button>
                           ))}
+                          {hostedInTier.length > 0 && modelsInTier.length > 0 && (
+                            <div style={{ height: 1, background: arena.border, margin: '4px 0' }} />
+                          )}
+                          {hostedInTier.map((mi) => {
+                            const byokEquiv = getBYOKEquivalent(mi);
+                            const hasByokKey = mi.hostedProvider && byokProviders.has(mi.hostedProvider);
+                            return (
+                              <button
+                                key={mi.id}
+                                style={{
+                                  ...s.tierDropdownItem,
+                                  background: model === mi.id ? `${tc}15` : 'transparent',
+                                  color: model === mi.id ? tc : arena.text,
+                                }}
+                                onClick={() => {
+                                  setModel(mi.id);
+                                  setSelectedTier(mi.tier);
+                                  setTierDropdownOpen(false);
+                                }}
+                              >
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                  <span style={{ fontWeight: 500 }}>{mi.displayName}</span>
+                                  <span style={{
+                                    fontSize: 9, fontWeight: 700,
+                                    color: '#d4a574', background: '#d4a57415',
+                                    border: '1px solid #d4a57440',
+                                    padding: '1px 5px', borderRadius: 4, lineHeight: '14px',
+                                  }}>PRO</span>
+                                </div>
+                                <span style={{ fontSize: 10, color: arena.textSubtle }}>
+                                  {mi.description}
+                                  {hasByokKey && byokEquiv && (
+                                    <span style={{ color: '#3fb950', marginLeft: 4 }}>
+                                      Save ~50% with your key
+                                    </span>
+                                  )}
+                                </span>
+                              </button>
+                            );
+                          })}
                         </div>
                       )}
                     </div>

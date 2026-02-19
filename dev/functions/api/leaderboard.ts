@@ -2,7 +2,7 @@
  * GET /api/leaderboard
  * Global or challenge-specific leaderboard from D1.
  * Supports period filter: all (default) | month | week.
- * Supports division filter: open (default, platform models only) | unlimited (all).
+ * Supports division filter: open (default, CF only) | pro (platform models) | unlimited (all).
  */
 import { eq, and, desc, sql, gte } from 'drizzle-orm';
 import { getDb } from '../_shared/db';
@@ -29,7 +29,7 @@ export async function onRequestGet(context: { request: Request; env: Env }) {
     const challengeId = url.searchParams.get('challengeId');
     const period = url.searchParams.get('period') || 'all';
     const seasonParam = url.searchParams.get('season'); // 'current' | season ID | null
-    const division = url.searchParams.get('division') || 'open'; // 'open' | 'unlimited'
+    const division = url.searchParams.get('division') || 'open'; // 'open' | 'pro' | 'unlimited'
     const limit = Math.min(parseInt(url.searchParams.get('limit') || '50', 10), 100);
 
     // Resolve season filter — overrides period if specified
@@ -69,6 +69,9 @@ export async function onRequestGet(context: { request: Request; env: Env }) {
         conditions.push(gte(attempts.submittedAt, threshold));
       }
       if (division === 'open') {
+        conditions.push(eq(attempts.usedByok, 0));
+        conditions.push(eq(attempts.usedHosted, 0));
+      } else if (division === 'pro') {
         conditions.push(eq(attempts.usedByok, 0));
       }
 
@@ -124,11 +127,16 @@ export async function onRequestGet(context: { request: Request; env: Env }) {
       ? sql`AND ${attempts.submittedAt} >= ${threshold}`
       : sql``;
 
-    const byokFilter = division === 'open'
-      ? sql`AND ${attempts.usedByok} = 0`
-      : sql``;
+    let divisionFilter;
+    if (division === 'open') {
+      divisionFilter = sql`AND ${attempts.usedByok} = 0 AND ${attempts.usedHosted} = 0`;
+    } else if (division === 'pro') {
+      divisionFilter = sql`AND ${attempts.usedByok} = 0`;
+    } else {
+      divisionFilter = sql``;
+    }
 
-    const combinedFilter = sql`${periodFilter} ${byokFilter}`;
+    const combinedFilter = sql`${periodFilter} ${divisionFilter}`;
 
     const results = await db
       .select({

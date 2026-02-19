@@ -15,4 +15,5 @@ interface Env {
   PISTON_API_URL?: string;
   ENCRYPTION_KEY?: string;
   GOOGLE_AI_API_KEY?: string;
+  ADMIN_USER_IDS?: string;
 }

@@ -1,9 +1,8 @@
 /**
- * Extracted SSE streaming logic for AI chat.
- * Shared by sidebar chat and RuwtTUI.
+ * Unified SSE streaming for all AI models.
+ * All models (Cloudflare, hosted, BYOK) go through /api/ai/chat with SSE.
  */
 import { useCallback, useRef } from 'react';
-import { getModelById, isBYOKModel } from '@/lib/ai/pricing';
 
 interface ChatMessage {
   role: 'system' | 'user' | 'assistant';
@@ -56,12 +55,8 @@ export function useAIChat(options: UseAIChatOptions) {
       abortRef.current = controller;
 
       try {
-        // Determine if this is a BYOK model
-        const modelInfo = getModelById(model);
-        const isByok = modelInfo ? isBYOKModel(modelInfo) : false;
-        const endpoint = isByok ? '/api/ai/chat-byok' : '/api/ai/chat';
-
-        const res = await fetch(endpoint, {
+        // All models go to /api/ai/chat (unified SSE endpoint)
+        const res = await fetch('/api/ai/chat', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ model, messages, attemptId, maxTokens, userMessage }),
@@ -69,39 +64,23 @@ export function useAIChat(options: UseAIChatOptions) {
         });
 
         if (!res.ok) {
-          const err = await res.json().catch(() => ({})) as { error?: string; violation?: string };
+          const err = await res.json().catch(() => ({})) as {
+            error?: string; violation?: string; required?: number;
+            available?: number; message?: string; resetsAt?: string;
+          };
           if (res.status === 403 && err.violation) {
             onConstraint?.(err.violation, err.error || `Constraint reached: ${err.violation}`);
+          } else if (res.status === 402) {
+            onError(`Insufficient credits. Need ${err.required} but have ${err.available}.`);
+          } else if (res.status === 429 && err.resetsAt) {
+            onError(err.message || 'Daily limit reached. Try again later.');
           } else {
             onError(err.error || res.statusText);
           }
           return;
         }
 
-        // BYOK returns JSON (non-streaming), Cloudflare returns SSE
-        if (isByok) {
-          const data = await res.json() as {
-            content: string;
-            inputTokens: number;
-            outputTokens: number;
-            cost: number;
-            model: string;
-            constraintWarning?: { violation: string; message: string };
-          };
-          onChunk(data.content);
-          onCostUpdate?.(data.cost, data.inputTokens, data.outputTokens);
-          const meta: MessageMeta = {
-            model: data.model,
-            cost: data.cost,
-            tokens: data.inputTokens + data.outputTokens,
-          };
-          if (data.constraintWarning) {
-            onConstraint?.(data.constraintWarning.violation, data.constraintWarning.message);
-          }
-          onDone(data.content || '(no response)', meta);
-          return;
-        }
-
+        // SSE streaming (single path for all models)
         const reader = res.body?.getReader();
         const decoder = new TextDecoder();
         let fullContent = '';

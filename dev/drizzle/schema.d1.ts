@@ -70,6 +70,7 @@ export const attempts = sqliteTable('attempts', {
   assessmentSessionId: text('assessment_session_id'),
   replayPublic: integer('replay_public').default(1).notNull(),
   usedByok: integer('used_byok').default(0).notNull(),
+  usedHosted: integer('used_hosted').default(0).notNull(),
 
   createdAt: text('created_at').default(sql`(datetime('now'))`).notNull(),
   submittedAt: text('submitted_at'),
@@ -222,6 +223,20 @@ export const badges = sqliteTable('badges', {
   earnedAt: text('earned_at').default(sql`(datetime('now'))`).notNull(),
 });
 
+// --- Platform Usage (hosted model spend tracking) ---
+
+export const platformUsage = sqliteTable('platform_usage', {
+  id: text('id').primaryKey(),
+  userId: text('user_id').notNull().references(() => profiles.id),
+  provider: text('provider').notNull(),
+  model: text('model').notNull(),
+  inputTokens: integer('input_tokens').default(0).notNull(),
+  outputTokens: integer('output_tokens').default(0).notNull(),
+  userCost: integer('user_cost').default(0).notNull(),
+  actualCost: integer('actual_cost').default(0).notNull(),
+  createdAt: text('created_at').default(sql`(datetime('now'))`).notNull(),
+});
+
 // --- Notifications ---
 
 export const notifications = sqliteTable('notifications', {
@@ -289,3 +304,5 @@ export type Badge = typeof badges.$inferSelect;
 export type NewBadge = typeof badges.$inferInsert;
 export type Notification = typeof notifications.$inferSelect;
 export type NewNotification = typeof notifications.$inferInsert;
+export type PlatformUsage = typeof platformUsage.$inferSelect;
+export type NewPlatformUsage = typeof platformUsage.$inferInsert;

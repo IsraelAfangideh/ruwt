@@ -1,9 +1,12 @@
 /**
  * Client-side model pricing for display. Mirrors server ai-pricing.ts.
  * 5-tier game pricing: reasoning ($$$$$), premium ($$$), mid ($$), budget ($), micro (¢).
+ * Three sources: cloudflare (free practice), hosted (platform keys, 2x markup), byok (user keys).
  */
 
 export type ModelTier = 'reasoning' | 'premium' | 'mid' | 'budget' | 'micro';
+
+export type ModelSource = 'cloudflare' | 'hosted' | 'byok';
 
 export type BYOKProvider = 'openai' | 'anthropic' | 'google';
 
@@ -16,9 +19,67 @@ export interface ModelInfo {
   costIndicator: string;
   description: string;
   provider?: BYOKProvider; // set for BYOK models
+  source: ModelSource;
+  hostedProvider?: BYOKProvider; // set for hosted models
 }
 
 const MODELS: ModelInfo[] = [
+  // --- Platform-hosted models (2x markup, available to all users) ---
+  {
+    id: 'hosted:gpt-4o',
+    displayName: 'GPT-4o',
+    tier: 'premium',
+    input: 5.00,
+    output: 20.00,
+    costIndicator: '$$$',
+    description: 'OpenAI flagship',
+    source: 'hosted',
+    hostedProvider: 'openai',
+  },
+  {
+    id: 'hosted:gpt-4o-mini',
+    displayName: 'GPT-4o mini',
+    tier: 'mid',
+    input: 0.30,
+    output: 1.20,
+    costIndicator: '$$',
+    description: 'Fast OpenAI model',
+    source: 'hosted',
+    hostedProvider: 'openai',
+  },
+  {
+    id: 'hosted:claude-sonnet-4-5-20250929',
+    displayName: 'Claude Sonnet 4.5',
+    tier: 'premium',
+    input: 6.00,
+    output: 30.00,
+    costIndicator: '$$$',
+    description: 'Anthropic best balance',
+    source: 'hosted',
+    hostedProvider: 'anthropic',
+  },
+  {
+    id: 'hosted:claude-haiku-3-5-20241022',
+    displayName: 'Claude Haiku 3.5',
+    tier: 'mid',
+    input: 1.60,
+    output: 8.00,
+    costIndicator: '$$',
+    description: 'Fast Anthropic model',
+    source: 'hosted',
+    hostedProvider: 'anthropic',
+  },
+  {
+    id: 'hosted:gemini-2.0-flash',
+    displayName: 'Gemini 2.0 Flash',
+    tier: 'mid',
+    input: 0.20,
+    output: 0.80,
+    costIndicator: '$$',
+    description: 'Google fast model',
+    source: 'hosted',
+    hostedProvider: 'google',
+  },
   // --- BYOK models ---
   {
     id: 'gpt-4o',
@@ -29,6 +90,7 @@ const MODELS: ModelInfo[] = [
     costIndicator: '$$$',
     description: 'OpenAI flagship (BYOK)',
     provider: 'openai',
+    source: 'byok',
   },
   {
     id: 'gpt-4o-mini',
@@ -39,6 +101,7 @@ const MODELS: ModelInfo[] = [
     costIndicator: '$$',
     description: 'Fast OpenAI model (BYOK)',
     provider: 'openai',
+    source: 'byok',
   },
   {
     id: 'claude-sonnet-4-5-20250929',
@@ -49,6 +112,7 @@ const MODELS: ModelInfo[] = [
     costIndicator: '$$$',
     description: 'Anthropic best balance (BYOK)',
     provider: 'anthropic',
+    source: 'byok',
   },
   {
     id: 'claude-haiku-3-5-20241022',
@@ -59,6 +123,7 @@ const MODELS: ModelInfo[] = [
     costIndicator: '$$',
     description: 'Fast Anthropic model (BYOK)',
     provider: 'anthropic',
+    source: 'byok',
   },
   {
     id: 'gemini-2.0-flash',
@@ -69,6 +134,7 @@ const MODELS: ModelInfo[] = [
     costIndicator: '$$',
     description: 'Google fast model (BYOK)',
     provider: 'google',
+    source: 'byok',
   },
   // --- Cloudflare Workers AI models ---
   {
@@ -79,6 +145,7 @@ const MODELS: ModelInfo[] = [
     output: 4.88,
     costIndicator: '$$$$$',
     description: 'Reasoning-optimized, best for complex logic',
+    source: 'cloudflare',
   },
   {
     id: '@cf/meta/llama-3.3-70b-instruct-fp8-fast',
@@ -88,6 +155,7 @@ const MODELS: ModelInfo[] = [
     output: 0.60,
     costIndicator: '$$$',
     description: 'Best overall quality, fast inference',
+    source: 'cloudflare',
   },
   {
     id: '@cf/meta/llama-3.1-70b-instruct',
@@ -97,6 +165,7 @@ const MODELS: ModelInfo[] = [
     output: 0.12,
     costIndicator: '$$',
     description: 'Strong mid-range, good balance',
+    source: 'cloudflare',
   },
   {
     id: '@cf/qwen/qwen1.5-14b-chat-awq',
@@ -106,6 +175,7 @@ const MODELS: ModelInfo[] = [
     output: 0.12,
     costIndicator: '$$',
     description: 'Fast mid-range, good at code',
+    source: 'cloudflare',
   },
   {
     id: '@cf/meta/llama-3.1-8b-instruct',
@@ -115,6 +185,7 @@ const MODELS: ModelInfo[] = [
     output: 0.01,
     costIndicator: '$',
     description: 'Cheap and capable for straightforward tasks',
+    source: 'cloudflare',
   },
   {
     id: '@cf/mistral/mistral-7b-instruct-v0.2',
@@ -124,6 +195,7 @@ const MODELS: ModelInfo[] = [
     output: 0.01,
     costIndicator: '$',
     description: 'Fast budget option',
+    source: 'cloudflare',
   },
   {
     id: '@cf/ibm-granite/granite-4.0-h-micro',
@@ -133,6 +205,7 @@ const MODELS: ModelInfo[] = [
     output: 0.112,
     costIndicator: '\u00A2',
     description: 'Ultra-cheap, simple tasks only',
+    source: 'cloudflare',
   },
   {
     id: '@cf/meta/llama-3.2-1b-instruct',
@@ -142,11 +215,12 @@ const MODELS: ModelInfo[] = [
     output: 0.201,
     costIndicator: '\u00A2',
     description: 'Tiny and fast, basic tasks',
+    source: 'cloudflare',
   },
 ];
 
 /** One model per tier for the tier selector (the primary/default Cloudflare model for each tier). */
-const cfModels = MODELS.filter((m) => !m.provider);
+const cfModels = MODELS.filter((m) => m.source === 'cloudflare');
 export const TIER_MODELS: Record<ModelTier, ModelInfo> = {
   reasoning: cfModels.find((m) => m.tier === 'reasoning')!,
   premium: cfModels.find((m) => m.tier === 'premium')!,
@@ -155,9 +229,14 @@ export const TIER_MODELS: Record<ModelTier, ModelInfo> = {
   micro: cfModels.find((m) => m.tier === 'micro')!,
 };
 
-/** Cloudflare models available for a given tier (excludes BYOK). */
+/** Cloudflare models available for a given tier (excludes BYOK and hosted). */
 export function getModelsForTier(tier: ModelTier): ModelInfo[] {
-  return MODELS.filter((m) => m.tier === tier && !m.provider);
+  return MODELS.filter((m) => m.tier === tier && m.source === 'cloudflare');
+}
+
+/** Hosted models available for a given tier. */
+export function getHostedModelsForTier(tier: ModelTier): ModelInfo[] {
+  return MODELS.filter((m) => m.tier === tier && m.source === 'hosted');
 }
 
 export function getAllModels(): ModelInfo[] {
@@ -169,15 +248,33 @@ export function getModelById(id: string): ModelInfo | undefined {
 }
 
 export function isBYOKModel(model: ModelInfo): boolean {
-  return !!model.provider;
+  return model.source === 'byok';
+}
+
+export function isHostedModel(model: ModelInfo): boolean {
+  return model.source === 'hosted';
 }
 
 export function getCloudflareModels(): ModelInfo[] {
-  return MODELS.filter((m) => !m.provider);
+  return MODELS.filter((m) => m.source === 'cloudflare');
 }
 
 export function getBYOKModels(): ModelInfo[] {
-  return MODELS.filter((m) => !!m.provider);
+  return MODELS.filter((m) => m.source === 'byok');
+}
+
+export function getHostedModels(): ModelInfo[] {
+  return MODELS.filter((m) => m.source === 'hosted');
+}
+
+/** Get BYOK equivalent for a hosted model (for savings comparison). */
+export function getBYOKEquivalent(hostedModel: ModelInfo): ModelInfo | undefined {
+  if (hostedModel.source !== 'hosted' || !hostedModel.hostedProvider) return undefined;
+  return MODELS.find(m =>
+    m.source === 'byok' &&
+    m.provider === hostedModel.hostedProvider &&
+    m.tier === hostedModel.tier
+  );
 }
 
 export function formatCostFromHundredths(hundredths: number): string {
