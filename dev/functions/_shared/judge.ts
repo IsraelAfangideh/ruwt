@@ -215,6 +215,9 @@ Promise.resolve(__result).then(__r => { if (__r !== undefined) console.log(typeo
 `;
 }
 
+/** Max concurrent Piston calls to avoid overwhelming the executor. */
+const MAX_CONCURRENT_TESTS = 5;
+
 export async function runTestCases(
   env: PistonEnv,
   sourceCode: string,
@@ -222,24 +225,13 @@ export async function runTestCases(
   testCases: Array<{ input: string; expectedOutput: string }>,
   options?: { cpuTimeLimit?: number; memoryLimit?: number }
 ): Promise<TestResult> {
-  const results: TestCaseResult[] = [];
-  let passedCount = 0;
-
   // Convert cpuTimeLimit (seconds) to Piston's run_timeout (milliseconds)
   const runTimeout = options?.cpuTimeLimit ? options.cpuTimeLimit * 1000 : 5000;
 
-  for (const testCase of testCases) {
+  async function runSingleTest(testCase: { input: string; expectedOutput: string }): Promise<TestCaseResult> {
     try {
-      // Build code with embedded input for each test case (no stdin)
       const testCode = buildTestCode(sourceCode, language, testCase.input);
-
-      const result = await executeCode(
-        env,
-        testCode,
-        language,
-        undefined,
-        { runTimeout }
-      );
+      const result = await executeCode(env, testCode, language, undefined, { runTimeout });
 
       const compileError = result.compile?.stderr || '';
       const runtimeError = result.run.stderr || '';
@@ -248,27 +240,31 @@ export async function runTestCases(
       const actualOutput = (result.run.stdout || '').trim();
       const expected = testCase.expectedOutput.trim();
       const passed = actualOutput === expected && result.run.code === 0;
-      if (passed) passedCount++;
 
-      results.push({
-        passed,
-        input: testCase.input,
-        expectedOutput: expected,
-        actualOutput,
-        error: errorText,
-      });
+      return { passed, input: testCase.input, expectedOutput: expected, actualOutput, error: errorText };
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Unknown error';
       console.error(`Test case failed (execution error): ${errorMsg}`);
-      results.push({
+      return {
         passed: false,
         input: testCase.input,
         expectedOutput: testCase.expectedOutput,
         actualOutput: '',
         error: `Execution error: ${errorMsg}`,
-      });
+      };
     }
   }
+
+  // Run test cases in parallel batches to reduce latency while
+  // avoiding overwhelming the Piston executor with too many concurrent requests.
+  const results: TestCaseResult[] = [];
+  for (let i = 0; i < testCases.length; i += MAX_CONCURRENT_TESTS) {
+    const batch = testCases.slice(i, i + MAX_CONCURRENT_TESTS);
+    const batchResults = await Promise.all(batch.map(runSingleTest));
+    results.push(...batchResults);
+  }
+
+  const passedCount = results.filter((r) => r.passed).length;
 
   return {
     passed: passedCount === testCases.length,

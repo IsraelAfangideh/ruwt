@@ -2,12 +2,17 @@
  * Proxy code execution requests to our self-hosted executor.
  * Replaces direct calls to the now-defunct public Piston API.
  * POST /api/execute — Piston-compatible request/response format.
+ * Requires authentication to prevent abuse.
  */
-interface Env {
-  PISTON_API_URL?: string;
-}
+import { getUser } from '../_shared/auth';
 
 export const onRequestPost: PagesFunction<Env> = async (context) => {
+  // Require authentication to prevent unauthenticated code execution
+  const user = await getUser(context.request, context.env);
+  if (!user) {
+    return Response.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   const execUrl = context.env.PISTON_API_URL || 'https://ruwt-exec.fly.dev/api/v2/piston';
 
   try {

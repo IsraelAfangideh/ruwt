@@ -69,15 +69,21 @@ export async function onRequestPost(context: {
       return Response.json({ error: 'Profile not found' }, { status: 404 });
     }
 
-    // Check if this is an assessment attempt (B2B — credit-gated)
+    // Verify attempt ownership and check if assessment
     let isAssessmentAttempt = false;
     if (attemptId) {
       const [attempt] = await db
-        .select({ assessmentSessionId: attempts.assessmentSessionId })
+        .select({ userId: attempts.userId, assessmentSessionId: attempts.assessmentSessionId })
         .from(attempts)
         .where(eq(attempts.id, attemptId))
         .limit(1);
-      isAssessmentAttempt = !!attempt?.assessmentSessionId;
+      if (!attempt) {
+        return Response.json({ error: 'Attempt not found' }, { status: 404 });
+      }
+      if (attempt.userId !== user.id) {
+        return Response.json({ error: 'Forbidden' }, { status: 403 });
+      }
+      isAssessmentAttempt = !!attempt.assessmentSessionId;
     }
 
     // Credit check only for assessment attempts (practice is free)
@@ -184,16 +190,16 @@ export async function onRequestPost(context: {
 
           const actualCost = calculateCost(result.model, result.inputTokens, result.outputTokens);
 
-          // Credit deduction only for assessment attempts
-          if (isAssessmentAttempt) {
-            await db
-              .update(profiles)
-              .set({ credits: sql`${profiles.credits} - ${actualCost}` })
-              .where(eq(profiles.id, user.id));
-          }
-
-          // Track cost on attempt
+          // Track cost + deduct credits. Credit deduction first so if it fails,
+          // we don't record phantom costs. MAX(0,...) prevents negative balances.
           if (attemptId) {
+            if (isAssessmentAttempt) {
+              await db
+                .update(profiles)
+                .set({ credits: sql`MAX(0, ${profiles.credits} - ${actualCost})` })
+                .where(eq(profiles.id, user.id));
+            }
+
             await db
               .update(attempts)
               .set({

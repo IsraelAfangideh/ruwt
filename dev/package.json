@@ -16,6 +16,8 @@
     "db:seed": "npx tsx scripts/seed.ts",
     "db:seed-d1": "npx tsx scripts/seed-d1.ts",
     "db:d1:generate": "drizzle-kit generate --config=drizzle.config.d1.ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "pages:dev": "wrangler pages dev dist --compatibility-date=2024-01-01"
   },
   "dependencies": {
@@ -51,6 +53,7 @@
     "postgres": "^3.4.8",
     "sharp": "^0.34.5",
     "typescript": "^5",
-    "vite": "^6.0.3"
+    "vite": "^6.0.3",
+    "vitest": "^4.0.18"
   }
 }

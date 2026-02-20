@@ -14,13 +14,14 @@ import { estimateChatCost, formatEstimatedCost } from '@/lib/cost-estimate';
 import { useIsMobile } from '@/lib/useIsMobile';
 import { buildSystemPrompt, formatTestResultsForMessage, type AIMode, type TestResults as AITestResults } from '@/lib/ai/system-prompts';
 import { stripToolCalls, hasToolCalls } from '@/lib/ai/tool-parser';
-import { applyCodeFromResponse as sharedApplyCode, extractBestCodeBlock } from '@/lib/ai/code-apply';
+import { applyCodeFromResponse as sharedApplyCode } from '@/lib/ai/code-apply';
 import { callApplyModel } from '@/lib/ai/apply-model';
 import { useEditorDecorations } from './arena/useEditorDecorations';
 import { ModeSelector } from './arena/ModeSelector';
-// PlanApproval will be used when plan mode rendering is added
-// import { PlanApproval, extractPlanBlock } from './arena/PlanApproval';
 import { Notepad } from './arena/Notepad';
+import { renderMarkdown, ThinkingBlock } from './arena/ChatMarkdown';
+import { ResultsBar, type TestResults } from './arena/ResultsBar';
+import ExpiryOverlay from './arena/ExpiryOverlay';
 
 const MonacoEditor = React.lazy(() => import('@monaco-editor/react'));
 
@@ -33,275 +34,6 @@ function formatTime(seconds: number): string {
   const m = Math.floor(seconds / 60);
   const s = seconds % 60;
   return `${m}:${s.toString().padStart(2, '0')}`;
-}
-
-/* ─── Simple Markdown Renderer ────────────────────────────────────── */
-
-function CodeBlock({ lang, code }: { lang: string; code: string }) {
-  const [copied, setCopied] = React.useState(false);
-  const handleCopy = () => {
-    navigator.clipboard.writeText(code).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
-    });
-  };
-  return (
-    <div style={mdStyles.codeBlock}>
-      <div style={mdStyles.codeHeader}>
-        {lang && <span style={mdStyles.codeLang}>{lang}</span>}
-        <button onClick={handleCopy} style={mdStyles.copyBtn}>
-          {copied ? 'Copied!' : 'Copy'}
-        </button>
-      </div>
-      <pre style={mdStyles.codePre}>{code}</pre>
-    </div>
-  );
-}
-
-function renderMarkdown(text: string): React.ReactNode[] {
-  const blocks: React.ReactNode[] = [];
-  const lines = text.split('\n');
-  let i = 0;
-
-  while (i < lines.length) {
-    const line = lines[i];
-
-    // fenced code block
-    if (line.startsWith('```')) {
-      const lang = line.slice(3).trim();
-      const codeLines: string[] = [];
-      i++;
-      while (i < lines.length && !lines[i].startsWith('```')) {
-        codeLines.push(lines[i]);
-        i++;
-      }
-      i++; // skip closing ```
-      blocks.push(<CodeBlock key={blocks.length} lang={lang} code={codeLines.join('\n')} />);
-      continue;
-    }
-
-    // headings
-    const headingMatch = line.match(/^(#{1,3})\s+(.+)$/);
-    if (headingMatch) {
-      const level = headingMatch[1].length as 1 | 2 | 3;
-      const headingStyle = level === 1 ? mdStyles.h1 : level === 2 ? mdStyles.h2 : mdStyles.h3;
-      blocks.push(
-        <div key={blocks.length} style={headingStyle}>
-          {renderInline(headingMatch[2])}
-        </div>
-      );
-      i++;
-      continue;
-    }
-
-    // unordered list item
-    if (/^[\-\*]\s+/.test(line)) {
-      blocks.push(
-        <div key={blocks.length} style={mdStyles.listItem}>
-          <span style={mdStyles.listBullet}>{'\u2022'}</span>
-          <span>{renderInline(line.replace(/^[\-\*]\s+/, ''))}</span>
-        </div>
-      );
-      i++;
-      continue;
-    }
-
-    // ordered list item
-    if (/^\d+\.\s+/.test(line)) {
-      const num = line.match(/^(\d+)\./)?.[1] || '1';
-      blocks.push(
-        <div key={blocks.length} style={mdStyles.listItem}>
-          <span style={mdStyles.listNum}>{num}.</span>
-          <span>{renderInline(line.replace(/^\d+\.\s+/, ''))}</span>
-        </div>
-      );
-      i++;
-      continue;
-    }
-
-    // regular line — parse inline elements
-    blocks.push(
-      <div key={blocks.length} style={mdStyles.paragraph}>
-        {renderInline(line)}
-      </div>
-    );
-    i++;
-  }
-  return blocks;
-}
-
-function renderInline(text: string): React.ReactNode[] {
-  const parts: React.ReactNode[] = [];
-  // match **bold**, *italic*/_italic_, ``code`` (double-backtick), `code` (single), and [text](url)
-  // Double-backtick checked first so inner single backticks are preserved.
-  const regex = /(\*\*(.+?)\*\*|\*(.+?)\*|_(.+?)_|``(.+?)``|`([^`]+)`|\[([^\]]+)\]\(([^)]+)\))/g;
-  let last = 0;
-  let match: RegExpExecArray | null;
-
-  while ((match = regex.exec(text)) !== null) {
-    if (match.index > last) {
-      parts.push(<span key={parts.length}>{text.slice(last, match.index)}</span>);
-    }
-    if (match[2]) {
-      // bold
-      parts.push(<strong key={parts.length}>{match[2]}</strong>);
-    } else if (match[3]) {
-      // italic with *
-      parts.push(<em key={parts.length}>{match[3]}</em>);
-    } else if (match[4]) {
-      // italic with _
-      parts.push(<em key={parts.length}>{match[4]}</em>);
-    } else if (match[5]) {
-      // inline code (double-backtick — may contain single backticks)
-      parts.push(
-        <code key={parts.length} style={mdStyles.inlineCode}>{match[5].trim()}</code>
-      );
-    } else if (match[6]) {
-      // inline code (single-backtick)
-      parts.push(
-        <code key={parts.length} style={mdStyles.inlineCode}>{match[6]}</code>
-      );
-    } else if (match[7] && match[8]) {
-      // link
-      parts.push(
-        <a key={parts.length} href={match[8]} target="_blank" rel="noopener noreferrer" style={mdStyles.link}>
-          {match[7]}
-        </a>
-      );
-    }
-    last = match.index + match[0].length;
-  }
-  if (last < text.length) {
-    parts.push(<span key={parts.length}>{text.slice(last)}</span>);
-  }
-  return parts.length ? parts : [<span key={0}>{text || '\u00A0'}</span>];
-}
-
-const mdStyles: Record<string, React.CSSProperties> = {
-  codeBlock: {
-    background: '#0d1117',
-    borderRadius: 6,
-    margin: '6px 0',
-    overflow: 'hidden',
-    border: `1px solid ${arena.border}`,
-    position: 'relative',
-  },
-  codeHeader: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: '4px 10px',
-    borderBottom: `1px solid ${arena.border}`,
-    minHeight: 24,
-  },
-  codeLang: {
-    fontSize: 11,
-    color: arena.textMuted,
-    fontFamily: 'Menlo, Monaco, "Courier New", monospace',
-  },
-  copyBtn: {
-    background: 'transparent',
-    border: `1px solid ${arena.border}`,
-    borderRadius: 4,
-    color: arena.textMuted,
-    fontSize: 10,
-    padding: '2px 8px',
-    cursor: 'pointer',
-    fontFamily: 'Menlo, Monaco, "Courier New", monospace',
-  },
-  codePre: {
-    margin: 0,
-    padding: '10px 12px',
-    fontSize: 13,
-    lineHeight: '1.45',
-    color: arena.text,
-    fontFamily: 'Menlo, Monaco, "Courier New", monospace',
-    overflowX: 'auto',
-    whiteSpace: 'pre',
-  },
-  inlineCode: {
-    background: 'rgba(240,246,252,0.08)',
-    padding: '2px 5px',
-    borderRadius: 3,
-    fontSize: '0.9em',
-    fontFamily: 'Menlo, Monaco, "Courier New", monospace',
-  },
-  link: {
-    color: arena.accent,
-    textDecoration: 'underline',
-    textUnderlineOffset: '2px',
-  },
-  paragraph: {
-    lineHeight: '1.5',
-    minHeight: '1.2em',
-  },
-  h1: { fontSize: 18, fontWeight: 700, lineHeight: '1.4', margin: '16px 0 8px', color: arena.text },
-  h2: { fontSize: 16, fontWeight: 600, lineHeight: '1.4', margin: '12px 0 6px', color: arena.text },
-  h3: { fontSize: 14, fontWeight: 600, lineHeight: '1.4', margin: '10px 0 4px', color: arena.text },
-  listItem: { display: 'flex', gap: 8, lineHeight: '1.5', paddingLeft: 4 },
-  listBullet: { color: arena.textMuted, flexShrink: 0, width: 12 },
-  listNum: { color: arena.textMuted, flexShrink: 0, width: 16, textAlign: 'right' as const },
-};
-
-/* ─── Thinking Block (reasoning models) ─────────────────────────── */
-
-function ThinkingBlock({ text, isStreaming }: { text: string; isStreaming?: boolean }) {
-  const [expanded, setExpanded] = React.useState(!!isStreaming);
-  const lineCount = text.split('\n').length;
-
-  // Auto-expand while streaming, collapse when done
-  React.useEffect(() => {
-    if (isStreaming) setExpanded(true);
-  }, [isStreaming]);
-
-  return (
-    <div style={{
-      margin: '4px 0 6px',
-      borderLeft: '2px solid #a78bfa',
-      borderRadius: 4,
-      overflow: 'hidden',
-    }}>
-      <button
-        onClick={() => setExpanded(!expanded)}
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 6,
-          padding: '4px 8px',
-          background: 'rgba(167,139,250,0.08)',
-          border: 'none',
-          cursor: 'pointer',
-          fontSize: 11,
-          color: '#a78bfa',
-          fontFamily: 'Menlo, Monaco, "Courier New", monospace',
-          width: '100%',
-          textAlign: 'left',
-        }}
-      >
-        {isStreaming && (
-          <span style={{ animation: 'ruwt-pulse 1.2s ease-in-out infinite', fontSize: 8 }}>{'\u25CF'}</span>
-        )}
-        <span>{expanded ? '\u25BC' : '\u25B6'}</span>
-        <span>{isStreaming ? 'Thinking...' : `Thinking (${lineCount} line${lineCount !== 1 ? 's' : ''})`}</span>
-      </button>
-      {expanded && (
-        <div style={{
-          maxHeight: 200,
-          overflowY: 'auto',
-          padding: '6px 8px',
-          fontSize: 11,
-          lineHeight: '1.4',
-          color: arena.textSubtle,
-          fontFamily: 'Menlo, Monaco, "Courier New", monospace',
-          whiteSpace: 'pre-wrap',
-          wordBreak: 'break-word',
-          background: 'rgba(167,139,250,0.04)',
-        }}>
-          {text}
-        </div>
-      )}
-    </div>
-  );
 }
 
 /* ─── Constraint violation messages ──────────────────────────────── */
@@ -348,13 +80,8 @@ export interface ArenaAttempt {
   expiresAt: string | null;
 }
 
-export interface TestResults {
-  passed: boolean;
-  passedTests: number;
-  totalTests: number;
-  results: Array<{ passed: boolean; input: string; expectedOutput: string; actualOutput: string; error?: string }>;
-  isSubmission: boolean;
-}
+// TestResults re-exported from ./arena/ResultsBar
+export type { TestResults } from './arena/ResultsBar';
 
 export interface PastAttempt {
   id: string;
@@ -402,121 +129,6 @@ function PasteBlockedToast({ visible }: { visible: boolean }) {
   return (
     <div style={{ ...s.toast, borderLeft: `3px solid ${arena.error}` }}>
       <span style={{ color: arena.error }}>{'\u2718'}</span> No pasting in the Arena — let your AI write the code.
-    </div>
-  );
-}
-
-/* ─── Results Bar ────────────────────────────────────────────────── */
-
-function ResultsBar({ results, onDismiss, onAskAI }: { results: TestResults; onDismiss?: () => void; onAskAI?: (prompt: string) => void }) {
-  const [expanded, setExpanded] = useState(!results.passed); // auto-expand on failure
-  const allPassed = results.passed;
-  const barBg = allPassed ? 'rgba(63,185,80,0.12)' : 'rgba(248,81,73,0.12)';
-  const barBorder = allPassed ? 'rgba(63,185,80,0.3)' : 'rgba(248,81,73,0.3)';
-  const barColor = allPassed ? arena.success : arena.error;
-
-  return (
-    <div style={{ borderTop: `1px solid ${barBorder}`, background: barBg, flexShrink: 0 }}>
-      <div style={{
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: '6px 14px', minHeight: 32,
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ color: barColor, fontWeight: 700, fontSize: 13, fontFamily: 'Menlo, Monaco, "Courier New", monospace' }}>
-            {allPassed ? '\u2713' : '\u2717'} {results.passedTests}/{results.totalTests} passed
-          </span>
-          {results.isSubmission && (
-            <span style={{
-              fontSize: 11, fontWeight: 600, color: barColor,
-              padding: '1px 8px', borderRadius: 9999,
-              border: `1px solid ${barBorder}`, background: barBg,
-              fontFamily: 'Menlo, Monaco, "Courier New", monospace',
-            }}>
-              {allPassed ? 'Submitted \u2014 Passed!' : 'Submitted \u2014 Failed'}
-            </span>
-          )}
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <button
-            onClick={() => setExpanded(!expanded)}
-            style={{
-              background: 'transparent', border: `1px solid ${arena.border}`,
-              borderRadius: 4, color: arena.textMuted, fontSize: 10,
-              padding: '2px 8px', cursor: 'pointer',
-              fontFamily: 'Menlo, Monaco, "Courier New", monospace',
-            }}
-          >
-            {expanded ? '\u25B2 Hide' : '\u25BC Details'}
-          </button>
-          {onDismiss && (
-            <button
-              onClick={onDismiss}
-              style={{
-                background: 'transparent', border: 'none', color: arena.textMuted,
-                fontSize: 14, cursor: 'pointer', padding: '0 4px',
-              }}
-            >
-              \u00D7
-            </button>
-          )}
-        </div>
-      </div>
-      {expanded && (
-        <div style={{ padding: '0 14px 8px', fontSize: 12, fontFamily: 'Menlo, Monaco, "Courier New", monospace' }}>
-          {results.results.map((r, i) => (
-            <div key={i} style={{
-              padding: '4px 0', borderTop: i > 0 ? `1px solid ${arena.border}` : undefined,
-              color: r.passed ? arena.success : arena.error,
-            }}>
-              <span>{r.passed ? '\u2713' : '\u2717'} Test {i + 1}: </span>
-              <span style={{ color: arena.textMuted }}>
-                {r.input.length > 40 ? r.input.slice(0, 40) + '...' : r.input}
-              </span>
-              {!r.passed && (
-                <div style={{ color: arena.textMuted, paddingLeft: 16, fontSize: 11, marginTop: 2 }}>
-                  expected <span style={{ color: arena.success }}>{r.expectedOutput}</span>
-                  {' '}got <span style={{ color: arena.error }}>{r.actualOutput || '(empty)'}</span>
-                  {r.error && <div style={{ color: arena.error, marginTop: 2 }}>{r.error}</div>}
-                </div>
-              )}
-            </div>
-          ))}
-          {/* Encouraging message + Ask AI button for failures */}
-          {!allPassed && onAskAI && (
-            <div style={{ marginTop: 8, paddingTop: 8, borderTop: `1px solid ${arena.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-              <span style={{ color: arena.textMuted, fontSize: 12 }}>
-                {results.passedTests > 0
-                  ? `${results.passedTests} of ${results.totalTests} tests passing \u2014 keep going!`
-                  : 'No tests passing yet. Try asking the AI to help debug.'}
-              </span>
-              <button
-                onClick={() => {
-                  const firstFail = results.results.find((r) => !r.passed);
-                  const failCount = results.totalTests - results.passedTests;
-                  const prompt = firstFail
-                    ? `My code fails ${failCount} test${failCount > 1 ? 's' : ''}. The first failing test expects "${firstFail.expectedOutput}" but got "${firstFail.actualOutput || '(empty)'}".${firstFail.error ? ` Error: ${firstFail.error}` : ''} Help me fix this.`
-                    : `My code fails all ${results.totalTests} tests. Help me fix it.`;
-                  onAskAI(prompt);
-                }}
-                style={{
-                  background: arena.accent,
-                  border: 'none',
-                  borderRadius: 6,
-                  color: '#0d1117',
-                  padding: '5px 12px',
-                  fontSize: 11,
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  whiteSpace: 'nowrap',
-                  fontFamily: 'Menlo, Monaco, "Courier New", monospace',
-                }}
-              >
-                Ask AI for Help
-              </button>
-            </div>
-          )}
-        </div>
-      )}
     </div>
   );
 }
@@ -735,12 +347,13 @@ export function ArenaIDE({
     setTimeout(() => setShowPasteBlocked(false), 3000);
   }, []);
 
-  // Auto-apply code from AI response — uses shared pipeline.
+  // Auto-apply code from AI response.
   // Returns true if code was changed (used by agent loop to auto-run tests).
   const applyCodeFromResponse = useCallback(async (responseText: string): Promise<boolean> => {
     const oldCode = fs.getSolutionCode();
     const result = sharedApplyCode(responseText, oldCode, language, mode);
 
+    // Code block extracted directly (free, instant)
     if (result.applied) {
       fs.setSolutionCode(result.newCode);
       flashToast(result.message);
@@ -748,7 +361,7 @@ export function ArenaIDE({
       return true;
     }
 
-    // Structured edits failed — try apply model
+    // Response has code but no extractable block — use apply model
     if (result.needsApplyModel && attemptId) {
       flashToast('Applying edit...');
       const applyResult = await callApplyModel({
@@ -759,22 +372,16 @@ export function ArenaIDE({
       });
 
       if (applyResult.success && applyResult.mergedCode) {
+        // Check that the merge actually changed something
+        if (applyResult.mergedCode.trim() === oldCode.trim()) {
+          return false;
+        }
         fs.setSolutionCode(applyResult.mergedCode);
-        flashToast('Edit applied via AI merge');
+        flashToast('Code updated');
         showDiffDecorations(oldCode, applyResult.mergedCode);
         return true;
       }
 
-      // Apply model failed — fall back to code block extraction
-      const codeBlock = extractBestCodeBlock(responseText, language, oldCode);
-      if (codeBlock) {
-        fs.setSolutionCode(codeBlock);
-        flashToast('Edit match failed — used code block');
-        showDiffDecorations(oldCode, codeBlock);
-        return true;
-      }
-
-      flashToast('Edit match failed');
       return false;
     }
 
@@ -1544,37 +1151,13 @@ export function ArenaIDE({
 
       {/* Expiry overlay */}
       {showExpiryOverlay && (
-        <div style={s.expiryOverlay}>
-          <div style={isMobile ? { ...s.expiryCard, padding: '24px 20px' } : s.expiryCard}>
-            <h2 style={s.expiryTitle}>Time's Up!</h2>
-            <div style={s.expiryStats}>
-              <div style={s.expiryStat}>
-                <span style={s.expiryStatValue}>{totalTokens.toLocaleString()}</span>
-                <span style={s.expiryStatLabel}>tokens used</span>
-              </div>
-              <div style={s.expiryStat}>
-                <span style={s.expiryStatValue}>{formatCost(totalCost)}</span>
-                <span style={s.expiryStatLabel}>cost</span>
-              </div>
-            </div>
-            <div style={isMobile ? { ...s.expiryActions, flexDirection: 'column' } : s.expiryActions}>
-              <button
-                style={s.expiryReviewBtn}
-                onClick={() => setShowExpiryOverlay(false)}
-              >
-                Review Code
-              </button>
-              {onRestart && (
-                <button
-                  style={s.expiryRestartBtn}
-                  onClick={onRestart}
-                >
-                  Start New Attempt
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
+        <ExpiryOverlay
+          totalTokens={totalTokens}
+          totalCost={totalCost}
+          isMobile={isMobile}
+          onReview={() => setShowExpiryOverlay(false)}
+          onRestart={onRestart}
+        />
       )}
 
       {/* Stats moved to header in ArenaScreen */}
@@ -2009,81 +1592,6 @@ const s: Record<string, React.CSSProperties> = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-  },
-
-  // Expiry overlay
-  expiryOverlay: {
-    position: 'absolute',
-    inset: 0,
-    background: 'rgba(13,17,23,0.85)',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 50,
-    backdropFilter: 'blur(4px)',
-  },
-  expiryCard: {
-    background: arena.surface,
-    border: `1px solid ${arena.border}`,
-    borderRadius: 12,
-    padding: '32px 40px',
-    maxWidth: 400,
-    width: '90%',
-    textAlign: 'center' as const,
-  },
-  expiryTitle: {
-    fontSize: 22,
-    fontWeight: 700,
-    color: arena.error,
-    margin: '0 0 20px',
-    fontFamily: '"Cormorant Garamond", Georgia, serif',
-  },
-  expiryStats: {
-    display: 'flex',
-    justifyContent: 'center',
-    gap: 24,
-    marginBottom: 28,
-  },
-  expiryStat: {
-    display: 'flex',
-    flexDirection: 'column' as const,
-    alignItems: 'center',
-    gap: 4,
-  },
-  expiryStatValue: {
-    fontSize: 16,
-    fontWeight: 600,
-    color: arena.accent,
-    fontFamily: 'Menlo, Monaco, "Courier New", monospace',
-  },
-  expiryStatLabel: {
-    fontSize: 11,
-    color: arena.textMuted,
-  },
-  expiryActions: {
-    display: 'flex',
-    gap: 12,
-    justifyContent: 'center',
-  },
-  expiryReviewBtn: {
-    background: 'transparent',
-    border: `1px solid ${arena.border}`,
-    borderRadius: 8,
-    color: arena.text,
-    padding: '8px 20px',
-    fontSize: 13,
-    fontWeight: 500,
-    cursor: 'pointer',
-  },
-  expiryRestartBtn: {
-    background: arena.accent,
-    border: 'none',
-    borderRadius: 8,
-    color: '#0d1117',
-    padding: '8px 20px',
-    fontSize: 13,
-    fontWeight: 600,
-    cursor: 'pointer',
   },
 
   // Mobile floating bottom tab bar

@@ -1,0 +1,275 @@
+/**
+ * ChatMarkdown: Standalone markdown rendering components extracted from ArenaIDE.
+ * Exports CodeBlock, renderMarkdown, renderInline, ThinkingBlock, and mdStyles.
+ */
+import React from 'react';
+import { arena } from '@/theme/colors';
+
+/* ─── Simple Markdown Renderer ────────────────────────────────────── */
+
+export const CodeBlock = React.memo(function CodeBlock({ lang, code }: { lang: string; code: string }) {
+  const [copied, setCopied] = React.useState(false);
+  const handleCopy = () => {
+    navigator.clipboard.writeText(code).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    });
+  };
+  return (
+    <div style={mdStyles.codeBlock}>
+      <div style={mdStyles.codeHeader}>
+        {lang && <span style={mdStyles.codeLang}>{lang}</span>}
+        <button onClick={handleCopy} style={mdStyles.copyBtn}>
+          {copied ? 'Copied!' : 'Copy'}
+        </button>
+      </div>
+      <pre style={mdStyles.codePre}>{code}</pre>
+    </div>
+  );
+});
+
+export function renderMarkdown(text: string): React.ReactNode[] {
+  const blocks: React.ReactNode[] = [];
+  const lines = text.split('\n');
+  let i = 0;
+
+  while (i < lines.length) {
+    const line = lines[i];
+
+    // fenced code block
+    if (line.startsWith('```')) {
+      const lang = line.slice(3).trim();
+      const codeLines: string[] = [];
+      i++;
+      while (i < lines.length && !lines[i].startsWith('```')) {
+        codeLines.push(lines[i]);
+        i++;
+      }
+      i++; // skip closing ```
+      blocks.push(<CodeBlock key={blocks.length} lang={lang} code={codeLines.join('\n')} />);
+      continue;
+    }
+
+    // headings
+    const headingMatch = line.match(/^(#{1,3})\s+(.+)$/);
+    if (headingMatch) {
+      const level = headingMatch[1].length as 1 | 2 | 3;
+      const headingStyle = level === 1 ? mdStyles.h1 : level === 2 ? mdStyles.h2 : mdStyles.h3;
+      blocks.push(
+        <div key={blocks.length} style={headingStyle}>
+          {renderInline(headingMatch[2])}
+        </div>
+      );
+      i++;
+      continue;
+    }
+
+    // unordered list item
+    if (/^[\-\*]\s+/.test(line)) {
+      blocks.push(
+        <div key={blocks.length} style={mdStyles.listItem}>
+          <span style={mdStyles.listBullet}>{'\u2022'}</span>
+          <span>{renderInline(line.replace(/^[\-\*]\s+/, ''))}</span>
+        </div>
+      );
+      i++;
+      continue;
+    }
+
+    // ordered list item
+    if (/^\d+\.\s+/.test(line)) {
+      const num = line.match(/^(\d+)\./)?.[1] || '1';
+      blocks.push(
+        <div key={blocks.length} style={mdStyles.listItem}>
+          <span style={mdStyles.listNum}>{num}.</span>
+          <span>{renderInline(line.replace(/^\d+\.\s+/, ''))}</span>
+        </div>
+      );
+      i++;
+      continue;
+    }
+
+    // regular line — parse inline elements
+    blocks.push(
+      <div key={blocks.length} style={mdStyles.paragraph}>
+        {renderInline(line)}
+      </div>
+    );
+    i++;
+  }
+  return blocks;
+}
+
+export function renderInline(text: string): React.ReactNode[] {
+  const parts: React.ReactNode[] = [];
+  // match **bold**, *italic*/_italic_, ``code`` (double-backtick), `code` (single), and [text](url)
+  // Double-backtick checked first so inner single backticks are preserved.
+  const regex = /(\*\*(.+?)\*\*|\*(.+?)\*|_(.+?)_|``(.+?)``|`([^`]+)`|\[([^\]]+)\]\(([^)]+)\))/g;
+  let last = 0;
+  let match: RegExpExecArray | null;
+
+  while ((match = regex.exec(text)) !== null) {
+    if (match.index > last) {
+      parts.push(<span key={parts.length}>{text.slice(last, match.index)}</span>);
+    }
+    if (match[2]) {
+      // bold
+      parts.push(<strong key={parts.length}>{match[2]}</strong>);
+    } else if (match[3]) {
+      // italic with *
+      parts.push(<em key={parts.length}>{match[3]}</em>);
+    } else if (match[4]) {
+      // italic with _
+      parts.push(<em key={parts.length}>{match[4]}</em>);
+    } else if (match[5]) {
+      // inline code (double-backtick — may contain single backticks)
+      parts.push(
+        <code key={parts.length} style={mdStyles.inlineCode}>{match[5].trim()}</code>
+      );
+    } else if (match[6]) {
+      // inline code (single-backtick)
+      parts.push(
+        <code key={parts.length} style={mdStyles.inlineCode}>{match[6]}</code>
+      );
+    } else if (match[7] && match[8]) {
+      // link
+      parts.push(
+        <a key={parts.length} href={match[8]} target="_blank" rel="noopener noreferrer" style={mdStyles.link}>
+          {match[7]}
+        </a>
+      );
+    }
+    last = match.index + match[0].length;
+  }
+  if (last < text.length) {
+    parts.push(<span key={parts.length}>{text.slice(last)}</span>);
+  }
+  return parts.length ? parts : [<span key={0}>{text || '\u00A0'}</span>];
+}
+
+export const mdStyles: Record<string, React.CSSProperties> = {
+  codeBlock: {
+    background: '#0d1117',
+    borderRadius: 6,
+    margin: '6px 0',
+    overflow: 'hidden',
+    border: `1px solid ${arena.border}`,
+    position: 'relative',
+  },
+  codeHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: '4px 10px',
+    borderBottom: `1px solid ${arena.border}`,
+    minHeight: 24,
+  },
+  codeLang: {
+    fontSize: 11,
+    color: arena.textMuted,
+    fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+  },
+  copyBtn: {
+    background: 'transparent',
+    border: `1px solid ${arena.border}`,
+    borderRadius: 4,
+    color: arena.textMuted,
+    fontSize: 10,
+    padding: '2px 8px',
+    cursor: 'pointer',
+    fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+  },
+  codePre: {
+    margin: 0,
+    padding: '10px 12px',
+    fontSize: 13,
+    lineHeight: '1.45',
+    color: arena.text,
+    fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+    overflowX: 'auto',
+    whiteSpace: 'pre',
+  },
+  inlineCode: {
+    background: 'rgba(240,246,252,0.08)',
+    padding: '2px 5px',
+    borderRadius: 3,
+    fontSize: '0.9em',
+    fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+  },
+  link: {
+    color: arena.accent,
+    textDecoration: 'underline',
+    textUnderlineOffset: '2px',
+  },
+  paragraph: {
+    lineHeight: '1.5',
+    minHeight: '1.2em',
+  },
+  h1: { fontSize: 18, fontWeight: 700, lineHeight: '1.4', margin: '16px 0 8px', color: arena.text },
+  h2: { fontSize: 16, fontWeight: 600, lineHeight: '1.4', margin: '12px 0 6px', color: arena.text },
+  h3: { fontSize: 14, fontWeight: 600, lineHeight: '1.4', margin: '10px 0 4px', color: arena.text },
+  listItem: { display: 'flex', gap: 8, lineHeight: '1.5', paddingLeft: 4 },
+  listBullet: { color: arena.textMuted, flexShrink: 0, width: 12 },
+  listNum: { color: arena.textMuted, flexShrink: 0, width: 16, textAlign: 'right' as const },
+};
+
+/* ─── Thinking Block (reasoning models) ─────────────────────────── */
+
+export const ThinkingBlock = React.memo(function ThinkingBlock({ text, isStreaming }: { text: string; isStreaming?: boolean }) {
+  const [expanded, setExpanded] = React.useState(!!isStreaming);
+  const lineCount = text.split('\n').length;
+
+  // Auto-expand while streaming, collapse when done
+  React.useEffect(() => {
+    if (isStreaming) setExpanded(true);
+  }, [isStreaming]);
+
+  return (
+    <div style={{
+      margin: '4px 0 6px',
+      borderLeft: '2px solid #a78bfa',
+      borderRadius: 4,
+      overflow: 'hidden',
+    }}>
+      <button
+        onClick={() => setExpanded(!expanded)}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 6,
+          padding: '4px 8px',
+          background: 'rgba(167,139,250,0.08)',
+          border: 'none',
+          cursor: 'pointer',
+          fontSize: 11,
+          color: '#a78bfa',
+          fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+          width: '100%',
+          textAlign: 'left',
+        }}
+      >
+        {isStreaming && (
+          <span style={{ animation: 'ruwt-pulse 1.2s ease-in-out infinite', fontSize: 8 }}>{'\u25CF'}</span>
+        )}
+        <span>{expanded ? '\u25BC' : '\u25B6'}</span>
+        <span>{isStreaming ? 'Thinking...' : `Thinking (${lineCount} line${lineCount !== 1 ? 's' : ''})`}</span>
+      </button>
+      {expanded && (
+        <div style={{
+          maxHeight: 200,
+          overflowY: 'auto',
+          padding: '6px 8px',
+          fontSize: 11,
+          lineHeight: '1.4',
+          color: arena.textSubtle,
+          fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+          whiteSpace: 'pre-wrap',
+          wordBreak: 'break-word',
+          background: 'rgba(167,139,250,0.04)',
+        }}>
+          {text}
+        </div>
+      )}
+    </div>
+  );
+});

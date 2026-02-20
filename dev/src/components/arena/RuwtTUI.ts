@@ -7,7 +7,7 @@ import type { Terminal } from '@xterm/xterm';
 import type { VirtualFileSystem } from './VirtualFileSystem';
 import { buildSystemPrompt, formatTestResultsForMessage, type AIMode, type TestResults } from '../../lib/ai/system-prompts';
 import { hasToolCalls, stripToolCalls } from '../../lib/ai/tool-parser';
-import { applyCodeFromResponse as sharedApplyCode, extractBestCodeBlock } from '../../lib/ai/code-apply';
+import { applyCodeFromResponse as sharedApplyCode } from '../../lib/ai/code-apply';
 import { callApplyModel } from '../../lib/ai/apply-model';
 import { computeLineDiff } from '../../lib/ai/line-diff';
 
@@ -278,6 +278,7 @@ export class RuwtTUI {
     const oldCode = this.fs.getSolutionCode();
     const result = sharedApplyCode(responseText, oldCode, this.language, this.mode);
 
+    // Code block extracted directly (free, instant)
     if (result.applied) {
       this.fs.setSolutionCode(result.newCode);
       this.onCodeApplied(result.newCode);
@@ -286,9 +287,9 @@ export class RuwtTUI {
       return true;
     }
 
-    // Structured edits failed — try apply model
+    // Response has code but no extractable block — use apply model
     if (result.needsApplyModel && this.attemptId) {
-      this.term.write('\r\n\r\n\x1b[33m[merging via AI...]\x1b[0m');
+      this.term.write('\r\n\r\n\x1b[33m[applying edit...]\x1b[0m');
       const applyResult = await callApplyModel({
         attemptId: this.attemptId,
         currentCode: oldCode,
@@ -297,24 +298,16 @@ export class RuwtTUI {
       });
 
       if (applyResult.success && applyResult.mergedCode) {
+        if (applyResult.mergedCode.trim() === oldCode.trim()) {
+          return false;
+        }
         this.fs.setSolutionCode(applyResult.mergedCode);
         this.onCodeApplied(applyResult.mergedCode);
-        this.term.write('\r\n\x1b[32m\u2713 Edit applied via AI merge\x1b[0m');
+        this.term.write('\r\n\x1b[32m\u2713 Code updated\x1b[0m');
         this.printDiffSummary(oldCode, applyResult.mergedCode);
         return true;
       }
 
-      // Apply model failed — fall back to code block extraction
-      const codeBlock = extractBestCodeBlock(responseText, this.language, oldCode);
-      if (codeBlock) {
-        this.fs.setSolutionCode(codeBlock);
-        this.onCodeApplied(codeBlock);
-        this.term.write('\r\n\x1b[33m! Edit match failed — used code block\x1b[0m');
-        this.printDiffSummary(oldCode, codeBlock);
-        return true;
-      }
-
-      this.term.write('\r\n\x1b[33m! Edit match failed\x1b[0m');
       return false;
     }
 

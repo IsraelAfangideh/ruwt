@@ -24,24 +24,43 @@ const APPLY_MODELS = [
   '@cf/meta/llama-3.2-1b-instruct',
 ];
 
-const SYSTEM_PROMPT = `You are a code merge tool. Your ONLY job is to output the complete, merged file.
-You will receive the current file and an AI response containing code edits.
-Apply the intended changes to the current file.
-Output ONLY the raw file content. No markdown. No backticks. No explanation. No commentary.`;
+const SYSTEM_PROMPT = `You are a code merge tool. Your ONLY job is to apply code changes and output the result.
 
-/** Strip accidental markdown fences from model output. */
+Rules:
+- You receive the current file and an AI response describing changes.
+- Apply ONLY the changes the AI intended. Do NOT add, remove, or modify anything else.
+- Preserve ALL existing code structure (function wrappers, exports, imports).
+- Output ONLY the raw file content — no markdown fences, no backticks, no explanation.
+- Start your output with the first line of code. End with the last line of code.
+- If the AI response contains no clear code changes, output the current file unchanged.`;
+
+/**
+ * Extract raw code from model output, stripping markdown fences and
+ * any prose the model added despite instructions.
+ */
 function stripFences(text: string): string {
   const trimmed = text.trim();
-  // Match ```lang\n...\n``` or ```\n...\n```
-  const fenceMatch = trimmed.match(/^```\w*\n([\s\S]*?)\n```$/);
-  if (fenceMatch) return fenceMatch[1];
-  // Match leading ``` without closing
+
+  // Try to extract the largest fenced code block from anywhere in the output.
+  // Models often prepend "Here is the merged code:" or similar prose.
+  const fenceMatches = [...trimmed.matchAll(/```\w*\n([\s\S]*?)```/g)];
+  if (fenceMatches.length > 0) {
+    // Use the largest code block (most likely the full merged file)
+    let best = '';
+    for (const m of fenceMatches) {
+      if (m[1].length > best.length) best = m[1];
+    }
+    return best.replace(/\n$/, ''); // trim trailing newline from fence
+  }
+
+  // No fences — check if it starts with ``` (unclosed fence)
   if (trimmed.startsWith('```')) {
     const lines = trimmed.split('\n');
-    lines.shift(); // remove opening fence
+    lines.shift();
     if (lines[lines.length - 1]?.trim() === '```') lines.pop();
     return lines.join('\n');
   }
+
   return trimmed;
 }
 
@@ -65,6 +84,21 @@ export async function onRequestPost(context: {
     }
 
     const { attemptId, currentCode, aiResponse, language } = parsed.data;
+
+    // Verify attempt ownership
+    const db = getDb(context.env);
+    const [attempt] = await db
+      .select({ userId: attempts.userId })
+      .from(attempts)
+      .where(eq(attempts.id, attemptId))
+      .limit(1);
+    if (!attempt) {
+      return Response.json({ error: 'Attempt not found' }, { status: 404 });
+    }
+    if (attempt.userId !== user.id) {
+      return Response.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
     const accountId = context.env.CLOUDFLARE_ACCOUNT_ID;
     const apiToken = context.env.CLOUDFLARE_API_TOKEN;
 
@@ -79,7 +113,7 @@ export async function onRequestPost(context: {
       { role: 'system', content: SYSTEM_PROMPT },
       {
         role: 'user',
-        content: `## Current file (${language})\n\`\`\`${language}\n${currentCode}\n\`\`\`\n\n## AI response with edits\n${aiResponse}\n\nOutput the complete merged file:`,
+        content: `CURRENT FILE:\n${currentCode}\n\nCHANGES TO APPLY:\n${aiResponse}\n\nOutput the merged file now:`,
       },
     ];
 
@@ -169,7 +203,6 @@ export async function onRequestPost(context: {
       cost = Math.ceil((inputTokens + outputTokens) * 0.01 / 1_000_000 * 10000);
     }
 
-    const db = getDb(context.env);
     await db
       .update(attempts)
       .set({

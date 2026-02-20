@@ -88,18 +88,34 @@ export async function onRequestPost(context: {
       }
       try {
         const db = getDb(context.env);
-        await db
-          .update(profiles)
-          .set({ credits: sql`${profiles.credits} + ${credits}` })
-          .where(eq(profiles.id, userId));
+        const stripeSessionId = session.id ?? null;
 
+        // Idempotency check: if we already processed this Stripe session, skip
+        if (stripeSessionId) {
+          const [existing] = await db
+            .select({ id: transactions.id })
+            .from(transactions)
+            .where(eq(transactions.stripeId, stripeSessionId))
+            .limit(1);
+          if (existing) {
+            return Response.json({ received: true, note: 'already processed' });
+          }
+        }
+
+        // Atomic: insert transaction first, then add credits.
+        // If the insert fails (e.g. duplicate), credits are never added.
         await db.insert(transactions).values({
           id: crypto.randomUUID(),
           userId,
           type: 'purchase',
           amount: credits,
-          stripeId: session.id ?? null,
+          stripeId: stripeSessionId,
         });
+
+        await db
+          .update(profiles)
+          .set({ credits: sql`${profiles.credits} + ${credits}` })
+          .where(eq(profiles.id, userId));
       } catch (err) {
         console.error('Failed to add credits:', err);
         return Response.json({ error: 'Database error' }, { status: 500 });
