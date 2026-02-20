@@ -5,47 +5,10 @@ import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Label } from '@/components/ui/Label';
+import { BrandPanel } from '@/components/BrandPanel';
+import { useIsDesktop } from '@/hooks/useWindowWidth';
 import { useColors } from '@/theme';
 import { spacing, fontSizes, fontFamily, radii } from '@/theme/tokens';
-
-const BREAKPOINT = 768;
-
-function useWindowWidth() {
-  const [w, setW] = useState(typeof window !== 'undefined' ? window.innerWidth : 1024);
-  useEffect(() => {
-    const h = () => setW(window.innerWidth);
-    window.addEventListener('resize', h);
-    return () => window.removeEventListener('resize', h);
-  }, []);
-  return w;
-}
-
-function BrandPanel() {
-  return (
-    <View style={styles.brandPanel}>
-      <View style={styles.brandContent}>
-        <Text style={styles.brandLogo}>Ruwt</Text>
-        <Text style={styles.brandTagline}>
-          Prove you can use AI{'\n'}better than anyone
-        </Text>
-        <View style={styles.brandFeatures}>
-          {[
-            '60+ real-world challenges',
-            '8 AI models across 5 tiers',
-            '50,000 free credits to start',
-          ].map((feat) => (
-            <View key={feat} style={styles.featureRow}>
-              <View style={styles.featureCheckCircle}>
-                <Text style={styles.featureCheck}>{'\u2713'}</Text>
-              </View>
-              <Text style={styles.featureText}>{feat}</Text>
-            </View>
-          ))}
-        </View>
-      </View>
-    </View>
-  );
-}
 
 export function CallbackScreen() {
   const navigation = useNavigation();
@@ -57,8 +20,7 @@ export function CallbackScreen() {
   const [resetSuccess, setResetSuccess] = useState(false);
   const c = useColors();
   const handled = useRef(false);
-  const width = useWindowWidth();
-  const isDesktop = width >= BREAKPOINT;
+  const isDesktop = useIsDesktop();
 
   useEffect(() => {
     const supabase = createClient();
@@ -288,58 +250,6 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
     minHeight: '100%' as any,
-  },
-  // Brand panel (shared with auth pages)
-  brandPanel: {
-    width: '42%',
-    backgroundColor: '#1a1816',
-    justifyContent: 'center',
-    padding: spacing['2xl'],
-  },
-  brandContent: {
-    maxWidth: 380,
-    alignSelf: 'center',
-  },
-  brandLogo: {
-    fontSize: 44,
-    fontWeight: '700',
-    color: '#f5f3f0',
-    fontFamily: fontFamily.display,
-    marginBottom: spacing.xl,
-  },
-  brandTagline: {
-    fontSize: 28,
-    fontWeight: '600',
-    color: '#f5f3f0',
-    fontFamily: fontFamily.body,
-    lineHeight: 38,
-    marginBottom: spacing.xl,
-  },
-  brandFeatures: {
-    gap: spacing.md,
-  },
-  featureRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm + 2,
-  },
-  featureCheckCircle: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: 'rgba(201, 169, 98, 0.2)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  featureCheck: {
-    color: '#c9a962',
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  featureText: {
-    color: '#e8e4df',
-    fontSize: fontSizes.md,
-    fontFamily: fontFamily.body,
   },
   // Form panel
   formPanel: {

@@ -1,54 +1,17 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { View, Text, ScrollView, StyleSheet, Image, Pressable } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Label } from '@/components/ui/Label';
+import { BrandPanel } from '@/components/BrandPanel';
+import { useIsDesktop } from '@/hooks/useWindowWidth';
 import { useColors } from '@/theme';
 import { spacing, fontSizes, fontFamily, radii } from '@/theme/tokens';
 
-const BREAKPOINT = 768;
-
-function useWindowWidth() {
-  const [w, setW] = useState(typeof window !== 'undefined' ? window.innerWidth : 1024);
-  useEffect(() => {
-    const h = () => setW(window.innerWidth);
-    window.addEventListener('resize', h);
-    return () => window.removeEventListener('resize', h);
-  }, []);
-  return w;
-}
-
 const githubIconUri = (color: string) =>
   `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="${color}"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>`)}`;
-
-function BrandPanel() {
-  return (
-    <View style={styles.brandPanel}>
-      <View style={styles.brandContent}>
-        <Text style={styles.brandLogo}>Ruwt</Text>
-        <Text style={styles.brandTagline}>
-          Prove you can use AI{'\n'}better than anyone
-        </Text>
-        <View style={styles.brandFeatures}>
-          {[
-            '60+ real-world challenges',
-            '8 AI models across 5 tiers',
-            '50,000 free credits to start',
-          ].map((feat) => (
-            <View key={feat} style={styles.featureRow}>
-              <View style={styles.featureCheckCircle}>
-                <Text style={styles.featureCheck}>{'\u2713'}</Text>
-              </View>
-              <Text style={styles.featureText}>{feat}</Text>
-            </View>
-          ))}
-        </View>
-      </View>
-    </View>
-  );
-}
 
 export function RegisterScreen() {
   const [name, setName] = useState('');
@@ -60,8 +23,7 @@ export function RegisterScreen() {
   const navigation = useNavigation();
   const supabase = createClient();
   const c = useColors();
-  const width = useWindowWidth();
-  const isDesktop = width >= BREAKPOINT;
+  const isDesktop = useIsDesktop();
 
   const handleRegister = async () => {
     setLoading(true);
@@ -246,57 +208,6 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
     minHeight: '100%' as any,
-  },
-  brandPanel: {
-    width: '42%',
-    backgroundColor: '#1a1816',
-    justifyContent: 'center',
-    padding: spacing['2xl'],
-  },
-  brandContent: {
-    maxWidth: 380,
-    alignSelf: 'center',
-  },
-  brandLogo: {
-    fontSize: 44,
-    fontWeight: '700',
-    color: '#f5f3f0',
-    fontFamily: fontFamily.display,
-    marginBottom: spacing.xl,
-  },
-  brandTagline: {
-    fontSize: 28,
-    fontWeight: '600',
-    color: '#f5f3f0',
-    fontFamily: fontFamily.body,
-    lineHeight: 38,
-    marginBottom: spacing.xl,
-  },
-  brandFeatures: {
-    gap: spacing.md,
-  },
-  featureRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm + 2,
-  },
-  featureCheckCircle: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: 'rgba(201, 169, 98, 0.2)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  featureCheck: {
-    color: '#c9a962',
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  featureText: {
-    color: '#e8e4df',
-    fontSize: fontSizes.md,
-    fontFamily: fontFamily.body,
   },
   formPanel: {
     flexGrow: 1,

@@ -1,4 +1,3 @@
-import { useState, useEffect } from 'react';
 import { View, Text, ScrollView, Pressable, StyleSheet } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Button } from '@/components/ui/Button';
@@ -9,16 +8,7 @@ import { FeaturedReplay } from '@/components/FeaturedReplay';
 import { ActivityFeed } from '@/components/ActivityFeed';
 import { useColors } from '@/theme';
 import { spacing, fontSizes, fontFamily } from '@/theme/tokens';
-
-function useWindowWidth() {
-  const [w, setW] = useState(typeof window !== 'undefined' ? window.innerWidth : 1024);
-  useEffect(() => {
-    const h = () => setW(window.innerWidth);
-    window.addEventListener('resize', h);
-    return () => window.removeEventListener('resize', h);
-  }, []);
-  return w;
-}
+import { useWindowWidth } from '@/hooks/useWindowWidth';
 
 export function LandingScreen() {
   const navigation = useNavigation();
