@@ -1,3 +1,4 @@
+import { useState, useCallback } from 'react';
 import { TextInput, View, Text, StyleSheet, type TextInputProps, type ViewStyle } from 'react-native';
 import { useColors } from '@/theme';
 import { spacing, radii, fontSizes, fontFamily } from '@/theme/tokens';
@@ -14,22 +15,39 @@ interface InputProps extends Omit<TextInputProps, 'style'> {
   keyboardType?: string;
   autoCapitalize?: string;
   onSubmitEditing?: () => void;
+  onFocus?: (e: any) => void;
+  onBlur?: (e: any) => void;
 }
 
-export function Input({ label, containerStyle, inputStyle, ...props }: InputProps) {
+export function Input({ label, containerStyle, inputStyle, onFocus, onBlur, ...props }: InputProps) {
   const c = useColors();
+  const [focused, setFocused] = useState(false);
+
+  const handleFocus = useCallback((e: any) => {
+    setFocused(true);
+    onFocus?.(e);
+  }, [onFocus]);
+
+  const handleBlur = useCallback((e: any) => {
+    setFocused(false);
+    onBlur?.(e);
+  }, [onBlur]);
+
   return (
     <View style={[styles.wrap, containerStyle]}>
       {label ? <Text style={[styles.label, { color: c.text }]}>{label}</Text> : null}
       <TextInput
         placeholderTextColor={c.textSubtle}
+        onFocus={handleFocus}
+        onBlur={handleBlur}
         style={[
           styles.input,
           {
             backgroundColor: c.bgElevated,
-            borderColor: c.borderStrong,
+            borderColor: focused ? c.accent : c.borderStrong,
             color: c.text,
           },
+          focused && styles.inputFocused,
           inputStyle,
         ]}
         {...props}
@@ -45,8 +63,15 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: radii.md,
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    paddingVertical: spacing.sm + 2,
     fontSize: fontSizes.md,
     fontFamily: fontFamily.body,
+    outlineWidth: 0,
+  } as any,
+  inputFocused: {
+    borderWidth: 2,
+    // Compensate for the extra border pixel so the input doesn't shift
+    paddingHorizontal: spacing.md - 1,
+    paddingVertical: spacing.sm + 1,
   },
 });

@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { View, Text, ScrollView, Pressable, StyleSheet } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Button } from '@/components/ui/Button';
@@ -9,12 +10,25 @@ import { ActivityFeed } from '@/components/ActivityFeed';
 import { useColors } from '@/theme';
 import { spacing, fontSizes, fontFamily } from '@/theme/tokens';
 
+function useWindowWidth() {
+  const [w, setW] = useState(typeof window !== 'undefined' ? window.innerWidth : 1024);
+  useEffect(() => {
+    const h = () => setW(window.innerWidth);
+    window.addEventListener('resize', h);
+    return () => window.removeEventListener('resize', h);
+  }, []);
+  return w;
+}
+
 export function LandingScreen() {
   const navigation = useNavigation();
   const c = useColors();
+  const width = useWindowWidth();
+  const isMobile = width < 768;
 
   return (
     <ScrollView style={[styles.page, { backgroundColor: c.bg }]}>
+      {/* ─── Nav ─── */}
       <View style={[styles.header, { borderBottomColor: c.border }]}>
         <Text style={[styles.logo, { color: c.text }]}>Ruwt</Text>
         <View style={styles.headerActions}>
@@ -23,31 +37,64 @@ export function LandingScreen() {
         </View>
       </View>
 
-      <View style={styles.hero}>
-        <Badge variant="secondary">Now in Beta</Badge>
-        <Text style={[styles.heroTitle, { color: c.text }]}>
-          Prove You Can Use AI{'\n'}
-          <Text style={{ color: c.accent }}>Better Than Anyone</Text>
-        </Text>
-        <Text style={[styles.heroSub, { color: c.textMuted }]}>
-          Solve coding challenges using real AI models. The twist: you're ranked by how efficiently you use them. Pick the right model, craft concise prompts, debug cheaply.
-        </Text>
-        <View style={styles.heroButtons}>
-          <Button size="lg" onPress={() => navigation.navigate('Register' as never)}>Start Free Practice</Button>
-        </View>
-        <Button variant="outline" size="lg" onPress={() => {
-          // Navigate to guest arena with a curated starter challenge
-          // Uses first available challenge as fallback; real onboarding challenge can be set later
-          (navigation.navigate as any)('GuestArena', { challengeId: 'onboarding-fizzbuzz' });
-        }}>Try a Challenge — No Sign Up</Button>
-        <Pressable onPress={() => navigation.navigate('Teams' as never)} style={styles.hiringLink}>
-          <Text style={[styles.hiringLinkText, { color: c.textMuted }]}>
-            Hiring manager? See how we assess AI skills {'\u2192'}
+      {/* ─── Hero ─── */}
+      <View style={[styles.hero, { backgroundColor: '#1a1816' }]}>
+        <View style={styles.heroInner}>
+          <Badge variant="secondary" style={{ alignSelf: 'center' }}>Now in Beta</Badge>
+          <Text style={styles.heroTitle}>
+            Prove You Can Use AI{'\n'}
+            <Text style={{ color: '#c9a962' }}>Better Than Anyone</Text>
           </Text>
-        </Pressable>
+          <Text style={styles.heroSub}>
+            Solve coding challenges using real AI models. The twist:{'\n'}you're ranked by how efficiently you use them.
+          </Text>
+
+          {/* Stats row */}
+          <View style={[styles.statsRow, isMobile && styles.statsRowMobile]}>
+            {[
+              { value: '60+', label: 'Challenges' },
+              { value: '8', label: 'AI Models' },
+              { value: '5', label: 'Cost Tiers' },
+              { value: 'Free', label: 'To Start' },
+            ].map((stat) => (
+              <View key={stat.label} style={styles.statItem}>
+                <Text style={styles.statValue}>{stat.value}</Text>
+                <Text style={styles.statLabel}>{stat.label}</Text>
+              </View>
+            ))}
+          </View>
+
+          <View style={styles.heroCtas}>
+            <Button
+              size="lg"
+              onPress={() => navigation.navigate('Register' as never)}
+              style={{ backgroundColor: '#c9a962' }}
+              textStyle={{ color: '#1a1816' }}
+            >
+              Start Free Practice
+            </Button>
+            <Button
+              variant="outline"
+              size="lg"
+              onPress={() => {
+                (navigation.navigate as any)('GuestArena', { challengeId: 'onboarding-fizzbuzz' });
+              }}
+              style={{ borderColor: 'rgba(232,228,223,0.25)' }}
+              textStyle={{ color: '#f5f3f0' }}
+            >
+              Try a Challenge — No Sign Up
+            </Button>
+          </View>
+
+          <Pressable onPress={() => navigation.navigate('Teams' as never)} style={styles.hiringLink}>
+            <Text style={styles.hiringLinkText}>
+              Hiring manager? See how we assess AI skills {'\u2192'}
+            </Text>
+          </Pressable>
+        </View>
       </View>
 
-      {/* Daily Challenge CTA */}
+      {/* ─── Daily Challenge CTA ─── */}
       <View style={[styles.section, { paddingBottom: 0 }]}>
         <Card style={[styles.tryChallengeCard, { backgroundColor: c.muted + '30' }]}>
           <CardHeader>
@@ -58,22 +105,19 @@ export function LandingScreen() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Button
-              variant="outline"
-              onPress={() => navigation.navigate('Register' as never)}
-            >
+            <Button variant="outline" onPress={() => navigation.navigate('Register' as never)}>
               See Today's Challenge
             </Button>
           </CardContent>
         </Card>
       </View>
 
-      {/* Live platform stats */}
+      {/* ─── Live platform stats ─── */}
       <View style={styles.section}>
         <PlatformStats />
       </View>
 
-      {/* Recent activity — only renders if there's data */}
+      {/* ─── Recent activity ─── */}
       <View style={[styles.section, { paddingTop: 0 }]}>
         <View style={styles.activityWrap}>
           <Text style={[styles.sectionTitle, { color: c.text, fontSize: fontSizes.xl, marginBottom: spacing.md }]}>
@@ -83,9 +127,9 @@ export function LandingScreen() {
         </View>
       </View>
 
-      {/* Try a Challenge CTA */}
+      {/* ─── Featured challenge CTA ─── */}
       <View style={[styles.section, { paddingTop: 0 }]}>
-        <Card style={[styles.tryChallengeCard, { borderColor: '#f59e0b', borderWidth: 1, borderLeftWidth: 4 }]}>
+        <Card style={[styles.tryChallengeCard, { borderColor: c.accent, borderWidth: 1, borderLeftWidth: 4 }]}>
           <CardHeader>
             <Badge variant="default">Real-World</Badge>
             <CardTitle>Fix the Connection Pool Race Condition</CardTitle>
@@ -94,16 +138,14 @@ export function LandingScreen() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Button
-              variant="outline"
-              onPress={() => navigation.navigate('Register' as never)}
-            >
+            <Button variant="outline" onPress={() => navigation.navigate('Register' as never)}>
               Try This Challenge
             </Button>
           </CardContent>
         </Card>
       </View>
 
+      {/* ─── Three Skills ─── */}
       <View style={styles.section}>
         <Text style={[styles.sectionTitle, { color: c.text }]}>Three Skills That Matter</Text>
         <Text style={[styles.sectionSub, { color: c.textMuted }]}>
@@ -111,14 +153,26 @@ export function LandingScreen() {
         </Text>
         <View style={styles.cards}>
           {[
-            { step: '$', title: 'Model Selection', desc: 'Know when a $0.01 model works and when you need a $0.50 one. Using premium for FizzBuzz is a red flag.' },
-            { step: '\u270F', title: 'Prompt Efficiency', desc: 'Get working code in fewer tokens. Concise, structured prompts beat verbose walls of text every time.' },
-            { step: '\u{1F41B}', title: 'Iterative Debugging', desc: 'Real engineering tickets. Diagnose and fix bugs cheaply — don\'t burn tokens asking for full rewrites.' },
+            {
+              icon: '$',
+              title: 'Model Selection',
+              desc: 'Know when a $0.01 model works and when you need a $0.50 one. Using premium for FizzBuzz is a red flag.',
+            },
+            {
+              icon: '\u270F',
+              title: 'Prompt Efficiency',
+              desc: 'Get working code in fewer tokens. Concise, structured prompts beat verbose walls of text every time.',
+            },
+            {
+              icon: '\u{1F41B}',
+              title: 'Iterative Debugging',
+              desc: "Real engineering tickets. Diagnose and fix bugs cheaply — don't burn tokens asking for full rewrites.",
+            },
           ].map((item) => (
-            <Card key={item.step} style={styles.card}>
+            <Card key={item.icon} style={styles.card}>
               <CardHeader>
-                <View style={[styles.stepNum, { backgroundColor: c.accent + '20' }]}>
-                  <Text style={[styles.stepText, { color: c.accent }]}>{item.step}</Text>
+                <View style={[styles.iconCircle, { backgroundColor: c.accentBg }]}>
+                  <Text style={[styles.iconText, { color: c.accent }]}>{item.icon}</Text>
                 </View>
                 <CardTitle>{item.title}</CardTitle>
                 <CardDescription>{item.desc}</CardDescription>
@@ -128,7 +182,7 @@ export function LandingScreen() {
         </View>
       </View>
 
-      {/* Featured replay */}
+      {/* ─── Featured replay ─── */}
       <View style={styles.section}>
         <Text style={[styles.sectionTitle, { color: c.text }]}>Watch How Top Solvers Think</Text>
         <Text style={[styles.sectionSub, { color: c.textMuted }]}>
@@ -137,18 +191,19 @@ export function LandingScreen() {
         <FeaturedReplay />
       </View>
 
+      {/* ─── How It Works ─── */}
       <View style={[styles.section, styles.sectionAlt, { backgroundColor: c.muted + '40' }]}>
         <Text style={[styles.sectionTitle, { color: c.text }]}>How It Works</Text>
         <View style={styles.cards}>
           {[
             { step: '1', title: 'Pick a Challenge', desc: 'Browse 60+ challenges across model selection, prompt efficiency, debugging, and multi-model strategy. Choose timed or untimed.' },
             { step: '2', title: 'Solve with AI', desc: 'Use the Arena IDE with 8 real AI models across 5 tiers. Switch between Micro, Budget, Mid, Premium, and Reasoning strategically.' },
-            { step: '3', title: 'Climb the Leaderboard', desc: 'Submit your solution. You\'re ranked by cost efficiency — solve it correctly with the least spend.' },
+            { step: '3', title: 'Climb the Leaderboard', desc: "Submit your solution. You're ranked by cost efficiency — solve it correctly with the least spend." },
           ].map((item) => (
             <Card key={item.step} style={styles.card}>
               <CardHeader>
-                <View style={[styles.stepNum, { backgroundColor: c.accent + '20' }]}>
-                  <Text style={[styles.stepText, { color: c.accent }]}>{item.step}</Text>
+                <View style={[styles.iconCircle, { backgroundColor: c.accentBg }]}>
+                  <Text style={[styles.iconText, { color: c.accent }]}>{item.step}</Text>
                 </View>
                 <CardTitle>{item.title}</CardTitle>
                 <CardDescription>{item.desc}</CardDescription>
@@ -158,19 +213,21 @@ export function LandingScreen() {
         </View>
       </View>
 
-
-      {/* Trust signals */}
-      <View style={[styles.section, styles.sectionAlt, { backgroundColor: c.muted + '20' }]}>
+      {/* ─── Trust Signals ─── */}
+      <View style={[styles.section, { backgroundColor: c.bg }]}>
         <Text style={[styles.sectionTitle, { color: c.text }]}>Built on Trust</Text>
         <View style={styles.trustGrid}>
           {[
-            { title: 'Powered by Cloudflare', desc: 'Enterprise-grade infrastructure. Edge-deployed globally for low latency.' },
-            { title: 'Open Source Models', desc: 'No vendor lock-in. All models are open-weight and community-audited.' },
-            { title: 'Your Data Stays Private', desc: 'Code runs in sandboxed execution. We never store your solutions beyond the session.' },
-            { title: 'Real Leaderboard', desc: 'Rankings are based on actual AI costs — no gamification tricks or vanity metrics.' },
+            { icon: '\u26A1', title: 'Powered by Cloudflare', desc: 'Enterprise-grade infrastructure. Edge-deployed globally for low latency.' },
+            { icon: '\u{1F513}', title: 'Open Source Models', desc: 'No vendor lock-in. All models are open-weight and community-audited.' },
+            { icon: '\u{1F6E1}', title: 'Your Data Stays Private', desc: 'Code runs in sandboxed execution. We never store your solutions beyond the session.' },
+            { icon: '\u{1F3C6}', title: 'Real Leaderboard', desc: 'Rankings are based on actual AI costs — no gamification tricks or vanity metrics.' },
           ].map((item) => (
             <Card key={item.title} style={styles.trustCard}>
               <CardHeader>
+                <View style={[styles.trustIconCircle, { backgroundColor: c.accentBg }]}>
+                  <Text style={{ fontSize: 20 }}>{item.icon}</Text>
+                </View>
                 <CardTitle>{item.title}</CardTitle>
                 <CardDescription>{item.desc}</CardDescription>
               </CardHeader>
@@ -179,19 +236,38 @@ export function LandingScreen() {
         </View>
       </View>
 
-
-      <View style={styles.cta}>
-        <Text style={[styles.ctaTitle, { color: c.text }]}>Ready to prove your AI skills?</Text>
-        <Text style={[styles.ctaSub, { color: c.textMuted }]}>Free unlimited practice. 60+ challenges. 8 AI models. No credit card required.</Text>
-        <View style={styles.heroButtons}>
-          <Button size="lg" onPress={() => navigation.navigate('Register' as never)}>Get Started Free</Button>
-          <Button size="lg" variant="outline" onPress={() => navigation.navigate('Register' as never)}>Book a Demo</Button>
+      {/* ─── Final CTA ─── */}
+      <View style={[styles.ctaSection, { backgroundColor: '#1a1816' }]}>
+        <Text style={styles.ctaTitle}>Ready to prove your AI skills?</Text>
+        <Text style={styles.ctaSub}>
+          Free unlimited practice. 60+ challenges. 8 AI models. No credit card required.
+        </Text>
+        <View style={styles.heroCtas}>
+          <Button
+            size="lg"
+            onPress={() => navigation.navigate('Register' as never)}
+            style={{ backgroundColor: '#c9a962' }}
+            textStyle={{ color: '#1a1816' }}
+          >
+            Get Started Free
+          </Button>
+          <Button
+            size="lg"
+            variant="outline"
+            onPress={() => navigation.navigate('Teams' as never)}
+            style={{ borderColor: 'rgba(232,228,223,0.25)' }}
+            textStyle={{ color: '#f5f3f0' }}
+          >
+            Book a Demo
+          </Button>
         </View>
       </View>
 
-
+      {/* ─── Footer ─── */}
       <View style={[styles.footer, { borderTopColor: c.border }]}>
-        <Text style={[styles.footerText, { color: c.textMuted }]}>{'\u00A9'} {new Date().getFullYear()} Ruwt. All rights reserved.</Text>
+        <Text style={[styles.footerText, { color: c.textMuted }]}>
+          {'\u00A9'} {new Date().getFullYear()} Ruwt. All rights reserved.
+        </Text>
       </View>
     </ScrollView>
   );
@@ -199,6 +275,8 @@ export function LandingScreen() {
 
 const styles = StyleSheet.create({
   page: { flex: 1 },
+
+  /* Nav */
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -207,32 +285,81 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
     borderBottomWidth: 1,
   },
-  logo: { fontSize: fontSizes.xl, fontWeight: '700', fontFamily: fontFamily.body },
+  logo: {
+    fontSize: fontSizes.xl,
+    fontWeight: '700',
+    fontFamily: fontFamily.display,
+  },
   headerActions: { flexDirection: 'row', gap: spacing.md },
+
+  /* Hero */
   hero: {
-    paddingVertical: spacing['2xl'],
+    paddingVertical: spacing['2xl'] + 16,
     paddingHorizontal: spacing.lg,
-    alignItems: 'center',
+  },
+  heroInner: {
     maxWidth: 800,
     alignSelf: 'center',
+    alignItems: 'center',
+    gap: spacing.md,
   },
   heroTitle: {
-    fontSize: 32,
+    fontSize: 40,
     fontWeight: '700',
     textAlign: 'center',
-    marginTop: spacing.md,
-    marginBottom: spacing.sm,
+    color: '#f5f3f0',
     fontFamily: fontFamily.body,
+    lineHeight: 50,
   },
   heroSub: {
     fontSize: fontSizes.lg,
     textAlign: 'center',
-    marginBottom: spacing.lg,
+    color: '#9a938a',
+    fontFamily: fontFamily.body,
+    lineHeight: 28,
+    maxWidth: 560,
+  },
+  statsRow: {
+    flexDirection: 'row',
+    gap: spacing.xl,
+    marginVertical: spacing.lg,
+  },
+  statsRowMobile: {
+    gap: spacing.md,
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+  },
+  statItem: {
+    alignItems: 'center',
+    gap: 2,
+  },
+  statValue: {
+    fontSize: fontSizes['2xl'],
+    fontWeight: '700',
+    color: '#c9a962',
     fontFamily: fontFamily.body,
   },
-  heroButtons: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md, justifyContent: 'center' },
-  hiringLink: { marginTop: spacing.md },
-  hiringLinkText: { fontSize: fontSizes.sm, fontFamily: fontFamily.body },
+  statLabel: {
+    fontSize: fontSizes.xs,
+    color: '#9a938a',
+    fontFamily: fontFamily.body,
+    textTransform: 'uppercase' as any,
+    letterSpacing: 1,
+  },
+  heroCtas: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.md,
+    justifyContent: 'center',
+  },
+  hiringLink: { marginTop: spacing.xs },
+  hiringLinkText: {
+    fontSize: fontSizes.sm,
+    fontFamily: fontFamily.body,
+    color: '#9a938a',
+  },
+
+  /* Sections */
   section: { padding: spacing.lg, paddingVertical: spacing.xl },
   sectionAlt: { marginHorizontal: 0 },
   sectionTitle: {
@@ -249,6 +376,8 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     fontFamily: fontFamily.body,
   },
+
+  /* Cards */
   cards: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -259,7 +388,7 @@ const styles = StyleSheet.create({
   },
   card: { flex: 1, minWidth: 240 },
   tryChallengeCard: { maxWidth: 500, alignSelf: 'center', width: '100%' },
-  stepNum: {
+  iconCircle: {
     width: 48,
     height: 48,
     borderRadius: 24,
@@ -267,7 +396,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: spacing.sm,
   },
-  stepText: { fontSize: fontSizes.xl, fontWeight: '700' },
+  iconText: { fontSize: fontSizes.xl, fontWeight: '700' },
+
+  /* Trust */
   trustGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -276,17 +407,42 @@ const styles = StyleSheet.create({
     maxWidth: 800,
     alignSelf: 'center',
   },
-  activityWrap: { maxWidth: 600, alignSelf: 'center', width: '100%' },
   trustCard: { flex: 1, minWidth: 200 },
-  tiers: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md, justifyContent: 'center', maxWidth: 1100, alignSelf: 'center' },
-  tierCard: { flex: 1, minWidth: 220 },
-  tierBody: { fontSize: fontSizes.sm },
-  cta: {
-    paddingVertical: spacing['2xl'],
+  trustIconCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.xs,
   },
-  ctaTitle: { fontSize: fontSizes['3xl'], fontWeight: '700', marginBottom: spacing.sm, fontFamily: fontFamily.body, textAlign: 'center' },
-  ctaSub: { marginBottom: spacing.lg, fontFamily: fontFamily.body, textAlign: 'center', maxWidth: 500 },
+
+  /* Activity */
+  activityWrap: { maxWidth: 600, alignSelf: 'center', width: '100%' },
+
+  /* Final CTA */
+  ctaSection: {
+    paddingVertical: spacing['2xl'] + 16,
+    paddingHorizontal: spacing.lg,
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  ctaTitle: {
+    fontSize: fontSizes['3xl'],
+    fontWeight: '700',
+    color: '#f5f3f0',
+    fontFamily: fontFamily.body,
+    textAlign: 'center',
+  },
+  ctaSub: {
+    color: '#9a938a',
+    fontFamily: fontFamily.body,
+    textAlign: 'center',
+    maxWidth: 500,
+    marginBottom: spacing.sm,
+  },
+
+  /* Footer */
   footer: {
     padding: spacing.lg,
     borderTopWidth: 1,
