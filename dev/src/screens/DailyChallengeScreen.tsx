@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/Button';
 import { Avatar } from '@/components/ui/Avatar';
 import { useColors } from '@/theme';
 import { spacing, fontSizes, fontFamily } from '@/theme/tokens';
+import { useDocumentMeta } from '@/hooks/useDocumentMeta';
 
 interface DailyData {
   date: string;
@@ -35,6 +36,7 @@ interface DailyData {
 }
 
 export function DailyChallengeScreen() {
+  useDocumentMeta({ title: 'Daily Challenge', description: "Today's AI coding challenge. Compete daily, build your streak, climb the seasonal leaderboard.", canonicalPath: '/daily' });
   const navigation = useNavigation();
   const c = useColors();
   const [user, setUser] = useState<any>(null);

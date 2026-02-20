@@ -12,6 +12,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { ArenaIDE, type ArenaChallenge } from '@/components/ArenaIDE';
 import { arena } from '@/theme/colors';
 import { getDifficultyStyle } from '@/lib/difficulty';
+import { useDocumentMeta } from '@/hooks/useDocumentMeta';
 
 export function GuestArenaScreen() {
   const navigation = useNavigation();
@@ -25,6 +26,12 @@ export function GuestArenaScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showSignupOverlay, setShowSignupOverlay] = useState(false);
+
+  useDocumentMeta({
+    title: challenge ? `Try: ${challenge.title}` : 'Try Challenge',
+    description: challenge ? `${challenge.difficulty} ${challenge.category || ''} challenge. ${challenge.description?.slice(0, 120)}...` : undefined,
+    canonicalPath: challengeId ? `/try/${challengeId}` : undefined,
+  });
 
   // Load challenge on mount (public endpoint, no auth)
   useEffect(() => {

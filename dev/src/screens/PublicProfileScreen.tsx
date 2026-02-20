@@ -10,6 +10,7 @@ import { Card } from '@/components/ui/Card';
 import { RadarChart } from '@/components/RadarChart';
 import { useColors } from '@/theme';
 import { spacing, fontSizes, fontFamily } from '@/theme/tokens';
+import { useDocumentMeta } from '@/hooks/useDocumentMeta';
 
 interface ProfileData {
   user: {
@@ -57,6 +58,12 @@ export function PublicProfileScreen() {
   const [data, setData] = useState<ProfileData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  useDocumentMeta({
+    title: data ? `${data.user.name || data.user.username}'s Profile` : undefined,
+    description: data ? `${data.user.name || data.user.username} has solved ${data.stats.solved} challenges with an average cost of ${formatCost(data.stats.avgCost)}. View their AI efficiency stats on ruwt.dev.` : undefined,
+    canonicalPath: username ? `/u/${username}` : undefined,
+  });
 
   useEffect(() => {
     if (!username) {

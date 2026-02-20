@@ -11,6 +11,7 @@ import { ActivityFeed } from '@/components/ActivityFeed';
 import { ReplayViewer } from '@/components/ReplayViewer';
 import { useColors } from '@/theme';
 import { spacing, fontSizes, fontFamily } from '@/theme/tokens';
+import { useDocumentMeta } from '@/hooks/useDocumentMeta';
 
 type GlobalEntry = {
   rank: number;
@@ -47,6 +48,7 @@ interface SeasonInfo {
 }
 
 export function LeaderboardScreen() {
+  useDocumentMeta({ title: 'Leaderboard', description: 'See who uses AI most efficiently. Global rankings by challenges solved and average cost.', canonicalPath: '/leaderboard' });
   const navigation = useNavigation();
   const [user, setUser] = useState<any>(null);
   const [tab, setTab] = useState<Tab>('global');

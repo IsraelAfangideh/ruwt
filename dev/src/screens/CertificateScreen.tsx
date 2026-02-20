@@ -6,6 +6,7 @@ import { View, Text, ActivityIndicator, StyleSheet } from 'react-native';
 import { useRoute } from '@react-navigation/native';
 import { useColors } from '@/theme';
 import { spacing, fontSizes, fontFamily } from '@/theme/tokens';
+import { useDocumentMeta } from '@/hooks/useDocumentMeta';
 
 interface CertData {
   id: string;
@@ -26,6 +27,12 @@ export function CertificateScreen() {
   const [cert, setCert] = useState<CertData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  useDocumentMeta({
+    title: cert ? `Certificate: ${cert.title}` : undefined,
+    description: cert ? `${cert.holder?.name || 'A developer'} earned "${cert.title}" on ruwt.dev. Verified AI engineering certificate.` : undefined,
+    canonicalPath: shareToken ? `/cert/${shareToken}` : undefined,
+  });
 
   useEffect(() => {
     if (!shareToken) {

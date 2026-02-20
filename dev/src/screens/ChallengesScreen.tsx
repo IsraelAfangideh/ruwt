@@ -10,6 +10,7 @@ import { spacing, fontSizes, fontFamily } from '@/theme/tokens';
 import { useToast } from '@/components/ui/Toast';
 import { useIsMobile } from '@/lib/useIsMobile';
 import { DIFFICULTIES, getDifficultyStyle } from '@/lib/difficulty';
+import { useDocumentMeta } from '@/hooks/useDocumentMeta';
 
 const CATEGORIES = [
   { key: 'all', label: 'All' },
@@ -59,6 +60,7 @@ function getInitialDifficulty(): string {
 }
 
 export function ChallengesScreen() {
+  useDocumentMeta({ title: 'AI Coding Challenges', description: 'Browse 60+ coding challenges across 11 categories. Test your AI efficiency in model selection, prompt engineering, debugging, and more.', canonicalPath: '/challenges' });
   const navigation = useNavigation();
   const [user, setUser] = useState<any>(null);
   const [challenges, setChallenges] = useState<Challenge[]>([]);

@@ -9,8 +9,10 @@ import { ActivityFeed } from '@/components/ActivityFeed';
 import { useColors } from '@/theme';
 import { spacing, fontSizes, fontFamily } from '@/theme/tokens';
 import { useWindowWidth } from '@/hooks/useWindowWidth';
+import { useDocumentMeta } from '@/hooks/useDocumentMeta';
 
 export function LandingScreen() {
+  useDocumentMeta({ canonicalPath: '/' });
   const navigation = useNavigation();
   const c = useColors();
   const width = useWindowWidth();

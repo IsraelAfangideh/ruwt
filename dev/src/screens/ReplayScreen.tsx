@@ -9,6 +9,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { useColors } from '@/theme';
 import { spacing, fontSizes, fontFamily } from '@/theme/tokens';
 import { getModelById, tierColor, formatCostFromHundredths } from '@/lib/ai/pricing';
+import { useDocumentMeta } from '@/hooks/useDocumentMeta';
 
 interface ReplayMessage {
   role: string;
@@ -48,6 +49,12 @@ export function ReplayScreen() {
   const [error, setError] = useState<string | null>(null);
   const [copiedLink, setCopiedLink] = useState(false);
   const [copiedEmbed, setCopiedEmbed] = useState(false);
+
+  useDocumentMeta({
+    title: data ? `Replay: ${data.challenge.title}` : undefined,
+    description: data ? `Watch how ${data.solver.name} solved "${data.challenge.title}" using ${(data.attempt.inputTokens + data.attempt.outputTokens).toLocaleString()} tokens. ${data.challenge.difficulty} challenge replay on ruwt.dev.` : undefined,
+    canonicalPath: attemptId ? `/replay/${attemptId}` : undefined,
+  });
 
   // Detect embed mode
   const isEmbed = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('embed') === '1';

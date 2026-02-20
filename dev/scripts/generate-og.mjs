@@ -2,6 +2,7 @@
  * Prebuild script: generates static assets from SVG sources.
  * - og-image.svg → og-image.png (1200x630, for Twitter/social cards)
  * - favicon.svg → favicon.ico (32x32, for legacy browser support)
+ * - favicon.svg → apple-touch-icon.png (180x180, for iOS home screen)
  * Run: node scripts/generate-og.mjs
  */
 import sharp from 'sharp';
@@ -27,3 +28,10 @@ await sharp(favSvg)
   .png()
   .toFile(resolve(publicDir, 'favicon.ico'));
 console.log('Generated favicon.ico (32x32)');
+
+// Apple Touch Icon: SVG → PNG (180x180)
+await sharp(favSvg)
+  .resize(180, 180)
+  .png()
+  .toFile(resolve(publicDir, 'apple-touch-icon.png'));
+console.log('Generated apple-touch-icon.png (180x180)');

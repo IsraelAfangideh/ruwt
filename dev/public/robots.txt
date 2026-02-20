@@ -1,4 +1,15 @@
 User-agent: *
 Allow: /
 
+Disallow: /dashboard
+Disallow: /profile
+Disallow: /settings
+Disallow: /onboarding
+Disallow: /callback
+Disallow: /arena/
+Disallow: /assessments
+Disallow: /assess/
+Disallow: /results/
+Disallow: /teams
+
 Sitemap: https://ruwt.dev/sitemap.xml

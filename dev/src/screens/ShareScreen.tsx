@@ -8,6 +8,7 @@ import { useRoute, useNavigation } from '@react-navigation/native';
 import { useColors } from '@/theme';
 import { spacing, fontSizes, fontFamily } from '@/theme/tokens';
 import { getDifficultyStyle } from '@/lib/difficulty';
+import { useDocumentMeta } from '@/hooks/useDocumentMeta';
 
 interface ShareData {
   attemptId: string;
@@ -45,6 +46,12 @@ export function ShareScreen() {
   const [data, setData] = useState<ShareData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  useDocumentMeta({
+    title: data ? `${data.solver?.name || 'A developer'} solved "${data.challenge?.title || 'Challenge'}" for ${formatCost(data.cost)}` : undefined,
+    description: data ? `Solved with ${formatCost(data.cost)} AI cost on ruwt.dev. Ranked by efficiency.` : undefined,
+    canonicalPath: attemptId ? `/share/${attemptId}` : undefined,
+  });
 
   useEffect(() => {
     if (!attemptId) {
