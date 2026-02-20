@@ -174,18 +174,31 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
       return Response.json({ error: 'Challenge not found' }, { status: 404 });
     }
 
-    let testCases: Array<{ input: string; expectedOutput: string }>;
+    let publicTests: Array<{ input: string; expectedOutput: string }>;
     try {
-      testCases = JSON.parse(challenge.testCases);
+      publicTests = JSON.parse(challenge.testCases);
     } catch {
       console.error('Corrupted testCases JSON for challenge:', challenge.id);
       return Response.json({ error: 'Challenge data is corrupted' }, { status: 500 });
     }
+
+    let hiddenTests: Array<{ input: string; expectedOutput: string }> = [];
+    if (challenge.hiddenTestCases) {
+      try {
+        hiddenTests = JSON.parse(challenge.hiddenTestCases);
+      } catch {
+        console.error('Corrupted hiddenTestCases JSON for challenge:', challenge.id);
+      }
+    }
+
+    const allTests = [...publicTests, ...hiddenTests];
+    const publicCount = publicTests.length;
+
     const testResult = await runTestCases(
       context.env,
       sourceCode,
       language as SupportedLanguage,
-      testCases,
+      allTests,
       {
         cpuTimeLimit: Math.ceil((challenge.execTimeLimit || 5000) / 1000),
         memoryLimit: (challenge.execMemoryLimit || 256) * 1024,
@@ -233,15 +246,28 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
       totalTests: testResult.totalTests,
       passedTests: testResult.passedTests,
       failedTests: testResult.failedTests,
-      results: testResult.results.map((r) => ({
-        passed: r.passed,
-        input: r.input.substring(0, 200) + (r.input.length > 200 ? '...' : ''),
-        expectedOutput: r.expectedOutput.substring(0, 200) + (r.expectedOutput.length > 200 ? '...' : ''),
-        actualOutput: r.actualOutput.substring(0, 200) + (r.actualOutput.length > 200 ? '...' : ''),
-        error: r.error,
-        time: r.time,
-        memory: r.memory,
-      })),
+      results: testResult.results.map((r, i) => {
+        const isHidden = i >= publicCount;
+        if (isHidden) {
+          return {
+            passed: r.passed,
+            hidden: true,
+            input: '(hidden)',
+            expectedOutput: '(hidden)',
+            actualOutput: '(hidden)',
+          };
+        }
+        return {
+          passed: r.passed,
+          hidden: false,
+          input: r.input.substring(0, 200) + (r.input.length > 200 ? '...' : ''),
+          expectedOutput: r.expectedOutput.substring(0, 200) + (r.expectedOutput.length > 200 ? '...' : ''),
+          actualOutput: r.actualOutput.substring(0, 200) + (r.actualOutput.length > 200 ? '...' : ''),
+          error: r.error,
+          time: r.time,
+          memory: r.memory,
+        };
+      }),
       attempt: {
         id: attempt.id,
         status,

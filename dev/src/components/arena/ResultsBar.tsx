@@ -5,7 +5,7 @@ export interface TestResults {
   passed: boolean;
   passedTests: number;
   totalTests: number;
-  results: Array<{ passed: boolean; input: string; expectedOutput: string; actualOutput: string; error?: string }>;
+  results: Array<{ passed: boolean; input: string; expectedOutput: string; actualOutput: string; error?: string; hidden?: boolean }>;
   isSubmission: boolean;
 }
 
@@ -69,11 +69,13 @@ function ResultsBar({ results, onDismiss, onAskAI }: { results: TestResults; onD
               padding: '4px 0', borderTop: i > 0 ? `1px solid ${arena.border}` : undefined,
               color: r.passed ? arena.success : arena.error,
             }}>
-              <span>{r.passed ? '\u2713' : '\u2717'} Test {i + 1}: </span>
-              <span style={{ color: arena.textMuted }}>
-                {r.input.length > 40 ? r.input.slice(0, 40) + '...' : r.input}
-              </span>
-              {!r.passed && (
+              <span>{r.passed ? '\u2713' : '\u2717'} Test {i + 1}{r.hidden ? ' (hidden)' : ''}: </span>
+              {!r.hidden && (
+                <span style={{ color: arena.textMuted }}>
+                  {r.input.length > 40 ? r.input.slice(0, 40) + '...' : r.input}
+                </span>
+              )}
+              {!r.passed && !r.hidden && (
                 <div style={{ color: arena.textMuted, paddingLeft: 16, fontSize: 11, marginTop: 2 }}>
                   expected <span style={{ color: arena.success }}>{r.expectedOutput}</span>
                   {' '}got <span style={{ color: arena.error }}>{r.actualOutput || '(empty)'}</span>

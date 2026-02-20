@@ -86,7 +86,11 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
       console.error('Corrupted testCases JSON for challenge:', challengeId);
       return Response.json({ error: 'Challenge data is corrupted' }, { status: 500 });
     }
-    const totalTests = Array.isArray(testCases) ? testCases.length : 0;
+    let hiddenCount = 0;
+    if (challenge.hiddenTestCases) {
+      try { hiddenCount = JSON.parse(challenge.hiddenTestCases).length; } catch {}
+    }
+    const totalTests = (Array.isArray(testCases) ? testCases.length : 0) + hiddenCount;
 
     const attemptId = crypto.randomUUID();
     await db.insert(attempts).values({

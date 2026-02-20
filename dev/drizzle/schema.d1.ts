@@ -32,6 +32,7 @@ export const challenges = sqliteTable('challenges', {
   difficulty: text('difficulty').notNull(), // 'easy' | 'medium' | 'hard'
   starterCode: text('starter_code'),
   testCases: text('test_cases').notNull(), // JSON string
+  hiddenTestCases: text('hidden_test_cases'), // JSON string, same format as testCases
 
   execTimeLimit: integer('exec_time_limit').default(5000),
   execMemoryLimit: integer('exec_memory_limit').default(256),
@@ -212,6 +213,35 @@ export const badges = sqliteTable('badges', {
   earnedAt: text('earned_at').default(sql`(datetime('now'))`).notNull(),
 });
 
+// --- Error Monitoring ---
+
+export const errorLogs = sqliteTable('error_logs', {
+  id: text('id').primaryKey(),
+  timestamp: text('timestamp').default(sql`(datetime('now'))`).notNull(),
+  level: text('level').notNull().default('error'),
+  endpoint: text('endpoint'),
+  method: text('method'),
+  userId: text('user_id'),
+  errorMessage: text('error_message').notNull(),
+  errorStack: text('error_stack'),
+  requestBody: text('request_body'),
+  suggestedFix: text('suggested_fix'),
+  emailSent: integer('email_sent').notNull().default(0),
+  resolved: integer('resolved').notNull().default(0),
+  metadata: text('metadata'),
+});
+
+// --- Newsletter ---
+
+export const newsletterLogs = sqliteTable('newsletter_logs', {
+  id: text('id').primaryKey(),
+  recipientEmail: text('recipient_email').notNull(),
+  subject: text('subject').notNull(),
+  status: text('status').notNull(), // 'sent' | 'failed'
+  errorMessage: text('error_message'),
+  sentAt: text('sent_at').default(sql`(datetime('now'))`).notNull(),
+});
+
 // --- Notifications ---
 
 export const notifications = sqliteTable('notifications', {
@@ -276,3 +306,9 @@ export type Badge = typeof badges.$inferSelect;
 export type NewBadge = typeof badges.$inferInsert;
 export type Notification = typeof notifications.$inferSelect;
 export type NewNotification = typeof notifications.$inferInsert;
+export type NewsletterLog = typeof newsletterLogs.$inferSelect;
+export type NewNewsletterLog = typeof newsletterLogs.$inferInsert;
+export type NewsletterStatus = 'sent' | 'failed';
+export type ErrorLog = typeof errorLogs.$inferSelect;
+export type NewErrorLog = typeof errorLogs.$inferInsert;
+export type ErrorLevel = 'error' | 'warn' | 'fatal';

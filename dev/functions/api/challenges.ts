@@ -34,6 +34,7 @@ export async function onRequestGet(context: { env: Env; request: Request }) {
         tier: challenges.tier,
         language: challenges.language,
         tags: challenges.tags,
+        hiddenTestCases: challenges.hiddenTestCases,
         createdAt: challenges.createdAt,
         solvers: sql<number>`COUNT(DISTINCT CASE WHEN ${attempts.status} = 'passed' THEN ${attempts.userId} END)`,
         avgCost: sql<number>`AVG(CASE WHEN ${attempts.status} = 'passed' THEN ${attempts.totalCost} END)`,
@@ -69,14 +70,22 @@ export async function onRequestGet(context: { env: Env; request: Request }) {
     }
 
     return Response.json(
-      filtered.map((ch) => ({
-        ...ch,
-        tags: ch.tags ? (() => { try { return JSON.parse(ch.tags); } catch { return []; } })() : [],
-        stats: {
-          solvers: Number(ch.solvers) || 0,
-          avgCost: ch.avgCost != null ? Math.round(Number(ch.avgCost)) : null,
-        },
-      }))
+      filtered.map((ch) => {
+        let hiddenTestCount = 0;
+        if (ch.hiddenTestCases) {
+          try { hiddenTestCount = JSON.parse(ch.hiddenTestCases).length; } catch {}
+        }
+        const { hiddenTestCases: _stripped, ...rest } = ch;
+        return {
+          ...rest,
+          tags: ch.tags ? (() => { try { return JSON.parse(ch.tags); } catch { return []; } })() : [],
+          hiddenTestCount,
+          stats: {
+            solvers: Number(ch.solvers) || 0,
+            avgCost: ch.avgCost != null ? Math.round(Number(ch.avgCost)) : null,
+          },
+        };
+      })
     );
   } catch (error) {
     console.error('Challenges list error:', error);

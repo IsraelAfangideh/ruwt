@@ -31,11 +31,12 @@ interface BuildSystemPromptOptions {
   language: string;
   currentCode: string;
   testCases: string; // JSON string from challenge.testCases
+  hiddenTestCount?: number; // number of hidden tests that run only on submission
   lastTestResults?: TestResults | null;
   isFollowUp?: boolean; // true = agent loop round, skip static context
 }
 
-function formatTestCaseSummary(testCasesJson: string): string {
+function formatTestCaseSummary(testCasesJson: string, hiddenTestCount?: number): string {
   try {
     const cases = JSON.parse(testCasesJson);
     if (!Array.isArray(cases) || cases.length === 0) return '';
@@ -47,7 +48,11 @@ function formatTestCaseSummary(testCasesJson: string): string {
     if (cases.length > 3) {
       lines.push(`  ... and ${cases.length - 3} more tests`);
     }
-    return `Test cases (${cases.length} total):\n${lines.join('\n')}`;
+    if (hiddenTestCount && hiddenTestCount > 0) {
+      lines.push(`  Note: ${hiddenTestCount} additional hidden test${hiddenTestCount > 1 ? 's' : ''} will run on submission.`);
+    }
+    const total = cases.length + (hiddenTestCount || 0);
+    return `Test cases (${total} total, ${cases.length} visible):\n${lines.join('\n')}`;
   } catch {
     return '';
   }
@@ -82,7 +87,7 @@ function buildBaseContext(opts: BuildSystemPromptOptions): string {
     parts.push(`Description:\n${opts.challengeDescription}`);
     parts.push('');
 
-    const testSummary = formatTestCaseSummary(opts.testCases);
+    const testSummary = formatTestCaseSummary(opts.testCases, opts.hiddenTestCount);
     if (testSummary) {
       parts.push(testSummary);
       parts.push('');

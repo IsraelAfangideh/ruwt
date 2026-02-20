@@ -21,6 +21,7 @@ interface RuwtTUIOptions {
   challengeDifficulty: string;
   challengeCategory: string | null;
   challengeTestCases: string;
+  hiddenTestCount?: number;
   streamChat: (
     messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }>,
     callbacks: {
@@ -56,6 +57,7 @@ export class RuwtTUI {
   private challengeDifficulty: string;
   private challengeCategory: string | null;
   private challengeTestCases: string;
+  private hiddenTestCount?: number;
   private streamChat: RuwtTUIOptions['streamChat'];
   private abortFn: () => void;
   private onExit: () => void;
@@ -87,6 +89,7 @@ export class RuwtTUI {
     this.challengeDifficulty = options.challengeDifficulty;
     this.challengeCategory = options.challengeCategory;
     this.challengeTestCases = options.challengeTestCases;
+    this.hiddenTestCount = options.hiddenTestCount;
     this.streamChat = options.streamChat;
     this.abortFn = options.abort;
     this.onExit = options.onExit;
@@ -240,6 +243,7 @@ export class RuwtTUI {
       language: this.language,
       currentCode: this.fs.getSolutionCode(),
       testCases: this.challengeTestCases,
+      hiddenTestCount: this.hiddenTestCount,
       lastTestResults: this.lastTestResults,
     });
   }

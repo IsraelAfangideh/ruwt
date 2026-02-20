@@ -69,6 +69,7 @@ export interface ArenaChallenge {
   wallClockLimit: number | null;
   language?: string | null;
   expiresAt?: string | null;
+  hiddenTestCount?: number;
 }
 
 export interface ArenaAttempt {
@@ -342,9 +343,11 @@ export function ArenaIDE({
     setTimeout(() => setShowToast(false), 2000);
   }, []);
 
+  const pasteToastTimer = useRef<ReturnType<typeof setTimeout>>();
   const showPasteBlockedToast = useCallback(() => {
+    if (pasteToastTimer.current) clearTimeout(pasteToastTimer.current);
     setShowPasteBlocked(true);
-    setTimeout(() => setShowPasteBlocked(false), 3000);
+    pasteToastTimer.current = setTimeout(() => setShowPasteBlocked(false), 3000);
   }, []);
 
   // Auto-apply code from AI response.
@@ -498,6 +501,7 @@ export function ArenaIDE({
         language,
         currentCode: fs.getSolutionCode(),
         testCases: challenge.testCases || '[]',
+        hiddenTestCount: challenge.hiddenTestCount,
         lastTestResults: pendingTestContextRef.current || (testResults as AITestResults | undefined) || null,
         isFollowUp,
       });
@@ -1055,6 +1059,7 @@ export function ArenaIDE({
               challengeDifficulty={challenge.difficulty}
               challengeCategory={challenge.category || null}
               challengeTestCases={challenge.testCases || '[]'}
+              hiddenTestCount={challenge.hiddenTestCount}
               shellCallbacks={shellCallbacks}
               streamChat={streamChat}
               abortChat={abortChat}

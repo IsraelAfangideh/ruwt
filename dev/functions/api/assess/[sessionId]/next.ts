@@ -79,6 +79,10 @@ export async function onRequestPost(context: { request: Request; env: Env; param
       console.error('Corrupted testCases JSON for challenge:', nextChallenge.id);
       return Response.json({ error: 'Challenge data is corrupted' }, { status: 500 });
     }
+    let hiddenCount = 0;
+    if (nextChallenge.hiddenTestCases) {
+      try { hiddenCount = JSON.parse(nextChallenge.hiddenTestCases).length; } catch {}
+    }
     const attemptId = crypto.randomUUID();
 
     await db.insert(attempts).values({
@@ -90,7 +94,7 @@ export async function onRequestPost(context: { request: Request; env: Env; param
       inputTokens: 0,
       outputTokens: 0,
       passedTests: 0,
-      totalTests: Array.isArray(testCases) ? testCases.length : 0,
+      totalTests: (Array.isArray(testCases) ? testCases.length : 0) + hiddenCount,
       expiresAt: session.expiresAt,
       assessmentSessionId: session.id,
     });

@@ -24,6 +24,7 @@ interface TerminalPanelProps {
   challengeDifficulty: string;
   challengeCategory: string | null;
   challengeTestCases: string;
+  hiddenTestCount?: number;
   shellCallbacks: Omit<ShellCallbacks, 'onEnterRuwt'>;
   streamChat: (
     messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }>,
@@ -46,7 +47,7 @@ export const TerminalPanel = React.forwardRef<TerminalPanelHandle, TerminalPanel
   function TerminalPanel(props, ref) {
     const {
       fs, language, attemptId, challengeTitle, challengeDescription,
-      challengeDifficulty, challengeCategory, challengeTestCases,
+      challengeDifficulty, challengeCategory, challengeTestCases, hiddenTestCount,
       shellCallbacks, streamChat, abortChat, onCodeApplied, onRunTests, isExpired,
     } = props;
 
@@ -88,6 +89,7 @@ export const TerminalPanel = React.forwardRef<TerminalPanelHandle, TerminalPanel
         challengeDifficulty,
         challengeCategory,
         challengeTestCases,
+        hiddenTestCount,
         streamChat: (...args) => streamChatRef.current(...args),
         abort: () => abortChatRef.current(),
         onExit: () => {
