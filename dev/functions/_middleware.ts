@@ -9,12 +9,22 @@ import { attempts, challenges, profiles, certificates } from '../drizzle/schema.
 import { eq, isNotNull } from 'drizzle-orm';
 import { checkRateLimit, buildKey } from './_shared/rate-limit';
 import { getUser } from './_shared/auth';
+import { logError } from './_shared/error-monitor';
 import {
   generateSeoHtml, seoResponse, escapeHtml,
   STATIC_ROUTE_META,
   buildChallengeLd, buildBreadcrumbLd, buildProfileLd,
   buildArticleLd, buildCertLd,
 } from './_shared/seo';
+
+const SECURITY_HEADERS: Record<string, string> = {
+  'X-Content-Type-Options': 'nosniff',
+  'X-Frame-Options': 'DENY',
+  'Referrer-Policy': 'strict-origin-when-cross-origin',
+  'X-XSS-Protection': '1; mode=block',
+  'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
+  'Strict-Transport-Security': 'max-age=63072000; includeSubDomains; preload',
+};
 
 const BOT_UA_REGEX = /Twitterbot|LinkedInBot|Slackbot|facebookexternalhit|Discordbot|WhatsApp|TelegramBot|Googlebot|Google-InspectionTool|bingbot|Baiduspider|YandexBot|DuckDuckBot|Applebot|PetalBot|Bytespider|AhrefsBot|SemrushBot/i;
 
@@ -61,13 +71,68 @@ export async function onRequest(context: { request: Request; env: Env; next: () 
       console.error('Rate limit check error:', err);
     }
 
-    return context.next();
+    // --- Error catching for all API routes ---
+    let requestBody: string | undefined;
+    try {
+      // Clone request to capture body for error logging (only for non-GET)
+      if (context.request.method !== 'GET' && context.request.method !== 'HEAD') {
+        const clone = context.request.clone();
+        requestBody = await clone.text().catch(() => undefined);
+      }
+
+      const response = await context.next();
+
+      // Log server errors (5xx) — clone response to read body without consuming it
+      if (response.status >= 500) {
+        const contentType = response.headers.get('Content-Type') || '';
+        // Only try to read JSON error responses (skip streaming)
+        let errorMessage = `HTTP ${response.status}`;
+        if (contentType.includes('application/json')) {
+          try {
+            const clone = response.clone();
+            const body = await clone.json() as { error?: string; details?: string };
+            errorMessage = body.error || body.details || errorMessage;
+          } catch { /* keep default */ }
+        }
+
+        logError(context.env.DB, context.env, {
+          endpoint: url.pathname,
+          method: context.request.method,
+          userId: userId ?? undefined,
+          errorMessage,
+          requestBody: requestBody?.slice(0, 10000),
+          level: response.status >= 500 ? 'error' : 'warn',
+        }).catch(() => {}); // fire-and-forget, never block response
+      }
+
+      return addSecurityHeaders(response);
+    } catch (err) {
+      // Unhandled exception — log and return 500
+      const error = err instanceof Error ? err : new Error(String(err));
+      logError(context.env.DB, context.env, {
+        endpoint: url.pathname,
+        method: context.request.method,
+        userId: userId ?? undefined,
+        errorMessage: error.message,
+        errorStack: error.stack,
+        requestBody: requestBody?.slice(0, 10000),
+        level: 'fatal',
+      }).catch(() => {}); // fire-and-forget
+
+      return addSecurityHeaders(
+        Response.json(
+          { error: 'Internal server error' },
+          { status: 500 }
+        )
+      );
+    }
   }
 
   // --- Bot detection ---
   const ua = context.request.headers.get('user-agent') || '';
   if (!BOT_UA_REGEX.test(ua)) {
-    return context.next(); // Human → serve SPA
+    const response = await context.next();
+    return addSecurityHeaders(response); // Human → serve SPA with security headers
   }
 
   // --- Bot pre-rendering ---
@@ -327,4 +392,13 @@ async function handleCertBot(
   }, `<h1>${escapeHtml(title)}</h1>
   <p>${escapeHtml(description)}</p>
   <p><a href="${escapeHtml(canonicalUrl)}">Verify on ruwt.dev</a></p>`));
+}
+
+// --- Security headers helper ---
+function addSecurityHeaders(response: Response): Response {
+  const newResponse = new Response(response.body, response);
+  for (const [key, value] of Object.entries(SECURITY_HEADERS)) {
+    newResponse.headers.set(key, value);
+  }
+  return newResponse;
 }

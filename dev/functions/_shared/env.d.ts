@@ -12,4 +12,8 @@ interface Env {
   CLOUDFLARE_API_TOKEN?: string;
   PISTON_API_URL?: string;
   ADMIN_USER_IDS?: string;
+  RESEND_API_KEY?: string;
+  CRON_SECRET?: string;
+  GITHUB_TOKEN?: string;
+  ERROR_ALERT_EMAIL?: string;
 }

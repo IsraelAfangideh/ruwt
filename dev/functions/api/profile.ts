@@ -3,6 +3,7 @@
  * PATCH /api/profile — Update username. Auth required.
  */
 import { eq } from 'drizzle-orm';
+import { z } from 'zod';
 import { getDb } from '../_shared/db';
 import { getUser } from '../_shared/auth';
 import { ensureProfile } from '../_shared/ensure-profile';
@@ -52,36 +53,36 @@ export async function onRequestPatch(context: { request: Request; env: Env }) {
     const user = await getUser(context.request, context.env);
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const body = await context.request.json().catch(() => ({})) as {
-      username?: string;
-      onboardingCompleted?: number;
-    };
-    const { username, onboardingCompleted } = body;
+    const body = await context.request.json().catch(() => ({}));
+    const profileUpdateSchema = z.object({
+      username: z.string()
+        .min(3, 'Username must be at least 3 characters')
+        .max(30, 'Username must be at most 30 characters')
+        .regex(/^[a-z0-9][a-z0-9-]{1,28}[a-z0-9]$/, 'Lowercase alphanumeric and hyphens only, cannot start or end with a hyphen')
+        .optional(),
+      onboardingCompleted: z.union([z.literal(0), z.literal(1)]).optional(),
+    }).refine(data => data.username !== undefined || data.onboardingCompleted !== undefined, {
+      message: 'No valid fields to update',
+    });
+
+    const parsed = profileUpdateSchema.safeParse(body);
+    if (!parsed.success) {
+      return Response.json(
+        { error: parsed.error.issues[0]?.message || 'Invalid request', details: parsed.error.issues },
+        { status: 400 }
+      );
+    }
+
+    const { username, onboardingCompleted } = parsed.data;
 
     const db = getDb(context.env);
-    const updates: Record<string, any> = {};
+    const updates: Record<string, unknown> = {};
 
-    // Handle onboardingCompleted update
     if (onboardingCompleted !== undefined) {
-      if (onboardingCompleted !== 0 && onboardingCompleted !== 1) {
-        return Response.json({ error: 'onboardingCompleted must be 0 or 1' }, { status: 400 });
-      }
       updates.onboardingCompleted = onboardingCompleted;
     }
 
-    // Handle username update
     if (username !== undefined) {
-      if (!username || typeof username !== 'string') {
-        return Response.json({ error: 'Username is required' }, { status: 400 });
-      }
-
-      // Validate: lowercase alphanumeric + hyphens, 3-30 chars
-      const usernameRegex = /^[a-z0-9][a-z0-9-]{1,28}[a-z0-9]$/;
-      if (!usernameRegex.test(username)) {
-        return Response.json({
-          error: 'Username must be 3-30 characters, lowercase alphanumeric and hyphens only, cannot start or end with a hyphen',
-        }, { status: 400 });
-      }
 
       // Check uniqueness
       const [existing] = await db

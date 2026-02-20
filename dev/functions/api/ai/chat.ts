@@ -9,6 +9,7 @@ import { getUser } from '../../_shared/auth';
 import { validateConstraints, checkPreCallConstraints } from '../../_shared/constraints';
 import { getModelPricing, calculateCost, countMessageTokens } from '../../_shared/ai-pricing';
 import { streamCloudflareAIWithFallback } from '../../_shared/ai-stream';
+import { logError } from '../../_shared/error-monitor';
 import { profiles, attempts, aiCalls, attemptMessages } from '../../../drizzle/schema.d1';
 
 const requestSchema = z.object({
@@ -260,12 +261,25 @@ export async function onRequestPost(context: {
           );
           controller.close();
         } catch (err) {
-          console.error('AI chat stream error:', err);
+          const error = err instanceof Error ? err : new Error(String(err));
+          console.error('AI chat stream error:', error);
+
+          // Log to error monitoring (fire-and-forget)
+          logError(context.env.DB, context.env, {
+            endpoint: '/api/ai/chat',
+            method: 'POST',
+            userId: user.id,
+            errorMessage: error.message,
+            errorStack: error.stack,
+            level: 'error',
+            metadata: { model, attemptId, isAssessmentAttempt, messageCount: messages.length },
+          }).catch(() => {});
+
           controller.enqueue(
             encoder.encode(
               `data: ${JSON.stringify({
                 type: 'error',
-                message: err instanceof Error ? err.message : 'Unknown error',
+                message: error.message,
               })}\n\n`
             )
           );
