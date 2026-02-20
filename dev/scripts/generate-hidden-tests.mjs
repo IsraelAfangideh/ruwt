@@ -1,0 +1,358 @@
+/**
+ * Generate hidden test cases for all challenges.
+ * Run: node dev/scripts/generate-hidden-tests.mjs > dev/drizzle/migrations-d1/0019_populate_hidden_tests.sql
+ */
+
+const hidden = {};
+
+// ── Sprint ──────────────────────────────────────────────────────
+
+hidden['fizzbuzz-budget'] = [
+  { input: '1', expectedOutput: '1' },
+  { input: '9', expectedOutput: 'Fizz' },
+  { input: '10', expectedOutput: 'Buzz' },
+  { input: '45', expectedOutput: 'FizzBuzz' },
+  { input: '97', expectedOutput: '97' },
+];
+
+hidden['bug-hunt-off-by-one'] = [
+  { input: '[2,4,6,8,10]\n2', expectedOutput: '0' },
+  { input: '[2,4,6,8,10]\n10', expectedOutput: '4' },
+  { input: '[2,4,6,8,10]\n5', expectedOutput: '-1' },
+  { input: '[1]\n1', expectedOutput: '0' },
+  { input: '[1,2,3,4,5,6,7,8,9,10]\n6', expectedOutput: '5' },
+];
+
+hidden['broken-iterator'] = [
+  { input: '0 0', expectedOutput: '[0]' },
+  { input: '-5 5 2', expectedOutput: '[-5,-3,-1,1,3,5]' },
+  { input: '10 1 -3', expectedOutput: '[10,7,4,1]' },
+  { input: '1 10 3', expectedOutput: '[1,4,7,10]' },
+];
+
+hidden['qr-reverse-string'] = [
+  { input: '12345', expectedOutput: '54321' },
+  { input: 'ab cd ef', expectedOutput: 'fe dc ba' },
+  { input: 'A', expectedOutput: 'A' },
+  { input: 'abcba', expectedOutput: 'abcba' },
+];
+
+hidden['qr-is-palindrome'] = [
+  { input: 'Madam Im Adam', expectedOutput: 'true' },
+  { input: 'not a palindrome', expectedOutput: 'false' },
+  { input: 'a', expectedOutput: 'true' },
+  { input: '121', expectedOutput: 'true' },
+];
+
+hidden['qr-sum-array'] = [
+  { input: '[100,200,300]', expectedOutput: '600' },
+  { input: '[-10,10,-20,20]', expectedOutput: '0' },
+  { input: '[1]', expectedOutput: '1' },
+  { input: '[1,2,3,4,5,6,7,8,9,10]', expectedOutput: '55' },
+];
+
+hidden['qr-find-max'] = [
+  { input: '[1,2,3,4,5]', expectedOutput: '5' },
+  { input: '[-100,-50,-1]', expectedOutput: '-1' },
+  { input: '[999]', expectedOutput: '999' },
+  { input: '[7,7,7,7]', expectedOutput: '7' },
+];
+
+hidden['qr-count-vowels'] = [
+  { input: 'aeiouAEIOU', expectedOutput: '10' },
+  { input: 'bcdfg', expectedOutput: '0' },
+  { input: 'The quick brown fox', expectedOutput: '4' },
+  { input: 'rhythm', expectedOutput: '0' },
+];
+
+hidden['qr-capitalize-words'] = [
+  { input: 'one two three', expectedOutput: 'One Two Three' },
+  { input: 'HELLO', expectedOutput: 'HELLO' },
+  { input: 'a b c', expectedOutput: 'A B C' },
+  { input: 'hello', expectedOutput: 'Hello' },
+];
+
+hidden['qr-remove-duplicates'] = [
+  { input: '[5,5,5,5]', expectedOutput: '[5]' },
+  { input: '[1,2,3]', expectedOutput: '[1,2,3]' },
+  { input: '["x","y","x","z","y"]', expectedOutput: '["x","y","z"]' },
+];
+
+hidden['qr-chunk-array'] = [
+  { input: '4\n[1,2,3,4,5,6,7,8]', expectedOutput: '[[1, 2, 3, 4], [5, 6, 7, 8]]' },
+  { input: '2\n[1]', expectedOutput: '[[1]]' },
+  { input: '10\n[1,2,3]', expectedOutput: '[[1, 2, 3]]' },
+];
+
+hidden['qr-fibonacci'] = [
+  { input: '8', expectedOutput: '[0, 1, 1, 2, 3, 5, 8, 13]' },
+  { input: '3', expectedOutput: '[0, 1, 1]' },
+  { input: '15', expectedOutput: '[0, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233, 377]' },
+];
+
+// ── Easy ────────────────────────────────────────────────────────
+
+hidden['two-sum'] = [
+  { input: '[-1,-2,-3,-4,-5]\n-8', expectedOutput: '[2,4]' },
+  { input: '[0,4,3,0]\n0', expectedOutput: '[0,3]' },
+  { input: '[1,5,8,3,7]\n12', expectedOutput: '[1,4]' },
+  { input: '[100,200,300,400]\n700', expectedOutput: '[2,3]' },
+];
+
+hidden['fizzbuzz'] = [
+  { input: '1', expectedOutput: '["1"]' },
+  { input: '20', expectedOutput: '["1","2","Fizz","4","Buzz","Fizz","7","8","Fizz","Buzz","11","Fizz","13","14","FizzBuzz","16","17","Fizz","19","Buzz"]' },
+  { input: '30', expectedOutput: '["1","2","Fizz","4","Buzz","Fizz","7","8","Fizz","Buzz","11","Fizz","13","14","FizzBuzz","16","17","Fizz","19","Buzz","Fizz","22","23","Fizz","Buzz","26","Fizz","28","29","FizzBuzz"]' },
+];
+
+hidden['string-formatter'] = [
+  { input: 'XMLParser', expectedOutput: 'xml.parser' },
+  { input: 'myHTTPClient', expectedOutput: 'my.http.client' },
+  { input: 'a', expectedOutput: 'a' },
+  { input: 'HelloWorld', expectedOutput: 'hello.world' },
+  { input: 'one__two__three', expectedOutput: 'one.two.three' },
+];
+
+hidden['broken-cache'] = [
+  { input: '3\nput 1 10\nput 2 20\nput 3 30\nget 1\nput 4 40\nget 2\nget 3', expectedOutput: '10,-1,30' },
+  { input: '2\nput 1 10\nget 1\nput 2 20\nget 1\nput 3 30\nget 1\nget 2\nget 3', expectedOutput: '10,10,10,-1,30' },
+  { input: '1\nput 5 50\nput 6 60\nget 5\nget 6', expectedOutput: '-1,60' },
+];
+
+hidden['one-shot-csv-parser'] = [
+  { input: 'id,val\n1,hello\n2,world', expectedOutput: '[{"id":"1","val":"hello"},{"id":"2","val":"world"}]' },
+  { input: 'name\nAlice\nBob\nCharlie', expectedOutput: '[{"name":"Alice"},{"name":"Bob"},{"name":"Charlie"}]' },
+  { input: 'a,b,c\n1,2,3', expectedOutput: '[{"a":"1","b":"2","c":"3"}]' },
+];
+
+hidden['matrix-operations'] = [
+  { input: 'add\n[[10,20],[30,40]]\n[[1,2],[3,4]]', expectedOutput: '[[11,22],[33,44]]' },
+  { input: 'transpose\n[[1,2],[3,4],[5,6]]', expectedOutput: '[[1,3,5],[2,4,6]]' },
+  { input: 'multiply\n[[2,0],[0,2]]\n[[3,4],[5,6]]', expectedOutput: '[[6,8],[10,12]]' },
+  { input: 'determinant\n[[6,1,1],[4,-2,5],[2,8,7]]', expectedOutput: '-306' },
+];
+
+hidden['qr-flatten-array'] = [
+  { input: '[[1,[2]],[3,[4,[5]]]]', expectedOutput: '[1,2,3,4,5]' },
+  { input: '[1,2,3]', expectedOutput: '[1,2,3]' },
+  { input: '[[[[1]],2],3]', expectedOutput: '[1,2,3]' },
+  { input: '[]', expectedOutput: '[]' },
+];
+
+// ── Medium ──────────────────────────────────────────────────────
+
+hidden['valid-parentheses'] = [
+  { input: '', expectedOutput: 'true' },
+  { input: '(((())))' , expectedOutput: 'true' },
+  { input: '{[()]}', expectedOutput: 'true' },
+  { input: '(((', expectedOutput: 'false' },
+  { input: '}{', expectedOutput: 'false' },
+  { input: '([{}])', expectedOutput: 'true' },
+];
+
+hidden['merge-sorted-arrays'] = [
+  { input: '[1,1,1,0,0,0]\n3\n[1,1,1]\n3', expectedOutput: '[1,1,1,1,1,1]' },
+  { input: '[4,5,6,0,0,0]\n3\n[1,2,3]\n3', expectedOutput: '[1,2,3,4,5,6]' },
+  { input: '[2,0]\n1\n[1]\n1', expectedOutput: '[1,2]' },
+];
+
+hidden['regex-pattern-matcher'] = [
+  { input: 'aaa\na+', expectedOutput: 'true' },
+  { input: 'ab\n.*', expectedOutput: 'true' },
+  { input: 'a\nab*', expectedOutput: 'true' },
+  { input: '\na*b*', expectedOutput: 'true' },
+  { input: 'abc\nabc', expectedOutput: 'true' },
+  { input: 'abc\nabd', expectedOutput: 'false' },
+];
+
+hidden['state-machine'] = [
+  { input: '{"initial":"off","states":{"off":{"on":{"TOGGLE":"on"}},"on":{"on":{"TOGGLE":"off"}}}}\nTOGGLE\nTOGGLE\nTOGGLE', expectedOutput: 'on' },
+  { input: '{"initial":"a","states":{"a":{"on":{"X":"b"}},"b":{"on":{"X":"c"}},"c":{"on":{"X":"a"}}}}\nX\nX', expectedOutput: 'c' },
+  { input: '{"initial":"start","states":{"start":{"on":{"GO":"end"}},"end":{}}}\nGO\nGO', expectedOutput: 'end' },
+];
+
+hidden['binary-search-tree'] = [
+  { input: 'insert 10\ninsert 5\ninsert 15\ninsert 2\ninsert 7\ninOrder', expectedOutput: '[2,5,7,10,15]' },
+  { input: 'insert 1\ninsert 2\ninsert 3\ninOrder', expectedOutput: '[1,2,3]' },
+  { input: 'insert 5\ninsert 3\ninsert 8\ndelete 5\ninOrder', expectedOutput: '[3,8]' },
+  { input: 'insert 20\ninsert 10\ninsert 30\nsearch 10\nsearch 25', expectedOutput: 'true,false' },
+];
+
+hidden['graph-shortest-path'] = [
+  { input: '{"A":[["B",1],["C",5]],"B":[["C",2]],"C":[]}\nA\nC', expectedOutput: '{"distance":3,"path":["A","B","C"]}' },
+  { input: '{"X":[["Y",10]],"Y":[["Z",10]],"Z":[["W",10]],"W":[]}\nX\nW', expectedOutput: '{"distance":30,"path":["X","Y","Z","W"]}' },
+  { input: '{"A":[["B",1]],"B":[],"C":[]}\nA\nC', expectedOutput: '{"distance":-1,"path":[]}' },
+];
+
+hidden['lru-cache'] = [
+  { input: '3\nput 1 1\nput 2 2\nput 3 3\nget 1\nput 4 4\nget 2\nget 3', expectedOutput: '1,-1,3' },
+  { input: '2\nput 1 10\nget 1\nput 2 20\nget 1\nput 3 30\nget 1\nget 2\nget 3', expectedOutput: '10,10,10,-1,30' },
+  { input: '1\nput 1 100\nput 2 200\nget 1\nget 2', expectedOutput: '-1,200' },
+];
+
+hidden['refactor-legacy-function'] = [
+  { input: '[10,20,30,40,50]', expectedOutput: '{"mean":30,"median":30,"mode":10,"stddev":14.14,"range":40,"outliers":[]}' },
+  { input: '[5,5,5]', expectedOutput: '{"mean":5,"median":5,"mode":5,"stddev":0,"range":0,"outliers":[]}' },
+  { input: '[1,100]', expectedOutput: '{"mean":50.5,"median":50.5,"mode":1,"stddev":49.5,"range":99,"outliers":[]}' },
+];
+
+hidden['broken-sorting'] = [
+  { input: '[10,9,8,7,6,5,4,3,2,1]', expectedOutput: '[1,2,3,4,5,6,7,8,9,10]' },
+  { input: '[1,2,3,4,5]', expectedOutput: '[1,2,3,4,5]' },
+  { input: '[-3,0,-1,5,2]', expectedOutput: '[-3,-1,0,2,5]' },
+  { input: '[7]', expectedOutput: '[7]' },
+];
+
+hidden['flaky-queue'] = [
+  { input: 'enqueue x 1\nenqueue y 2\nenqueue z 3\ndequeue\ndequeue\ndequeue', expectedOutput: 'x,y,z' },
+  { input: 'enqueue a 5\nsize\nenqueue b 5\nsize\ndequeue\nsize', expectedOutput: '1,2,a,1' },
+  { input: 'enqueue m 10\nenqueue n 1\npeek\ndequeue', expectedOutput: 'n,n' },
+];
+
+hidden['corrupted-trie'] = [
+  { input: 'insert test\ninsert testing\nsearch test\nsearch testing\nstartsWith test', expectedOutput: 'true,true,true' },
+  { input: 'insert abc\ninsert abd\nsearch abc\nsearch abd\nsearch ab', expectedOutput: 'true,true,false' },
+  { input: 'insert a\nsearch a\nstartsWith a\nstartsWith b', expectedOutput: 'true,true,false' },
+];
+
+hidden['broken-differ'] = [
+  { input: '{"x":1,"y":2,"z":3}\n{"x":1,"y":2,"z":3}', expectedOutput: '{"added":{},"removed":{},"changed":{}}' },
+  { input: '{}\n{"a":1}', expectedOutput: '{"added":{"a":1},"removed":{},"changed":{}}' },
+  { input: '{"a":1}\n{}', expectedOutput: '{"added":{},"removed":{"a":1},"changed":{}}' },
+  { input: '{"a":{"b":1}}\n{"a":{"b":2}}', expectedOutput: '{"added":{},"removed":{},"changed":{"a.b":{"from":1,"to":2}}}' },
+];
+
+hidden['template-engine'] = [
+  { input: '{{greeting}}, {{name}}!\n{"greeting":"Hi","name":"Bob"}', expectedOutput: 'Hi, Bob!' },
+  { input: '{{#each nums}}{{.}}{{/each}}\n{"nums":[1,2,3]}', expectedOutput: '123' },
+  { input: '{{#if active}}yes{{/if}}{{#if inactive}}no{{/if}}\n{"active":true,"inactive":false}', expectedOutput: 'yes' },
+  { input: '{{a.b.c}}\n{"a":{"b":{"c":"deep"}}}', expectedOutput: 'deep' },
+];
+
+hidden['markdown-parser'] = [
+  { input: '## Title\n\n- a\n- b\n- c', expectedOutput: '[{"type":"heading","level":2,"text":"Title"},{"type":"list","items":["a","b","c"]}]' },
+  { input: 'Just text', expectedOutput: '[{"type":"paragraph","text":"Just text"}]' },
+  { input: '# One\n\n## Two\n\n### Three', expectedOutput: '[{"type":"heading","level":1,"text":"One"},{"type":"heading","level":2,"text":"Two"},{"type":"heading","level":3,"text":"Three"}]' },
+];
+
+hidden['schema-validator'] = [
+  { input: '{"name":"Bob","age":25}\n{"type":"object","properties":{"name":{"type":"string","required":true},"age":{"type":"number","min":0,"max":150}}}', expectedOutput: '{"valid":true,"errors":[]}' },
+  { input: '"hello"\n{"type":"string","minLength":1,"maxLength":10}', expectedOutput: '{"valid":true,"errors":[]}' },
+  { input: '{"items":[1,2,"three"]}\n{"type":"object","properties":{"items":{"type":"array","items":{"type":"number"}}}}', expectedOutput: '{"valid":false,"errors":["items.2: expected type number"]}' },
+];
+
+hidden['api-client-generator'] = [
+  { input: '{"baseUrl":"https://api.test.com","endpoints":{"deleteUser":{"method":"DELETE","path":"/users/:id"}}}\ndeleteUser\n{"id":"456"}', expectedOutput: '{"method":"DELETE","url":"https://api.test.com/users/456"}' },
+  { input: '{"baseUrl":"https://api.test.com","endpoints":{"listUsers":{"method":"GET","path":"/users"}}}\nlistUsers\n{"page":"2","limit":"10"}', expectedOutput: '{"method":"GET","url":"https://api.test.com/users?page=2&limit=10"}' },
+];
+
+hidden['leaky-rate-limiter'] = [
+  { input: '5 5\nconsume 5\nwait 1000\nconsume 5', expectedOutput: 'true,true' },
+  { input: '3 1\nconsume 1\nconsume 1\nconsume 1\nconsume 1', expectedOutput: 'true,true,true,false' },
+  { input: '100 100\nconsume 100\nconsume 1', expectedOutput: 'true,false' },
+];
+
+// ── Hard ────────────────────────────────────────────────────────
+
+hidden['longest-substring-without-repeating'] = [
+  { input: 'abcdef', expectedOutput: '6' },
+  { input: 'aab', expectedOutput: '2' },
+  { input: 'dvdf', expectedOutput: '3' },
+  { input: 'tmmzuxt', expectedOutput: '5' },
+  { input: ' ', expectedOutput: '1' },
+];
+
+hidden['cron-parser'] = [
+  { input: '*/15 * * * *\n3\n2024-01-01T00:00:00.000Z', expectedOutput: '["2024-01-01T00:15:00.000Z","2024-01-01T00:30:00.000Z","2024-01-01T00:45:00.000Z"]' },
+  { input: '0 0 15 * *\n2\n2024-06-01T00:00:00.000Z', expectedOutput: '["2024-06-15T00:00:00.000Z","2024-07-15T00:00:00.000Z"]' },
+];
+
+hidden['multi-model-strategy'] = [
+  { input: 'encode\nhttps://example.com/foo/bar', expectedOutput: 'string:6' },
+  { input: 'roundtrip\nhttps://example.com/roundtrip', expectedOutput: 'https://example.com/roundtrip' },
+  { input: 'consistent\nhttps://example.com/consistent', expectedOutput: 'true' },
+];
+
+// ── Impossible ──────────────────────────────────────────────────
+
+hidden['interpreter'] = [
+  { input: '10 / 3', expectedOutput: '3' },
+  { input: 'let x = 5\nlet y = x * 2\nlet z = y + x\nz', expectedOutput: '15' },
+  { input: '((2 + 3) * (4 - 1)) / 5', expectedOutput: '3' },
+  { input: 'let a = 100\nlet b = a / 4\nb + a', expectedOutput: '125' },
+];
+
+hidden['data-pipeline-transformer'] = [
+  { input: '[{"name":"X","age":20},{"name":"Y","age":30},{"name":"Z","age":40}]\n[{"type":"filter","field":"age","op":"lt","value":35}]', expectedOutput: '[{"name":"X","age":20},{"name":"Y","age":30}]' },
+  { input: '[{"name":"B","val":2},{"name":"A","val":1},{"name":"C","val":3}]\n[{"type":"sort","field":"val","order":"desc"}]', expectedOutput: '[{"name":"C","val":3},{"name":"B","val":2},{"name":"A","val":1}]' },
+  { input: '[{"dept":"eng","salary":100},{"dept":"eng","salary":200},{"dept":"sales","salary":150},{"dept":"eng","salary":300}]\n[{"type":"group","field":"dept"},{"type":"aggregate","field":"salary","op":"avg"}]', expectedOutput: '{"eng":200,"sales":150}' },
+];
+
+hidden['corrupted-json-parser'] = [
+  { input: 'true', expectedOutput: 'true' },
+  { input: 'null', expectedOutput: 'null' },
+  { input: '[true, false, null]', expectedOutput: '[true,false,null]' },
+  { input: '{ "a" : [ 1 , { "b" : 2 } ] }', expectedOutput: '{"a":[1,{"b":2}]}' },
+  { input: '""', expectedOutput: '""' },
+  { input: '{"deeply":{"nested":{"value":42}}}', expectedOutput: '{"deeply":{"nested":{"value":42}}}' },
+];
+
+hidden['leaky-connection-pool'] = [
+  { input: 'basic-query\nSELECT 42', expectedOutput: 'result:SELECT 42' },
+  { input: 'stats-after-query\n5', expectedOutput: '{"total":5,"available":5,"inUse":0}' },
+  { input: 'concurrent-queries\n2\nSELECT x\nSELECT y', expectedOutput: '["result:SELECT x","result:SELECT y"]' },
+];
+
+hidden['broken-middleware'] = [
+  { input: 'basic-chain\nauth\nlogger\nhandler', expectedOutput: '["auth","logger","handler"]' },
+  { input: 'empty-chain', expectedOutput: '[]' },
+  { input: 'error-handling\nlogger\nthrow-error\nerror-handler\nhandler', expectedOutput: '["logger","throw-error","error-handler"]' },
+];
+
+// ── Mixed input (test-ID + data) ────────────────────────────────
+
+hidden['buggy-promise-chain'] = [
+  { input: 'basic-chain\n10\nadd2\nmul3', expectedOutput: '36' },
+  { input: 'single-fn\n100\nadd10', expectedOutput: '110' },
+  { input: 'empty-fns\n7', expectedOutput: '7' },
+  { input: 'error-propagation\n5\nadd2\nthrow\nmul3', expectedOutput: 'ERROR' },
+];
+
+hidden['buggy-event-loop'] = [
+  { input: 'priority-order\ntaskZ,10\ntaskA,1\ntaskM,5', expectedOutput: '["taskA","taskM","taskZ"]' },
+  { input: 'same-priority\ntaskX,1\ntaskY,1', expectedOutput: '["taskX","taskY"]' },
+  { input: 'single-task\ntaskOnly,1', expectedOutput: '["taskOnly"]' },
+];
+
+// ── Test-ID based challenges (add IDs that the harness already supports) ──
+// For these, we add test scenarios that exercise the same functionality
+// but with different parameter values. A hardcoded lookup table will fail.
+
+hidden['fix-failing-tests'] = [
+  { input: 'emit-with-args\n10,20,30', expectedOutput: '10,20,30' },
+  { input: 'once-fires-once\n5', expectedOutput: '1' },
+  { input: 'emit-returns-boolean\ntest', expectedOutput: 'true,false' },
+];
+
+// ── Python challenges with raw I/O ──────────────────────────────
+
+hidden['py-schema-migration'] = [
+  { input: 'add-column-text', expectedOutput: 'ALTER TABLE users ADD COLUMN bio TEXT' },
+  { input: 'remove-column-legacy', expectedOutput: 'ALTER TABLE orders DROP COLUMN temp_field' },
+  { input: 'no-changes', expectedOutput: '' },
+];
+
+// ── Generate SQL ────────────────────────────────────────────────
+
+const lines = ['-- Populate hidden test cases for all challenges'];
+lines.push('-- Generated by generate-hidden-tests.mjs');
+lines.push('');
+
+for (const [id, tests] of Object.entries(hidden)) {
+  const json = JSON.stringify(tests);
+  // In SQLite, single quotes in strings are escaped by doubling them
+  const escaped = json.replace(/'/g, "''");
+  lines.push(`UPDATE challenges SET hidden_test_cases = '${escaped}' WHERE id = '${id}';`);
+}
+
+console.log(lines.join('\n'));
