@@ -1,0 +1,21 @@
+{
+  "name": "Ruwt",
+  "short_name": "Ruwt",
+  "description": "Prove you can use AI better than anyone. Compete in AI-powered coding challenges ranked by cost efficiency.",
+  "start_url": "/",
+  "display": "standalone",
+  "theme_color": "#1a1816",
+  "background_color": "#f5f3f0",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "type": "image/svg+xml",
+      "sizes": "any"
+    },
+    {
+      "src": "/og-image.png",
+      "type": "image/png",
+      "sizes": "1200x630"
+    }
+  ]
+}

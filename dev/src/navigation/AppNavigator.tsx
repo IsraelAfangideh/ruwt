@@ -1,5 +1,6 @@
-import { lazy, Suspense, useEffect, useRef } from 'react';
-import { View, ActivityIndicator, StyleSheet } from 'react-native';
+import { lazy, Suspense, useEffect, useRef, Component } from 'react';
+import type { ReactNode, ErrorInfo } from 'react';
+import { View, Text, ActivityIndicator, Pressable, StyleSheet } from 'react-native';
 import { NavigationContainer, createNavigationContainerRef } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import type { RootStackParamList } from './types';
@@ -43,6 +44,44 @@ function LoadingFallback() {
   );
 }
 
+class ChunkErrorBoundary extends Component<
+  { children: ReactNode },
+  { hasError: boolean }
+> {
+  state = { hasError: false };
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  componentDidCatch(_error: Error, _info: ErrorInfo) {
+    // Chunk load failures happen when a deploy invalidates cached chunks
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <View style={styles.errorWrap}>
+          <Text style={styles.errorTitle}>Something went wrong</Text>
+          <Text style={styles.errorMsg}>
+            A new version may have been deployed. Reload to continue.
+          </Text>
+          <Pressable
+            style={({ pressed }: { pressed: boolean }) => [
+              styles.reloadBtn,
+              pressed && { opacity: 0.8 },
+            ]}
+            onPress={() => window.location.reload()}
+          >
+            <Text style={styles.reloadText}>Reload</Text>
+          </Pressable>
+        </View>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const navigationRef = createNavigationContainerRef<RootStackParamList>();
 
@@ -68,6 +107,7 @@ export function AppNavigator() {
       linking={linking}
       onReady={() => { isNavigationReady.current = true; }}
     >
+      <ChunkErrorBoundary>
       <Suspense fallback={<LoadingFallback />}>
         <Stack.Navigator
           screenOptions={{
@@ -102,6 +142,7 @@ export function AppNavigator() {
           <Stack.Screen name="NotFound" component={NotFoundScreen} />
         </Stack.Navigator>
       </Suspense>
+      </ChunkErrorBoundary>
     </NavigationContainer>
   );
 }
@@ -112,5 +153,36 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#f5f3f0',
+  },
+  errorWrap: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f5f3f0',
+    padding: 32,
+    gap: 12,
+  },
+  errorTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1a1816',
+  },
+  errorMsg: {
+    fontSize: 14,
+    color: '#6b6560',
+    textAlign: 'center',
+    maxWidth: 320,
+  },
+  reloadBtn: {
+    marginTop: 8,
+    backgroundColor: '#c9a962',
+    paddingHorizontal: 24,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  reloadText: {
+    color: '#1a1816',
+    fontSize: 14,
+    fontWeight: '600',
   },
 });

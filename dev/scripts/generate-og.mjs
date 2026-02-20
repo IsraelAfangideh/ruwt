@@ -1,6 +1,7 @@
 /**
- * Converts og-image.svg to og-image.png for social platform compatibility.
- * Twitter/X requires PNG/JPG for card images.
+ * Prebuild script: generates static assets from SVG sources.
+ * - og-image.svg → og-image.png (1200x630, for Twitter/social cards)
+ * - favicon.svg → favicon.ico (32x32, for legacy browser support)
  * Run: node scripts/generate-og.mjs
  */
 import sharp from 'sharp';
@@ -9,14 +10,20 @@ import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const svgPath = resolve(__dirname, '../public/og-image.svg');
-const pngPath = resolve(__dirname, '../public/og-image.png');
+const publicDir = resolve(__dirname, '../public');
 
-const svg = readFileSync(svgPath);
-
-await sharp(svg)
+// OG image: SVG → PNG
+const ogSvg = readFileSync(resolve(publicDir, 'og-image.svg'));
+await sharp(ogSvg)
   .resize(1200, 630)
   .png({ quality: 90 })
-  .toFile(pngPath);
-
+  .toFile(resolve(publicDir, 'og-image.png'));
 console.log('Generated og-image.png (1200x630)');
+
+// Favicon: SVG → ICO (PNG in ICO container)
+const favSvg = readFileSync(resolve(publicDir, 'favicon.svg'));
+await sharp(favSvg)
+  .resize(32, 32)
+  .png()
+  .toFile(resolve(publicDir, 'favicon.ico'));
+console.log('Generated favicon.ico (32x32)');
