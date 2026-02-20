@@ -26,6 +26,7 @@ export class VirtualShell {
   private historyIndex = -1;
   private savedLine = '';
   private cursorPos = 0;
+  private writeMode: { filename: string; lines: string[] } | null = null;
 
   constructor(term: Terminal, fs: VirtualFileSystem, language: string, callbacks: ShellCallbacks) {
     this.term = term;
@@ -87,10 +88,27 @@ export class VirtualShell {
       // Enter
       if (ch === '\r' || ch === '\n') {
         this.term.write('\r\n');
-        const cmd = this.line.trim();
+        const raw = this.line;
         this.line = '';
         this.cursorPos = 0;
         this.historyIndex = -1;
+
+        // Write mode: collect lines until EOF
+        if (this.writeMode) {
+          if (raw.trim() === 'EOF') {
+            const content = this.writeMode.lines.join('\n');
+            this.fs.writeFile(this.writeMode.filename, content);
+            this.term.write(`\x1b[32m[saved ${this.writeMode.filename} \u2014 ${content.length} bytes]\x1b[0m\r\n`);
+            this.writeMode = null;
+            this.printPrompt();
+          } else {
+            this.writeMode.lines.push(raw);
+            this.term.write('\x1b[90m> \x1b[0m');
+          }
+          continue;
+        }
+
+        const cmd = raw.trim();
         if (cmd) {
           this.history.unshift(cmd);
           if (this.history.length > 50) this.history.pop();
@@ -149,6 +167,24 @@ export class VirtualShell {
   }
 
   private execute(input: string): void {
+    // Handle output redirection: cmd > file or cmd >> file
+    const redirectMatch = input.match(/^(.+?)\s*(>>|>)\s*(\S+)\s*$/);
+    if (redirectMatch) {
+      const [, cmdPart, op, targetFile] = redirectMatch;
+      const output = this.captureCommand(cmdPart.trim());
+      if (output !== null) {
+        if (op === '>>') {
+          const existing = this.fs.readFile(targetFile) || '';
+          this.fs.writeFile(targetFile, existing + output);
+        } else {
+          this.fs.writeFile(targetFile, output);
+        }
+        this.term.write(`\x1b[32m[written to ${targetFile}]\x1b[0m\r\n`);
+      }
+      this.printPrompt();
+      return;
+    }
+
     const args = this.parseArgs(input);
     if (args.length === 0) { this.printPrompt(); return; }
     const cmd = args[0];
@@ -165,6 +201,7 @@ export class VirtualShell {
       case 'touch': this.cmdTouch(rest); break;
       case 'mv': this.cmdMv(rest); break;
       case 'cp': this.cmdCp(rest); break;
+      case 'write': this.cmdWrite(rest); break;
       case 'clear': this.cmdClear(); break;
       case 'help': this.cmdHelp(); break;
       case 'run': this.cmdRun(); break;
@@ -174,6 +211,40 @@ export class VirtualShell {
         this.term.write(`\x1b[31m${cmd}: command not found\x1b[0m\r\n`);
         this.term.write(`Type \x1b[33mhelp\x1b[0m for available commands.\r\n`);
         this.printPrompt();
+    }
+  }
+
+  /** Execute a command and capture its text output instead of printing to terminal. */
+  private captureCommand(input: string): string | null {
+    const args = this.parseArgs(input);
+    if (args.length === 0) return null;
+    const cmd = args[0];
+    const rest = args.slice(1);
+
+    switch (cmd) {
+      case 'echo': return rest.join(' ') + '\n';
+      case 'cat': {
+        const parts: string[] = [];
+        for (const arg of rest) {
+          const content = this.fs.readFile(arg);
+          if (content == null) {
+            this.term.write(`\x1b[31mcat: ${arg}: No such file\x1b[0m\r\n`);
+            return null;
+          }
+          parts.push(content);
+        }
+        return parts.join('\n');
+      }
+      case 'pwd': return this.fs.getCwd() + '\n';
+      case 'ls': {
+        const path = rest.find((a) => !a.startsWith('-')) || '.';
+        const entries = this.fs.readdir(path);
+        if (!entries) return null;
+        return entries.join('\n') + '\n';
+      }
+      default:
+        this.term.write(`\x1b[31mRedirection not supported for: ${cmd}\x1b[0m\r\n`);
+        return null;
     }
   }
 
@@ -325,6 +396,17 @@ export class VirtualShell {
     this.printPrompt();
   }
 
+  private cmdWrite(args: string[]): void {
+    if (args.length === 0) {
+      this.term.write(`\x1b[31mwrite: missing filename\x1b[0m\r\n`);
+      this.printPrompt();
+      return;
+    }
+    this.writeMode = { filename: args[0], lines: [] };
+    this.term.write(`\x1b[33mEntering write mode for ${args[0]}. Type EOF on a new line to save.\x1b[0m\r\n`);
+    this.term.write('\x1b[90m> \x1b[0m');
+  }
+
   private cmdClear(): void {
     this.term.clear();
     this.printPrompt();
@@ -335,6 +417,7 @@ export class VirtualShell {
     this.term.write('  \x1b[33mls\x1b[0m [-l] [path]    List files\r\n');
     this.term.write('  \x1b[33mcat\x1b[0m <file>        Show file contents\r\n');
     this.term.write('  \x1b[33mecho\x1b[0m <text>       Print text\r\n');
+    this.term.write('  \x1b[33mwrite\x1b[0m <file>      Multi-line file editor (EOF to save)\r\n');
     this.term.write('  \x1b[33mcd\x1b[0m [path]         Change directory\r\n');
     this.term.write('  \x1b[33mpwd\x1b[0m               Print working directory\r\n');
     this.term.write('  \x1b[33mmkdir\x1b[0m <dir>       Create directory\r\n');
@@ -347,6 +430,9 @@ export class VirtualShell {
     this.term.write('  \x1b[33mtest\x1b[0m              Run test cases\r\n');
     this.term.write('  \x1b[33mruwt\x1b[0m              Enter AI assistant mode\r\n');
     this.term.write('  \x1b[33mhelp\x1b[0m              Show this help\r\n');
+    this.term.write('\r\n\x1b[1mRedirection:\x1b[0m\r\n');
+    this.term.write('  echo "text" \x1b[33m>\x1b[0m file    Write to file\r\n');
+    this.term.write('  echo "text" \x1b[33m>>\x1b[0m file   Append to file\r\n');
     this.printPrompt();
   }
 

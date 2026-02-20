@@ -7,6 +7,7 @@ import { useIsMobile } from '@/lib/useIsMobile';
 import { getDifficultyStyle } from '@/lib/difficulty';
 import { useAuthGuard } from '@/hooks/useAuthGuard';
 import { useToast } from '@/components/ui/Toast';
+import { ArenaErrorBoundary } from '@/components/arena/ArenaErrorBoundary';
 
 function formatWallClock(seconds: number): string {
   const m = Math.floor(seconds / 60);
@@ -53,8 +54,11 @@ export function ArenaScreen() {
   const [testResults, setTestResults] = useState<TestResults | null>(null);
   const [pastAttempts, setPastAttempts] = useState<PastAttempt[]>([]);
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
+  const [isExpired, setIsExpired] = useState(false);
   const isExpiredRef = useRef(false);
   const [successOverlay, setSuccessOverlay] = useState<{ attemptId: string; passed: boolean } | null>(null);
+  const [successStats, setSuccessStats] = useState<{ rank: number; total: number; topCost: number | null } | null>(null);
+  const navigatingRef = useRef(false);
   const isMobile = useIsMobile();
   const { showToast } = useToast();
 
@@ -129,30 +133,34 @@ export function ArenaScreen() {
   }, [challenge, fetchPastAttempts]);
 
   // Timer for stats display (must be before early returns to avoid hook order issues)
-  const expiresAt = attempt?.expiresAt ? new Date(attempt.expiresAt) : null;
+  const expiresAtStr = attempt?.expiresAt ?? null;
   useEffect(() => {
-    if (!expiresAt) {
+    if (!expiresAtStr) {
       setTimeLeft(null);
       return;
     }
+    const expiresAt = new Date(expiresAtStr);
     const tick = () => {
       const left = Math.max(0, Math.floor((expiresAt.getTime() - Date.now()) / 1000));
       setTimeLeft(left);
-      if (left === 0) isExpiredRef.current = true;
+      if (left === 0 && !isExpiredRef.current) {
+        isExpiredRef.current = true;
+        setIsExpired(true);
+      }
     };
     tick();
     const id = setInterval(tick, 1000);
     return () => clearInterval(id);
-  }, [expiresAt?.getTime()]);
+  }, [expiresAtStr]);
 
-  const startAttempt = useCallback(async (timed: boolean) => {
+  const startAttempt = useCallback(async () => {
     setStarting(true);
     setError(null);
     try {
       const res = await fetch('/api/attempts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ challengeId, timed }),
+        body: JSON.stringify({ challengeId }),
       });
       if (!res.ok) {
         setError('Failed to start attempt');
@@ -160,8 +168,20 @@ export function ArenaScreen() {
       }
       const data = await res.json();
       setAttempt(data.attempt);
-      const defaultComment = language === 'python' ? '# your code here' : '// your code here';
-      setCode(data.challenge?.starterCode || defaultComment);
+      if (data.isExisting) {
+        // Resume: restore saved code from localStorage
+        const saved = localStorage.getItem(`arena-code-${data.attempt.id}`);
+        if (saved) {
+          setCode(saved);
+          showToast('Restored your progress', 'success');
+        } else {
+          const defaultComment = language === 'python' ? '# your code here' : '// your code here';
+          setCode(data.challenge?.starterCode || defaultComment);
+        }
+      } else {
+        const defaultComment = language === 'python' ? '# your code here' : '// your code here';
+        setCode(data.challenge?.starterCode || defaultComment);
+      }
       setTestResults(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to start attempt');
@@ -176,6 +196,8 @@ export function ArenaScreen() {
     setIsRunning(false);
     setError(null);
     setTestResults(null);
+    setSuccessOverlay(null);
+    setSuccessStats(null);
   }, []);
 
   const onRunTests = useCallback(
@@ -206,7 +228,7 @@ export function ArenaScreen() {
       const res = await fetch('/api/submissions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ attemptId: attempt.id, sourceCode, language: lang, mode: 'submit', idempotencyKey: `${attempt.id}-${Date.now()}` }),
+        body: JSON.stringify({ attemptId: attempt.id, sourceCode, language: lang, mode: 'submit', idempotencyKey: `${attempt.id}-${crypto.randomUUID()}` }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Submit failed');
@@ -225,6 +247,20 @@ export function ArenaScreen() {
       // Show success overlay for passed submissions
       if (result.passed) {
         setSuccessOverlay({ attemptId: finalAttemptId, passed: true });
+        // Fetch rank info for the overlay
+        try {
+          const lbRes = await fetch(`/api/leaderboard?challengeId=${challengeId}`);
+          if (lbRes.ok) {
+            const lb = await lbRes.json();
+            const entries = lb.entries ?? [];
+            const myIdx = entries.findIndex((e: any) => e.attemptId === finalAttemptId);
+            setSuccessStats({
+              rank: myIdx >= 0 ? myIdx + 1 : entries.length + 1,
+              total: entries.length,
+              topCost: entries[0]?.totalCost ?? null,
+            });
+          }
+        } catch { /* leaderboard fetch failed — show overlay without stats */ }
       }
       // Refresh past attempts list
       fetchPastAttempts();
@@ -433,60 +469,25 @@ export function ArenaScreen() {
             <p style={{ fontSize: 13, color: arena.error, marginBottom: 16 }}>{error}</p>
           )}
 
-          {/* Action buttons */}
-          <div style={{
-            display: 'flex',
-            flexDirection: isMobile ? 'column' : 'row',
-            gap: 12,
-            alignItems: 'center',
-            width: isMobile ? '100%' : 'auto',
-          }}>
-            <button
-              style={{
-                background: arena.accent,
-                border: 'none',
-                borderRadius: 8,
-                color: '#0d1117',
-                padding: '10px 24px',
-                fontSize: 14,
-                fontWeight: 600,
-                cursor: starting ? 'not-allowed' : 'pointer',
-                opacity: starting ? 0.6 : 1,
-                width: isMobile ? '100%' : 'auto',
-              }}
-              onClick={() => startAttempt(true)}
-              disabled={starting}
-            >
-              {starting ? 'Starting...' : 'Start Timed'}
-            </button>
-            <button
-              style={{
-                background: 'transparent',
-                border: `1px solid ${arena.border}`,
-                borderRadius: 8,
-                color: arena.textMuted,
-                padding: '10px 24px',
-                fontSize: 14,
-                fontWeight: 500,
-                cursor: starting ? 'not-allowed' : 'pointer',
-                opacity: starting ? 0.6 : 1,
-                width: isMobile ? '100%' : 'auto',
-              }}
-              onClick={() => startAttempt(false)}
-              disabled={starting}
-            >
-              Start Untimed
-            </button>
-          </div>
-
-          <p style={{
-            fontSize: 11,
-            color: arena.textSubtle,
-            marginTop: 12,
-            textAlign: 'center',
-          }}>
-            Untimed attempts are marked separately on the leaderboard
-          </p>
+          {/* Start button */}
+          <button
+            style={{
+              background: arena.accent,
+              border: 'none',
+              borderRadius: 8,
+              color: '#0d1117',
+              padding: '12px 32px',
+              fontSize: 15,
+              fontWeight: 600,
+              cursor: starting ? 'not-allowed' : 'pointer',
+              opacity: starting ? 0.6 : 1,
+              width: isMobile ? '100%' : 'auto',
+            }}
+            onClick={() => startAttempt()}
+            disabled={starting}
+          >
+            {starting ? 'Starting...' : 'Start Challenge'}
+          </button>
 
           {/* Back link */}
           <button
@@ -508,7 +509,6 @@ export function ArenaScreen() {
     );
   }
 
-  const isUntimed = challenge.wallClockLimit != null && !attempt.expiresAt;
   const totalTokens = (attempt.inputTokens || 0) + (attempt.outputTokens || 0);
   const costLimitReached = challenge.maxCost != null && attempt.totalCost >= challenge.maxCost;
   const tokenLimitReached = challenge.maxTokens != null && totalTokens >= challenge.maxTokens;
@@ -600,30 +600,30 @@ export function ArenaScreen() {
                 padding: '4px 10px',
                 fontSize: 12,
                 fontWeight: 500,
-                cursor: isRunning ? 'not-allowed' : 'pointer',
-                opacity: isRunning ? 0.5 : 1,
+                cursor: isRunning || isExpired ? 'not-allowed' : 'pointer',
+                opacity: isRunning || isExpired ? 0.5 : 1,
                 flexShrink: 0,
               }}
               onClick={handleRun}
-              disabled={isRunning}
+              disabled={isRunning || isExpired}
             >
-              {isRunning ? '...' : 'Run'}
+              {isExpired ? 'Expired' : isRunning ? '...' : 'Run'}
             </button>
             <button
               style={{
-                background: arena.accent,
+                background: isExpired ? arena.textMuted : arena.accent,
                 border: 'none',
                 borderRadius: 6,
                 color: '#0d1117',
                 padding: '4px 10px',
                 fontSize: 12,
                 fontWeight: 600,
-                cursor: isRunning ? 'not-allowed' : 'pointer',
-                opacity: isRunning ? 0.5 : 1,
+                cursor: isRunning || isExpired ? 'not-allowed' : 'pointer',
+                opacity: isRunning || isExpired ? 0.5 : 1,
                 flexShrink: 0,
               }}
               onClick={handleSubmit}
-              disabled={isRunning}
+              disabled={isRunning || isExpired}
             >
               Submit
             </button>
@@ -736,21 +736,6 @@ export function ArenaScreen() {
             }}>
               {diffStyle.label}
             </span>
-            {isUntimed && (
-              <span style={{
-                fontSize: 11,
-                fontWeight: 600,
-                color: arena.textMuted,
-                padding: '2px 8px',
-                borderRadius: 9999,
-                border: `1px solid ${arena.textSubtle}`,
-                fontFamily: 'Menlo, Monaco, "Courier New", monospace',
-                textTransform: 'uppercase',
-                letterSpacing: '0.5px',
-              }}>
-                untimed
-              </span>
-            )}
           </div>
 
           {/* Right: Stats + Actions */}
@@ -841,28 +826,28 @@ export function ArenaScreen() {
                   padding: '6px 16px',
                   fontSize: 13,
                   fontWeight: 500,
-                  cursor: isRunning ? 'not-allowed' : 'pointer',
-                  opacity: isRunning ? 0.5 : 1,
+                  cursor: isRunning || isExpired ? 'not-allowed' : 'pointer',
+                  opacity: isRunning || isExpired ? 0.5 : 1,
                 }}
                 onClick={handleRun}
-                disabled={isRunning}
+                disabled={isRunning || isExpired}
               >
-                {isRunning ? 'Running...' : 'Run Tests'}
+                {isExpired ? 'Time Expired' : isRunning ? 'Running...' : 'Run Tests'}
               </button>
               <button
                 style={{
-                  background: arena.accent,
+                  background: isExpired ? arena.textMuted : arena.accent,
                   border: 'none',
                   borderRadius: 6,
                   color: '#0d1117',
                   padding: '6px 16px',
                   fontSize: 13,
                   fontWeight: 600,
-                  cursor: isRunning ? 'not-allowed' : 'pointer',
-                  opacity: isRunning ? 0.5 : 1,
+                  cursor: isRunning || isExpired ? 'not-allowed' : 'pointer',
+                  opacity: isRunning || isExpired ? 0.5 : 1,
                 }}
                 onClick={handleSubmit}
-                disabled={isRunning}
+                disabled={isRunning || isExpired}
               >
                 Submit
               </button>
@@ -873,22 +858,24 @@ export function ArenaScreen() {
 
       {/* IDE Body */}
       <div style={{ flex: 1, minHeight: 0, position: 'relative' }}>
-        <ArenaIDE
-          challenge={challenge}
-          attempt={attempt}
-          userCredits={userCredits}
-          code={code}
-          onCodeChange={setCode}
-          language={language}
-          onRunTests={onRunTests}
-          onSubmit={onSubmit}
-          onAttemptUpdate={(next) => setAttempt(next)}
-          onRestart={onRestart}
-          onRunCode={onRunCode}
-          testResults={testResults}
-          onDismissResults={() => setTestResults(null)}
-          pastAttempts={pastAttempts}
-        />
+        <ArenaErrorBoundary>
+          <ArenaIDE
+            challenge={challenge}
+            attempt={attempt}
+            userCredits={userCredits}
+            code={code}
+            onCodeChange={setCode}
+            language={language}
+            onRunTests={onRunTests}
+            onSubmit={onSubmit}
+            onAttemptUpdate={(next) => setAttempt(next)}
+            onRestart={onRestart}
+            onRunCode={onRunCode}
+            testResults={testResults}
+            onDismissResults={() => setTestResults(null)}
+            pastAttempts={pastAttempts}
+          />
+        </ArenaErrorBoundary>
 
         {/* Success overlay after passed submission */}
         {successOverlay && (
@@ -900,7 +887,37 @@ export function ArenaScreen() {
             justifyContent: 'center',
             background: 'rgba(13,17,23,0.85)',
             zIndex: 200,
+            overflow: 'hidden',
           }}>
+            {/* CSS confetti */}
+            <style>{`
+              @keyframes confetti-fall {
+                0% { transform: translateY(-100%) rotate(0deg); opacity: 1; }
+                100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+              }
+              .confetti-piece {
+                position: absolute;
+                top: -10px;
+                width: 8px;
+                height: 8px;
+                animation: confetti-fall 3s ease-out forwards;
+              }
+            `}</style>
+            {Array.from({ length: 24 }).map((_, i) => (
+              <div
+                key={i}
+                className="confetti-piece"
+                style={{
+                  left: `${4 + (i * 4) % 92}%`,
+                  background: ['#c9a962', '#3fb950', '#58a6ff', '#f85149', '#bc8cff', '#39d2e0'][i % 6],
+                  borderRadius: i % 3 === 0 ? '50%' : '2px',
+                  animationDelay: `${(i * 0.12)}s`,
+                  animationDuration: `${2.5 + (i % 5) * 0.3}s`,
+                  width: i % 4 === 0 ? 10 : 7,
+                  height: i % 4 === 0 ? 10 : 7,
+                }}
+              />
+            ))}
             <div style={{
               background: arena.surface,
               border: `1px solid ${arena.border}`,
@@ -913,6 +930,8 @@ export function ArenaScreen() {
               flexDirection: 'column',
               alignItems: 'center',
               gap: 16,
+              position: 'relative',
+              zIndex: 1,
             }}>
               <span style={{ fontSize: 32 }}>{'\u2705'}</span>
               <h2 style={{
@@ -924,9 +943,40 @@ export function ArenaScreen() {
               }}>
                 Challenge Passed!
               </h2>
-              <p style={{ fontSize: 13, color: arena.textMuted, margin: 0 }}>
-                Total cost: {formatCost(attempt?.totalCost ?? 0)}
-              </p>
+
+              {/* Rank comparison stats */}
+              <div style={{
+                display: 'flex',
+                gap: 16,
+                justifyContent: 'center',
+                flexWrap: 'wrap',
+                fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+                fontSize: 12,
+              }}>
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ color: arena.textMuted, marginBottom: 4 }}>Your Cost</div>
+                  <div style={{ color: arena.accent, fontWeight: 700, fontSize: 16 }}>
+                    {formatCost(attempt?.totalCost ?? 0)}
+                  </div>
+                </div>
+                {successStats && successStats.topCost != null && (
+                  <div style={{ textAlign: 'center' }}>
+                    <div style={{ color: arena.textMuted, marginBottom: 4 }}>Top Solver</div>
+                    <div style={{ color: arena.text, fontWeight: 700, fontSize: 16 }}>
+                      {formatCost(successStats.topCost)}
+                    </div>
+                  </div>
+                )}
+                {successStats && (
+                  <div style={{ textAlign: 'center' }}>
+                    <div style={{ color: arena.textMuted, marginBottom: 4 }}>Your Rank</div>
+                    <div style={{ color: successStats.rank === 1 ? arena.accent : arena.text, fontWeight: 700, fontSize: 16 }}>
+                      #{successStats.rank}
+                      <span style={{ fontSize: 11, fontWeight: 400, color: arena.textMuted }}> / {successStats.total}</span>
+                    </div>
+                  </div>
+                )}
+              </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10, width: '100%', marginTop: 8 }}>
                 <button
@@ -967,6 +1017,8 @@ export function ArenaScreen() {
                     width: '100%',
                   }}
                   onClick={() => {
+                    if (navigatingRef.current) return;
+                    navigatingRef.current = true;
                     setSuccessOverlay(null);
                     (navigation.navigate as any)('Replay', { attemptId: successOverlay.attemptId });
                   }}
@@ -986,6 +1038,8 @@ export function ArenaScreen() {
                     width: '100%',
                   }}
                   onClick={async () => {
+                    if (navigatingRef.current) return;
+                    navigatingRef.current = true;
                     try {
                       const res = await fetch(`/api/leaderboard?challengeId=${challengeId}&limit=1`);
                       if (res.ok) {
@@ -997,7 +1051,11 @@ export function ArenaScreen() {
                           return;
                         }
                       }
-                    } catch {}
+                    } catch (err) {
+                      console.error('Failed to load top solver:', err);
+                      showToast('Could not load leaderboard', 'error');
+                    }
+                    navigatingRef.current = false;
                     setSuccessOverlay(null);
                   }}
                 >
@@ -1016,18 +1074,24 @@ export function ArenaScreen() {
                     width: '100%',
                   }}
                   onClick={async () => {
+                    if (navigatingRef.current) return;
+                    navigatingRef.current = true;
                     try {
                       const res = await fetch(`/api/challenges`);
                       if (res.ok) {
-                        const challenges = await res.json();
-                        const sameCat = challenges.filter((ch: any) => ch.category === challenge?.category && ch.id !== challengeId);
+                        const allChallenges = await res.json();
+                        const sameCat = allChallenges.filter((ch: any) => ch.category === challenge?.category && ch.id !== challengeId);
                         if (sameCat.length > 0) {
                           setSuccessOverlay(null);
                           (navigation.navigate as any)('Arena', { challengeId: sameCat[0].id });
                           return;
                         }
                       }
-                    } catch {}
+                    } catch (err) {
+                      console.error('Failed to load next challenge:', err);
+                      showToast('Could not load next challenge', 'error');
+                    }
+                    navigatingRef.current = false;
                     setSuccessOverlay(null);
                     navigation.navigate('Challenges' as never);
                   }}
@@ -1044,6 +1108,8 @@ export function ArenaScreen() {
                     padding: '8px 0',
                   }}
                   onClick={() => {
+                    if (navigatingRef.current) return;
+                    navigatingRef.current = true;
                     setSuccessOverlay(null);
                     navigation.navigate('Challenges' as never);
                   }}

@@ -14,7 +14,7 @@ import { estimateChatCost, formatEstimatedCost } from '@/lib/cost-estimate';
 import { useIsMobile } from '@/lib/useIsMobile';
 import { buildSystemPrompt, formatTestResultsForMessage, type AIMode, type TestResults as AITestResults } from '@/lib/ai/system-prompts';
 import { stripToolCalls, hasToolCalls } from '@/lib/ai/tool-parser';
-import { applyCodeFromResponse as sharedApplyCode } from '@/lib/ai/code-apply';
+import { applyCodeFromResponse as sharedApplyCode, extractFileEdits } from '@/lib/ai/code-apply';
 import { callApplyModel } from '@/lib/ai/apply-model';
 import { useEditorDecorations } from './arena/useEditorDecorations';
 import { ModeSelector } from './arena/ModeSelector';
@@ -353,8 +353,15 @@ export function ArenaIDE({
   // Auto-apply code from AI response.
   // Returns true if code was changed (used by agent loop to auto-run tests).
   const applyCodeFromResponse = useCallback(async (responseText: string): Promise<boolean> => {
+    // Extract FILE: prefixed edits for non-solution files
+    const { fileEdits, remaining } = extractFileEdits(responseText);
+    for (const edit of fileEdits) {
+      fs.writeFile(edit.path, edit.content);
+      flashToast(`Created ${edit.path}`);
+    }
+
     const oldCode = fs.getSolutionCode();
-    const result = sharedApplyCode(responseText, oldCode, language, mode);
+    const result = sharedApplyCode(remaining || responseText, oldCode, language, mode);
 
     // Code block extracted directly (free, instant)
     if (result.applied) {
@@ -370,14 +377,14 @@ export function ArenaIDE({
       const applyResult = await callApplyModel({
         attemptId,
         currentCode: oldCode,
-        aiResponse: responseText,
+        aiResponse: remaining || responseText,
         language,
       });
 
       if (applyResult.success && applyResult.mergedCode) {
         // Check that the merge actually changed something
         if (applyResult.mergedCode.trim() === oldCode.trim()) {
-          return false;
+          return fileEdits.length > 0; // Still return true if we wrote other files
         }
         fs.setSolutionCode(applyResult.mergedCode);
         flashToast('Code updated');
@@ -385,10 +392,10 @@ export function ArenaIDE({
         return true;
       }
 
-      return false;
+      return fileEdits.length > 0;
     }
 
-    return false;
+    return fileEdits.length > 0;
   }, [language, fs, flashToast, mode, attemptId, showDiffDecorations]);
 
   // Handle code applied from terminal (RuwtTUI)
@@ -411,6 +418,24 @@ export function ArenaIDE({
       localStorage.setItem(`notepad-${attemptId}`, notepadContent);
     }
   }, [notepadContent, attemptId]);
+
+  // Auto-save code to localStorage every 30s + on blur/tab switch
+  useEffect(() => {
+    if (!attemptId) return;
+    const save = () => {
+      if (code) localStorage.setItem(`arena-code-${attemptId}`, code);
+    };
+    const timer = setInterval(save, 30000);
+    const handleVisibility = () => { if (document.hidden) save(); };
+    document.addEventListener('visibilitychange', handleVisibility);
+    window.addEventListener('blur', save);
+    return () => {
+      save(); // save on unmount too
+      clearInterval(timer);
+      document.removeEventListener('visibilitychange', handleVisibility);
+      window.removeEventListener('blur', save);
+    };
+  }, [attemptId, code]);
 
   // Timer (expiry detection only — display moved to ArenaScreen header)
   useEffect(() => {
@@ -492,6 +517,19 @@ export function ArenaIDE({
     let lastRoundAppliedCode = false;
 
     const runOneRound = async (msgs: Array<{ role: 'system' | 'user' | 'assistant'; content: string }>, isFollowUp: boolean): Promise<string | null> => {
+      // Gather workspace files for AI context (non-solution files)
+      const workspaceFiles: Array<{ path: string; content: string }> = [];
+      const allFiles = fs.readdir('/home/user');
+      if (allFiles) {
+        for (const name of allFiles) {
+          if (name === fs.solutionFilename) continue;
+          const content = fs.readFile(`/home/user/${name}`);
+          if (content != null && content.length > 0 && content.length < 5000) {
+            workspaceFiles.push({ path: name, content });
+          }
+        }
+      }
+
       const systemPrompt = buildSystemPrompt({
         mode,
         challengeTitle: challenge.title,
@@ -504,6 +542,7 @@ export function ArenaIDE({
         hiddenTestCount: challenge.hiddenTestCount,
         lastTestResults: pendingTestContextRef.current || (testResults as AITestResults | undefined) || null,
         isFollowUp,
+        workspaceFiles: workspaceFiles.length > 0 ? workspaceFiles : undefined,
       });
       const chatMessages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [
         { role: 'system', content: systemPrompt },
@@ -618,6 +657,15 @@ export function ArenaIDE({
         setMessages((m) => [...m, { role: 'assistant', content: `[Agent loop error: ${errMsg}]` }]);
         break;
       }
+    }
+
+    // Notify user if max tool loops reached
+    if (toolLoopCount >= MAX_TOOL_LOOPS && !constraintHit) {
+      setMessages((m) => [...m, {
+        role: 'assistant',
+        content: 'Reached maximum auto-fix attempts (5). Review the code and try asking again.',
+        isConstraint: true,
+      }]);
     }
 
     setIsToolLooping(false);

@@ -34,6 +34,7 @@ interface BuildSystemPromptOptions {
   hiddenTestCount?: number; // number of hidden tests that run only on submission
   lastTestResults?: TestResults | null;
   isFollowUp?: boolean; // true = agent loop round, skip static context
+  workspaceFiles?: Array<{ path: string; content: string }>; // non-solution files in workspace
 }
 
 function formatTestCaseSummary(testCasesJson: string, hiddenTestCount?: number): string {
@@ -96,6 +97,21 @@ function buildBaseContext(opts: BuildSystemPromptOptions): string {
 
   parts.push(`Current code:\n\`\`\`${opts.language}\n${opts.currentCode}\n\`\`\``);
 
+  // Include workspace files (specs, notes, .md files created by user)
+  if (opts.workspaceFiles && opts.workspaceFiles.length > 0) {
+    parts.push('');
+    parts.push('Workspace files:');
+    let totalChars = 0;
+    for (const f of opts.workspaceFiles) {
+      if (totalChars > 2000) {
+        parts.push(`  ... and ${opts.workspaceFiles.length - opts.workspaceFiles.indexOf(f)} more files`);
+        break;
+      }
+      parts.push(`\n--- ${f.path} ---\n${f.content}`);
+      totalChars += f.content.length;
+    }
+  }
+
   if (opts.lastTestResults) {
     parts.push('');
     parts.push(formatTestResults(opts.lastTestResults));
@@ -120,7 +136,27 @@ Rules:
 - You may include multiple SEARCH/REPLACE blocks
 - For new code on an empty file, use a single block with empty SEARCH
 - Only edit the parts that need changing — do NOT replace existing working code
-- If you need to rewrite the entire file, you may use a single fenced code block instead`;
+- If you need to rewrite the entire file, you may use a single fenced code block instead
+
+## Multi-file Workspace
+You can create and edit files beyond the solution file. To edit a specific file, prefix the block with FILE:
+
+FILE: spec.md
+<<<<<<< SEARCH
+old content
+=======
+new content
+>>>>>>> REPLACE
+
+To create a new file, use a fenced block with a FILE: prefix:
+
+FILE: ruwt.md
+\`\`\`markdown
+# My approach
+Step 1: ...
+\`\`\`
+
+The user can create .md files for specs, plans, notes, or any technique they would use with Claude/Cursor. Only the solution file is tested and submitted.`;
 
 const TOOL_USE_RULES = `
 ## Tool Use

@@ -20,6 +20,8 @@ export interface Challenge {
   language?: string | null;
   tags?: string[] | null;
   stats?: { solvers: number; avgCost: number | null } | null;
+  userStatus?: 'not_started' | 'in_progress' | 'passed' | 'attempted';
+  userBestCost?: number | null;
 }
 
 function categoryLabel(cat: string | null | undefined) {
@@ -69,6 +71,7 @@ export function ChallengeCard({ challenge }: { challenge: Challenge }) {
     : 'transparent';
 
   const langLabel = challenge.language === 'python' ? 'Python' : challenge.language === 'typescript' ? 'TypeScript' : null;
+  const userStatus = challenge.userStatus;
 
   const isRealWorld = challenge.category === 'real_world';
 
@@ -100,6 +103,16 @@ export function ChallengeCard({ challenge }: { challenge: Challenge }) {
                 <Text style={[styles.pillText, { color: '#3b82f6' }]}>{langLabel}</Text>
               </View>
             )}
+            {userStatus === 'passed' && (
+              <View style={[styles.pill, { backgroundColor: c.successBg, marginLeft: 'auto' as any }]}>
+                <Text style={[styles.pillText, { color: c.success }]}>{'\u2713'} Solved</Text>
+              </View>
+            )}
+            {userStatus === 'in_progress' && (
+              <View style={[styles.pill, { backgroundColor: c.accentBg, marginLeft: 'auto' as any }]}>
+                <Text style={[styles.pillText, { color: c.accent }]}>In Progress</Text>
+              </View>
+            )}
           </View>
           <CardTitle>{challenge.title}</CardTitle>
           <CardDescription numberOfLines={2}>{cleanDescription}</CardDescription>
@@ -119,7 +132,14 @@ export function ChallengeCard({ challenge }: { challenge: Challenge }) {
               {challenge.stats.avgCost != null && ` · avg ${(challenge.stats.avgCost / 10000) < 0.01 ? `$${(challenge.stats.avgCost / 10000).toFixed(4)}` : `$${(challenge.stats.avgCost / 10000).toFixed(2)}`}`}
             </Text>
           )}
-          <Text style={[styles.cta, { color: c.accent }]}>Start Problem  →</Text>
+          {userStatus === 'passed' && challenge.userBestCost != null && (
+            <Text style={[styles.statsLine, { color: c.success }]}>
+              Your best: {(challenge.userBestCost / 10000) < 0.01 ? `$${(challenge.userBestCost / 10000).toFixed(4)}` : `$${(challenge.userBestCost / 10000).toFixed(2)}`}
+            </Text>
+          )}
+          <Text style={[styles.cta, { color: c.accent }]}>
+            {userStatus === 'passed' ? 'Improve Score  \u2192' : userStatus === 'in_progress' ? 'Continue  \u2192' : 'Start Problem  \u2192'}
+          </Text>
         </View>
       </Card>
     </Pressable>

@@ -56,7 +56,7 @@ export const TerminalPanel = React.forwardRef<TerminalPanelHandle, TerminalPanel
     const fitRef = useRef<FitAddon | null>(null);
     const shellRef = useRef<VirtualShell | null>(null);
     const tuiRef = useRef<RuwtTUI | null>(null);
-    const modeRef = useRef<'shell' | 'ruwt'>('shell');
+    const modeRef = useRef<'shell' | 'ruwt'>('ruwt');
 
     // Expose focus method
     useImperativeHandle(ref, () => ({
@@ -95,7 +95,7 @@ export const TerminalPanel = React.forwardRef<TerminalPanelHandle, TerminalPanel
         onExit: () => {
           modeRef.current = 'shell';
           tuiRef.current = null;
-          termRef.current?.write('\r\n\x1b[90mExited ruwt mode.\x1b[0m');
+          termRef.current?.write('\r\n\x1b[90mExited AI mode. Type \x1b[33mruwt\x1b[90m to re-enter.\x1b[0m');
           shellRef.current?.printPrompt();
         },
         onCodeApplied: (code) => onCodeAppliedRef.current(code),
@@ -152,10 +152,8 @@ export const TerminalPanel = React.forwardRef<TerminalPanelHandle, TerminalPanel
       });
       shellRef.current = shell;
 
-      // Welcome message
-      term.write('\x1b[1;33mruwt arena\x1b[0m \x1b[90m\u2014 virtual terminal\x1b[0m\r\n');
-      term.write('\x1b[90mType \x1b[33mhelp\x1b[90m for commands, \x1b[33mruwt\x1b[90m for AI assistant.\x1b[0m');
-      shell.printPrompt();
+      // Auto-enter ruwt AI mode on startup
+      enterRuwt();
 
       // Route input based on mode
       const onData = term.onData((data: string) => {

@@ -11,7 +11,6 @@ import { attempts, challenges } from '../../drizzle/schema.d1';
 
 const createAttemptSchema = z.object({
   challengeId: z.string().min(1),
-  timed: z.boolean().optional().default(true),
 });
 
 export async function onRequestPost(context: { request: Request; env: Env }) {
@@ -28,7 +27,7 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
       );
     }
 
-    const { challengeId, timed } = parsed.data;
+    const { challengeId } = parsed.data;
     const db = getDb(context.env);
 
     // Ensure profile exists (creates with signup bonus on first call)
@@ -73,7 +72,7 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
     }
 
     let expiresAt: string | null = null;
-    if (timed && challenge.wallClockLimit) {
+    if (challenge.wallClockLimit) {
       const exp = new Date();
       exp.setSeconds(exp.getSeconds() + challenge.wallClockLimit);
       expiresAt = exp.toISOString();

@@ -4,6 +4,9 @@
  *
  * Single path: if the AI response contains code, the apply model
  * merges it into the current file. No client-side parsing.
+ *
+ * Multi-file: FILE: <path> prefixed blocks are extracted and applied
+ * to specific files in the VFS.
  */
 
 export interface CodeApplyResult {
@@ -12,6 +15,30 @@ export interface CodeApplyResult {
   method: 'apply_model' | 'none';
   message: string;
   needsApplyModel: boolean;
+}
+
+export interface FileEdit {
+  path: string;
+  content: string;
+}
+
+/**
+ * Extract FILE: prefixed code blocks from AI response.
+ * Returns the extracted file edits and the remaining response text.
+ */
+export function extractFileEdits(responseText: string): { fileEdits: FileEdit[]; remaining: string } {
+  const fileEdits: FileEdit[] = [];
+  let remaining = responseText;
+
+  // Match: FILE: <path>\n```<lang>\n<content>\n```
+  const fileBlockPattern = /FILE:\s*(\S+)\s*\n```[^\n]*\n([\s\S]*?)```/g;
+  let match;
+  while ((match = fileBlockPattern.exec(responseText)) !== null) {
+    fileEdits.push({ path: match[1], content: match[2].trimEnd() });
+    remaining = remaining.replace(match[0], '');
+  }
+
+  return { fileEdits, remaining: remaining.trim() };
 }
 
 /**

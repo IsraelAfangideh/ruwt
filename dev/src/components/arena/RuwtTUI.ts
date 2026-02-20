@@ -7,7 +7,7 @@ import type { Terminal } from '@xterm/xterm';
 import type { VirtualFileSystem } from './VirtualFileSystem';
 import { buildSystemPrompt, formatTestResultsForMessage, type AIMode, type TestResults } from '../../lib/ai/system-prompts';
 import { hasToolCalls, stripToolCalls } from '../../lib/ai/tool-parser';
-import { applyCodeFromResponse as sharedApplyCode } from '../../lib/ai/code-apply';
+import { applyCodeFromResponse as sharedApplyCode, extractFileEdits } from '../../lib/ai/code-apply';
 import { callApplyModel } from '../../lib/ai/apply-model';
 import { computeLineDiff } from '../../lib/ai/line-diff';
 
@@ -101,7 +101,7 @@ export class RuwtTUI {
   enter(): void {
     this.term.write('\r\n');
     this.term.write('\x1b[1;33m  ruwt\x1b[0m \x1b[90m\u2014 AI coding assistant\x1b[0m\r\n');
-    this.term.write('\x1b[90m  Type your question, or \x1b[33mexit\x1b[90m to return to shell.\x1b[0m\r\n');
+    this.term.write('\x1b[90m  Type your question, or \x1b[33m/shell\x1b[90m for terminal commands.\x1b[0m\r\n');
     this.term.write('\x1b[90m  Modes: \x1b[33m/agent\x1b[90m \x1b[34m/plan\x1b[90m \x1b[31m/debug\x1b[90m \x1b[32m/ask\x1b[90m\x1b[0m\r\n');
     this.term.write('\x1b[90m  Ctrl+C to interrupt a response.\x1b[0m\r\n');
     this.printPrompt();
@@ -188,6 +188,10 @@ export class RuwtTUI {
             this.printPrompt();
             continue;
           }
+          if (cmd === 'shell') {
+            this.onExit();
+            continue;
+          }
           if (cmd === 'mode') {
             const c = MODE_COLORS[this.mode];
             this.term.write(`\x1b[${c}mCurrent mode: ${this.mode}\x1b[0m`);
@@ -234,6 +238,19 @@ export class RuwtTUI {
   }
 
   private buildModeSystemPrompt(): string {
+    // Gather workspace files for AI context
+    const workspaceFiles: Array<{ path: string; content: string }> = [];
+    const allFiles = this.fs.readdir('/home/user');
+    if (allFiles) {
+      for (const name of allFiles) {
+        if (name === this.fs.solutionFilename) continue;
+        const content = this.fs.readFile(`/home/user/${name}`);
+        if (content != null && content.length > 0 && content.length < 5000) {
+          workspaceFiles.push({ path: name, content });
+        }
+      }
+    }
+
     return buildSystemPrompt({
       mode: this.mode,
       challengeTitle: this.challengeTitle,
@@ -245,6 +262,7 @@ export class RuwtTUI {
       testCases: this.challengeTestCases,
       hiddenTestCount: this.hiddenTestCount,
       lastTestResults: this.lastTestResults,
+      workspaceFiles: workspaceFiles.length > 0 ? workspaceFiles : undefined,
     });
   }
 
@@ -279,8 +297,15 @@ export class RuwtTUI {
   }
 
   private async applyCodeFromResponse(responseText: string): Promise<boolean> {
+    // Extract FILE: prefixed edits for non-solution files
+    const { fileEdits, remaining } = extractFileEdits(responseText);
+    for (const edit of fileEdits) {
+      this.fs.writeFile(edit.path, edit.content);
+      this.term.write(`\r\n\x1b[32m\u2713 Created ${edit.path}\x1b[0m`);
+    }
+
     const oldCode = this.fs.getSolutionCode();
-    const result = sharedApplyCode(responseText, oldCode, this.language, this.mode);
+    const result = sharedApplyCode(remaining || responseText, oldCode, this.language, this.mode);
 
     // Code block extracted directly (free, instant)
     if (result.applied) {
@@ -297,13 +322,13 @@ export class RuwtTUI {
       const applyResult = await callApplyModel({
         attemptId: this.attemptId,
         currentCode: oldCode,
-        aiResponse: responseText,
+        aiResponse: remaining || responseText,
         language: this.language,
       });
 
       if (applyResult.success && applyResult.mergedCode) {
         if (applyResult.mergedCode.trim() === oldCode.trim()) {
-          return false;
+          return fileEdits.length > 0;
         }
         this.fs.setSolutionCode(applyResult.mergedCode);
         this.onCodeApplied(applyResult.mergedCode);
@@ -312,7 +337,7 @@ export class RuwtTUI {
         return true;
       }
 
-      return false;
+      return fileEdits.length > 0;
     }
 
     return false;
@@ -444,6 +469,11 @@ export class RuwtTUI {
         this.term.write('\r\n\x1b[31mTest execution failed\x1b[0m');
         break;
       }
+    }
+
+    // Notify user if max tool loops reached
+    if (toolLoopCount >= MAX_TOOL_LOOPS) {
+      this.term.write('\r\n\x1b[33m[max auto-fix attempts reached \u2014 review code and try again]\x1b[0m');
     }
 
     if (!this.isStreaming) {

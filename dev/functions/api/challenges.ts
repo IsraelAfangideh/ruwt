@@ -1,10 +1,12 @@
 /**
  * GET /api/challenges
  * List challenges from D1 with solver count + avg cost stats. No auth required.
+ * When authenticated, includes per-user progress (status + best cost).
  * Supports query params: ?language=python, ?tag=backend, ?category=qa_testing
  */
-import { sql } from 'drizzle-orm';
+import { sql, eq } from 'drizzle-orm';
 import { getDb } from '../_shared/db';
+import { getUser } from '../_shared/auth';
 import { challenges, attempts } from '../../drizzle/schema.d1';
 
 export async function onRequestGet(context: { env: Env; request: Request }) {
@@ -15,6 +17,13 @@ export async function onRequestGet(context: { env: Env; request: Request }) {
     const catFilter = url.searchParams.get('category');
 
     const db = getDb(context.env);
+
+    // Optionally get authenticated user for progress indicators
+    let userId: string | null = null;
+    try {
+      const user = await getUser(context.request, context.env);
+      if (user) userId = user.id;
+    } catch { /* not authenticated — no user progress */ }
     const list = await db
       .select({
         id: challenges.id,
@@ -43,6 +52,35 @@ export async function onRequestGet(context: { env: Env; request: Request }) {
       .leftJoin(attempts, sql`${challenges.id} = ${attempts.challengeId}`)
       .groupBy(challenges.id)
       .orderBy(challenges.sortOrder, challenges.createdAt);
+
+    // Build per-user progress map when authenticated
+    let userProgress: Record<string, { status: string; bestCost: number | null }> = {};
+    if (userId) {
+      const userAttempts = await db
+        .select({
+          challengeId: attempts.challengeId,
+          status: attempts.status,
+          totalCost: attempts.totalCost,
+        })
+        .from(attempts)
+        .where(eq(attempts.userId, userId));
+
+      for (const a of userAttempts) {
+        const existing = userProgress[a.challengeId];
+        if (a.status === 'passed') {
+          const cost = a.totalCost ?? 0;
+          userProgress[a.challengeId] = {
+            status: 'passed',
+            bestCost: existing?.status === 'passed' && existing.bestCost != null
+              ? Math.min(existing.bestCost, cost) : cost,
+          };
+        } else if (a.status === 'in_progress' && existing?.status !== 'passed') {
+          userProgress[a.challengeId] = { status: 'in_progress', bestCost: existing?.bestCost ?? null };
+        } else if (!existing) {
+          userProgress[a.challengeId] = { status: 'attempted', bestCost: null };
+        }
+      }
+    }
 
     let filtered = list;
 
@@ -76,6 +114,7 @@ export async function onRequestGet(context: { env: Env; request: Request }) {
           try { hiddenTestCount = JSON.parse(ch.hiddenTestCases).length; } catch {}
         }
         const { hiddenTestCases: _stripped, ...rest } = ch;
+        const progress = userId ? userProgress[ch.id] : undefined;
         return {
           ...rest,
           tags: ch.tags ? (() => { try { return JSON.parse(ch.tags); } catch { return []; } })() : [],
@@ -84,6 +123,10 @@ export async function onRequestGet(context: { env: Env; request: Request }) {
             solvers: Number(ch.solvers) || 0,
             avgCost: ch.avgCost != null ? Math.round(Number(ch.avgCost)) : null,
           },
+          ...(userId ? {
+            userStatus: progress?.status ?? 'not_started',
+            userBestCost: progress?.bestCost ?? null,
+          } : {}),
         };
       })
     );
