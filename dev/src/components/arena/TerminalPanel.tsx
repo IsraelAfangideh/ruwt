@@ -18,6 +18,7 @@ export interface TerminalPanelHandle {
 interface TerminalPanelProps {
   fs: VirtualFileSystem;
   language: string;
+  attemptId: string;
   challengeTitle: string;
   challengeDescription: string;
   challengeDifficulty: string;
@@ -28,6 +29,8 @@ interface TerminalPanelProps {
     messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }>,
     callbacks: {
       onChunk: (content: string) => void;
+      onThinking?: (thinkingContent: string) => void;
+      onThinkingDone?: () => void;
       onDone: (fullContent: string) => void;
       onError: (error: string) => void;
       onConstraint?: (violation: string, message: string) => void;
@@ -42,7 +45,7 @@ interface TerminalPanelProps {
 export const TerminalPanel = React.forwardRef<TerminalPanelHandle, TerminalPanelProps>(
   function TerminalPanel(props, ref) {
     const {
-      fs, language, challengeTitle, challengeDescription,
+      fs, language, attemptId, challengeTitle, challengeDescription,
       challengeDifficulty, challengeCategory, challengeTestCases,
       shellCallbacks, streamChat, abortChat, onCodeApplied, onRunTests, isExpired,
     } = props;
@@ -79,6 +82,7 @@ export const TerminalPanel = React.forwardRef<TerminalPanelHandle, TerminalPanel
         term: termRef.current!,
         fs,
         language,
+        attemptId,
         challengeTitle,
         challengeDescription,
         challengeDifficulty,
@@ -97,7 +101,7 @@ export const TerminalPanel = React.forwardRef<TerminalPanelHandle, TerminalPanel
         isExpired: () => isExpiredRef.current(),
       });
       tuiRef.current.enter();
-    }, [fs, language, challengeTitle, challengeDescription, challengeDifficulty, challengeCategory, challengeTestCases]);
+    }, [fs, language, attemptId, challengeTitle, challengeDescription, challengeDifficulty, challengeCategory, challengeTestCases]);
 
     useEffect(() => {
       if (!containerRef.current) return;

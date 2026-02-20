@@ -1,6 +1,9 @@
 /**
  * Stream Cloudflare AI response. Uses env for CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN.
  * Only Cloudflare models are supported in Workers.
+ *
+ * Yields StreamChunk objects with phase metadata to distinguish
+ * reasoning tokens ('thinking') from answer tokens ('content').
  */
 interface Env {
   CLOUDFLARE_ACCOUNT_ID?: string;
@@ -12,6 +15,11 @@ interface Message {
   content: string;
 }
 
+export interface StreamChunk {
+  text: string;
+  phase: 'thinking' | 'content';
+}
+
 import { getModelPricing, getTierFallbackChain } from './ai-pricing';
 
 /**
@@ -21,18 +29,27 @@ import { getModelPricing, getTierFallbackChain } from './ai-pricing';
  * 2. OpenAI-compatible: { choices: [{ delta: { content: "..." } }] }
  * 3. Reasoning models: { choices: [{ delta: { reasoning_content: "..." } }] }
  *    (GLM-4.7, Qwen3 MoE send reasoning_content before content)
+ *
+ * Returns a StreamChunk with phase metadata so the SSE layer can
+ * distinguish thinking tokens from answer tokens.
  */
-function extractChunkContent(parsed: Record<string, unknown>): string | null {
-  // Cloudflare-native format
-  if (typeof parsed.response === 'string') return parsed.response;
+function extractChunkContent(parsed: Record<string, unknown>): StreamChunk | null {
+  // Cloudflare-native format (these models don't produce reasoning_content)
+  if (typeof parsed.response === 'string') {
+    return { text: parsed.response, phase: 'content' };
+  }
   // OpenAI-compatible format
   if (Array.isArray(parsed.choices) && parsed.choices.length > 0) {
     const delta = (parsed.choices[0] as Record<string, unknown>)?.delta as Record<string, unknown> | undefined;
     if (delta) {
       // Prefer content over reasoning_content
-      if (typeof delta.content === 'string' && delta.content) return delta.content as string;
-      // Fall back to reasoning_content for thinking-phase tokens
-      if (typeof delta.reasoning_content === 'string' && delta.reasoning_content) return delta.reasoning_content as string;
+      if (typeof delta.content === 'string' && delta.content) {
+        return { text: delta.content, phase: 'content' };
+      }
+      // reasoning_content = thinking-phase tokens from reasoning models
+      if (typeof delta.reasoning_content === 'string' && delta.reasoning_content) {
+        return { text: delta.reasoning_content, phase: 'thinking' };
+      }
     }
   }
   return null;
@@ -41,23 +58,29 @@ function extractChunkContent(parsed: Record<string, unknown>): string | null {
 /**
  * Extract content from a non-streaming OpenAI-format response.
  * Used for models that don't support SSE streaming (GPT-OSS).
+ * Returns both content and reasoning separately.
  */
 function extractNonStreamingContent(json: Record<string, unknown>): {
-  content: string; inputTokens: number; outputTokens: number;
+  content: string; reasoning: string; inputTokens: number; outputTokens: number;
 } | null {
   const result = json.result as Record<string, unknown> | undefined;
   if (!result || !Array.isArray(result.choices) || result.choices.length === 0) return null;
   const msg = (result.choices[0] as Record<string, unknown>)?.message as Record<string, unknown> | undefined;
   if (!msg) return null;
-  const content = (typeof msg.content === 'string' && msg.content)
-    ? msg.content
-    : (typeof msg.reasoning_content === 'string' ? msg.reasoning_content : null);
-  if (!content) return null;
+
+  const content = typeof msg.content === 'string' ? msg.content : '';
+  const reasoning = typeof msg.reasoning_content === 'string' ? msg.reasoning_content : '';
+
+  // If there's no content at all, nothing to return
+  if (!content && !reasoning) return null;
+
   const usage = result.usage as Record<string, number> | undefined;
+  const fullText = content || reasoning;
   return {
-    content,
-    inputTokens: usage?.prompt_tokens ?? Math.ceil(content.length / 4),
-    outputTokens: usage?.completion_tokens ?? Math.ceil(content.length / 4),
+    content: content || reasoning, // fallback: use reasoning as content if content is empty
+    reasoning,
+    inputTokens: usage?.prompt_tokens ?? Math.ceil(fullText.length / 4),
+    outputTokens: usage?.completion_tokens ?? Math.ceil(fullText.length / 4),
   };
 }
 
@@ -81,7 +104,7 @@ export async function* streamCloudflareAI(
   modelId: string,
   messages: Message[],
   options?: { maxTokens?: number; temperature?: number }
-): AsyncGenerator<string, { inputTokens: number; outputTokens: number }> {
+): AsyncGenerator<StreamChunk, { inputTokens: number; outputTokens: number }> {
   const accountId = env.CLOUDFLARE_ACCOUNT_ID;
   const apiToken = env.CLOUDFLARE_API_TOKEN;
   if (!accountId || !apiToken) {
@@ -134,10 +157,10 @@ export async function* streamCloudflareAI(
         if (data === '[DONE]') continue;
         try {
           const parsed = JSON.parse(data);
-          const content = extractChunkContent(parsed);
-          if (content) {
-            fullContent += content;
-            yield content;
+          const chunk = extractChunkContent(parsed);
+          if (chunk) {
+            fullContent += chunk.text;
+            yield chunk;
           }
         } catch {
           // skip
@@ -151,10 +174,10 @@ export async function* streamCloudflareAI(
       if (data !== '[DONE]') {
         try {
           const parsed = JSON.parse(data);
-          const content = extractChunkContent(parsed);
-          if (content) {
-            fullContent += content;
-            yield content;
+          const chunk = extractChunkContent(parsed);
+          if (chunk) {
+            fullContent += chunk.text;
+            yield chunk;
           }
         } catch { /* skip */ }
       }
@@ -179,7 +202,7 @@ export async function* streamCloudflareAIWithFallback(
   messages: Message[],
   options?: { maxTokens?: number; temperature?: number },
   fallbackChain?: string[]
-): AsyncGenerator<string, { inputTokens: number; outputTokens: number; model: string }> {
+): AsyncGenerator<StreamChunk, { inputTokens: number; outputTokens: number; model: string }> {
   // Build tier-aware fallback chain: only fall to same tier or lower
   const pricing = getModelPricing(requestedModel);
   const chain = fallbackChain || (pricing ? getTierFallbackChain(pricing.tier) : DEFAULT_FALLBACK_CHAIN);
@@ -232,8 +255,12 @@ export async function* streamCloudflareAIWithFallback(
     if (contentType.includes('application/json')) {
       const json = await response.json() as Record<string, unknown>;
       const extracted = extractNonStreamingContent(json);
-      if (extracted && extracted.content) {
-        yield extracted.content;
+      if (extracted && (extracted.content || extracted.reasoning)) {
+        // Yield reasoning first (thinking phase), then content (answer phase)
+        if (extracted.reasoning && extracted.content !== extracted.reasoning) {
+          yield { text: extracted.reasoning, phase: 'thinking' };
+        }
+        yield { text: extracted.content, phase: 'content' };
         return {
           inputTokens: extracted.inputTokens,
           outputTokens: extracted.outputTokens,
@@ -259,8 +286,11 @@ export async function* streamCloudflareAIWithFallback(
       if (retryResponse.ok) {
         const retryJson = await retryResponse.json() as Record<string, unknown>;
         const retryExtracted = extractNonStreamingContent(retryJson);
-        if (retryExtracted && retryExtracted.content) {
-          yield retryExtracted.content;
+        if (retryExtracted && (retryExtracted.content || retryExtracted.reasoning)) {
+          if (retryExtracted.reasoning && retryExtracted.content !== retryExtracted.reasoning) {
+            yield { text: retryExtracted.reasoning, phase: 'thinking' };
+          }
+          yield { text: retryExtracted.content, phase: 'content' };
           return {
             inputTokens: retryExtracted.inputTokens,
             outputTokens: retryExtracted.outputTokens,
@@ -301,10 +331,10 @@ export async function* streamCloudflareAIWithFallback(
           if (data === '[DONE]') continue;
           try {
             const parsed = JSON.parse(data);
-            const content = extractChunkContent(parsed);
-            if (content) {
-              fullContent += content;
-              yield content;
+            const chunk = extractChunkContent(parsed);
+            if (chunk) {
+              fullContent += chunk.text;
+              yield chunk;
             }
           } catch {
             // skip
@@ -318,10 +348,10 @@ export async function* streamCloudflareAIWithFallback(
         if (data !== '[DONE]') {
           try {
             const parsed = JSON.parse(data);
-            const content = extractChunkContent(parsed);
-            if (content) {
-              fullContent += content;
-              yield content;
+            const chunk = extractChunkContent(parsed);
+            if (chunk) {
+              fullContent += chunk.text;
+              yield chunk;
             }
           } catch { /* skip */ }
         }

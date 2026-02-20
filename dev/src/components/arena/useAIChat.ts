@@ -1,5 +1,6 @@
 /**
  * SSE streaming for Cloudflare AI models via /api/ai/chat.
+ * Supports separate thinking (reasoning) and content (answer) phases.
  */
 import { useCallback, useRef } from 'react';
 
@@ -34,6 +35,8 @@ export interface UseAIChatOptions {
 
 export interface StreamCallbacks {
   onChunk: (content: string) => void;
+  onThinking?: (thinkingContent: string) => void;
+  onThinkingDone?: () => void;
   onDone: (fullContent: string, meta?: MessageMeta) => void;
   onError: (error: string) => void;
   onConstraint?: (violation: string, message: string) => void;
@@ -46,7 +49,7 @@ export function useAIChat(options: UseAIChatOptions) {
 
   const streamChat = useCallback(
     async (messages: ChatMessage[], callbacks: StreamCallbacks) => {
-      const { onChunk, onDone, onError, onConstraint, userMessage } = callbacks;
+      const { onChunk, onThinking, onThinkingDone, onDone, onError, onConstraint, userMessage } = callbacks;
 
       // Abort any existing stream
       abortRef.current?.abort();
@@ -83,8 +86,32 @@ export function useAIChat(options: UseAIChatOptions) {
         const reader = res.body?.getReader();
         const decoder = new TextDecoder();
         let fullContent = '';
+        let fullThinking = '';
         let buffer = '';
         let messageMeta: MessageMeta | undefined;
+
+        const processSSEEvent = (data: SSEChunkData) => {
+          if (data.type === 'chunk' && data.content) {
+            fullContent += data.content;
+            onChunk(fullContent);
+          } else if (data.type === 'thinking' && data.content) {
+            fullThinking += data.content;
+            onThinking?.(fullThinking);
+          } else if (data.type === 'thinking_done') {
+            onThinkingDone?.();
+          } else if (data.type === 'done') {
+            onCostUpdate?.(data.cost ?? 0, data.inputTokens ?? 0, data.outputTokens ?? 0);
+            messageMeta = {
+              model: data.model || model,
+              cost: data.cost ?? 0,
+              tokens: (data.inputTokens ?? 0) + (data.outputTokens ?? 0),
+            };
+          } else if (data.type === 'error') {
+            fullContent += `\n[Error: ${data.message}]`;
+          } else if (data.type === 'constraint_warning') {
+            fullContent += `\n[Constraint: ${data.message}]`;
+          }
+        };
 
         while (reader) {
           const { done, value } = await reader.read();
@@ -98,22 +125,7 @@ export function useAIChat(options: UseAIChatOptions) {
           for (const line of parts) {
             if (!line.startsWith('data: ')) continue;
             try {
-              const data: SSEChunkData = JSON.parse(line.slice(6));
-              if (data.type === 'chunk' && data.content) {
-                fullContent += data.content;
-                onChunk(fullContent);
-              } else if (data.type === 'done') {
-                onCostUpdate?.(data.cost ?? 0, data.inputTokens ?? 0, data.outputTokens ?? 0);
-                messageMeta = {
-                  model: data.model || model,
-                  cost: data.cost ?? 0,
-                  tokens: (data.inputTokens ?? 0) + (data.outputTokens ?? 0),
-                };
-              } else if (data.type === 'error') {
-                fullContent += `\n[Error: ${data.message}]`;
-              } else if (data.type === 'constraint_warning') {
-                fullContent += `\n[Constraint: ${data.message}]`;
-              }
+              processSSEEvent(JSON.parse(line.slice(6)));
             } catch { /* skip malformed SSE */ }
           }
         }
@@ -121,22 +133,11 @@ export function useAIChat(options: UseAIChatOptions) {
         // Process any remaining buffered line
         if (buffer.startsWith('data: ')) {
           try {
-            const data: SSEChunkData = JSON.parse(buffer.slice(6));
-            if (data.type === 'chunk' && data.content) {
-              fullContent += data.content;
-              onChunk(fullContent);
-            } else if (data.type === 'done') {
-              onCostUpdate?.(data.cost ?? 0, data.inputTokens ?? 0, data.outputTokens ?? 0);
-              messageMeta = {
-                model: data.model || model,
-                cost: data.cost ?? 0,
-                tokens: (data.inputTokens ?? 0) + (data.outputTokens ?? 0),
-              };
-            }
+            processSSEEvent(JSON.parse(buffer.slice(6)));
           } catch { /* skip */ }
         }
 
-        onDone(fullContent || '(no response)', messageMeta);
+        onDone(fullContent || fullThinking || '(no response)', messageMeta);
       } catch (e) {
         if ((e as Error).name === 'AbortError') {
           onDone('[interrupted]');

@@ -6,13 +6,16 @@
 import type { Terminal } from '@xterm/xterm';
 import type { VirtualFileSystem } from './VirtualFileSystem';
 import { buildSystemPrompt, formatTestResultsForMessage, type AIMode, type TestResults } from '../../lib/ai/system-prompts';
-import { parseEditBlocks, applyEditBlocks, hasEditBlocks } from '../../lib/ai/diff-apply';
 import { hasToolCalls, stripToolCalls } from '../../lib/ai/tool-parser';
+import { applyCodeFromResponse as sharedApplyCode, extractBestCodeBlock } from '../../lib/ai/code-apply';
+import { callApplyModel } from '../../lib/ai/apply-model';
+import { computeLineDiff } from '../../lib/ai/line-diff';
 
 interface RuwtTUIOptions {
   term: Terminal;
   fs: VirtualFileSystem;
   language: string;
+  attemptId: string;
   challengeTitle: string;
   challengeDescription: string;
   challengeDifficulty: string;
@@ -22,6 +25,8 @@ interface RuwtTUIOptions {
     messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }>,
     callbacks: {
       onChunk: (content: string) => void;
+      onThinking?: (thinkingContent: string) => void;
+      onThinkingDone?: () => void;
       onDone: (fullContent: string) => void;
       onError: (error: string) => void;
       onConstraint?: (violation: string, message: string) => void;
@@ -45,6 +50,7 @@ export class RuwtTUI {
   private term: Terminal;
   private fs: VirtualFileSystem;
   private language: string;
+  private attemptId: string;
   private challengeTitle: string;
   private challengeDescription: string;
   private challengeDifficulty: string;
@@ -75,6 +81,7 @@ export class RuwtTUI {
     this.term = options.term;
     this.fs = options.fs;
     this.language = options.language;
+    this.attemptId = options.attemptId;
     this.challengeTitle = options.challengeTitle;
     this.challengeDescription = options.challengeDescription;
     this.challengeDifficulty = options.challengeDifficulty;
@@ -237,35 +244,81 @@ export class RuwtTUI {
     });
   }
 
-  private applyCodeFromResponse(responseText: string): void {
-    // Skip in ask mode
-    if (this.mode === 'ask') return;
+  /** Print ANSI-colored diff summary in terminal. */
+  private printDiffSummary(oldCode: string, newCode: string): void {
+    const diff = computeLineDiff(oldCode, newCode);
+    if (diff.added.length === 0 && diff.changed.length === 0) return;
 
-    // Try SEARCH/REPLACE blocks first
-    if (hasEditBlocks(responseText)) {
-      const blocks = parseEditBlocks(responseText);
-      if (blocks.length > 0) {
-        const currentCode = this.fs.getSolutionCode();
-        const result = applyEditBlocks(currentCode, blocks);
-        if (result.applied > 0) {
-          this.fs.setSolutionCode(result.newCode);
-          this.onCodeApplied(result.newCode);
-          const msg = result.failed > 0
-            ? `${result.applied} edit(s) applied, ${result.failed} failed`
-            : `${result.applied} edit(s) applied`;
-          this.term.write(`\r\n\r\n\x1b[32m\u2713 ${msg}\x1b[0m`);
-          return;
-        }
+    const newLines = newCode.split('\n');
+    const MAX_SHOWN = 4;
+    const entries: string[] = [];
+
+    for (const line of diff.added.slice(0, MAX_SHOWN)) {
+      const content = newLines[line - 1] ?? '';
+      const trimmed = content.length > 60 ? content.slice(0, 57) + '...' : content;
+      entries.push(`\x1b[32m+ L${line}: ${trimmed}\x1b[0m`);
+    }
+    for (const line of diff.changed.slice(0, Math.max(0, MAX_SHOWN - entries.length))) {
+      const content = newLines[line - 1] ?? '';
+      const trimmed = content.length > 60 ? content.slice(0, 57) + '...' : content;
+      entries.push(`\x1b[33m~ L${line}: ${trimmed}\x1b[0m`);
+    }
+
+    const total = diff.added.length + diff.changed.length;
+    if (total > MAX_SHOWN) {
+      entries.push(`\x1b[90m  ... and ${total - MAX_SHOWN} more line(s) changed\x1b[0m`);
+    }
+
+    for (const entry of entries) {
+      this.term.write(`\r\n${entry}`);
+    }
+  }
+
+  private async applyCodeFromResponse(responseText: string): Promise<boolean> {
+    const oldCode = this.fs.getSolutionCode();
+    const result = sharedApplyCode(responseText, oldCode, this.language, this.mode);
+
+    if (result.applied) {
+      this.fs.setSolutionCode(result.newCode);
+      this.onCodeApplied(result.newCode);
+      this.term.write(`\r\n\r\n\x1b[32m\u2713 ${result.message}\x1b[0m`);
+      this.printDiffSummary(oldCode, result.newCode);
+      return true;
+    }
+
+    // Structured edits failed — try apply model
+    if (result.needsApplyModel && this.attemptId) {
+      this.term.write('\r\n\r\n\x1b[33m[merging via AI...]\x1b[0m');
+      const applyResult = await callApplyModel({
+        attemptId: this.attemptId,
+        currentCode: oldCode,
+        aiResponse: responseText,
+        language: this.language,
+      });
+
+      if (applyResult.success && applyResult.mergedCode) {
+        this.fs.setSolutionCode(applyResult.mergedCode);
+        this.onCodeApplied(applyResult.mergedCode);
+        this.term.write('\r\n\x1b[32m\u2713 Edit applied via AI merge\x1b[0m');
+        this.printDiffSummary(oldCode, applyResult.mergedCode);
+        return true;
       }
+
+      // Apply model failed — fall back to code block extraction
+      const codeBlock = extractBestCodeBlock(responseText, this.language, oldCode);
+      if (codeBlock) {
+        this.fs.setSolutionCode(codeBlock);
+        this.onCodeApplied(codeBlock);
+        this.term.write('\r\n\x1b[33m! Edit match failed — used code block\x1b[0m');
+        this.printDiffSummary(oldCode, codeBlock);
+        return true;
+      }
+
+      this.term.write('\r\n\x1b[33m! Edit match failed\x1b[0m');
+      return false;
     }
 
-    // Fallback: extract largest code block
-    const codeBlock = this.extractCodeBlock(responseText);
-    if (codeBlock) {
-      this.fs.setSolutionCode(codeBlock);
-      this.onCodeApplied(codeBlock);
-      this.term.write('\r\n\r\n\x1b[32m\u2713 Applied to editor\x1b[0m');
-    }
+    return false;
   }
 
   private async sendMessage(text: string): Promise<void> {
@@ -290,12 +343,27 @@ export class RuwtTUI {
     this.term.write('\r\n');
     let lastChunkLen = 0;
     let toolLoopCount = 0;
-    const MAX_TOOL_LOOPS = 3;
+    const MAX_TOOL_LOOPS = 5;
+    let lastRoundAppliedCode = false;
+
+    let thinkingShown = false;
 
     const runOneRound = async (msgs: typeof messages): Promise<string | null> => {
       lastChunkLen = 0;
+      thinkingShown = false;
       return new Promise((resolve) => {
         this.streamChat(msgs, {
+          onThinking: () => {
+            if (!thinkingShown) {
+              thinkingShown = true;
+              this.term.write('\x1b[35m[thinking...]\x1b[0m');
+            }
+          },
+          onThinkingDone: () => {
+            if (thinkingShown) {
+              this.term.write('\x1b[35m done\x1b[0m\r\n');
+            }
+          },
           onChunk: (fullContent: string) => {
             const cleaned = stripToolCalls(fullContent);
             const newPart = cleaned.slice(lastChunkLen);
@@ -303,12 +371,12 @@ export class RuwtTUI {
             const termText = newPart.replace(/\n/g, '\r\n');
             this.term.write(termText);
           },
-          onDone: (fullContent: string) => {
+          onDone: async (fullContent: string) => {
             this.isStreaming = false;
             const cleaned = stripToolCalls(fullContent);
             this.history.push({ role: 'assistant', content: cleaned });
             this.pruneHistory();
-            this.applyCodeFromResponse(fullContent);
+            lastRoundAppliedCode = await this.applyCodeFromResponse(fullContent);
             resolve(fullContent);
           },
           onError: (error: string) => {
@@ -331,15 +399,16 @@ export class RuwtTUI {
 
     let aiResponse = await runOneRound(messages);
 
-    // Tool-use loop
+    // Agent loop: auto-run tests when AI writes code OR explicitly requests tests
     while (
       aiResponse &&
-      hasToolCalls(aiResponse) &&
+      (hasToolCalls(aiResponse) || lastRoundAppliedCode) &&
       (this.mode === 'agent' || this.mode === 'debug') &&
       toolLoopCount < MAX_TOOL_LOOPS &&
       this.onRunTests
     ) {
       toolLoopCount++;
+      lastRoundAppliedCode = false;
       this.term.write('\r\n\r\n\x1b[33m[running tests...]\x1b[0m\r\n');
 
       try {
@@ -354,6 +423,13 @@ export class RuwtTUI {
 
         const resultMsg = formatTestResultsForMessage(this.lastTestResults);
         this.term.write(`\x1b[90m${resultMsg.replace(/\n/g, '\r\n')}\x1b[0m\r\n`);
+
+        // If all tests pass, stop looping
+        if (testResult.passed) {
+          this.history.push({ role: 'user', content: resultMsg });
+          this.pruneHistory();
+          break;
+        }
 
         this.history.push({ role: 'user', content: resultMsg });
         this.pruneHistory();
@@ -378,23 +454,4 @@ export class RuwtTUI {
     }
   }
 
-  private extractCodeBlock(text: string): string | null {
-    // Match fenced code blocks, prefer ones matching the challenge language
-    const regex = /```(\w*)\n([\s\S]*?)```/g;
-    let match: RegExpExecArray | null;
-    let lastMatch: string | null = null;
-    let lastLangMatch: string | null = null;
-
-    while ((match = regex.exec(text)) !== null) {
-      const lang = match[1].toLowerCase();
-      const code = match[2];
-      lastMatch = code;
-      // Prefer blocks matching the challenge language
-      if (lang === this.language || lang === '') {
-        lastLangMatch = code;
-      }
-    }
-
-    return lastLangMatch ?? lastMatch;
-  }
 }

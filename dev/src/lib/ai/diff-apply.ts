@@ -1,6 +1,8 @@
 /**
- * SEARCH/REPLACE diff parser and applier for AI code edits.
- * Replaces the "output complete file" approach with targeted edits.
+ * Diff parser and applier for AI code edits.
+ * Supports two formats:
+ * 1. SEARCH/REPLACE blocks (preferred, instructed in system prompt)
+ * 2. Unified diff (--- a/ / +++ b/ / @@) — fallback for models that naturally output it
  */
 
 export interface EditBlock {
@@ -32,13 +34,120 @@ export function parseEditBlocks(text: string): EditBlock[] {
   let match: RegExpExecArray | null;
 
   while ((match = regex.exec(text)) !== null) {
-    blocks.push({
+    blocks.push(cleanDiffContamination({
       search: match[1],
       replace: match[2],
-    });
+    }));
   }
 
   return blocks;
+}
+
+/**
+ * Strip unified-diff-style +/- prefixes from SEARCH/REPLACE block content.
+ * Models sometimes mix formats, e.g. using +/- prefixes inside SEARCH/REPLACE:
+ *   <<<<<<< SEARCH
+ *   function foo() {
+ *   =======
+ *   function foo() {
+ *   +  // added line
+ *   +  newCode();
+ *   >>>>>>> REPLACE
+ */
+function cleanDiffContamination(block: EditBlock): EditBlock {
+  let { search, replace } = block;
+  let cleaned = false;
+
+  // Check REPLACE for + prefixes (model outputting additions as diff lines)
+  const replaceLines = replace.split('\n');
+  const plusCount = replaceLines.filter(l => l.startsWith('+') && !l.startsWith('++')).length;
+  const replaceNonEmpty = replaceLines.filter(l => l.trim() !== '').length;
+
+  if (plusCount >= 2 && replaceNonEmpty > 0 && plusCount / replaceNonEmpty >= 0.4) {
+    replace = replaceLines
+      .filter(l => !(l.startsWith('-') && !l.startsWith('--'))) // drop removal lines
+      .map(l => (l.startsWith('+') && !l.startsWith('++')) ? l.slice(1) : l)
+      .join('\n');
+    cleaned = true;
+  }
+
+  // Check SEARCH for - prefixes (model outputting removals as diff lines)
+  const searchLines = search.split('\n');
+  const minusCount = searchLines.filter(l => l.startsWith('-') && !l.startsWith('--')).length;
+  const searchNonEmpty = searchLines.filter(l => l.trim() !== '').length;
+
+  if (minusCount >= 2 && searchNonEmpty > 0 && minusCount / searchNonEmpty >= 0.4) {
+    search = searchLines
+      .filter(l => !(l.startsWith('+') && !l.startsWith('++'))) // drop addition lines
+      .map(l => (l.startsWith('-') && !l.startsWith('--')) ? l.slice(1) : l)
+      .join('\n');
+    cleaned = true;
+  }
+
+  return cleaned ? { search, replace } : block;
+}
+
+/**
+ * Parse unified diff hunks from AI response text.
+ * Handles format like:
+ * ```diff
+ * --- a/solution.js
+ * +++ b/solution.js
+ * @@ -1,5 +1,8 @@
+ *  context line
+ * -removed line
+ * +added line
+ * ```
+ */
+export function parseUnifiedDiff(text: string): EditBlock[] {
+  const blocks: EditBlock[] = [];
+
+  // Match unified diff hunks — look for @@ markers
+  // The diff may be inside a code block or bare in the response
+  const hunkRegex = /@@\s*-(\d+)(?:,\d+)?\s*\+\d+(?:,\d+)?\s*@@[^\n]*\n([\s\S]*?)(?=\n@@|\n```|$)/g;
+  let match: RegExpExecArray | null;
+
+  while ((match = hunkRegex.exec(text)) !== null) {
+    const hunkBody = match[2];
+    const lines = hunkBody.split('\n');
+
+    const searchLines: string[] = [];
+    const replaceLines: string[] = [];
+
+    for (const line of lines) {
+      if (line.startsWith('-')) {
+        searchLines.push(line.slice(1));
+      } else if (line.startsWith('+')) {
+        replaceLines.push(line.slice(1));
+      } else if (line.startsWith(' ')) {
+        searchLines.push(line.slice(1));
+        replaceLines.push(line.slice(1));
+      } else if (line === '') {
+        // Empty line in diff = context line with no prefix
+        searchLines.push('');
+        replaceLines.push('');
+      }
+      // Skip lines starting with \ (no newline at end of file markers)
+    }
+
+    // Trim trailing empty lines from both
+    while (searchLines.length > 0 && searchLines[searchLines.length - 1] === '') searchLines.pop();
+    while (replaceLines.length > 0 && replaceLines[replaceLines.length - 1] === '') replaceLines.pop();
+
+    if (searchLines.length > 0 || replaceLines.length > 0) {
+      blocks.push({
+        search: searchLines.join('\n'),
+        replace: replaceLines.join('\n'),
+      });
+    }
+  }
+
+  return blocks;
+}
+
+/** Check if text contains unified diff markers. */
+export function hasUnifiedDiff(text: string): boolean {
+  return /^[-+]{3}\s+[ab]\//m.test(text) && /^@@\s*-\d/m.test(text);
 }
 
 /**

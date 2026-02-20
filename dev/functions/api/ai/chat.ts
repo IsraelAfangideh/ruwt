@@ -137,21 +137,47 @@ export async function onRequestPost(context: {
             context.env, model, messages, { maxTokens, temperature }
           );
 
-          // Stream chunks
+          // Stream chunks — separate thinking (reasoning) from content (answer)
           let result: { inputTokens: number; outputTokens: number; model: string } | null = null;
           let fullContent = '';
+          let fullReasoning = '';
+          let wasThinking = false;
           while (true) {
             const { value, done } = await gen.next();
             if (done) {
               result = value as { inputTokens: number; outputTokens: number; model: string };
+              // Emit thinking_done if the stream ended while still in thinking phase
+              if (wasThinking) {
+                controller.enqueue(
+                  encoder.encode(`data: ${JSON.stringify({ type: 'thinking_done' })}\n\n`)
+                );
+              }
               break;
             }
-            fullContent += value;
-            controller.enqueue(
-              encoder.encode(
-                `data: ${JSON.stringify({ type: 'chunk', content: value })}\n\n`
-              )
-            );
+            // value is StreamChunk { text, phase }
+            if (value.phase === 'thinking') {
+              wasThinking = true;
+              fullReasoning += value.text;
+              controller.enqueue(
+                encoder.encode(
+                  `data: ${JSON.stringify({ type: 'thinking', content: value.text })}\n\n`
+                )
+              );
+            } else {
+              // Emit thinking_done on transition from thinking to content
+              if (wasThinking) {
+                wasThinking = false;
+                controller.enqueue(
+                  encoder.encode(`data: ${JSON.stringify({ type: 'thinking_done' })}\n\n`)
+                );
+              }
+              fullContent += value.text;
+              controller.enqueue(
+                encoder.encode(
+                  `data: ${JSON.stringify({ type: 'chunk', content: value.text })}\n\n`
+                )
+              );
+            }
           }
 
           if (!result) throw new Error('No result from stream');
@@ -186,13 +212,13 @@ export async function onRequestPost(context: {
               cost: actualCost,
             });
 
-            // Store assistant message for replay
+            // Store assistant message for replay (answer only; reasoning is internal)
             if (userMessage) {
               await db.insert(attemptMessages).values({
                 id: crypto.randomUUID(),
                 attemptId,
                 role: 'assistant',
-                content: fullContent,
+                content: fullContent || fullReasoning,
                 model: result.model,
                 inputTokens: result.inputTokens,
                 outputTokens: result.outputTokens,

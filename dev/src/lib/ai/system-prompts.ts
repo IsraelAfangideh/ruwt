@@ -1,6 +1,8 @@
 /**
  * Centralized system prompt builder for Arena AI modes.
- * Replaces inline buildSystemPrompt() in ArenaIDE.tsx and RuwtTUI.ts.
+ * Supports two contexts:
+ * - Full prompt (first call): includes challenge description, format rules, test cases
+ * - Loop prompt (follow-up calls): only current code + test results (saves tokens)
  */
 
 export type AIMode = 'agent' | 'plan' | 'debug' | 'ask';
@@ -30,6 +32,7 @@ interface BuildSystemPromptOptions {
   currentCode: string;
   testCases: string; // JSON string from challenge.testCases
   lastTestResults?: TestResults | null;
+  isFollowUp?: boolean; // true = agent loop round, skip static context
 }
 
 function formatTestCaseSummary(testCasesJson: string): string {
@@ -54,12 +57,16 @@ function formatTestResults(results: TestResults): string {
   const failing = results.results.filter((r) => !r.passed);
   if (failing.length === 0) return `Last test run: ${results.passedTests}/${results.totalTests} passed (all passing)`;
 
-  const lines = failing.slice(0, 5).map((r) => {
+  const lines = failing.slice(0, 8).map((r) => {
     let line = `  - Test: input="${r.input}" expected="${r.expectedOutput}"`;
     if (r.actualOutput !== undefined) line += ` got="${r.actualOutput}"`;
     if (r.error) line += ` error="${r.error}"`;
     return line;
   });
+
+  if (failing.length > 8) {
+    lines.push(`  ... and ${failing.length - 8} more failing`);
+  }
 
   return `Last test run: ${results.passedTests}/${results.totalTests} passed\nFAILING:\n${lines.join('\n')}`;
 }
@@ -70,13 +77,16 @@ function buildBaseContext(opts: BuildSystemPromptOptions): string {
   parts.push(`Challenge: "${opts.challengeTitle}" (${opts.challengeDifficulty} tier${opts.challengeCategory ? `, ${opts.challengeCategory}` : ''})`);
   parts.push(`Language: ${opts.language}`);
   parts.push('');
-  parts.push(`Description:\n${opts.challengeDescription}`);
-  parts.push('');
 
-  const testSummary = formatTestCaseSummary(opts.testCases);
-  if (testSummary) {
-    parts.push(testSummary);
+  if (!opts.isFollowUp) {
+    parts.push(`Description:\n${opts.challengeDescription}`);
     parts.push('');
+
+    const testSummary = formatTestCaseSummary(opts.testCases);
+    if (testSummary) {
+      parts.push(testSummary);
+      parts.push('');
+    }
   }
 
   parts.push(`Current code:\n\`\`\`${opts.language}\n${opts.currentCode}\n\`\`\``);
@@ -112,8 +122,17 @@ const TOOL_USE_RULES = `
 To run tests, output: <ruwt:run_tests/>
 The system will run tests and show you results. You can then fix any failures.`;
 
-const MODE_PROMPTS: Record<AIMode, (base: string) => string> = {
-  agent: (base) => `You are a coding agent. You write code, not explanations.
+// Compact rules for follow-up loop rounds (saves ~100 tokens)
+const EDIT_FORMAT_COMPACT = `
+Use SEARCH/REPLACE blocks to edit. SEARCH must exactly match existing code. Only edit what needs changing.`;
+
+const MODE_PROMPTS: Record<AIMode, (base: string, isFollowUp: boolean) => string> = {
+  agent: (base, isFollowUp) => isFollowUp
+    ? `You are a coding agent. Fix the failing tests. Be concise.
+${EDIT_FORMAT_COMPACT}
+
+${base}`
+    : `You are a coding agent. You write code, not explanations.
 
 ${base}
 ${EDIT_FORMAT_RULES}
@@ -126,7 +145,12 @@ ${TOOL_USE_RULES}
 - Do NOT explain the approach step-by-step unless asked.
 - Think of yourself as a pair programmer who writes code, not a tutor who explains.`,
 
-  plan: (base) => `You are a planning assistant. You analyze problems and create implementation plans.
+  plan: (base, isFollowUp) => isFollowUp
+    ? `You are a planning assistant implementing an approved plan. Write the next step.
+${EDIT_FORMAT_COMPACT}
+
+${base}`
+    : `You are a planning assistant. You analyze problems and create implementation plans.
 
 ${base}
 
@@ -150,7 +174,12 @@ The user will see Accept/Reject buttons. Wait for their decision.
 ${EDIT_FORMAT_RULES}
 ${TOOL_USE_RULES}`,
 
-  debug: (base) => `You are a debugging specialist. You trace bugs methodically.
+  debug: (base, isFollowUp) => isFollowUp
+    ? `You are a debugging specialist. Analyze the new test results and fix the remaining bug.
+${EDIT_FORMAT_COMPACT}
+
+${base}`
+    : `You are a debugging specialist. You trace bugs methodically.
 
 ${base}
 ${EDIT_FORMAT_RULES}
@@ -184,7 +213,7 @@ ${base}
 
 export function buildSystemPrompt(opts: BuildSystemPromptOptions): string {
   const base = buildBaseContext(opts);
-  return MODE_PROMPTS[opts.mode](base);
+  return MODE_PROMPTS[opts.mode](base, !!opts.isFollowUp);
 }
 
 /** Format test results for injection into a synthetic user message during tool-use loops. */
@@ -194,11 +223,14 @@ export function formatTestResultsForMessage(results: TestResults): string {
 
   if (failing.length > 0) {
     lines.push('FAILING:');
-    for (const r of failing.slice(0, 5)) {
+    for (const r of failing.slice(0, 8)) {
       let line = `  Test: input="${r.input}" expected="${r.expectedOutput}"`;
       if (r.actualOutput !== undefined) line += ` got="${r.actualOutput}"`;
       if (r.error) line += ` error="${r.error}"`;
       lines.push(line);
+    }
+    if (failing.length > 8) {
+      lines.push(`  ... and ${failing.length - 8} more failing`);
     }
   } else {
     lines.push('All tests passing!');

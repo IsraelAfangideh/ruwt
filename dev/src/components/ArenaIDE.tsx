@@ -13,8 +13,10 @@ import { TIER_MODELS, getModelById, getModelsForTier, tierColor, tierLabel, type
 import { estimateChatCost, formatEstimatedCost } from '@/lib/cost-estimate';
 import { useIsMobile } from '@/lib/useIsMobile';
 import { buildSystemPrompt, formatTestResultsForMessage, type AIMode, type TestResults as AITestResults } from '@/lib/ai/system-prompts';
-import { parseEditBlocks, applyEditBlocks, hasEditBlocks } from '@/lib/ai/diff-apply';
 import { stripToolCalls, hasToolCalls } from '@/lib/ai/tool-parser';
+import { applyCodeFromResponse as sharedApplyCode, extractBestCodeBlock } from '@/lib/ai/code-apply';
+import { callApplyModel } from '@/lib/ai/apply-model';
+import { useEditorDecorations } from './arena/useEditorDecorations';
 import { ModeSelector } from './arena/ModeSelector';
 // PlanApproval will be used when plan mode rendering is added
 // import { PlanApproval, extractPlanBlock } from './arena/PlanApproval';
@@ -241,6 +243,67 @@ const mdStyles: Record<string, React.CSSProperties> = {
   listNum: { color: arena.textMuted, flexShrink: 0, width: 16, textAlign: 'right' as const },
 };
 
+/* ─── Thinking Block (reasoning models) ─────────────────────────── */
+
+function ThinkingBlock({ text, isStreaming }: { text: string; isStreaming?: boolean }) {
+  const [expanded, setExpanded] = React.useState(!!isStreaming);
+  const lineCount = text.split('\n').length;
+
+  // Auto-expand while streaming, collapse when done
+  React.useEffect(() => {
+    if (isStreaming) setExpanded(true);
+  }, [isStreaming]);
+
+  return (
+    <div style={{
+      margin: '4px 0 6px',
+      borderLeft: '2px solid #a78bfa',
+      borderRadius: 4,
+      overflow: 'hidden',
+    }}>
+      <button
+        onClick={() => setExpanded(!expanded)}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 6,
+          padding: '4px 8px',
+          background: 'rgba(167,139,250,0.08)',
+          border: 'none',
+          cursor: 'pointer',
+          fontSize: 11,
+          color: '#a78bfa',
+          fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+          width: '100%',
+          textAlign: 'left',
+        }}
+      >
+        {isStreaming && (
+          <span style={{ animation: 'ruwt-pulse 1.2s ease-in-out infinite', fontSize: 8 }}>{'\u25CF'}</span>
+        )}
+        <span>{expanded ? '\u25BC' : '\u25B6'}</span>
+        <span>{isStreaming ? 'Thinking...' : `Thinking (${lineCount} line${lineCount !== 1 ? 's' : ''})`}</span>
+      </button>
+      {expanded && (
+        <div style={{
+          maxHeight: 200,
+          overflowY: 'auto',
+          padding: '6px 8px',
+          fontSize: 11,
+          lineHeight: '1.4',
+          color: arena.textSubtle,
+          fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+          whiteSpace: 'pre-wrap',
+          wordBreak: 'break-word',
+          background: 'rgba(167,139,250,0.04)',
+        }}>
+          {text}
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ─── Constraint violation messages ──────────────────────────────── */
 
 const constraintMessages: Record<string, string> = {
@@ -321,33 +384,6 @@ interface ArenaIDEProps {
   testResults?: TestResults | null;
   onDismissResults?: () => void;
   pastAttempts?: PastAttempt[];
-}
-
-/* ─── Code extraction helper ─────────────────────────────────────── */
-
-function extractBestCodeBlock(text: string, language: string): string | null {
-  const regex = /```(\w*)\n([\s\S]*?)```/g;
-  let match: RegExpExecArray | null;
-  let bestMatch: string | null = null;
-  let bestLangMatch: string | null = null;
-  let bestLen = 0;
-  let bestLangLen = 0;
-
-  while ((match = regex.exec(text)) !== null) {
-    const lang = match[1].toLowerCase();
-    const code = match[2];
-    // Skip code blocks that contain diff/SEARCH markers — these are edit instructions, not code
-    if (/<<<<<<< SEARCH|>>>>>>> REPLACE|^---\s+a\/|^\+\+\+\s+b\//m.test(code)) continue;
-    if (code.length > bestLen) {
-      bestMatch = code;
-      bestLen = code.length;
-    }
-    if ((lang === language || lang === '') && code.length > bestLangLen) {
-      bestLangMatch = code;
-      bestLangLen = code.length;
-    }
-  }
-  return bestLangMatch ?? bestMatch;
 }
 
 /* ─── Notification Toast ─────────────────────────────────────────── */
@@ -615,8 +651,10 @@ export function ArenaIDE({
   const [totalCost, setTotalCost] = useState(attempt?.totalCost ?? 0);
   const [inputTokens, setInputTokens] = useState(attempt?.inputTokens ?? 0);
   const [outputTokens, setOutputTokens] = useState(attempt?.outputTokens ?? 0);
-  const [messages, setMessages] = useState<{ role: 'system' | 'user' | 'assistant'; content: string; isConstraint?: boolean; meta?: MessageMeta }[]>([]);
+  const [messages, setMessages] = useState<{ role: 'system' | 'user' | 'assistant'; content: string; isConstraint?: boolean; meta?: MessageMeta; thinking?: string }[]>([]);
   const [streamingContent, setStreamingContent] = useState('');
+  const [streamingThinking, setStreamingThinking] = useState('');
+  const [isThinkingPhase, setIsThinkingPhase] = useState(false);
   const [chatInput, setChatInput] = useState('');
   const [isLoadingChat, setIsLoadingChat] = useState(false);
   const [model, setModel] = useState('@cf/meta/llama-3.1-8b-instruct');
@@ -639,6 +677,7 @@ export function ArenaIDE({
   const [notepadContent, setNotepadContent] = useState('');
   const [isToolLooping, setIsToolLooping] = useState(false);
   const pendingTestContextRef = useRef<AITestResults | null>(null);
+  const streamingThinkingRef = useRef('');
 
   const isMobile = useIsMobile();
   const activeTabRef = useRef<'description' | 'chat' | 'notepad'>('description');
@@ -657,8 +696,11 @@ export function ArenaIDE({
   // Virtual filesystem
   const fs = useMemo(() => new VirtualFileSystem(language, code), []);
 
+  // Editor decorations (visual diff highlights)
+  const { showDiffDecorations, clearDecorations } = useEditorDecorations(editorRef as React.RefObject<unknown>);
+
   // Bidirectional sync: Monaco <-> VFS
-  const { handleEditorChange } = useCodeSync(editorRef as React.RefObject<never>, fs, onCodeChange);
+  const { handleEditorChange } = useCodeSync(editorRef as React.RefObject<never>, fs, onCodeChange, clearDecorations);
 
   // AI chat hook
   const handleCostUpdate = useCallback((cost: number, inTok: number, outTok: number) => {
@@ -693,70 +735,58 @@ export function ArenaIDE({
     setTimeout(() => setShowPasteBlocked(false), 3000);
   }, []);
 
-  // Auto-apply code from AI response — tries SEARCH/REPLACE first, falls back to code block.
+  // Auto-apply code from AI response — uses shared pipeline.
   // Returns true if code was changed (used by agent loop to auto-run tests).
-  const applyCodeFromResponse = useCallback((responseText: string): boolean => {
-    // Skip code application in ask mode
-    if (mode === 'ask') return false;
+  const applyCodeFromResponse = useCallback(async (responseText: string): Promise<boolean> => {
+    const oldCode = fs.getSolutionCode();
+    const result = sharedApplyCode(responseText, oldCode, language, mode);
 
-    // Try SEARCH/REPLACE blocks first
-    if (hasEditBlocks(responseText)) {
-      const blocks = parseEditBlocks(responseText);
-      if (blocks.length > 0) {
-        const currentCode = fs.getSolutionCode();
-        const result = applyEditBlocks(currentCode, blocks);
-        if (result.applied > 0) {
-          fs.setSolutionCode(result.newCode);
-          const msg = result.failed > 0
-            ? `${result.applied} edit(s) applied, ${result.failed} failed`
-            : `${result.applied} edit(s) applied`;
-          flashToast(msg);
-          return true;
-        }
-        // All blocks failed — use the largest REPLACE section as full file replacement.
-        // The model intended to write this code; don't let it get lost.
-        if (result.failed > 0 && result.failedBlocks.length > 0) {
-          const largest = result.failedBlocks.reduce((a, b) =>
-            b.replace.length > a.replace.length ? b : a
-          );
-          if (largest.replace.trim()) {
-            fs.setSolutionCode(largest.replace);
-            flashToast('Edit match failed — replaced file');
-            return true;
-          }
-        }
-      }
-    }
-
-    // Fallback: extract largest code block (backward compat)
-    const codeBlock = extractBestCodeBlock(responseText, language);
-    if (codeBlock) {
-      fs.setSolutionCode(codeBlock);
-      flashToast();
+    if (result.applied) {
+      fs.setSolutionCode(result.newCode);
+      flashToast(result.message);
+      showDiffDecorations(oldCode, result.newCode);
       return true;
     }
+
+    // Structured edits failed — try apply model
+    if (result.needsApplyModel && attemptId) {
+      flashToast('Applying edit...');
+      const applyResult = await callApplyModel({
+        attemptId,
+        currentCode: oldCode,
+        aiResponse: responseText,
+        language,
+      });
+
+      if (applyResult.success && applyResult.mergedCode) {
+        fs.setSolutionCode(applyResult.mergedCode);
+        flashToast('Edit applied via AI merge');
+        showDiffDecorations(oldCode, applyResult.mergedCode);
+        return true;
+      }
+
+      // Apply model failed — fall back to code block extraction
+      const codeBlock = extractBestCodeBlock(responseText, language, oldCode);
+      if (codeBlock) {
+        fs.setSolutionCode(codeBlock);
+        flashToast('Edit match failed — used code block');
+        showDiffDecorations(oldCode, codeBlock);
+        return true;
+      }
+
+      flashToast('Edit match failed');
+      return false;
+    }
+
     return false;
-  }, [language, fs, flashToast, mode]);
+  }, [language, fs, flashToast, mode, attemptId, showDiffDecorations]);
 
   // Handle code applied from terminal (RuwtTUI)
   const handleTerminalCodeApplied = useCallback(() => {
     flashToast();
   }, [flashToast]);
 
-  // Build system prompt — mode-aware with test context injection
-  const buildModeSystemPrompt = useCallback(() => {
-    return buildSystemPrompt({
-      mode,
-      challengeTitle: challenge.title,
-      challengeDescription: challenge.description,
-      challengeDifficulty: challenge.difficulty,
-      challengeCategory: challenge.category || null,
-      language,
-      currentCode: fs.getSolutionCode(),
-      testCases: challenge.testCases || '[]',
-      lastTestResults: pendingTestContextRef.current || (testResults as AITestResults | undefined) || null,
-    });
-  }, [mode, challenge.title, challenge.description, challenge.difficulty, challenge.category, language, fs, challenge.testCases, testResults]);
+  // pendingTestContextRef is read inside runOneRound's buildSystemPrompt call
 
   // Notepad localStorage persistence
   useEffect(() => {
@@ -793,7 +823,7 @@ export function ArenaIDE({
     if (chatScrollRef.current) {
       chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
     }
-  }, [messages, streamingContent]);
+  }, [messages, streamingContent, streamingThinking]);
 
   // Track unread chat messages & auto-dismiss nudge
   const prevMsgCountRef = useRef(0);
@@ -852,27 +882,55 @@ export function ArenaIDE({
     let lastRoundAppliedCode = false;
 
     const runOneRound = async (msgs: Array<{ role: 'system' | 'user' | 'assistant'; content: string }>, isFollowUp: boolean): Promise<string | null> => {
+      const systemPrompt = buildSystemPrompt({
+        mode,
+        challengeTitle: challenge.title,
+        challengeDescription: challenge.description,
+        challengeDifficulty: challenge.difficulty,
+        challengeCategory: challenge.category || null,
+        language,
+        currentCode: fs.getSolutionCode(),
+        testCases: challenge.testCases || '[]',
+        lastTestResults: pendingTestContextRef.current || (testResults as AITestResults | undefined) || null,
+        isFollowUp,
+      });
       const chatMessages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [
-        { role: 'system', content: buildModeSystemPrompt() },
+        { role: 'system', content: systemPrompt },
         ...msgs,
       ];
 
       return new Promise((resolve) => {
         streamChat(chatMessages, {
           userMessage: isFollowUp ? undefined : text,
+          onThinking: (thinkingContent) => {
+            setStreamingThinking(thinkingContent);
+            streamingThinkingRef.current = thinkingContent;
+            setIsThinkingPhase(true);
+          },
+          onThinkingDone: () => {
+            setIsThinkingPhase(false);
+          },
           onChunk: (fullContent) => {
             setStreamingContent(stripToolCalls(fullContent));
+            setIsThinkingPhase(false);
           },
-          onDone: (fullContent, meta) => {
+          onDone: async (fullContent, meta) => {
             const cleanContent = stripToolCalls(fullContent);
-            setMessages((m) => [...m, { role: 'assistant', content: cleanContent, meta }]);
+            const thinking = streamingThinkingRef.current || undefined;
+            setMessages((m) => [...m, { role: 'assistant', content: cleanContent, meta, thinking }]);
             setStreamingContent('');
-            lastRoundAppliedCode = applyCodeFromResponse(fullContent);
+            setStreamingThinking('');
+            streamingThinkingRef.current = '';
+            setIsThinkingPhase(false);
+            lastRoundAppliedCode = await applyCodeFromResponse(fullContent);
             resolve(fullContent);
           },
           onError: (error) => {
             setMessages((m) => [...m, { role: 'assistant', content: `Request failed: ${error}` }]);
             setStreamingContent('');
+            setStreamingThinking('');
+            streamingThinkingRef.current = '';
+            setIsThinkingPhase(false);
             setIsLoadingChat(false);
             resolve(null);
           },
@@ -880,6 +938,9 @@ export function ArenaIDE({
             const friendlyMsg = constraintMessages[violation] || message;
             setMessages((m) => [...m, { role: 'assistant', content: friendlyMsg, isConstraint: true }]);
             setStreamingContent('');
+            setStreamingThinking('');
+            streamingThinkingRef.current = '';
+            setIsThinkingPhase(false);
             constraintHit = true;
             if (violation === 'time') {
               setIsExpired(true);
@@ -941,7 +1002,9 @@ export function ArenaIDE({
           { role: 'user' as const, content: resultMsg },
         ];
         aiResponse = await runOneRound(conversationMessages, true);
-      } catch {
+      } catch (err) {
+        const errMsg = err instanceof Error ? err.message : 'Test execution failed';
+        setMessages((m) => [...m, { role: 'assistant', content: `[Agent loop error: ${errMsg}]` }]);
         break;
       }
     }
@@ -950,7 +1013,7 @@ export function ArenaIDE({
     setIsLoadingChat(false);
     // Clear pending test context after use
     pendingTestContextRef.current = null;
-  }, [chatInput, isLoadingChat, attemptId, messages, buildModeSystemPrompt, streamChat, isExpired, aiLimitReached, applyCodeFromResponse, mode, onRunTests, testResults]);
+  }, [chatInput, isLoadingChat, attemptId, messages, challenge, language, fs, streamChat, isExpired, aiLimitReached, applyCodeFromResponse, mode, onRunTests, testResults]);
 
   const handleInputKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -1007,6 +1070,14 @@ export function ArenaIDE({
 
   return (
     <div style={s.container}>
+      {/* Diff decoration CSS for Monaco */}
+      <style>{`
+        .ruwt-diff-added { background: rgba(63,185,80,0.15) !important; }
+        .ruwt-diff-changed { background: rgba(201,169,98,0.15) !important; }
+        .ruwt-diff-glyph-added { border-left: 3px solid rgba(63,185,80,0.6); margin-left: 3px; }
+        .ruwt-diff-glyph-changed { border-left: 3px solid rgba(201,169,98,0.6); margin-left: 3px; }
+        @keyframes ruwt-pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+      `}</style>
       {/* Main content area */}
       <div style={isMobile ? s.mainRowMobile : s.mainRow}>
         {/* LEFT SIDEBAR: Description/Chat tabs */}
@@ -1109,6 +1180,9 @@ export function ArenaIDE({
                           </span>
                         )}
                       </div>
+                      {msg.role === 'assistant' && msg.thinking && (
+                        <ThinkingBlock text={msg.thinking} />
+                      )}
                       <div style={msg.role === 'user' ? s.userContent : s.aiContent}>
                         {msg.role === 'assistant' ? renderMarkdown(msg.content) : msg.content}
                       </div>
@@ -1120,7 +1194,8 @@ export function ArenaIDE({
                     </div>
                   );
                 })}
-                {isToolLooping && !streamingContent && (
+                {/* Tool loop indicator */}
+                {isToolLooping && !streamingContent && !isThinkingPhase && (
                   <div style={{ ...s.aiMessage, opacity: 0.7 }}>
                     <div style={s.messageLabel}>
                       <span style={s.aiLabel}>AI</span>
@@ -1131,16 +1206,43 @@ export function ArenaIDE({
                     </div>
                   </div>
                 )}
+                {/* Thinking phase — reasoning model is producing chain-of-thought */}
+                {isThinkingPhase && streamingThinking && (
+                  <div style={s.aiMessage}>
+                    <div style={s.messageLabel}>
+                      <span style={s.aiLabel}>AI</span>
+                      <span style={{ animation: 'ruwt-pulse 1.2s ease-in-out infinite', fontSize: 8, color: '#a78bfa' }}>{'\u25CF'}</span>
+                      <span style={{ fontSize: 10, color: '#a78bfa' }}>
+                        {getModelById(model)?.displayName || 'AI'} reasoning...
+                      </span>
+                    </div>
+                    <ThinkingBlock text={streamingThinking} isStreaming />
+                  </div>
+                )}
+                {/* Content phase — answer is streaming */}
                 {streamingContent && (
                   <div style={s.aiMessage}>
                     <div style={s.messageLabel}>
                       <span style={s.aiLabel}>AI</span>
                       <span style={s.streamingDot}>{'\u25CF'}</span>
                       <span style={{ fontSize: 10, color: arena.textSubtle }}>
-                        {getModelById(model)?.displayName || 'AI'} {isToolLooping ? 'fixing...' : 'thinking...'}
+                        {getModelById(model)?.displayName || 'AI'} {isToolLooping ? 'fixing...' : 'responding...'}
                       </span>
                     </div>
+                    {streamingThinking && <ThinkingBlock text={streamingThinking} />}
                     <div style={s.aiContent}>{renderMarkdown(streamingContent)}</div>
+                  </div>
+                )}
+                {/* Waiting — model is processing (e.g. non-streaming GPT-OSS) */}
+                {isLoadingChat && !streamingContent && !streamingThinking && !isThinkingPhase && !isToolLooping && (
+                  <div style={{ ...s.aiMessage, opacity: 0.7 }}>
+                    <div style={s.messageLabel}>
+                      <span style={s.aiLabel}>AI</span>
+                      <span style={{ animation: 'ruwt-pulse 1.2s ease-in-out infinite', fontSize: 8, color: arena.textSubtle }}>{'\u25CF'}</span>
+                      <span style={{ fontSize: 10, color: arena.textSubtle }}>
+                        {getModelById(model)?.displayName || 'AI'} processing...
+                      </span>
+                    </div>
                   </div>
                 )}
               </div>
@@ -1340,6 +1442,7 @@ export function ArenaIDE({
               ref={terminalRef}
               fs={fs}
               language={language}
+              attemptId={attemptId}
               challengeTitle={challenge.title}
               challengeDescription={challenge.description}
               challengeDifficulty={challenge.difficulty}

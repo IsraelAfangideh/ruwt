@@ -21,7 +21,8 @@ type MonacoEditor = {
 export function useCodeSync(
   editorRef: React.RefObject<MonacoEditor | null>,
   fs: VirtualFileSystem | null,
-  onCodeChange: (code: string) => void
+  onCodeChange: (code: string) => void,
+  clearDecorations?: () => void
 ) {
   const suppressSync = useRef(false);
 
@@ -33,8 +34,10 @@ export function useCodeSync(
       fs.setSolutionCode(value);
       onCodeChange(value);
       suppressSync.current = false;
+      // Clear diff decorations when user starts typing
+      clearDecorations?.();
     },
-    [fs, onCodeChange]
+    [fs, onCodeChange, clearDecorations]
   );
 
   // VFS -> Monaco: subscribe to VFS changes
