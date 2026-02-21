@@ -13,9 +13,10 @@
     <title>Ruwt - Prove You Can Use AI Better Than Anyone</title>
     <meta name="title" content="Ruwt - Prove You Can Use AI Better Than Anyone" />
     <meta name="description" content="Compete in AI-powered coding challenges. 60+ real-world problems, 8 AI models, ranked by cost efficiency. Free to start with 50k credits." />
-    <meta name="keywords" content="AI coding challenges, AI efficiency, engineering assessment, AI models, coding competition, developer tools" />
+    <meta name="keywords" content="AI coding challenges, AI efficiency, engineering assessment, AI models, coding competition, developer tools, AI-assisted programming, competitive coding" />
     <meta name="author" content="Ruwt" />
     <meta name="theme-color" content="#1a1816" />
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
 
     <!-- Open Graph / Facebook / LinkedIn -->
     <meta property="og:type" content="website" />
@@ -34,6 +35,59 @@
     <meta name="twitter:description" content="Compete in AI-powered coding challenges. 60+ real-world problems, 8 AI models, ranked by cost efficiency." />
     <meta name="twitter:image" content="https://ruwt.dev/og-image.png" />
 
+    <!-- JSON-LD Structured Data -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "WebSite",
+          "@id": "https://ruwt.dev/#website",
+          "url": "https://ruwt.dev/",
+          "name": "Ruwt",
+          "description": "AI-efficiency coding challenges. Solve real-world engineering problems using AI models, ranked by cost efficiency.",
+          "publisher": {
+            "@id": "https://ruwt.dev/#organization"
+          }
+        },
+        {
+          "@type": "Organization",
+          "@id": "https://ruwt.dev/#organization",
+          "name": "Ruwt",
+          "url": "https://ruwt.dev/",
+          "logo": {
+            "@type": "ImageObject",
+            "url": "https://ruwt.dev/og-image.png"
+          },
+          "sameAs": [
+            "https://www.linkedin.com/company/ruwt"
+          ]
+        },
+        {
+          "@type": "WebPage",
+          "@id": "https://ruwt.dev/#webpage",
+          "url": "https://ruwt.dev/",
+          "name": "Ruwt - Prove You Can Use AI Better Than Anyone",
+          "description": "Compete in AI-powered coding challenges. 60+ real-world problems, 8 AI models, ranked by cost efficiency. Free to start with 50k credits.",
+          "isPartOf": {
+            "@id": "https://ruwt.dev/#website"
+          },
+          "about": {
+            "@type": "SoftwareApplication",
+            "name": "Ruwt",
+            "applicationCategory": "DeveloperApplication",
+            "operatingSystem": "Web",
+            "offers": {
+              "@type": "Offer",
+              "price": "0",
+              "priceCurrency": "USD"
+            }
+          }
+        }
+      ]
+    }
+    </script>
+
     <!-- DNS Prefetch -->
     <link rel="dns-prefetch" href="https://fzncpdelyfuvdeqmwznx.supabase.co" />
     <link rel="preconnect" href="https://fzncpdelyfuvdeqmwznx.supabase.co" />
@@ -44,7 +98,64 @@
     <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=Libre+Franklin:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet" />
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <!--
+        Static HTML for search engine crawlers.
+        React replaces this on mount. Crawlers that don't execute JS
+        still see meaningful content, meta tags, and internal links.
+      -->
+      <div style="max-width:800px;margin:0 auto;padding:40px 20px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#1a1816">
+        <header>
+          <h1>Ruwt — Prove You Can Use AI Better Than Anyone</h1>
+          <p>Solve coding challenges using real AI models. The twist: you're ranked by how efficiently you use them. The cheapest correct solution wins.</p>
+        </header>
+
+        <section>
+          <h2>How It Works</h2>
+          <ol>
+            <li><strong>Pick a Challenge</strong> — Browse 60+ challenges across model selection, prompt efficiency, debugging, and multi-model strategy.</li>
+            <li><strong>Solve with AI</strong> — Use the Arena IDE with 8 real AI models across 5 cost tiers. Switch between Micro, Budget, Mid, Premium, and Reasoning strategically.</li>
+            <li><strong>Climb the Leaderboard</strong> — Submit your solution. You're ranked by cost efficiency — solve it correctly with the least spend.</li>
+          </ol>
+        </section>
+
+        <section>
+          <h2>Three Skills That Matter</h2>
+          <h3>Model Selection</h3>
+          <p>Know when a $0.01 model works and when you need a $0.50 one. Using premium for FizzBuzz is a red flag.</p>
+          <h3>Prompt Efficiency</h3>
+          <p>Get working code in fewer tokens. Concise, structured prompts beat verbose walls of text every time.</p>
+          <h3>Iterative Debugging</h3>
+          <p>Real engineering tickets. Diagnose and fix bugs cheaply — don't burn tokens asking for full rewrites.</p>
+        </section>
+
+        <section>
+          <h2>Daily Challenges</h2>
+          <p>A new challenge every day. Compete against other developers for the lowest AI cost. Build your streak and share your results.</p>
+        </section>
+
+        <section>
+          <h2>For Hiring Managers</h2>
+          <p>Assess candidates on the AI skills that actually matter in production. See how they select models, write prompts, and debug under real constraints.</p>
+        </section>
+
+        <nav>
+          <h2>Explore</h2>
+          <ul>
+            <li><a href="/challenges">Browse Challenges</a></li>
+            <li><a href="/leaderboard">Leaderboard</a></li>
+            <li><a href="/daily">Daily Challenge</a></li>
+            <li><a href="/register">Sign Up Free</a></li>
+            <li><a href="/login">Sign In</a></li>
+            <li><a href="/try/onboarding-fizzbuzz">Try a Challenge — No Sign Up</a></li>
+          </ul>
+        </nav>
+
+        <footer>
+          <p>&copy; 2025 Ruwt. AI-efficiency coding challenges at <a href="https://ruwt.dev">ruwt.dev</a>.</p>
+        </footer>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

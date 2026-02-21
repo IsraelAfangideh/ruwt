@@ -40,8 +40,8 @@ export async function onRequestGet(context: { env: Env }) {
     for (const ch of allChallenges) {
       xml += `  <url>\n    <loc>https://ruwt.dev/try/${encodeURIComponent(ch.id)}</loc>\n    <priority>0.7</priority>\n    <changefreq>weekly</changefreq>\n`;
       if (ch.createdAt) {
-        const date = ch.createdAt.split('T')[0];
-        if (date) xml += `    <lastmod>${date}</lastmod>\n`;
+        const date = ch.createdAt.replace(' ', 'T').split('T')[0];
+        if (date && /^\d{4}-\d{2}-\d{2}$/.test(date)) xml += `    <lastmod>${date}</lastmod>\n`;
       }
       xml += `  </url>\n`;
     }
