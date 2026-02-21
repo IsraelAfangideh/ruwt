@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { createClient } from '@/lib/supabase/client';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/Card';
@@ -7,6 +7,18 @@ import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { useColors } from '@/theme';
 import { spacing, fontSizes, fontFamily } from '@/theme/tokens';
+import { getDifficultyStyle } from '@/lib/difficulty';
+
+interface AssessmentPreview {
+  title: string;
+  description: string | null;
+  challengeCount: number;
+  timeLimitMinutes: number;
+  difficultyBreakdown: Record<string, number>;
+  categoryBreakdown: Record<string, number>;
+  expired: boolean;
+  status?: string;
+}
 
 export function AssessmentLandingScreen() {
   const navigation = useNavigation();
@@ -18,15 +30,29 @@ export function AssessmentLandingScreen() {
 
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [preview, setPreview] = useState<AssessmentPreview | null>(null);
+  const [loadingPreview, setLoadingPreview] = useState(true);
+
+  useEffect(() => {
+    if (!token) {
+      setLoadingPreview(false);
+      return;
+    }
+    fetch(`/api/assess/preview?token=${encodeURIComponent(token)}`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data) setPreview(data);
+        setLoadingPreview(false);
+      })
+      .catch(() => setLoadingPreview(false));
+  }, [token]);
 
   const handleStart = async () => {
     setStarting(true);
     setError(null);
 
-    // Check auth first
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
-      // Redirect to login with return path
       navigation.navigate('Login' as never);
       return;
     }
@@ -60,6 +86,32 @@ export function AssessmentLandingScreen() {
     );
   }
 
+  if (loadingPreview) {
+    return (
+      <View style={[styles.center, { backgroundColor: c.bg }]}>
+        <ActivityIndicator size="large" color={c.accent} />
+      </View>
+    );
+  }
+
+  if (preview?.expired) {
+    return (
+      <View style={[styles.center, { backgroundColor: c.bg }]}>
+        <View style={styles.container}>
+          <Text style={[styles.logo, { color: c.text }]}>Ruwt</Text>
+          <Card style={styles.card}>
+            <CardHeader>
+              <CardTitle>This invite has expired</CardTitle>
+              <CardDescription>
+                Contact the person who sent you this link for a new one.
+              </CardDescription>
+            </CardHeader>
+          </Card>
+        </View>
+      </View>
+    );
+  }
+
   return (
     <View style={[styles.page, { backgroundColor: c.bg }]}>
       <View style={styles.container}>
@@ -68,30 +120,63 @@ export function AssessmentLandingScreen() {
         <Card style={styles.card}>
           <CardHeader>
             <Badge variant="secondary">AI-Efficiency Assessment</Badge>
-            <CardTitle style={{ marginTop: spacing.sm }}>You've been invited to take an assessment</CardTitle>
+            <CardTitle style={{ marginTop: spacing.sm }}>
+              {preview?.title || "You've been invited to take an assessment"}
+            </CardTitle>
             <CardDescription>
-              This assessment measures how efficiently you use AI to solve coding challenges.
-              You'll be evaluated on model selection, prompt efficiency, and debugging strategy.
+              {preview?.description ||
+                'This assessment measures how efficiently you use AI to solve coding challenges. You\'ll be evaluated on model selection, prompt efficiency, and debugging strategy.'}
             </CardDescription>
           </CardHeader>
           <CardContent>
             <View style={styles.infoRows}>
-              <View style={styles.infoRow}>
-                <Text style={[styles.infoLabel, { color: c.textMuted }]}>What to expect:</Text>
-                <Text style={[styles.infoValue, { color: c.text }]}>
-                  Multiple coding challenges with AI assistance
-                </Text>
-              </View>
+              {preview && (
+                <>
+                  <View style={styles.infoRow}>
+                    <Text style={[styles.infoLabel, { color: c.textMuted }]}>Challenges:</Text>
+                    <Text style={[styles.infoValue, { color: c.text }]}>
+                      {preview.challengeCount} coding challenge{preview.challengeCount !== 1 ? 's' : ''}
+                    </Text>
+                  </View>
+                  <View style={styles.infoRow}>
+                    <Text style={[styles.infoLabel, { color: c.textMuted }]}>Time Limit:</Text>
+                    <Text style={[styles.infoValue, { color: c.text }]}>
+                      {preview.timeLimitMinutes} minutes
+                    </Text>
+                  </View>
+                  {Object.keys(preview.difficultyBreakdown).length > 0 && (
+                    <View style={styles.infoRow}>
+                      <Text style={[styles.infoLabel, { color: c.textMuted }]}>Difficulty:</Text>
+                      <View style={{ flexDirection: 'row', gap: spacing.xs, flexWrap: 'wrap' }}>
+                        {Object.entries(preview.difficultyBreakdown).map(([diff, count]) => {
+                          const ds = getDifficultyStyle(diff);
+                          return (
+                            <Badge
+                              key={diff}
+                              variant="outline"
+                              style={{ borderColor: ds.color, backgroundColor: ds.bg }}
+                            >
+                              <Text style={{ fontSize: fontSizes.xs, color: ds.color }}>
+                                {count} {ds.label}
+                              </Text>
+                            </Badge>
+                          );
+                        })}
+                      </View>
+                    </View>
+                  )}
+                </>
+              )}
               <View style={styles.infoRow}>
                 <Text style={[styles.infoLabel, { color: c.textMuted }]}>How it works:</Text>
                 <Text style={[styles.infoValue, { color: c.text }]}>
-                  You'll use AI models to help solve each challenge. Your cost efficiency matters.
+                  You'll use AI models to help solve each challenge. Your cost efficiency matters — solve correctly at the lowest AI cost.
                 </Text>
               </View>
               <View style={styles.infoRow}>
                 <Text style={[styles.infoLabel, { color: c.textMuted }]}>Scoring:</Text>
                 <Text style={[styles.infoValue, { color: c.text }]}>
-                  Solve problems correctly at the lowest AI cost. Choose models strategically.
+                  Model selection, prompt efficiency, debugging strategy, and total cost are all tracked and compared.
                 </Text>
               </View>
             </View>

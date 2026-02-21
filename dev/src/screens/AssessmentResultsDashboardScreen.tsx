@@ -12,6 +12,7 @@ import { getModelById, tierColor } from '@/lib/ai/pricing';
 import { AIProfileRadar, type AIProfile } from '@/components/AIProfileRadar';
 
 interface AttemptDetail {
+  attemptId: string;
   challengeId: string;
   status: string;
   totalCost: number;
@@ -224,6 +225,9 @@ export function AssessmentResultsDashboardScreen() {
             <SortHeader label="Cost" sortKey="cost" style={styles.thCost} />
             <SortHeader label="Tokens" sortKey="tokens" style={styles.thTokens} />
             <SortHeader label="Time" sortKey="time" style={styles.thTime} />
+            <View style={styles.thActions}>
+              <Text style={[styles.th, { color: c.textMuted }]}>Actions</Text>
+            </View>
           </View>
           {sorted.map((r) => (
             <View key={r.session.id}>
@@ -263,6 +267,19 @@ export function AssessmentResultsDashboardScreen() {
                   <Text style={[styles.td, styles.thTime, { color: c.textMuted }]}>
                     {formatDuration(getDuration(r))}
                   </Text>
+                  <View style={[styles.td, styles.thActions]}>
+                    {r.session.shareToken && (
+                      <Pressable
+                        onPress={() => {
+                          window.open(`/results/${r.session.shareToken}`, '_blank');
+                        }}
+                      >
+                        <Text style={{ fontSize: fontSizes.xs, color: c.accent, textDecorationLine: 'underline' }}>
+                          View Results
+                        </Text>
+                      </Pressable>
+                    )}
+                  </View>
                 </View>
               </Pressable>
 
@@ -307,6 +324,16 @@ export function AssessmentResultsDashboardScreen() {
                           })}
                         </View>
                       )}
+                      {a.attemptId && (
+                        <Pressable
+                          onPress={() => navigation.navigate('Replay', { attemptId: a.attemptId })}
+                          style={{ marginTop: spacing.xs }}
+                        >
+                          <Text style={{ fontSize: fontSizes.xs, color: c.accent, textDecorationLine: 'underline' }}>
+                            View Replay
+                          </Text>
+                        </Pressable>
+                      )}
                     </View>
                   ))}
                 </View>
@@ -340,6 +367,7 @@ const styles = StyleSheet.create({
   thCost: { flex: 1, textAlign: 'right' },
   thTokens: { flex: 1, textAlign: 'right' },
   thTime: { flex: 1, textAlign: 'right' },
+  thActions: { flex: 1.5, alignItems: 'flex-end' },
   expandedRow: { paddingHorizontal: spacing.lg, paddingVertical: spacing.sm, borderBottomWidth: 1 },
   attemptRow: { paddingVertical: spacing.xs, borderBottomWidth: 1 },
   attemptHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },

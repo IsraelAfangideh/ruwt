@@ -38,6 +38,7 @@ export function AssessmentFlowScreen() {
   const [testResults, setTestResults] = useState<TestResults | null>(null);
   const [advancing, setAdvancing] = useState(false);
   const [shareToken, setShareToken] = useState<string | null>(null);
+  const [userCredits, setUserCredits] = useState(100);
 
   const loadSession = useCallback(async () => {
     try {
@@ -62,6 +63,17 @@ export function AssessmentFlowScreen() {
       if (data.currentAttempt) {
         setAttempt(data.currentAttempt);
       }
+
+      // Fetch actual user credits
+      try {
+        const dashRes = await fetch('/api/dashboard');
+        if (dashRes.ok) {
+          const dashData = await dashRes.json();
+          if (typeof dashData.profile?.credits === 'number') {
+            setUserCredits(dashData.profile.credits);
+          }
+        }
+      } catch {}
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Something went wrong');
     }
@@ -262,7 +274,7 @@ export function AssessmentFlowScreen() {
         <ArenaIDE
           challenge={challenge}
           attempt={attempt}
-          userCredits={100}
+          userCredits={userCredits}
           code={code}
           onCodeChange={setCode}
           language={language}

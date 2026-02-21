@@ -3,11 +3,11 @@
  * List or create invite links for an assessment.
  * Auth required (must be creator).
  */
-import { eq, and, desc } from 'drizzle-orm';
+import { eq, and, desc, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import { getDb } from '../../../_shared/db';
 import { getUser } from '../../../_shared/auth';
-import { assessments, assessmentInvites } from '../../../../drizzle/schema.d1';
+import { assessments, assessmentInvites, profiles } from '../../../../drizzle/schema.d1';
 
 const createInviteSchema = z.object({
   candidateEmail: z.string().email().optional(),
@@ -49,6 +49,20 @@ export async function onRequestPost(context: { request: Request; env: Env; param
       );
     }
 
+    // Check assessment credits
+    const [profile] = await db
+      .select({ assessmentCredits: profiles.assessmentCredits })
+      .from(profiles)
+      .where(eq(profiles.id, user.id))
+      .limit(1);
+
+    if (!profile || profile.assessmentCredits <= 0) {
+      return Response.json(
+        { error: 'No assessment credits remaining. Purchase a pack at /teams to continue.' },
+        { status: 402 }
+      );
+    }
+
     const token = crypto.randomUUID().replace(/-/g, '').slice(0, 16);
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + (parsed.data.expiresInDays ?? 30));
@@ -62,6 +76,12 @@ export async function onRequestPost(context: { request: Request; env: Env; param
       status: 'pending',
       expiresAt: expiresAt.toISOString(),
     });
+
+    // Deduct one assessment credit
+    await db
+      .update(profiles)
+      .set({ assessmentCredits: sql`${profiles.assessmentCredits} - 1` })
+      .where(eq(profiles.id, user.id));
 
     const [invite] = await db
       .select()

@@ -86,6 +86,7 @@ export async function onRequestGet(context: { request: Request; env: Env; params
             }
 
             return {
+              attemptId: a.id,
               challengeId: a.challengeId,
               status: a.status,
               totalCost: a.totalCost,

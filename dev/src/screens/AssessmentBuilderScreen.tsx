@@ -39,6 +39,7 @@ export function AssessmentBuilderScreen() {
   const [assessmentId, setAssessmentId] = useState<string | undefined>(params.assessmentId);
   const [status, setStatus] = useState('draft');
   const [inviteLink, setInviteLink] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     const init = async () => {
@@ -99,16 +100,15 @@ export function AssessmentBuilderScreen() {
     setSaving(true);
     try {
       const timeLimit = Math.max(300, parseInt(timeLimitMinutes, 10) * 60 || 3600);
+      let currentId = assessmentId;
 
-      if (assessmentId) {
-        // Update
-        await fetch(`/api/assessments/${assessmentId}`, {
+      if (currentId) {
+        await fetch(`/api/assessments/${currentId}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ title, description: description || undefined, timeLimit }),
         });
       } else {
-        // Create
         const res = await fetch('/api/assessments', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -116,20 +116,17 @@ export function AssessmentBuilderScreen() {
         });
         if (res.ok) {
           const data = await res.json();
+          currentId = data.id;
           setAssessmentId(data.id);
         }
       }
 
-      // Set challenges
-      if (assessmentId || true) {
-        const id = assessmentId;
-        if (id && selectedChallengeIds.length > 0) {
-          await fetch(`/api/assessments/${id}/challenges`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ challengeIds: selectedChallengeIds }),
-          });
-        }
+      if (currentId && selectedChallengeIds.length > 0) {
+        await fetch(`/api/assessments/${currentId}/challenges`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ challengeIds: selectedChallengeIds }),
+        });
       }
     } catch (_) {}
     setSaving(false);
@@ -321,6 +318,21 @@ export function AssessmentBuilderScreen() {
             <Text style={[styles.inviteUrl, { color: c.accent }]} selectable>
               {inviteLink}
             </Text>
+            <View style={{ flexDirection: 'row', gap: spacing.sm, alignItems: 'center', marginBottom: spacing.sm }}>
+              <Button
+                variant="outline"
+                size="sm"
+                onPress={async () => {
+                  try {
+                    await navigator.clipboard.writeText(inviteLink);
+                    setCopied(true);
+                    setTimeout(() => setCopied(false), 2000);
+                  } catch {}
+                }}
+              >
+                {copied ? 'Copied!' : 'Copy to Clipboard'}
+              </Button>
+            </View>
             <Text style={[styles.inviteHint, { color: c.textMuted }]}>
               Share this link with your candidate. They'll need to create an account to start.
             </Text>

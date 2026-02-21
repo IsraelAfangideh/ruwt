@@ -1,6 +1,7 @@
 /**
  * POST /api/webhooks/stripe
- * Verify signature and handle checkout.session.completed (add credits, record transaction).
+ * Verify signature and handle checkout.session.completed.
+ * Fulfills both credit purchases and assessment pack purchases.
  */
 import { eq, sql } from 'drizzle-orm';
 import { getDb } from '../../_shared/db';
@@ -73,40 +74,68 @@ export async function onRequestPost(context: {
   if (event.type === 'checkout.session.completed') {
     const session = event.data.object as {
       payment_status?: string;
-      metadata?: { userId?: string; credits?: string };
+      metadata?: {
+        userId?: string;
+        type?: string;
+        credits?: string;
+        assessments?: string;
+        packageId?: string;
+      };
       id?: string;
     };
-    if (
-      session.payment_status === 'paid' &&
-      session.metadata?.userId &&
-      session.metadata?.credits
-    ) {
-      const userId = session.metadata.userId;
-      const credits = parseInt(session.metadata.credits, 10);
-      if (!Number.isFinite(credits) || credits <= 0) {
-        return Response.json({ error: 'Invalid credits' }, { status: 400 });
-      }
-      try {
-        const db = getDb(context.env);
-        const stripeSessionId = session.id ?? null;
 
-        // Idempotency check: if we already processed this Stripe session, skip
-        if (stripeSessionId) {
-          const [existing] = await db
-            .select({ id: transactions.id })
-            .from(transactions)
-            .where(eq(transactions.stripeId, stripeSessionId))
-            .limit(1);
-          if (existing) {
-            return Response.json({ received: true, note: 'already processed' });
-          }
+    if (session.payment_status !== 'paid' || !session.metadata?.userId) {
+      return Response.json({ received: true });
+    }
+
+    const { userId, type: purchaseType } = session.metadata;
+    const stripeSessionId = session.id ?? null;
+
+    try {
+      const db = getDb(context.env);
+
+      // Idempotency check
+      if (stripeSessionId) {
+        const [existing] = await db
+          .select({ id: transactions.id })
+          .from(transactions)
+          .where(eq(transactions.stripeId, stripeSessionId))
+          .limit(1);
+        if (existing) {
+          return Response.json({ received: true, note: 'already processed' });
+        }
+      }
+
+      if (purchaseType === 'assessment' && session.metadata.assessments) {
+        const assessmentCredits = parseInt(session.metadata.assessments, 10);
+        if (!Number.isFinite(assessmentCredits) || assessmentCredits <= 0) {
+          return Response.json({ error: 'Invalid assessment credits' }, { status: 400 });
         }
 
-        // Atomic: insert transaction first, then add credits.
-        // If the insert fails (e.g. duplicate), credits are never added.
         await db.insert(transactions).values({
           id: crypto.randomUUID(),
-          userId,
+          userId: userId!,
+          type: 'assessment_purchase',
+          amount: assessmentCredits,
+          stripeId: stripeSessionId,
+        });
+
+        await db
+          .update(profiles)
+          .set({
+            assessmentCredits: sql`${profiles.assessmentCredits} + ${assessmentCredits}`,
+            accountType: 'team',
+          })
+          .where(eq(profiles.id, userId!));
+      } else if (session.metadata.credits) {
+        const credits = parseInt(session.metadata.credits, 10);
+        if (!Number.isFinite(credits) || credits <= 0) {
+          return Response.json({ error: 'Invalid credits' }, { status: 400 });
+        }
+
+        await db.insert(transactions).values({
+          id: crypto.randomUUID(),
+          userId: userId!,
           type: 'purchase',
           amount: credits,
           stripeId: stripeSessionId,
@@ -115,11 +144,11 @@ export async function onRequestPost(context: {
         await db
           .update(profiles)
           .set({ credits: sql`${profiles.credits} + ${credits}` })
-          .where(eq(profiles.id, userId));
-      } catch (err) {
-        console.error('Failed to add credits:', err);
-        return Response.json({ error: 'Database error' }, { status: 500 });
+          .where(eq(profiles.id, userId!));
       }
+    } catch (err) {
+      console.error('Failed to fulfill purchase:', err);
+      return Response.json({ error: 'Database error' }, { status: 500 });
     }
   }
 
