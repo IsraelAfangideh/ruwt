@@ -96,3 +96,26 @@ export async function getUserOrgIds(db: Db, userId: string): Promise<string[]> {
     .where(eq(orgMembers.userId, userId));
   return rows.map((r) => r.orgId);
 }
+
+/** Check if an org has an active subscription (or is within a canceled subscription's paid period). */
+export async function hasActiveSubscription(db: Db, orgId: string): Promise<boolean> {
+  const [org] = await db
+    .select({
+      subscriptionStatus: organizations.subscriptionStatus,
+      subscriptionEndsAt: organizations.subscriptionEndsAt,
+    })
+    .from(organizations)
+    .where(eq(organizations.id, orgId))
+    .limit(1);
+
+  if (!org) return false;
+
+  if (org.subscriptionStatus === 'active') return true;
+
+  // Canceled but still within paid period
+  if (org.subscriptionStatus === 'canceled' && org.subscriptionEndsAt) {
+    return new Date(org.subscriptionEndsAt) > new Date();
+  }
+
+  return false;
+}

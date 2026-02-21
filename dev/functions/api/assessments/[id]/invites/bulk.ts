@@ -7,7 +7,7 @@ import { eq, and, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import { getDb } from '../../../../_shared/db';
 import { getUser } from '../../../../_shared/auth';
-import { canManageAssessment } from '../../../../_shared/org';
+import { canManageAssessment, getUserOrg, hasActiveSubscription } from '../../../../_shared/org';
 import { sendEmail } from '../../../../_shared/newsletter/resend';
 import { candidateInviteEmail } from '../../../../_shared/email/templates';
 import {
@@ -67,35 +67,24 @@ export async function onRequestPost(context: { request: Request; env: Env; param
 
     const { emails, expiresInDays } = parsed.data;
 
-    // Determine credit source: org credits or personal credits
-    let creditSource: 'org' | 'profile';
-    let availableCredits: number;
-
-    if (assessment.orgId) {
-      const [org] = await db
-        .select({ assessmentCredits: organizations.assessmentCredits })
-        .from(organizations)
-        .where(eq(organizations.id, assessment.orgId))
-        .limit(1);
-      availableCredits = org?.assessmentCredits ?? 0;
-      creditSource = 'org';
-    } else {
-      const [profile] = await db
-        .select({ assessmentCredits: profiles.assessmentCredits })
-        .from(profiles)
-        .where(eq(profiles.id, user.id))
-        .limit(1);
-      availableCredits = profile?.assessmentCredits ?? 0;
-      creditSource = 'profile';
+    // Check active subscription
+    let orgId = assessment.orgId;
+    if (!orgId) {
+      const userOrg = await getUserOrg(db, user.id);
+      orgId = userOrg?.org.id ?? null;
     }
 
-    if (availableCredits < emails.length) {
+    if (!orgId) {
       return Response.json(
-        {
-          error: `Not enough credits. You need ${emails.length} but have ${availableCredits}.`,
-          creditsAvailable: availableCredits,
-          creditsRequired: emails.length,
-        },
+        { error: 'Create an organization and subscribe to send assessment invites.' },
+        { status: 402 }
+      );
+    }
+
+    const isSubscribed = await hasActiveSubscription(db, orgId);
+    if (!isSubscribed) {
+      return Response.json(
+        { error: 'Active subscription required. Subscribe at /teams to send invites.' },
         { status: 402 }
       );
     }
@@ -140,19 +129,6 @@ export async function onRequestPost(context: { request: Request; env: Env; param
         status: 'pending',
         expiresAt: expiresAt.toISOString(),
       });
-
-      // Deduct 1 credit from the appropriate source
-      if (creditSource === 'org') {
-        await db
-          .update(organizations)
-          .set({ assessmentCredits: sql`${organizations.assessmentCredits} - 1` })
-          .where(eq(organizations.id, assessment.orgId!));
-      } else {
-        await db
-          .update(profiles)
-          .set({ assessmentCredits: sql`${profiles.assessmentCredits} - 1` })
-          .where(eq(profiles.id, user.id));
-      }
 
       // Send candidate invite email (fire-and-forget: don't fail the batch)
       let emailSent = false;

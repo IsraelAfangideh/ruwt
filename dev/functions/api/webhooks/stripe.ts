@@ -1,11 +1,11 @@
 /**
  * POST /api/webhooks/stripe
- * Verify signature and handle checkout.session.completed.
- * Fulfills both credit purchases and assessment pack purchases.
+ * Verify signature and handle Stripe events.
+ * Fulfills credit purchases and manages subscription lifecycle.
  */
 import { eq, sql } from 'drizzle-orm';
 import { getDb } from '../../_shared/db';
-import { profiles, transactions } from '../../../drizzle/schema.d1';
+import { profiles, transactions, organizations } from '../../../drizzle/schema.d1';
 
 async function verifyStripeSignature(
   payload: string,
@@ -71,6 +71,9 @@ export async function onRequestPost(context: {
     return Response.json({ error: 'Invalid JSON' }, { status: 400 });
   }
 
+  const db = getDb(context.env);
+
+  // --- checkout.session.completed ---
   if (event.type === 'checkout.session.completed') {
     const session = event.data.object as {
       payment_status?: string;
@@ -80,8 +83,12 @@ export async function onRequestPost(context: {
         credits?: string;
         assessments?: string;
         packageId?: string;
+        orgId?: string;
+        plan?: string;
       };
       id?: string;
+      subscription?: string;
+      customer?: string;
     };
 
     if (session.payment_status !== 'paid' || !session.metadata?.userId) {
@@ -92,8 +99,6 @@ export async function onRequestPost(context: {
     const stripeSessionId = session.id ?? null;
 
     try {
-      const db = getDb(context.env);
-
       // Idempotency check
       if (stripeSessionId) {
         const [existing] = await db
@@ -106,7 +111,32 @@ export async function onRequestPost(context: {
         }
       }
 
-      if (purchaseType === 'assessment' && session.metadata.assessments) {
+      if (purchaseType === 'subscription' && session.metadata.orgId) {
+        // Subscription checkout completed
+        const orgId = session.metadata.orgId;
+        const planId = session.metadata.plan ?? 'plan-monthly';
+        const subscriptionPlan = planId === 'plan-annual' ? 'annual' : 'monthly';
+
+        await db
+          .update(organizations)
+          .set({
+            stripeSubscriptionId: session.subscription ?? null,
+            stripeCustomerId: (session.customer as string) ?? null,
+            subscriptionStatus: 'active',
+            subscriptionPlan,
+          })
+          .where(eq(organizations.id, orgId));
+
+        // Log transaction
+        await db.insert(transactions).values({
+          id: crypto.randomUUID(),
+          userId: userId!,
+          type: 'subscription_start',
+          amount: 0,
+          stripeId: stripeSessionId,
+        });
+      } else if (purchaseType === 'assessment' && session.metadata.assessments) {
+        // Legacy assessment pack purchase (backward compat)
         const assessmentCredits = parseInt(session.metadata.assessments, 10);
         if (!Number.isFinite(assessmentCredits) || assessmentCredits <= 0) {
           return Response.json({ error: 'Invalid assessment credits' }, { status: 400 });
@@ -128,6 +158,7 @@ export async function onRequestPost(context: {
           })
           .where(eq(profiles.id, userId!));
       } else if (session.metadata.credits) {
+        // Credit purchase
         const credits = parseInt(session.metadata.credits, 10);
         if (!Number.isFinite(credits) || credits <= 0) {
           return Response.json({ error: 'Invalid credits' }, { status: 400 });
@@ -149,6 +180,103 @@ export async function onRequestPost(context: {
     } catch (err) {
       console.error('Failed to fulfill purchase:', err);
       return Response.json({ error: 'Database error' }, { status: 500 });
+    }
+  }
+
+  // --- customer.subscription.updated ---
+  if (event.type === 'customer.subscription.updated') {
+    const sub = event.data.object as {
+      id?: string;
+      status?: string;
+      cancel_at_period_end?: boolean;
+      current_period_end?: number;
+    };
+
+    if (sub.id) {
+      const [org] = await db
+        .select({ id: organizations.id })
+        .from(organizations)
+        .where(eq(organizations.stripeSubscriptionId, sub.id))
+        .limit(1);
+
+      if (org) {
+        let subscriptionStatus: string;
+        if (sub.cancel_at_period_end) {
+          subscriptionStatus = 'canceled';
+        } else if (sub.status === 'active') {
+          subscriptionStatus = 'active';
+        } else if (sub.status === 'past_due') {
+          subscriptionStatus = 'past_due';
+        } else {
+          subscriptionStatus = sub.status ?? 'none';
+        }
+
+        await db
+          .update(organizations)
+          .set({
+            subscriptionStatus,
+            subscriptionEndsAt: sub.current_period_end
+              ? new Date(sub.current_period_end * 1000).toISOString()
+              : null,
+          })
+          .where(eq(organizations.id, org.id));
+      }
+    }
+  }
+
+  // --- customer.subscription.deleted ---
+  if (event.type === 'customer.subscription.deleted') {
+    const sub = event.data.object as { id?: string };
+
+    if (sub.id) {
+      await db
+        .update(organizations)
+        .set({
+          subscriptionStatus: 'canceled',
+          subscriptionEndsAt: new Date().toISOString(),
+        })
+        .where(eq(organizations.stripeSubscriptionId, sub.id));
+    }
+  }
+
+  // --- invoice.payment_succeeded ---
+  if (event.type === 'invoice.payment_succeeded') {
+    const invoice = event.data.object as {
+      subscription?: string;
+      lines?: { data?: Array<{ period?: { end?: number } }> };
+    };
+
+    if (invoice.subscription) {
+      const [org] = await db
+        .select({ id: organizations.id })
+        .from(organizations)
+        .where(eq(organizations.stripeSubscriptionId, invoice.subscription))
+        .limit(1);
+
+      if (org) {
+        const periodEnd = invoice.lines?.data?.[0]?.period?.end;
+        await db
+          .update(organizations)
+          .set({
+            subscriptionStatus: 'active',
+            subscriptionEndsAt: periodEnd
+              ? new Date(periodEnd * 1000).toISOString()
+              : null,
+          })
+          .where(eq(organizations.id, org.id));
+      }
+    }
+  }
+
+  // --- invoice.payment_failed ---
+  if (event.type === 'invoice.payment_failed') {
+    const invoice = event.data.object as { subscription?: string };
+
+    if (invoice.subscription) {
+      await db
+        .update(organizations)
+        .set({ subscriptionStatus: 'past_due' })
+        .where(eq(organizations.stripeSubscriptionId, invoice.subscription));
     }
   }
 

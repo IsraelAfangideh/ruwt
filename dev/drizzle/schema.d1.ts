@@ -107,6 +107,11 @@ export const organizations = sqliteTable('organizations', {
   domain: text('domain'),
   createdBy: text('created_by').notNull().references(() => profiles.id),
   assessmentCredits: integer('assessment_credits').default(0).notNull(),
+  stripeCustomerId: text('stripe_customer_id'),
+  stripeSubscriptionId: text('stripe_subscription_id'),
+  subscriptionStatus: text('subscription_status').default('none').notNull(), // 'none' | 'active' | 'past_due' | 'canceled'
+  subscriptionPlan: text('subscription_plan'), // 'monthly' | 'annual'
+  subscriptionEndsAt: text('subscription_ends_at'),
   createdAt: text('created_at').default(sql`(datetime('now'))`).notNull(),
 });
 

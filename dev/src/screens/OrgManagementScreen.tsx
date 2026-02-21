@@ -35,6 +35,9 @@ interface Org {
   logoUrl: string | null;
   domain: string | null;
   assessmentCredits: number;
+  subscriptionStatus: string;
+  subscriptionPlan: string | null;
+  subscriptionEndsAt: string | null;
 }
 
 const ROLE_COLORS: Record<string, string> = {
@@ -244,15 +247,81 @@ export function OrgManagementScreen() {
         <View style={styles.titleRow}>
           <Text style={[styles.pageTitle, { color: c.text }]}>{org.name}</Text>
           <View style={styles.creditsBadge}>
-            <Text style={[styles.creditsLabel, { color: c.textMuted }]}>Assessment Credits:</Text>
-            <Text style={[styles.creditsValue, { color: c.accent }]}>{org.assessmentCredits}</Text>
-            <Button
-              variant="outline"
-              size="sm"
-              onPress={() => navigation.navigate('Teams' as never)}
-            >
-              Buy More
-            </Button>
+            {org.subscriptionStatus === 'active' ? (
+              <>
+                <Badge variant="default" style={{ backgroundColor: '#5a8a5a' }}>
+                  <Text style={{ fontSize: 11, color: '#fff', fontWeight: '600' }}>
+                    Active — {org.subscriptionPlan === 'annual' ? 'Annual' : 'Monthly'}
+                  </Text>
+                </Badge>
+                {org.subscriptionEndsAt && (
+                  <Text style={[styles.creditsLabel, { color: c.textMuted }]}>
+                    Renews {new Date(org.subscriptionEndsAt).toLocaleDateString()}
+                  </Text>
+                )}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onPress={async () => {
+                    try {
+                      const res = await fetch('/api/billing/portal', { method: 'POST' });
+                      const data = await res.json();
+                      if (data.url) window.location.href = data.url;
+                    } catch {}
+                  }}
+                >
+                  Manage Billing
+                </Button>
+              </>
+            ) : org.subscriptionStatus === 'canceled' ? (
+              <>
+                <Badge variant="outline" style={{ borderColor: c.destructive }}>
+                  <Text style={{ fontSize: 11, color: c.destructive, fontWeight: '600' }}>
+                    Canceled
+                  </Text>
+                </Badge>
+                {org.subscriptionEndsAt && new Date(org.subscriptionEndsAt) > new Date() && (
+                  <Text style={[styles.creditsLabel, { color: c.textMuted }]}>
+                    Access until {new Date(org.subscriptionEndsAt).toLocaleDateString()}
+                  </Text>
+                )}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onPress={() => navigation.navigate('Teams' as never)}
+                >
+                  Resubscribe
+                </Button>
+              </>
+            ) : org.subscriptionStatus === 'past_due' ? (
+              <>
+                <Badge variant="outline" style={{ borderColor: '#d4a843' }}>
+                  <Text style={{ fontSize: 11, color: '#d4a843', fontWeight: '600' }}>
+                    Payment Past Due
+                  </Text>
+                </Badge>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onPress={async () => {
+                    try {
+                      const res = await fetch('/api/billing/portal', { method: 'POST' });
+                      const data = await res.json();
+                      if (data.url) window.location.href = data.url;
+                    } catch {}
+                  }}
+                >
+                  Update Payment
+                </Button>
+              </>
+            ) : (
+              <Button
+                size="sm"
+                onPress={() => navigation.navigate('Teams' as never)}
+              >
+                Subscribe
+              </Button>
+            )}
           </View>
         </View>
       </View>

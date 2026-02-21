@@ -1,6 +1,6 @@
 /**
- * Credit packages for assessment purchases. Prices in cents (USD).
- * Individual practice is free; credits are only used for B2B assessments.
+ * Credit packages for individual AI usage. Prices in cents (USD).
+ * Individual practice is free; credits are only used for AI chat in the arena.
  */
 
 export interface CreditPackage {
@@ -22,50 +22,67 @@ export function getPackageById(id: string): CreditPackage | undefined {
 }
 
 /**
- * B2B assessment packs — credit-based pricing for hiring teams.
+ * B2B subscription plans — flat-rate monthly/annual pricing for hiring teams.
+ * Unlimited assessments, cancel anytime, 30-day money-back guarantee.
  */
-export interface AssessmentPack {
+export interface SubscriptionPlan {
   id: string;
-  assessments: number | null; // null = enterprise/custom
-  priceInCents: number; // 0 = contact us
+  priceInCents: number;
+  interval: 'month' | 'year';
   label: string;
+  monthlyEquivalent: string;
   badge?: string;
+  savings?: string;
   features: string[];
 }
 
-export const ASSESSMENT_PACKS: AssessmentPack[] = [
+export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
   {
-    id: 'pack-10',
-    assessments: 10,
-    priceInCents: 9900,
-    label: '10 Assessments',
-    features: ['Create custom assessments', 'Results dashboard', 'CSV export', 'All 60+ challenges'],
+    id: 'plan-monthly',
+    priceInCents: 20000,
+    interval: 'month',
+    label: '$200/month',
+    monthlyEquivalent: '$200',
+    badge: 'Most Popular',
+    features: [
+      'Unlimited assessments',
+      'Unlimited candidate invites',
+      'AI Profile analytics & radar charts',
+      'Full session replays',
+      'Candidate comparison & CSV export',
+      'Custom challenges',
+      'Cancel anytime',
+    ],
   },
   {
-    id: 'pack-50',
-    assessments: 50,
-    priceInCents: 39900,
-    label: '50 Assessments',
-    badge: 'Popular',
-    features: ['Everything in 10-pack', 'AI profile analytics', 'Candidate comparison', 'Priority support'],
-  },
-  {
-    id: 'pack-200',
-    assessments: 200,
-    priceInCents: 99900,
-    label: '200 Assessments',
+    id: 'plan-annual',
+    priceInCents: 180000,
+    interval: 'year',
+    label: '$1,800/year',
+    monthlyEquivalent: '$150',
     badge: 'Best Value',
-    features: ['Everything in 50-pack', 'SSO integration', 'API access', 'Custom challenges'],
-  },
-  {
-    id: 'pack-enterprise',
-    assessments: null,
-    priceInCents: 0,
-    label: 'Enterprise',
-    features: ['Unlimited assessments', 'Dedicated support', 'Custom SLA', 'On-premise option'],
+    savings: 'Save 25% ($600/year)',
+    features: [
+      'Everything in monthly',
+      '25% discount vs monthly',
+      'Annual commitment, billed once',
+    ],
   },
 ];
 
-export function getAssessmentPackById(id: string): AssessmentPack | undefined {
-  return ASSESSMENT_PACKS.find((p) => p.id === id);
+export const ENTERPRISE_TIER = {
+  id: 'enterprise',
+  label: 'Enterprise',
+  features: [
+    'Everything in subscription',
+    'SSO integration',
+    'API access',
+    'Dedicated support',
+    'Custom SLA',
+    'On-premise option',
+  ],
+};
+
+export function getSubscriptionPlanById(id: string): SubscriptionPlan | undefined {
+  return SUBSCRIPTION_PLANS.find((p) => p.id === id);
 }

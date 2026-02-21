@@ -3,21 +3,19 @@ import { View, Text, ScrollView, StyleSheet, Pressable } from 'react-native';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
-import { Badge } from '@/components/ui/Badge';
 import { Skeleton, SkeletonLines } from '@/components/ui/Skeleton';
 import { useColors } from '@/theme';
 import { spacing, fontSizes, fontFamily, radii } from '@/theme/tokens';
-import { CREDIT_PACKAGES, type CreditPackage } from '@/lib/stripe';
 import { useToast } from '@/components/ui/Toast';
 import { useAuthGuard } from '@/hooks/useAuthGuard';
 
 export function SettingsScreen() {
   const { user, loading: authLoading } = useAuthGuard();
-  const [credits, setCredits] = useState<number | null>(null);
   const [accountType, setAccountType] = useState<'individual' | 'team'>('individual');
+  const [subscriptionStatus, setSubscriptionStatus] = useState<string>('none');
+  const [subscriptionPlan, setSubscriptionPlan] = useState<string | null>(null);
   const [newsletterSubscribed, setNewsletterSubscribed] = useState<boolean>(true);
   const [togglingNewsletter, setTogglingNewsletter] = useState(false);
-  const [purchasing, setPurchasing] = useState<string | null>(null);
   const [showSuccess, setShowSuccess] = useState(false);
   const c = useColors();
   const { showToast } = useToast();
@@ -30,9 +28,10 @@ export function SettingsScreen() {
         const base = typeof window !== 'undefined' ? window.location.origin : '';
         const r = await fetch(`${base}/api/profile`);
         if (r.ok) {
-          const data = await r.json() as { credits: number; accountType?: 'individual' | 'team'; newsletterSubscribed?: number };
-          setCredits(data.credits);
+          const data = await r.json() as { accountType?: 'individual' | 'team'; newsletterSubscribed?: number; subscriptionStatus?: string; subscriptionPlan?: string | null };
           if (data.accountType) setAccountType(data.accountType);
+          if (data.subscriptionStatus) setSubscriptionStatus(data.subscriptionStatus);
+          if (data.subscriptionPlan !== undefined) setSubscriptionPlan(data.subscriptionPlan);
           setNewsletterSubscribed(data.newsletterSubscribed !== 0);
         }
       } catch {
@@ -75,27 +74,6 @@ export function SettingsScreen() {
     setTogglingNewsletter(false);
   };
 
-  const handleBuy = async (pkg: CreditPackage) => {
-    setPurchasing(pkg.id);
-    try {
-      const base = typeof window !== 'undefined' ? window.location.origin : '';
-      const r = await fetch(`${base}/api/checkout`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ packageId: pkg.id }),
-      });
-      if (r.ok) {
-        const data = await r.json() as { url: string };
-        if (data.url) window.location.href = data.url;
-      } else {
-        showToast('Failed to start checkout. Please try again.', 'error');
-      }
-    } catch {
-      showToast('Failed to start checkout. Please try again.', 'error');
-    }
-    setPurchasing(null);
-  };
-
   if (authLoading || !user) {
     return (
       <View style={[styles.center, { backgroundColor: c.bg, padding: spacing.xl }]}>
@@ -134,37 +112,40 @@ export function SettingsScreen() {
         {accountType === 'team' ? (
           <Card style={styles.card}>
             <CardHeader>
-              <CardTitle>Assessment Credits</CardTitle>
+              <CardTitle>Hiring Subscription</CardTitle>
               <CardDescription>
-                {credits !== null
-                  ? `You have ${credits.toLocaleString()} assessment credits remaining.`
-                  : 'Loading balance...'}
+                {subscriptionStatus === 'active'
+                  ? `Active ${subscriptionPlan === 'annual' ? 'annual' : 'monthly'} subscription. Unlimited assessments.`
+                  : subscriptionStatus === 'canceled'
+                    ? 'Your subscription has been canceled.'
+                    : subscriptionStatus === 'past_due'
+                      ? 'Your payment is past due. Please update your payment method.'
+                      : 'Subscribe to create unlimited assessments for your team.'}
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <View style={styles.packages}>
-                {CREDIT_PACKAGES.map((pkg) => (
-                  <View key={pkg.id} style={[styles.pkgCard, { borderColor: c.border, backgroundColor: c.card }]}>
-                    {pkg.badge && (
-                      <Badge variant="default" style={styles.pkgBadge}>{pkg.badge}</Badge>
-                    )}
-                    <Text style={[styles.pkgCredits, { color: c.text }]}>{pkg.label}</Text>
-                    <Text style={[styles.pkgPrice, { color: c.accent }]}>
-                      ${(pkg.priceInCents / 100).toFixed(2)}
-                    </Text>
-                    <Text style={[styles.pkgUnit, { color: c.textMuted }]}>
-                      ${(pkg.priceInCents / pkg.credits).toFixed(2)}/credit
-                    </Text>
-                    <Button
-                      onPress={() => handleBuy(pkg)}
-                      disabled={purchasing !== null}
-                      style={styles.pkgBtn}
-                    >
-                      {purchasing === pkg.id ? 'Redirecting...' : 'Buy'}
-                    </Button>
-                  </View>
-                ))}
-              </View>
+              {subscriptionStatus === 'active' || subscriptionStatus === 'past_due' ? (
+                <Button
+                  variant="outline"
+                  onPress={async () => {
+                    try {
+                      const res = await fetch('/api/billing/portal', { method: 'POST' });
+                      const data = await res.json();
+                      if (data.url) window.location.href = data.url;
+                    } catch {}
+                  }}
+                >
+                  Manage Billing
+                </Button>
+              ) : (
+                <Button
+                  onPress={() => {
+                    if (typeof window !== 'undefined') window.location.href = '/teams';
+                  }}
+                >
+                  {subscriptionStatus === 'canceled' ? 'Resubscribe' : 'Subscribe — $200/mo'}
+                </Button>
+              )}
             </CardContent>
           </Card>
         ) : (
@@ -237,24 +218,6 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
   },
   successText: { fontWeight: '600', textAlign: 'center', fontFamily: fontFamily.body },
-  packages: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.md,
-  },
-  pkgCard: {
-    flex: 1,
-    minWidth: 180,
-    borderWidth: 1,
-    borderRadius: 12,
-    padding: spacing.lg,
-    alignItems: 'center',
-  },
-  pkgBadge: { marginBottom: spacing.sm },
-  pkgCredits: { fontSize: fontSizes.lg, fontWeight: '700', marginBottom: spacing.xs, fontFamily: fontFamily.body },
-  pkgPrice: { fontSize: fontSizes['2xl'], fontWeight: '700', fontFamily: fontFamily.body },
-  pkgUnit: { fontSize: fontSizes.xs, marginBottom: spacing.md, fontFamily: fontFamily.body },
-  pkgBtn: { width: '100%' },
   toggleRow: {
     flexDirection: 'row',
     alignItems: 'center',

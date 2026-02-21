@@ -6,6 +6,7 @@ import { eq } from 'drizzle-orm';
 import { z } from 'zod';
 import { getDb } from '../_shared/db';
 import { getUser } from '../_shared/auth';
+import { getUserOrg } from '../_shared/org';
 import { ensureProfile } from '../_shared/ensure-profile';
 import { profiles } from '../../drizzle/schema.d1';
 
@@ -29,6 +30,18 @@ export async function onRequestGet(context: { request: Request; env: Env }) {
       return Response.json({ error: 'Profile not found' }, { status: 404 });
     }
 
+    // Look up org subscription status
+    let subscriptionStatus = 'none';
+    let subscriptionPlan: string | null = null;
+    let subscriptionEndsAt: string | null = null;
+
+    const userOrg = await getUserOrg(db, user.id);
+    if (userOrg) {
+      subscriptionStatus = userOrg.org.subscriptionStatus ?? 'none';
+      subscriptionPlan = userOrg.org.subscriptionPlan ?? null;
+      subscriptionEndsAt = userOrg.org.subscriptionEndsAt ?? null;
+    }
+
     return Response.json({
       id: profile.id,
       email: profile.email,
@@ -44,6 +57,9 @@ export async function onRequestGet(context: { request: Request; env: Env }) {
       newsletterSubscribed: profile.newsletterSubscribed,
       accountType: profile.accountType,
       assessmentCredits: profile.assessmentCredits,
+      subscriptionStatus,
+      subscriptionPlan,
+      subscriptionEndsAt,
     });
   } catch (error) {
     console.error('Profile error:', error);

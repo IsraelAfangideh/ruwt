@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/Button';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Input } from '@/components/ui/Input';
-import { ASSESSMENT_PACKS } from '@/lib/stripe';
+import { SUBSCRIPTION_PLANS, ENTERPRISE_TIER } from '@/lib/stripe';
 import { useColors } from '@/theme';
 import { spacing, fontSizes, fontFamily } from '@/theme/tokens';
 
@@ -61,7 +61,7 @@ const COMPARISON_ROWS = [
   { label: 'Full session replay', ruwt: true, hackerrank: 'Partial', codility: false, takehome: false },
   { label: 'Behavioral insights', ruwt: true, hackerrank: false, codility: false, takehome: false },
   { label: 'Setup time', ruwt: '5 min', hackerrank: '30 min', codility: '30 min', takehome: '2+ hrs' },
-  { label: 'Pricing', ruwt: 'Per assessment', hackerrank: 'Per month', codility: 'Per month', takehome: 'Free' },
+  { label: 'Pricing', ruwt: '$200/mo flat', hackerrank: '$100+/seat/mo', codility: '$100+/seat/mo', takehome: 'Free' },
 ];
 
 // ─── Component ───────────────────────────────────────────────────────────────
@@ -103,19 +103,22 @@ export function TeamsScreen() {
   const [demoSubmitted, setDemoSubmitted] = useState(false);
   const [demoError, setDemoError] = useState<string | null>(null);
 
-  const handleBuyPack = async (packId: string) => {
-    setCheckoutLoading(packId);
+  const handleSubscribe = async (planId: string) => {
+    setCheckoutLoading(planId);
     try {
       const res = await fetch('/api/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ packageId: packId, type: 'assessment' }),
+        body: JSON.stringify({ packageId: planId, type: 'subscription' }),
       });
       const data = await res.json();
       if (data.url) {
         window.location.href = data.url;
       } else if (data.error === 'Unauthorized') {
         navigation.navigate('Register' as never);
+      } else if (data.error) {
+        // e.g. "Create an organization first"
+        alert(data.error);
       }
     } catch {}
     setCheckoutLoading(null);
@@ -270,57 +273,69 @@ export function TeamsScreen() {
 
       {/* Pricing */}
       <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: c.text }]}>Simple, Credit-Based Pricing</Text>
+        <Text style={[styles.sectionTitle, { color: c.text }]}>Simple, Flat-Rate Pricing</Text>
         <Text style={[styles.sectionSub, { color: c.textMuted }]}>
-          Pay per assessment, not per month. No subscriptions. Credits never expire.
+          Unlimited assessments. Cancel anytime. 30-day money-back guarantee.
         </Text>
         <View style={styles.tiers}>
-          {ASSESSMENT_PACKS.map((pack) => {
-            const isPopular = pack.badge === 'Popular';
-            const isEnterprise = pack.priceInCents === 0;
+          {SUBSCRIPTION_PLANS.map((plan) => {
+            const isPopular = plan.badge === 'Most Popular';
             return (
-              <Card key={pack.id} style={[styles.tierCard, isPopular && { borderColor: c.accent, borderWidth: 2 }]}>
+              <Card key={plan.id} style={[styles.tierCard, isPopular && { borderColor: c.accent, borderWidth: 2 }]}>
                 <CardHeader>
-                  {pack.badge ? (
-                    <Badge variant={isPopular ? 'default' : 'outline'}>{pack.badge}</Badge>
-                  ) : (
-                    <Badge variant="outline">{pack.assessments ? 'Starter' : 'Custom'}</Badge>
+                  {plan.badge && (
+                    <Badge variant={isPopular ? 'default' : 'outline'}>{plan.badge}</Badge>
                   )}
-                  <CardTitle>{pack.label}</CardTitle>
+                  <CardTitle>{plan.label}</CardTitle>
                   <CardDescription>
-                    {pack.priceInCents > 0
-                      ? `$${(pack.priceInCents / 100).toFixed(0)}${pack.assessments ? ` ($${((pack.priceInCents / 100) / pack.assessments).toFixed(0)}/each)` : ''}`
-                      : 'Contact us'}
+                    {plan.interval === 'year'
+                      ? `${plan.monthlyEquivalent}/mo equivalent`
+                      : 'Billed monthly'}
+                    {plan.savings ? ` \u2014 ${plan.savings}` : ''}
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  {pack.features.map((f) => (
+                  {plan.features.map((f) => (
                     <Text key={f} style={[styles.featureItem, { color: c.textMuted }]}>{'\u2713'} {f}</Text>
                   ))}
                   <Button
                     variant={isPopular ? 'default' : 'outline'}
-                    onPress={() => {
-                      if (isEnterprise) {
-                        setShowDemoForm(true);
-                      } else {
-                        handleBuyPack(pack.id);
-                      }
-                    }}
-                    disabled={checkoutLoading === pack.id}
+                    onPress={() => handleSubscribe(plan.id)}
+                    disabled={checkoutLoading === plan.id}
                     style={{ marginTop: spacing.md }}
                     fullWidth
                   >
-                    {checkoutLoading === pack.id
-                      ? 'Loading...'
-                      : isEnterprise
-                        ? 'Contact Us'
-                        : `Buy ${pack.label}`}
+                    {checkoutLoading === plan.id ? 'Loading...' : 'Subscribe'}
                   </Button>
                 </CardContent>
               </Card>
             );
           })}
+          {/* Enterprise */}
+          <Card style={styles.tierCard}>
+            <CardHeader>
+              <Badge variant="outline">Enterprise</Badge>
+              <CardTitle>{ENTERPRISE_TIER.label}</CardTitle>
+              <CardDescription>Custom pricing for large teams</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {ENTERPRISE_TIER.features.map((f) => (
+                <Text key={f} style={[styles.featureItem, { color: c.textMuted }]}>{'\u2713'} {f}</Text>
+              ))}
+              <Button
+                variant="outline"
+                onPress={() => setShowDemoForm(true)}
+                style={{ marginTop: spacing.md }}
+                fullWidth
+              >
+                Contact Us
+              </Button>
+            </CardContent>
+          </Card>
         </View>
+        <Text style={[styles.guaranteeText, { color: c.textMuted }]}>
+          30-day money-back guarantee. No questions asked.
+        </Text>
       </View>
 
       {/* 3-step flow */}
@@ -473,10 +488,12 @@ export function TeamsScreen() {
       <View style={styles.cta}>
         <Text style={[styles.ctaTitle, { color: c.text }]}>Start Assessing AI Skills Today</Text>
         <Text style={[styles.ctaSub, { color: c.textMuted }]}>
-          Your first assessment is free. No credit card required.
+          $200/month. Unlimited assessments. Cancel anytime.
         </Text>
         <View style={styles.ctaButtons}>
-          <Button size="lg" onPress={handleStartAssessment}>Start Free Assessment</Button>
+          <Button size="lg" onPress={() => handleSubscribe('plan-monthly')}>
+            {checkoutLoading === 'plan-monthly' ? 'Loading...' : 'Subscribe Now'}
+          </Button>
           {!demoSubmitted && !showDemoForm && (
             <Button size="lg" variant="outline" onPress={() => setShowDemoForm(true)}>Book a Demo</Button>
           )}
@@ -602,6 +619,7 @@ const styles = StyleSheet.create({
   tiers: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md, justifyContent: 'center', maxWidth: 1100, alignSelf: 'center' },
   tierCard: { flex: 1, minWidth: 220 },
   featureItem: { fontSize: fontSizes.sm, marginBottom: spacing.xs },
+  guaranteeText: { textAlign: 'center', fontSize: fontSizes.sm, marginTop: spacing.lg, fontStyle: 'italic' },
   // Steps
   cards: {
     flexDirection: 'row',

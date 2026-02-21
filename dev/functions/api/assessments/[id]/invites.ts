@@ -7,7 +7,7 @@ import { eq, and, desc, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import { getDb } from '../../../_shared/db';
 import { getUser } from '../../../_shared/auth';
-import { canManageAssessment } from '../../../_shared/org';
+import { canManageAssessment, getUserOrg, hasActiveSubscription } from '../../../_shared/org';
 import { assessments, assessmentInvites, assessmentChallenges, profiles, organizations, emailLogs } from '../../../../drizzle/schema.d1';
 import { sendEmail } from '../../../_shared/newsletter/resend';
 import { candidateInviteEmail } from '../../../_shared/email/templates';
@@ -55,37 +55,26 @@ export async function onRequestPost(context: { request: Request; env: Env; param
       );
     }
 
-    // Check and deduct assessment credits from org or personal profile
-    if (assessment.orgId) {
-      // Org assessment — deduct from org credits
-      const [org] = await db
-        .select({ assessmentCredits: organizations.assessmentCredits })
-        .from(organizations)
-        .where(eq(organizations.id, assessment.orgId))
-        .limit(1);
+    // Check active subscription
+    let orgId = assessment.orgId;
+    if (!orgId) {
+      const userOrg = await getUserOrg(db, user.id);
+      orgId = userOrg?.org.id ?? null;
+    }
 
-      if (!org || org.assessmentCredits <= 0) {
-        return Response.json(
-          { error: 'No organization assessment credits remaining. Purchase a pack at /teams to continue.' },
-          { status: 402 }
-        );
-      }
+    if (!orgId) {
+      return Response.json(
+        { error: 'Create an organization and subscribe to send assessment invites.' },
+        { status: 402 }
+      );
+    }
 
-      // Deduct one org credit after invite creation below
-    } else {
-      // Personal assessment — deduct from profile credits
-      const [profile] = await db
-        .select({ assessmentCredits: profiles.assessmentCredits })
-        .from(profiles)
-        .where(eq(profiles.id, user.id))
-        .limit(1);
-
-      if (!profile || profile.assessmentCredits <= 0) {
-        return Response.json(
-          { error: 'No assessment credits remaining. Purchase a pack at /teams to continue.' },
-          { status: 402 }
-        );
-      }
+    const isSubscribed = await hasActiveSubscription(db, orgId);
+    if (!isSubscribed) {
+      return Response.json(
+        { error: 'Active subscription required. Subscribe at /teams to send invites.' },
+        { status: 402 }
+      );
     }
 
     const token = crypto.randomUUID().replace(/-/g, '').slice(0, 16);
@@ -101,19 +90,6 @@ export async function onRequestPost(context: { request: Request; env: Env; param
       status: 'pending',
       expiresAt: expiresAt.toISOString(),
     });
-
-    // Deduct one assessment credit
-    if (assessment.orgId) {
-      await db
-        .update(organizations)
-        .set({ assessmentCredits: sql`${organizations.assessmentCredits} - 1` })
-        .where(eq(organizations.id, assessment.orgId));
-    } else {
-      await db
-        .update(profiles)
-        .set({ assessmentCredits: sql`${profiles.assessmentCredits} - 1` })
-        .where(eq(profiles.id, user.id));
-    }
 
     const [invite] = await db
       .select()
