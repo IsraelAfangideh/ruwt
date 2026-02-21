@@ -1,9 +1,12 @@
+import { useState } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/Card';
 import { useColors } from '@/theme';
 import { spacing, fontSizes, fontFamily, radii } from '@/theme/tokens';
 import { getDifficultyStyle } from '@/lib/difficulty';
+
+const IS_WEB = typeof document !== 'undefined';
 
 export interface Challenge {
   id: string;
@@ -38,9 +41,15 @@ function categoryLabel(cat: string | null | undefined) {
   return null;
 }
 
+function formatCost(raw: number): string {
+  const dollars = raw / 10000;
+  return dollars < 0.01 ? `$${dollars.toFixed(4)}` : `$${dollars.toFixed(2)}`;
+}
+
 export function ChallengeCard({ challenge }: { challenge: Challenge }) {
   const navigation = useNavigation();
   const c = useColors();
+  const [hovered, setHovered] = useState(false);
 
   const diffStyle = getDifficultyStyle(challenge.difficulty);
   const diffColor = diffStyle.color;
@@ -72,20 +81,46 @@ export function ChallengeCard({ challenge }: { challenge: Challenge }) {
 
   const langLabel = challenge.language === 'python' ? 'Python' : challenge.language === 'typescript' ? 'TypeScript' : null;
   const userStatus = challenge.userStatus;
-
+  const isSolved = userStatus === 'passed';
+  const isInProgress = userStatus === 'in_progress';
   const isRealWorld = challenge.category === 'real_world';
+  const hasEfficiencyGoal = challenge.maxCost != null;
+  const hasSolvers = challenge.stats && challenge.stats.solvers > 0;
 
-  // Strip markdown headings (## Task:, ## Bug:, etc.) from description for card preview
   const cleanDescription = challenge.description
     .replace(/^#{1,3}\s+[^\n]*\n?/gm, '')
     .trim();
 
+  const ctaText = isSolved ? 'Improve Score' : isInProgress ? 'Continue' : 'Start Problem';
+  const ctaBg = isSolved ? c.successBg : isInProgress ? c.accentBg : c.accentBg;
+  const ctaColor = isSolved ? c.success : isInProgress ? c.accent : c.accent;
+
+  // Web hover handlers
+  const webHoverProps = IS_WEB ? {
+    onMouseEnter: () => setHovered(true),
+    onMouseLeave: () => setHovered(false),
+  } : {};
+
   return (
     <Pressable
       onPress={() => (navigation.navigate as any)('Arena', { challengeId: challenge.id })}
-      style={({ pressed }: { pressed: boolean }) => [styles.pressable, pressed && styles.pressed]}
+      style={({ pressed }: { pressed: boolean }) => [
+        styles.pressable,
+        pressed && styles.pressed,
+      ]}
+      {...webHoverProps}
     >
-      <Card style={[styles.card, isRealWorld && styles.realWorldCard]}>
+      <Card style={[
+        styles.card,
+        isRealWorld && styles.realWorldCard,
+        isSolved && { opacity: 0.72 },
+        hovered && styles.hovered,
+      ]}>
+        {/* Status indicator stripe for in-progress */}
+        {isInProgress && (
+          <View style={[styles.progressStripe, { backgroundColor: c.accent }]} />
+        )}
+
         <CardHeader>
           <View style={styles.badgeRow}>
             <View style={[styles.pill, { backgroundColor: diffBg }]}>
@@ -103,43 +138,52 @@ export function ChallengeCard({ challenge }: { challenge: Challenge }) {
                 <Text style={[styles.pillText, { color: '#3b82f6' }]}>{langLabel}</Text>
               </View>
             )}
-            {userStatus === 'passed' && (
-              <View style={[styles.pill, { backgroundColor: c.successBg, marginLeft: 'auto' as any }]}>
-                <Text style={[styles.pillText, { color: c.success }]}>{'\u2713'} Solved</Text>
-              </View>
-            )}
-            {userStatus === 'in_progress' && (
-              <View style={[styles.pill, { backgroundColor: c.accentBg, marginLeft: 'auto' as any }]}>
-                <Text style={[styles.pillText, { color: c.accent }]}>In Progress</Text>
+            {isSolved && (
+              <View style={[styles.statusBadge, { backgroundColor: c.successBg, marginLeft: 'auto' as any }]}>
+                <Text style={[styles.statusText, { color: c.success }]}>{'\u2713'}</Text>
               </View>
             )}
           </View>
           <CardTitle>{challenge.title}</CardTitle>
           <CardDescription numberOfLines={2}>{cleanDescription}</CardDescription>
         </CardHeader>
+
         <CardContent>
           {challenge.skillTested && (
-            <Text style={[styles.skill, { color: c.textMuted }]}>{challenge.skillTested}</Text>
+            <Text style={[styles.skill, { color: c.textMuted }]}>
+              <Text style={styles.skillLabel}>Skill: </Text>
+              {challenge.skillTested}
+            </Text>
           )}
-          <Text style={[styles.meta, { color: c.textSubtle }]}>
-            Efficiency goal: ${challenge.maxCost != null ? (challenge.maxCost / 10000).toFixed(4) : 'N/A'}
-          </Text>
+          {hasEfficiencyGoal && (
+            <Text style={[styles.meta, { color: c.textSubtle }]}>
+              Efficiency goal: {formatCost(challenge.maxCost!)}
+            </Text>
+          )}
         </CardContent>
+
+        {/* Spacer pushes footer to bottom */}
+        <View style={styles.spacer} />
+
         <View style={styles.footer}>
-          {challenge.stats && challenge.stats.solvers > 0 && (
+          {hasSolvers && (
             <Text style={[styles.statsLine, { color: c.textSubtle }]}>
-              {challenge.stats.solvers} solver{challenge.stats.solvers !== 1 ? 's' : ''}
-              {challenge.stats.avgCost != null && ` · avg ${(challenge.stats.avgCost / 10000) < 0.01 ? `$${(challenge.stats.avgCost / 10000).toFixed(4)}` : `$${(challenge.stats.avgCost / 10000).toFixed(2)}`}`}
+              {challenge.stats!.solvers} solver{challenge.stats!.solvers !== 1 ? 's' : ''}
+              {challenge.stats!.avgCost != null && ` \u00b7 avg ${formatCost(challenge.stats!.avgCost)}`}
             </Text>
           )}
-          {userStatus === 'passed' && challenge.userBestCost != null && (
+          {isSolved && challenge.userBestCost != null && (
             <Text style={[styles.statsLine, { color: c.success }]}>
-              Your best: {(challenge.userBestCost / 10000) < 0.01 ? `$${(challenge.userBestCost / 10000).toFixed(4)}` : `$${(challenge.userBestCost / 10000).toFixed(2)}`}
+              Your best: {formatCost(challenge.userBestCost)}
             </Text>
           )}
-          <Text style={[styles.cta, { color: c.accent }]}>
-            {userStatus === 'passed' ? 'Improve Score  \u2192' : userStatus === 'in_progress' ? 'Continue  \u2192' : 'Start Problem  \u2192'}
-          </Text>
+
+          {/* CTA button */}
+          <View style={[styles.ctaButton, { backgroundColor: ctaBg }]}>
+            <Text style={[styles.ctaText, { color: ctaColor }]}>
+              {ctaText} {'\u2192'}
+            </Text>
+          </View>
         </View>
       </Card>
     </Pressable>
@@ -149,9 +193,29 @@ export function ChallengeCard({ challenge }: { challenge: Challenge }) {
 const styles = StyleSheet.create({
   pressable: { flex: 1, minWidth: 280 },
   pressed: { opacity: 0.92, transform: [{ scale: 0.98 }] },
-  card: { flex: 1 },
+  card: {
+    flex: 1,
+    display: 'flex' as any,
+    flexDirection: 'column',
+    // @ts-ignore web-only transition
+    transition: 'transform 0.15s ease, box-shadow 0.15s ease',
+  },
+  hovered: {
+    transform: [{ translateY: -2 }],
+    // @ts-ignore web-only shadow
+    boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
+  },
   realWorldCard: { borderLeftWidth: 3, borderLeftColor: '#f59e0b' },
-  badgeRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.xs },
+  progressStripe: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 3,
+    borderTopLeftRadius: radii.xl,
+    borderTopRightRadius: radii.xl,
+  },
+  badgeRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.xs, flexWrap: 'wrap', alignItems: 'center' },
   pill: {
     alignSelf: 'flex-start',
     paddingHorizontal: 10,
@@ -159,9 +223,25 @@ const styles = StyleSheet.create({
     borderRadius: radii.full,
   },
   pillText: { fontSize: fontSizes.xs, fontWeight: '600', fontFamily: fontFamily.body },
+  statusBadge: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  statusText: { fontSize: 12, fontWeight: '700' },
   skill: { fontSize: fontSizes.xs, fontStyle: 'italic' },
+  skillLabel: { fontStyle: 'normal', fontWeight: '600' },
   meta: { fontSize: fontSizes.xs },
+  spacer: { flex: 1 },
+  footer: { marginTop: spacing.sm, alignItems: 'flex-start' },
   statsLine: { fontSize: fontSizes.xs, marginBottom: spacing.xs },
-  footer: { marginTop: spacing.xs, alignItems: 'flex-start' },
-  cta: { fontSize: fontSizes.sm, fontWeight: '600', fontFamily: fontFamily.body },
+  ctaButton: {
+    marginTop: spacing.xs,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: radii.md,
+  },
+  ctaText: { fontSize: fontSizes.sm, fontWeight: '700', fontFamily: fontFamily.body },
 });
