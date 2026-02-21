@@ -89,14 +89,18 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
         console.error('Corrupted testCases JSON for challenge:', challenge.id);
         return Response.json({ error: 'Challenge data is corrupted' }, { status: 500 });
       }
+      const codeToRun = challenge.testHarness
+        ? sourceCode + '\n' + challenge.testHarness
+        : sourceCode;
       const testResult = await runTestCases(
         context.env,
-        sourceCode,
+        codeToRun,
         language as SupportedLanguage,
         testCases,
         {
           cpuTimeLimit: Math.ceil((challenge.execTimeLimit || 5000) / 1000),
           memoryLimit: (challenge.execMemoryLimit || 256) * 1024,
+          mainFunction: challenge.testHarness ? 'solve' : undefined,
         }
       );
 
@@ -194,14 +198,18 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
     const allTests = [...publicTests, ...hiddenTests];
     const publicCount = publicTests.length;
 
+    const submitCodeToRun = challenge.testHarness
+      ? sourceCode + '\n' + challenge.testHarness
+      : sourceCode;
     const testResult = await runTestCases(
       context.env,
-      sourceCode,
+      submitCodeToRun,
       language as SupportedLanguage,
       allTests,
       {
         cpuTimeLimit: Math.ceil((challenge.execTimeLimit || 5000) / 1000),
         memoryLimit: (challenge.execMemoryLimit || 256) * 1024,
+        mainFunction: challenge.testHarness ? 'solve' : undefined,
       }
     );
 

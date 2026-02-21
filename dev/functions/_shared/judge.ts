@@ -149,9 +149,9 @@ function escapePyString(s: string): string {
  * Embeds the test input directly in the code (no stdin needed).
  * Piston's sandbox doesn't support /dev/stdin, so we avoid it entirely.
  */
-function buildTestCode(sourceCode: string, language: SupportedLanguage, input: string): string {
-  let multiExports = extractMultiExportNames(sourceCode);
-  let funcName = extractFunctionName(sourceCode, language);
+function buildTestCode(sourceCode: string, language: SupportedLanguage, input: string, mainFunction?: string): string {
+  let multiExports = mainFunction ? null : extractMultiExportNames(sourceCode);
+  let funcName = mainFunction || extractFunctionName(sourceCode, language);
 
   // If exports include 'solve', use it as the single dispatch function
   // This allows challenges to define a solve(testName) that handles test routing
@@ -223,14 +223,14 @@ export async function runTestCases(
   sourceCode: string,
   language: SupportedLanguage,
   testCases: Array<{ input: string; expectedOutput: string }>,
-  options?: { cpuTimeLimit?: number; memoryLimit?: number }
+  options?: { cpuTimeLimit?: number; memoryLimit?: number; mainFunction?: string }
 ): Promise<TestResult> {
   // Convert cpuTimeLimit (seconds) to Piston's run_timeout (milliseconds)
   const runTimeout = options?.cpuTimeLimit ? options.cpuTimeLimit * 1000 : 5000;
 
   async function runSingleTest(testCase: { input: string; expectedOutput: string }): Promise<TestCaseResult> {
     try {
-      const testCode = buildTestCode(sourceCode, language, testCase.input);
+      const testCode = buildTestCode(sourceCode, language, testCase.input, options?.mainFunction);
       const result = await executeCode(env, testCode, language, undefined, { runTimeout });
 
       const compileError = result.compile?.stderr || '';
