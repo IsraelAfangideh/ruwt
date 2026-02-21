@@ -2,9 +2,10 @@
  * TeamsScreen: Hiring-focused landing page with pricing + demo capture.
  * Route: /teams
  */
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { View, Text, ScrollView, Pressable, StyleSheet } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/Button';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
@@ -16,6 +17,14 @@ import { spacing, fontSizes, fontFamily } from '@/theme/tokens';
 export function TeamsScreen() {
   const navigation = useNavigation();
   const c = useColors();
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  useEffect(() => {
+    createClient().auth.getUser().then(({ data: { user } }) => {
+      if (user) setIsLoggedIn(true);
+    });
+  }, []);
+
   const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
   const [showDemoForm, setShowDemoForm] = useState(false);
   const [demoForm, setDemoForm] = useState({ name: '', email: '', company: '', teamSize: '', message: '' });
@@ -151,8 +160,14 @@ export function TeamsScreen() {
           <Text style={[styles.logo, { color: c.text }]}>Ruwt</Text>
         </Pressable>
         <View style={styles.headerActions}>
-          <Button variant="ghost" onPress={() => navigation.navigate('Login' as never)}>Sign in</Button>
-          <Button onPress={() => navigation.navigate('Register' as never)}>Get Started</Button>
+          {isLoggedIn ? (
+            <Button onPress={() => navigation.navigate('Dashboard' as never)}>Dashboard</Button>
+          ) : (
+            <>
+              <Button variant="ghost" onPress={() => navigation.navigate('Login' as never)}>Sign in</Button>
+              <Button onPress={() => navigation.navigate('Register' as never)}>Get Started</Button>
+            </>
+          )}
         </View>
       </View>
 
