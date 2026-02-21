@@ -12,6 +12,8 @@ import { getModelById, tierColor } from '@/lib/ai/pricing';
 import { AIProfileRadar, type AIProfile } from '@/components/AIProfileRadar';
 import { CandidateInsightsPanel } from '@/components/CandidateInsightsPanel';
 import { CandidateComparisonView } from '@/components/CandidateComparisonView';
+import { VerdictBadge, computeVerdict, type Verdict } from '@/components/VerdictBadge';
+import { InviteManagementTable } from '@/components/InviteManagementTable';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -80,7 +82,15 @@ interface SessionInsights {
   highlights: HighlightMoment[];
 }
 
-type SortKey = 'name' | 'status' | 'passed' | 'cost' | 'tokens' | 'time';
+type SortKey = 'name' | 'status' | 'passed' | 'cost' | 'tokens' | 'time' | 'verdict';
+type VerdictFilter = 'all' | 'pass' | 'fail' | 'review';
+
+interface PassThreshold {
+  enabled: boolean;
+  mode: 'all_dimensions' | 'weighted_average';
+  minOverall?: number;
+  dimensions: Record<string, number>;
+}
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
@@ -100,6 +110,10 @@ export function AssessmentResultsDashboardScreen() {
   const [aiProfiles, setAiProfiles] = useState<Record<string, AIProfile>>({});
   const [allInsights, setAllInsights] = useState<Record<string, SessionInsights>>({});
   const [showComparison, setShowComparison] = useState(false);
+  const [passThreshold, setPassThreshold] = useState<PassThreshold | null>(null);
+  const [categoryWeights, setCategoryWeights] = useState<Record<string, number> | undefined>(undefined);
+  const [verdictFilter, setVerdictFilter] = useState<VerdictFilter>('all');
+  const [activeTab, setActiveTab] = useState<'results' | 'invites'>('results');
 
   useEffect(() => {
     const init = async () => {
@@ -110,10 +124,11 @@ export function AssessmentResultsDashboardScreen() {
       }
       setUser(u);
       try {
-        const [resultsRes, analyticsRes, insightsRes] = await Promise.all([
+        const [resultsRes, analyticsRes, insightsRes, assessmentRes] = await Promise.all([
           fetch(`/api/assessments/${params.assessmentId}/results`),
           fetch(`/api/assessments/${params.assessmentId}/analytics`),
           fetch(`/api/assessments/${params.assessmentId}/insights`),
+          fetch(`/api/assessments/${params.assessmentId}`),
         ]);
         if (resultsRes.ok) setResults(await resultsRes.json());
         if (analyticsRes.ok) {
@@ -122,6 +137,15 @@ export function AssessmentResultsDashboardScreen() {
         }
         if (insightsRes.ok) {
           setAllInsights(await insightsRes.json());
+        }
+        if (assessmentRes.ok) {
+          const aData = await assessmentRes.json();
+          if (aData.passThreshold) {
+            try { setPassThreshold(JSON.parse(aData.passThreshold)); } catch {}
+          }
+          if (aData.categoryWeights) {
+            try { setCategoryWeights(JSON.parse(aData.categoryWeights)); } catch {}
+          }
         }
       } catch (_) {}
       setLoading(false);
@@ -155,7 +179,17 @@ export function AssessmentResultsDashboardScreen() {
     }
   };
 
-  const sorted = [...results].sort((a, b) => {
+  const getVerdict = useCallback((sessionId: string): Verdict => {
+    const profile = aiProfiles[sessionId];
+    if (!profile || !passThreshold) return null;
+    return computeVerdict(profile as unknown as Record<string, number>, passThreshold, categoryWeights);
+  }, [aiProfiles, passThreshold, categoryWeights]);
+
+  const filtered = verdictFilter === 'all'
+    ? results
+    : results.filter((r) => getVerdict(r.session.id) === verdictFilter);
+
+  const sorted = [...filtered].sort((a, b) => {
     let cmp = 0;
     switch (sortBy) {
       case 'name':
@@ -176,6 +210,13 @@ export function AssessmentResultsDashboardScreen() {
       case 'time':
         cmp = getDuration(a) - getDuration(b);
         break;
+      case 'verdict': {
+        const order = { pass: 3, review: 2, fail: 1 };
+        const va = getVerdict(a.session.id);
+        const vb = getVerdict(b.session.id);
+        cmp = (order[va as keyof typeof order] ?? 0) - (order[vb as keyof typeof order] ?? 0);
+        break;
+      }
     }
     return sortAsc ? cmp : -cmp;
   });
@@ -187,13 +228,15 @@ export function AssessmentResultsDashboardScreen() {
   };
 
   const handleExportCSV = useCallback(() => {
-    const headers = ['Candidate', 'Email', 'Status', 'Passed', 'Total', 'Cost', 'Tokens', 'Duration', 'Green Flags', 'Red Flags'];
+    const headers = ['Candidate', 'Email', 'Status', 'Verdict', 'Passed', 'Total', 'Cost', 'Tokens', 'Duration', 'Green Flags', 'Red Flags'];
     const rows = sorted.map((r) => {
       const ins = allInsights[r.session.id];
+      const v = getVerdict(r.session.id);
       return [
         r.candidate.name || '',
         r.candidate.email,
         r.session.status,
+        v ?? '',
         r.challengesPassed,
         r.totalChallenges,
         (r.session.totalCost / 10000).toFixed(4),
@@ -211,7 +254,7 @@ export function AssessmentResultsDashboardScreen() {
     a.download = `assessment-results-${params.assessmentId}.csv`;
     a.click();
     URL.revokeObjectURL(url);
-  }, [sorted, params.assessmentId, allInsights]);
+  }, [sorted, params.assessmentId, allInsights, getVerdict]);
 
   if (loading) {
     return (
@@ -278,6 +321,64 @@ export function AssessmentResultsDashboardScreen() {
         </View>
       </View>
 
+      {/* Tab switcher: Results / Invites */}
+      <View style={styles.tabBar}>
+        <Pressable
+          onPress={() => setActiveTab('results')}
+          style={[styles.tabBtn, activeTab === 'results' && { borderBottomColor: c.accent, borderBottomWidth: 2 }]}
+        >
+          <Text style={{ color: activeTab === 'results' ? c.accent : c.textMuted, fontSize: fontSizes.sm, fontWeight: '600' }}>
+            Results ({results.length})
+          </Text>
+        </Pressable>
+        <Pressable
+          onPress={() => setActiveTab('invites')}
+          style={[styles.tabBtn, activeTab === 'invites' && { borderBottomColor: c.accent, borderBottomWidth: 2 }]}
+        >
+          <Text style={{ color: activeTab === 'invites' ? c.accent : c.textMuted, fontSize: fontSizes.sm, fontWeight: '600' }}>
+            Invites
+          </Text>
+        </Pressable>
+      </View>
+
+      {activeTab === 'invites' ? (
+        <View style={{ marginTop: spacing.md }}>
+          <InviteManagementTable assessmentId={params.assessmentId} />
+        </View>
+      ) : (
+      <>
+
+      {/* Verdict filter bar */}
+      {passThreshold?.enabled && (
+        <View style={styles.verdictFilterBar}>
+          {(['all', 'pass', 'fail', 'review'] as VerdictFilter[]).map((v) => {
+            const count = v === 'all'
+              ? results.length
+              : results.filter((r) => getVerdict(r.session.id) === v).length;
+            return (
+              <Pressable
+                key={v}
+                onPress={() => setVerdictFilter(v)}
+                style={[
+                  styles.verdictFilterBtn,
+                  { borderColor: verdictFilter === v ? c.accent : c.border },
+                  verdictFilter === v && { backgroundColor: c.accent + '10' },
+                ]}
+              >
+                <Text style={{
+                  fontSize: fontSizes.xs,
+                  fontWeight: '600',
+                  color: verdictFilter === v ? c.accent : c.textMuted,
+                  textTransform: 'capitalize',
+                }}>
+                  {v} ({count})
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      )}
+
       {/* Candidate comparison panel */}
       {showComparison && results.length >= 2 && (
         <CandidateComparisonView
@@ -302,6 +403,9 @@ export function AssessmentResultsDashboardScreen() {
           <View style={[styles.tableHeader, { borderBottomColor: c.border }]}>
             <SortHeader label="Candidate" sortKey="name" style={styles.thName} />
             <SortHeader label="Status" sortKey="status" style={styles.thStatus} />
+            {passThreshold?.enabled && (
+              <SortHeader label="Verdict" sortKey="verdict" style={styles.thVerdict} />
+            )}
             <SortHeader label="Passed" sortKey="passed" style={styles.thPassed} />
             <SortHeader label="Cost" sortKey="cost" style={styles.thCost} />
             <SortHeader label="Tokens" sortKey="tokens" style={styles.thTokens} />
@@ -315,6 +419,7 @@ export function AssessmentResultsDashboardScreen() {
           </View>
           {sorted.map((r) => {
             const sessionInsights = allInsights[r.session.id];
+            const verdict = getVerdict(r.session.id);
             return (
               <View key={r.session.id}>
                 <Pressable onPress={() => setExpandedRow(expandedRow === r.session.id ? null : r.session.id)}>
@@ -341,6 +446,11 @@ export function AssessmentResultsDashboardScreen() {
                         </Text>
                       </Badge>
                     </View>
+                    {passThreshold?.enabled && (
+                      <View style={[styles.td, styles.thVerdict]}>
+                        <VerdictBadge verdict={verdict} size="sm" />
+                      </View>
+                    )}
                     <Text style={[styles.td, styles.thPassed, { color: r.challengesPassed === r.totalChallenges ? c.success : c.text }]}>
                       {r.challengesPassed}/{r.totalChallenges}
                     </Text>
@@ -473,6 +583,8 @@ export function AssessmentResultsDashboardScreen() {
           })}
         </View>
       )}
+      </>
+      )}
     </DashboardLayout>
   );
 }
@@ -499,8 +611,29 @@ const styles = StyleSheet.create({
   thCost: { flex: 1, textAlign: 'right' },
   thTokens: { flex: 1, textAlign: 'right' },
   thTime: { flex: 1, textAlign: 'right' },
+  thVerdict: { flex: 1, alignItems: 'center' },
   thSignals: { flex: 1.2, alignItems: 'center' },
   thActions: { flex: 1.2, alignItems: 'flex-end' },
+  tabBar: {
+    flexDirection: 'row',
+    gap: spacing.lg,
+    marginBottom: spacing.md,
+  },
+  tabBtn: {
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.xs,
+  },
+  verdictFilterBar: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    marginBottom: spacing.md,
+  },
+  verdictFilterBtn: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderWidth: 1,
+    borderRadius: 6,
+  },
   inlineFlags: { flexDirection: 'row', gap: 4 },
   flagDot: { width: 20, height: 20, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
   flagDotText: { fontSize: 10, color: '#fff', fontWeight: '700' },

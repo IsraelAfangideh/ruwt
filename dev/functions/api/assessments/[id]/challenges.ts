@@ -7,11 +7,19 @@ import { eq, and } from 'drizzle-orm';
 import { z } from 'zod';
 import { getDb } from '../../../_shared/db';
 import { getUser } from '../../../_shared/auth';
+import { canManageAssessment } from '../../../_shared/org';
 import { assessments, assessmentChallenges, challenges } from '../../../../drizzle/schema.d1';
 
 const setChallengesSchema = z.object({
-  challengeIds: z.array(z.string()).min(1).max(20),
-});
+  challengeIds: z.array(z.string()).optional().default([]),
+  customChallengeIds: z.array(z.string()).optional().default([]),
+}).refine(
+  (data) => data.challengeIds.length + data.customChallengeIds.length >= 1,
+  { message: 'At least one challenge (standard or custom) is required' }
+).refine(
+  (data) => data.challengeIds.length + data.customChallengeIds.length <= 20,
+  { message: 'Maximum 20 challenges allowed' }
+);
 
 export async function onRequestPut(context: { request: Request; env: Env; params: { id: string } }) {
   try {
@@ -29,27 +37,22 @@ export async function onRequestPut(context: { request: Request; env: Env; params
 
     const db = getDb(context.env);
 
-    const [assessment] = await db
-      .select()
-      .from(assessments)
-      .where(
-        and(eq(assessments.id, context.params.id), eq(assessments.createdBy, user.id))
-      )
-      .limit(1);
-
-    if (!assessment) {
+    const hasAccess = await canManageAssessment(db, user.id, context.params.id);
+    if (!hasAccess) {
       return Response.json({ error: 'Assessment not found' }, { status: 404 });
     }
 
-    // Verify all challenge IDs exist
-    const existingChallenges = await db.select().from(challenges);
-    const validIds = new Set(existingChallenges.map((c) => c.id));
-    const invalid = parsed.data.challengeIds.filter((id) => !validIds.has(id));
-    if (invalid.length > 0) {
-      return Response.json(
-        { error: 'Invalid challenge IDs', invalidIds: invalid },
-        { status: 400 }
-      );
+    // Verify all standard challenge IDs exist
+    if (parsed.data.challengeIds.length > 0) {
+      const existingChallenges = await db.select().from(challenges);
+      const validIds = new Set(existingChallenges.map((c) => c.id));
+      const invalid = parsed.data.challengeIds.filter((id: string) => !validIds.has(id));
+      if (invalid.length > 0) {
+        return Response.json(
+          { error: 'Invalid challenge IDs', invalidIds: invalid },
+          { status: 400 }
+        );
+      }
     }
 
     // Delete existing links
@@ -57,17 +60,31 @@ export async function onRequestPut(context: { request: Request; env: Env; params
       .delete(assessmentChallenges)
       .where(eq(assessmentChallenges.assessmentId, context.params.id));
 
-    // Insert new links with sort order
-    for (let i = 0; i < parsed.data.challengeIds.length; i++) {
+    let sortOrder = 0;
+
+    // Insert standard challenge links
+    for (const challengeId of parsed.data.challengeIds) {
       await db.insert(assessmentChallenges).values({
         id: crypto.randomUUID(),
         assessmentId: context.params.id,
-        challengeId: parsed.data.challengeIds[i],
-        sortOrder: i,
+        challengeId,
+        sortOrder: sortOrder++,
       });
     }
 
-    return Response.json({ success: true, count: parsed.data.challengeIds.length });
+    // Insert custom challenge links
+    for (const customId of parsed.data.customChallengeIds) {
+      await db.insert(assessmentChallenges).values({
+        id: crypto.randomUUID(),
+        assessmentId: context.params.id,
+        challengeId: customId, // placeholder — use customChallengeId as challengeId
+        customChallengeId: customId,
+        sortOrder: sortOrder++,
+      });
+    }
+
+    const totalCount = parsed.data.challengeIds.length + parsed.data.customChallengeIds.length;
+    return Response.json({ success: true, count: totalCount });
   } catch (error) {
     console.error('Set assessment challenges error:', error);
     return Response.json({ error: 'Internal server error' }, { status: 500 });

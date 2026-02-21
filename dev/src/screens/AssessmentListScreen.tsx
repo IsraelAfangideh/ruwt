@@ -32,6 +32,7 @@ export function AssessmentListScreen() {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [inviteLinks, setInviteLinks] = useState<Record<string, string>>({});
   const [inviteError, setInviteError] = useState<string | null>(null);
+  const [orgInfo, setOrgInfo] = useState<{ id: string; name: string; role: string } | null>(null);
   const supabase = createClient();
   const c = useColors();
 
@@ -43,15 +44,24 @@ export function AssessmentListScreen() {
         return;
       }
       setUser(u);
-      try {
-        const res = await fetch('/api/assessments');
-        if (res.ok) {
-          const data = await res.json();
-          setAssessments(data ?? []);
-        }
-      } catch (_) {
-        setAssessments([]);
+
+      const [assessmentsRes, orgsRes] = await Promise.all([
+        fetch('/api/assessments').catch(() => null),
+        fetch('/api/orgs').catch(() => null),
+      ]);
+
+      if (assessmentsRes?.ok) {
+        const data = await assessmentsRes.json();
+        setAssessments(data ?? []);
       }
+
+      if (orgsRes?.ok) {
+        const orgs = await orgsRes.json();
+        if (orgs.length > 0) {
+          setOrgInfo({ id: orgs[0].orgId, name: orgs[0].orgName, role: orgs[0].role });
+        }
+      }
+
       setLoading(false);
     };
     init();
@@ -170,6 +180,27 @@ export function AssessmentListScreen() {
 
   return (
     <DashboardLayout user={user}>
+      {/* Org banner */}
+      {orgInfo && (
+        <View style={[styles.orgBanner, { backgroundColor: c.accent + '08', borderColor: c.accent + '20' }]}>
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontSize: fontSizes.sm, fontWeight: '600', color: c.text }}>
+              {orgInfo.name}
+            </Text>
+            <Text style={{ fontSize: fontSizes.xs, color: c.textMuted }}>
+              Team workspace {'\u00B7'} {orgInfo.role}
+            </Text>
+          </View>
+          <Button
+            variant="outline"
+            size="sm"
+            onPress={() => navigation.navigate('OrgManagement', { orgId: orgInfo.id })}
+          >
+            Manage Team
+          </Button>
+        </View>
+      )}
+
       <View style={[styles.section, { borderBottomColor: c.border }]}>
         <View style={styles.sectionHeader}>
           <View>
@@ -178,9 +209,19 @@ export function AssessmentListScreen() {
               Create and manage AI-efficiency assessments for your candidates.
             </Text>
           </View>
-          <Button onPress={() => navigation.navigate('AssessmentBuilder' as never)}>
-            Create Assessment
-          </Button>
+          <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+            {!orgInfo && (
+              <Button
+                variant="outline"
+                onPress={() => navigation.navigate('OrgManagement' as never)}
+              >
+                Create Team
+              </Button>
+            )}
+            <Button onPress={() => navigation.navigate('AssessmentBuilder' as never)}>
+              Create Assessment
+            </Button>
+          </View>
         </View>
       </View>
 
@@ -351,4 +392,13 @@ const styles = StyleSheet.create({
   },
   errorText: { fontSize: fontSizes.sm },
   cardFooter: { flexDirection: 'row', gap: spacing.sm, borderTopWidth: 1, paddingTop: spacing.sm, marginTop: spacing.sm },
+  orgBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderWidth: 1,
+    borderRadius: 8,
+    marginBottom: spacing.lg,
+  },
 });

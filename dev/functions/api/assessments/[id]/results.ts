@@ -6,6 +6,7 @@
 import { eq, and, desc } from 'drizzle-orm';
 import { getDb } from '../../../_shared/db';
 import { getUser } from '../../../_shared/auth';
+import { canViewResults } from '../../../_shared/org';
 import {
   assessments,
   assessmentSessions,
@@ -22,15 +23,8 @@ export async function onRequestGet(context: { request: Request; env: Env; params
 
     const db = getDb(context.env);
 
-    const [assessment] = await db
-      .select()
-      .from(assessments)
-      .where(
-        and(eq(assessments.id, context.params.id), eq(assessments.createdBy, user.id))
-      )
-      .limit(1);
-
-    if (!assessment) {
+    const hasAccess = await canViewResults(db, user.id, context.params.id);
+    if (!hasAccess) {
       return Response.json({ error: 'Assessment not found' }, { status: 404 });
     }
 

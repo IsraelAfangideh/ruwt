@@ -34,6 +34,8 @@ const GuestArenaScreen = lazy(() => import('@/screens/GuestArenaScreen').then(m 
 const PublicProfileScreen = lazy(() => import('@/screens/PublicProfileScreen').then(m => ({ default: m.PublicProfileScreen })));
 const ShareScreen = lazy(() => import('@/screens/ShareScreen').then(m => ({ default: m.ShareScreen })));
 const CertificateScreen = lazy(() => import('@/screens/CertificateScreen').then(m => ({ default: m.CertificateScreen })));
+const OrgManagementScreen = lazy(() => import('@/screens/OrgManagementScreen').then(m => ({ default: m.OrgManagementScreen })));
+const OrgJoinScreen = lazy(() => import('@/screens/OrgJoinScreen').then(m => ({ default: m.OrgJoinScreen })));
 const NotFoundScreen = lazy(() => import('@/screens/NotFoundScreen').then(m => ({ default: m.NotFoundScreen })));
 
 function LoadingFallback() {
@@ -139,6 +141,8 @@ export function AppNavigator() {
           <Stack.Screen name="PublicProfile" component={PublicProfileScreen} />
           <Stack.Screen name="Share" component={ShareScreen} />
           <Stack.Screen name="Certificate" component={CertificateScreen} />
+          <Stack.Screen name="OrgManagement" component={OrgManagementScreen} />
+          <Stack.Screen name="OrgJoin" component={OrgJoinScreen} />
           <Stack.Screen name="NotFound" component={NotFoundScreen} />
         </Stack.Navigator>
       </Suspense>

@@ -98,6 +98,89 @@ export const transactions = sqliteTable('transactions', {
   createdAt: text('created_at').default(sql`(datetime('now'))`).notNull(),
 });
 
+// --- Organizations ---
+
+export const organizations = sqliteTable('organizations', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  logoUrl: text('logo_url'),
+  domain: text('domain'),
+  createdBy: text('created_by').notNull().references(() => profiles.id),
+  assessmentCredits: integer('assessment_credits').default(0).notNull(),
+  createdAt: text('created_at').default(sql`(datetime('now'))`).notNull(),
+});
+
+export const orgMembers = sqliteTable('org_members', {
+  id: text('id').primaryKey(),
+  orgId: text('org_id').notNull().references(() => organizations.id),
+  userId: text('user_id').notNull().references(() => profiles.id),
+  role: text('role').default('member').notNull(), // 'owner' | 'admin' | 'member' | 'viewer'
+  invitedBy: text('invited_by').references(() => profiles.id),
+  joinedAt: text('joined_at').default(sql`(datetime('now'))`).notNull(),
+});
+
+export const orgInvitations = sqliteTable('org_invitations', {
+  id: text('id').primaryKey(),
+  orgId: text('org_id').notNull().references(() => organizations.id),
+  email: text('email').notNull(),
+  role: text('role').default('member').notNull(),
+  token: text('token').notNull().unique(),
+  status: text('status').default('pending').notNull(), // 'pending' | 'accepted' | 'expired' | 'revoked'
+  expiresAt: text('expires_at').notNull(),
+  createdBy: text('created_by').notNull().references(() => profiles.id),
+  createdAt: text('created_at').default(sql`(datetime('now'))`).notNull(),
+});
+
+// --- Custom Challenges (org-owned) ---
+
+export const customChallenges = sqliteTable('custom_challenges', {
+  id: text('id').primaryKey(),
+  orgId: text('org_id').notNull().references(() => organizations.id),
+  title: text('title').notNull(),
+  description: text('description').notNull(),
+  difficulty: text('difficulty').default('medium').notNull(),
+  starterCode: text('starter_code'),
+  testCases: text('test_cases').notNull(), // JSON string
+  hiddenTestCases: text('hidden_test_cases'), // JSON string
+  testHarness: text('test_harness'),
+  execTimeLimit: integer('exec_time_limit').default(5000),
+  execMemoryLimit: integer('exec_memory_limit').default(256),
+  category: text('category').default('practice'),
+  skillTested: text('skill_tested'),
+  language: text('language').default('javascript'),
+  tags: text('tags'), // JSON array
+  status: text('status').default('draft').notNull(), // 'draft' | 'active' | 'archived'
+  createdBy: text('created_by').notNull().references(() => profiles.id),
+  reviewedBy: text('reviewed_by').references(() => profiles.id),
+  reviewedAt: text('reviewed_at'),
+  aiGenerated: integer('ai_generated').default(0).notNull(),
+  createdAt: text('created_at').default(sql`(datetime('now'))`).notNull(),
+});
+
+// --- Email & Agent Logs ---
+
+export const emailLogs = sqliteTable('email_logs', {
+  id: text('id').primaryKey(),
+  type: text('type').notNull(), // 'candidate_invite' | 'reminder' | 'results_ready' | 'team_invite'
+  recipientEmail: text('recipient_email').notNull(),
+  assessmentId: text('assessment_id').references(() => assessments.id),
+  inviteId: text('invite_id'),
+  subject: text('subject').notNull(),
+  status: text('status').notNull(), // 'sent' | 'failed'
+  errorMessage: text('error_message'),
+  sentAt: text('sent_at').default(sql`(datetime('now'))`).notNull(),
+});
+
+export const agentConversations = sqliteTable('agent_conversations', {
+  id: text('id').primaryKey(),
+  assessmentId: text('assessment_id').references(() => assessments.id),
+  orgId: text('org_id').references(() => organizations.id),
+  userId: text('user_id').notNull().references(() => profiles.id),
+  messages: text('messages').default('[]').notNull(), // JSON array
+  createdAt: text('created_at').default(sql`(datetime('now'))`).notNull(),
+  updatedAt: text('updated_at').default(sql`(datetime('now'))`).notNull(),
+});
+
 // --- Assessment tables ---
 
 export const assessments = sqliteTable('assessments', {
@@ -111,6 +194,8 @@ export const assessments = sqliteTable('assessments', {
   companyName: text('company_name'),
   companyLogoUrl: text('company_logo_url'),
   welcomeMessage: text('welcome_message'),
+  orgId: text('org_id').references(() => organizations.id),
+  passThreshold: text('pass_threshold'), // JSON: { enabled, mode, dimensions, minOverall? }
   createdAt: text('created_at').default(sql`(datetime('now'))`).notNull(),
 });
 
@@ -118,6 +203,7 @@ export const assessmentChallenges = sqliteTable('assessment_challenges', {
   id: text('id').primaryKey(),
   assessmentId: text('assessment_id').notNull().references(() => assessments.id),
   challengeId: text('challenge_id').notNull().references(() => challenges.id),
+  customChallengeId: text('custom_challenge_id').references(() => customChallenges.id),
   sortOrder: integer('sort_order').default(0).notNull(),
 });
 
@@ -125,9 +211,12 @@ export const assessmentInvites = sqliteTable('assessment_invites', {
   id: text('id').primaryKey(),
   assessmentId: text('assessment_id').notNull().references(() => assessments.id),
   candidateEmail: text('candidate_email'),
+  candidateName: text('candidate_name'),
   token: text('token').notNull().unique(),
   status: text('status').default('pending').notNull(), // 'pending' | 'started' | 'completed' | 'expired'
   expiresAt: text('expires_at'),
+  lastReminderAt: text('last_reminder_at'),
+  reminderCount: integer('reminder_count').default(0).notNull(),
   createdAt: text('created_at').default(sql`(datetime('now'))`).notNull(),
 });
 
@@ -317,3 +406,35 @@ export type NewsletterStatus = 'sent' | 'failed';
 export type ErrorLog = typeof errorLogs.$inferSelect;
 export type NewErrorLog = typeof errorLogs.$inferInsert;
 export type ErrorLevel = 'error' | 'warn' | 'fatal';
+
+// Org & hiring platform types
+export type Organization = typeof organizations.$inferSelect;
+export type NewOrganization = typeof organizations.$inferInsert;
+export type OrgMember = typeof orgMembers.$inferSelect;
+export type NewOrgMember = typeof orgMembers.$inferInsert;
+export type OrgInvitation = typeof orgInvitations.$inferSelect;
+export type NewOrgInvitation = typeof orgInvitations.$inferInsert;
+export type CustomChallenge = typeof customChallenges.$inferSelect;
+export type NewCustomChallenge = typeof customChallenges.$inferInsert;
+export type EmailLog = typeof emailLogs.$inferSelect;
+export type NewEmailLog = typeof emailLogs.$inferInsert;
+export type AgentConversation = typeof agentConversations.$inferSelect;
+export type NewAgentConversation = typeof agentConversations.$inferInsert;
+
+export type OrgRole = 'owner' | 'admin' | 'member' | 'viewer';
+export type OrgInvitationStatus = 'pending' | 'accepted' | 'expired' | 'revoked';
+export type CustomChallengeStatus = 'draft' | 'active' | 'archived';
+export type EmailType = 'candidate_invite' | 'reminder' | 'results_ready' | 'team_invite';
+
+export interface PassThreshold {
+  enabled: boolean;
+  mode: 'all_dimensions' | 'weighted_average';
+  minOverall?: number;
+  dimensions: {
+    modelSelection: number;
+    promptEfficiency: number;
+    debugging: number;
+    strategy: number;
+    speed: number;
+  };
+}

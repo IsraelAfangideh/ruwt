@@ -2,16 +2,18 @@
  * GET/POST /api/assessments
  * List or create assessments; auth required.
  */
-import { eq, desc, and, sql } from 'drizzle-orm';
+import { eq, desc, and, sql, or, inArray } from 'drizzle-orm';
 import { z } from 'zod';
 import { getDb } from '../_shared/db';
 import { getUser } from '../_shared/auth';
+import { getUserOrgIds, requireOrgAccess } from '../_shared/org';
 import { assessments, assessmentChallenges, assessmentInvites, assessmentSessions } from '../../drizzle/schema.d1';
 
 const createAssessmentSchema = z.object({
   title: z.string().min(1).max(200),
   description: z.string().max(2000).optional(),
   timeLimit: z.number().int().min(300).max(14400), // 5 min to 4 hours
+  orgId: z.string().optional(),
 });
 
 export async function onRequestPost(context: { request: Request; env: Env }) {
@@ -29,6 +31,15 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
     }
 
     const db = getDb(context.env);
+
+    // If orgId provided, verify user is admin/owner in that org
+    if (parsed.data.orgId) {
+      const role = await requireOrgAccess(db, user.id, parsed.data.orgId, 'admin');
+      if (!role) {
+        return Response.json({ error: 'Insufficient org permissions' }, { status: 403 });
+      }
+    }
+
     const assessmentId = crypto.randomUUID();
 
     await db.insert(assessments).values({
@@ -38,6 +49,7 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
       timeLimit: parsed.data.timeLimit,
       status: 'draft',
       createdBy: user.id,
+      orgId: parsed.data.orgId ?? null,
     });
 
     const [created] = await db
@@ -60,10 +72,19 @@ export async function onRequestGet(context: { request: Request; env: Env }) {
 
     const db = getDb(context.env);
 
+    // Get org IDs the user belongs to
+    const orgIds = await getUserOrgIds(db, user.id);
+
+    // Build WHERE: personal assessments OR assessments belonging to user's orgs
+    const conditions = [eq(assessments.createdBy, user.id)];
+    if (orgIds.length > 0) {
+      conditions.push(inArray(assessments.orgId, orgIds));
+    }
+
     const list = await db
       .select()
       .from(assessments)
-      .where(eq(assessments.createdBy, user.id))
+      .where(or(...conditions))
       .orderBy(desc(assessments.createdAt));
 
     // For each assessment, get challenge count + invite/completion stats

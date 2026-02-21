@@ -6,6 +6,7 @@
 import { eq, and, sql } from 'drizzle-orm';
 import { getDb } from '../../../_shared/db';
 import { getUser } from '../../../_shared/auth';
+import { canViewResults } from '../../../_shared/org';
 import {
   assessments,
   assessmentSessions,
@@ -35,6 +36,35 @@ function percentileRank(value: number, values: number[], lowerIsBetter: boolean)
   return Math.round(rank * 100);
 }
 
+function computeVerdict(
+  profile: AIProfile,
+  threshold: any,
+  weights: Record<string, number>
+): 'pass' | 'fail' | 'review' | null {
+  if (!threshold?.enabled) return null;
+  const dims: (keyof AIProfile)[] = ['modelSelection', 'promptEfficiency', 'debugging', 'strategy', 'speed'];
+  if (threshold.mode === 'all_dimensions') {
+    let allPass = true;
+    let anyDeepFail = false;
+    for (const dim of dims) {
+      const score = profile[dim] ?? 0;
+      const min = threshold.dimensions?.[dim] ?? 50;
+      if (score < min) allPass = false;
+      if (score < min - 20) anyDeepFail = true;
+    }
+    if (allPass) return 'pass';
+    if (anyDeepFail) return 'fail';
+    return 'review';
+  }
+  // weighted_average mode
+  const totalWeight = dims.reduce((s, d) => s + (weights[d] ?? 20), 0);
+  const avg = dims.reduce((s, d) => s + (profile[d] ?? 0) * (weights[d] ?? 20), 0) / (totalWeight || 1);
+  const min = threshold.minOverall ?? 60;
+  if (avg >= min) return 'pass';
+  if (avg < min - 20) return 'fail';
+  return 'review';
+}
+
 export async function onRequestGet(context: { request: Request; env: Env; params: { id: string } }) {
   try {
     const user = await getUser(context.request, context.env);
@@ -42,16 +72,17 @@ export async function onRequestGet(context: { request: Request; env: Env; params
 
     const db = getDb(context.env);
 
-    // Verify ownership
+    // Verify access (creator or org member)
+    const hasAccess = await canViewResults(db, user.id, context.params.id);
+    if (!hasAccess) {
+      return Response.json({ error: 'Assessment not found' }, { status: 404 });
+    }
+
     const [assessment] = await db
       .select()
       .from(assessments)
-      .where(and(eq(assessments.id, context.params.id), eq(assessments.createdBy, user.id)))
+      .where(eq(assessments.id, context.params.id))
       .limit(1);
-
-    if (!assessment) {
-      return Response.json({ error: 'Assessment not found' }, { status: 404 });
-    }
 
     const url = new URL(context.request.url);
     const sessionId = url.searchParams.get('sessionId');
@@ -199,7 +230,20 @@ export async function onRequestGet(context: { request: Request; env: Env; params
       } catch {}
     }
 
-    return Response.json({ profiles, categoryWeights });
+    // Compute pass/fail verdicts if passThreshold is configured
+    let passThreshold: any = null;
+    if (assessment.passThreshold) {
+      try {
+        passThreshold = JSON.parse(assessment.passThreshold);
+      } catch {}
+    }
+
+    const verdicts: Record<string, 'pass' | 'fail' | 'review' | null> = {};
+    for (const [sessionId, profile] of Object.entries(profiles)) {
+      verdicts[sessionId] = computeVerdict(profile, passThreshold, categoryWeights);
+    }
+
+    return Response.json({ profiles, categoryWeights, verdicts });
   } catch (error) {
     console.error('Assessment analytics error:', error);
     return Response.json({ error: 'Internal server error' }, { status: 500 });

@@ -23,6 +23,8 @@ export type RootStackParamList = {
   PublicProfile: { username: string };
   Share: { attemptId: string };
   Certificate: { shareToken: string };
+  OrgManagement: { orgId?: string };
+  OrgJoin: { token: string };
   NotFound: undefined;
 };
 

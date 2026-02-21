@@ -28,6 +28,8 @@ export const linking: LinkingOptions<ReactNavigation.RootParamList> = {
       PublicProfile: 'u/:username',
       Share: 'share/:attemptId',
       Certificate: 'cert/:shareToken',
+      OrgManagement: 'org/:orgId?',
+      OrgJoin: 'org/join/:token',
       NotFound: '*',
     },
   },
