@@ -187,48 +187,6 @@ export function TeamsScreen() {
         </View>
       </View>
 
-      {/* 3-step assessment flow */}
-      <View style={[styles.section, styles.sectionAlt, { backgroundColor: c.muted + '40' }]}>
-        <Text style={[styles.sectionTitle, { color: c.text }]}>Three Steps to Better Hiring</Text>
-        <View style={styles.cards}>
-          {[
-            { step: '1', title: 'Create an Assessment', desc: 'Choose from 4 pre-built templates or pick from 60+ challenges. Set time limits. Test the AI skills you care about.' },
-            { step: '2', title: 'Invite Candidates', desc: 'Send a unique assessment link. Candidates work through challenges with real AI models — no simulations, no toy environments.' },
-            { step: '3', title: 'Review Results', desc: 'Compare candidates by cost efficiency, model strategy, and prompt quality. Export to CSV for your ATS. Watch full replays.' },
-          ].map((item) => (
-            <Card key={item.step} style={styles.card}>
-              <CardHeader>
-                <View style={[styles.stepNum, { backgroundColor: c.accent + '20' }]}>
-                  <Text style={[styles.stepText, { color: c.accent }]}>{item.step}</Text>
-                </View>
-                <CardTitle>{item.title}</CardTitle>
-                <CardDescription>{item.desc}</CardDescription>
-              </CardHeader>
-            </Card>
-          ))}
-        </View>
-      </View>
-
-      {/* Trust signals */}
-      <View style={[styles.section, styles.sectionAlt, { backgroundColor: c.muted + '20' }]}>
-        <Text style={[styles.sectionTitle, { color: c.text }]}>Why Teams Choose Ruwt</Text>
-        <View style={styles.trustGrid}>
-          {[
-            { title: 'Real AI, Real Cost', desc: 'Candidates use actual AI APIs with real pricing. No sandboxes. Every decision has a cost.' },
-            { title: 'Objective Metrics', desc: 'Compare candidates by total cost, token usage, model selection, and time. No subjective grading.' },
-            { title: 'Full Replay', desc: 'Watch every prompt, every model switch, every debugging step. Understand how candidates think.' },
-            { title: 'Server-Tracked', desc: 'All AI calls are logged server-side with tamper-proof cost and token accounting.' },
-          ].map((item) => (
-            <Card key={item.title} style={styles.trustCard}>
-              <CardHeader>
-                <CardTitle>{item.title}</CardTitle>
-                <CardDescription>{item.desc}</CardDescription>
-              </CardHeader>
-            </Card>
-          ))}
-        </View>
-      </View>
-
       {/* Pricing */}
       <View style={styles.section}>
         <Text style={[styles.sectionTitle, { color: c.text }]}>Simple, Credit-Based Pricing</Text>
@@ -281,6 +239,48 @@ export function TeamsScreen() {
               </Card>
             );
           })}
+        </View>
+      </View>
+
+      {/* 3-step assessment flow */}
+      <View style={[styles.section, styles.sectionAlt, { backgroundColor: c.muted + '40' }]}>
+        <Text style={[styles.sectionTitle, { color: c.text }]}>Three Steps to Better Hiring</Text>
+        <View style={styles.cards}>
+          {[
+            { step: '1', title: 'Create an Assessment', desc: 'Choose from 4 pre-built templates or pick from 60+ challenges. Set time limits. Test the AI skills you care about.' },
+            { step: '2', title: 'Invite Candidates', desc: 'Send a unique assessment link. Candidates work through challenges with real AI models — no simulations, no toy environments.' },
+            { step: '3', title: 'Review Results', desc: 'Compare candidates by cost efficiency, model strategy, and prompt quality. Export to CSV for your ATS. Watch full replays.' },
+          ].map((item) => (
+            <Card key={item.step} style={styles.card}>
+              <CardHeader>
+                <View style={[styles.stepNum, { backgroundColor: c.accent + '20' }]}>
+                  <Text style={[styles.stepText, { color: c.accent }]}>{item.step}</Text>
+                </View>
+                <CardTitle>{item.title}</CardTitle>
+                <CardDescription>{item.desc}</CardDescription>
+              </CardHeader>
+            </Card>
+          ))}
+        </View>
+      </View>
+
+      {/* Trust signals */}
+      <View style={[styles.section, styles.sectionAlt, { backgroundColor: c.muted + '20' }]}>
+        <Text style={[styles.sectionTitle, { color: c.text }]}>Why Teams Choose Ruwt</Text>
+        <View style={styles.trustGrid}>
+          {[
+            { title: 'Real AI, Real Cost', desc: 'Candidates use actual AI APIs with real pricing. No sandboxes. Every decision has a cost.' },
+            { title: 'Objective Metrics', desc: 'Compare candidates by total cost, token usage, model selection, and time. No subjective grading.' },
+            { title: 'Full Replay', desc: 'Watch every prompt, every model switch, every debugging step. Understand how candidates think.' },
+            { title: 'Server-Tracked', desc: 'All AI calls are logged server-side with tamper-proof cost and token accounting.' },
+          ].map((item) => (
+            <Card key={item.title} style={styles.trustCard}>
+              <CardHeader>
+                <CardTitle>{item.title}</CardTitle>
+                <CardDescription>{item.desc}</CardDescription>
+              </CardHeader>
+            </Card>
+          ))}
         </View>
       </View>
 
