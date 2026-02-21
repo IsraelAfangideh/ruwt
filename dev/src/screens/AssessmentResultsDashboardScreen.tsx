@@ -10,10 +10,15 @@ import { useColors } from '@/theme';
 import { spacing, fontSizes, fontFamily } from '@/theme/tokens';
 import { getModelById, tierColor } from '@/lib/ai/pricing';
 import { AIProfileRadar, type AIProfile } from '@/components/AIProfileRadar';
+import { CandidateInsightsPanel } from '@/components/CandidateInsightsPanel';
+import { CandidateComparisonView } from '@/components/CandidateComparisonView';
+
+// ─── Types ───────────────────────────────────────────────────────────────────
 
 interface AttemptDetail {
   attemptId: string;
   challengeId: string;
+  challengeTitle?: string;
   status: string;
   totalCost: number;
   inputTokens: number;
@@ -44,7 +49,40 @@ interface CandidateResult {
   attempts?: AttemptDetail[];
 }
 
+interface BehavioralInsight {
+  type: string;
+  severity: 'green' | 'yellow' | 'red';
+  narrative: string;
+  challengeIndex: number;
+  timestamp: string;
+}
+
+interface ComparativeMetric {
+  metric: string;
+  candidateValue: number;
+  medianValue: number;
+  percentile: number;
+  narrative: string;
+}
+
+interface HighlightMoment {
+  timestamp: string;
+  type: 'model_switch' | 'error_recovery' | 'cost_spike' | 'escalation' | 'pass';
+  narrative: string;
+  challengeIndex: number;
+  cost?: number;
+}
+
+interface SessionInsights {
+  insights: BehavioralInsight[];
+  comparatives: ComparativeMetric[];
+  flags: { green: string[]; red: string[]; yellow: string[] };
+  highlights: HighlightMoment[];
+}
+
 type SortKey = 'name' | 'status' | 'passed' | 'cost' | 'tokens' | 'time';
+
+// ─── Component ───────────────────────────────────────────────────────────────
 
 export function AssessmentResultsDashboardScreen() {
   const navigation = useNavigation();
@@ -60,6 +98,8 @@ export function AssessmentResultsDashboardScreen() {
   const [sortAsc, setSortAsc] = useState(true);
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const [aiProfiles, setAiProfiles] = useState<Record<string, AIProfile>>({});
+  const [allInsights, setAllInsights] = useState<Record<string, SessionInsights>>({});
+  const [showComparison, setShowComparison] = useState(false);
 
   useEffect(() => {
     const init = async () => {
@@ -70,14 +110,18 @@ export function AssessmentResultsDashboardScreen() {
       }
       setUser(u);
       try {
-        const [resultsRes, analyticsRes] = await Promise.all([
+        const [resultsRes, analyticsRes, insightsRes] = await Promise.all([
           fetch(`/api/assessments/${params.assessmentId}/results`),
           fetch(`/api/assessments/${params.assessmentId}/analytics`),
+          fetch(`/api/assessments/${params.assessmentId}/insights`),
         ]);
         if (resultsRes.ok) setResults(await resultsRes.json());
         if (analyticsRes.ok) {
           const analyticsData = await analyticsRes.json() as { profiles: Record<string, AIProfile> };
           setAiProfiles(analyticsData.profiles ?? {});
+        }
+        if (insightsRes.ok) {
+          setAllInsights(await insightsRes.json());
         }
       } catch (_) {}
       setLoading(false);
@@ -143,17 +187,22 @@ export function AssessmentResultsDashboardScreen() {
   };
 
   const handleExportCSV = useCallback(() => {
-    const headers = ['Candidate', 'Email', 'Status', 'Passed', 'Total', 'Cost', 'Tokens', 'Duration'];
-    const rows = sorted.map((r) => [
-      r.candidate.name || '',
-      r.candidate.email,
-      r.session.status,
-      r.challengesPassed,
-      r.totalChallenges,
-      (r.session.totalCost / 10000).toFixed(4),
-      r.session.totalTokens,
-      formatDuration(getDuration(r)),
-    ]);
+    const headers = ['Candidate', 'Email', 'Status', 'Passed', 'Total', 'Cost', 'Tokens', 'Duration', 'Green Flags', 'Red Flags'];
+    const rows = sorted.map((r) => {
+      const ins = allInsights[r.session.id];
+      return [
+        r.candidate.name || '',
+        r.candidate.email,
+        r.session.status,
+        r.challengesPassed,
+        r.totalChallenges,
+        (r.session.totalCost / 10000).toFixed(4),
+        r.session.totalTokens,
+        formatDuration(getDuration(r)),
+        ins?.flags.green.join('; ') ?? '',
+        ins?.flags.red.join('; ') ?? '',
+      ];
+    });
     const csv = [headers.join(','), ...rows.map((r) => r.map((v) => `"${v}"`).join(','))].join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
@@ -162,7 +211,7 @@ export function AssessmentResultsDashboardScreen() {
     a.download = `assessment-results-${params.assessmentId}.csv`;
     a.click();
     URL.revokeObjectURL(url);
-  }, [sorted, params.assessmentId]);
+  }, [sorted, params.assessmentId, allInsights]);
 
   if (loading) {
     return (
@@ -182,6 +231,17 @@ export function AssessmentResultsDashboardScreen() {
     </Pressable>
   );
 
+  // Build candidate options for comparison view
+  const comparisonCandidates = results.map((r) => ({
+    sessionId: r.session.id,
+    name: r.candidate.name || '',
+    email: r.candidate.email,
+    challengesPassed: r.challengesPassed,
+    totalChallenges: r.totalChallenges,
+    totalCost: r.session.totalCost,
+    totalTokens: r.session.totalTokens,
+  }));
+
   return (
     <DashboardLayout user={user}>
       <View style={[styles.section, { borderBottomColor: c.border }]}>
@@ -199,13 +259,34 @@ export function AssessmentResultsDashboardScreen() {
               {results.length} candidate{results.length !== 1 ? 's' : ''} have taken this assessment.
             </Text>
           </View>
-          {results.length > 0 && (
-            <Button variant="outline" size="sm" onPress={handleExportCSV}>
-              Export CSV
-            </Button>
-          )}
+          <View style={styles.headerActions}>
+            {results.length >= 2 && (
+              <Button
+                variant={showComparison ? 'default' : 'outline'}
+                size="sm"
+                onPress={() => setShowComparison(!showComparison)}
+              >
+                {showComparison ? 'Hide Comparison' : 'Compare Candidates'}
+              </Button>
+            )}
+            {results.length > 0 && (
+              <Button variant="outline" size="sm" onPress={handleExportCSV}>
+                Export CSV
+              </Button>
+            )}
+          </View>
         </View>
       </View>
+
+      {/* Candidate comparison panel */}
+      {showComparison && results.length >= 2 && (
+        <CandidateComparisonView
+          candidates={comparisonCandidates}
+          profiles={aiProfiles}
+          insightsData={allInsights}
+          formatCost={formatCost}
+        />
+      )}
 
       {results.length === 0 ? (
         <Card style={[styles.empty, { backgroundColor: c.muted + '20' }]}>
@@ -225,121 +306,171 @@ export function AssessmentResultsDashboardScreen() {
             <SortHeader label="Cost" sortKey="cost" style={styles.thCost} />
             <SortHeader label="Tokens" sortKey="tokens" style={styles.thTokens} />
             <SortHeader label="Time" sortKey="time" style={styles.thTime} />
+            <View style={styles.thSignals}>
+              <Text style={[styles.th, { color: c.textMuted }]}>Signals</Text>
+            </View>
             <View style={styles.thActions}>
               <Text style={[styles.th, { color: c.textMuted }]}>Actions</Text>
             </View>
           </View>
-          {sorted.map((r) => (
-            <View key={r.session.id}>
-              <Pressable onPress={() => setExpandedRow(expandedRow === r.session.id ? null : r.session.id)}>
-                <View style={[styles.tableRow, { borderBottomColor: c.border, backgroundColor: getRowBg(r) }]}>
-                  <Text style={[styles.td, styles.thName, { color: c.text }]} numberOfLines={1}>
-                    {r.candidate.name || r.candidate.email}
-                  </Text>
-                  <View style={[styles.td, styles.thStatus]}>
-                    <Badge
-                      variant="outline"
-                      style={{
-                        borderColor:
-                          r.session.status === 'completed' ? c.success : c.textMuted,
-                      }}
-                    >
-                      <Text
+          {sorted.map((r) => {
+            const sessionInsights = allInsights[r.session.id];
+            return (
+              <View key={r.session.id}>
+                <Pressable onPress={() => setExpandedRow(expandedRow === r.session.id ? null : r.session.id)}>
+                  <View style={[styles.tableRow, { borderBottomColor: c.border, backgroundColor: getRowBg(r) }]}>
+                    <Text style={[styles.td, styles.thName, { color: c.text }]} numberOfLines={1}>
+                      {r.candidate.name || r.candidate.email}
+                    </Text>
+                    <View style={[styles.td, styles.thStatus]}>
+                      <Badge
+                        variant="outline"
                         style={{
-                          fontSize: fontSizes.xs,
-                          color:
+                          borderColor:
                             r.session.status === 'completed' ? c.success : c.textMuted,
                         }}
                       >
-                        {r.session.status}
-                      </Text>
-                    </Badge>
-                  </View>
-                  <Text style={[styles.td, styles.thPassed, { color: r.challengesPassed === r.totalChallenges ? c.success : c.text }]}>
-                    {r.challengesPassed}/{r.totalChallenges}
-                  </Text>
-                  <Text style={[styles.td, styles.thCost, { color: c.accent }]}>
-                    {formatCost(r.session.totalCost)}
-                  </Text>
-                  <Text style={[styles.td, styles.thTokens, { color: c.textMuted }]}>
-                    {r.session.totalTokens.toLocaleString()}
-                  </Text>
-                  <Text style={[styles.td, styles.thTime, { color: c.textMuted }]}>
-                    {formatDuration(getDuration(r))}
-                  </Text>
-                  <View style={[styles.td, styles.thActions]}>
-                    {r.session.shareToken && (
-                      <Pressable
-                        onPress={() => {
-                          window.open(`/results/${r.session.shareToken}`, '_blank');
-                        }}
-                      >
-                        <Text style={{ fontSize: fontSizes.xs, color: c.accent, textDecorationLine: 'underline' }}>
-                          View Results
-                        </Text>
-                      </Pressable>
-                    )}
-                  </View>
-                </View>
-              </Pressable>
-
-              {/* Expanded row: AI profile radar + per-challenge analytics */}
-              {expandedRow === r.session.id && r.attempts && (
-                <View style={[styles.expandedRow, { backgroundColor: c.muted + '10', borderBottomColor: c.border }]}>
-                  {aiProfiles[r.session.id] && (
-                    <View style={styles.radarWrap}>
-                      <Text style={[styles.radarTitle, { color: c.text }]}>AI Profile</Text>
-                      <AIProfileRadar profile={aiProfiles[r.session.id]} size={240} />
-                    </View>
-                  )}
-                  {r.attempts.map((a, i) => (
-                    <View key={i} style={[styles.attemptRow, { borderBottomColor: c.border }]}>
-                      <View style={styles.attemptHeader}>
-                        <Text style={[styles.attemptChallenge, { color: c.text }]}>
-                          Challenge {i + 1}
-                        </Text>
-                        <Badge
-                          variant="outline"
-                          style={{ borderColor: a.status === 'passed' ? c.success : c.destructive }}
+                        <Text
+                          style={{
+                            fontSize: fontSizes.xs,
+                            color:
+                              r.session.status === 'completed' ? c.success : c.textMuted,
+                          }}
                         >
-                          <Text style={{ fontSize: 10, color: a.status === 'passed' ? c.success : c.destructive }}>
-                            {a.status} ({a.passedTests}/{a.totalTests})
-                          </Text>
-                        </Badge>
-                        <Text style={{ fontSize: fontSizes.xs, color: c.accent, marginLeft: 'auto' }}>
-                          {formatCost(a.totalCost)}
+                          {r.session.status}
                         </Text>
-                      </View>
-                      {Object.keys(a.modelUsage).length > 0 && (
-                        <View style={styles.modelUsageRow}>
-                          {Object.entries(a.modelUsage).map(([modelId, usage]) => {
-                            const mi = getModelById(modelId);
-                            return (
-                              <View key={modelId} style={[styles.modelUsageBadge, { borderColor: mi ? tierColor(mi.tier) : c.border }]}>
-                                <Text style={{ fontSize: 10, color: mi ? tierColor(mi.tier) : c.textMuted }}>
-                                  {mi?.displayName || modelId.split('/').pop()} {'\u00B7'} {usage.calls}x {'\u00B7'} {formatCost(usage.cost)}
-                                </Text>
-                              </View>
-                            );
-                          })}
+                      </Badge>
+                    </View>
+                    <Text style={[styles.td, styles.thPassed, { color: r.challengesPassed === r.totalChallenges ? c.success : c.text }]}>
+                      {r.challengesPassed}/{r.totalChallenges}
+                    </Text>
+                    <Text style={[styles.td, styles.thCost, { color: c.accent }]}>
+                      {formatCost(r.session.totalCost)}
+                    </Text>
+                    <Text style={[styles.td, styles.thTokens, { color: c.textMuted }]}>
+                      {r.session.totalTokens.toLocaleString()}
+                    </Text>
+                    <Text style={[styles.td, styles.thTime, { color: c.textMuted }]}>
+                      {formatDuration(getDuration(r))}
+                    </Text>
+                    {/* Inline signal flags */}
+                    <View style={[styles.td, styles.thSignals]}>
+                      {sessionInsights && (
+                        <View style={styles.inlineFlags}>
+                          {sessionInsights.flags.green.length > 0 && (
+                            <View style={[styles.flagDot, { backgroundColor: '#5a8a5a' }]}>
+                              <Text style={styles.flagDotText}>{sessionInsights.flags.green.length}</Text>
+                            </View>
+                          )}
+                          {sessionInsights.flags.red.length > 0 && (
+                            <View style={[styles.flagDot, { backgroundColor: '#c87878' }]}>
+                              <Text style={styles.flagDotText}>{sessionInsights.flags.red.length}</Text>
+                            </View>
+                          )}
+                          {sessionInsights.flags.yellow.length > 0 && (
+                            <View style={[styles.flagDot, { backgroundColor: '#e5a639' }]}>
+                              <Text style={styles.flagDotText}>{sessionInsights.flags.yellow.length}</Text>
+                            </View>
+                          )}
                         </View>
                       )}
-                      {a.attemptId && (
+                    </View>
+                    <View style={[styles.td, styles.thActions]}>
+                      {r.session.shareToken && (
                         <Pressable
-                          onPress={() => navigation.navigate('Replay', { attemptId: a.attemptId })}
-                          style={{ marginTop: spacing.xs }}
+                          onPress={(e: any) => {
+                            e.stopPropagation?.();
+                            window.open(`/results/${r.session.shareToken}`, '_blank');
+                          }}
                         >
                           <Text style={{ fontSize: fontSizes.xs, color: c.accent, textDecorationLine: 'underline' }}>
-                            View Replay
+                            View Results
                           </Text>
                         </Pressable>
                       )}
                     </View>
-                  ))}
-                </View>
-              )}
-            </View>
-          ))}
+                  </View>
+                </Pressable>
+
+                {/* Expanded row: Full insights panel */}
+                {expandedRow === r.session.id && (
+                  <View style={[styles.expandedRow, { backgroundColor: c.muted + '10', borderBottomColor: c.border }]}>
+                    {sessionInsights ? (
+                      <CandidateInsightsPanel
+                        profile={aiProfiles[r.session.id]}
+                        insights={sessionInsights.insights}
+                        comparatives={sessionInsights.comparatives}
+                        flags={sessionInsights.flags}
+                        highlights={sessionInsights.highlights}
+                        formatCost={formatCost}
+                      />
+                    ) : (
+                      // Fallback: show radar + basic attempt info if insights not available
+                      <>
+                        {aiProfiles[r.session.id] && (
+                          <View style={styles.fallbackRadar}>
+                            <Text style={[styles.fallbackTitle, { color: c.text }]}>AI Profile</Text>
+                            <AIProfileRadar profile={aiProfiles[r.session.id]} size={240} />
+                          </View>
+                        )}
+                      </>
+                    )}
+
+                    {/* Per-challenge details */}
+                    {r.attempts && r.attempts.length > 0 && (
+                      <View style={styles.challengeDetails}>
+                        <Text style={[styles.challengeDetailsTitle, { color: c.text }]}>Challenge Breakdown</Text>
+                        {r.attempts.map((a, i) => (
+                          <View key={i} style={[styles.attemptRow, { borderBottomColor: c.border }]}>
+                            <View style={styles.attemptHeader}>
+                              <Text style={[styles.attemptChallenge, { color: c.text }]}>
+                                {a.challengeTitle || `Challenge ${i + 1}`}
+                              </Text>
+                              <Badge
+                                variant="outline"
+                                style={{ borderColor: a.status === 'passed' ? c.success : c.destructive }}
+                              >
+                                <Text style={{ fontSize: 10, color: a.status === 'passed' ? c.success : c.destructive }}>
+                                  {a.status} ({a.passedTests}/{a.totalTests})
+                                </Text>
+                              </Badge>
+                              <Text style={{ fontSize: fontSizes.xs, color: c.accent, marginLeft: 'auto' }}>
+                                {formatCost(a.totalCost)}
+                              </Text>
+                            </View>
+                            {Object.keys(a.modelUsage).length > 0 && (
+                              <View style={styles.modelUsageRow}>
+                                {Object.entries(a.modelUsage).map(([modelId, usage]) => {
+                                  const mi = getModelById(modelId);
+                                  return (
+                                    <View key={modelId} style={[styles.modelUsageBadge, { borderColor: mi ? tierColor(mi.tier) : c.border }]}>
+                                      <Text style={{ fontSize: 10, color: mi ? tierColor(mi.tier) : c.textMuted }}>
+                                        {mi?.displayName || modelId.split('/').pop()} {'\u00B7'} {usage.calls}x {'\u00B7'} {formatCost(usage.cost)}
+                                      </Text>
+                                    </View>
+                                  );
+                                })}
+                              </View>
+                            )}
+                            {a.attemptId && (
+                              <Pressable
+                                onPress={() => navigation.navigate('Replay', { attemptId: a.attemptId })}
+                                style={{ marginTop: spacing.xs }}
+                              >
+                                <Text style={{ fontSize: fontSizes.xs, color: c.accent, textDecorationLine: 'underline' }}>
+                                  View Replay
+                                </Text>
+                              </Pressable>
+                            )}
+                          </View>
+                        ))}
+                      </View>
+                    )}
+                  </View>
+                )}
+              </View>
+            );
+          })}
         </View>
       )}
     </DashboardLayout>
@@ -350,6 +481,7 @@ const styles = StyleSheet.create({
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   section: { marginBottom: spacing.lg, paddingBottom: spacing.md, borderBottomWidth: 1 },
   headerRow: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' },
+  headerActions: { flexDirection: 'row', gap: spacing.sm, alignItems: 'center' },
   title: { fontSize: fontSizes['3xl'], fontWeight: '700', fontFamily: fontFamily.body, marginTop: spacing.sm },
   subtitle: { fontSize: fontSizes.sm, marginTop: spacing.xs },
   empty: { borderWidth: 1 },
@@ -358,22 +490,28 @@ const styles = StyleSheet.create({
   emptySub: { fontSize: fontSizes.sm, marginTop: spacing.xs },
   table: { borderWidth: 1, borderRadius: 8, overflow: 'hidden' },
   tableHeader: { flexDirection: 'row', borderBottomWidth: 1, paddingVertical: spacing.sm, paddingHorizontal: spacing.md },
-  tableRow: { flexDirection: 'row', borderBottomWidth: 1, paddingVertical: spacing.sm, paddingHorizontal: spacing.md },
+  tableRow: { flexDirection: 'row', borderBottomWidth: 1, paddingVertical: spacing.sm, paddingHorizontal: spacing.md, alignItems: 'center' },
   th: { fontSize: fontSizes.xs, fontWeight: '600', textTransform: 'uppercase' },
   td: { fontSize: fontSizes.sm },
-  thName: { flex: 3 },
-  thStatus: { flex: 2 },
+  thName: { flex: 2.5 },
+  thStatus: { flex: 1.5 },
   thPassed: { flex: 1, textAlign: 'center' },
   thCost: { flex: 1, textAlign: 'right' },
   thTokens: { flex: 1, textAlign: 'right' },
   thTime: { flex: 1, textAlign: 'right' },
-  thActions: { flex: 1.5, alignItems: 'flex-end' },
-  expandedRow: { paddingHorizontal: spacing.lg, paddingVertical: spacing.sm, borderBottomWidth: 1 },
+  thSignals: { flex: 1.2, alignItems: 'center' },
+  thActions: { flex: 1.2, alignItems: 'flex-end' },
+  inlineFlags: { flexDirection: 'row', gap: 4 },
+  flagDot: { width: 20, height: 20, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  flagDotText: { fontSize: 10, color: '#fff', fontWeight: '700' },
+  expandedRow: { paddingHorizontal: spacing.lg, paddingVertical: spacing.md, borderBottomWidth: 1 },
+  challengeDetails: { marginTop: spacing.lg },
+  challengeDetailsTitle: { fontSize: fontSizes.sm, fontWeight: '700', fontFamily: fontFamily.body, marginBottom: spacing.sm },
   attemptRow: { paddingVertical: spacing.xs, borderBottomWidth: 1 },
   attemptHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   attemptChallenge: { fontSize: fontSizes.xs, fontWeight: '600' },
   modelUsageRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs, marginTop: spacing.xs },
   modelUsageBadge: { borderWidth: 1, borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2 },
-  radarWrap: { alignItems: 'center', marginBottom: spacing.md, paddingVertical: spacing.sm },
-  radarTitle: { fontSize: fontSizes.sm, fontWeight: '600', marginBottom: spacing.xs, fontFamily: fontFamily.body },
+  fallbackRadar: { alignItems: 'center', marginBottom: spacing.md, paddingVertical: spacing.sm },
+  fallbackTitle: { fontSize: fontSizes.sm, fontWeight: '600', marginBottom: spacing.xs, fontFamily: fontFamily.body },
 });

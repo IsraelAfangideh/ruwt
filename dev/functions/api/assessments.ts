@@ -2,11 +2,11 @@
  * GET/POST /api/assessments
  * List or create assessments; auth required.
  */
-import { eq, desc } from 'drizzle-orm';
+import { eq, desc, and, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import { getDb } from '../_shared/db';
 import { getUser } from '../_shared/auth';
-import { assessments, assessmentChallenges, challenges } from '../../drizzle/schema.d1';
+import { assessments, assessmentChallenges, assessmentInvites, assessmentSessions } from '../../drizzle/schema.d1';
 
 const createAssessmentSchema = z.object({
   title: z.string().min(1).max(200),
@@ -66,14 +66,20 @@ export async function onRequestGet(context: { request: Request; env: Env }) {
       .where(eq(assessments.createdBy, user.id))
       .orderBy(desc(assessments.createdAt));
 
-    // For each assessment, get challenge count
+    // For each assessment, get challenge count + invite/completion stats
     const results = await Promise.all(
       list.map(async (a) => {
-        const challengeLinks = await db
-          .select()
-          .from(assessmentChallenges)
-          .where(eq(assessmentChallenges.assessmentId, a.id));
-        return { ...a, challengeCount: challengeLinks.length };
+        const [challengeLinks, invites, completions] = await Promise.all([
+          db.select().from(assessmentChallenges).where(eq(assessmentChallenges.assessmentId, a.id)),
+          db.select({ count: sql<number>`count(*)` }).from(assessmentInvites).where(eq(assessmentInvites.assessmentId, a.id)),
+          db.select({ count: sql<number>`count(*)` }).from(assessmentSessions).where(and(eq(assessmentSessions.assessmentId, a.id), eq(assessmentSessions.status, 'completed'))),
+        ]);
+        return {
+          ...a,
+          challengeCount: challengeLinks.length,
+          inviteCount: invites[0]?.count ?? 0,
+          completionCount: completions[0]?.count ?? 0,
+        };
       })
     );
 

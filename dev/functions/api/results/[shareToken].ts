@@ -113,7 +113,12 @@ export async function onRequestGet(context: { request: Request; env: Env; params
 
     return Response.json({
       assessment: assessment
-        ? { title: assessment.title, description: assessment.description }
+        ? {
+            title: assessment.title,
+            description: assessment.description,
+            companyName: assessment.companyName ?? null,
+            companyLogoUrl: assessment.companyLogoUrl ?? null,
+          }
         : null,
       candidate: candidate ?? { name: 'Anonymous', avatarUrl: null },
       session: {

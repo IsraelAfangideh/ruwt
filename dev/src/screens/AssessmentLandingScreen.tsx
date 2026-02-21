@@ -18,6 +18,9 @@ interface AssessmentPreview {
   categoryBreakdown: Record<string, number>;
   expired: boolean;
   status?: string;
+  companyName?: string | null;
+  companyLogoUrl?: string | null;
+  welcomeMessage?: string | null;
 }
 
 export function AssessmentLandingScreen() {
@@ -115,7 +118,23 @@ export function AssessmentLandingScreen() {
   return (
     <View style={[styles.page, { backgroundColor: c.bg }]}>
       <View style={styles.container}>
-        <Text style={[styles.logo, { color: c.text }]}>Ruwt</Text>
+        {/* Company branding or Ruwt logo */}
+        {preview?.companyLogoUrl ? (
+          <View style={styles.brandingHeader}>
+            <img
+              src={preview.companyLogoUrl}
+              alt={preview.companyName || 'Company'}
+              style={{ maxHeight: 48, maxWidth: 200, objectFit: 'contain' }}
+            />
+            {preview.companyName && (
+              <Text style={[styles.companyName, { color: c.text }]}>{preview.companyName}</Text>
+            )}
+          </View>
+        ) : preview?.companyName ? (
+          <Text style={[styles.companyName, { color: c.text }]}>{preview.companyName}</Text>
+        ) : (
+          <Text style={[styles.logo, { color: c.text }]}>Ruwt</Text>
+        )}
 
         <Card style={styles.card}>
           <CardHeader>
@@ -124,7 +143,7 @@ export function AssessmentLandingScreen() {
               {preview?.title || "You've been invited to take an assessment"}
             </CardTitle>
             <CardDescription>
-              {preview?.description ||
+              {preview?.welcomeMessage || preview?.description ||
                 'This assessment measures how efficiently you use AI to solve coding challenges. You\'ll be evaluated on model selection, prompt efficiency, and debugging strategy.'}
             </CardDescription>
           </CardHeader>
@@ -192,6 +211,13 @@ export function AssessmentLandingScreen() {
             </Button>
           </CardContent>
         </Card>
+
+        {/* Powered by footer */}
+        {(preview?.companyName || preview?.companyLogoUrl) && (
+          <Text style={[styles.poweredBy, { color: c.textMuted }]}>
+            Powered by Ruwt
+          </Text>
+        )}
       </View>
     </View>
   );
@@ -214,4 +240,7 @@ const styles = StyleSheet.create({
   infoLabel: { fontSize: fontSizes.sm, fontWeight: '600' },
   infoValue: { fontSize: fontSizes.sm },
   errorText: { fontSize: fontSizes.sm },
+  brandingHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginBottom: spacing.xl },
+  companyName: { fontSize: fontSizes['2xl'], fontWeight: '700', fontFamily: fontFamily.body, marginBottom: spacing.xl },
+  poweredBy: { fontSize: fontSizes.xs, textAlign: 'center', marginTop: spacing.lg, fontFamily: fontFamily.body },
 });

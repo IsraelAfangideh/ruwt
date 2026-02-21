@@ -41,6 +41,20 @@ export function AssessmentBuilderScreen() {
   const [inviteLink, setInviteLink] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
+  // Branding fields
+  const [companyName, setCompanyName] = useState('');
+  const [companyLogoUrl, setCompanyLogoUrl] = useState('');
+  const [welcomeMessage, setWelcomeMessage] = useState('');
+
+  // Category weights
+  const [weights, setWeights] = useState({
+    modelSelection: '20',
+    promptEfficiency: '20',
+    debugging: '20',
+    strategy: '20',
+    speed: '20',
+  });
+
   useEffect(() => {
     const init = async () => {
       const { data: { user: u } } = await supabase.auth.getUser();
@@ -71,6 +85,21 @@ export function AssessmentBuilderScreen() {
                 .sort((a: any, b: any) => a.sortOrder - b.sortOrder)
                 .map((ch: any) => ch.id)
             );
+            if (data.companyName) setCompanyName(data.companyName);
+            if (data.companyLogoUrl) setCompanyLogoUrl(data.companyLogoUrl);
+            if (data.welcomeMessage) setWelcomeMessage(data.welcomeMessage);
+            if (data.categoryWeights) {
+              try {
+                const w = JSON.parse(data.categoryWeights);
+                setWeights({
+                  modelSelection: String(w.modelSelection ?? 20),
+                  promptEfficiency: String(w.promptEfficiency ?? 20),
+                  debugging: String(w.debugging ?? 20),
+                  strategy: String(w.strategy ?? 20),
+                  speed: String(w.speed ?? 20),
+                });
+              } catch {}
+            }
           }
         } catch (_) {}
       }
@@ -102,11 +131,23 @@ export function AssessmentBuilderScreen() {
       const timeLimit = Math.max(300, parseInt(timeLimitMinutes, 10) * 60 || 3600);
       let currentId = assessmentId;
 
+      const brandingFields: Record<string, unknown> = {};
+      if (companyName) brandingFields.companyName = companyName;
+      if (companyLogoUrl) brandingFields.companyLogoUrl = companyLogoUrl;
+      if (welcomeMessage) brandingFields.welcomeMessage = welcomeMessage;
+      const categoryWeights = JSON.stringify({
+        modelSelection: parseInt(weights.modelSelection, 10) || 20,
+        promptEfficiency: parseInt(weights.promptEfficiency, 10) || 20,
+        debugging: parseInt(weights.debugging, 10) || 20,
+        strategy: parseInt(weights.strategy, 10) || 20,
+        speed: parseInt(weights.speed, 10) || 20,
+      });
+
       if (currentId) {
         await fetch(`/api/assessments/${currentId}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ title, description: description || undefined, timeLimit }),
+          body: JSON.stringify({ title, description: description || undefined, timeLimit, ...brandingFields, categoryWeights }),
         });
       } else {
         const res = await fetch('/api/assessments', {
@@ -121,6 +162,15 @@ export function AssessmentBuilderScreen() {
         }
       }
 
+      // Save branding + weights on newly created assessments
+      if (currentId && !assessmentId && (Object.keys(brandingFields).length > 0 || categoryWeights)) {
+        await fetch(`/api/assessments/${currentId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...brandingFields, categoryWeights }),
+        });
+      }
+
       if (currentId && selectedChallengeIds.length > 0) {
         await fetch(`/api/assessments/${currentId}/challenges`, {
           method: 'PUT',
@@ -130,7 +180,7 @@ export function AssessmentBuilderScreen() {
       }
     } catch (_) {}
     setSaving(false);
-  }, [assessmentId, title, description, timeLimitMinutes, selectedChallengeIds]);
+  }, [assessmentId, title, description, timeLimitMinutes, selectedChallengeIds, companyName, companyLogoUrl, welcomeMessage, weights]);
 
   const handleActivate = useCallback(async () => {
     if (!assessmentId) return;
@@ -241,6 +291,65 @@ export function AssessmentBuilderScreen() {
           onChangeText={setTimeLimitMinutes}
           keyboardType="numeric"
         />
+      </View>
+
+      {/* Company Branding */}
+      <View style={styles.brandingSection}>
+        <Text style={[styles.sectionLabel, { color: c.text }]}>Company Branding (optional)</Text>
+        <Text style={[styles.sectionHint, { color: c.textMuted }]}>
+          Add your company details to create a branded assessment experience for candidates.
+        </Text>
+        <View style={styles.form}>
+          <Input
+            label="Company Name"
+            placeholder="Acme Corp"
+            value={companyName}
+            onChangeText={setCompanyName}
+          />
+          <Input
+            label="Company Logo URL"
+            placeholder="https://example.com/logo.png"
+            value={companyLogoUrl}
+            onChangeText={setCompanyLogoUrl}
+          />
+          <Input
+            label="Welcome Message"
+            placeholder="Welcome to our AI engineering assessment..."
+            value={welcomeMessage}
+            onChangeText={setWelcomeMessage}
+          />
+        </View>
+        <View style={[styles.divider, { borderBottomColor: c.border }]} />
+      </View>
+
+      {/* Score Weights */}
+      <View style={styles.weightsSection}>
+        <Text style={[styles.sectionLabel, { color: c.text }]}>Score Weights</Text>
+        <Text style={[styles.sectionHint, { color: c.textMuted }]}>
+          Adjust how each dimension is weighted in the AI Profile radar chart. Higher weight = more important.
+        </Text>
+        <View style={styles.weightsGrid}>
+          {([
+            { key: 'modelSelection', label: 'Model Selection' },
+            { key: 'promptEfficiency', label: 'Prompt Efficiency' },
+            { key: 'debugging', label: 'Debugging' },
+            { key: 'strategy', label: 'Strategy' },
+            { key: 'speed', label: 'Speed' },
+          ] as const).map((w) => (
+            <View key={w.key} style={styles.weightItem}>
+              <Text style={[styles.weightLabel, { color: c.text }]}>{w.label}</Text>
+              <View style={{ width: 80 }}>
+                <Input
+                  placeholder="20"
+                  value={weights[w.key]}
+                  onChangeText={(v) => setWeights((prev) => ({ ...prev, [w.key]: v }))}
+                  keyboardType="numeric"
+                />
+              </View>
+            </View>
+          ))}
+        </View>
+        <View style={[styles.divider, { borderBottomColor: c.border }]} />
       </View>
 
       <View style={styles.challengeSection}>
@@ -362,4 +471,10 @@ const styles = StyleSheet.create({
   templateGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md },
   templateCard: { minWidth: 220, flex: 1, borderWidth: 1 },
   divider: { borderBottomWidth: 1, marginTop: spacing.lg },
+  brandingSection: { marginBottom: spacing.lg },
+  sectionHint: { fontSize: fontSizes.sm, marginBottom: spacing.md, fontFamily: fontFamily.body },
+  weightsSection: { marginBottom: spacing.lg },
+  weightsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md },
+  weightItem: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, minWidth: 200 },
+  weightLabel: { fontSize: fontSizes.sm, fontWeight: '500', width: 120 },
 });

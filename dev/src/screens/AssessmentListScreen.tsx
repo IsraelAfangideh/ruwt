@@ -16,7 +16,10 @@ interface Assessment {
   timeLimit: number;
   status: string;
   challengeCount: number;
+  inviteCount: number;
+  completionCount: number;
   createdAt: string;
+  companyName?: string | null;
 }
 
 export function AssessmentListScreen() {
@@ -24,6 +27,7 @@ export function AssessmentListScreen() {
   const [user, setUser] = useState<any>(null);
   const [assessments, setAssessments] = useState<Assessment[]>([]);
   const [loading, setLoading] = useState(true);
+  const [duplicating, setDuplicating] = useState<string | null>(null);
   const supabase = createClient();
   const c = useColors();
 
@@ -48,6 +52,59 @@ export function AssessmentListScreen() {
     };
     init();
   }, [navigation, supabase.auth]);
+
+  const handleDuplicate = async (assessmentId: string) => {
+    setDuplicating(assessmentId);
+    try {
+      // Fetch the original assessment with challenges
+      const res = await fetch(`/api/assessments/${assessmentId}`);
+      if (!res.ok) return;
+      const original = await res.json();
+
+      // Create a new assessment
+      const createRes = await fetch('/api/assessments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: `${original.title} (Copy)`,
+          description: original.description || undefined,
+          timeLimit: original.timeLimit,
+        }),
+      });
+      if (!createRes.ok) return;
+      const newAssessment = await createRes.json();
+
+      // Copy challenges
+      const challengeIds = (original.challenges ?? [])
+        .sort((a: any, b: any) => a.sortOrder - b.sortOrder)
+        .map((ch: any) => ch.id);
+      if (challengeIds.length > 0) {
+        await fetch(`/api/assessments/${newAssessment.id}/challenges`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ challengeIds }),
+        });
+      }
+
+      // Copy branding + weights if present
+      const brandingUpdates: Record<string, unknown> = {};
+      if (original.companyName) brandingUpdates.companyName = original.companyName;
+      if (original.companyLogoUrl) brandingUpdates.companyLogoUrl = original.companyLogoUrl;
+      if (original.welcomeMessage) brandingUpdates.welcomeMessage = original.welcomeMessage;
+      if (original.categoryWeights) brandingUpdates.categoryWeights = original.categoryWeights;
+      if (Object.keys(brandingUpdates).length > 0) {
+        await fetch(`/api/assessments/${newAssessment.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(brandingUpdates),
+        });
+      }
+
+      // Navigate to the new assessment builder
+      navigation.navigate('AssessmentBuilder', { assessmentId: newAssessment.id });
+    } catch {}
+    setDuplicating(null);
+  };
 
   if (loading && !user) {
     return (
@@ -112,13 +169,23 @@ export function AssessmentListScreen() {
                       {a.status}
                     </Text>
                   </Badge>
+                  {a.companyName && (
+                    <Badge variant="outline" style={{ borderColor: c.accent }}>
+                      <Text style={{ fontSize: fontSizes.xs, color: c.accent }}>{a.companyName}</Text>
+                    </Badge>
+                  )}
                 </View>
                 <CardTitle>{a.title}</CardTitle>
                 <CardDescription>
                   {a.challengeCount} challenge{a.challengeCount !== 1 ? 's' : ''} · {formatTime(a.timeLimit)}
                 </CardDescription>
+                {(a.inviteCount > 0 || a.completionCount > 0) && (
+                  <Text style={[styles.statsText, { color: c.textMuted }]}>
+                    {a.inviteCount} invited · {a.completionCount} completed
+                  </Text>
+                )}
               </CardHeader>
-              <CardFooter style={styles.footer}>
+              <CardFooter style={styles.cardFooter}>
                 <Button
                   variant="secondary"
                   size="sm"
@@ -138,6 +205,14 @@ export function AssessmentListScreen() {
                   style={{ flex: 1 }}
                 >
                   Results
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onPress={() => handleDuplicate(a.id)}
+                  disabled={duplicating === a.id}
+                >
+                  {duplicating === a.id ? '...' : 'Duplicate'}
                 </Button>
               </CardFooter>
             </Card>
@@ -160,7 +235,8 @@ const styles = StyleSheet.create({
   emptySub: { fontSize: fontSizes.sm, marginTop: spacing.xs },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.lg },
   card: { flex: 1, minWidth: 280 },
-  badgeRow: { flexDirection: 'row', marginBottom: spacing.xs },
+  badgeRow: { flexDirection: 'row', gap: spacing.xs, marginBottom: spacing.xs },
   statusText: { fontSize: fontSizes.xs, fontWeight: '600', textTransform: 'capitalize' },
-  footer: { flexDirection: 'row', gap: spacing.sm, borderTopWidth: 1, paddingTop: spacing.sm, marginTop: spacing.sm },
+  statsText: { fontSize: fontSizes.xs, marginTop: spacing.xs },
+  cardFooter: { flexDirection: 'row', gap: spacing.sm, borderTopWidth: 1, paddingTop: spacing.sm, marginTop: spacing.sm },
 });

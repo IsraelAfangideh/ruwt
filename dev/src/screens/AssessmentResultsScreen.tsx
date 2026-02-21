@@ -25,7 +25,12 @@ interface ChallengeResult {
 }
 
 interface ResultsData {
-  assessment: { title: string; description: string | null } | null;
+  assessment: {
+    title: string;
+    description: string | null;
+    companyName?: string | null;
+    companyLogoUrl?: string | null;
+  } | null;
   candidate: { name: string | null; avatarUrl: string | null };
   session: {
     status: string;
@@ -107,7 +112,20 @@ export function AssessmentResultsScreen() {
   return (
     <ScrollView style={[styles.page, { backgroundColor: c.bg }]}>
       <View style={styles.container}>
-        <Text style={[styles.logo, { color: c.text }]}>Ruwt</Text>
+        {/* Company branding or Ruwt logo */}
+        {data.assessment?.companyLogoUrl ? (
+          <View style={styles.brandingHeader}>
+            <img
+              src={data.assessment.companyLogoUrl}
+              alt={data.assessment.companyName || 'Company'}
+              style={{ maxHeight: 48, maxWidth: 200, objectFit: 'contain' }}
+            />
+          </View>
+        ) : data.assessment?.companyName ? (
+          <Text style={[styles.companyName, { color: c.text }]}>{data.assessment.companyName}</Text>
+        ) : (
+          <Text style={[styles.logo, { color: c.text }]}>Ruwt</Text>
+        )}
 
         {/* Header */}
         <View style={styles.headerSection}>
@@ -259,7 +277,9 @@ export function AssessmentResultsScreen() {
 
         <View style={[styles.footer, { borderTopColor: c.border }]}>
           <Text style={[styles.footerText, { color: c.textMuted }]}>
-            Powered by Ruwt — AI-Efficiency Assessment
+            {data.assessment?.companyName
+              ? `Powered by Ruwt \u2014 AI-Efficiency Assessment`
+              : 'Ruwt \u2014 AI-Efficiency Assessment'}
           </Text>
         </View>
       </View>
@@ -302,4 +322,6 @@ const styles = StyleSheet.create({
   radarSection: { alignItems: 'center', marginBottom: spacing.xl },
   footer: { paddingVertical: spacing.lg, marginTop: spacing.xl, borderTopWidth: 1 },
   footerText: { fontSize: fontSizes.sm, textAlign: 'center' },
+  brandingHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginBottom: spacing.lg },
+  companyName: { fontSize: fontSizes['2xl'], fontWeight: '700', fontFamily: fontFamily.body, marginBottom: spacing.lg },
 });

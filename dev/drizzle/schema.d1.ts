@@ -108,6 +108,9 @@ export const assessments = sqliteTable('assessments', {
   status: text('status').default('draft').notNull(), // 'draft' | 'active' | 'archived'
   createdBy: text('created_by').notNull().references(() => profiles.id),
   categoryWeights: text('category_weights'), // JSON: { modelSelection: number, promptEfficiency: number, debugging: number, strategy: number, speed: number }
+  companyName: text('company_name'),
+  companyLogoUrl: text('company_logo_url'),
+  welcomeMessage: text('welcome_message'),
   createdAt: text('created_at').default(sql`(datetime('now'))`).notNull(),
 });
 

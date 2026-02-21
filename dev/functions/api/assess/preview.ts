@@ -76,6 +76,9 @@ export async function onRequestGet(context: { request: Request; env: Env }) {
       difficultyBreakdown,
       categoryBreakdown,
       expired: false,
+      companyName: assessment.companyName ?? null,
+      companyLogoUrl: assessment.companyLogoUrl ?? null,
+      welcomeMessage: assessment.welcomeMessage ?? null,
     });
   } catch (error) {
     console.error('Preview error:', error);

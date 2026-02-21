@@ -55,6 +55,10 @@ const updateAssessmentSchema = z.object({
   description: z.string().max(2000).optional(),
   timeLimit: z.number().int().min(300).max(14400).optional(),
   status: z.enum(['draft', 'active', 'archived']).optional(),
+  companyName: z.string().max(200).optional().nullable(),
+  companyLogoUrl: z.string().max(500).optional().nullable(),
+  welcomeMessage: z.string().max(2000).optional().nullable(),
+  categoryWeights: z.string().max(1000).optional().nullable(),
 });
 
 export async function onRequestPut(context: { request: Request; env: Env; params: { id: string } }) {
@@ -90,6 +94,10 @@ export async function onRequestPut(context: { request: Request; env: Env; params
     if (parsed.data.description !== undefined) updates.description = parsed.data.description;
     if (parsed.data.timeLimit !== undefined) updates.timeLimit = parsed.data.timeLimit;
     if (parsed.data.status !== undefined) updates.status = parsed.data.status;
+    if (parsed.data.companyName !== undefined) updates.companyName = parsed.data.companyName;
+    if (parsed.data.companyLogoUrl !== undefined) updates.companyLogoUrl = parsed.data.companyLogoUrl;
+    if (parsed.data.welcomeMessage !== undefined) updates.welcomeMessage = parsed.data.welcomeMessage;
+    if (parsed.data.categoryWeights !== undefined) updates.categoryWeights = parsed.data.categoryWeights;
 
     if (Object.keys(updates).length > 0) {
       await db
