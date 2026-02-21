@@ -192,16 +192,21 @@ export function AssessmentBuilderScreen() {
     setStatus('active');
   }, [assessmentId]);
 
+  const [inviteError, setInviteError] = useState<string | null>(null);
+
   const handleGenerateInvite = useCallback(async () => {
     if (!assessmentId) return;
+    setInviteError(null);
     const res = await fetch(`/api/assessments/${assessmentId}/invites`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({}),
     });
+    const data = await res.json();
     if (res.ok) {
-      const data = await res.json();
       setInviteLink(data.url);
+    } else {
+      setInviteError(data.error || 'Failed to generate invite link');
     }
   }, [assessmentId]);
 
@@ -421,6 +426,12 @@ export function AssessmentBuilderScreen() {
         </View>
       </View>
 
+      {inviteError && (
+        <View style={[styles.inviteErrorBanner, { backgroundColor: c.destructive + '15', borderColor: c.destructive + '30' }]}>
+          <Text style={{ color: c.destructive, fontSize: fontSizes.sm }}>{inviteError}</Text>
+        </View>
+      )}
+
       {inviteLink && (
         <Card style={[styles.inviteCard, { borderColor: c.accent }]}>
           <CardContent>
@@ -469,6 +480,7 @@ const styles = StyleSheet.create({
   inviteLabel: { fontWeight: '600', marginBottom: spacing.xs },
   inviteUrl: { fontSize: fontSizes.sm, fontFamily: 'monospace', marginBottom: spacing.sm },
   inviteHint: { fontSize: fontSizes.xs },
+  inviteErrorBanner: { paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderWidth: 1, borderRadius: 6, marginBottom: spacing.md },
   templateSection: { marginBottom: spacing.lg },
   templateGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md },
   templateCard: { minWidth: 220, flex: 1, borderWidth: 1 },
