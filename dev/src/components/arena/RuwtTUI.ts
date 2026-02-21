@@ -324,7 +324,17 @@ export class RuwtTUI {
         currentCode: oldCode,
         aiResponse: remaining || responseText,
         language: this.language,
+        challengeTitle: this.challengeTitle,
       });
+
+      // Verification failed — apply model corrupted the output
+      if (applyResult.verified === false) {
+        this.term.write('\r\n\r\n\x1b[1;31m\u2718 Code apply failed\x1b[0m');
+        this.term.write('\r\n\x1b[33mOur apply model couldn\'t faithfully reproduce this change.\x1b[0m');
+        this.term.write('\r\n\x1b[33mCopy the code from the AI response above and paste it manually.\x1b[0m');
+        this.term.write('\r\n\x1b[90mWe\'ve been notified.\x1b[0m');
+        return fileEdits.length > 0;
+      }
 
       if (applyResult.success && applyResult.mergedCode) {
         if (applyResult.mergedCode.trim() === oldCode.trim()) {

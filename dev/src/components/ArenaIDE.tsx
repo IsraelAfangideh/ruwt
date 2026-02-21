@@ -134,6 +134,55 @@ function PasteBlockedToast({ visible }: { visible: boolean }) {
   );
 }
 
+function ApplyFailureToast({ visible, onDismiss }: { visible: boolean; onDismiss: () => void }) {
+  if (!visible) return null;
+  return (
+    <div style={{
+      position: 'absolute',
+      top: 12,
+      left: 12,
+      right: 12,
+      zIndex: 30,
+      background: '#1a1216',
+      border: `1px solid ${arena.error}`,
+      borderLeft: `4px solid ${arena.error}`,
+      borderRadius: 8,
+      padding: '14px 18px',
+      fontSize: 13,
+      fontFamily: 'Libre Franklin, -apple-system, sans-serif',
+      color: arena.text,
+      boxShadow: '0 4px 24px rgba(0,0,0,0.5)',
+      lineHeight: 1.5,
+    }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
+        <div>
+          <div style={{ fontWeight: 700, color: arena.error, marginBottom: 6, fontSize: 14 }}>
+            Code apply failed — manual copy needed
+          </div>
+          <div style={{ color: '#b0a898' }}>
+            Our apply model tried its best but couldn't faithfully reproduce this code change.
+            The AI's response is in the chat panel — grab the code from there and paste it into the right spot.
+            We've been notified and are looking into it.
+          </div>
+        </div>
+        <button
+          onClick={onDismiss}
+          style={{
+            background: 'none',
+            border: 'none',
+            color: '#6e6560',
+            fontSize: 18,
+            cursor: 'pointer',
+            padding: '0 4px',
+            lineHeight: 1,
+            flexShrink: 0,
+          }}
+        >{'\u2715'}</button>
+      </div>
+    </div>
+  );
+}
+
 /* ─── Sub-components ──────────────────────────────────────────────── */
 
 function PastAttemptsSection({ attempts: pastAttempts }: { attempts: PastAttempt[] }) {
@@ -281,6 +330,7 @@ export function ArenaIDE({
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
   const [showPasteBlocked, setShowPasteBlocked] = useState(false);
+  const [showApplyFailure, setShowApplyFailure] = useState(false);
   const [terminalHeight, setTerminalHeight] = useState(250);
   const [mobilePanel, setMobilePanel] = useState<'sidebar' | 'editor'>('editor');
   const [terminalExpanded, setTerminalExpanded] = useState(false);
@@ -379,7 +429,15 @@ export function ArenaIDE({
         currentCode: oldCode,
         aiResponse: remaining || responseText,
         language,
+        challengeId: challenge.id,
+        challengeTitle: challenge.title,
       });
+
+      // Verification failed — apply model corrupted the output
+      if (applyResult.verified === false) {
+        setShowApplyFailure(true);
+        return fileEdits.length > 0;
+      }
 
       if (applyResult.success && applyResult.mergedCode) {
         // Check that the merge actually changed something
@@ -396,7 +454,7 @@ export function ArenaIDE({
     }
 
     return fileEdits.length > 0;
-  }, [language, fs, flashToast, mode, attemptId, showDiffDecorations]);
+  }, [language, fs, flashToast, mode, attemptId, showDiffDecorations, challenge.id, challenge.title]);
 
   // Handle code applied from terminal (RuwtTUI)
   const handleTerminalCodeApplied = useCallback(() => {
@@ -1018,6 +1076,7 @@ export function ArenaIDE({
           <div style={s.editorWrap}>
             <CodeUpdateToast visible={showToast} message={toastMessage} />
             <PasteBlockedToast visible={showPasteBlocked} />
+            <ApplyFailureToast visible={showApplyFailure} onDismiss={() => setShowApplyFailure(false)} />
             <Suspense fallback={
               <div style={s.editorLoading}>
                 <span style={{ color: arena.textMuted, fontSize: 13 }}>Loading editor...</span>

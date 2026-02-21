@@ -2,17 +2,22 @@
  * Shared code application utility.
  * Used by both Chat UI (ArenaIDE) and Terminal UI (RuwtTUI).
  *
- * Single path: if the AI response contains code, the apply model
- * merges it into the current file. No client-side parsing.
- *
- * Multi-file: FILE: <path> prefixed blocks are extracted and applied
- * to specific files in the VFS.
+ * Tries structured parsing first (SEARCH/REPLACE, unified diff, fenced code blocks).
+ * Only falls back to the apply model when structured parsing fails.
  */
+
+import {
+  hasEditBlocks,
+  parseEditBlocks,
+  hasUnifiedDiff,
+  parseUnifiedDiff,
+  applyEditBlocks,
+} from './diff-apply';
 
 export interface CodeApplyResult {
   applied: boolean;
   newCode: string;
-  method: 'apply_model' | 'none';
+  method: 'search_replace' | 'unified_diff' | 'code_block' | 'apply_model' | 'none';
   message: string;
   needsApplyModel: boolean;
 }
@@ -42,8 +47,29 @@ export function extractFileEdits(responseText: string): { fileEdits: FileEdit[];
 }
 
 /**
- * Check if an AI response contains code that should be applied.
- * If yes, signals the caller to use the apply model.
+ * Extract the largest fenced code block from AI response.
+ * Returns the code content or null if none found.
+ */
+function extractFencedCode(responseText: string): string | null {
+  const codeBlockPattern = /```(?:\w*)\n([\s\S]*?)```/g;
+  let best: string | null = null;
+  let bestLen = 0;
+  let match;
+
+  while ((match = codeBlockPattern.exec(responseText)) !== null) {
+    const content = match[1].trimEnd();
+    if (content.length > bestLen) {
+      best = content;
+      bestLen = content.length;
+    }
+  }
+
+  return best;
+}
+
+/**
+ * Try to apply code from an AI response using structured parsing.
+ * Falls through to apply model only when all parsing strategies fail.
  */
 export function applyCodeFromResponse(
   responseText: string,
@@ -61,7 +87,66 @@ export function applyCodeFromResponse(
 
   if (mode === 'ask') return noChange;
 
-  // Any code-like content → apply model handles it
+  // 1. Try SEARCH/REPLACE blocks (most precise, character-perfect)
+  if (hasEditBlocks(responseText)) {
+    const blocks = parseEditBlocks(responseText);
+    if (blocks.length > 0) {
+      const result = applyEditBlocks(currentCode, blocks);
+      if (result.applied > 0) {
+        const msg = result.failed > 0
+          ? `Applied ${result.applied} edit(s), ${result.failed} failed`
+          : `Applied ${result.applied} edit(s)`;
+        return {
+          applied: true,
+          newCode: result.newCode,
+          method: 'search_replace',
+          message: msg,
+          needsApplyModel: false,
+        };
+      }
+      // All blocks failed — fall through to other strategies
+    }
+  }
+
+  // 2. Try unified diff (also character-perfect)
+  if (hasUnifiedDiff(responseText)) {
+    const blocks = parseUnifiedDiff(responseText);
+    if (blocks.length > 0) {
+      const result = applyEditBlocks(currentCode, blocks);
+      if (result.applied > 0) {
+        return {
+          applied: true,
+          newCode: result.newCode,
+          method: 'unified_diff',
+          message: `Applied ${result.applied} diff hunk(s)`,
+          needsApplyModel: false,
+        };
+      }
+    }
+  }
+
+  // 3. Try extracting full code from fenced block (preserves exact characters)
+  const extracted = extractFencedCode(responseText);
+  if (extracted && extracted.trim().length >= 20) {
+    // Only use direct extraction if the block looks like a complete file,
+    // not a tiny snippet. A complete file should be a substantial portion
+    // of the current code, or contain function/class definitions.
+    const looksComplete =
+      extracted.length >= currentCode.length * 0.3 ||
+      /(?:^function |^class |^const |^def |^import |module\.exports)/m.test(extracted);
+
+    if (looksComplete) {
+      return {
+        applied: true,
+        newCode: extracted,
+        method: 'code_block',
+        message: 'Code applied',
+        needsApplyModel: false,
+      };
+    }
+  }
+
+  // 4. Check if there's any code-like content that we couldn't parse
   const hasCode =
     /```/.test(responseText) ||
     /<{2,}\s*SEARCH\b/i.test(responseText) ||
