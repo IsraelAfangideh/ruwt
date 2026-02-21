@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { View, Text, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, Text, Pressable, ActivityIndicator, StyleSheet } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { createClient } from '@/lib/supabase/client';
 import { DashboardLayout } from '@/components/DashboardLayout';
@@ -28,6 +28,10 @@ export function AssessmentListScreen() {
   const [assessments, setAssessments] = useState<Assessment[]>([]);
   const [loading, setLoading] = useState(true);
   const [duplicating, setDuplicating] = useState<string | null>(null);
+  const [inviting, setInviting] = useState<string | null>(null);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [inviteLinks, setInviteLinks] = useState<Record<string, string>>({});
+  const [inviteError, setInviteError] = useState<string | null>(null);
   const supabase = createClient();
   const c = useColors();
 
@@ -53,15 +57,55 @@ export function AssessmentListScreen() {
     init();
   }, [navigation, supabase.auth]);
 
+  const handleInvite = async (assessmentId: string) => {
+    // If we already have a link for this assessment, just copy it
+    if (inviteLinks[assessmentId]) {
+      copyToClipboard(assessmentId, inviteLinks[assessmentId]);
+      return;
+    }
+
+    setInviting(assessmentId);
+    setInviteError(null);
+    try {
+      const res = await fetch(`/api/assessments/${assessmentId}/invites`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setInviteError(data.error || 'Failed to generate invite');
+        setInviting(null);
+        return;
+      }
+      const url = data.url as string;
+      setInviteLinks((prev) => ({ ...prev, [assessmentId]: url }));
+      copyToClipboard(assessmentId, url);
+      // Update invite count locally
+      setAssessments((prev) =>
+        prev.map((a) => a.id === assessmentId ? { ...a, inviteCount: a.inviteCount + 1 } : a)
+      );
+    } catch {
+      setInviteError('Failed to generate invite');
+    }
+    setInviting(null);
+  };
+
+  const copyToClipboard = (assessmentId: string, url: string) => {
+    if (typeof navigator !== 'undefined' && navigator.clipboard) {
+      navigator.clipboard.writeText(url);
+    }
+    setCopiedId(assessmentId);
+    setTimeout(() => setCopiedId(null), 2000);
+  };
+
   const handleDuplicate = async (assessmentId: string) => {
     setDuplicating(assessmentId);
     try {
-      // Fetch the original assessment with challenges
       const res = await fetch(`/api/assessments/${assessmentId}`);
       if (!res.ok) return;
       const original = await res.json();
 
-      // Create a new assessment
       const createRes = await fetch('/api/assessments', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -74,7 +118,6 @@ export function AssessmentListScreen() {
       if (!createRes.ok) return;
       const newAssessment = await createRes.json();
 
-      // Copy challenges
       const challengeIds = (original.challenges ?? [])
         .sort((a: any, b: any) => a.sortOrder - b.sortOrder)
         .map((ch: any) => ch.id);
@@ -86,7 +129,6 @@ export function AssessmentListScreen() {
         });
       }
 
-      // Copy branding + weights if present
       const brandingUpdates: Record<string, unknown> = {};
       if (original.companyName) brandingUpdates.companyName = original.companyName;
       if (original.companyLogoUrl) brandingUpdates.companyLogoUrl = original.companyLogoUrl;
@@ -100,7 +142,6 @@ export function AssessmentListScreen() {
         });
       }
 
-      // Navigate to the new assessment builder
       navigation.navigate('AssessmentBuilder', { assessmentId: newAssessment.id });
     } catch {}
     setDuplicating(null);
@@ -142,6 +183,15 @@ export function AssessmentListScreen() {
           </Button>
         </View>
       </View>
+
+      {inviteError && (
+        <View style={[styles.errorBanner, { backgroundColor: c.destructive + '15', borderColor: c.destructive + '30' }]}>
+          <Text style={[styles.errorText, { color: c.destructive }]}>{inviteError}</Text>
+          <Pressable onPress={() => setInviteError(null)}>
+            <Text style={{ color: c.destructive, fontWeight: '600' }}>{'\u2715'}</Text>
+          </Pressable>
+        </View>
+      )}
 
       {assessments.length === 0 ? (
         <Card style={[styles.empty, { borderStyle: 'dashed', backgroundColor: c.muted + '20' }]}>
@@ -185,7 +235,45 @@ export function AssessmentListScreen() {
                   </Text>
                 )}
               </CardHeader>
-              <CardFooter style={styles.cardFooter}>
+
+              {/* Invite link section for active assessments */}
+              {a.status === 'active' && (
+                <CardContent style={styles.inviteSection}>
+                  {inviteLinks[a.id] ? (
+                    <Pressable
+                      onPress={() => copyToClipboard(a.id, inviteLinks[a.id])}
+                      style={[styles.inviteLinkRow, { backgroundColor: c.muted + '20', borderColor: c.border }]}
+                    >
+                      <Text style={[styles.inviteLinkText, { color: c.textMuted }]} numberOfLines={1}>
+                        {inviteLinks[a.id]}
+                      </Text>
+                      <Text style={[styles.copyLabel, { color: copiedId === a.id ? c.success : c.accent }]}>
+                        {copiedId === a.id ? 'Copied!' : 'Copy'}
+                      </Text>
+                    </Pressable>
+                  ) : (
+                    <Button
+                      variant="default"
+                      size="sm"
+                      onPress={() => handleInvite(a.id)}
+                      disabled={inviting === a.id}
+                      fullWidth
+                    >
+                      {inviting === a.id ? 'Generating...' : copiedId === a.id ? 'Copied!' : 'Generate Invite Link'}
+                    </Button>
+                  )}
+                </CardContent>
+              )}
+
+              {a.status === 'draft' && (
+                <CardContent style={styles.inviteSection}>
+                  <Text style={[styles.draftHint, { color: c.textMuted }]}>
+                    Activate this assessment in the builder to invite candidates.
+                  </Text>
+                </CardContent>
+              )}
+
+              <CardFooter style={[styles.cardFooter, { borderTopColor: c.border }]}>
                 <Button
                   variant="secondary"
                   size="sm"
@@ -238,5 +326,29 @@ const styles = StyleSheet.create({
   badgeRow: { flexDirection: 'row', gap: spacing.xs, marginBottom: spacing.xs },
   statusText: { fontSize: fontSizes.xs, fontWeight: '600', textTransform: 'capitalize' },
   statsText: { fontSize: fontSizes.xs, marginTop: spacing.xs },
+  inviteSection: { paddingTop: 0 },
+  inviteLinkRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderRadius: 6,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    gap: spacing.sm,
+  },
+  inviteLinkText: { flex: 1, fontSize: fontSizes.xs, fontFamily: 'monospace' },
+  copyLabel: { fontSize: fontSizes.xs, fontWeight: '600' },
+  draftHint: { fontSize: fontSizes.xs, fontStyle: 'italic' },
+  errorBanner: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderWidth: 1,
+    borderRadius: 6,
+    marginBottom: spacing.md,
+  },
+  errorText: { fontSize: fontSizes.sm },
   cardFooter: { flexDirection: 'row', gap: spacing.sm, borderTopWidth: 1, paddingTop: spacing.sm, marginTop: spacing.sm },
 });
