@@ -78,6 +78,24 @@ export function TeamsScreen() {
     });
   }, []);
 
+  const handleStartAssessment = async () => {
+    if (isLoggedIn) {
+      try {
+        await fetch('/api/profile', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ accountType: 'team' }),
+        });
+      } catch {}
+      navigation.navigate('AssessmentBuilder' as never);
+    } else {
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('ruwt_team_intent', '1');
+      }
+      navigation.navigate('Register' as never);
+    }
+  };
+
   const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
   const [showDemoForm, setShowDemoForm] = useState(false);
   const [demoForm, setDemoForm] = useState({ name: '', email: '', company: '', teamSize: '', message: '' });
@@ -207,7 +225,7 @@ export function TeamsScreen() {
           Traditional coding tests don't measure AI fluency. Ruwt gives you real data — which models they pick, how they prompt, what they spend. Objective, comparable, and impossible to fake.
         </Text>
         <View style={styles.heroButtons}>
-          <Button size="lg" onPress={() => navigation.navigate('Register' as never)}>Start Free Assessment</Button>
+          <Button size="lg" onPress={handleStartAssessment}>Start Free Assessment</Button>
           <DemoFormSection />
         </View>
       </View>
@@ -458,7 +476,7 @@ export function TeamsScreen() {
           Your first assessment is free. No credit card required.
         </Text>
         <View style={styles.ctaButtons}>
-          <Button size="lg" onPress={() => navigation.navigate('Register' as never)}>Start Free Assessment</Button>
+          <Button size="lg" onPress={handleStartAssessment}>Start Free Assessment</Button>
           {!demoSubmitted && !showDemoForm && (
             <Button size="lg" variant="outline" onPress={() => setShowDemoForm(true)}>Book a Demo</Button>
           )}

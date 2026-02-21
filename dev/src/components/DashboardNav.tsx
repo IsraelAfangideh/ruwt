@@ -3,17 +3,27 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { useColors } from '@/theme';
 import { spacing, fontSizes, fontFamily } from '@/theme/tokens';
 
-const navItems: { name: 'Dashboard' | 'Challenges' | 'DailyChallenge' | 'Leaderboard' | 'Profile'; label: string }[] = [
+type NavItem = { name: 'Dashboard' | 'Challenges' | 'DailyChallenge' | 'Leaderboard' | 'Assessments'; label: string };
+
+const baseNavItems: NavItem[] = [
   { name: 'Dashboard', label: 'Home' },
   { name: 'Challenges', label: 'Challenges' },
   { name: 'DailyChallenge', label: 'Daily' },
   { name: 'Leaderboard', label: 'Leaderboard' },
 ];
 
-export function DashboardNav() {
+interface DashboardNavProps {
+  accountType?: string;
+}
+
+export function DashboardNav({ accountType }: DashboardNavProps) {
   const navigation = useNavigation();
   const route = useRoute();
   const c = useColors();
+
+  const navItems: NavItem[] = accountType === 'team'
+    ? [...baseNavItems, { name: 'Assessments', label: 'Assessments' }]
+    : baseNavItems;
 
   return (
     <View style={styles.container}>

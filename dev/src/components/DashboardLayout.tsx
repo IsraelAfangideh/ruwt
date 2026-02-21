@@ -45,7 +45,7 @@ export function DashboardLayout({ user, children }: DashboardLayoutProps) {
               Ruwt<Text style={[styles.logoDot, { color: c.primary }]}>.dev</Text>
             </Text>
           </Pressable>
-          <DashboardNav />
+          <DashboardNav accountType={accountType} />
         </View>
         <View style={styles.headerRight}>
           {accountType === 'team' && <BalanceTicker />}
@@ -68,6 +68,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
     borderBottomWidth: 1,
+    position: 'relative',
+    zIndex: 30,
   },
   headerLeft: { flexDirection: 'row', alignItems: 'center', gap: spacing.lg },
   headerRight: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },

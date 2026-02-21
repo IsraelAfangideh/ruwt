@@ -47,6 +47,21 @@ export function CallbackScreen() {
         return;
       }
 
+      // Hiring manager intent: skip dev onboarding, go straight to assessment builder
+      const teamIntent = typeof window !== 'undefined' ? localStorage.getItem('ruwt_team_intent') : null;
+      if (teamIntent) {
+        localStorage.removeItem('ruwt_team_intent');
+        try {
+          await fetch('/api/profile', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ accountType: 'team', onboardingCompleted: 1 }),
+          });
+        } catch {}
+        navigation.reset({ index: 0, routes: [{ name: 'AssessmentBuilder' as never }] });
+        return;
+      }
+
       try {
         const profileRes = await fetch('/api/profile');
         if (profileRes.ok) {

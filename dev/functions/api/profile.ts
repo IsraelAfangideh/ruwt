@@ -42,6 +42,8 @@ export async function onRequestGet(context: { request: Request; env: Env }) {
       lastStreakDate: profile.lastStreakDate,
       streakFreezes: profile.streakFreezes,
       newsletterSubscribed: profile.newsletterSubscribed,
+      accountType: profile.accountType,
+      assessmentCredits: profile.assessmentCredits,
     });
   } catch (error) {
     console.error('Profile error:', error);
@@ -63,7 +65,8 @@ export async function onRequestPatch(context: { request: Request; env: Env }) {
         .optional(),
       onboardingCompleted: z.union([z.literal(0), z.literal(1)]).optional(),
       newsletterSubscribed: z.union([z.literal(0), z.literal(1)]).optional(),
-    }).refine(data => data.username !== undefined || data.onboardingCompleted !== undefined || data.newsletterSubscribed !== undefined, {
+      accountType: z.enum(['individual', 'team']).optional(),
+    }).refine(data => data.username !== undefined || data.onboardingCompleted !== undefined || data.newsletterSubscribed !== undefined || data.accountType !== undefined, {
       message: 'No valid fields to update',
     });
 
@@ -75,7 +78,7 @@ export async function onRequestPatch(context: { request: Request; env: Env }) {
       );
     }
 
-    const { username, onboardingCompleted, newsletterSubscribed } = parsed.data;
+    const { username, onboardingCompleted, newsletterSubscribed, accountType } = parsed.data;
 
     const db = getDb(context.env);
     const updates: Record<string, unknown> = {};
@@ -86,6 +89,10 @@ export async function onRequestPatch(context: { request: Request; env: Env }) {
 
     if (newsletterSubscribed !== undefined) {
       updates.newsletterSubscribed = newsletterSubscribed;
+    }
+
+    if (accountType !== undefined) {
+      updates.accountType = accountType;
     }
 
     if (username !== undefined) {
