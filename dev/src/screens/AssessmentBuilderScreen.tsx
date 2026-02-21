@@ -241,9 +241,26 @@ export function AssessmentBuilderScreen() {
         >
           ← Back to Assessments
         </Button>
-        <Text style={[styles.title, { color: c.text }]}>
-          {params.assessmentId ? 'Edit Assessment' : 'Create Assessment'}
-        </Text>
+        <View style={styles.titleRow}>
+          <Text style={[styles.title, { color: c.text }]}>
+            {params.assessmentId ? 'Edit Assessment' : 'Create Assessment'}
+          </Text>
+          <View style={styles.actions}>
+            <Button onPress={handleSave} disabled={saving || !title}>
+              {saving ? 'Saving...' : 'Save Assessment'}
+            </Button>
+            {assessmentId && status === 'draft' && (
+              <Button variant="outline" onPress={handleActivate}>
+                Activate
+              </Button>
+            )}
+            {assessmentId && status === 'active' && (
+              <Button variant="secondary" onPress={handleGenerateInvite}>
+                Generate Invite Link
+              </Button>
+            )}
+          </View>
+        </View>
       </View>
 
       {/* Template selector */}
@@ -404,22 +421,6 @@ export function AssessmentBuilderScreen() {
         </View>
       </View>
 
-      <View style={styles.actions}>
-        <Button onPress={handleSave} disabled={saving || !title}>
-          {saving ? 'Saving...' : 'Save Assessment'}
-        </Button>
-        {assessmentId && status === 'draft' && (
-          <Button variant="outline" onPress={handleActivate}>
-            Activate
-          </Button>
-        )}
-        {assessmentId && status === 'active' && (
-          <Button variant="secondary" onPress={handleGenerateInvite}>
-            Generate Invite Link
-          </Button>
-        )}
-      </View>
-
       {inviteLink && (
         <Card style={[styles.inviteCard, { borderColor: c.accent }]}>
           <CardContent>
@@ -455,7 +456,8 @@ export function AssessmentBuilderScreen() {
 const styles = StyleSheet.create({
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   section: { marginBottom: spacing.lg, paddingBottom: spacing.md, borderBottomWidth: 1 },
-  title: { fontSize: fontSizes['3xl'], fontWeight: '700', fontFamily: fontFamily.body, marginTop: spacing.sm },
+  titleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: spacing.sm },
+  title: { fontSize: fontSizes['3xl'], fontWeight: '700', fontFamily: fontFamily.body },
   form: { gap: spacing.md, marginBottom: spacing.lg },
   challengeSection: { marginBottom: spacing.lg },
   sectionLabel: { fontSize: fontSizes.lg, fontWeight: '600', marginBottom: spacing.md },
