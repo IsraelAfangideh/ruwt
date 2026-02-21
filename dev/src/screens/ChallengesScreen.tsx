@@ -498,6 +498,7 @@ export function ChallengesScreen() {
                   setActiveLang('all');
                   setActiveDifficulty('all');
                   setSearchQuery('');
+                  setStatusFilter('all');
                   syncUrlParams('all', 'all', 'all');
                 }}
                 style={[styles.emptyBtn, { backgroundColor: c.accentBg }]}
@@ -511,8 +512,11 @@ export function ChallengesScreen() {
         // Default sort: grouped by tier
         grouped.map((group) => (
           <View key={group.tier} style={styles.tierSection}>
-            <Text style={[styles.tierTitle, { color: c.text }]}>{group.meta.label}</Text>
-            <Text style={[styles.tierDesc, { color: c.textMuted }]}>{group.meta.description}</Text>
+            {/* @ts-ignore position: sticky is web-only */}
+            <View style={[styles.tierHeader, { backgroundColor: c.bg }]}>
+              <Text style={[styles.tierTitle, { color: c.text }]}>{group.meta.label}</Text>
+              <Text style={[styles.tierDesc, { color: c.textMuted }]}>{group.meta.description}</Text>
+            </View>
             <View style={isMobile ? styles.gridMobile : styles.grid}>
               {group.items.map((ch) => (
                 <ChallengeCard key={ch.id} challenge={ch} />
@@ -611,7 +615,7 @@ const styles = StyleSheet.create({
   clearBtn: { padding: spacing.xs },
 
   // Sort
-  sortWrapper: { position: 'relative' },
+  sortWrapper: { position: 'relative', zIndex: 50 },
   sortButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -633,7 +637,8 @@ const styles = StyleSheet.create({
     // @ts-ignore web-only shadow
     boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
   },
-  sortBackdrop: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 40 },
+  // @ts-ignore web-only fixed positioning
+  sortBackdrop: { position: 'fixed' as any, top: 0, left: 0, right: 0, bottom: 0, zIndex: 49 },
   sortMenuItem: { paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
   sortMenuText: { fontSize: fontSizes.sm, fontFamily: fontFamily.body },
 
@@ -666,6 +671,14 @@ const styles = StyleSheet.create({
 
   // Tier sections
   tierSection: { marginBottom: spacing.xl },
+  tierHeader: {
+    // @ts-ignore web-only sticky
+    position: 'sticky',
+    top: 140,
+    zIndex: 10,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.xs,
+  },
   tierTitle: { fontSize: fontSizes.lg, fontWeight: '700', fontFamily: fontFamily.body, marginBottom: spacing.xs },
   tierDesc: { fontSize: fontSizes.sm, marginBottom: spacing.md },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.lg },
