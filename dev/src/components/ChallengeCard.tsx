@@ -92,7 +92,6 @@ export function ChallengeCard({ challenge }: { challenge: Challenge }) {
     .trim();
 
   const ctaText = isSolved ? 'Improve Score' : isInProgress ? 'Continue' : 'Start Problem';
-  const ctaBg = isSolved ? c.successBg : isInProgress ? c.accentBg : c.accentBg;
   const ctaColor = isSolved ? c.success : isInProgress ? c.accent : c.accent;
 
   // Web hover handlers
@@ -112,8 +111,8 @@ export function ChallengeCard({ challenge }: { challenge: Challenge }) {
     >
       <Card style={[
         styles.card,
-        isRealWorld && styles.realWorldCard,
-        isSolved && { opacity: 0.72 },
+        isRealWorld && !isSolved && styles.realWorldCard,
+        isSolved && { borderLeftWidth: 3, borderLeftColor: c.success },
         hovered && styles.hovered,
       ]}>
         {/* Status indicator stripe for in-progress */}
@@ -178,12 +177,10 @@ export function ChallengeCard({ challenge }: { challenge: Challenge }) {
             </Text>
           )}
 
-          {/* CTA button */}
-          <View style={[styles.ctaButton, { backgroundColor: ctaBg }]}>
-            <Text style={[styles.ctaText, { color: ctaColor }]}>
-              {ctaText} {'\u2192'}
-            </Text>
-          </View>
+          {/* CTA link */}
+          <Text style={[styles.ctaLink, { color: ctaColor }]}>
+            {ctaText} {'\u2192'}
+          </Text>
         </View>
       </Card>
     </Pressable>
@@ -237,11 +234,5 @@ const styles = StyleSheet.create({
   spacer: { flex: 1 },
   footer: { marginTop: spacing.sm, alignItems: 'flex-start' },
   statsLine: { fontSize: fontSizes.xs, marginBottom: spacing.xs },
-  ctaButton: {
-    marginTop: spacing.xs,
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: radii.md,
-  },
-  ctaText: { fontSize: fontSizes.sm, fontWeight: '700', fontFamily: fontFamily.body },
+  ctaLink: { marginTop: spacing.sm, fontSize: fontSizes.sm, fontWeight: '700', fontFamily: fontFamily.body },
 });

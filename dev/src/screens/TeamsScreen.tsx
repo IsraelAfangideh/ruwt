@@ -212,29 +212,19 @@ export function TeamsScreen() {
         </View>
       </View>
 
-      {/* Social Proof */}
+      {/* Platform Stats */}
       <View style={[styles.section, { backgroundColor: c.muted + '15' }]}>
-        <View style={styles.socialProofGrid}>
+        <View style={styles.platformStats}>
           {[
-            {
-              quote: 'We replaced our take-home assignment with Ruwt assessments. The data we get back is on another level — we can see exactly how candidates think about AI cost vs. quality tradeoffs.',
-              attribution: 'Engineering Director, Series B Startup',
-            },
-            {
-              quote: "The session replay alone is worth it. Instead of a 45-minute live coding interview, we watch a 5-minute highlight reel of how the candidate actually works with AI.",
-              attribution: 'VP of Engineering',
-            },
-            {
-              quote: "Finally, a way to objectively compare how engineers use AI. No more guessing who's actually good at prompting vs. who just talks a good game.",
-              attribution: 'Staff Engineer & Hiring Manager',
-            },
-          ].map((t, i) => (
-            <Card key={i} style={styles.testimonialCard}>
-              <CardContent>
-                <Text style={[styles.quoteText, { color: c.text }]}>"{t.quote}"</Text>
-                <Text style={[styles.attribution, { color: c.textMuted }]}>{'\u2014'} {t.attribution}</Text>
-              </CardContent>
-            </Card>
+            { value: '106', label: 'Challenges', sub: 'Across 11 categories' },
+            { value: '9', label: 'AI Models', sub: '5 price tiers' },
+            { value: '710K+', label: 'Tokens Processed', sub: 'Real AI usage data' },
+          ].map((s) => (
+            <View key={s.label} style={styles.platformStat}>
+              <Text style={[styles.platformStatValue, { color: c.accent }]}>{s.value}</Text>
+              <Text style={[styles.platformStatLabel, { color: c.text }]}>{s.label}</Text>
+              <Text style={[styles.platformStatSub, { color: c.textMuted }]}>{s.sub}</Text>
+            </View>
           ))}
         </View>
       </View>
@@ -554,18 +544,19 @@ const styles = StyleSheet.create({
     fontFamily: fontFamily.body,
     fontSize: fontSizes.md,
   },
-  // Social proof
-  socialProofGrid: {
+  // Platform stats
+  platformStats: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: spacing.md,
+    gap: spacing.xl,
     justifyContent: 'center',
-    maxWidth: 1000,
+    maxWidth: 800,
     alignSelf: 'center',
   },
-  testimonialCard: { flex: 1, minWidth: 280 },
-  quoteText: { fontSize: fontSizes.sm, fontStyle: 'italic', lineHeight: 22, fontFamily: fontFamily.body, marginBottom: spacing.sm },
-  attribution: { fontSize: fontSizes.xs, fontWeight: '600', fontFamily: fontFamily.body },
+  platformStat: { alignItems: 'center', minWidth: 150 },
+  platformStatValue: { fontSize: 40, fontWeight: '700', fontFamily: fontFamily.body },
+  platformStatLabel: { fontSize: fontSizes.md, fontWeight: '600', marginTop: spacing.xs },
+  platformStatSub: { fontSize: fontSizes.xs, marginTop: 2 },
   // ROI banner
   roiBanner: {
     alignItems: 'center',

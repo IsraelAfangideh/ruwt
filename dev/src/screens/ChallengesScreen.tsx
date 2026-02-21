@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/client';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { Card, CardContent } from '@/components/ui/Card';
 import { ChallengeCard, type Challenge } from '@/components/ChallengeCard';
-import { useColors } from '@/theme';
+import { useColors, useTheme } from '@/theme';
 import { spacing, fontSizes, fontFamily, radii } from '@/theme/tokens';
 import { useToast } from '@/components/ui/Toast';
 import { useIsMobile } from '@/lib/useIsMobile';
@@ -82,9 +82,13 @@ export function ChallengesScreen() {
   const [activeDifficulty, setActiveDifficulty] = useState(getInitialDifficulty);
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<SortOption>('default');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [showSortMenu, setShowSortMenu] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<'all' | 'solved' | 'in_progress' | 'not_started'>('all');
   const supabase = createClient();
   const c = useColors();
+  const { isDark } = useTheme();
+  const activePillText = isDark ? '#0f0e0d' : '#0d1117';
   const { showToast } = useToast();
   const isMobile = useIsMobile();
 
@@ -138,12 +142,13 @@ export function ChallengesScreen() {
     syncUrlParams(activeCategory, activeLang, key);
   };
 
-  // Progress stats
+  // Progress stats (global)
   const progressStats = useMemo(() => {
     const total = challenges.length;
     const solved = challenges.filter((ch) => ch.userStatus === 'passed').length;
     const inProgress = challenges.filter((ch) => ch.userStatus === 'in_progress').length;
-    return { total, solved, inProgress };
+    const notStarted = total - solved - inProgress;
+    return { total, solved, inProgress, notStarted };
   }, [challenges]);
 
   // Filtered + sorted challenges
@@ -170,23 +175,55 @@ export function ChallengesScreen() {
       result = result.filter((ch) => ch.difficulty === activeDifficulty);
     }
 
+    // Status filter (from clickable stats)
+    if (statusFilter === 'solved') {
+      result = result.filter((ch) => ch.userStatus === 'passed');
+    } else if (statusFilter === 'in_progress') {
+      result = result.filter((ch) => ch.userStatus === 'in_progress');
+    } else if (statusFilter === 'not_started') {
+      result = result.filter((ch) => ch.userStatus !== 'passed' && ch.userStatus !== 'in_progress');
+    }
+
     // Sort
+    const dir = sortDirection === 'asc' ? 1 : -1;
     if (sortBy === 'difficulty') {
       result = [...result].sort((a, b) =>
-        (DIFFICULTY_ORDER[a.difficulty] ?? 2) - (DIFFICULTY_ORDER[b.difficulty] ?? 2)
+        dir * ((DIFFICULTY_ORDER[a.difficulty] ?? 2) - (DIFFICULTY_ORDER[b.difficulty] ?? 2))
       );
     } else if (sortBy === 'popularity') {
       result = [...result].sort((a, b) =>
-        (b.stats?.solvers ?? 0) - (a.stats?.solvers ?? 0)
+        dir * ((b.stats?.solvers ?? 0) - (a.stats?.solvers ?? 0))
       );
     } else if (sortBy === 'cost') {
       result = [...result].sort((a, b) =>
-        (a.maxCost ?? Infinity) - (b.maxCost ?? Infinity)
+        dir * ((a.maxCost ?? Infinity) - (b.maxCost ?? Infinity))
       );
     }
 
     return result;
-  }, [challenges, searchQuery, activeCategory, activeLang, activeDifficulty, sortBy]);
+  }, [challenges, searchQuery, activeCategory, activeLang, activeDifficulty, statusFilter, sortBy, sortDirection]);
+
+  // Stats that reflect current non-status filters (for the clickable stats panel)
+  const filteredStats = useMemo(() => {
+    let result = challenges;
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      result = result.filter((ch) =>
+        ch.title.toLowerCase().includes(q) ||
+        ch.description.toLowerCase().includes(q) ||
+        (ch.skillTested && ch.skillTested.toLowerCase().includes(q))
+      );
+    }
+    if (activeCategory !== 'all') result = result.filter((ch) => ch.category === activeCategory);
+    if (activeLang !== 'all') result = result.filter((ch) => (ch.language || 'javascript') === activeLang);
+    if (activeDifficulty !== 'all') result = result.filter((ch) => ch.difficulty === activeDifficulty);
+
+    const total = result.length;
+    const solved = result.filter((ch) => ch.userStatus === 'passed').length;
+    const inProgress = result.filter((ch) => ch.userStatus === 'in_progress').length;
+    const notStarted = total - solved - inProgress;
+    return { total, solved, inProgress, notStarted };
+  }, [challenges, searchQuery, activeCategory, activeLang, activeDifficulty]);
 
   // Group by tier (only in default sort)
   const grouped = useMemo(() => {
@@ -210,9 +247,10 @@ export function ChallengesScreen() {
 
   if (!user) return null;
 
-  const hasActiveFilters = activeLang !== 'all' || activeCategory !== 'all' || activeDifficulty !== 'all' || searchQuery.trim() !== '';
-  const progressPct = progressStats.total > 0 ? Math.round((progressStats.solved / progressStats.total) * 100) : 0;
-
+  const hasActiveFilters = activeLang !== 'all' || activeCategory !== 'all' || activeDifficulty !== 'all' || searchQuery.trim() !== '' || statusFilter !== 'all';
+  const hasNonStatusFilters = activeLang !== 'all' || activeCategory !== 'all' || activeDifficulty !== 'all' || searchQuery.trim() !== '';
+  const displayStats = hasNonStatusFilters ? filteredStats : progressStats;
+  const progressPct = displayStats.total > 0 ? Math.round((displayStats.solved / displayStats.total) * 100) : 0;
   return (
     <DashboardLayout user={user}>
       {/* Header with title + progress */}
@@ -223,23 +261,49 @@ export function ChallengesScreen() {
             Real engineering problems. Real AI models. Ranked by efficiency.
           </Text>
         </View>
-        {/* Progress summary */}
+        {/* Progress summary — clickable stats filter */}
         <View style={[styles.progressCard, { backgroundColor: c.muted, borderColor: c.border }]}>
           <View style={styles.progressStats}>
-            <View style={styles.progressStat}>
-              <Text style={[styles.progressNum, { color: c.success }]}>{progressStats.solved}</Text>
-              <Text style={[styles.progressLabel, { color: c.textMuted }]}>solved</Text>
-            </View>
+            <Pressable
+              onPress={() => setStatusFilter(statusFilter === 'solved' ? 'all' : 'solved')}
+              style={[styles.progressStat, { cursor: 'pointer' as any }]}
+            >
+              <Text style={[styles.progressNum, { color: c.success }]}>{displayStats.solved}</Text>
+              <Text style={[styles.progressLabel, { color: statusFilter === 'solved' ? c.success : c.textMuted, fontWeight: statusFilter === 'solved' ? '700' : '400' }]}>
+                solved{hasNonStatusFilters ? ` of ${progressStats.solved}` : ''}
+              </Text>
+              {statusFilter === 'solved' && <View style={[styles.activeStatBar, { backgroundColor: c.success }]} />}
+            </Pressable>
             <View style={[styles.progressDivider, { backgroundColor: c.border }]} />
-            <View style={styles.progressStat}>
-              <Text style={[styles.progressNum, { color: c.accent }]}>{progressStats.inProgress}</Text>
-              <Text style={[styles.progressLabel, { color: c.textMuted }]}>in progress</Text>
-            </View>
+            <Pressable
+              onPress={() => setStatusFilter(statusFilter === 'in_progress' ? 'all' : 'in_progress')}
+              style={[styles.progressStat, { cursor: 'pointer' as any }]}
+            >
+              <Text style={[styles.progressNum, { color: c.accent }]}>{displayStats.inProgress}</Text>
+              <Text style={[styles.progressLabel, { color: statusFilter === 'in_progress' ? c.accent : c.textMuted, fontWeight: statusFilter === 'in_progress' ? '700' : '400' }]}>
+                in progress{hasNonStatusFilters ? ` of ${progressStats.inProgress}` : ''}
+              </Text>
+              {statusFilter === 'in_progress' && <View style={[styles.activeStatBar, { backgroundColor: c.accent }]} />}
+            </Pressable>
             <View style={[styles.progressDivider, { backgroundColor: c.border }]} />
-            <View style={styles.progressStat}>
-              <Text style={[styles.progressNum, { color: c.text }]}>{progressStats.total}</Text>
+            <Pressable
+              onPress={() => setStatusFilter(statusFilter === 'not_started' ? 'all' : 'not_started')}
+              style={[styles.progressStat, { cursor: 'pointer' as any }]}
+            >
+              <Text style={[styles.progressNum, { color: c.textMuted }]}>{displayStats.notStarted}</Text>
+              <Text style={[styles.progressLabel, { color: statusFilter === 'not_started' ? c.text : c.textMuted, fontWeight: statusFilter === 'not_started' ? '700' : '400' }]}>
+                not started
+              </Text>
+              {statusFilter === 'not_started' && <View style={[styles.activeStatBar, { backgroundColor: c.textMuted }]} />}
+            </Pressable>
+            <View style={[styles.progressDivider, { backgroundColor: c.border }]} />
+            <Pressable
+              onPress={() => setStatusFilter('all')}
+              style={[styles.progressStat, { cursor: 'pointer' as any }]}
+            >
+              <Text style={[styles.progressNum, { color: c.text }]}>{displayStats.total}</Text>
               <Text style={[styles.progressLabel, { color: c.textMuted }]}>total</Text>
-            </View>
+            </Pressable>
           </View>
           <View style={[styles.progressBarBg, { backgroundColor: c.border }]}>
             <View style={[styles.progressBarFill, { width: `${progressPct}%` as any, backgroundColor: c.success }]} />
@@ -279,26 +343,39 @@ export function ChallengesScreen() {
             >
               <Text style={[styles.sortButtonText, { color: c.text }]}>
                 Sort: {SORT_OPTIONS.find((s) => s.key === sortBy)?.label}
+                {sortBy !== 'default' ? (sortDirection === 'asc' ? ' \u2191' : ' \u2193') : ''}
               </Text>
               <Text style={{ color: c.textMuted, fontSize: 10 }}>{'\u25BC'}</Text>
             </Pressable>
             {showSortMenu && (
-              <View style={[styles.sortMenu, { backgroundColor: c.card, borderColor: c.border }]}>
-                {SORT_OPTIONS.map((opt) => (
-                  <Pressable
-                    key={opt.key}
-                    onPress={() => { setSortBy(opt.key); setShowSortMenu(false); }}
-                    style={[
-                      styles.sortMenuItem,
-                      sortBy === opt.key && { backgroundColor: c.accentBg },
-                    ]}
-                  >
-                    <Text style={[styles.sortMenuText, { color: sortBy === opt.key ? c.accent : c.text }]}>
-                      {opt.label}
-                    </Text>
-                  </Pressable>
-                ))}
-              </View>
+              <>
+                <Pressable style={styles.sortBackdrop} onPress={() => setShowSortMenu(false)} />
+                <View style={[styles.sortMenu, { backgroundColor: c.card, borderColor: c.border }]}>
+                  {SORT_OPTIONS.map((opt) => (
+                    <Pressable
+                      key={opt.key}
+                      onPress={() => {
+                        if (sortBy === opt.key && opt.key !== 'default') {
+                          setSortDirection((prev) => prev === 'asc' ? 'desc' : 'asc');
+                        } else {
+                          setSortBy(opt.key);
+                          setSortDirection('asc');
+                        }
+                        setShowSortMenu(false);
+                      }}
+                      style={[
+                        styles.sortMenuItem,
+                        sortBy === opt.key && { backgroundColor: c.accentBg },
+                      ]}
+                    >
+                      <Text style={[styles.sortMenuText, { color: sortBy === opt.key ? c.accent : c.text }]}>
+                        {opt.label}
+                        {sortBy === opt.key && opt.key !== 'default' ? (sortDirection === 'asc' ? ' \u2191' : ' \u2193') : ''}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+              </>
             )}
           </View>
         </View>
@@ -320,7 +397,7 @@ export function ChallengesScreen() {
                   },
                 ]}
               >
-                <Text style={[styles.filterPillText, { color: isActive ? '#0d1117' : c.textMuted }]}>
+                <Text style={[styles.filterPillText, { color: isActive ? activePillText : c.textMuted }]}>
                   {lang.label}
                 </Text>
               </Pressable>
@@ -345,7 +422,7 @@ export function ChallengesScreen() {
                   },
                 ]}
               >
-                <Text style={[styles.filterPillText, { color: isActive ? '#0d1117' : c.textMuted }]}>
+                <Text style={[styles.filterPillText, { color: isActive ? activePillText : c.textMuted }]}>
                   {diff.label}
                 </Text>
               </Pressable>
@@ -369,7 +446,7 @@ export function ChallengesScreen() {
                   },
                 ]}
               >
-                <Text style={[styles.filterPillText, { color: isActive ? '#0d1117' : c.textMuted }]}>
+                <Text style={[styles.filterPillText, { color: isActive ? activePillText : c.textMuted }]}>
                   {cat.label}
                 </Text>
               </Pressable>
@@ -392,6 +469,7 @@ export function ChallengesScreen() {
                 setActiveLang('all');
                 setActiveDifficulty('all');
                 setSearchQuery('');
+                setStatusFilter('all');
                 syncUrlParams('all', 'all', 'all');
               }}
               style={[styles.clearFilters, { borderColor: c.border }]}
@@ -493,6 +571,7 @@ const styles = StyleSheet.create({
   progressStat: { alignItems: 'center' },
   progressNum: { fontSize: fontSizes.xl, fontWeight: '700', fontFamily: fontFamily.body },
   progressLabel: { fontSize: fontSizes.xs },
+  activeStatBar: { height: 3, borderRadius: 2, width: '100%', marginTop: 4 },
   progressDivider: { width: 1, height: 28 },
   progressBarBg: { height: 4, borderRadius: 2, overflow: 'hidden' },
   progressBarFill: { height: 4, borderRadius: 2 },
@@ -554,6 +633,7 @@ const styles = StyleSheet.create({
     // @ts-ignore web-only shadow
     boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
   },
+  sortBackdrop: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 40 },
   sortMenuItem: { paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
   sortMenuText: { fontSize: fontSizes.sm, fontFamily: fontFamily.body },
 
