@@ -41,6 +41,7 @@ export async function onRequestGet(context: { request: Request; env: Env }) {
       longestStreak: profile.longestStreak,
       lastStreakDate: profile.lastStreakDate,
       streakFreezes: profile.streakFreezes,
+      newsletterSubscribed: profile.newsletterSubscribed,
     });
   } catch (error) {
     console.error('Profile error:', error);
@@ -61,7 +62,8 @@ export async function onRequestPatch(context: { request: Request; env: Env }) {
         .regex(/^[a-z0-9][a-z0-9-]{1,28}[a-z0-9]$/, 'Lowercase alphanumeric and hyphens only, cannot start or end with a hyphen')
         .optional(),
       onboardingCompleted: z.union([z.literal(0), z.literal(1)]).optional(),
-    }).refine(data => data.username !== undefined || data.onboardingCompleted !== undefined, {
+      newsletterSubscribed: z.union([z.literal(0), z.literal(1)]).optional(),
+    }).refine(data => data.username !== undefined || data.onboardingCompleted !== undefined || data.newsletterSubscribed !== undefined, {
       message: 'No valid fields to update',
     });
 
@@ -73,13 +75,17 @@ export async function onRequestPatch(context: { request: Request; env: Env }) {
       );
     }
 
-    const { username, onboardingCompleted } = parsed.data;
+    const { username, onboardingCompleted, newsletterSubscribed } = parsed.data;
 
     const db = getDb(context.env);
     const updates: Record<string, unknown> = {};
 
     if (onboardingCompleted !== undefined) {
       updates.onboardingCompleted = onboardingCompleted;
+    }
+
+    if (newsletterSubscribed !== undefined) {
+      updates.newsletterSubscribed = newsletterSubscribed;
     }
 
     if (username !== undefined) {

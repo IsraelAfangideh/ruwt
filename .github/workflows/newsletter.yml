@@ -1,0 +1,29 @@
+name: Daily Newsletter
+
+on:
+  schedule:
+    - cron: '0 8 * * *' # 8am UTC daily
+  workflow_dispatch: # manual trigger for testing
+
+jobs:
+  send:
+    name: Send Daily Newsletter
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger newsletter
+        run: |
+          response=$(curl -s -w "\n%{http_code}" -X POST \
+            "https://ruwt.dev/api/newsletter/send" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json")
+
+          http_code=$(echo "$response" | tail -1)
+          body=$(echo "$response" | head -n -1)
+
+          echo "Status: $http_code"
+          echo "Response: $body"
+
+          if [ "$http_code" != "200" ]; then
+            echo "::error::Newsletter send failed with status $http_code"
+            exit 1
+          fi

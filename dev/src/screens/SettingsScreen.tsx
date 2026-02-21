@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { View, Text, ScrollView, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, Pressable } from 'react-native';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -15,6 +15,8 @@ export function SettingsScreen() {
   const { user, loading: authLoading } = useAuthGuard();
   const [credits, setCredits] = useState<number | null>(null);
   const [accountType, setAccountType] = useState<'individual' | 'team'>('individual');
+  const [newsletterSubscribed, setNewsletterSubscribed] = useState<boolean>(true);
+  const [togglingNewsletter, setTogglingNewsletter] = useState(false);
   const [purchasing, setPurchasing] = useState<string | null>(null);
   const [showSuccess, setShowSuccess] = useState(false);
   const c = useColors();
@@ -28,9 +30,10 @@ export function SettingsScreen() {
         const base = typeof window !== 'undefined' ? window.location.origin : '';
         const r = await fetch(`${base}/api/profile`);
         if (r.ok) {
-          const data = await r.json() as { credits: number; accountType?: 'individual' | 'team' };
+          const data = await r.json() as { credits: number; accountType?: 'individual' | 'team'; newsletterSubscribed?: number };
           setCredits(data.credits);
           if (data.accountType) setAccountType(data.accountType);
+          setNewsletterSubscribed(data.newsletterSubscribed !== 0);
         }
       } catch {
         showToast('Failed to load profile', 'error');
@@ -49,6 +52,28 @@ export function SettingsScreen() {
     };
     init();
   }, [user]);
+
+  const toggleNewsletter = async () => {
+    const newValue = !newsletterSubscribed;
+    setNewsletterSubscribed(newValue);
+    setTogglingNewsletter(true);
+    try {
+      const base = typeof window !== 'undefined' ? window.location.origin : '';
+      const r = await fetch(`${base}/api/profile`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ newsletterSubscribed: newValue ? 1 : 0 }),
+      });
+      if (!r.ok) {
+        setNewsletterSubscribed(!newValue); // revert
+        showToast('Failed to update preference', 'error');
+      }
+    } catch {
+      setNewsletterSubscribed(!newValue); // revert
+      showToast('Failed to update preference', 'error');
+    }
+    setTogglingNewsletter(false);
+  };
 
   const handleBuy = async (pkg: CreditPackage) => {
     setPurchasing(pkg.id);
@@ -154,6 +179,43 @@ export function SettingsScreen() {
         )}
         <Card style={styles.card}>
           <CardHeader>
+            <CardTitle>Email Preferences</CardTitle>
+            <CardDescription>Control what emails you receive from ruwt.dev</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Pressable
+              onPress={toggleNewsletter}
+              disabled={togglingNewsletter}
+              style={styles.toggleRow}
+            >
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.toggleLabel, { color: c.text }]}>Daily newsletter</Text>
+                <Text style={[styles.toggleDesc, { color: c.textMuted }]}>
+                  Platform updates and dev links, once a day
+                </Text>
+              </View>
+              <View
+                style={[
+                  styles.toggleTrack,
+                  { backgroundColor: newsletterSubscribed ? c.accent : c.border },
+                ]}
+              >
+                <View
+                  style={[
+                    styles.toggleThumb,
+                    {
+                      backgroundColor: '#fff',
+                      transform: [{ translateX: newsletterSubscribed ? 20 : 2 }],
+                    },
+                  ]}
+                />
+              </View>
+            </Pressable>
+          </CardContent>
+        </Card>
+
+        <Card style={styles.card}>
+          <CardHeader>
             <CardTitle>Account</CardTitle>
             <CardDescription>Signed in as {user.email}</CardDescription>
           </CardHeader>
@@ -193,4 +255,31 @@ const styles = StyleSheet.create({
   pkgPrice: { fontSize: fontSizes['2xl'], fontWeight: '700', fontFamily: fontFamily.body },
   pkgUnit: { fontSize: fontSizes.xs, marginBottom: spacing.md, fontFamily: fontFamily.body },
   pkgBtn: { width: '100%' },
+  toggleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.md,
+  },
+  toggleLabel: {
+    fontSize: fontSizes.sm,
+    fontWeight: '600',
+    fontFamily: fontFamily.body,
+  },
+  toggleDesc: {
+    fontSize: fontSizes.xs,
+    fontFamily: fontFamily.body,
+    marginTop: 2,
+  },
+  toggleTrack: {
+    width: 44,
+    height: 24,
+    borderRadius: 12,
+    justifyContent: 'center',
+  },
+  toggleThumb: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+  },
 });

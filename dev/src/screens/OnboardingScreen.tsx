@@ -28,6 +28,7 @@ export function OnboardingScreen() {
   const [step, setStep] = useState(0);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [wantsNewsletter, setWantsNewsletter] = useState(true);
 
   useEffect(() => {
     const init = async () => {
@@ -75,7 +76,10 @@ export function OnboardingScreen() {
       await fetch('/api/profile', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ onboardingCompleted: 1 }),
+        body: JSON.stringify({
+          onboardingCompleted: 1,
+          newsletterSubscribed: wantsNewsletter ? 1 : 0,
+        }),
       });
     } catch {
       // Non-blocking — mark completed even if API fails
@@ -115,6 +119,8 @@ export function OnboardingScreen() {
               onBack={goBack}
               onFinish={completeOnboarding}
               submitting={submitting}
+              wantsNewsletter={wantsNewsletter}
+              onToggleNewsletter={() => setWantsNewsletter(!wantsNewsletter)}
             />
           )}
         </View>
@@ -289,11 +295,15 @@ function StepComplete({
   onBack,
   onFinish,
   submitting,
+  wantsNewsletter,
+  onToggleNewsletter,
 }: {
   colors: any;
   onBack: () => void;
   onFinish: () => void;
   submitting: boolean;
+  wantsNewsletter: boolean;
+  onToggleNewsletter: () => void;
 }) {
   return (
     <View style={styles.stepInner}>
@@ -340,6 +350,29 @@ function StepComplete({
           </View>
         </CardContent>
       </Card>
+
+      {/* Newsletter opt-in */}
+      <Pressable onPress={onToggleNewsletter} style={styles.newsletterRow}>
+        <View
+          style={[
+            styles.newsletterToggle,
+            { backgroundColor: wantsNewsletter ? c.accent : c.border },
+          ]}
+        >
+          <View
+            style={[
+              styles.newsletterThumb,
+              {
+                backgroundColor: '#fff',
+                transform: [{ translateX: wantsNewsletter ? 20 : 2 }],
+              },
+            ]}
+          />
+        </View>
+        <Text style={[styles.newsletterLabel, { color: c.textMuted }]}>
+          Get daily updates — platform news and dev links, straight to your inbox.
+        </Text>
+      </Pressable>
 
       <View style={styles.buttonRow}>
         <Button size="lg" onPress={onFinish} disabled={submitting} fullWidth>
@@ -601,6 +634,31 @@ const styles = StyleSheet.create({
   },
   streakText: {
     fontSize: fontSizes.sm,
+    flex: 1,
+  },
+
+  /* Newsletter opt-in */
+  newsletterRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    paddingVertical: spacing.xs,
+  },
+  newsletterToggle: {
+    width: 44,
+    height: 24,
+    borderRadius: 12,
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  newsletterThumb: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+  },
+  newsletterLabel: {
+    fontSize: fontSizes.sm,
+    lineHeight: 20,
     flex: 1,
   },
 

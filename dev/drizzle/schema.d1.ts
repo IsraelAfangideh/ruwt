@@ -22,6 +22,7 @@ export const profiles = sqliteTable('profiles', {
   lastStreakDate: text('last_streak_date'), // YYYY-MM-DD of last daily solve
   streakFreezes: integer('streak_freezes').default(0).notNull(),
   onboardingCompleted: integer('onboarding_completed').default(0).notNull(),
+  newsletterSubscribed: integer('newsletter_subscribed').default(1).notNull(),
   createdAt: text('created_at').default(sql`(datetime('now'))`).notNull(),
 });
 
