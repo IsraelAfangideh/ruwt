@@ -9,7 +9,7 @@ import { getUser } from '../_shared/auth';
 import { runTestCases, type SupportedLanguage } from '../_shared/judge';
 import { checkAndAwardBadges } from '../_shared/badges';
 import { updateStreak } from '../_shared/streaks';
-import { attempts, challenges, dailyChallenges } from '../../drizzle/schema.d1';
+import { attempts, challenges } from '../../drizzle/schema.d1';
 
 const submissionSchema = z.object({
   attemptId: z.string().uuid(),
@@ -232,17 +232,9 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
       try {
         newBadges = await checkAndAwardBadges(db, user.id);
 
-        // Check if this is a daily challenge solve — if so, update streak
-        const today = new Date().toISOString().split('T')[0];
-        const [todaysDaily] = await db
-          .select({ challengeId: dailyChallenges.challengeId })
-          .from(dailyChallenges)
-          .where(eq(dailyChallenges.date, today))
-          .limit(1);
-        if (todaysDaily && todaysDaily.challengeId === attempt.challengeId) {
-          streakResult = await updateStreak(db, user.id);
-          newBadges = [...newBadges, ...streakResult.newBadges];
-        }
+        // Update streak on any successful solve
+        streakResult = await updateStreak(db, user.id);
+        newBadges = [...newBadges, ...streakResult.newBadges];
       } catch (e) {
         console.error('Badge/streak check error (non-blocking):', e);
       }

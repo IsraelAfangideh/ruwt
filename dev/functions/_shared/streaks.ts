@@ -1,6 +1,6 @@
 /**
  * Streak tracking logic.
- * A streak increments when a user solves the daily challenge.
+ * A streak increments when a user solves any challenge each day.
  * Streaks reset if a day is missed (unless a streak freeze is used).
  */
 import { eq, and, sql } from 'drizzle-orm';
@@ -19,7 +19,7 @@ function yesterdayUTC(): string {
 }
 
 /**
- * Called after a user solves the daily challenge.
+ * Called after a user solves any challenge.
  * Updates their streak, checks for freeze usage, awards streak badges.
  */
 export async function updateStreak(db: Db, userId: string): Promise<{
