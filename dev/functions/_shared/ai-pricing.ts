@@ -13,6 +13,8 @@ export interface ModelPricing {
   tier: ModelTier;
   displayName: string;
   description: string;
+  supportsTools?: boolean;
+  supportsJsonMode?: boolean;
 }
 
 const MODEL_PRICING: Record<string, ModelPricing> = {
@@ -49,6 +51,8 @@ const MODEL_PRICING: Record<string, ModelPricing> = {
     tier: 'premium',
     displayName: 'Qwen2.5 Coder 32B',
     description: 'Code-specialized, top-tier for coding tasks',
+    supportsTools: true,
+    supportsJsonMode: true,
   },
   '@cf/mistralai/mistral-small-3.1-24b-instruct': {
     input: 0.35,
@@ -57,6 +61,7 @@ const MODEL_PRICING: Record<string, ModelPricing> = {
     tier: 'premium',
     displayName: 'Mistral Small 3.1',
     description: 'Mistral 24B, 128k context window',
+    supportsTools: true,
   },
   '@cf/meta/llama-3.3-70b-instruct-fp8-fast': {
     input: 0.50,
@@ -65,6 +70,8 @@ const MODEL_PRICING: Record<string, ModelPricing> = {
     tier: 'premium',
     displayName: 'Llama 3.3 70B',
     description: 'Meta 70B, fast fp8 inference',
+    supportsTools: true,
+    supportsJsonMode: true,
   },
   // Mid tier
   '@cf/meta/llama-4-scout-17b-16e-instruct': {
@@ -74,6 +81,7 @@ const MODEL_PRICING: Record<string, ModelPricing> = {
     tier: 'mid',
     displayName: 'Llama 4 Scout',
     description: 'Llama 4 MoE with 16 experts',
+    supportsTools: true,
   },
   '@cf/google/gemma-3-12b-it': {
     input: 0.35,
@@ -98,6 +106,8 @@ const MODEL_PRICING: Record<string, ModelPricing> = {
     tier: 'mid',
     displayName: 'Llama 3.1 70B',
     description: 'Strong mid-range, good balance of cost and quality',
+    supportsTools: true,
+    supportsJsonMode: true,
   },
   '@cf/qwen/qwen1.5-14b-chat-awq': {
     input: 0.08,
@@ -131,6 +141,8 @@ const MODEL_PRICING: Record<string, ModelPricing> = {
     tier: 'budget',
     displayName: 'Llama 3.1 8B',
     description: 'Cheap and capable for straightforward tasks',
+    supportsTools: true,
+    supportsJsonMode: true,
   },
   '@cf/mistral/mistral-7b-instruct-v0.2': {
     input: 0.01,
@@ -177,6 +189,27 @@ export function getTierFallbackChain(tier: ModelTier): string[] {
   const allowedTiers = new Set(tierOrder.slice(startIdx));
   return Object.entries(MODEL_PRICING)
     .filter(([, p]) => allowedTiers.has(p.tier))
+    .sort((a, b) => {
+      const tierOrd: Record<ModelTier, number> = { reasoning: 0, premium: 1, mid: 2, budget: 3, micro: 4 };
+      return tierOrd[a[1].tier] - tierOrd[b[1].tier];
+    })
+    .map(([id]) => id);
+}
+
+/** Get models that support native function calling (tools). */
+export function getToolCapableModels(): string[] {
+  return Object.entries(MODEL_PRICING)
+    .filter(([, p]) => p.supportsTools)
+    .map(([id]) => id);
+}
+
+/** Get tool-capable fallback chain for a given tier. */
+export function getToolCapableFallbackChain(tier: ModelTier): string[] {
+  const tierOrder: ModelTier[] = ['reasoning', 'premium', 'mid', 'budget', 'micro'];
+  const startIdx = tierOrder.indexOf(tier);
+  const allowedTiers = new Set(tierOrder.slice(startIdx));
+  return Object.entries(MODEL_PRICING)
+    .filter(([, p]) => allowedTiers.has(p.tier) && p.supportsTools)
     .sort((a, b) => {
       const tierOrd: Record<ModelTier, number> = { reasoning: 0, premium: 1, mid: 2, budget: 3, micro: 4 };
       return tierOrd[a[1].tier] - tierOrd[b[1].tier];

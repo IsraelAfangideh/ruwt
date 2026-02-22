@@ -14,6 +14,8 @@ export interface ModelInfo {
   output: number;
   costIndicator: string;
   description: string;
+  supportsTools?: boolean;
+  supportsJsonMode?: boolean;
 }
 
 const MODELS: ModelInfo[] = [
@@ -54,6 +56,8 @@ const MODELS: ModelInfo[] = [
     output: 1.00,
     costIndicator: '$$$',
     description: 'Code-specialized, top-tier for coding tasks',
+    supportsTools: true,
+    supportsJsonMode: true,
   },
   {
     id: '@cf/mistralai/mistral-small-3.1-24b-instruct',
@@ -63,6 +67,7 @@ const MODELS: ModelInfo[] = [
     output: 0.56,
     costIndicator: '$$$',
     description: 'Mistral 24B, 128k context window',
+    supportsTools: true,
   },
   {
     id: '@cf/meta/llama-3.3-70b-instruct-fp8-fast',
@@ -72,6 +77,8 @@ const MODELS: ModelInfo[] = [
     output: 0.60,
     costIndicator: '$$$',
     description: 'Meta 70B, fast fp8 inference',
+    supportsTools: true,
+    supportsJsonMode: true,
   },
   // Mid tier
   {
@@ -82,6 +89,7 @@ const MODELS: ModelInfo[] = [
     output: 0.85,
     costIndicator: '$$',
     description: 'Llama 4 MoE with 16 experts',
+    supportsTools: true,
   },
   {
     id: '@cf/google/gemma-3-12b-it',
@@ -109,6 +117,8 @@ const MODELS: ModelInfo[] = [
     output: 0.12,
     costIndicator: '$$',
     description: 'Strong mid-range, good balance',
+    supportsTools: true,
+    supportsJsonMode: true,
   },
   {
     id: '@cf/qwen/qwen1.5-14b-chat-awq',
@@ -146,6 +156,8 @@ const MODELS: ModelInfo[] = [
     output: 0.01,
     costIndicator: '$',
     description: 'Cheap and capable for straightforward tasks',
+    supportsTools: true,
+    supportsJsonMode: true,
   },
   {
     id: '@cf/mistral/mistral-7b-instruct-v0.2',

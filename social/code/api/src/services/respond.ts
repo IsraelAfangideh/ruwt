@@ -62,14 +62,27 @@ export async function chatWithRespond(payload: RespondChatRequest): Promise<Resp
       { role: 'user', content: message },
     ];
 
-    // 4. Call Cloudflare AI with model fallback
+    // 4. Call Cloudflare AI with model fallback + JSON mode
+    const respondJsonFormat = {
+      type: 'json_schema' as const,
+      json_schema: {
+        type: 'object',
+        properties: {
+          explanation: { type: 'string', description: 'Explanation of the analysis' },
+          response: { type: 'string', description: 'The proposed response text' },
+        },
+        required: ['explanation', 'response'],
+      },
+    };
     const modelCandidates = getModelCandidates();
     let responseText: string | null = null;
     let lastError: unknown = null;
 
     for (const modelName of modelCandidates) {
       try {
-        responseText = await callCloudflareAI(modelName, messages);
+        responseText = await callCloudflareAI(modelName, messages, {
+          response_format: respondJsonFormat,
+        });
         break;
       } catch (err) {
         lastError = err;

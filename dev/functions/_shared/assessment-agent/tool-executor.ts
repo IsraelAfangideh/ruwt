@@ -1,44 +1,25 @@
 /**
- * Parse and execute tool calls from the AI assessment agent's response.
- * Tool calls are embedded as <tool_call> blocks in the response text.
+ * Execute tool calls from the AI assessment agent.
+ * Tool calls now come from Cloudflare Workers AI native function calling
+ * (structured tool_calls in the API response, not XML blocks in text).
  */
-import { eq, and, like, sql } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 import type { Db } from '../db';
 import {
   challenges, assessments, assessmentChallenges, customChallenges,
 } from '../../../drizzle/schema.d1';
 
-interface ToolCall {
-  tool: string;
-  params: Record<string, unknown>;
+/** Cloudflare native tool call format. */
+export interface ToolCall {
+  name: string;
+  arguments: Record<string, unknown>;
 }
 
-interface ToolResult {
+export interface ToolResult {
   tool: string;
   success: boolean;
   result: unknown;
   error?: string;
-}
-
-/** Extract all <tool_call> blocks from the response text. */
-export function parseToolCalls(text: string): ToolCall[] {
-  const calls: ToolCall[] = [];
-  const regex = /<tool_call>\s*([\s\S]*?)\s*<\/tool_call>/g;
-  let match;
-  while ((match = regex.exec(text)) !== null) {
-    try {
-      const parsed = JSON.parse(match[1]);
-      if (parsed.tool && typeof parsed.tool === 'string') {
-        calls.push({
-          tool: parsed.tool,
-          params: parsed.params || {},
-        });
-      }
-    } catch {
-      // Invalid JSON — skip
-    }
-  }
-  return calls;
 }
 
 /** Execute a single tool call and return the result. */
@@ -53,29 +34,29 @@ export async function executeToolCall(
   }
 ): Promise<ToolResult> {
   try {
-    switch (call.tool) {
+    switch (call.name) {
       case 'search_challenges':
-        return await searchChallenges(db, call.params);
+        return await searchChallenges(db, call.arguments);
       case 'select_challenges':
-        return await selectChallenges(db, call.params, context);
+        return await selectChallenges(db, call.arguments, context);
       case 'remove_challenges':
-        return await removeChallenges(db, call.params, context);
+        return await removeChallenges(db, call.arguments, context);
       case 'set_weights':
-        return await setWeights(db, call.params, context);
+        return await setWeights(db, call.arguments, context);
       case 'set_time_limit':
-        return await setTimeLimit(db, call.params, context);
+        return await setTimeLimit(db, call.arguments, context);
       case 'set_branding':
-        return await setBranding(db, call.params, context);
+        return await setBranding(db, call.arguments, context);
       case 'create_custom_challenge':
-        return await createCustomChallenge(db, call.params, context);
+        return await createCustomChallenge(db, call.arguments, context);
       case 'set_pass_threshold':
-        return await setPassThreshold(db, call.params, context);
+        return await setPassThreshold(db, call.arguments, context);
       default:
-        return { tool: call.tool, success: false, result: null, error: `Unknown tool: ${call.tool}` };
+        return { tool: call.name, success: false, result: null, error: `Unknown tool: ${call.name}` };
     }
   } catch (err) {
     return {
-      tool: call.tool,
+      tool: call.name,
       success: false,
       result: null,
       error: err instanceof Error ? err.message : String(err),
@@ -179,7 +160,7 @@ async function removeChallenges(
 
   let removed = 0;
   for (const id of challengeIds) {
-    const result = await db
+    await db
       .delete(assessmentChallenges)
       .where(
         and(

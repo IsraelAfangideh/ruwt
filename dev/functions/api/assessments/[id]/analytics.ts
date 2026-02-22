@@ -104,27 +104,37 @@ export async function onRequestGet(context: { request: Request; env: Env; params
       .innerJoin(challenges, eq(assessmentChallenges.challengeId, challenges.id))
       .where(eq(assessmentChallenges.assessmentId, context.params.id));
 
-    // Collect all attempts across all sessions for percentile calculation
-    const allAttempts = await Promise.all(
-      sessions.map(async (session) => {
-        const sessionAttempts = await db
-          .select()
-          .from(attempts)
-          .where(eq(attempts.assessmentSessionId, session.id));
+    // Bulk-fetch all attempts and AI calls in 2 queries (not N*M)
+    const sessionIds = sessions.map((s) => s.id);
+    const [allAttemptsFlat, allCallsFlat] = sessionIds.length > 0
+      ? await Promise.all([
+          db.select().from(attempts).where(
+            sql`${attempts.assessmentSessionId} IN (${sql.join(sessionIds.map((id) => sql`${id}`), sql`, `)})`
+          ),
+          db.select().from(aiCalls).where(
+            sql`${aiCalls.attemptId} IN (
+              SELECT ${attempts.id} FROM ${attempts}
+              WHERE ${attempts.assessmentSessionId} IN (${sql.join(sessionIds.map((id) => sql`${id}`), sql`, `)})
+            )`
+          ),
+        ])
+      : [[], []];
 
-        const calls = await Promise.all(
-          sessionAttempts.map(async (a) => {
-            const aiCallList = await db
-              .select()
-              .from(aiCalls)
-              .where(eq(aiCalls.attemptId, a.id));
-            return { attempt: a, calls: aiCallList };
-          })
-        );
+    // Index by attemptId / sessionId for O(1) lookup
+    const callsByAttempt = new Map<string, typeof allCallsFlat>();
+    for (const call of allCallsFlat) {
+      if (!callsByAttempt.has(call.attemptId)) callsByAttempt.set(call.attemptId, []);
+      callsByAttempt.get(call.attemptId)!.push(call);
+    }
 
-        return { session, attempts: calls };
-      })
-    );
+    const allAttempts = sessions.map((session) => {
+      const sessionAttempts = allAttemptsFlat.filter((a) => a.assessmentSessionId === session.id);
+      const calls = sessionAttempts.map((a) => ({
+        attempt: a,
+        calls: callsByAttempt.get(a.id) ?? [],
+      }));
+      return { session, attempts: calls };
+    });
 
     // Calculate profiles
     const profiles: Record<string, AIProfile> = {};

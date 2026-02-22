@@ -147,7 +147,7 @@ export function LeaderboardScreen() {
     fetchChallengeLeaderboard(id);
   };
 
-  if (loading && !user) {
+  if (loading) {
     return (
       <View style={[styles.center, { backgroundColor: c.bg }]}>
         <ActivityIndicator size="large" color={c.accent} />

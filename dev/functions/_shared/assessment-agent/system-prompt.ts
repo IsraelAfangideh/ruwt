@@ -1,8 +1,13 @@
 /**
- * Build the system prompt for the Assessment Builder AI agent.
+ * Build the system prompt and native tools for the Assessment Builder AI agent.
  * The agent helps hiring managers create assessments by analyzing job descriptions,
  * recommending challenges, setting weights, and generating custom challenges.
+ *
+ * Tools are defined as Cloudflare Workers AI native function calling format
+ * (passed in the API request body, not embedded in the prompt).
  */
+
+import type { ToolDefinition } from '../ai-stream';
 
 interface CatalogEntry {
   id: string;
@@ -30,6 +35,163 @@ interface CustomChallengeEntry {
   difficulty: string;
   category: string;
   status: string;
+}
+
+/**
+ * Returns the 8 tools the assessment agent can use, in Cloudflare native format.
+ */
+export function getAssessmentAgentTools(): ToolDefinition[] {
+  return [
+    {
+      name: 'search_challenges',
+      description: 'Search the challenge catalog by criteria. Returns matching challenges.',
+      parameters: {
+        type: 'object',
+        properties: {
+          query: { type: 'string', description: 'Free-text search query' },
+          category: { type: 'string', description: 'Filter by category (e.g. model_selection, prompt_efficiency, iterative_debugging, backend_api, frontend, data_engineering, devops)' },
+          difficulty: { type: 'string', description: 'Filter by difficulty: easy, medium, or hard' },
+          language: { type: 'string', description: 'Filter by language: javascript, typescript, or python' },
+        },
+        required: [],
+      },
+    },
+    {
+      name: 'select_challenges',
+      description: 'Add challenges to the current assessment by their IDs.',
+      parameters: {
+        type: 'object',
+        properties: {
+          challengeIds: {
+            type: 'array',
+            items: { type: 'string' },
+            description: 'Array of challenge IDs to add',
+          },
+        },
+        required: ['challengeIds'],
+      },
+    },
+    {
+      name: 'remove_challenges',
+      description: 'Remove challenges from the current assessment by their IDs.',
+      parameters: {
+        type: 'object',
+        properties: {
+          challengeIds: {
+            type: 'array',
+            items: { type: 'string' },
+            description: 'Array of challenge IDs to remove',
+          },
+        },
+        required: ['challengeIds'],
+      },
+    },
+    {
+      name: 'set_weights',
+      description: 'Set the scoring dimension weights for the assessment. Values must sum to 100.',
+      parameters: {
+        type: 'object',
+        properties: {
+          modelSelection: { type: 'number', description: 'Weight for model selection dimension (0-100)' },
+          promptEfficiency: { type: 'number', description: 'Weight for prompt efficiency dimension (0-100)' },
+          debugging: { type: 'number', description: 'Weight for debugging dimension (0-100)' },
+          strategy: { type: 'number', description: 'Weight for strategy dimension (0-100)' },
+          speed: { type: 'number', description: 'Weight for speed dimension (0-100)' },
+        },
+        required: ['modelSelection', 'promptEfficiency', 'debugging', 'strategy', 'speed'],
+      },
+    },
+    {
+      name: 'set_time_limit',
+      description: 'Set the assessment time limit in minutes (5-240).',
+      parameters: {
+        type: 'object',
+        properties: {
+          minutes: { type: 'number', description: 'Time limit in minutes' },
+        },
+        required: ['minutes'],
+      },
+    },
+    {
+      name: 'set_branding',
+      description: 'Set assessment metadata: title, description, company name, welcome message.',
+      parameters: {
+        type: 'object',
+        properties: {
+          title: { type: 'string', description: 'Assessment title' },
+          description: { type: 'string', description: 'Assessment description' },
+          companyName: { type: 'string', description: 'Company name for branding' },
+          welcomeMessage: { type: 'string', description: 'Welcome message shown to candidates' },
+        },
+        required: [],
+      },
+    },
+    {
+      name: 'create_custom_challenge',
+      description: 'Generate a custom challenge. Saved as draft for hiring manager review before use.',
+      parameters: {
+        type: 'object',
+        properties: {
+          title: { type: 'string', description: 'Challenge title' },
+          description: { type: 'string', description: 'Full description in markdown (requirements, constraints, example I/O)' },
+          difficulty: { type: 'string', description: 'easy, medium, or hard' },
+          category: { type: 'string', description: 'practice, model_selection, prompt_efficiency, iterative_debugging, backend_api, frontend, data_engineering, or devops' },
+          skillTested: { type: 'string', description: 'One-line summary of the skill tested' },
+          language: { type: 'string', description: 'javascript, typescript, or python' },
+          starterCode: { type: 'string', description: 'Code template with TODOs for the candidate' },
+          testCases: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                input: { type: 'string' },
+                expectedOutput: { type: 'string' },
+              },
+            },
+            description: 'Visible test cases',
+          },
+          hiddenTestCases: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                input: { type: 'string' },
+                expectedOutput: { type: 'string' },
+              },
+            },
+            description: 'Hidden test cases (edge cases)',
+          },
+          testHarness: { type: 'string', description: 'Code that wraps the solution, runs tests, prints PASS/FAIL per case' },
+          tags: { type: 'array', items: { type: 'string' }, description: 'Tags for categorization' },
+        },
+        required: ['title', 'description', 'difficulty', 'category', 'language', 'starterCode', 'testCases', 'testHarness'],
+      },
+    },
+    {
+      name: 'set_pass_threshold',
+      description: 'Configure automatic pass/fail grading thresholds.',
+      parameters: {
+        type: 'object',
+        properties: {
+          enabled: { type: 'boolean', description: 'Enable auto-grading' },
+          mode: { type: 'string', description: 'all_dimensions or weighted_average' },
+          minOverall: { type: 'number', description: 'Minimum overall weighted average (0-100)' },
+          dimensions: {
+            type: 'object',
+            properties: {
+              modelSelection: { type: 'number' },
+              promptEfficiency: { type: 'number' },
+              debugging: { type: 'number' },
+              strategy: { type: 'number' },
+              speed: { type: 'number' },
+            },
+            description: 'Per-dimension minimum scores (0-100)',
+          },
+        },
+        required: ['enabled', 'mode'],
+      },
+    },
+  ];
 }
 
 export function buildAssessmentAgentPrompt(params: {
@@ -65,69 +227,7 @@ export function buildAssessmentAgentPrompt(params: {
 
 Ruwt is unique: it measures HOW candidates use AI tools, not just whether they get the right answer. Assessments track model selection strategy, prompt efficiency, debugging approach, cost management, and speed.
 
-## Your Capabilities
-
-1. Analyze job descriptions to recommend the right challenges
-2. Suggest optimal score weights based on role type and seniority
-3. Search and filter the challenge catalog
-4. Generate custom domain-specific challenges with working test cases
-5. Set appropriate time limits
-6. Write assessment descriptions and welcome messages
-7. Configure pass/fail thresholds
-
-## Available Tools
-
-To take actions, output a tool call block in this exact format:
-
-<tool_call>
-{"tool": "tool_name", "params": { ... }}
-</tool_call>
-
-You may include multiple tool calls in a single response. Always explain your reasoning BEFORE making tool calls.
-
-### search_challenges
-Search the challenge catalog by criteria. Returns matching challenges.
-Params: { "query": "string", "category": "string?", "difficulty": "string?", "language": "string?" }
-
-### select_challenges
-Add challenges to the current assessment. Pass an array of challenge IDs.
-Params: { "challengeIds": ["id1", "id2"] }
-
-### remove_challenges
-Remove challenges from the current assessment.
-Params: { "challengeIds": ["id1", "id2"] }
-
-### set_weights
-Set the scoring dimension weights (must sum to 100).
-Params: { "modelSelection": 20, "promptEfficiency": 20, "debugging": 20, "strategy": 20, "speed": 20 }
-
-### set_time_limit
-Set the assessment time limit.
-Params: { "minutes": 60 }
-
-### set_branding
-Set assessment metadata fields.
-Params: { "title": "string?", "description": "string?", "companyName": "string?", "welcomeMessage": "string?" }
-
-### create_custom_challenge
-Generate a custom challenge. It will be saved as a draft for the hiring manager to review.
-Params: {
-  "title": "string",
-  "description": "string (markdown, include requirements, constraints, example I/O)",
-  "difficulty": "easy | medium | hard",
-  "category": "practice | model_selection | prompt_efficiency | iterative_debugging | backend_api | frontend | data_engineering | devops",
-  "skillTested": "string (1-line summary)",
-  "language": "javascript | typescript | python",
-  "starterCode": "string (code template with TODOs for the candidate to fill in)",
-  "testCases": [{"input": "string", "expectedOutput": "string"}],
-  "hiddenTestCases": [{"input": "string", "expectedOutput": "string"}],
-  "testHarness": "string (code that wraps the candidate's solution + runs test cases, outputs PASS/FAIL per case)",
-  "tags": ["string"]
-}
-
-### set_pass_threshold
-Configure automatic pass/fail grading.
-Params: { "enabled": true, "mode": "all_dimensions | weighted_average", "dimensions": { "modelSelection": 50, "promptEfficiency": 50, "debugging": 50, "strategy": 50, "speed": 50 }, "minOverall": 60 }
+You have tools available to search challenges, select/remove challenges, set weights, set time limits, set branding, create custom challenges, and configure pass/fail thresholds. Use them to take actions. Always explain your reasoning before calling tools.
 
 ## Challenge Catalog (${catalogLines.length} challenges)
 

@@ -157,7 +157,7 @@ export function AssessmentListScreen() {
     setDuplicating(null);
   };
 
-  if (loading && !user) {
+  if (loading) {
     return (
       <View style={[styles.center, { backgroundColor: c.bg }]}>
         <ActivityIndicator size="large" color={c.accent} />

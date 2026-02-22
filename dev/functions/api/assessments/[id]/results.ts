@@ -3,7 +3,7 @@
  * List all candidate session results for an assessment.
  * Auth required (must be creator).
  */
-import { eq, and, desc } from 'drizzle-orm';
+import { eq, and, desc, sql } from 'drizzle-orm';
 import { getDb } from '../../../_shared/db';
 import { getUser } from '../../../_shared/auth';
 import { canViewResults } from '../../../_shared/org';
@@ -51,65 +51,84 @@ export async function onRequestGet(context: { request: Request; env: Env; params
       .where(eq(assessmentSessions.assessmentId, context.params.id))
       .orderBy(desc(assessmentSessions.startedAt));
 
-    // For each session, get per-challenge attempt results with AI analytics
-    const results = await Promise.all(
-      sessions.map(async ({ session, user: candidate }) => {
-        const sessionAttempts = await db
-          .select()
-          .from(attempts)
-          .where(eq(attempts.assessmentSessionId, session.id));
+    const sessionIds = sessions.map((s) => s.session.id);
 
-        const challengesPassed = sessionAttempts.filter((a) => a.status === 'passed').length;
+    // Bulk fetch all attempts and AI calls in 2 queries instead of N*M queries
+    const [allAttempts, allCalls] = sessionIds.length > 0
+      ? await Promise.all([
+          db.select().from(attempts).where(
+            sql`${attempts.assessmentSessionId} IN (${sql.join(sessionIds.map((id) => sql`${id}`), sql`, `)})`
+          ),
+          db.select().from(aiCalls).where(
+            sql`${aiCalls.attemptId} IN (
+              SELECT ${attempts.id} FROM ${attempts}
+              WHERE ${attempts.assessmentSessionId} IN (${sql.join(sessionIds.map((id) => sql`${id}`), sql`, `)})
+            )`
+          ),
+        ])
+      : [[], []];
 
-        // Aggregate AI calls by model for each attempt
-        const attemptDetails = await Promise.all(
-          sessionAttempts.map(async (a) => {
-            const calls = await db
-              .select()
-              .from(aiCalls)
-              .where(eq(aiCalls.attemptId, a.id));
+    // Index AI calls by attemptId for O(1) lookup
+    const callsByAttempt = new Map<string, typeof allCalls>();
+    for (const call of allCalls) {
+      if (!callsByAttempt.has(call.attemptId)) callsByAttempt.set(call.attemptId, []);
+      callsByAttempt.get(call.attemptId)!.push(call);
+    }
 
-            const modelUsage: Record<string, { calls: number; cost: number; tokens: number }> = {};
-            for (const call of calls) {
-              if (!modelUsage[call.model]) {
-                modelUsage[call.model] = { calls: 0, cost: 0, tokens: 0 };
-              }
-              modelUsage[call.model].calls++;
-              modelUsage[call.model].cost += call.cost;
-              modelUsage[call.model].tokens += call.inputTokens + call.outputTokens;
-            }
+    // Index attempts by sessionId
+    const attemptsBySession = new Map<string, typeof allAttempts>();
+    for (const a of allAttempts) {
+      const sid = a.assessmentSessionId!;
+      if (!attemptsBySession.has(sid)) attemptsBySession.set(sid, []);
+      attemptsBySession.get(sid)!.push(a);
+    }
 
-            return {
-              attemptId: a.id,
-              challengeId: a.challengeId,
-              status: a.status,
-              totalCost: a.totalCost,
-              inputTokens: a.inputTokens,
-              outputTokens: a.outputTokens,
-              passedTests: a.passedTests,
-              totalTests: a.totalTests,
-              modelUsage,
-            };
-          })
-        );
+    // Build results using in-memory lookups (zero additional queries)
+    const results = sessions.map(({ session, user: candidate }) => {
+      const sessionAttempts = attemptsBySession.get(session.id) ?? [];
+      const challengesPassed = sessionAttempts.filter((a) => a.status === 'passed').length;
+
+      const attemptDetails = sessionAttempts.map((a) => {
+        const calls = callsByAttempt.get(a.id) ?? [];
+        const modelUsage: Record<string, { calls: number; cost: number; tokens: number }> = {};
+        for (const call of calls) {
+          if (!modelUsage[call.model]) {
+            modelUsage[call.model] = { calls: 0, cost: 0, tokens: 0 };
+          }
+          modelUsage[call.model].calls++;
+          modelUsage[call.model].cost += call.cost;
+          modelUsage[call.model].tokens += call.inputTokens + call.outputTokens;
+        }
 
         return {
-          session: {
-            id: session.id,
-            status: session.status,
-            totalCost: session.totalCost,
-            totalTokens: session.totalTokens,
-            startedAt: session.startedAt,
-            completedAt: session.completedAt,
-            shareToken: session.shareToken,
-          },
-          candidate,
-          challengesPassed,
-          totalChallenges,
-          attempts: attemptDetails,
+          attemptId: a.id,
+          challengeId: a.challengeId,
+          status: a.status,
+          totalCost: a.totalCost,
+          inputTokens: a.inputTokens,
+          outputTokens: a.outputTokens,
+          passedTests: a.passedTests,
+          totalTests: a.totalTests,
+          modelUsage,
         };
-      })
-    );
+      });
+
+      return {
+        session: {
+          id: session.id,
+          status: session.status,
+          totalCost: session.totalCost,
+          totalTokens: session.totalTokens,
+          startedAt: session.startedAt,
+          completedAt: session.completedAt,
+          shareToken: session.shareToken,
+        },
+        candidate,
+        challengesPassed,
+        totalChallenges,
+        attempts: attemptDetails,
+      };
+    });
 
     return Response.json(results);
   } catch (error) {

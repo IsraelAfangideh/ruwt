@@ -87,22 +87,36 @@ export async function onRequestGet(context: { request: Request; env: Env }) {
       .where(or(...conditions))
       .orderBy(desc(assessments.createdAt));
 
-    // For each assessment, get challenge count + invite/completion stats
-    const results = await Promise.all(
-      list.map(async (a) => {
-        const [challengeLinks, invites, completions] = await Promise.all([
-          db.select().from(assessmentChallenges).where(eq(assessmentChallenges.assessmentId, a.id)),
-          db.select({ count: sql<number>`count(*)` }).from(assessmentInvites).where(eq(assessmentInvites.assessmentId, a.id)),
-          db.select({ count: sql<number>`count(*)` }).from(assessmentSessions).where(and(eq(assessmentSessions.assessmentId, a.id), eq(assessmentSessions.status, 'completed'))),
-        ]);
-        return {
-          ...a,
-          challengeCount: challengeLinks.length,
-          inviteCount: invites[0]?.count ?? 0,
-          completionCount: completions[0]?.count ?? 0,
-        };
-      })
-    );
+    if (list.length === 0) return Response.json([]);
+
+    // Bulk fetch all stats in 3 queries instead of 3N queries
+    const ids = list.map((a) => a.id);
+    const [challengeCounts, inviteCounts, completionCounts] = await Promise.all([
+      db.select({ assessmentId: assessmentChallenges.assessmentId, count: sql<number>`count(*)` })
+        .from(assessmentChallenges)
+        .where(inArray(assessmentChallenges.assessmentId, ids))
+        .groupBy(assessmentChallenges.assessmentId),
+      db.select({ assessmentId: assessmentInvites.assessmentId, count: sql<number>`count(*)` })
+        .from(assessmentInvites)
+        .where(inArray(assessmentInvites.assessmentId, ids))
+        .groupBy(assessmentInvites.assessmentId),
+      db.select({ assessmentId: assessmentSessions.assessmentId, count: sql<number>`count(*)` })
+        .from(assessmentSessions)
+        .where(and(inArray(assessmentSessions.assessmentId, ids), eq(assessmentSessions.status, 'completed')))
+        .groupBy(assessmentSessions.assessmentId),
+    ]);
+
+    // Index by assessment ID for O(1) lookup
+    const challengeMap = Object.fromEntries(challengeCounts.map((r) => [r.assessmentId, r.count]));
+    const inviteMap = Object.fromEntries(inviteCounts.map((r) => [r.assessmentId, r.count]));
+    const completionMap = Object.fromEntries(completionCounts.map((r) => [r.assessmentId, r.count]));
+
+    const results = list.map((a) => ({
+      ...a,
+      challengeCount: challengeMap[a.id] ?? 0,
+      inviteCount: inviteMap[a.id] ?? 0,
+      completionCount: completionMap[a.id] ?? 0,
+    }));
 
     return Response.json(results);
   } catch (error) {

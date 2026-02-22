@@ -41,9 +41,20 @@ Rules:
 - Pay special attention to special syntax: regex patterns (especially lookbehinds like (?<=), lookaheads like (?=)), template literals, escape sequences, unicode. Copy these EXACTLY character-for-character.
 - Do NOT paraphrase, simplify, or "improve" any code. Your job is to merge, not to edit.
 - Preserve ALL existing code that wasn't changed: function signatures, exports, imports, comments.
-- Output ONLY the complete raw file content. No markdown fences, no backticks, no explanation.
-- Start with the very first line of the file. End with the very last line.
-- If the update contains no clear code changes, output the original file unchanged.`;
+- If the update contains no clear code changes, output the original file unchanged.
+- Output a JSON object with a single key "mergedCode" containing the complete merged file content as a string.`;
+
+// JSON schema for structured output
+const APPLY_RESPONSE_FORMAT = {
+  type: 'json_schema' as const,
+  json_schema: {
+    type: 'object',
+    properties: {
+      mergedCode: { type: 'string', description: 'The complete merged file content' },
+    },
+    required: ['mergedCode'],
+  },
+};
 
 // ---------------------------------------------------------------------------
 // Verification — Layer 3: detect corruption before returning to client
@@ -352,6 +363,7 @@ export async function onRequestPost(context: {
               messages,
               max_tokens: 8192,
               temperature: 0.0,
+              response_format: APPLY_RESPONSE_FORMAT,
             }),
           }
         );
@@ -387,7 +399,19 @@ export async function onRequestPost(context: {
           return Response.json({ error: 'Apply model returned empty result' }, { status: 502 });
         }
 
-        mergedCode = stripFences(content);
+        // Try JSON parse first (response_format should produce valid JSON)
+        try {
+          const parsed = JSON.parse(content);
+          if (typeof parsed.mergedCode === 'string' && parsed.mergedCode.trim().length > 0) {
+            mergedCode = parsed.mergedCode;
+          } else {
+            // JSON parsed but no mergedCode field — fall back to fence stripping
+            mergedCode = stripFences(content);
+          }
+        } catch {
+          // JSON mode not respected — fall back to fence stripping
+          mergedCode = stripFences(content);
+        }
         usedModel = modelId;
 
         // Estimate tokens

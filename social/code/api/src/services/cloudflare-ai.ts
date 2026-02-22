@@ -79,13 +79,17 @@ function buildHeaders(): Record<string, string> {
  */
 export async function callCloudflareAI(
   model: string,
-  messages: CloudflareAIMessage[]
+  messages: CloudflareAIMessage[],
+  options?: { response_format?: Record<string, unknown> }
 ): Promise<string> {
   const url = buildUrl(model);
   const res = await fetch(url, {
     method: 'POST',
     headers: buildHeaders(),
-    body: JSON.stringify({ messages }),
+    body: JSON.stringify({
+      messages,
+      ...(options?.response_format && { response_format: options.response_format }),
+    }),
   });
 
   if (!res.ok) {

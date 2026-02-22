@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo, useCallback } from 'react';
+import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { View, Text, ActivityIndicator, StyleSheet, Pressable, TextInput, ScrollView } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { createClient } from '@/lib/supabase/client';
@@ -84,6 +84,8 @@ export function ChallengesScreen() {
   const [sortBy, setSortBy] = useState<SortOption>('default');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [showSortMenu, setShowSortMenu] = useState(false);
+  const [sortMenuPos, setSortMenuPos] = useState<{ top: number; right: number } | null>(null);
+  const sortBtnRef = useRef<any>(null);
   const [statusFilter, setStatusFilter] = useState<'all' | 'solved' | 'in_progress' | 'not_started'>('all');
   const supabase = createClient();
   const c = useColors();
@@ -336,9 +338,21 @@ export function ChallengesScreen() {
           </View>
 
           {/* Sort dropdown */}
-          <View style={styles.sortWrapper}>
+          <View style={styles.sortWrapper} ref={sortBtnRef}>
             <Pressable
-              onPress={() => setShowSortMenu(!showSortMenu)}
+              onPress={() => {
+                if (showSortMenu) {
+                  setShowSortMenu(false);
+                  return;
+                }
+                // Measure button position to place fixed menu
+                const node = sortBtnRef.current as any;
+                if (node && node.getBoundingClientRect) {
+                  const rect = node.getBoundingClientRect();
+                  setSortMenuPos({ top: rect.bottom + 4, right: window.innerWidth - rect.right });
+                }
+                setShowSortMenu(true);
+              }}
               style={[styles.sortButton, { backgroundColor: c.muted, borderColor: c.border }]}
             >
               <Text style={[styles.sortButtonText, { color: c.text }]}>
@@ -347,36 +361,6 @@ export function ChallengesScreen() {
               </Text>
               <Text style={{ color: c.textMuted, fontSize: 10 }}>{'\u25BC'}</Text>
             </Pressable>
-            {showSortMenu && (
-              <>
-                <Pressable style={styles.sortBackdrop} onPress={() => setShowSortMenu(false)} />
-                <View style={[styles.sortMenu, { backgroundColor: c.card, borderColor: c.border }]}>
-                  {SORT_OPTIONS.map((opt) => (
-                    <Pressable
-                      key={opt.key}
-                      onPress={() => {
-                        if (sortBy === opt.key && opt.key !== 'default') {
-                          setSortDirection((prev) => prev === 'asc' ? 'desc' : 'asc');
-                        } else {
-                          setSortBy(opt.key);
-                          setSortDirection('asc');
-                        }
-                        setShowSortMenu(false);
-                      }}
-                      style={[
-                        styles.sortMenuItem,
-                        sortBy === opt.key && { backgroundColor: c.accentBg },
-                      ]}
-                    >
-                      <Text style={[styles.sortMenuText, { color: sortBy === opt.key ? c.accent : c.text }]}>
-                        {opt.label}
-                        {sortBy === opt.key && opt.key !== 'default' ? (sortDirection === 'asc' ? ' \u2191' : ' \u2193') : ''}
-                      </Text>
-                    </Pressable>
-                  ))}
-                </View>
-              </>
-            )}
           </View>
         </View>
 
@@ -544,6 +528,39 @@ export function ChallengesScreen() {
           <Text style={styles.backToTopText}>{'\u2191'} Back to top</Text>
         </Pressable>
       )}
+
+      {/* Sort menu — rendered outside filter bar as fixed overlay to escape stacking context */}
+      {showSortMenu && sortMenuPos && (
+        <>
+          <Pressable style={styles.sortBackdrop} onPress={() => setShowSortMenu(false)} />
+          {/* @ts-ignore web-only fixed positioning */}
+          <View style={[styles.sortMenu, { backgroundColor: c.card, borderColor: c.border, top: sortMenuPos.top, right: sortMenuPos.right }]}>
+            {SORT_OPTIONS.map((opt) => (
+              <Pressable
+                key={opt.key}
+                onPress={() => {
+                  if (sortBy === opt.key && opt.key !== 'default') {
+                    setSortDirection((prev) => prev === 'asc' ? 'desc' : 'asc');
+                  } else {
+                    setSortBy(opt.key);
+                    setSortDirection('asc');
+                  }
+                  setShowSortMenu(false);
+                }}
+                style={[
+                  styles.sortMenuItem,
+                  sortBy === opt.key && { backgroundColor: c.accentBg },
+                ]}
+              >
+                <Text style={[styles.sortMenuText, { color: sortBy === opt.key ? c.accent : c.text }]}>
+                  {opt.label}
+                  {sortBy === opt.key && opt.key !== 'default' ? (sortDirection === 'asc' ? ' \u2191' : ' \u2193') : ''}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+        </>
+      )}
     </DashboardLayout>
   );
 }
@@ -615,7 +632,7 @@ const styles = StyleSheet.create({
   clearBtn: { padding: spacing.xs },
 
   // Sort
-  sortWrapper: { position: 'relative', zIndex: 50 },
+  sortWrapper: { position: 'relative' },
   sortButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -627,13 +644,12 @@ const styles = StyleSheet.create({
   },
   sortButtonText: { fontSize: fontSizes.sm, fontWeight: '600', fontFamily: fontFamily.body },
   sortMenu: {
-    position: 'absolute',
-    top: 42,
-    right: 0,
+    // @ts-ignore web-only fixed positioning
+    position: 'fixed' as any,
     borderWidth: 1,
     borderRadius: radii.md,
     minWidth: 160,
-    zIndex: 50,
+    zIndex: 9999,
     // @ts-ignore web-only shadow
     boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
   },

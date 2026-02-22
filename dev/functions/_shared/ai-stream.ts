@@ -99,11 +99,24 @@ const DEFAULT_FALLBACK_CHAIN = [
   '@cf/meta/llama-3.2-1b-instruct',
 ];
 
+export interface ToolDefinition {
+  name: string;
+  description: string;
+  parameters: Record<string, unknown>;
+}
+
+export interface StreamOptions {
+  maxTokens?: number;
+  temperature?: number;
+  tools?: ToolDefinition[];
+  response_format?: Record<string, unknown>;
+}
+
 export async function* streamCloudflareAI(
   env: Env,
   modelId: string,
   messages: Message[],
-  options?: { maxTokens?: number; temperature?: number }
+  options?: StreamOptions
 ): AsyncGenerator<StreamChunk, { inputTokens: number; outputTokens: number }> {
   const accountId = env.CLOUDFLARE_ACCOUNT_ID;
   const apiToken = env.CLOUDFLARE_API_TOKEN;
@@ -124,6 +137,8 @@ export async function* streamCloudflareAI(
         max_tokens: options?.maxTokens ?? 2048,
         temperature: options?.temperature ?? 0.7,
         stream: true,
+        ...(options?.tools?.length && { tools: options.tools }),
+        ...(options?.response_format && { response_format: options.response_format }),
       }),
     }
   );
@@ -200,7 +215,7 @@ export async function* streamCloudflareAIWithFallback(
   env: Env,
   requestedModel: string,
   messages: Message[],
-  options?: { maxTokens?: number; temperature?: number },
+  options?: StreamOptions,
   fallbackChain?: string[]
 ): AsyncGenerator<StreamChunk, { inputTokens: number; outputTokens: number; model: string }> {
   // Build tier-aware fallback chain: only fall to same tier or lower
@@ -230,6 +245,8 @@ export async function* streamCloudflareAIWithFallback(
           max_tokens: options?.maxTokens ?? 2048,
           temperature: options?.temperature ?? 0.7,
           stream: true,
+          ...(options?.tools?.length && { tools: options.tools }),
+          ...(options?.response_format && { response_format: options.response_format }),
         }),
       }
     );

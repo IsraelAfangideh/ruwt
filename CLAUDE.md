@@ -83,6 +83,96 @@ Be sure that when we add challenges some of them are non trivial for models to s
 - Cloudflare Pages deploys from CLI associate with the current git branch; custom domains serve `main` branch only. Use `--branch=main` when deploying manually from `develop`.
 - Supabase GoTrue caches auth config at startup. Updating config via Management API does NOT restart GoTrue — must pause/restore the project from the dashboard to pick up changes like `site_url`.
 
+## Google Sheets CRM
+
+- **Spreadsheet**: [Ruwt CRM](https://docs.google.com/spreadsheets/d/16O3N3C4zfopf50cf_vzQU-b3zWsvh_32aOZG3N1PbAU)
+- **Spreadsheet ID**: `16O3N3C4zfopf50cf_vzQU-b3zWsvh_32aOZG3N1PbAU`
+- **Sheet name**: `Prospects`
+- **Auth**: OAuth token at `~/.claude/google-sheets/token.json` (auto-refreshes, no browser login needed)
+- **Credentials**: `~/.claude/google-sheets/credentials.json` (OAuth client ID from Google Cloud project `ruwt-dev`)
+- **Required Python packages**: `google-auth-oauthlib`, `google-api-python-client`
+
+### How to read/write the CRM from Claude
+
+```python
+from google.oauth2.credentials import Credentials
+from googleapiclient.discovery import build
+import json
+
+with open('/Users/israelafangideh/.claude/google-sheets/token.json') as f:
+    token_data = json.load(f)
+
+creds = Credentials(
+    token=token_data['token'],
+    refresh_token=token_data['refresh_token'],
+    token_uri=token_data['token_uri'],
+    client_id=token_data['client_id'],
+    client_secret=token_data['client_secret'],
+    scopes=token_data['scopes']
+)
+
+service = build('sheets', 'v4', credentials=creds)
+SPREADSHEET_ID = '16O3N3C4zfopf50cf_vzQU-b3zWsvh_32aOZG3N1PbAU'
+
+# Read all rows:
+result = service.spreadsheets().values().get(
+    spreadsheetId=SPREADSHEET_ID, range='Prospects!A:V'
+).execute()
+rows = result.get('values', [])
+
+# Append a new prospect:
+service.spreadsheets().values().append(
+    spreadsheetId=SPREADSHEET_ID,
+    range='Prospects!A:V',
+    valueInputOption='RAW',
+    body={'values': [['Company','Name','Title','email@co.com','50','LinkedIn DM','LinkedIn','Contacted','2026-02-22','2026-02-22','2026-02-25','opener text','No','','','','','','','','','notes']]}
+).execute()
+
+# Update a specific cell (e.g., row 3 status):
+service.spreadsheets().values().update(
+    spreadsheetId=SPREADSHEET_ID,
+    range='Prospects!H3',
+    valueInputOption='RAW',
+    body={'values': [['Replied']]}
+).execute()
+```
+
+### CRM Column Layout (A–V)
+
+`Company | Contact Name | Title | Email | Engineers | Channel | Source | Status | First Contact | Last Contact | Follow-up Due | Opener Used | Replied | Demo Date | Subscribed Date | Plan | Assessments Run | Referral Asked | Referrals Given | Lost Reason | Re-approach | Notes`
+
+### Status values (dropdown, color-coded)
+
+`Identified` (gray) → `Contacted` (blue) → `Replied` (gold) → `Demo` (orange) → `Subscribed` (green) or `Lost` (red)
+
+### Channel values (dropdown)
+
+`Email`, `LinkedIn DM`, `Slack DM`, `Twitter DM`, `Text`, `Discord`, `In-person`
+
+### If token expires
+
+The refresh token should auto-renew. If you get a 401 error, re-run the OAuth flow:
+```bash
+python3 -c "
+from google_auth_oauthlib.flow import InstalledAppFlow
+import json
+flow = InstalledAppFlow.from_client_secrets_file(
+    '/Users/israelafangideh/.claude/google-sheets/credentials.json',
+    scopes=['https://www.googleapis.com/auth/spreadsheets', 'https://www.googleapis.com/auth/drive']
+)
+creds = flow.run_local_server(port=0)
+token_data = {
+    'token': creds.token, 'refresh_token': creds.refresh_token,
+    'token_uri': creds.token_uri, 'client_id': creds.client_id,
+    'client_secret': creds.client_secret, 'scopes': list(creds.scopes)
+}
+with open('/Users/israelafangideh/.claude/google-sheets/token.json', 'w') as f:
+    json.dump(token_data, f, indent=2)
+print('Token saved!')
+"
+```
+This opens the browser once — user approves — token is saved and auto-refreshes from then on.
+
 ## Knowledge Sharing
 
 When you discover something non-obvious (gotchas, architecture decisions, debug findings, deploy quirks), update this file or your auto-memory notes so future Claude instances benefit. Specifically:
