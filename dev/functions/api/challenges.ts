@@ -4,7 +4,7 @@
  * When authenticated, includes per-user progress (status + best cost).
  * Supports query params: ?language=python, ?tag=backend, ?category=qa_testing
  */
-import { sql, eq } from 'drizzle-orm';
+import { sql, eq, and, type SQL } from 'drizzle-orm';
 import { getDb } from '../_shared/db';
 import { getUser } from '../_shared/auth';
 import { challenges, attempts } from '../../drizzle/schema.d1';
@@ -24,6 +24,20 @@ export async function onRequestGet(context: { env: Env; request: Request }) {
       const user = await getUser(context.request, context.env);
       if (user) userId = user.id;
     } catch { /* not authenticated — no user progress */ }
+
+    // Build WHERE conditions — filter in SQL, not JS.
+    // Smaller payloads, faster queries, less work on the edge.
+    const conditions: SQL[] = [];
+    if (langFilter) {
+      conditions.push(sql`COALESCE(${challenges.language}, 'javascript') = ${langFilter}`);
+    }
+    if (catFilter) {
+      conditions.push(eq(challenges.category, catFilter));
+    }
+    if (tagFilter) {
+      conditions.push(sql`EXISTS (SELECT 1 FROM json_each(${challenges.tags}) WHERE value = ${tagFilter})`);
+    }
+
     const list = await db
       .select({
         id: challenges.id,
@@ -50,6 +64,7 @@ export async function onRequestGet(context: { env: Env; request: Request }) {
       })
       .from(challenges)
       .leftJoin(attempts, sql`${challenges.id} = ${attempts.challengeId}`)
+      .where(conditions.length ? and(...conditions) : undefined)
       .groupBy(challenges.id)
       .orderBy(challenges.sortOrder, challenges.createdAt);
 
@@ -82,33 +97,8 @@ export async function onRequestGet(context: { env: Env; request: Request }) {
       }
     }
 
-    let filtered = list;
-
-    // Filter by language
-    if (langFilter) {
-      filtered = filtered.filter((ch) => (ch.language || 'javascript') === langFilter);
-    }
-
-    // Filter by tag (check if tag appears in the JSON array)
-    if (tagFilter) {
-      filtered = filtered.filter((ch) => {
-        if (!ch.tags) return false;
-        try {
-          const tags: string[] = JSON.parse(ch.tags);
-          return tags.includes(tagFilter);
-        } catch {
-          return false;
-        }
-      });
-    }
-
-    // Filter by category
-    if (catFilter) {
-      filtered = filtered.filter((ch) => ch.category === catFilter);
-    }
-
     return Response.json(
-      filtered.map((ch) => {
+      list.map((ch) => {
         let hiddenTestCount = 0;
         if (ch.hiddenTestCases) {
           try { hiddenTestCount = JSON.parse(ch.hiddenTestCases).length; } catch {}

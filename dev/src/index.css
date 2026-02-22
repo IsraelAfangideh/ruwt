@@ -10,6 +10,12 @@ body {
   transition: background-color 0.2s ease, color 0.2s ease;
 }
 
+/* Skeleton loading pulse — static CSS, no runtime injection */
+@keyframes skeleton-pulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 1; }
+}
+
 /* Optional grain overlay for social aesthetic */
 .grain-overlay {
   position: fixed;

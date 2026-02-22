@@ -9,27 +9,8 @@ interface SkeletonProps {
   style?: ViewStyle;
 }
 
-/**
- * Inject the pulse keyframe animation once into the document head.
- * Safe to call multiple times; only creates the style tag once.
- */
-let injected = false;
-function injectKeyframes() {
-  if (injected || typeof document === 'undefined') return;
-  injected = true;
-  const style = document.createElement('style');
-  style.textContent = `
-    @keyframes skeleton-pulse {
-      0%, 100% { opacity: 0.4; }
-      50% { opacity: 1; }
-    }
-  `;
-  document.head.appendChild(style);
-}
-
 export function Skeleton({ width = '100%', height = 16, borderRadius = radii.md, style }: SkeletonProps) {
   const c = useColors();
-  injectKeyframes();
 
   return (
     <View
