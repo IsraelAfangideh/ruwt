@@ -1,65 +1,86 @@
 # Ruwt Marketing Constitution
 
-> This document defines Israel's core beliefs and worldview. All marketing content, posts, and outreach must align with these principles. If a post contradicts something here, don't publish it.
+This document defines Israel's core beliefs and worldview. All marketing content, posts, and outreach must align with these principles. If a post contradicts something here, don't publish it.
 
 ---
-
-We can be provocative without being negative. Challenging assumptions is not the same as fearmongering.
 
 We can be provocative and challenging without being negative. Asking hard questions is hopeful, not fearful.
 
 ## Core Beliefs
 
-<!-- What do you believe about software engineering, AI, and the future of work? -->
-<!-- Example: "AI doesn't replace developers — it changes what 'good' means." -->
-Understanding Algorithms and System design is still good. Fundamental computer science knowledge is still good. It just is not necessary to build MVPs of products when not at scale yet, and AI coding is an additional skill ontop of that
+Understanding Algorithms and System design is still good. Fundamental computer science knowledge is still good. It just is not necessary to build MVPs of products when not at scale yet, and AI coding is an additional skill on top of that.
 
+AI is a skill. Like any skill, people learn it best by practicing together, watching each other, and getting better over time — not by being scared into it.
 
+The best way to get good at using AI is to practice in a community of people who are also trying to get good at it. Leaderboards are for inspiration, not intimidation.
 
 ## What Ruwt Stands For
 
-<!-- What is the mission beyond making money? What change are you trying to make? -->
-Ruwt is for AI humanity
+Ruwt is for AI humanity.
 
+Our mission is to help people get better at using AI, get discovered for being good at it, and get hired because of it. We are a community where:
 
+- **People help each other get better at using AI.** Challenges, hints, replays, and shared strategies — not gatekeeping.
+- **People who are good at AI get discovered.** Profiles, replays, and leaderboards make skill visible to employers and peers.
+- **People get more jobs.** We connect developers who demonstrate real AI skill with companies that value it. Ruwt is a talent signal, not just a testing tool.
+- **People learn how to use AI through practice, not pressure.** Hints, progressive difficulty, and community replays teach the craft — not just measure it.
 
 ## What We're Against
 
-<!-- What trends, takes, or practices do you disagree with? What's broken? -->
-<!-- Example: "LeetCode-style interviews that test memorization, not real engineering skill." -->
-We're against using fear or outrage to drive marketing or attention
+We're against using fear or outrage to drive marketing or attention.
 
+We're against competitive framing that makes people feel bad about themselves. "Prove you're better than everyone" is zero-sum thinking — it attracts a small number of confident people and alienates everyone else. We don't want to be the platform that makes developers anxious. We want to be the platform that makes them better.
 
+We're against gatekeeping AI skills. The point is not to separate the "good" from the "bad" — it's to help everyone improve and to make skill visible to people who want to hire.
 
 ## Tone & Voice
 
-<!-- How should Ruwt sound? Pick 3-5 adjectives. -->
-<!-- Example: "Direct, technical, slightly irreverent. Never corporate. Never begging." -->
-Hopeful, Empathetic, Direct, Truthful, Honest
+Hopeful, Empathetic, Direct, Truthful, Honest, Invitational
 
-
+We sound like a friend who's good at something and wants to help you get good at it too. Not a drill sergeant. Not a hype machine. Not a gatekeeper.
 
 ## Lines We Won't Cross
 
-<!-- What will Ruwt never say or do in marketing? -->
-<!-- Example: "We don't shit on other platforms by name. We don't hype without substance." -->
-
-We don't trash other platforms. We don't exaggerate. We don't use countdown timers or fake scarcity
+- We don't trash other platforms. We don't exaggerate. We don't use countdown timers or fake scarcity.
+- We don't use fear-based messaging. No "you'll be left behind," no "AI is coming for your job," no "prove you're not replaceable."
+- We don't frame skill as a zero-sum competition. Leaderboards exist to inspire and to surface talent — not to make people feel inadequate.
+- We don't gatekeep. Hints, replays, and learning resources are part of the product, not locked behind a paywall of shame.
 
 ## Target Audience (in your words)
 
-<!-- Who are you building for? Describe them like you'd describe a friend. -->
-Developers, Founders who want to hire, People who want to learn how to vibe code
-
+- **Developers who want to get better at AI** — they're curious, they're practicing, they want to improve and be recognized for it.
+- **Developers who want to be discovered** — they're skilled, they want their ability to be visible to employers without relying solely on resumes and networking.
+- **Founders and hiring managers** — they want to find developers who are genuinely good at using AI, and they want signal they can trust.
+- **People learning to vibe code** — they're new to AI-assisted development and want a supportive place to practice with hints and community.
 
 ## Key Phrases / Language
 
-<!-- Words and phrases that feel like Ruwt. Words we'd never use. -->
-<!-- Example: USE: "efficiency", "real-world", "prove it". NEVER: "revolutionize", "disrupt", "game-changer" -->
-Never use this character: > when typing written posts, because then I have to remove it before copying and pasting the message as a post. 
+Never use this character: > when typing written posts, because then I have to remove it before copying and pasting the message as a post.
 
-USE: 'come play', 'come see where you rank', 'cheapest correct solution wins'
+USE: 'come practice', 'come play', 'see where you stand', 'get discovered', 'get better together', 'learn by doing', 'your skills, visible', 'cheapest correct solution wins'
+
+RETIRE: 'prove you're better than anyone', 'beat', 'compete against' (when framed as adversarial)
+
+NEVER: 'you'll be left behind', 'prove you're not replaceable', 'don't get left out', 'revolutionize', 'disrupt', 'game-changer'
 
 ---
 
-*Last updated: 2026-02-18*
+## Brand Evolution Note (2026-02-22)
+
+We are deliberately moving away from competitive, fear-adjacent positioning ("Prove You Can Use AI Better Than Anyone") toward community-focused positioning. The old framing:
+- Appeals to a narrow audience that's already confident
+- Creates anxiety in the much larger audience that's still learning
+- Invites backlash ("who are you to judge?")
+- Doesn't reflect what we actually believe
+
+The new framing centers on:
+- **Community** — people helping each other improve
+- **Discoverability** — making AI skill visible to employers
+- **Jobs** — connecting skilled developers with companies
+- **Learning** — hints, replays, and progressive challenges that teach
+
+This is not a soft pivot. Leaderboards, cost efficiency, and real challenges stay. We're changing the *why*, not the *what*. The product still measures real skill. The difference is we frame it as "get better and get noticed" instead of "prove you're the best."
+
+---
+
+*Last updated: 2026-02-22*
