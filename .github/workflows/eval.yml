@@ -30,6 +30,9 @@ jobs:
 
       - name: AI model availability check
         id: models
+        env:
+          CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CF_AI_TOKEN: ${{ secrets.CLOUDFLARE_WORKERS_AI_TOKEN }}
         run: |
           echo "=== AI Model Availability ==="
           MODELS=(
@@ -41,13 +44,14 @@ jobs:
           FAILED_MODELS=""
           TOTAL=0
           PASSED=0
+          NL=$'\n'
 
           for MODEL in "${MODELS[@]}"; do
             TOTAL=$((TOTAL+1))
             echo "Testing $MODEL..."
             HTTP=$(curl -s -o /tmp/ai_resp.json -w '%{http_code}' --max-time 30 \
-              -X POST "https://api.cloudflare.com/client/v4/accounts/${{ secrets.CLOUDFLARE_ACCOUNT_ID }}/ai/run/${MODEL}" \
-              -H "Authorization: Bearer ${{ secrets.CLOUDFLARE_WORKERS_AI_TOKEN }}" \
+              -X POST "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/ai/run/${MODEL}" \
+              -H "Authorization: Bearer ${CF_AI_TOKEN}" \
               -H "Content-Type: application/json" \
               -d '{"messages":[{"role":"user","content":"Respond with exactly: HEALTH_OK"}],"max_tokens":5}')
 
@@ -55,9 +59,21 @@ jobs:
               echo "  OK: $MODEL"
               PASSED=$((PASSED+1))
             else
-              BODY=$(cat /tmp/ai_resp.json 2>/dev/null | head -c 200)
+              BODY=$(python3 -c "
+          import json, sys
+          try:
+              with open('/tmp/ai_resp.json') as f:
+                  d = json.load(f)
+              errors = d.get('errors', [])
+              if errors:
+                  print(errors[0].get('message', '')[:200])
+              else:
+                  print(json.dumps(d)[:200])
+          except Exception:
+              print('(no response body)')
+          " 2>/dev/null || echo "(no response body)")
               echo "  FAIL: $MODEL -> HTTP $HTTP ($BODY)"
-              FAILED_MODELS="${FAILED_MODELS}\n- $MODEL (HTTP $HTTP)"
+              FAILED_MODELS="${FAILED_MODELS}- ${MODEL} (HTTP ${HTTP})${NL}"
             fi
           done
 
@@ -68,8 +84,7 @@ jobs:
           echo "models_total=$TOTAL" >> $GITHUB_OUTPUT
           # Use a delimiter for multiline output
           echo "failed_models<<GHEOF" >> $GITHUB_OUTPUT
-          printf "$FAILED_MODELS" >> $GITHUB_OUTPUT
-          echo "" >> $GITHUB_OUTPUT
+          echo "$FAILED_MODELS" >> $GITHUB_OUTPUT
           echo "GHEOF" >> $GITHUB_OUTPUT
 
       - name: Piston code execution check
@@ -111,6 +126,11 @@ jobs:
 
       - name: Send eval report
         if: always()
+        env:
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          ALERT_EMAIL: ${{ secrets.ERROR_ALERT_EMAIL }}
+          GH_REPO: ${{ github.repository }}
+          GH_RUN_ID: ${{ github.run_id }}
         run: |
           HEALTH="${{ steps.health.outputs.health_status }}"
           MODELS_PASSED="${{ steps.models.outputs.models_passed }}"
@@ -133,38 +153,34 @@ jobs:
             PISTON_STATUS="FAIL"
           fi
 
-          SUBJECT="[ruwt.dev EVAL] [$TAG] $OVERALL — ${MODELS_PASSED}/${MODELS_TOTAL} models, health: $HEALTH"
+          SUBJECT="[ruwt.dev EVAL] [${TAG}] ${OVERALL} — ${MODELS_PASSED}/${MODELS_TOTAL} models, health: ${HEALTH}"
 
-          python3 -c "
-          import json
+          FAILED_SECTION=""
+          if [ -n "$FAILED_MODELS" ]; then
+            FAILED_SECTION="<h3>Failed Models</h3><pre>${FAILED_MODELS}</pre>"
+          fi
 
-          failed_models = '''$FAILED_MODELS'''.strip()
-          failed_section = ''
-          if failed_models:
-              failed_section = '<h3>Failed Models</h3><pre>' + failed_models + '</pre>'
-
-          html = '''<h2>Nightly Eval Report</h2>
-          <table style=\"border-collapse:collapse;font-family:monospace;\">
-            <tr><td style=\"padding:4px 12px;border:1px solid #ddd;\">System Health</td><td style=\"padding:4px 12px;border:1px solid #ddd;\"><strong>$HEALTH</strong></td></tr>
+          TABLE="<table style=\"border-collapse:collapse;font-family:monospace;\">
+            <tr><td style=\"padding:4px 12px;border:1px solid #ddd;\">System Health</td><td style=\"padding:4px 12px;border:1px solid #ddd;\"><strong>${HEALTH}</strong></td></tr>
             <tr><td style=\"padding:4px 12px;border:1px solid #ddd;\">AI Models</td><td style=\"padding:4px 12px;border:1px solid #ddd;\"><strong>${MODELS_PASSED}/${MODELS_TOTAL}</strong> available</td></tr>
-            <tr><td style=\"padding:4px 12px;border:1px solid #ddd;\">Piston Execution</td><td style=\"padding:4px 12px;border:1px solid #ddd;\"><strong>''' + '$PISTON_STATUS' + '''</strong></td></tr>
-            <tr><td style=\"padding:4px 12px;border:1px solid #ddd;\">Challenges</td><td style=\"padding:4px 12px;border:1px solid #ddd;\"><strong>$CHALLENGES</strong> loaded</td></tr>
-          </table>''' + failed_section + '''<p style=\"margin-top:16px;\"><a href=\"https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}\">View full logs</a></p>'''
+            <tr><td style=\"padding:4px 12px;border:1px solid #ddd;\">Piston Execution</td><td style=\"padding:4px 12px;border:1px solid #ddd;\"><strong>${PISTON_STATUS}</strong></td></tr>
+            <tr><td style=\"padding:4px 12px;border:1px solid #ddd;\">Challenges</td><td style=\"padding:4px 12px;border:1px solid #ddd;\"><strong>${CHALLENGES}</strong> loaded</td></tr>
+          </table>"
 
-          payload = {
-              'from': 'ruwt.dev alerts <alerts@ruwt.dev>',
-              'to': ['${{ secrets.ERROR_ALERT_EMAIL }}'],
-              'subject': '$SUBJECT',
-              'html': html
-          }
-          print(json.dumps(payload))
-          " > /tmp/email_payload.json
+          HTML="<h2>Nightly Eval Report</h2>${TABLE}${FAILED_SECTION}<p style=\"margin-top:16px;\"><a href=\"https://github.com/${GH_REPO}/actions/runs/${GH_RUN_ID}\">View full logs</a></p>"
 
-          curl -s -X POST https://api.resend.com/emails \
-            -H "Authorization: Bearer ${{ secrets.RESEND_API_KEY }}" \
+          jq -n \
+            --arg from "ruwt.dev alerts <alerts@ruwt.dev>" \
+            --arg to "$ALERT_EMAIL" \
+            --arg subject "$SUBJECT" \
+            --arg html "$HTML" \
+            '{from: $from, to: [$to], subject: $subject, html: $html}' \
+          | curl -s -X POST https://api.resend.com/emails \
+            -H "Authorization: Bearer ${RESEND_API_KEY}" \
             -H "Content-Type: application/json" \
-            -d @/tmp/email_payload.json
+            -d @-
 
+          echo ""
           echo "Eval report sent."
 
           if [ "$OVERALL" != "ALL PASS" ]; then

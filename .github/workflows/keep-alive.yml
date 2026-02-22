@@ -10,20 +10,27 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Run health checks
+        env:
+          SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          ALERT_EMAIL: ${{ secrets.ERROR_ALERT_EMAIL }}
+          GH_REPO: ${{ github.repository }}
         run: |
           FAILED=0
           RESULTS=""
+          NL=$'\n'
 
           # Check 1: ruwt.dev landing page
           echo "Checking ruwt.dev..."
           HTTP=$(curl -s -o /dev/null -w '%{http_code}' --max-time 15 https://ruwt.dev/)
           if [ "$HTTP" != "200" ]; then
             echo "  FAIL: ruwt.dev -> $HTTP"
-            RESULTS="${RESULTS}- FAIL: https://ruwt.dev/ -> HTTP $HTTP\n"
+            RESULTS="${RESULTS}- FAIL: https://ruwt.dev/ -> HTTP ${HTTP}${NL}"
             FAILED=$((FAILED+1))
           else
             echo "  OK: ruwt.dev -> $HTTP"
-            RESULTS="${RESULTS}- OK: https://ruwt.dev/ -> $HTTP\n"
+            RESULTS="${RESULTS}- OK: https://ruwt.dev/ -> ${HTTP}${NL}"
           fi
 
           # Check 2: Challenges API
@@ -31,11 +38,11 @@ jobs:
           HTTP=$(curl -s -o /dev/null -w '%{http_code}' --max-time 15 https://ruwt.dev/api/challenges)
           if [ "$HTTP" != "200" ]; then
             echo "  FAIL: challenges API -> $HTTP"
-            RESULTS="${RESULTS}- FAIL: /api/challenges -> HTTP $HTTP\n"
+            RESULTS="${RESULTS}- FAIL: /api/challenges -> HTTP ${HTTP}${NL}"
             FAILED=$((FAILED+1))
           else
             echo "  OK: challenges API -> $HTTP"
-            RESULTS="${RESULTS}- OK: /api/challenges -> $HTTP\n"
+            RESULTS="${RESULTS}- OK: /api/challenges -> ${HTTP}${NL}"
           fi
 
           # Check 3: Piston (code execution engine)
@@ -43,25 +50,25 @@ jobs:
           HTTP=$(curl -s -o /dev/null -w '%{http_code}' --max-time 15 https://ruwt-exec.fly.dev/api/v2/piston/runtimes)
           if [ "$HTTP" != "200" ]; then
             echo "  FAIL: Piston -> $HTTP"
-            RESULTS="${RESULTS}- FAIL: Piston runtimes -> HTTP $HTTP\n"
+            RESULTS="${RESULTS}- FAIL: Piston runtimes -> HTTP ${HTTP}${NL}"
             FAILED=$((FAILED+1))
           else
             echo "  OK: Piston -> $HTTP"
-            RESULTS="${RESULTS}- OK: Piston -> $HTTP\n"
+            RESULTS="${RESULTS}- OK: Piston -> ${HTTP}${NL}"
           fi
 
           # Check 4: Supabase auth health
           echo "Checking Supabase..."
           HTTP=$(curl -s -o /dev/null -w '%{http_code}' --max-time 15 \
-            "${{ secrets.VITE_SUPABASE_URL }}/auth/v1/health" \
-            -H "apikey: ${{ secrets.VITE_SUPABASE_ANON_KEY }}")
+            "${SUPABASE_URL}/auth/v1/health" \
+            -H "apikey: ${SUPABASE_ANON_KEY}")
           if [ "$HTTP" != "200" ]; then
             echo "  FAIL: Supabase -> $HTTP"
-            RESULTS="${RESULTS}- FAIL: Supabase auth health -> HTTP $HTTP\n"
+            RESULTS="${RESULTS}- FAIL: Supabase auth health -> HTTP ${HTTP}${NL}"
             FAILED=$((FAILED+1))
           else
             echo "  OK: Supabase -> $HTTP"
-            RESULTS="${RESULTS}- OK: Supabase auth -> $HTTP\n"
+            RESULTS="${RESULTS}- OK: Supabase auth -> ${HTTP}${NL}"
           fi
 
           # Check 5: Health endpoint (internal system check)
@@ -69,10 +76,10 @@ jobs:
           HTTP=$(curl -s -o /dev/null -w '%{http_code}' --max-time 30 https://ruwt.dev/api/health)
           if [ "$HTTP" != "200" ]; then
             echo "  WARN: health endpoint -> $HTTP"
-            RESULTS="${RESULTS}- WARN: /api/health -> HTTP $HTTP\n"
+            RESULTS="${RESULTS}- WARN: /api/health -> HTTP ${HTTP}${NL}"
           else
             echo "  OK: health endpoint -> $HTTP"
-            RESULTS="${RESULTS}- OK: /api/health -> $HTTP\n"
+            RESULTS="${RESULTS}- OK: /api/health -> ${HTTP}${NL}"
           fi
 
           echo ""
@@ -82,19 +89,26 @@ jobs:
           if [ "$FAILED" -gt 0 ]; then
             TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
             echo "Sending alert..."
-            curl -s -X POST https://api.resend.com/emails \
-              -H "Authorization: Bearer ${{ secrets.RESEND_API_KEY }}" \
+
+            jq -n \
+              --arg from "ruwt.dev alerts <alerts@ruwt.dev>" \
+              --arg to "$ALERT_EMAIL" \
+              --arg subject "[ruwt.dev DOWN] ${FAILED} service(s) failing" \
+              --arg timestamp "$TIMESTAMP" \
+              --arg results "$RESULTS" \
+              --arg repo "$GH_REPO" \
+              '{
+                from: $from,
+                to: [$to],
+                subject: $subject,
+                html: ("<h2>Health Check Alert</h2><p>Time: " + $timestamp + "</p><pre>" + $results + "</pre><p>This check runs every 5 minutes via <a href=\"https://github.com/" + $repo + "/actions/workflows/keep-alive.yml\">GitHub Actions</a>.</p>")
+              }' \
+            | curl -s -X POST https://api.resend.com/emails \
+              -H "Authorization: Bearer ${RESEND_API_KEY}" \
               -H "Content-Type: application/json" \
-              -d "$(python3 -c "
-          import json
-          results = '''$(printf "$RESULTS")'''
-          print(json.dumps({
-              'from': 'ruwt.dev alerts <alerts@ruwt.dev>',
-              'to': ['${{ secrets.ERROR_ALERT_EMAIL }}'],
-              'subject': '[ruwt.dev DOWN] ${FAILED} service(s) failing',
-              'html': '<h2>Health Check Alert</h2><p>Time: ${TIMESTAMP}</p><pre>' + results + '</pre><p>This check runs every 5 minutes via <a href=\"https://github.com/${{ github.repository }}/actions/workflows/keep-alive.yml\">GitHub Actions</a>.</p>'
-          }))
-          ")"
+              -d @-
+
+            echo ""
             echo "::error::$FAILED health check(s) failed"
             exit 1
           fi
