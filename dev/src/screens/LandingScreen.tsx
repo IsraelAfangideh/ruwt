@@ -80,7 +80,7 @@ export function LandingScreen() {
 
           <Pressable onPress={() => navigation.navigate('Teams' as never)} style={styles.hiringLink}>
             <Text style={styles.hiringLinkText}>
-              Hiring manager? See how we assess AI skills {'\u2192'}
+              Hiring? Find developers who are great with AI {'\u2192'}
             </Text>
           </Pressable>
         </View>
