@@ -34,7 +34,7 @@ export function LandingScreen() {
         <View style={styles.heroInner}>
           <Badge variant="secondary" style={{ alignSelf: 'center' }}>Now in Beta</Badge>
           <Text style={styles.heroTitle}>
-            Get Better at AI.{'\n'}
+            Get Better at AI Coding.{'\n'}
             <Text style={{ color: '#c9a962' }}>Get Discovered.</Text>
           </Text>
           <Text style={styles.heroSub}>
@@ -230,7 +230,7 @@ export function LandingScreen() {
 
       {/* ─── Final CTA ─── */}
       <View style={[styles.ctaSection, { backgroundColor: '#1a1816' }]}>
-        <Text style={styles.ctaTitle}>Ready to get better at AI?</Text>
+        <Text style={styles.ctaTitle}>Ready to get better at AI coding?</Text>
         <Text style={styles.ctaSub}>
           Free practice. 60+ challenges. 8 AI models. Hints when you're stuck. No credit card required.
         </Text>

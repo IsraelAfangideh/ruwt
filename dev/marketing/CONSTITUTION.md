@@ -48,7 +48,7 @@ We sound like a friend who's good at something and wants to help you get good at
 
 ## Target Audience (in your words)
 
-- **Developers who want to get better at AI** — they're curious, they're practicing, they want to improve and be recognized for it.
+- **Developers who want to get better at AI coding** — they're curious, they're practicing, they want to improve and be recognized for it.
 - **Developers who want to be discovered** — they're skilled, they want their ability to be visible to employers without relying solely on resumes and networking.
 - **Founders and hiring managers** — they want to find developers who are genuinely good at using AI, and they want signal they can trust.
 - **People learning to vibe code** — they're new to AI-assisted development and want a supportive place to practice with hints and community.

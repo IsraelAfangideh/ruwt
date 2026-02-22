@@ -27,7 +27,7 @@ export default function HomePage() {
           Beta
         </Badge>
         <h1 className="text-4xl md:text-6xl font-bold tracking-tight mb-6">
-          Get Better at AI.
+          Get Better at AI Coding.
           <br />
           <span className="text-primary">Get Discovered.</span>
         </h1>
@@ -138,7 +138,7 @@ export default function HomePage() {
 
       {/* CTA */}
       <section className="container py-24 text-center">
-        <h2 className="text-3xl font-bold mb-4">Ready to Get Better at AI?</h2>
+        <h2 className="text-3xl font-bold mb-4">Ready to Get Better at AI Coding?</h2>
         <p className="text-muted-foreground mb-8">
           Free practice. 60+ challenges. Hints when you're stuck. Get discovered by employers.
         </p>

@@ -71,7 +71,7 @@ export function seoResponse(html: string): Response {
 
 export const STATIC_ROUTE_META: Record<string, SeoMeta> = {
   '/': {
-    title: 'Ruwt - Get Better at AI. Get Discovered.',
+    title: 'Ruwt - Get Better at AI Coding. Get Discovered.',
     description: 'Practice AI-assisted coding with real models. 60+ challenges, community replays, and hints. Build your skills, get noticed by employers.',
     canonicalUrl: 'https://ruwt.dev/',
     jsonLd: [
@@ -81,14 +81,14 @@ export const STATIC_ROUTE_META: Record<string, SeoMeta> = {
         name: 'Ruwt',
         url: 'https://ruwt.dev',
         logo: OG_IMAGE,
-        description: 'Practice AI-assisted coding. Get better at AI, get discovered by employers.',
+        description: 'Practice AI-assisted coding. Get better at AI coding, get discovered by employers.',
       },
       {
         '@context': 'https://schema.org',
         '@type': 'WebSite',
         name: 'Ruwt',
         url: 'https://ruwt.dev',
-        description: 'Practice AI-assisted coding with real models. Get better at AI, get discovered by employers. 60+ challenges, community replays, and hints.',
+        description: 'Practice AI-assisted coding with real models. Get better at AI coding, get discovered by employers. 60+ challenges, community replays, and hints.',
       },
     ],
   },
