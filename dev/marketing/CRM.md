@@ -1,6 +1,6 @@
 # Ruwt Outreach CRM
 
-*Track every prospect from first email to conversion. Update this after every outreach session.*
+*Track every prospect from first touch to conversion. Update this after every outreach session.*
 
 ---
 
@@ -9,7 +9,7 @@
 | Stage | Count | Target |
 |-------|-------|--------|
 | Identified (not contacted) | 0 | 50+ |
-| Contacted (email sent) | 0 | 50 by end of month 2 |
+| Contacted (any channel) | 0 | 50 by end of month 2 |
 | Replied | 0 | 15-20% of contacted |
 | Demo scheduled | 0 | 30-40% of replies |
 | Subscribed | 0 | 10-15% of replies |
@@ -32,17 +32,18 @@
 | **Contact** | Name, Title |
 | **Email** | |
 | **Company size** | X engineers |
-| **Source** | LinkedIn / HN / Referral from [who] |
+| **Channel** | Email / LinkedIn DM / Slack DM / Twitter DM / Text / Discord / In-person |
+| **Source** | LinkedIn / HN / Referral from [who] / Community / Conference |
 | **Status** | Identified / Contacted / Replied / Demo / Subscribed / Lost |
 | **First contact** | YYYY-MM-DD |
 | **Last contact** | YYYY-MM-DD |
 | **Follow-up due** | YYYY-MM-DD |
 | **Notes** | |
 
-**Email log:**
-- Day 0 (YYYY-MM-DD): Initial email sent. Subject: "[subject line used]"
-- Day 3: Follow-up sent.
-- Day 7: Final follow-up sent.
+**Conversation log:**
+- Day 0 (YYYY-MM-DD): [Channel] — Initial outreach. "[opening message or subject line]"
+- Day 3: [Channel] — Follow-up sent.
+- Day 7: [Channel] — Final follow-up sent.
 
 **Outcome:** [Pending / Subscribed on YYYY-MM-DD / Lost — reason]
 
@@ -86,7 +87,10 @@
 
 | Metric | Actual | Target |
 |--------|--------|--------|
-| Emails sent | | 10-15 |
+| Total touches (all channels) | | 15-20 |
+| — Emails | | |
+| — LinkedIn DMs | | |
+| — Slack/Discord/Text | | |
 | Replies received | | 2-3 |
 | Demos booked | | 1 |
 | New subscribers | | 0-1 |
@@ -102,18 +106,33 @@
 
 ---
 
-## Email Performance
+## Message Performance
 
-<!-- Track which subject lines and templates get the best response. -->
+<!-- Track which openers and channels get the best response. -->
 
-| Subject Line | Sent | Opens | Replies | Reply Rate |
-|-------------|------|-------|---------|------------|
-| How [Company] evaluates AI fluency in hiring | 0 | 0 | 0 | 0% |
-| Your next hire's AI skills — how would you know? | 0 | 0 | 0 | 0% |
-| Quick question about [Company]'s technical assessments | 0 | 0 | 0 | 0% |
+### By Channel
 
-**Best performing:** TBD
-**Notes:** A/B test one subject line per batch of 15-20 emails. Don't change multiple variables at once.
+| Channel | Sent | Replies | Reply Rate | Notes |
+|---------|------|---------|------------|-------|
+| Email | 0 | 0 | 0% | |
+| LinkedIn DM | 0 | 0 | 0% | |
+| Slack DM | 0 | 0 | 0% | |
+| Twitter DM | 0 | 0 | 0% | |
+| Text | 0 | 0 | 0% | |
+
+### By Opening Message / Subject Line
+
+| Opener | Channel | Sent | Replies | Reply Rate |
+|--------|---------|------|---------|------------|
+| How [Company] evaluates AI fluency in hiring | Email | 0 | 0 | 0% |
+| Your next hire's AI skills — how would you know? | Email | 0 | 0 | 0% |
+| Quick question about [Company]'s technical assessments | Email | 0 | 0 | 0% |
+| Hey [Name], saw you're hiring — curious how you screen for AI fluency? | LinkedIn | 0 | 0 | 0% |
+| [Name] — building something for eng managers evaluating AI skills, would love your take | LinkedIn | 0 | 0 | 0% |
+
+**Best performing channel:** TBD
+**Best performing opener:** TBD
+**Notes:** A/B test one variable at a time. DMs tend to get higher reply rates but lower volume. Email scales better.
 
 ---
 
