@@ -16,4 +16,5 @@ interface Env {
   CRON_SECRET?: string;
   GITHUB_TOKEN?: string;
   ERROR_ALERT_EMAIL?: string;
+  SENTRY_DSN?: string;
 }

@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import * as Sentry from '@sentry/react';
 import { ThemeProvider, useTheme } from '@/theme';
 import { ToastProvider } from '@/components/ui/Toast';
 import { AppNavigator } from '@/navigation/AppNavigator';
@@ -13,13 +14,41 @@ function BodyTheme() {
   return null;
 }
 
+function ErrorFallback() {
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      minHeight: '100vh', backgroundColor: '#f5f3f0',
+      fontFamily: "'Libre Franklin', -apple-system, sans-serif",
+      flexDirection: 'column', gap: 12, padding: 32,
+    }}>
+      <h2 style={{ color: '#1a1816', fontSize: 20, fontWeight: 700, margin: 0 }}>Something went wrong</h2>
+      <p style={{ color: '#6b6560', fontSize: 14, textAlign: 'center', maxWidth: 320, margin: 0 }}>
+        An unexpected error occurred. Please reload the page.
+      </p>
+      <button
+        onClick={() => window.location.reload()}
+        style={{
+          backgroundColor: '#c9a962', border: 'none', padding: '10px 24px',
+          borderRadius: 8, color: '#1a1816', fontSize: 14, fontWeight: 600, cursor: 'pointer',
+          marginTop: 8,
+        }}
+      >
+        Reload
+      </button>
+    </div>
+  );
+}
+
 export default function App() {
   return (
-    <ThemeProvider>
-      <ToastProvider>
-        <BodyTheme />
-        <AppNavigator />
-      </ToastProvider>
-    </ThemeProvider>
+    <Sentry.ErrorBoundary fallback={ErrorFallback}>
+      <ThemeProvider>
+        <ToastProvider>
+          <BodyTheme />
+          <AppNavigator />
+        </ToastProvider>
+      </ThemeProvider>
+    </Sentry.ErrorBoundary>
   );
 }

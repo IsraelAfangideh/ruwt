@@ -1,0 +1,172 @@
+name: Nightly LLM Eval
+
+on:
+  schedule:
+    - cron: '0 6 * * *'  # 6 AM UTC daily
+  workflow_dispatch:
+
+jobs:
+  eval:
+    name: LLM & System Eval
+    runs-on: ubuntu-latest
+    steps:
+      - name: System health check
+        id: health
+        run: |
+          echo "=== System Health Check ==="
+          RESP=$(curl -s --max-time 30 https://ruwt.dev/api/health)
+          echo "$RESP" | python3 -m json.tool 2>/dev/null || echo "$RESP"
+
+          STATUS=$(echo "$RESP" | python3 -c "import sys,json; print(json.load(sys.stdin)['status'])" 2>/dev/null || echo "unknown")
+          echo "health_status=$STATUS" >> $GITHUB_OUTPUT
+
+          if [ "$STATUS" = "down" ]; then
+            echo "::error::All systems are down"
+          elif [ "$STATUS" = "degraded" ]; then
+            echo "::warning::Some systems are degraded"
+          else
+            echo "Health: $STATUS"
+          fi
+
+      - name: AI model availability check
+        id: models
+        run: |
+          echo "=== AI Model Availability ==="
+          MODELS=(
+            "@cf/meta/llama-3.1-8b-instruct"
+            "@cf/meta/llama-3.3-70b-instruct-fp8-fast"
+            "@cf/qwen/qwq-32b"
+            "@cf/deepseek-ai/deepseek-r1-distill-qwen-32b"
+          )
+          FAILED_MODELS=""
+          TOTAL=0
+          PASSED=0
+
+          for MODEL in "${MODELS[@]}"; do
+            TOTAL=$((TOTAL+1))
+            echo "Testing $MODEL..."
+            HTTP=$(curl -s -o /tmp/ai_resp.json -w '%{http_code}' --max-time 30 \
+              -X POST "https://api.cloudflare.com/client/v4/accounts/${{ secrets.CLOUDFLARE_ACCOUNT_ID }}/ai/run/${MODEL}" \
+              -H "Authorization: Bearer ${{ secrets.CLOUDFLARE_WORKERS_AI_TOKEN }}" \
+              -H "Content-Type: application/json" \
+              -d '{"messages":[{"role":"user","content":"Respond with exactly: HEALTH_OK"}],"max_tokens":5}')
+
+            if [ "$HTTP" = "200" ]; then
+              echo "  OK: $MODEL"
+              PASSED=$((PASSED+1))
+            else
+              BODY=$(cat /tmp/ai_resp.json 2>/dev/null | head -c 200)
+              echo "  FAIL: $MODEL -> HTTP $HTTP ($BODY)"
+              FAILED_MODELS="${FAILED_MODELS}\n- $MODEL (HTTP $HTTP)"
+            fi
+          done
+
+          echo ""
+          echo "Models: $PASSED/$TOTAL available"
+
+          echo "models_passed=$PASSED" >> $GITHUB_OUTPUT
+          echo "models_total=$TOTAL" >> $GITHUB_OUTPUT
+          # Use a delimiter for multiline output
+          echo "failed_models<<GHEOF" >> $GITHUB_OUTPUT
+          printf "$FAILED_MODELS" >> $GITHUB_OUTPUT
+          echo "" >> $GITHUB_OUTPUT
+          echo "GHEOF" >> $GITHUB_OUTPUT
+
+      - name: Piston code execution check
+        id: piston
+        run: |
+          echo "=== Piston Code Execution ==="
+          RESP=$(curl -s --max-time 30 -X POST \
+            "https://ruwt-exec.fly.dev/api/v2/piston/execute" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "language": "python",
+              "version": "3.10",
+              "files": [{"content": "print(40 + 2)"}]
+            }')
+
+          OUTPUT=$(echo "$RESP" | python3 -c "import sys,json; r=json.load(sys.stdin); print(r.get('run',{}).get('stdout','').strip())" 2>/dev/null || echo "")
+
+          if [ "$OUTPUT" = "42" ]; then
+            echo "PASS: output=$OUTPUT"
+            echo "piston_ok=true" >> $GITHUB_OUTPUT
+          else
+            echo "FAIL: expected '42', got '$OUTPUT'"
+            echo "Response: $RESP"
+            echo "piston_ok=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Challenge data integrity check
+        id: challenges
+        run: |
+          echo "=== Challenge Data Integrity ==="
+          RESP=$(curl -s --max-time 15 https://ruwt.dev/api/challenges)
+          COUNT=$(echo "$RESP" | python3 -c "import sys,json; print(len(json.load(sys.stdin)))" 2>/dev/null || echo "0")
+          echo "Challenges: $COUNT"
+          echo "challenge_count=$COUNT" >> $GITHUB_OUTPUT
+
+          if [ "$COUNT" -lt 10 ]; then
+            echo "::warning::Only $COUNT challenges found (expected 60+)"
+          fi
+
+      - name: Send eval report
+        if: always()
+        run: |
+          HEALTH="${{ steps.health.outputs.health_status }}"
+          MODELS_PASSED="${{ steps.models.outputs.models_passed }}"
+          MODELS_TOTAL="${{ steps.models.outputs.models_total }}"
+          FAILED_MODELS="${{ steps.models.outputs.failed_models }}"
+          PISTON_OK="${{ steps.piston.outputs.piston_ok }}"
+          CHALLENGES="${{ steps.challenges.outputs.challenge_count }}"
+
+          # Determine overall status
+          if [ "$HEALTH" = "ok" ] && [ "$MODELS_PASSED" = "$MODELS_TOTAL" ] && [ "$PISTON_OK" = "true" ]; then
+            OVERALL="ALL PASS"
+            TAG="OK"
+          else
+            OVERALL="ISSUES DETECTED"
+            TAG="ALERT"
+          fi
+
+          PISTON_STATUS="OK"
+          if [ "$PISTON_OK" != "true" ]; then
+            PISTON_STATUS="FAIL"
+          fi
+
+          SUBJECT="[ruwt.dev EVAL] [$TAG] $OVERALL — ${MODELS_PASSED}/${MODELS_TOTAL} models, health: $HEALTH"
+
+          python3 -c "
+          import json
+
+          failed_models = '''$FAILED_MODELS'''.strip()
+          failed_section = ''
+          if failed_models:
+              failed_section = '<h3>Failed Models</h3><pre>' + failed_models + '</pre>'
+
+          html = '''<h2>Nightly Eval Report</h2>
+          <table style=\"border-collapse:collapse;font-family:monospace;\">
+            <tr><td style=\"padding:4px 12px;border:1px solid #ddd;\">System Health</td><td style=\"padding:4px 12px;border:1px solid #ddd;\"><strong>$HEALTH</strong></td></tr>
+            <tr><td style=\"padding:4px 12px;border:1px solid #ddd;\">AI Models</td><td style=\"padding:4px 12px;border:1px solid #ddd;\"><strong>${MODELS_PASSED}/${MODELS_TOTAL}</strong> available</td></tr>
+            <tr><td style=\"padding:4px 12px;border:1px solid #ddd;\">Piston Execution</td><td style=\"padding:4px 12px;border:1px solid #ddd;\"><strong>''' + '$PISTON_STATUS' + '''</strong></td></tr>
+            <tr><td style=\"padding:4px 12px;border:1px solid #ddd;\">Challenges</td><td style=\"padding:4px 12px;border:1px solid #ddd;\"><strong>$CHALLENGES</strong> loaded</td></tr>
+          </table>''' + failed_section + '''<p style=\"margin-top:16px;\"><a href=\"https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}\">View full logs</a></p>'''
+
+          payload = {
+              'from': 'ruwt.dev alerts <alerts@ruwt.dev>',
+              'to': ['${{ secrets.ERROR_ALERT_EMAIL }}'],
+              'subject': '$SUBJECT',
+              'html': html
+          }
+          print(json.dumps(payload))
+          " > /tmp/email_payload.json
+
+          curl -s -X POST https://api.resend.com/emails \
+            -H "Authorization: Bearer ${{ secrets.RESEND_API_KEY }}" \
+            -H "Content-Type: application/json" \
+            -d @/tmp/email_payload.json
+
+          echo "Eval report sent."
+
+          if [ "$OVERALL" != "ALL PASS" ]; then
+            echo "::warning::Eval detected issues — check email report"
+          fi

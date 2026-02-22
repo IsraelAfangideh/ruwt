@@ -1,4 +1,4 @@
-name: Keep Supabase Alive
+name: Synthetic Health Monitor
 
 on:
   schedule:
@@ -6,15 +6,95 @@ on:
   workflow_dispatch:
 
 jobs:
-  ping:
+  health-check:
     runs-on: ubuntu-latest
     steps:
-      - name: Ping Supabase auth health
+      - name: Run health checks
         run: |
-          status=$(curl -s -o /dev/null -w '%{http_code}' \
+          FAILED=0
+          RESULTS=""
+
+          # Check 1: ruwt.dev landing page
+          echo "Checking ruwt.dev..."
+          HTTP=$(curl -s -o /dev/null -w '%{http_code}' --max-time 15 https://ruwt.dev/)
+          if [ "$HTTP" != "200" ]; then
+            echo "  FAIL: ruwt.dev -> $HTTP"
+            RESULTS="${RESULTS}- FAIL: https://ruwt.dev/ -> HTTP $HTTP\n"
+            FAILED=$((FAILED+1))
+          else
+            echo "  OK: ruwt.dev -> $HTTP"
+            RESULTS="${RESULTS}- OK: https://ruwt.dev/ -> $HTTP\n"
+          fi
+
+          # Check 2: Challenges API
+          echo "Checking challenges API..."
+          HTTP=$(curl -s -o /dev/null -w '%{http_code}' --max-time 15 https://ruwt.dev/api/challenges)
+          if [ "$HTTP" != "200" ]; then
+            echo "  FAIL: challenges API -> $HTTP"
+            RESULTS="${RESULTS}- FAIL: /api/challenges -> HTTP $HTTP\n"
+            FAILED=$((FAILED+1))
+          else
+            echo "  OK: challenges API -> $HTTP"
+            RESULTS="${RESULTS}- OK: /api/challenges -> $HTTP\n"
+          fi
+
+          # Check 3: Piston (code execution engine)
+          echo "Checking Piston..."
+          HTTP=$(curl -s -o /dev/null -w '%{http_code}' --max-time 15 https://ruwt-exec.fly.dev/api/v2/piston/runtimes)
+          if [ "$HTTP" != "200" ]; then
+            echo "  FAIL: Piston -> $HTTP"
+            RESULTS="${RESULTS}- FAIL: Piston runtimes -> HTTP $HTTP\n"
+            FAILED=$((FAILED+1))
+          else
+            echo "  OK: Piston -> $HTTP"
+            RESULTS="${RESULTS}- OK: Piston -> $HTTP\n"
+          fi
+
+          # Check 4: Supabase auth health
+          echo "Checking Supabase..."
+          HTTP=$(curl -s -o /dev/null -w '%{http_code}' --max-time 15 \
             "${{ secrets.VITE_SUPABASE_URL }}/auth/v1/health" \
             -H "apikey: ${{ secrets.VITE_SUPABASE_ANON_KEY }}")
-          echo "Health check: HTTP $status"
-          if [ "$status" != "200" ]; then
-            echo "::warning::Supabase health check returned $status"
+          if [ "$HTTP" != "200" ]; then
+            echo "  FAIL: Supabase -> $HTTP"
+            RESULTS="${RESULTS}- FAIL: Supabase auth health -> HTTP $HTTP\n"
+            FAILED=$((FAILED+1))
+          else
+            echo "  OK: Supabase -> $HTTP"
+            RESULTS="${RESULTS}- OK: Supabase auth -> $HTTP\n"
+          fi
+
+          # Check 5: Health endpoint (internal system check)
+          echo "Checking health endpoint..."
+          HTTP=$(curl -s -o /dev/null -w '%{http_code}' --max-time 30 https://ruwt.dev/api/health)
+          if [ "$HTTP" != "200" ]; then
+            echo "  WARN: health endpoint -> $HTTP"
+            RESULTS="${RESULTS}- WARN: /api/health -> HTTP $HTTP\n"
+          else
+            echo "  OK: health endpoint -> $HTTP"
+            RESULTS="${RESULTS}- OK: /api/health -> $HTTP\n"
+          fi
+
+          echo ""
+          echo "=== $FAILED failure(s) ==="
+
+          # Send alert email on failure
+          if [ "$FAILED" -gt 0 ]; then
+            TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+            echo "Sending alert..."
+            curl -s -X POST https://api.resend.com/emails \
+              -H "Authorization: Bearer ${{ secrets.RESEND_API_KEY }}" \
+              -H "Content-Type: application/json" \
+              -d "$(python3 -c "
+          import json
+          results = '''$(printf "$RESULTS")'''
+          print(json.dumps({
+              'from': 'ruwt.dev alerts <alerts@ruwt.dev>',
+              'to': ['${{ secrets.ERROR_ALERT_EMAIL }}'],
+              'subject': '[ruwt.dev DOWN] ${FAILED} service(s) failing',
+              'html': '<h2>Health Check Alert</h2><p>Time: ${TIMESTAMP}</p><pre>' + results + '</pre><p>This check runs every 5 minutes via <a href=\"https://github.com/${{ github.repository }}/actions/workflows/keep-alive.yml\">GitHub Actions</a>.</p>'
+          }))
+          ")"
+            echo "::error::$FAILED health check(s) failed"
+            exit 1
           fi

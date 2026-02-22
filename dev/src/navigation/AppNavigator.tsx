@@ -1,5 +1,6 @@
 import { lazy, Suspense, useEffect, useRef, Component } from 'react';
 import type { ReactNode, ErrorInfo } from 'react';
+import * as Sentry from '@sentry/react';
 import { View, Text, ActivityIndicator, Pressable, StyleSheet } from 'react-native';
 import { NavigationContainer, createNavigationContainerRef } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -56,8 +57,12 @@ class ChunkErrorBoundary extends Component<
     return { hasError: true };
   }
 
-  componentDidCatch(_error: Error, _info: ErrorInfo) {
+  componentDidCatch(error: Error, info: ErrorInfo) {
     // Chunk load failures happen when a deploy invalidates cached chunks
+    Sentry.captureException(error, {
+      tags: { type: 'chunk_error' },
+      contexts: { react: { componentStack: info.componentStack ?? undefined } },
+    });
   }
 
   render() {

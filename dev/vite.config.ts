@@ -1,9 +1,20 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+import { sentryVitePlugin } from '@sentry/vite-plugin';
 import path from 'path';
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [
+    react(),
+    sentryVitePlugin({
+      org: 'ruwt',
+      project: 'ruwt-dev',
+      authToken: process.env.SENTRY_AUTH_TOKEN,
+      sourcemaps: {
+        filesToDeleteAfterUpload: ['./dist/**/*.map'],
+      },
+    }),
+  ],
   resolve: {
     alias: {
       'react-native': 'react-native-web',
@@ -18,6 +29,7 @@ export default defineConfig({
   },
   build: {
     outDir: 'dist',
+    sourcemap: 'hidden',
     rollupOptions: {
       output: {
         manualChunks: {

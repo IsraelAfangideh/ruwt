@@ -26,6 +26,8 @@
     "@monaco-editor/react": "^4.7.0",
     "@react-navigation/native": "^7.0.0",
     "@react-navigation/native-stack": "^7.0.0",
+    "@sentry/react": "^10.39.0",
+    "@sentry/vite-plugin": "^4.9.1",
     "@stripe/stripe-js": "^8.7.0",
     "@supabase/ssr": "^0.8.0",
     "@supabase/supabase-js": "^2.93.3",

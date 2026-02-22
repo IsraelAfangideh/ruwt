@@ -39,7 +39,7 @@ export interface Diagnosis {
  */
 export async function logError(
   db: D1Database,
-  env: { RESEND_API_KEY?: string; ERROR_ALERT_EMAIL?: string },
+  env: { RESEND_API_KEY?: string; ERROR_ALERT_EMAIL?: string; SENTRY_DSN?: string },
   info: ErrorInfo,
 ): Promise<void> {
   const id = crypto.randomUUID();
@@ -94,6 +94,9 @@ export async function logError(
   } catch (emailErr) {
     console.error('[error-monitor] Failed to send alert email:', emailErr);
   }
+
+  // Forward to Sentry (fire-and-forget)
+  forwardToSentry(env, info, diagnosis).catch(() => {});
 }
 
 // ---------------------------------------------------------------------------
@@ -445,4 +448,77 @@ function escapeHtml(text: string): string {
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
+}
+
+// ---------------------------------------------------------------------------
+// Sentry forwarding — POST errors to Sentry via HTTP store API
+// ---------------------------------------------------------------------------
+
+async function forwardToSentry(
+  env: { SENTRY_DSN?: string },
+  info: ErrorInfo,
+  diagnosis: Diagnosis,
+): Promise<void> {
+  const dsn = env.SENTRY_DSN;
+  if (!dsn) return;
+
+  try {
+    const url = new URL(dsn);
+    const key = url.username;
+    const projectId = url.pathname.replace('/', '');
+    const storeUrl = `${url.protocol}//${url.host}/api/${projectId}/store/?sentry_key=${key}&sentry_version=7`;
+
+    const event = {
+      event_id: crypto.randomUUID().replace(/-/g, ''),
+      timestamp: new Date().toISOString(),
+      platform: 'javascript' as const,
+      level: info.level === 'fatal' ? 'fatal' : info.level === 'warn' ? 'warning' : 'error',
+      server_name: 'ruwt-dev-functions',
+      environment: 'production',
+      message: { formatted: info.errorMessage },
+      exception: info.errorStack ? {
+        values: [{
+          type: diagnosis.category,
+          value: info.errorMessage,
+          stacktrace: { frames: parseStackFrames(info.errorStack) },
+        }],
+      } : undefined,
+      tags: {
+        endpoint: info.endpoint || 'unknown',
+        method: info.method || 'GET',
+        category: diagnosis.category,
+        severity: diagnosis.severity,
+      },
+      user: info.userId ? { id: info.userId } : undefined,
+      extra: {
+        suggestedFix: diagnosis.suggestedFix,
+        requestBody: info.requestBody?.slice(0, 2000),
+      },
+    };
+
+    await fetch(storeUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(event),
+    });
+  } catch {
+    // Sentry forwarding should never mask the original error
+  }
+}
+
+function parseStackFrames(stack: string): Array<{ filename?: string; function?: string; lineno?: number }> {
+  return stack.split('\n')
+    .filter(line => line.includes('at '))
+    .map(line => {
+      const match = line.match(/at\s+(.+?)\s+\((.+?):(\d+):\d+\)/);
+      if (match) {
+        return { function: match[1], filename: match[2], lineno: parseInt(match[3]) };
+      }
+      const simpleMatch = line.match(/at\s+(.+?):(\d+):\d+/);
+      if (simpleMatch) {
+        return { filename: simpleMatch[1], lineno: parseInt(simpleMatch[2]) };
+      }
+      return { function: line.trim() };
+    })
+    .reverse(); // Sentry expects frames in caller order (bottom-up)
 }
