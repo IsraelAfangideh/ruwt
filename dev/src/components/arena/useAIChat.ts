@@ -56,6 +56,9 @@ export function useAIChat(options: UseAIChatOptions) {
       const controller = new AbortController();
       abortRef.current = controller;
 
+      let fullContent = '';
+      let fullThinking = '';
+
       try {
         // All models go to /api/ai/chat (unified SSE endpoint)
         const res = await fetch('/api/ai/chat', {
@@ -85,8 +88,6 @@ export function useAIChat(options: UseAIChatOptions) {
         // SSE streaming (single path for all models)
         const reader = res.body?.getReader();
         const decoder = new TextDecoder();
-        let fullContent = '';
-        let fullThinking = '';
         let buffer = '';
         let messageMeta: MessageMeta | undefined;
 
@@ -140,7 +141,7 @@ export function useAIChat(options: UseAIChatOptions) {
         onDone(fullContent || fullThinking || '(no response)', messageMeta);
       } catch (e) {
         if ((e as Error).name === 'AbortError') {
-          onDone('[interrupted]');
+          onDone(fullContent || '[interrupted]');
         } else {
           onError(e instanceof Error ? e.message : String(e));
         }

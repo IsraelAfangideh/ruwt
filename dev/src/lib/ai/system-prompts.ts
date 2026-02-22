@@ -163,6 +163,24 @@ const TOOL_USE_RULES = `
 To run tests, output: <ruwt:run_tests/>
 The system will run tests and show you results. You can then fix any failures.`;
 
+const ENVIRONMENT_RULES = `
+## Execution Environment
+- Code runs in an isolated sandbox with NO internet access.
+- Available runtimes: Node.js 18 (JavaScript/TypeScript) or Python 3.10.
+- NO package managers (npm, pip, yarn) — only built-in standard library modules are available.
+- Code must be self-contained: no external dependencies, no imports from npm or PyPI.
+- Do NOT use test frameworks (jest, mocha, chai, pytest, unittest). The platform runs tests automatically via its own harness.
+- You are writing the SOLUTION, not tests. The challenge has pre-defined test cases that the platform evaluates.
+- Do NOT suggest installing packages or running npm/pip commands.`;
+
+const SEARCH_REPLACE_WARNING = `
+## CRITICAL: SEARCH/REPLACE Rules
+- The SEARCH section must be a VERBATIM copy of existing code — do NOT paraphrase, abbreviate, or summarize.
+- Do NOT use "..." or placeholder comments like "// rest of code" inside SEARCH blocks.
+- Every SEARCH/REPLACE block must have BOTH a SEARCH section and a REPLACE section with actual content.
+- If you are unsure of the exact existing code, output a complete fenced code block instead of SEARCH/REPLACE.
+- Do NOT output multiple incomplete or empty SEARCH/REPLACE blocks — each one must be a complete, valid edit.`;
+
 // Compact rules for follow-up loop rounds (saves ~100 tokens)
 const EDIT_FORMAT_COMPACT = `
 Use SEARCH/REPLACE blocks to edit. SEARCH must exactly match existing code. Only edit what needs changing.`;
@@ -177,7 +195,9 @@ ${base}`
 
 ${base}
 ${EDIT_FORMAT_RULES}
+${SEARCH_REPLACE_WARNING}
 ${TOOL_USE_RULES}
+${ENVIRONMENT_RULES}
 
 ## Behavior
 - Be extremely concise. 1-2 sentences max before/after edits.
@@ -213,7 +233,9 @@ Wrap your plan in a <plan> tag:
 
 The user will see Accept/Reject buttons. Wait for their decision.
 ${EDIT_FORMAT_RULES}
-${TOOL_USE_RULES}`,
+${SEARCH_REPLACE_WARNING}
+${TOOL_USE_RULES}
+${ENVIRONMENT_RULES}`,
 
   debug: (base, isFollowUp) => isFollowUp
     ? `You are a debugging specialist. Analyze the new test results and fix the remaining bug.
@@ -224,7 +246,9 @@ ${base}`
 
 ${base}
 ${EDIT_FORMAT_RULES}
+${SEARCH_REPLACE_WARNING}
 ${TOOL_USE_RULES}
+${ENVIRONMENT_RULES}
 
 ## Behavior
 - The user has failing tests. Your job is to find and fix the bug.
@@ -242,6 +266,7 @@ ${TOOL_USE_RULES}
   ask: (base) => `You are a knowledgeable coding tutor. You explain concepts clearly.
 
 ${base}
+${ENVIRONMENT_RULES}
 
 ## Behavior
 - Answer the user's question with clear explanations.

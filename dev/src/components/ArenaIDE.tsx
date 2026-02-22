@@ -250,6 +250,36 @@ function getTimeAgo(dateStr: string): string {
   return `${days}d ago`;
 }
 
+function MessageCopyButton({ content }: { content: string }) {
+  const [copied, setCopied] = React.useState(false);
+  const handleCopy = () => {
+    navigator.clipboard.writeText(content).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    });
+  };
+  return (
+    <button
+      onClick={handleCopy}
+      style={{
+        background: 'transparent',
+        border: `1px solid ${arena.border}`,
+        borderRadius: 4,
+        color: copied ? arena.accent : arena.textMuted,
+        fontSize: 10,
+        padding: '1px 6px',
+        cursor: 'pointer',
+        fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+        marginLeft: 'auto',
+        transition: 'color 0.15s',
+      }}
+      title="Copy message"
+    >
+      {copied ? 'Copied!' : 'Copy'}
+    </button>
+  );
+}
+
 function DescriptionPanel({ challenge, pastAttempts }: { challenge: ArenaChallenge; pastAttempts?: PastAttempt[] }) {
   let testCases: Array<{ input: string; expectedOutput: string }> = [];
   try {
@@ -341,6 +371,9 @@ export function ArenaIDE({
   const [isToolLooping, setIsToolLooping] = useState(false);
   const pendingTestContextRef = useRef<AITestResults | null>(null);
   const streamingThinkingRef = useRef('');
+  const abortedByUserRef = useRef(false);
+  const messagesRef = useRef(messages);
+  messagesRef.current = messages;
 
   const isMobile = useIsMobile();
   const activeTabRef = useRef<'description' | 'chat' | 'notepad'>('description');
@@ -532,8 +565,8 @@ export function ArenaIDE({
   }, [messages]);
 
   // Send sidebar chat message — with tool-use orchestration loop
-  const sendMessage = useCallback(async () => {
-    const text = chatInput.trim();
+  const sendMessage = useCallback(async (overrideText?: string) => {
+    const text = (overrideText || chatInput).trim();
     if (!text || isLoadingChat || !attemptId) return;
 
     if (isExpired) {
@@ -623,6 +656,16 @@ export function ArenaIDE({
             setIsThinkingPhase(false);
           },
           onDone: async (fullContent, meta) => {
+            // If user clicked Stop, handleStopChat already saved the message
+            if (abortedByUserRef.current) {
+              abortedByUserRef.current = false;
+              setStreamingContent('');
+              setStreamingThinking('');
+              streamingThinkingRef.current = '';
+              setIsThinkingPhase(false);
+              resolve(null);
+              return;
+            }
             const cleanContent = stripToolCalls(fullContent);
             const thinking = streamingThinkingRef.current || undefined;
             setMessages((m) => [...m, { role: 'assistant', content: cleanContent, meta, thinking }]);
@@ -741,6 +784,58 @@ export function ArenaIDE({
     },
     [sendMessage]
   );
+
+  // Stop AI generation
+  const handleStopChat = useCallback(() => {
+    abortedByUserRef.current = true;
+    abortChat();
+    setIsLoadingChat(false);
+    setIsToolLooping(false);
+    setIsThinkingPhase(false);
+    // Save partial streaming content as final message
+    const partial = streamingContent || streamingThinking;
+    if (partial) {
+      setMessages((m) => [...m, {
+        role: 'assistant' as const,
+        content: partial + '\n\n*[stopped]*',
+      }]);
+    }
+    setStreamingContent('');
+    setStreamingThinking('');
+    streamingThinkingRef.current = '';
+  }, [abortChat, streamingContent, streamingThinking]);
+
+  // Retry last AI response
+  const handleRetry = useCallback(() => {
+    if (isLoadingChat || !attemptId) return;
+
+    const msgs = messagesRef.current;
+    // Find last non-constraint assistant message
+    let lastAsstIdx = -1;
+    for (let i = msgs.length - 1; i >= 0; i--) {
+      if (msgs[i].role === 'assistant' && !msgs[i].isConstraint) {
+        lastAsstIdx = i;
+        break;
+      }
+    }
+    if (lastAsstIdx === -1) return;
+
+    // Find the original user message that started this exchange
+    // (skip tool-loop test result messages)
+    let userMsgIdx = lastAsstIdx - 1;
+    while (userMsgIdx >= 0) {
+      const m = msgs[userMsgIdx];
+      if (m.role === 'user' && !m.content.startsWith('[Test Results]')) break;
+      userMsgIdx--;
+    }
+    if (userMsgIdx < 0) return;
+
+    const retryText = msgs[userMsgIdx].content;
+    // Truncate to before the user message that triggered the exchange
+    setMessages((prev) => prev.slice(0, userMsgIdx));
+    // Defer send to next frame so React processes the truncated messages
+    requestAnimationFrame(() => sendMessage(retryText));
+  }, [isLoadingChat, attemptId, sendMessage]);
 
   // Drag-to-resize between editor and terminal
   const handleDragStart = useCallback((e: React.MouseEvent) => {
@@ -874,7 +969,14 @@ export function ArenaIDE({
                     </div>
                   </div>
                 )}
-                {messages.filter((m) => m.role !== 'system').map((msg, i) => {
+                {(() => {
+                  const visible = messages.filter((m) => m.role !== 'system');
+                  // Find last non-constraint assistant message index for retry button
+                  let lastAsstVisIdx = -1;
+                  for (let j = visible.length - 1; j >= 0; j--) {
+                    if (visible[j].role === 'assistant' && !visible[j].isConstraint) { lastAsstVisIdx = j; break; }
+                  }
+                  return visible.map((msg, i) => {
                   if (msg.isConstraint) {
                     return (
                       <div key={i} style={s.constraintMessage}>
@@ -884,6 +986,7 @@ export function ArenaIDE({
                     );
                   }
                   const modelInfo = msg.meta ? getModelById(msg.meta.model) : undefined;
+                  const isLastAssistant = i === lastAsstVisIdx;
                   return (
                     <div key={i} style={msg.role === 'user' ? s.userMessage : s.aiMessage}>
                       <div style={s.messageLabel}>
@@ -895,6 +998,9 @@ export function ArenaIDE({
                             <span style={{ ...s.tierDot, background: msg.meta!.cost > 0 ? tierColor(modelInfo.tier) : arena.textSubtle }} />
                             {modelInfo.displayName}
                           </span>
+                        )}
+                        {msg.role === 'assistant' && !msg.isConstraint && (
+                          <MessageCopyButton content={msg.content} />
                         )}
                       </div>
                       {msg.role === 'assistant' && msg.thinking && (
@@ -908,9 +1014,19 @@ export function ArenaIDE({
                           {modelInfo?.displayName || 'AI'} {'\u00B7'} {msg.meta.tokens.toLocaleString()} {msg.meta.tokens === 1 ? 'token' : 'tokens'} {'\u00B7'} {formatCost(msg.meta.cost)}
                         </div>
                       )}
+                      {msg.role === 'assistant' && isLastAssistant && !isLoadingChat && (
+                        <button
+                          onClick={handleRetry}
+                          style={s.retryButton}
+                          title="Retry this response"
+                        >
+                          &#8635; Retry
+                        </button>
+                      )}
                     </div>
                   );
-                })}
+                });
+                })()}
                 {/* Tool loop indicator */}
                 {isToolLooping && !streamingContent && !isThinkingPhase && (
                   <div style={{ ...s.aiMessage, opacity: 0.7 }}>
@@ -1051,17 +1167,33 @@ export function ArenaIDE({
                     </span>
                   )}
                 </div>
-                <button
-                  style={{
-                    ...s.sendButton,
-                    opacity: !chatInput.trim() || isLoadingChat || chatDisabled || guestMode ? 0.4 : 1,
-                    alignSelf: 'flex-start',
-                  }}
-                  onClick={sendMessage}
-                  disabled={!chatInput.trim() || isLoadingChat || chatDisabled || !!guestMode}
-                >
-                  &#9658;
-                </button>
+                {isLoadingChat ? (
+                  <button
+                    style={{
+                      ...s.sendButton,
+                      background: 'rgba(248,81,73,0.12)',
+                      borderColor: 'rgba(248,81,73,0.3)',
+                      color: arena.error,
+                      alignSelf: 'flex-start',
+                    }}
+                    onClick={handleStopChat}
+                    title="Stop generating"
+                  >
+                    &#9632;
+                  </button>
+                ) : (
+                  <button
+                    style={{
+                      ...s.sendButton,
+                      opacity: !chatInput.trim() || chatDisabled || guestMode ? 0.4 : 1,
+                      alignSelf: 'flex-start',
+                    }}
+                    onClick={() => sendMessage()}
+                    disabled={!chatInput.trim() || chatDisabled || !!guestMode}
+                  >
+                    &#9658;
+                  </button>
+                )}
               </div>
             </>
           )}
@@ -1669,6 +1801,21 @@ const s: Record<string, React.CSSProperties> = {
     width: 6,
     height: 6,
     borderRadius: 3,
+  },
+  retryButton: {
+    background: 'transparent',
+    border: `1px solid ${arena.border}`,
+    borderRadius: 4,
+    color: arena.textMuted,
+    fontSize: 11,
+    padding: '2px 8px',
+    cursor: 'pointer',
+    fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+    marginTop: 4,
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 4,
+    transition: 'color 0.15s, border-color 0.15s',
   },
 
   // Chat input
