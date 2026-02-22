@@ -51,10 +51,10 @@
   <!-- Logo -->
   <text x="80" y="160" font-family="Georgia, 'Cormorant Garamond', serif" font-size="64" font-weight="700" fill="#f5f3f0">Ruwt</text>
   <!-- Tagline -->
-  <text x="80" y="260" font-family="'Libre Franklin', 'Helvetica Neue', Arial, sans-serif" font-size="48" font-weight="600" fill="#f5f3f0">Prove you can use AI</text>
-  <text x="80" y="320" font-family="'Libre Franklin', 'Helvetica Neue', Arial, sans-serif" font-size="48" font-weight="600" fill="#c9a962">better than anyone</text>
+  <text x="80" y="260" font-family="'Libre Franklin', 'Helvetica Neue', Arial, sans-serif" font-size="48" font-weight="600" fill="#f5f3f0">Get better at AI.</text>
+  <text x="80" y="320" font-family="'Libre Franklin', 'Helvetica Neue', Arial, sans-serif" font-size="48" font-weight="600" fill="#c9a962">Get discovered.</text>
   <!-- Subtitle -->
-  <text x="80" y="400" font-family="'Libre Franklin', 'Helvetica Neue', Arial, sans-serif" font-size="22" fill="#9a938a">60+ challenges  |  8 AI models  |  Ranked by efficiency</text>
+  <text x="80" y="400" font-family="'Libre Franklin', 'Helvetica Neue', Arial, sans-serif" font-size="22" fill="#9a938a">60+ challenges  |  Community replays  |  Hints when you're stuck</text>
   <!-- Domain -->
   <text x="80" y="560" font-family="'Libre Franklin', 'Helvetica Neue', Arial, sans-serif" font-size="28" font-weight="600" fill="#c9a962">ruwt.dev</text>
   <!-- Bottom accent bar -->

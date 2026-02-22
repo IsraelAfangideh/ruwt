@@ -71,8 +71,8 @@ export function seoResponse(html: string): Response {
 
 export const STATIC_ROUTE_META: Record<string, SeoMeta> = {
   '/': {
-    title: 'Ruwt - Prove You Can Use AI Better Than Anyone',
-    description: 'Compete in AI-powered coding challenges. 60+ real-world problems, 8 AI models, ranked by cost efficiency. Free to start with 50k credits.',
+    title: 'Ruwt - Get Better at AI. Get Discovered.',
+    description: 'Practice AI-assisted coding with real models. 60+ challenges, community replays, and hints. Build your skills, get noticed by employers.',
     canonicalUrl: 'https://ruwt.dev/',
     jsonLd: [
       {
@@ -81,14 +81,14 @@ export const STATIC_ROUTE_META: Record<string, SeoMeta> = {
         name: 'Ruwt',
         url: 'https://ruwt.dev',
         logo: OG_IMAGE,
-        description: 'AI-powered coding efficiency assessment platform',
+        description: 'Practice AI-assisted coding. Get better at AI, get discovered by employers.',
       },
       {
         '@context': 'https://schema.org',
         '@type': 'WebSite',
         name: 'Ruwt',
         url: 'https://ruwt.dev',
-        description: 'Prove you can use AI better than anyone. Compete in AI-powered coding challenges ranked by cost efficiency.',
+        description: 'Practice AI-assisted coding with real models. Get better at AI, get discovered by employers. 60+ challenges, community replays, and hints.',
       },
     ],
   },
@@ -99,7 +99,7 @@ export const STATIC_ROUTE_META: Record<string, SeoMeta> = {
   },
   '/daily': {
     title: 'Daily Challenge | Ruwt',
-    description: "Today's AI coding challenge. Compete daily, build your streak, climb the seasonal leaderboard.",
+    description: "Today's AI coding challenge. Practice daily, build your streak, learn from the community.",
     canonicalUrl: 'https://ruwt.dev/daily',
   },
   '/login': {
