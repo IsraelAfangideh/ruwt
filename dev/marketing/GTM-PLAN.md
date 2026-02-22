@@ -6,7 +6,7 @@
 
 ## 1. Executive Summary
 
-Ruwt.dev is an AI-efficiency assessment platform that shows hiring teams how candidates actually use AI to solve real engineering problems. Instead of testing whether someone can memorize algorithms, we measure model selection, prompt efficiency, cost awareness, and debugging skill — the things that matter when your entire team is using Copilot, Cursor, and Claude every day. We're selling a $200/month subscription to engineering managers who are tired of HackerRank scores that tell them nothing about how a candidate will perform with AI tools. The product is ready. The hiring assessment flow is built — session replays, AI profiles, behavioral insights, 60+ challenges. Now we need paying customers.
+Ruwt.dev is a community platform where developers practice AI-assisted coding, get better at it, and get discovered by companies that want to hire them. Developers solve real engineering challenges with AI models, learn from community replays and hints, and build a visible track record of their AI skills. For hiring teams, Ruwt surfaces developers who've demonstrated real AI fluency — model selection, prompt efficiency, cost awareness, and debugging skill — through actual practice, not trivia tests. We're selling a $200/month subscription to engineering managers who want a better signal on AI skill than resumes and HackerRank can provide. The product is ready — session replays, AI profiles, behavioral insights, 60+ challenges, and a growing community of developers practicing together. Now we need paying customers.
 
 ---
 

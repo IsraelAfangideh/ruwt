@@ -27,21 +27,20 @@ export default function HomePage() {
           Beta
         </Badge>
         <h1 className="text-4xl md:text-6xl font-bold tracking-tight mb-6">
-          AI Coding Competitions
+          Get Better at AI Coding.
           <br />
-          <span className="text-primary">Where Cost is King</span>
+          <span className="text-primary">Get Discovered.</span>
         </h1>
         <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-8">
-          Solve coding challenges by prompting AI models. The twist? Every token
-          costs real money. Win by producing working code at the{' '}
-          <strong>lowest financial cost</strong>.
+          Practice AI-assisted coding with real models. Learn from the community.
+          Let your skills speak for themselves.
         </p>
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
           <Button size="lg" asChild>
-            <Link href="/register">Start Competing</Link>
+            <Link href="/register">Start Practicing</Link>
           </Button>
           <Button size="lg" variant="outline" asChild>
-            <Link href="/leaderboard">View Leaderboard</Link>
+            <Link href="/leaderboard">See the Community</Link>
           </Button>
         </div>
       </section>
@@ -79,10 +78,10 @@ export default function HomePage() {
               <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-4">
                 <span className="text-2xl font-bold text-primary">3</span>
               </div>
-              <CardTitle>Submit & Compete</CardTitle>
+              <CardTitle>Submit & Learn</CardTitle>
               <CardDescription>
-                Your code is tested automatically. If it passes, your cost is
-                recorded on the leaderboard.
+                Your code is tested automatically. See where you stand,
+                watch community replays, and let your skills get noticed.
               </CardDescription>
             </CardHeader>
           </Card>
@@ -139,9 +138,9 @@ export default function HomePage() {
 
       {/* CTA */}
       <section className="container py-24 text-center">
-        <h2 className="text-3xl font-bold mb-4">Ready to Compete?</h2>
+        <h2 className="text-3xl font-bold mb-4">Ready to Get Better at AI Coding?</h2>
         <p className="text-muted-foreground mb-8">
-          Join the competition and prove you can code efficiently with AI.
+          Free practice. 60+ challenges. Hints when you're stuck. Get discovered by employers.
         </p>
         <Button size="lg" asChild>
           <Link href="/register">Create Free Account</Link>
