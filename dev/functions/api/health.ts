@@ -57,11 +57,21 @@ export async function onRequestGet(context: {
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
   });
 
-  // 4. Piston code execution engine
+  // 4. Piston code execution engine — run actual code (no /runtimes on this instance)
   checks.piston = await timedCheck(async () => {
     const pistonUrl = context.env.PISTON_API_URL || 'https://ruwt-exec.fly.dev/api/v2/piston';
-    const res = await fetch(`${pistonUrl}/runtimes`, { signal: AbortSignal.timeout(5000) });
+    const res = await fetch(`${pistonUrl}/execute`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        language: 'python', version: '3.10.0',
+        files: [{ content: 'print(42)' }], run_timeout: 5000,
+      }),
+      signal: AbortSignal.timeout(10000),
+    });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json() as { run?: { stdout?: string } };
+    if (data.run?.stdout?.trim() !== '42') throw new Error(`Unexpected output: ${data.run?.stdout}`);
   });
 
   const allOk = Object.values(checks).every(c => c.ok);

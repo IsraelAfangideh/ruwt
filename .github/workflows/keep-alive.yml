@@ -38,16 +38,19 @@ jobs:
             RESULTS="${RESULTS}- OK: /api/challenges -> $HTTP\n"
           fi
 
-          # Check 3: Piston (code execution engine)
+          # Check 3: Piston (code execution engine) — run actual code
           echo "Checking Piston..."
-          HTTP=$(curl -s -o /dev/null -w '%{http_code}' --max-time 15 https://ruwt-exec.fly.dev/api/v2/piston/runtimes)
-          if [ "$HTTP" != "200" ]; then
-            echo "  FAIL: Piston -> $HTTP"
-            RESULTS="${RESULTS}- FAIL: Piston runtimes -> HTTP $HTTP\n"
-            FAILED=$((FAILED+1))
+          PISTON_RESP=$(curl -s --max-time 15 -X POST https://ruwt-exec.fly.dev/api/v2/piston/execute \
+            -H "Content-Type: application/json" \
+            -d '{"language":"python","version":"3.10.0","files":[{"content":"print(42)"}],"run_timeout":5000}')
+          PISTON_OUT=$(echo "$PISTON_RESP" | python3 -c "import sys,json; print(json.load(sys.stdin).get('run',{}).get('stdout','').strip())" 2>/dev/null || echo "")
+          if [ "$PISTON_OUT" = "42" ]; then
+            echo "  OK: Piston executed correctly"
+            RESULTS="${RESULTS}- OK: Piston -> print(42) = 42\n"
           else
-            echo "  OK: Piston -> $HTTP"
-            RESULTS="${RESULTS}- OK: Piston -> $HTTP\n"
+            echo "  FAIL: Piston output='$PISTON_OUT'"
+            RESULTS="${RESULTS}- FAIL: Piston expected '42', got '$PISTON_OUT'\n"
+            FAILED=$((FAILED+1))
           fi
 
           # Check 4: Supabase auth health
