@@ -14,9 +14,23 @@ jobs:
           FAILED=0
           RESULTS=""
 
+          # Retry helper: curl_check URL TIMEOUT
+          # Returns HTTP status code, retries once after 5s on timeout/failure
+          curl_check() {
+            local url="$1" timeout="${2:-15}"
+            local http
+            http=$(curl -s -o /dev/null -w '%{http_code}' --max-time "$timeout" "$url")
+            if [ "$http" = "200" ]; then
+              echo "$http"; return
+            fi
+            echo "  Retry after cold-start (got $http)..." >&2
+            sleep 5
+            curl -s -o /dev/null -w '%{http_code}' --max-time "$timeout" "$url"
+          }
+
           # Check 1: ruwt.dev landing page
           echo "Checking ruwt.dev..."
-          HTTP=$(curl -s -o /dev/null -w '%{http_code}' --max-time 15 https://ruwt.dev/)
+          HTTP=$(curl_check "https://ruwt.dev/")
           if [ "$HTTP" != "200" ]; then
             echo "  FAIL: ruwt.dev -> $HTTP"
             RESULTS="${RESULTS}- FAIL: https://ruwt.dev/ -> HTTP $HTTP\n"
@@ -26,9 +40,9 @@ jobs:
             RESULTS="${RESULTS}- OK: https://ruwt.dev/ -> $HTTP\n"
           fi
 
-          # Check 2: Challenges API
+          # Check 2: Challenges API (CF Pages Functions — prone to cold starts)
           echo "Checking challenges API..."
-          HTTP=$(curl -s -o /dev/null -w '%{http_code}' --max-time 15 https://ruwt.dev/api/challenges)
+          HTTP=$(curl_check "https://ruwt.dev/api/challenges" 20)
           if [ "$HTTP" != "200" ]; then
             echo "  FAIL: challenges API -> $HTTP"
             RESULTS="${RESULTS}- FAIL: /api/challenges -> HTTP $HTTP\n"
@@ -40,10 +54,22 @@ jobs:
 
           # Check 3: Piston (code execution engine) — run actual code
           echo "Checking Piston..."
-          PISTON_RESP=$(curl -s --max-time 15 -X POST https://ruwt-exec.fly.dev/api/v2/piston/execute \
-            -H "Content-Type: application/json" \
-            -d '{"language":"python","version":"3.10.0","files":[{"content":"print(42)"}],"run_timeout":5000}')
-          PISTON_OUT=$(echo "$PISTON_RESP" | python3 -c "import sys,json; print(json.load(sys.stdin).get('run',{}).get('stdout','').strip())" 2>/dev/null || echo "")
+          run_piston() {
+            curl -s --max-time 15 -X POST https://ruwt-exec.fly.dev/api/v2/piston/execute \
+              -H "Content-Type: application/json" \
+              -d '{"language":"python","version":"3.10.0","files":[{"content":"print(42)"}],"run_timeout":5000}'
+          }
+          parse_piston() {
+            echo "$1" | python3 -c "import sys,json; print(json.load(sys.stdin).get('run',{}).get('stdout','').strip())" 2>/dev/null || echo ""
+          }
+          PISTON_RESP=$(run_piston)
+          PISTON_OUT=$(parse_piston "$PISTON_RESP")
+          if [ "$PISTON_OUT" != "42" ]; then
+            echo "  Retry Piston after cold-start..."
+            sleep 5
+            PISTON_RESP=$(run_piston)
+            PISTON_OUT=$(parse_piston "$PISTON_RESP")
+          fi
           if [ "$PISTON_OUT" = "42" ]; then
             echo "  OK: Piston executed correctly"
             RESULTS="${RESULTS}- OK: Piston -> print(42) = 42\n"
@@ -69,7 +95,7 @@ jobs:
 
           # Check 5: Health endpoint (internal system check)
           echo "Checking health endpoint..."
-          HTTP=$(curl -s -o /dev/null -w '%{http_code}' --max-time 30 https://ruwt.dev/api/health)
+          HTTP=$(curl_check "https://ruwt.dev/api/health" 30)
           if [ "$HTTP" != "200" ]; then
             echo "  WARN: health endpoint -> $HTTP"
             RESULTS="${RESULTS}- WARN: /api/health -> HTTP $HTTP\n"
