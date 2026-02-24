@@ -11,33 +11,55 @@ import { createClient } from '@/lib/supabase/client';
 // Eager: LandingScreen is first paint for most visitors
 import { LandingScreen } from '@/screens/LandingScreen';
 
-// Lazy: everything else loads on demand
-const LoginScreen = lazy(() => import('@/screens/LoginScreen').then(m => ({ default: m.LoginScreen })));
-const RegisterScreen = lazy(() => import('@/screens/RegisterScreen').then(m => ({ default: m.RegisterScreen })));
-const CallbackScreen = lazy(() => import('@/screens/CallbackScreen').then(m => ({ default: m.CallbackScreen })));
-const OnboardingScreen = lazy(() => import('@/screens/OnboardingScreen').then(m => ({ default: m.OnboardingScreen })));
-const DashboardScreen = lazy(() => import('@/screens/DashboardScreen').then(m => ({ default: m.DashboardScreen })));
-const ChallengesScreen = lazy(() => import('@/screens/ChallengesScreen').then(m => ({ default: m.ChallengesScreen })));
-const LeaderboardScreen = lazy(() => import('@/screens/LeaderboardScreen').then(m => ({ default: m.LeaderboardScreen })));
-const ProfileScreen = lazy(() => import('@/screens/ProfileScreen').then(m => ({ default: m.ProfileScreen })));
-const SettingsScreen = lazy(() => import('@/screens/SettingsScreen').then(m => ({ default: m.SettingsScreen })));
-const ArenaScreen = lazy(() => import('@/screens/ArenaScreen').then(m => ({ default: m.ArenaScreen })));
-const ReplayScreen = lazy(() => import('@/screens/ReplayScreen').then(m => ({ default: m.ReplayScreen })));
-const DailyChallengeScreen = lazy(() => import('@/screens/DailyChallengeScreen').then(m => ({ default: m.DailyChallengeScreen })));
-const AssessmentListScreen = lazy(() => import('@/screens/AssessmentListScreen').then(m => ({ default: m.AssessmentListScreen })));
-const AssessmentBuilderScreen = lazy(() => import('@/screens/AssessmentBuilderScreen').then(m => ({ default: m.AssessmentBuilderScreen })));
-const AssessmentResultsDashboardScreen = lazy(() => import('@/screens/AssessmentResultsDashboardScreen').then(m => ({ default: m.AssessmentResultsDashboardScreen })));
-const AssessmentLandingScreen = lazy(() => import('@/screens/AssessmentLandingScreen').then(m => ({ default: m.AssessmentLandingScreen })));
-const AssessmentFlowScreen = lazy(() => import('@/screens/AssessmentFlowScreen').then(m => ({ default: m.AssessmentFlowScreen })));
-const AssessmentResultsScreen = lazy(() => import('@/screens/AssessmentResultsScreen').then(m => ({ default: m.AssessmentResultsScreen })));
-const TeamsScreen = lazy(() => import('@/screens/TeamsScreen').then(m => ({ default: m.TeamsScreen })));
-const GuestArenaScreen = lazy(() => import('@/screens/GuestArenaScreen').then(m => ({ default: m.GuestArenaScreen })));
-const PublicProfileScreen = lazy(() => import('@/screens/PublicProfileScreen').then(m => ({ default: m.PublicProfileScreen })));
-const ShareScreen = lazy(() => import('@/screens/ShareScreen').then(m => ({ default: m.ShareScreen })));
-const CertificateScreen = lazy(() => import('@/screens/CertificateScreen').then(m => ({ default: m.CertificateScreen })));
-const OrgManagementScreen = lazy(() => import('@/screens/OrgManagementScreen').then(m => ({ default: m.OrgManagementScreen })));
-const OrgJoinScreen = lazy(() => import('@/screens/OrgJoinScreen').then(m => ({ default: m.OrgJoinScreen })));
-const NotFoundScreen = lazy(() => import('@/screens/NotFoundScreen').then(m => ({ default: m.NotFoundScreen })));
+// Auto-retry dynamic imports: on chunk load failure (stale deploy), reload once
+function lazyWithRetry<T extends { [key: string]: any }>(
+  name: string,
+  factory: () => Promise<T>,
+  extract: (m: T) => any,
+) {
+  return lazy(() =>
+    factory()
+      .then(m => ({ default: extract(m) as React.ComponentType<any> }))
+      .catch((err: Error) => {
+        const key = `chunk_retry_${name}`;
+        if (!sessionStorage.getItem(key)) {
+          sessionStorage.setItem(key, '1');
+          window.location.reload();
+          return new Promise<never>(() => {});
+        }
+        sessionStorage.removeItem(key);
+        throw err;
+      }),
+  );
+}
+
+// Lazy: everything else loads on demand (auto-retries on stale chunk failures)
+const LoginScreen = lazyWithRetry('Login', () => import('@/screens/LoginScreen'), m => m.LoginScreen);
+const RegisterScreen = lazyWithRetry('Register', () => import('@/screens/RegisterScreen'), m => m.RegisterScreen);
+const CallbackScreen = lazyWithRetry('Callback', () => import('@/screens/CallbackScreen'), m => m.CallbackScreen);
+const OnboardingScreen = lazyWithRetry('Onboarding', () => import('@/screens/OnboardingScreen'), m => m.OnboardingScreen);
+const DashboardScreen = lazyWithRetry('Dashboard', () => import('@/screens/DashboardScreen'), m => m.DashboardScreen);
+const ChallengesScreen = lazyWithRetry('Challenges', () => import('@/screens/ChallengesScreen'), m => m.ChallengesScreen);
+const LeaderboardScreen = lazyWithRetry('Leaderboard', () => import('@/screens/LeaderboardScreen'), m => m.LeaderboardScreen);
+const ProfileScreen = lazyWithRetry('Profile', () => import('@/screens/ProfileScreen'), m => m.ProfileScreen);
+const SettingsScreen = lazyWithRetry('Settings', () => import('@/screens/SettingsScreen'), m => m.SettingsScreen);
+const ArenaScreen = lazyWithRetry('Arena', () => import('@/screens/ArenaScreen'), m => m.ArenaScreen);
+const ReplayScreen = lazyWithRetry('Replay', () => import('@/screens/ReplayScreen'), m => m.ReplayScreen);
+const DailyChallengeScreen = lazyWithRetry('DailyChallenge', () => import('@/screens/DailyChallengeScreen'), m => m.DailyChallengeScreen);
+const AssessmentListScreen = lazyWithRetry('AssessmentList', () => import('@/screens/AssessmentListScreen'), m => m.AssessmentListScreen);
+const AssessmentBuilderScreen = lazyWithRetry('AssessmentBuilder', () => import('@/screens/AssessmentBuilderScreen'), m => m.AssessmentBuilderScreen);
+const AssessmentResultsDashboardScreen = lazyWithRetry('AssessmentResultsDashboard', () => import('@/screens/AssessmentResultsDashboardScreen'), m => m.AssessmentResultsDashboardScreen);
+const AssessmentLandingScreen = lazyWithRetry('AssessmentLanding', () => import('@/screens/AssessmentLandingScreen'), m => m.AssessmentLandingScreen);
+const AssessmentFlowScreen = lazyWithRetry('AssessmentFlow', () => import('@/screens/AssessmentFlowScreen'), m => m.AssessmentFlowScreen);
+const AssessmentResultsScreen = lazyWithRetry('AssessmentResults', () => import('@/screens/AssessmentResultsScreen'), m => m.AssessmentResultsScreen);
+const TeamsScreen = lazyWithRetry('Teams', () => import('@/screens/TeamsScreen'), m => m.TeamsScreen);
+const GuestArenaScreen = lazyWithRetry('GuestArena', () => import('@/screens/GuestArenaScreen'), m => m.GuestArenaScreen);
+const PublicProfileScreen = lazyWithRetry('PublicProfile', () => import('@/screens/PublicProfileScreen'), m => m.PublicProfileScreen);
+const ShareScreen = lazyWithRetry('Share', () => import('@/screens/ShareScreen'), m => m.ShareScreen);
+const CertificateScreen = lazyWithRetry('Certificate', () => import('@/screens/CertificateScreen'), m => m.CertificateScreen);
+const OrgManagementScreen = lazyWithRetry('OrgManagement', () => import('@/screens/OrgManagementScreen'), m => m.OrgManagementScreen);
+const OrgJoinScreen = lazyWithRetry('OrgJoin', () => import('@/screens/OrgJoinScreen'), m => m.OrgJoinScreen);
+const NotFoundScreen = lazyWithRetry('NotFound', () => import('@/screens/NotFoundScreen'), m => m.NotFoundScreen);
 
 function LoadingFallback() {
   return (
@@ -95,12 +117,26 @@ const navigationRef = createNavigationContainerRef<RootStackParamList>();
 export function AppNavigator() {
   const isNavigationReady = useRef(false);
 
-  // Global session expiry detection: listen for SIGNED_OUT and reset to Login
+  // Global auth listener: identify user in Sentry + handle session expiry
   useEffect(() => {
     const supabase = createClient();
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-      if (event === 'SIGNED_OUT' && isNavigationReady.current && navigationRef.isReady()) {
-        navigationRef.reset({ index: 0, routes: [{ name: 'Login' }] });
+
+    // Identify current user on mount (covers page refreshes)
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user) {
+        Sentry.setUser({ id: user.id, email: user.email ?? undefined });
+      }
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (session?.user) {
+        Sentry.setUser({ id: session.user.id, email: session.user.email ?? undefined });
+      }
+      if (event === 'SIGNED_OUT') {
+        Sentry.setUser(null);
+        if (isNavigationReady.current && navigationRef.isReady()) {
+          navigationRef.reset({ index: 0, routes: [{ name: 'Login' }] });
+        }
       }
     });
     return () => {
