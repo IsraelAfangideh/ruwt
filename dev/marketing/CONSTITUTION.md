@@ -83,4 +83,37 @@ This is not a soft pivot. Leaderboards, cost efficiency, and real challenges sta
 
 ---
 
-*Last updated: 2026-02-22*
+## Challenge Design Guidelines
+
+### Core Principle: Never Punish the User for Platform Issues
+
+If a user fails a challenge, it must be because they don't understand the problem or their AI model isn't capable enough — NEVER because of test harness quirks, input parsing issues, or platform bugs. The user should never need to know how our test runner works internally.
+
+### Difficulty Contract
+
+- **Easy + Premium model** = should pass comfortably. The game is "can you solve it cheaper?"
+- **Easy + Mid model** = doable with some user engineering skill
+- **Easy + Micro model** = proves real engineering chops — the user deeply understands the problem and guides a weaker model
+- **Medium + Premium model** = requires user skill to prompt and iterate effectively
+- **Hard** = where even premium models need a skilled human partner
+
+The progression is: first solve it, then solve it cheaper. Not: struggle to solve it at all.
+
+### Technical Requirements
+
+1. **Class-based challenges MUST have test harnesses** — the generic harness calls functions without `new`, which breaks ES6 classes. Write a `solve()` dispatch function that instantiates classes properly.
+2. **Complex input formats MUST have test harnesses** — if inputs are command sequences (like "put 1 10", "get 1"), test scenario names, or anything beyond simple JSON-parseable args, write a `solve()` function that parses them.
+3. **Iterable/generator returns need harnesses** — the generic harness JSON.stringifies results, which gives `{}` for iterables. Wrap with `Array.from()`.
+4. **Test harnesses are server-side only** — never exposed to users or AI chat.
+5. **Bug comments in starter code are for AI, not the user** — the description tells the user what's broken; the comments in code help AI models locate the bugs efficiently.
+
+### QA Checklist (before adding any challenge)
+
+- Does the starter code export a class? Add a test harness with `new`.
+- Does input require command parsing (multi-step operations)? Add a test harness.
+- Does the return value need transformation (iterables, custom objects)? Add a test harness.
+- Does the challenge's input format match what `buildTestCode()` in judge.ts expects?
+
+---
+
+*Last updated: 2026-02-23*

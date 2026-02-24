@@ -31,6 +31,7 @@ const sampleChallenges: Array<{
   wallClockLimit: number;
   category: string;
   skillTested: string;
+  testHarness?: string;
 }> = [
   // ===== MODEL SELECTION (4 challenges) =====
   {
@@ -1288,6 +1289,21 @@ Find and fix both bugs. Use AI efficiently — describe the specific bugs rather
 }
 
 module.exports = { LRUCache };`,
+    testHarness: `function solve(...args) {
+  const capacity = args[0];
+  const cache = new LRUCache(capacity);
+  const results = [];
+  for (let i = 1; i < args.length; i++) {
+    const parts = args[i].split(' ');
+    if (parts[0] === 'get') {
+      results.push(cache.get(Number(parts[1])));
+    } else if (parts[0] === 'put') {
+      cache.put(Number(parts[1]), Number(parts[2]));
+    }
+  }
+  return results.join(',');
+}
+module.exports = { solve };`,
     testCases: [
       {
         input: '2\nput 1 10\nput 2 20\nget 1\nput 3 30\nget 2',
@@ -1353,6 +1369,26 @@ Use AI to identify and fix each bug precisely.`,
 }
 
 module.exports = { waterfall };`,
+    testHarness: `async function solve(testName, ...params) {
+  const fnMap = {
+    add2: async (v) => v + 2,
+    add10: async (v) => v + 10,
+    mul3: async (v) => v * 3,
+    "throw": async () => { throw new Error('fail'); },
+    "append-world": async (v) => v + ' world',
+    uppercase: async (v) => v.toUpperCase()
+  };
+  const initial = (typeof params[0] === 'number') ? params[0] : params[0];
+  const fnNames = params.slice(1);
+  const fns = fnNames.map(name => fnMap[name]);
+  try {
+    const result = await waterfall(fns, initial);
+    return String(result);
+  } catch (e) {
+    return 'ERROR';
+  }
+}
+module.exports = { solve };`,
     testCases: [
       { input: 'basic-chain\n1\nadd2\nmul3', expectedOutput: '9' },
       { input: 'single-fn\n5\nadd10', expectedOutput: '15' },
@@ -1412,6 +1448,23 @@ Find and fix all 3 bugs. Be specific in your AI prompts about what's broken.`,
 }
 
 module.exports = { RateLimiter };`,
+    testHarness: `function solve(...args) {
+  const firstLine = String(args[0]).split(' ');
+  const maxTokens = Number(firstLine[0]);
+  const refillRate = Number(firstLine[1]);
+  const limiter = new RateLimiter(maxTokens, refillRate);
+  const results = [];
+  for (let i = 1; i < args.length; i++) {
+    const parts = String(args[i]).split(' ');
+    if (parts[0] === 'consume') {
+      results.push(String(limiter.tryConsume(Number(parts[1]))));
+    } else if (parts[0] === 'wait') {
+      limiter.lastRefill -= Number(parts[1]);
+    }
+  }
+  return results.join(',');
+}
+module.exports = { solve };`,
     testCases: [
       {
         input: '10 2\nconsume 5\nconsume 5\nconsume 1',
@@ -1486,6 +1539,18 @@ Fix all 3 bugs precisely.`,
 }
 
 module.exports = { range };`,
+    testHarness: `function solve(...args) {
+  var parts = String(args[0]).split(' ').map(Number);
+  var iterable = range.apply(null, parts);
+  var arr = [];
+  var count = 0;
+  for (var v of iterable) {
+    if (++count > 10000) break;
+    arr.push(v);
+  }
+  return JSON.stringify(arr);
+}
+module.exports = { solve };`,
     testCases: [
       { input: '1 5', expectedOutput: '[1,2,3,4,5]' },
       { input: '0 10 3', expectedOutput: '[0,3,6,9]' },
@@ -1586,6 +1651,24 @@ Fix all 3 bugs. Use AI to pinpoint each issue.`,
 }
 
 module.exports = { PriorityQueue };`,
+    testHarness: `function solve(...args) {
+  const queue = new PriorityQueue();
+  const results = [];
+  for (let i = 0; i < args.length; i++) {
+    const parts = String(args[i]).split(' ');
+    if (parts[0] === 'enqueue') {
+      queue.enqueue(parts[1], Number(parts[2]));
+    } else if (parts[0] === 'dequeue') {
+      results.push(queue.dequeue());
+    } else if (parts[0] === 'peek') {
+      results.push(queue.peek());
+    } else if (parts[0] === 'size') {
+      results.push(queue.size());
+    }
+  }
+  return results.join(',');
+}
+module.exports = { solve };`,
     testCases: [
       {
         input: 'enqueue a 3\nenqueue b 1\nenqueue c 2\ndequeue',
@@ -1682,6 +1765,22 @@ class Trie {
 }
 
 module.exports = { Trie };`,
+    testHarness: `function solve(...args) {
+  const trie = new Trie();
+  const results = [];
+  for (let i = 0; i < args.length; i++) {
+    const parts = String(args[i]).split(' ');
+    if (parts[0] === 'insert') {
+      trie.insert(parts[1]);
+    } else if (parts[0] === 'search') {
+      results.push(String(trie.search(parts[1])));
+    } else if (parts[0] === 'startsWith') {
+      results.push(String(trie.startsWith(parts[1])));
+    }
+  }
+  return results.join(',');
+}
+module.exports = { solve };`,
     testCases: [
       {
         input: 'insert apple\nsearch apple\nsearch app',
@@ -1811,7 +1910,8 @@ function main() {
     const testCasesJson = escapeSql(JSON.stringify(c.testCases));
     const maxTokens = c.maxTokens === null ? 'NULL' : c.maxTokens;
     const maxCost = c.maxCost === null ? 'NULL' : c.maxCost;
-    const row = `INSERT OR REPLACE INTO challenges (id, title, description, difficulty, starter_code, test_cases, exec_time_limit, exec_memory_limit, max_tokens, max_cost, wall_clock_limit, category, skill_tested) VALUES ('${escapeSql(c.id)}', '${escapeSql(c.title)}', '${escapeSql(c.description)}', '${escapeSql(c.difficulty)}', '${escapeSql(c.starterCode)}', '${testCasesJson}', ${c.execTimeLimit}, ${c.execMemoryLimit}, ${maxTokens}, ${maxCost}, ${c.wallClockLimit}, '${escapeSql(c.category)}', '${escapeSql(c.skillTested)}');`;
+    const testHarness = c.testHarness ? `'${escapeSql(c.testHarness)}'` : 'NULL';
+    const row = `INSERT OR REPLACE INTO challenges (id, title, description, difficulty, starter_code, test_cases, exec_time_limit, exec_memory_limit, max_tokens, max_cost, wall_clock_limit, category, skill_tested, test_harness) VALUES ('${escapeSql(c.id)}', '${escapeSql(c.title)}', '${escapeSql(c.description)}', '${escapeSql(c.difficulty)}', '${escapeSql(c.starterCode)}', '${testCasesJson}', ${c.execTimeLimit}, ${c.execMemoryLimit}, ${maxTokens}, ${maxCost}, ${c.wallClockLimit}, '${escapeSql(c.category)}', '${escapeSql(c.skillTested)}', ${testHarness});`;
     lines.push(row);
   }
 

@@ -839,3 +839,202 @@ Fix all 3 bugs. Be surgical with your AI prompts.', 'easy', 'class MiddlewareCha
 }
 
 module.exports = { MiddlewareChain };', '[{"input":"basic-chain\nlogger\nauth\nhandler","expectedOutput":"[\"logger\",\"auth\",\"handler\"]"},{"input":"error-handling\nlogger\nthrow-error\nerror-handler","expectedOutput":"[\"logger\",\"throw-error\",\"error-handler\"]"},{"input":"skip-error-middleware\nlogger\nerror-handler\nhandler","expectedOutput":"[\"logger\",\"handler\"]"},{"input":"empty-chain","expectedOutput":"[]"},{"input":"async-middleware\nasync-logger\nhandler","expectedOutput":"[\"async-logger\",\"handler\"]"}]', 5000, 256, NULL, 500, 600, 'iterative_debugging', 'Debugging async middleware chain patterns');
+
+-- ============================================================
+-- TEST HARNESSES for class-based challenges
+-- These solve() functions handle class instantiation and input parsing
+-- so the generic harness doesn't call classes without 'new'.
+-- ============================================================
+
+UPDATE challenges SET test_harness = 'function solve(...args) {
+  const capacity = args[0];
+  const cache = new LRUCache(capacity);
+  const results = [];
+  for (let i = 1; i < args.length; i++) {
+    const parts = args[i].split('' '');
+    if (parts[0] === ''get'') {
+      results.push(cache.get(Number(parts[1])));
+    } else if (parts[0] === ''put'') {
+      cache.put(Number(parts[1]), Number(parts[2]));
+    }
+  }
+  return results.join('','');
+}
+module.exports = { solve };' WHERE id = 'lru-cache';
+
+UPDATE challenges SET test_harness = 'function solve(...args) {
+  const bst = new BST();
+  const results = [];
+  for (let i = 0; i < args.length; i++) {
+    const parts = String(args[i]).split('' '');
+    if (parts[0] === ''insert'') {
+      bst.insert(Number(parts[1]));
+    } else if (parts[0] === ''search'') {
+      results.push(String(bst.search(Number(parts[1]))));
+    } else if (parts[0] === ''delete'') {
+      bst.delete(Number(parts[1]));
+    } else if (parts[0] === ''inOrder'') {
+      results.push(JSON.stringify(bst.inOrder()));
+    } else if (parts[0] === ''min'') {
+      results.push(String(bst.min));
+    } else if (parts[0] === ''max'') {
+      results.push(String(bst.max));
+    }
+  }
+  return results.join('','');
+}
+module.exports = { solve };' WHERE id = 'binary-search-tree';
+
+UPDATE challenges SET test_harness = 'function solve(testName, ...params) {
+  var loop = new EventLoop();
+  if (testName === ''empty'') return JSON.stringify([]);
+  var tasks = params.map(function(p) {
+    var parts = p.split('','');
+    return { name: parts[0], priority: Number(parts[1]) };
+  });
+  for (var i = 0; i < tasks.length; i++) {
+    loop.addTask(tasks[i].name, tasks[i].priority, function() {});
+  }
+  return JSON.stringify(loop.run());
+}
+module.exports = { solve };' WHERE id = 'buggy-event-loop';
+
+UPDATE challenges SET test_harness = 'function solve(testName, ...params) {
+  switch (testName) {
+    case ''basic-query'': {
+      var pool = new ConnectionPool(2);
+      return pool.query(params[0]);
+    }
+    case ''stats-after-query'': {
+      var pool = new ConnectionPool(params[0]);
+      return JSON.stringify(pool.getStats());
+    }
+    case ''acquire-release'': {
+      var pool = new ConnectionPool(params[0]);
+      var conn = pool.acquire();
+      pool.release(conn);
+      return JSON.stringify(pool.getStats());
+    }
+    case ''exhaust-pool'': {
+      var pool = new ConnectionPool(params[0]);
+      pool.acquire();
+      var second = pool.acquire();
+      return String(second);
+    }
+    case ''concurrent-queries'': {
+      var pool = new ConnectionPool(params[0]);
+      var results = [];
+      for (var i = 1; i < params.length; i++) {
+        results.push(pool.query(params[i]));
+      }
+      return JSON.stringify(results);
+    }
+    default: return ''unknown-test: '' + testName;
+  }
+}
+module.exports = { solve };' WHERE id = 'leaky-connection-pool';
+
+UPDATE challenges SET test_harness = 'async function solve(testName, ...params) {
+  var chain = new MiddlewareChain();
+  var order = [];
+
+  if (testName === ''empty-chain'') {
+    await Promise.resolve(chain.execute({}, {}));
+    return JSON.stringify(order);
+  }
+
+  for (var i = 0; i < params.length; i++) {
+    var name = params[i];
+    if (name === ''error-handler'') {
+      chain.use(function(err, req, res, next) { order.push(''error-handler''); next(); });
+    } else if (name === ''throw-error'') {
+      chain.use(function(req, res, next) { order.push(''throw-error''); next(new Error(''test'')); });
+    } else if (name.indexOf(''async-'') === 0) {
+      (function(n) {
+        chain.use(async function(req, res, next) {
+          await new Promise(function(r) { setTimeout(r, 10); });
+          order.push(n);
+          next();
+        });
+      })(name);
+    } else {
+      (function(n) {
+        chain.use(function(req, res, next) { order.push(n); next(); });
+      })(name);
+    }
+  }
+
+  await Promise.resolve(chain.execute({}, {}));
+  return JSON.stringify(order);
+}
+module.exports = { solve };' WHERE id = 'broken-middleware';
+
+UPDATE challenges SET test_harness = 'function solve(testName, ...params) {
+  switch (testName) {
+    case ''push-and-pop'': {
+      var s = new Stack();
+      for (var i = 0; i < params.length; i++) s.push(Number(params[i]));
+      var results = [];
+      while (s.size() > 0) results.push(s.pop());
+      return results.join('','');
+    }
+    case ''peek'': {
+      var s = new Stack();
+      s.push(Number(params[0]));
+      return String(s.peek());
+    }
+    case ''isEmpty-empty'': {
+      return String(new Stack().isEmpty());
+    }
+    case ''isEmpty-notempty'': {
+      var s = new Stack();
+      s.push(Number(params[0]));
+      return String(s.isEmpty());
+    }
+    case ''size'': {
+      var s = new Stack();
+      for (var i = 0; i < params.length; i++) s.push(Number(params[i]));
+      return String(s.size());
+    }
+    default: return ''unknown-test: '' + testName;
+  }
+}
+module.exports = { solve };' WHERE id = 'test-then-implement';
+
+UPDATE challenges SET test_harness = 'function solve(testName, ...params) {
+  switch (testName) {
+    case ''on-emit'': {
+      var ee = new EventEmitter();
+      var result = '''';
+      ee.on(params[0], function(name) { result = ''Hello '' + name; });
+      ee.emit(params[0], params[1]);
+      return result;
+    }
+    case ''emit-returns-true'': {
+      var ee = new EventEmitter();
+      ee.on(params[0], function() {});
+      return String(ee.emit(params[0]));
+    }
+    case ''emit-returns-false'': {
+      var ee = new EventEmitter();
+      return String(ee.emit(params[0]));
+    }
+    case ''off-removes'': {
+      var ee = new EventEmitter();
+      var fn = function() {};
+      ee.on(params[0], fn);
+      ee.off(params[0], fn);
+      return String(ee.listenerCount ? ee.listenerCount(params[0]) : 0);
+    }
+    case ''once-fires-once'': {
+      var ee = new EventEmitter();
+      var count = 0;
+      ee.once(params[0], function() { count++; });
+      ee.emit(params[0]);
+      ee.emit(params[0]);
+      return String(count);
+    }
+    default: return ''unknown-test: '' + testName;
+  }
+}
+module.exports = { solve };' WHERE id = 'event-emitter';

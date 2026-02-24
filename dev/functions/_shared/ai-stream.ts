@@ -35,20 +35,32 @@ import { getModelPricing, getTierFallbackChain } from './ai-pricing';
  */
 function extractChunkContent(parsed: Record<string, unknown>): StreamChunk | null {
   // Cloudflare-native format (these models don't produce reasoning_content)
+  // Note: Cloudflare API sometimes returns bare numeric tokens as JSON numbers
+  // (e.g. {"response":1} instead of {"response":"1"}), so we handle both.
   if (typeof parsed.response === 'string') {
     return { text: parsed.response, phase: 'content' };
+  }
+  if (typeof parsed.response === 'number' || typeof parsed.response === 'boolean') {
+    return { text: String(parsed.response), phase: 'content' };
   }
   // OpenAI-compatible format
   if (Array.isArray(parsed.choices) && parsed.choices.length > 0) {
     const delta = (parsed.choices[0] as Record<string, unknown>)?.delta as Record<string, unknown> | undefined;
     if (delta) {
       // Prefer content over reasoning_content
+      // Handle both string and numeric tokens (Cloudflare API quirk)
       if (typeof delta.content === 'string' && delta.content) {
         return { text: delta.content, phase: 'content' };
+      }
+      if (typeof delta.content === 'number' || typeof delta.content === 'boolean') {
+        return { text: String(delta.content), phase: 'content' };
       }
       // reasoning_content = thinking-phase tokens from reasoning models
       if (typeof delta.reasoning_content === 'string' && delta.reasoning_content) {
         return { text: delta.reasoning_content, phase: 'thinking' };
+      }
+      if (typeof delta.reasoning_content === 'number' || typeof delta.reasoning_content === 'boolean') {
+        return { text: String(delta.reasoning_content), phase: 'thinking' };
       }
     }
   }
@@ -68,8 +80,15 @@ function extractNonStreamingContent(json: Record<string, unknown>): {
   const msg = (result.choices[0] as Record<string, unknown>)?.message as Record<string, unknown> | undefined;
   if (!msg) return null;
 
-  const content = typeof msg.content === 'string' ? msg.content : '';
-  const reasoning = typeof msg.reasoning_content === 'string' ? msg.reasoning_content : '';
+  // Handle string, number, and boolean content (Cloudflare API can return non-string tokens)
+  const rawContent = msg.content;
+  const content = typeof rawContent === 'string' ? rawContent
+    : (typeof rawContent === 'number' || typeof rawContent === 'boolean') ? String(rawContent)
+    : '';
+  const rawReasoning = msg.reasoning_content;
+  const reasoning = typeof rawReasoning === 'string' ? rawReasoning
+    : (typeof rawReasoning === 'number' || typeof rawReasoning === 'boolean') ? String(rawReasoning)
+    : '';
 
   // If there's no content at all, nothing to return
   if (!content && !reasoning) return null;
@@ -154,6 +173,7 @@ export async function* streamCloudflareAI(
   const decoder = new TextDecoder();
   let fullContent = '';
   const inputText = messages.map((m) => m.content).join(' ');
+  let realUsage: { prompt_tokens?: number; completion_tokens?: number } | null = null;
 
   let buffer = '';
   try {
@@ -172,6 +192,10 @@ export async function* streamCloudflareAI(
         if (data === '[DONE]') continue;
         try {
           const parsed = JSON.parse(data);
+          // Capture real usage data from final chunk (Cloudflare sends it alongside last response)
+          if (parsed.usage && typeof parsed.usage === 'object') {
+            realUsage = parsed.usage as { prompt_tokens?: number; completion_tokens?: number };
+          }
           const chunk = extractChunkContent(parsed);
           if (chunk) {
             fullContent += chunk.text;
@@ -189,6 +213,9 @@ export async function* streamCloudflareAI(
       if (data !== '[DONE]') {
         try {
           const parsed = JSON.parse(data);
+          if (parsed.usage && typeof parsed.usage === 'object') {
+            realUsage = parsed.usage as { prompt_tokens?: number; completion_tokens?: number };
+          }
           const chunk = extractChunkContent(parsed);
           if (chunk) {
             fullContent += chunk.text;
@@ -202,8 +229,8 @@ export async function* streamCloudflareAI(
   }
 
   return {
-    inputTokens: Math.ceil(inputText.length / 4),
-    outputTokens: Math.ceil(fullContent.length / 4),
+    inputTokens: realUsage?.prompt_tokens ?? Math.ceil(inputText.length / 4),
+    outputTokens: realUsage?.completion_tokens ?? Math.ceil(fullContent.length / 4),
   };
 }
 
@@ -330,6 +357,7 @@ export async function* streamCloudflareAIWithFallback(
     const decoder = new TextDecoder();
     let fullContent = '';
     const inputText = messages.map((m) => m.content).join(' ');
+    let realUsage: { prompt_tokens?: number; completion_tokens?: number } | null = null;
 
     let buffer = '';
     try {
@@ -348,6 +376,10 @@ export async function* streamCloudflareAIWithFallback(
           if (data === '[DONE]') continue;
           try {
             const parsed = JSON.parse(data);
+            // Capture real usage data from final chunk
+            if (parsed.usage && typeof parsed.usage === 'object') {
+              realUsage = parsed.usage as { prompt_tokens?: number; completion_tokens?: number };
+            }
             const chunk = extractChunkContent(parsed);
             if (chunk) {
               fullContent += chunk.text;
@@ -365,6 +397,9 @@ export async function* streamCloudflareAIWithFallback(
         if (data !== '[DONE]') {
           try {
             const parsed = JSON.parse(data);
+            if (parsed.usage && typeof parsed.usage === 'object') {
+              realUsage = parsed.usage as { prompt_tokens?: number; completion_tokens?: number };
+            }
             const chunk = extractChunkContent(parsed);
             if (chunk) {
               fullContent += chunk.text;
@@ -378,8 +413,8 @@ export async function* streamCloudflareAIWithFallback(
     }
 
     return {
-      inputTokens: Math.ceil(inputText.length / 4),
-      outputTokens: Math.ceil(fullContent.length / 4),
+      inputTokens: realUsage?.prompt_tokens ?? Math.ceil(inputText.length / 4),
+      outputTokens: realUsage?.completion_tokens ?? Math.ceil(fullContent.length / 4),
       model: modelId,
     };
   }

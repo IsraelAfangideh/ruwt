@@ -458,3 +458,56 @@ function spliceLines(code: string, startLine: number, count: number, replacement
 export function hasEditBlocks(text: string): boolean {
   return /<{2,}\s*SEARCH\b/i.test(text);
 }
+
+/**
+ * Check if a response contains bare conflict markers (<<<<<<< ... >>>>>>>)
+ * without SEARCH/REPLACE labels. Models like Llama 3.1 produce this format.
+ */
+export function hasBareConflictMarkers(text: string): boolean {
+  // Must have bare markers (no SEARCH label) AND closing markers
+  if (/<{2,}\s*SEARCH\b/i.test(text)) return false; // has labels, not bare
+  return /^<{3,}\s*$/m.test(text) && /^>{3,}\s*$/m.test(text);
+}
+
+/**
+ * Parse bare conflict marker pairs into SEARCH/REPLACE edit blocks.
+ * Handles format where models output two bare <<<<<<< ... >>>>>>> blocks
+ * (first = original code, second = replacement code).
+ */
+export function parseBareConflictBlocks(text: string): EditBlock[] {
+  const lines = text.split('\n');
+  const blocks: { content: string }[] = [];
+  let collecting = false;
+  let contentLines: string[] = [];
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (/^<{3,}\s*$/.test(trimmed)) {
+      // Opening marker — start collecting
+      collecting = true;
+      contentLines = [];
+    } else if (/^>{3,}\s*$/.test(trimmed) && collecting) {
+      // Closing marker — finish block
+      // Trim trailing blank lines
+      while (contentLines.length > 0 && contentLines[contentLines.length - 1] === '') {
+        contentLines.pop();
+      }
+      blocks.push({ content: contentLines.join('\n') });
+      collecting = false;
+      contentLines = [];
+    } else if (collecting) {
+      contentLines.push(line);
+    }
+  }
+
+  // Pair up blocks: first = SEARCH, second = REPLACE
+  const editBlocks: EditBlock[] = [];
+  for (let i = 0; i < blocks.length - 1; i += 2) {
+    editBlocks.push({
+      search: blocks[i].content,
+      replace: blocks[i + 1].content,
+    });
+  }
+
+  return editBlocks;
+}

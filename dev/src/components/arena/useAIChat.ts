@@ -92,11 +92,14 @@ export function useAIChat(options: UseAIChatOptions) {
         let messageMeta: MessageMeta | undefined;
 
         const processSSEEvent = (data: SSEChunkData) => {
-          if (data.type === 'chunk' && data.content) {
-            fullContent += data.content;
+          if (data.type === 'chunk' && data.content != null) {
+            // Use != null (not truthiness) to allow numeric 0 and boolean false
+            const text = String(data.content);
+            fullContent += text;
             onChunk(fullContent);
-          } else if (data.type === 'thinking' && data.content) {
-            fullThinking += data.content;
+          } else if (data.type === 'thinking' && data.content != null) {
+            const text = String(data.content);
+            fullThinking += text;
             onThinking?.(fullThinking);
           } else if (data.type === 'thinking_done') {
             onThinkingDone?.();
@@ -108,9 +111,9 @@ export function useAIChat(options: UseAIChatOptions) {
               tokens: (data.inputTokens ?? 0) + (data.outputTokens ?? 0),
             };
           } else if (data.type === 'error') {
-            fullContent += `\n[Error: ${data.message}]`;
+            onError(data.message || 'Unknown error');
           } else if (data.type === 'constraint_warning') {
-            fullContent += `\n[Constraint: ${data.message}]`;
+            onConstraint?.(data.violation || 'unknown', data.message || 'Constraint reached');
           }
         };
 

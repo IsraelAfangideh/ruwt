@@ -9,6 +9,8 @@
 import {
   hasEditBlocks,
   parseEditBlocks,
+  hasBareConflictMarkers,
+  parseBareConflictBlocks,
   hasUnifiedDiff,
   parseUnifiedDiff,
   applyEditBlocks,
@@ -108,7 +110,28 @@ export function applyCodeFromResponse(
     }
   }
 
-  // 2. Try unified diff (also character-perfect)
+  // 2. Try bare conflict markers: <<<<<<< ... >>>>>>> pairs without SEARCH/REPLACE labels
+  //    Models like Llama 3.1 produce this format (first block = original, second = replacement)
+  if (hasBareConflictMarkers(responseText)) {
+    const bareBlocks = parseBareConflictBlocks(responseText);
+    if (bareBlocks.length > 0) {
+      const result = applyEditBlocks(currentCode, bareBlocks);
+      if (result.applied > 0) {
+        const msg = result.failed > 0
+          ? `Applied ${result.applied} edit(s), ${result.failed} failed`
+          : `Applied ${result.applied} edit(s)`;
+        return {
+          applied: true,
+          newCode: result.newCode,
+          method: 'search_replace',
+          message: msg,
+          needsApplyModel: false,
+        };
+      }
+    }
+  }
+
+  // 3. Try unified diff (also character-perfect)
   if (hasUnifiedDiff(responseText)) {
     const blocks = parseUnifiedDiff(responseText);
     if (blocks.length > 0) {
@@ -125,7 +148,7 @@ export function applyCodeFromResponse(
     }
   }
 
-  // 3. Try extracting full code from fenced block (preserves exact characters)
+  // 4. Try extracting full code from fenced block (preserves exact characters)
   const extracted = extractFencedCode(responseText);
   if (extracted && extracted.trim().length >= 20) {
     // Only use direct extraction if the block looks like a complete file,
@@ -146,11 +169,12 @@ export function applyCodeFromResponse(
     }
   }
 
-  // 4. Check if there's any code-like content that we couldn't parse
+  // 5. Check if there's any code-like content that we couldn't parse
   const hasCode =
     /```/.test(responseText) ||
     /<{2,}\s*SEARCH\b/i.test(responseText) ||
-    /^@@\s*-\d/m.test(responseText);
+    /^@@\s*-\d/m.test(responseText) ||
+    (/^<{3,}\s*$/m.test(responseText) && /^>{3,}\s*$/m.test(responseText));
 
   if (hasCode) {
     return {

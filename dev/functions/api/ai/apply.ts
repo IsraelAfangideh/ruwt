@@ -383,14 +383,20 @@ export async function onRequestPost(context: {
         const json = (await response.json()) as Record<string, unknown>;
 
         // Extract content from response (non-streaming)
+        // Handle string, number, and boolean tokens (Cloudflare API can return non-string values)
         let content = '';
         const result = json.result as Record<string, unknown> | undefined;
         if (result) {
           if (typeof result.response === 'string') {
             content = result.response;
+          } else if (typeof result.response === 'number' || typeof result.response === 'boolean') {
+            content = String(result.response);
           } else if (Array.isArray(result.choices) && result.choices.length > 0) {
             const msg = (result.choices[0] as Record<string, unknown>)?.message as Record<string, unknown> | undefined;
-            content = typeof msg?.content === 'string' ? msg.content : '';
+            const rawContent = msg?.content;
+            content = typeof rawContent === 'string' ? rawContent
+              : (typeof rawContent === 'number' || typeof rawContent === 'boolean') ? String(rawContent)
+              : '';
           }
         }
 

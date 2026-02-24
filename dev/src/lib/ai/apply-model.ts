@@ -21,6 +21,8 @@ interface ApplyModelResult {
   success: boolean;
   mergedCode?: string;
   cost?: number;
+  inputTokens?: number;
+  outputTokens?: number;
   model?: string;
   error?: string;
   /** False if the server detected the apply model corrupted the code. */
@@ -63,6 +65,8 @@ export async function callApplyModel(opts: ApplyModelOptions): Promise<ApplyMode
         verified: false,
         verificationErrors: data.verificationErrors,
         cost: data.cost,
+        inputTokens: data.inputTokens,
+        outputTokens: data.outputTokens,
         model: data.model,
         error: 'Apply model produced corrupted output',
       };
@@ -78,6 +82,8 @@ export async function callApplyModel(opts: ApplyModelOptions): Promise<ApplyMode
       verified: true,
       mergedCode: data.mergedCode,
       cost: data.cost,
+      inputTokens: data.inputTokens,
+      outputTokens: data.outputTokens,
       model: data.model,
     };
   } catch (err) {

@@ -162,6 +162,11 @@ function buildTestCode(sourceCode: string, language: SupportedLanguage, input: s
 
   if (!funcName && !multiExports) return sourceCode; // can't wrap — run as-is
 
+  // Safety net: detect class exports so we use 'new' instead of bare call.
+  // All class-based challenges SHOULD have test harnesses, but this prevents
+  // cryptic "Class constructor cannot be invoked without 'new'" errors if one is missed.
+  const isClass = funcName && language !== 'python' && new RegExp(`class\\s+${funcName}\\b`).test(sourceCode);
+
   if (language === 'python') {
     const escaped = escapePyString(input);
     // TODO: multi-export dispatch for Python if needed
@@ -199,7 +204,8 @@ const __args = __argLines.map(__l => { try { return JSON.parse(__l); } catch(e) 
 const __dispatch = { ${multiExports.join(', ')} };
 const __fn = __dispatch[__funcName];
 if (!__fn) throw new Error('Unknown function: ' + __funcName);
-const __result = __fn(...__args);
+const __isClass = typeof __fn === 'function' && /^class\\b/.test(Function.prototype.toString.call(__fn));
+const __result = __isClass ? new __fn(...__args) : __fn(...__args);
 Promise.resolve(__result).then(__r => { if (__r !== undefined) console.log(typeof __r === 'string' ? __r : JSON.stringify(__r)); });
 `;
   }
@@ -210,7 +216,7 @@ Promise.resolve(__result).then(__r => { if (__r !== undefined) console.log(typeo
 const __input = '${escaped}';
 const __lines = __input.trim().split('\\n');
 const __args = __lines.map(__l => { try { return JSON.parse(__l); } catch(e) { return __l; } });
-const __result = ${funcName}(...__args);
+const __result = ${isClass ? `new ${funcName}` : funcName}(...__args);
 Promise.resolve(__result).then(__r => { if (__r !== undefined) console.log(typeof __r === 'string' ? __r : JSON.stringify(__r)); });
 `;
 }

@@ -198,6 +198,8 @@ export function ArenaScreen() {
     setTestResults(null);
     setSuccessOverlay(null);
     setSuccessStats(null);
+    setIsExpired(false);
+    isExpiredRef.current = false;
   }, []);
 
   const onRunTests = useCallback(
@@ -866,6 +868,8 @@ export function ArenaScreen() {
             code={code}
             onCodeChange={setCode}
             language={language}
+            isExpired={isExpired}
+            onExpire={() => { setIsExpired(true); isExpiredRef.current = true; }}
             onRunTests={onRunTests}
             onSubmit={onSubmit}
             onAttemptUpdate={(next) => setAttempt(next)}

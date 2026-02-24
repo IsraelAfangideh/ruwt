@@ -104,6 +104,8 @@ interface ArenaIDEProps {
   code: string;
   onCodeChange: (code: string) => void;
   language: string;
+  isExpired?: boolean;
+  onExpire?: () => void;
   onRunTests: (sourceCode: string, language: string) => Promise<{ passed: boolean; passedTests: number; totalTests: number; results?: unknown[] }>;
   onSubmit?: (sourceCode: string, language: string) => Promise<{ passed: boolean; passedTests: number; totalTests: number }>;
   onAttemptUpdate?: (attempt: ArenaAttempt) => void;
@@ -332,6 +334,8 @@ export function ArenaIDE({
   code,
   onCodeChange,
   language,
+  isExpired: isExpiredProp,
+  onExpire,
   onAttemptUpdate,
   onRestart,
   onRunTests,
@@ -352,7 +356,6 @@ export function ArenaIDE({
   const [model, setModel] = useState('@cf/meta/llama-3.1-8b-instruct');
   const [selectedTier, setSelectedTier] = useState<ModelTier>('budget');
   const [tierDropdownOpen, setTierDropdownOpen] = useState(false);
-  const [isExpired, setIsExpired] = useState(false);
   const [showExpiryOverlay, setShowExpiryOverlay] = useState(false);
   const [aiLimitReached, setAiLimitReached] = useState(false);
   const [activeTab, setActiveTab] = useState<'description' | 'chat' | 'notepad'>('description');
@@ -370,6 +373,7 @@ export function ArenaIDE({
   const [notepadContent, setNotepadContent] = useState('');
   const [isToolLooping, setIsToolLooping] = useState(false);
   const pendingTestContextRef = useRef<AITestResults | null>(null);
+  const pendingRetryRef = useRef<string | null>(null);
   const streamingThinkingRef = useRef('');
   const abortedByUserRef = useRef(false);
   const messagesRef = useRef(messages);
@@ -381,13 +385,14 @@ export function ArenaIDE({
   const chatScrollRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<unknown>(null);
   const terminalRef = useRef<TerminalPanelHandle>(null);
+  // isExpired is driven by ArenaScreen (single source of truth for timer)
+  const isExpired = isExpiredProp ?? false;
   const isExpiredRef = useRef(false);
   isExpiredRef.current = isExpired;
   const isDragging = useRef(false);
   const rightPaneRef = useRef<HTMLDivElement>(null);
 
   const attemptId = attempt?.id ?? '';
-  const expiresAt = attempt?.expiresAt ? new Date(attempt.expiresAt) : null;
 
   // Virtual filesystem
   const fs = useMemo(() => new VirtualFileSystem(language, code), []);
@@ -398,20 +403,27 @@ export function ArenaIDE({
   // Bidirectional sync: Monaco <-> VFS
   const { handleEditorChange } = useCodeSync(editorRef as React.RefObject<never>, fs, onCodeChange, clearDecorations);
 
-  // AI chat hook
+  // Use ref to avoid stale closure in handleCostUpdate during agent loops
+  const attemptRef = useRef(attempt);
+  attemptRef.current = attempt;
+  const onAttemptUpdateRef = useRef(onAttemptUpdate);
+  onAttemptUpdateRef.current = onAttemptUpdate;
+
+  // AI chat hook — uses refs to always read latest attempt
   const handleCostUpdate = useCallback((cost: number, inTok: number, outTok: number) => {
     setTotalCost((prev) => prev + cost);
     setInputTokens((prev) => prev + inTok);
     setOutputTokens((prev) => prev + outTok);
-    if (onAttemptUpdate && attempt) {
-      onAttemptUpdate({
-        ...attempt,
-        totalCost: attempt.totalCost + cost,
-        inputTokens: attempt.inputTokens + inTok,
-        outputTokens: attempt.outputTokens + outTok,
+    const currentAttempt = attemptRef.current;
+    if (onAttemptUpdateRef.current && currentAttempt) {
+      onAttemptUpdateRef.current({
+        ...currentAttempt,
+        totalCost: currentAttempt.totalCost + cost,
+        inputTokens: currentAttempt.inputTokens + inTok,
+        outputTokens: currentAttempt.outputTokens + outTok,
       });
     }
-  }, [attempt, onAttemptUpdate]);
+  }, []);
 
   const { streamChat, abort: abortChat } = useAIChat({
     attemptId,
@@ -466,6 +478,11 @@ export function ArenaIDE({
         challengeTitle: challenge.title,
       });
 
+      // Track apply model cost regardless of success/failure
+      if (applyResult.cost) {
+        handleCostUpdate(applyResult.cost, applyResult.inputTokens ?? 0, applyResult.outputTokens ?? 0);
+      }
+
       // Verification failed — apply model corrupted the output
       if (applyResult.verified === false) {
         setShowApplyFailure(true);
@@ -487,7 +504,7 @@ export function ArenaIDE({
     }
 
     return fileEdits.length > 0;
-  }, [language, fs, flashToast, mode, attemptId, showDiffDecorations, challenge.id, challenge.title]);
+  }, [language, fs, flashToast, mode, attemptId, showDiffDecorations, challenge.id, challenge.title, handleCostUpdate]);
 
   // Handle code applied from terminal (RuwtTUI)
   const handleTerminalCodeApplied = useCallback(() => {
@@ -528,21 +545,12 @@ export function ArenaIDE({
     };
   }, [attemptId, code]);
 
-  // Timer (expiry detection only — display moved to ArenaScreen header)
+  // Show expiry overlay when ArenaScreen's timer detects expiration
   useEffect(() => {
-    if (!expiresAt) return;
-    const tick = () => {
-      const left = Math.max(0, Math.floor((expiresAt.getTime() - Date.now()) / 1000));
-      if (left === 0 && !isExpiredRef.current) {
-        setIsExpired(true);
-        isExpiredRef.current = true;
-        setShowExpiryOverlay(true);
-      }
-    };
-    tick();
-    const id = setInterval(tick, 1000);
-    return () => clearInterval(id);
-  }, [expiresAt]);
+    if (isExpired && !showExpiryOverlay) {
+      setShowExpiryOverlay(true);
+    }
+  }, [isExpired]);
 
   // Auto-scroll chat
   useEffect(() => {
@@ -694,8 +702,7 @@ export function ArenaIDE({
             setIsThinkingPhase(false);
             constraintHit = true;
             if (violation === 'time') {
-              setIsExpired(true);
-              isExpiredRef.current = true;
+              onExpire?.();
               setShowExpiryOverlay(true);
             }
             if (violation === 'cost' || violation === 'tokens') {
@@ -805,6 +812,16 @@ export function ArenaIDE({
     streamingThinkingRef.current = '';
   }, [abortChat, streamingContent, streamingThinking]);
 
+  // Retry: after messages are truncated by handleRetry, this effect fires
+  // the retry with the latest sendMessage (which sees the truncated messages).
+  useEffect(() => {
+    if (pendingRetryRef.current && !isLoadingChat) {
+      const text = pendingRetryRef.current;
+      pendingRetryRef.current = null;
+      sendMessage(text);
+    }
+  }, [messages, isLoadingChat, sendMessage]);
+
   // Retry last AI response
   const handleRetry = useCallback(() => {
     if (isLoadingChat || !attemptId) return;
@@ -831,11 +848,11 @@ export function ArenaIDE({
     if (userMsgIdx < 0) return;
 
     const retryText = msgs[userMsgIdx].content;
-    // Truncate to before the user message that triggered the exchange
+    // Store retry text in ref — the useEffect above fires sendMessage
+    // after React commits the truncated messages state
+    pendingRetryRef.current = retryText;
     setMessages((prev) => prev.slice(0, userMsgIdx));
-    // Defer send to next frame so React processes the truncated messages
-    requestAnimationFrame(() => sendMessage(retryText));
-  }, [isLoadingChat, attemptId, sendMessage]);
+  }, [isLoadingChat, attemptId]);
 
   // Drag-to-resize between editor and terminal
   const handleDragStart = useCallback((e: React.MouseEvent) => {

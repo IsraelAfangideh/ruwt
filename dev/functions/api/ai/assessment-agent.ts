@@ -95,12 +95,18 @@ async function callWithTools(
     }
 
     // Extract response text
+    // Handle string, number, and boolean tokens (Cloudflare API can return non-string values)
     let response = '';
     if (typeof result.response === 'string') {
       response = result.response;
+    } else if (typeof result.response === 'number' || typeof result.response === 'boolean') {
+      response = String(result.response);
     } else if (Array.isArray(result.choices) && result.choices.length > 0) {
       const msg = (result.choices[0] as Record<string, unknown>)?.message as Record<string, unknown> | undefined;
-      response = typeof msg?.content === 'string' ? msg.content : '';
+      const rawContent = msg?.content;
+      response = typeof rawContent === 'string' ? rawContent
+        : (typeof rawContent === 'number' || typeof rawContent === 'boolean') ? String(rawContent)
+        : '';
     }
 
     // Extract tool_calls (Cloudflare native format)
