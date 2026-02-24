@@ -372,12 +372,19 @@ export function ArenaIDE({
   const [mode, setMode] = useState<AIMode>('agent');
   const [notepadContent, setNotepadContent] = useState('');
   const [isToolLooping, setIsToolLooping] = useState(false);
+  const [showScrollBtn, setShowScrollBtn] = useState(false);
+  const [expandedMessages, setExpandedMessages] = useState<Set<number>>(new Set());
+  const [sidebarWidth, setSidebarWidth] = useState(360);
+  const [queueLength, setQueueLength] = useState(0);
   const pendingTestContextRef = useRef<AITestResults | null>(null);
   const pendingRetryRef = useRef<string | null>(null);
   const streamingThinkingRef = useRef('');
   const abortedByUserRef = useRef(false);
   const messagesRef = useRef(messages);
   messagesRef.current = messages;
+  const chatTextareaRef = useRef<HTMLTextAreaElement>(null);
+  const messageQueueRef = useRef<string[]>([]);
+  const isSidebarDragging = useRef(false);
 
   const isMobile = useIsMobile();
   const activeTabRef = useRef<'description' | 'chat' | 'notepad'>('description');
@@ -552,12 +559,31 @@ export function ArenaIDE({
     }
   }, [isExpired]);
 
-  // Auto-scroll chat
+  // Auto-scroll chat (only when user is near the bottom)
   useEffect(() => {
-    if (chatScrollRef.current) {
-      chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
+    const el = chatScrollRef.current;
+    if (!el) return;
+    const isNearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 100;
+    if (isNearBottom) {
+      el.scrollTop = el.scrollHeight;
+      setShowScrollBtn(false);
     }
   }, [messages, streamingContent, streamingThinking]);
+
+  // Cmd+L to focus chat input
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'l') {
+        e.preventDefault();
+        setActiveTab('chat');
+        setHasUnreadChat(false);
+        if (isMobile) setMobilePanel('sidebar');
+        setTimeout(() => chatTextareaRef.current?.focus(), 0);
+      }
+    };
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown);
+  }, [isMobile]);
 
   // Track unread chat messages & auto-dismiss nudge
   const prevMsgCountRef = useRef(0);
@@ -575,7 +601,15 @@ export function ArenaIDE({
   // Send sidebar chat message — with tool-use orchestration loop
   const sendMessage = useCallback(async (overrideText?: string) => {
     const text = (overrideText || chatInput).trim();
-    if (!text || isLoadingChat || !attemptId) return;
+    if (!text || !attemptId) return;
+
+    // Queue if currently loading
+    if (isLoadingChat) {
+      messageQueueRef.current.push(text);
+      setQueueLength(messageQueueRef.current.length);
+      setChatInput('');
+      return;
+    }
 
     if (isExpired) {
       setMessages((m) => [...m, {
@@ -780,10 +814,17 @@ export function ArenaIDE({
     setIsLoadingChat(false);
     // Clear pending test context after use
     pendingTestContextRef.current = null;
+
+    // Drain message queue
+    if (messageQueueRef.current.length > 0) {
+      const nextMsg = messageQueueRef.current.shift()!;
+      setQueueLength(messageQueueRef.current.length);
+      setTimeout(() => sendMessage(nextMsg), 0);
+    }
   }, [chatInput, isLoadingChat, attemptId, messages, challenge, language, fs, streamChat, isExpired, aiLimitReached, applyCodeFromResponse, mode, onRunTests, testResults]);
 
   const handleInputKeyDown = useCallback(
-    (e: React.KeyboardEvent<HTMLInputElement>) => {
+    (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
       if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
         sendMessage();
@@ -810,6 +851,8 @@ export function ArenaIDE({
     setStreamingContent('');
     setStreamingThinking('');
     streamingThinkingRef.current = '';
+    messageQueueRef.current = [];
+    setQueueLength(0);
   }, [abortChat, streamingContent, streamingThinking]);
 
   // Retry: after messages are truncated by handleRetry, this effect fires
@@ -854,6 +897,47 @@ export function ArenaIDE({
     setMessages((prev) => prev.slice(0, userMsgIdx));
   }, [isLoadingChat, attemptId]);
 
+  // Clear chat
+  const handleClearChat = useCallback(() => {
+    if (isLoadingChat) handleStopChat();
+    setMessages([]);
+    setStreamingContent('');
+    setStreamingThinking('');
+    streamingThinkingRef.current = '';
+    setIsThinkingPhase(false);
+    setChatInput('');
+    setExpandedMessages(new Set());
+    messageQueueRef.current = [];
+    setQueueLength(0);
+  }, [isLoadingChat, handleStopChat]);
+
+  // Drag-to-resize sidebar (horizontal)
+  const handleSidebarDragStart = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    isSidebarDragging.current = true;
+    const startX = e.clientX;
+    const startWidth = sidebarWidth;
+
+    const onMouseMove = (ev: MouseEvent) => {
+      if (!isSidebarDragging.current) return;
+      const delta = ev.clientX - startX;
+      setSidebarWidth(Math.max(240, Math.min(640, startWidth + delta)));
+    };
+
+    const onMouseUp = () => {
+      isSidebarDragging.current = false;
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+  }, [sidebarWidth]);
+
   // Drag-to-resize between editor and terminal
   const handleDragStart = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
@@ -894,6 +978,16 @@ export function ArenaIDE({
     }>,
   }), [onRunCode, onRunTests]);
 
+  // Clickable line references in AI messages → navigate editor to that line
+  const handleLineClick = useCallback((line: number) => {
+    const editor = editorRef.current as any;
+    if (!editor?.revealLineInCenter) return;
+    if (isMobile) setMobilePanel('editor');
+    editor.revealLineInCenter(line);
+    editor.setPosition({ lineNumber: line, column: 1 });
+    editor.focus();
+  }, [isMobile]);
+
   const totalTokens = inputTokens + outputTokens;
   const chatDisabled = (isExpired && !showExpiryOverlay) || aiLimitReached;
 
@@ -912,7 +1006,7 @@ export function ArenaIDE({
         {/* LEFT SIDEBAR: Description/Chat tabs */}
         <div style={isMobile
           ? { ...s.sidebarMobile, display: mobilePanel === 'sidebar' ? 'flex' : 'none' }
-          : s.sidebar
+          : { ...s.sidebar, width: sidebarWidth }
         }>
           {/* Tab bar */}
           <div style={s.tabBar}>
@@ -944,10 +1038,23 @@ export function ArenaIDE({
             <Notepad value={notepadContent} onChange={setNotepadContent} />
           ) : (
             <>
-              {/* Mode selector */}
-              <ModeSelector mode={mode} onModeChange={setMode} disabled={isLoadingChat} />
+              {/* Mode selector + Clear */}
+              <div style={{ borderBottom: `1px solid ${arena.border}`, display: 'flex', alignItems: 'center' }}>
+                <div style={{ flex: 1 }}><ModeSelector mode={mode} onModeChange={setMode} disabled={isLoadingChat} /></div>
+                {messages.filter(m => m.role !== 'system').length > 0 && (
+                  <button onClick={handleClearChat} style={s.clearButton} title="Clear chat">Clear</button>
+                )}
+              </div>
               {/* Chat messages */}
-              <div ref={chatScrollRef} style={s.chatScroll}>
+              <div style={{ position: 'relative', flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+              <div
+                ref={chatScrollRef}
+                style={s.chatScroll}
+                onScroll={(e) => {
+                  const el = e.currentTarget;
+                  setShowScrollBtn(el.scrollHeight - el.scrollTop - el.clientHeight > 100);
+                }}
+              >
                 {messages.filter((m) => m.role !== 'system').length === 0 && !streamingContent && (
                   <div style={s.chatEmpty}>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: '0 12px', width: '100%', maxWidth: 360 }}>
@@ -987,16 +1094,18 @@ export function ArenaIDE({
                   </div>
                 )}
                 {(() => {
-                  const visible = messages.filter((m) => m.role !== 'system');
-                  // Find last non-constraint assistant message index for retry button
+                  // Build visible messages with original indices
+                  const visible: Array<{ msg: typeof messages[0]; origIdx: number }> = [];
+                  messages.forEach((m, idx) => { if (m.role !== 'system') visible.push({ msg: m, origIdx: idx }); });
+                  // Find last non-constraint assistant message for retry button
                   let lastAsstVisIdx = -1;
                   for (let j = visible.length - 1; j >= 0; j--) {
-                    if (visible[j].role === 'assistant' && !visible[j].isConstraint) { lastAsstVisIdx = j; break; }
+                    if (visible[j].msg.role === 'assistant' && !visible[j].msg.isConstraint) { lastAsstVisIdx = j; break; }
                   }
-                  return visible.map((msg, i) => {
+                  return visible.map(({ msg, origIdx }, i) => {
                   if (msg.isConstraint) {
                     return (
-                      <div key={i} style={s.constraintMessage}>
+                      <div key={origIdx} style={s.constraintMessage}>
                         <span style={s.constraintIcon}>!</span>
                         <span style={s.constraintText}>{msg.content}</span>
                       </div>
@@ -1004,8 +1113,11 @@ export function ArenaIDE({
                   }
                   const modelInfo = msg.meta ? getModelById(msg.meta.model) : undefined;
                   const isLastAssistant = i === lastAsstVisIdx;
+                  const lineCount = msg.content.split('\n').length;
+                  const isLongMsg = msg.role === 'assistant' && lineCount > 12;
+                  const isExpanded = isLastAssistant || expandedMessages.has(origIdx);
                   return (
-                    <div key={i} style={msg.role === 'user' ? s.userMessage : s.aiMessage}>
+                    <div key={origIdx} style={msg.role === 'user' ? s.userMessage : s.aiMessage}>
                       <div style={s.messageLabel}>
                         <span style={msg.role === 'user' ? s.userLabel : s.aiLabel}>
                           {msg.role === 'user' ? 'You' : 'AI'}
@@ -1019,13 +1131,53 @@ export function ArenaIDE({
                         {msg.role === 'assistant' && !msg.isConstraint && (
                           <MessageCopyButton content={msg.content} />
                         )}
+                        {msg.role === 'user' && !isLoadingChat && (
+                          <button
+                            onClick={() => {
+                              setChatInput(msg.content);
+                              setMessages(prev => prev.slice(0, origIdx));
+                              messageQueueRef.current = [];
+                              setQueueLength(0);
+                              setTimeout(() => chatTextareaRef.current?.focus(), 0);
+                            }}
+                            style={s.editButton}
+                            title="Edit and resend"
+                          >
+                            &#9998;
+                          </button>
+                        )}
                       </div>
                       {msg.role === 'assistant' && msg.thinking && (
                         <ThinkingBlock text={msg.thinking} />
                       )}
-                      <div style={msg.role === 'user' ? s.userContent : s.aiContent}>
-                        {msg.role === 'assistant' ? renderMarkdown(msg.content) : msg.content}
-                      </div>
+                      {msg.role === 'assistant' ? (
+                        <>
+                          <div style={{
+                            ...s.aiContent,
+                            ...(isLongMsg && !isExpanded ? { maxHeight: '10em', overflow: 'hidden', position: 'relative' as const } : {}),
+                          }}>
+                            {renderMarkdown(msg.content, handleLineClick)}
+                          </div>
+                          {isLongMsg && !isExpanded && (
+                            <button
+                              onClick={() => setExpandedMessages(prev => new Set(prev).add(origIdx))}
+                              style={s.showMoreButton}
+                            >
+                              Show more ({lineCount} lines)
+                            </button>
+                          )}
+                          {isLongMsg && isExpanded && !isLastAssistant && (
+                            <button
+                              onClick={() => setExpandedMessages(prev => { const n = new Set(prev); n.delete(origIdx); return n; })}
+                              style={s.showMoreButton}
+                            >
+                              Show less
+                            </button>
+                          )}
+                        </>
+                      ) : (
+                        <div style={s.userContent}>{renderMarkdown(msg.content)}</div>
+                      )}
                       {msg.meta && (
                         <div style={s.msgCostLine}>
                           {modelInfo?.displayName || 'AI'} {'\u00B7'} {msg.meta.tokens.toLocaleString()} {msg.meta.tokens === 1 ? 'token' : 'tokens'} {'\u00B7'} {formatCost(msg.meta.cost)}
@@ -1080,7 +1232,7 @@ export function ArenaIDE({
                       </span>
                     </div>
                     {streamingThinking && <ThinkingBlock text={streamingThinking} />}
-                    <div style={s.aiContent}>{renderMarkdown(streamingContent)}</div>
+                    <div style={s.aiContent}>{renderMarkdown(streamingContent, handleLineClick)}</div>
                   </div>
                 )}
                 {/* Waiting — model is processing (e.g. non-streaming GPT-OSS) */}
@@ -1095,6 +1247,20 @@ export function ArenaIDE({
                     </div>
                   </div>
                 )}
+              </div>
+              {/* Scroll to bottom button */}
+              {showScrollBtn && (
+                <button
+                  onClick={() => {
+                    chatScrollRef.current?.scrollTo({ top: chatScrollRef.current.scrollHeight, behavior: 'smooth' });
+                    setShowScrollBtn(false);
+                  }}
+                  style={s.scrollToBottomBtn}
+                  title="Scroll to bottom"
+                >
+                  {'\u2193'}
+                </button>
+              )}
               </div>
 
               {/* Model selector — 5 tiers */}
@@ -1161,26 +1327,45 @@ export function ArenaIDE({
               </div>
 
               {/* Chat input */}
-              <div style={s.chatInputWrap}>
+              <div style={{ ...s.chatInputWrap, alignItems: 'flex-end' }}>
                 <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
-                  <input
-                    type="text"
-                    style={isMobile ? { ...s.chatInput, padding: '10px 14px', fontSize: 16, flex: 'none' } : { ...s.chatInput, flex: 'none' }}
-                    placeholder={guestMode ? 'Sign up to chat with AI' : chatDisabled ? (aiLimitReached ? 'AI limit reached \u2014 budget exhausted' : 'Chat disabled \u2014 time expired') : 'Ask about this problem...'}
+                  <textarea
+                    ref={chatTextareaRef}
+                    style={{
+                      ...(isMobile ? { ...s.chatInput, padding: '10px 14px', fontSize: 16 } : s.chatInput),
+                      resize: 'none' as const,
+                      minHeight: 34,
+                      maxHeight: 120,
+                      overflow: 'auto',
+                      lineHeight: '1.4',
+                    }}
+                    rows={1}
+                    placeholder={guestMode ? 'Sign up to chat with AI' : chatDisabled ? (aiLimitReached ? 'AI limit reached \u2014 budget exhausted' : 'Chat disabled \u2014 time expired') : 'Ask about this problem... (Shift+Enter for newline)'}
                     value={chatInput}
-                    onChange={(e) => setChatInput(e.target.value)}
+                    onChange={(e) => {
+                      setChatInput(e.target.value);
+                      e.target.style.height = 'auto';
+                      e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px';
+                    }}
                     onKeyDown={handleInputKeyDown}
-                    disabled={isLoadingChat || chatDisabled || !!guestMode}
+                    disabled={chatDisabled || !!guestMode}
                   />
-                  {/* Pre-call cost estimate */}
-                  {chatInput.trim() && !chatDisabled && !guestMode && (
-                    <span style={{
-                      fontSize: 10,
-                      color: arena.textSubtle,
-                      fontFamily: 'Menlo, Monaco, "Courier New", monospace',
-                      paddingLeft: 2,
-                    }}>
-                      {formatEstimatedCost(estimateChatCost(chatInput, model))} estimated
+                  {/* Pre-call cost estimate + running total */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingLeft: 2, paddingRight: 2 }}>
+                    <span style={{ fontSize: 10, color: arena.textSubtle, fontFamily: 'Menlo, Monaco, "Courier New", monospace' }}>
+                      {chatInput.trim() && !chatDisabled && !guestMode
+                        ? `${formatEstimatedCost(estimateChatCost(chatInput, model))} est`
+                        : '\u00A0'}
+                    </span>
+                    {(inputTokens + outputTokens > 0) && (
+                      <span style={{ fontSize: 10, color: arena.textSubtle, fontFamily: 'Menlo, Monaco, "Courier New", monospace' }}>
+                        {(inputTokens + outputTokens).toLocaleString()} tok {'\u00B7'} {formatCost(totalCost)}
+                      </span>
+                    )}
+                  </div>
+                  {queueLength > 0 && isLoadingChat && (
+                    <span style={{ fontSize: 10, color: arena.accent, fontFamily: 'Menlo, Monaco, "Courier New", monospace', paddingLeft: 2 }}>
+                      {queueLength} message{queueLength > 1 ? 's' : ''} queued
                     </span>
                   )}
                 </div>
@@ -1215,6 +1400,9 @@ export function ArenaIDE({
             </>
           )}
         </div>
+
+        {/* Sidebar resize handle */}
+        {!isMobile && <div style={s.sidebarDragHandle} onMouseDown={handleSidebarDragStart} />}
 
         {/* RIGHT PANE: Editor + Terminal */}
         <div ref={rightPaneRef} style={isMobile
@@ -1458,10 +1646,10 @@ const s: Record<string, React.CSSProperties> = {
   sidebar: {
     display: 'flex',
     flexDirection: 'column',
-    flex: 2,
-    minWidth: 280,
-    maxWidth: 480,
-    borderRight: `1px solid ${arena.border}`,
+    width: 360,
+    minWidth: 240,
+    maxWidth: 640,
+    flexShrink: 0,
   },
   sidebarMobile: {
     display: 'flex',
@@ -1925,6 +2113,81 @@ const s: Record<string, React.CSSProperties> = {
     borderRadius: 4,
     background: arena.accent,
     border: `1.5px solid ${arena.surface}`,
+  },
+
+  // Clear chat button
+  clearButton: {
+    background: 'transparent',
+    border: `1px solid ${arena.border}`,
+    borderRadius: 4,
+    color: arena.textMuted,
+    fontSize: 10,
+    padding: '3px 8px',
+    cursor: 'pointer',
+    fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+    marginRight: 10,
+    flexShrink: 0,
+    transition: 'color 0.15s, border-color 0.15s',
+  },
+
+  // Edit/resend button on user messages
+  editButton: {
+    background: 'transparent',
+    border: 'none',
+    color: arena.textMuted,
+    fontSize: 13,
+    padding: '0 4px',
+    cursor: 'pointer',
+    marginLeft: 'auto',
+    opacity: 0.5,
+    transition: 'opacity 0.15s',
+    lineHeight: 1,
+  },
+
+  // Show more/less button for collapsed messages
+  showMoreButton: {
+    background: 'transparent',
+    border: `1px solid ${arena.border}`,
+    borderRadius: 4,
+    color: arena.textMuted,
+    fontSize: 10,
+    padding: '2px 8px',
+    cursor: 'pointer',
+    fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+    marginTop: 4,
+    transition: 'color 0.15s, border-color 0.15s',
+  },
+
+  // Scroll-to-bottom floating button
+  scrollToBottomBtn: {
+    position: 'absolute' as const,
+    bottom: 8,
+    right: 12,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    background: arena.surface,
+    border: `1px solid ${arena.border}`,
+    color: arena.text,
+    fontSize: 14,
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+    zIndex: 10,
+    transition: 'background 0.15s',
+  },
+
+  // Sidebar drag handle
+  sidebarDragHandle: {
+    width: 4,
+    cursor: 'col-resize',
+    flexShrink: 0,
+    background: arena.surface,
+    borderLeft: `1px solid ${arena.border}`,
+    borderRight: `1px solid ${arena.border}`,
+    transition: 'background 0.15s',
   },
 
 };

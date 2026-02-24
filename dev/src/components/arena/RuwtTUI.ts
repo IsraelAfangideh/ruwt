@@ -72,6 +72,7 @@ export class RuwtTUI {
   private lastTestResults: TestResults | null = null;
   private static readonly MAX_HISTORY = 50;
   private history: Array<{ role: 'user' | 'assistant'; content: string }> = [];
+  private messageQueue: string[] = [];
 
   private pruneHistory(): void {
     if (this.history.length > RuwtTUI.MAX_HISTORY) {
@@ -102,8 +103,8 @@ export class RuwtTUI {
     this.term.write('\r\n');
     this.term.write('\x1b[1;33m  ruwt\x1b[0m \x1b[90m\u2014 AI coding assistant\x1b[0m\r\n');
     this.term.write('\x1b[90m  Type your question, or \x1b[33m/shell\x1b[90m for terminal commands.\x1b[0m\r\n');
-    this.term.write('\x1b[90m  Modes: \x1b[33m/agent\x1b[90m \x1b[34m/plan\x1b[90m \x1b[31m/debug\x1b[90m \x1b[32m/ask\x1b[90m\x1b[0m\r\n');
-    this.term.write('\x1b[90m  Ctrl+C to interrupt a response.\x1b[0m\r\n');
+    this.term.write('\x1b[90m  Modes: \x1b[33m/agent\x1b[90m \x1b[34m/plan\x1b[90m \x1b[31m/debug\x1b[90m \x1b[32m/ask\x1b[90m  |  \x1b[33m/clear\x1b[90m \x1b[33m/help\x1b[0m\r\n');
+    this.term.write('\x1b[90m  Ctrl+C to interrupt. Type while AI streams to queue.\x1b[0m\r\n');
     this.printPrompt();
   }
 
@@ -113,6 +114,27 @@ export class RuwtTUI {
   }
 
   handleInput(data: string): void {
+    // Multiline paste: join with spaces to form a single message
+    if (data.length > 1 && data.includes('\n')) {
+      const cleaned = data.replace(/[\r\n]+/g, ' ').trim();
+      if (cleaned) {
+        if (this.isStreaming) {
+          this.messageQueue.push(cleaned);
+          this.term.write(`\r\n\x1b[90m[queued: ${this.messageQueue.length} message${this.messageQueue.length > 1 ? 's' : ''}]\x1b[0m`);
+        } else {
+          this.line = cleaned;
+          this.cursorPos = cleaned.length;
+          this.term.write(cleaned);
+          // Auto-submit pasted text
+          this.term.write('\r\n');
+          this.line = '';
+          this.cursorPos = 0;
+          this.sendMessage(cleaned);
+        }
+      }
+      return;
+    }
+
     for (let i = 0; i < data.length; i++) {
       const ch = data[i];
       const code = ch.charCodeAt(0);
@@ -137,6 +159,7 @@ export class RuwtTUI {
         if (this.isStreaming) {
           this.abortFn();
           this.isStreaming = false;
+          this.messageQueue = [];
           this.term.write('\r\n\x1b[33m[interrupted]\x1b[0m');
           this.printPrompt();
         } else {
@@ -148,8 +171,22 @@ export class RuwtTUI {
         continue;
       }
 
-      // Ignore input while streaming
-      if (this.isStreaming) continue;
+      // Buffer input while streaming — queue on Enter
+      if (this.isStreaming) {
+        if (ch === '\r' || ch === '\n') {
+          const queued = this.line.trim();
+          if (queued) {
+            this.messageQueue.push(queued);
+            this.term.write(`\r\n\x1b[90m[queued: ${this.messageQueue.length} message${this.messageQueue.length > 1 ? 's' : ''}]\x1b[0m`);
+          }
+          this.line = '';
+          this.cursorPos = 0;
+        } else if (code >= 32) {
+          this.line += ch;
+          this.cursorPos++;
+        }
+        continue;
+      }
 
       // Backspace
       if (code === 127 || code === 8) {
@@ -192,13 +229,32 @@ export class RuwtTUI {
             this.onExit();
             continue;
           }
+          if (cmd === 'clear') {
+            this.history = [];
+            this.messageQueue = [];
+            this.lastTestResults = null;
+            this.term.write('\x1b[2J\x1b[H');
+            this.term.write('\x1b[90m[chat cleared]\x1b[0m');
+            this.printPrompt();
+            continue;
+          }
           if (cmd === 'mode') {
             const c = MODE_COLORS[this.mode];
             this.term.write(`\x1b[${c}mCurrent mode: ${this.mode}\x1b[0m`);
             this.printPrompt();
             continue;
           }
-          this.term.write(`\x1b[31mUnknown command: ${text}\x1b[0m`);
+          if (cmd === 'help') {
+            this.term.write('\x1b[90mCommands:\x1b[0m\r\n');
+            this.term.write('  \x1b[33m/agent\x1b[90m /plan /debug /ask\x1b[0m — switch mode\r\n');
+            this.term.write('  \x1b[33m/clear\x1b[0m — clear chat history\r\n');
+            this.term.write('  \x1b[33m/shell\x1b[0m — return to terminal\r\n');
+            this.term.write('  \x1b[33m/mode\x1b[0m  — show current mode\r\n');
+            this.term.write('  \x1b[33mCtrl+C\x1b[0m — interrupt or exit');
+            this.printPrompt();
+            continue;
+          }
+          this.term.write(`\x1b[31mUnknown command: ${text}. Type /help for commands.\x1b[0m`);
           this.printPrompt();
           continue;
         }
@@ -487,7 +543,14 @@ export class RuwtTUI {
     }
 
     if (!this.isStreaming) {
-      this.printPrompt();
+      // Drain message queue
+      if (this.messageQueue.length > 0) {
+        const nextMsg = this.messageQueue.shift()!;
+        this.term.write(`\r\n\x1b[90m[sending queued message...]\x1b[0m`);
+        this.sendMessage(nextMsg);
+      } else {
+        this.printPrompt();
+      }
     }
   }
 

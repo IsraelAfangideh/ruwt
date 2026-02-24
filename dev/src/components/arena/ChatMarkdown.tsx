@@ -28,7 +28,7 @@ export const CodeBlock = React.memo(function CodeBlock({ lang, code }: { lang: s
   );
 });
 
-export function renderMarkdown(text: string): React.ReactNode[] {
+export function renderMarkdown(text: string, onLineClick?: (line: number) => void): React.ReactNode[] {
   const blocks: React.ReactNode[] = [];
   const lines = text.split('\n');
   let i = 0;
@@ -57,7 +57,7 @@ export function renderMarkdown(text: string): React.ReactNode[] {
       const headingStyle = level === 1 ? mdStyles.h1 : level === 2 ? mdStyles.h2 : mdStyles.h3;
       blocks.push(
         <div key={blocks.length} style={headingStyle}>
-          {renderInline(headingMatch[2])}
+          {renderInline(headingMatch[2], onLineClick)}
         </div>
       );
       i++;
@@ -69,7 +69,7 @@ export function renderMarkdown(text: string): React.ReactNode[] {
       blocks.push(
         <div key={blocks.length} style={mdStyles.listItem}>
           <span style={mdStyles.listBullet}>{'\u2022'}</span>
-          <span>{renderInline(line.replace(/^[\-\*]\s+/, ''))}</span>
+          <span>{renderInline(line.replace(/^[\-\*]\s+/, ''), onLineClick)}</span>
         </div>
       );
       i++;
@@ -82,7 +82,7 @@ export function renderMarkdown(text: string): React.ReactNode[] {
       blocks.push(
         <div key={blocks.length} style={mdStyles.listItem}>
           <span style={mdStyles.listNum}>{num}.</span>
-          <span>{renderInline(line.replace(/^\d+\.\s+/, ''))}</span>
+          <span>{renderInline(line.replace(/^\d+\.\s+/, ''), onLineClick)}</span>
         </div>
       );
       i++;
@@ -92,7 +92,7 @@ export function renderMarkdown(text: string): React.ReactNode[] {
     // regular line — parse inline elements
     blocks.push(
       <div key={blocks.length} style={mdStyles.paragraph}>
-        {renderInline(line)}
+        {renderInline(line, onLineClick)}
       </div>
     );
     i++;
@@ -100,7 +100,38 @@ export function renderMarkdown(text: string): React.ReactNode[] {
   return blocks;
 }
 
-export function renderInline(text: string): React.ReactNode[] {
+/** Render plain text with clickable line references (e.g. "line 42", "L12", "lines 10-15"). */
+function renderPlainWithLineRefs(text: string, keyBase: number, onLineClick?: (line: number) => void): React.ReactNode[] {
+  if (!onLineClick) return [<span key={keyBase}>{text}</span>];
+  const parts: React.ReactNode[] = [];
+  // Match: "line 42", "Line 42", "L42", "lines 10-15", "Lines 10-15"
+  const lineRefRegex = /\b(?:L(?:ine)?s?\s*)(\d+)(?:\s*[-\u2013]\s*(\d+))?\b/gi;
+  let last = 0;
+  let m: RegExpExecArray | null;
+  while ((m = lineRefRegex.exec(text)) !== null) {
+    if (m.index > last) {
+      parts.push(<span key={keyBase + parts.length}>{text.slice(last, m.index)}</span>);
+    }
+    const startLine = parseInt(m[1], 10);
+    parts.push(
+      <span
+        key={keyBase + parts.length}
+        onClick={() => onLineClick(startLine)}
+        style={mdStyles.lineRef}
+        title={`Go to line ${startLine}${m[2] ? `-${m[2]}` : ''}`}
+      >
+        {m[0]}
+      </span>
+    );
+    last = m.index + m[0].length;
+  }
+  if (last < text.length) {
+    parts.push(<span key={keyBase + parts.length}>{text.slice(last)}</span>);
+  }
+  return parts.length ? parts : [<span key={keyBase}>{text}</span>];
+}
+
+export function renderInline(text: string, onLineClick?: (line: number) => void): React.ReactNode[] {
   const parts: React.ReactNode[] = [];
   // match **bold**, *italic*/_italic_, ``code`` (double-backtick), `code` (single), and [text](url)
   // Double-backtick checked first so inner single backticks are preserved.
@@ -110,7 +141,7 @@ export function renderInline(text: string): React.ReactNode[] {
 
   while ((match = regex.exec(text)) !== null) {
     if (match.index > last) {
-      parts.push(<span key={parts.length}>{text.slice(last, match.index)}</span>);
+      parts.push(...renderPlainWithLineRefs(text.slice(last, match.index), parts.length * 100, onLineClick));
     }
     if (match[2]) {
       // bold
@@ -142,7 +173,7 @@ export function renderInline(text: string): React.ReactNode[] {
     last = match.index + match[0].length;
   }
   if (last < text.length) {
-    parts.push(<span key={parts.length}>{text.slice(last)}</span>);
+    parts.push(...renderPlainWithLineRefs(text.slice(last), parts.length * 100, onLineClick));
   }
   return parts.length ? parts : [<span key={0}>{text || '\u00A0'}</span>];
 }
@@ -211,6 +242,13 @@ export const mdStyles: Record<string, React.CSSProperties> = {
   listItem: { display: 'flex', gap: 8, lineHeight: '1.5', paddingLeft: 4 },
   listBullet: { color: arena.textMuted, flexShrink: 0, width: 12 },
   listNum: { color: arena.textMuted, flexShrink: 0, width: 16, textAlign: 'right' as const },
+  lineRef: {
+    color: arena.accent,
+    cursor: 'pointer',
+    textDecoration: 'underline',
+    textDecorationStyle: 'dotted' as const,
+    textUnderlineOffset: '2px',
+  },
 };
 
 /* ─── Thinking Block (reasoning models) ─────────────────────────── */

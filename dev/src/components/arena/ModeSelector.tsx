@@ -47,7 +47,6 @@ const styles: Record<string, React.CSSProperties> = {
     display: 'flex',
     gap: 4,
     padding: '6px 12px',
-    borderBottom: `1px solid ${arena.border}`,
   },
   pill: {
     flex: 1,
