@@ -58,6 +58,7 @@ export function ArenaScreen() {
   const isExpiredRef = useRef(false);
   const [successOverlay, setSuccessOverlay] = useState<{ attemptId: string; passed: boolean } | null>(null);
   const [successStats, setSuccessStats] = useState<{ rank: number; total: number; topCost: number | null } | null>(null);
+  const [copiedShareLink, setCopiedShareLink] = useState(false);
   const navigatingRef = useRef(false);
   const isMobile = useIsMobile();
   const { showToast } = useToast();
@@ -982,32 +983,77 @@ export function ArenaScreen() {
                 )}
               </div>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, width: '100%', marginTop: 8 }}>
+              {/* Share buttons */}
+              <div style={{ display: 'flex', gap: 8, width: '100%', marginTop: 8 }}>
                 <button
                   style={{
                     background: '#0A66C2',
                     border: 'none',
                     borderRadius: 8,
                     color: '#fff',
-                    padding: '10px 20px',
-                    fontSize: 14,
+                    padding: '10px 16px',
+                    fontSize: 13,
                     fontWeight: 600,
                     cursor: 'pointer',
-                    width: '100%',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: 8,
+                    flex: 1,
                   }}
                   onClick={() => {
                     const shareUrl = `${window.location.origin}/share/${successOverlay.attemptId}`;
-                    const text = `I solved "${challenge.title}" on ruwt.dev for ${formatCost(attempt?.totalCost ?? 0)} with AI`;
-                    const linkedinUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(shareUrl)}&title=${encodeURIComponent(text)}`;
+                    const linkedinUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(shareUrl)}`;
                     window.open(linkedinUrl, '_blank', 'width=600,height=500');
                   }}
                 >
-                  Share on LinkedIn
+                  LinkedIn
                 </button>
+                <button
+                  style={{
+                    background: '#000',
+                    border: 'none',
+                    borderRadius: 8,
+                    color: '#fff',
+                    padding: '10px 16px',
+                    fontSize: 13,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    flex: 1,
+                  }}
+                  onClick={() => {
+                    const shareUrl = `${window.location.origin}/share/${successOverlay.attemptId}`;
+                    const rankStr = successStats?.rank ? ` Ranked #${successStats.rank}.` : '';
+                    const text = `I solved "${challenge.title}" for ${formatCost(attempt?.totalCost ?? 0)} on ruwt.dev.${rankStr} Can you beat that?`;
+                    const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(shareUrl)}`;
+                    window.open(twitterUrl, '_blank', 'width=600,height=500');
+                  }}
+                >
+                  X / Twitter
+                </button>
+                <button
+                  style={{
+                    background: 'transparent',
+                    border: `1px solid ${arena.border}`,
+                    borderRadius: 8,
+                    color: copiedShareLink ? arena.success : arena.text,
+                    padding: '10px 16px',
+                    fontSize: 13,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    flex: 1,
+                  }}
+                  onClick={async () => {
+                    const shareUrl = `${window.location.origin}/share/${successOverlay.attemptId}`;
+                    try {
+                      await navigator.clipboard.writeText(shareUrl);
+                      setCopiedShareLink(true);
+                      setTimeout(() => setCopiedShareLink(false), 2000);
+                    } catch { /* fallback */ }
+                  }}
+                >
+                  {copiedShareLink ? 'Copied!' : 'Copy Link'}
+                </button>
+              </div>
+
+              {/* Action buttons */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, width: '100%', marginTop: 4 }}>
                 <button
                   style={{
                     background: arena.accent,

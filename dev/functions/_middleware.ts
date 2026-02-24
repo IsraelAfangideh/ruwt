@@ -6,7 +6,7 @@
  */
 import { getDb } from './_shared/db';
 import { attempts, challenges, profiles, certificates } from '../drizzle/schema.d1';
-import { eq, isNotNull } from 'drizzle-orm';
+import { eq, isNotNull, sql } from 'drizzle-orm';
 import { checkRateLimit, buildKey } from './_shared/rate-limit';
 import { getUser } from './_shared/auth';
 import { logError } from './_shared/error-monitor';
@@ -14,7 +14,7 @@ import {
   generateSeoHtml, seoResponse, escapeHtml,
   STATIC_ROUTE_META,
   buildChallengeLd, buildBreadcrumbLd, buildProfileLd,
-  buildArticleLd, buildCertLd,
+  buildArticleLd, buildCertLd, categoryLabel,
 } from './_shared/seo';
 
 const SECURITY_HEADERS: Record<string, string> = {
@@ -317,6 +317,8 @@ async function handleAttemptBot(
     totalCost: attempts.totalCost,
     inputTokens: attempts.inputTokens,
     outputTokens: attempts.outputTokens,
+    passedTests: attempts.passedTests,
+    totalTests: attempts.totalTests,
     userId: attempts.userId,
     challengeId: attempts.challengeId,
   }).from(attempts).where(eq(attempts.id, attemptId)).limit(1);
@@ -329,11 +331,22 @@ async function handleAttemptBot(
     }));
   }
 
-  const [challenge] = await db.select({ title: challenges.title, difficulty: challenges.difficulty, category: challenges.category })
-    .from(challenges).where(eq(challenges.id, attempt.challengeId)).limit(1);
+  const [challenge] = await db.select({
+    title: challenges.title,
+    description: challenges.description,
+    difficulty: challenges.difficulty,
+    category: challenges.category,
+    language: challenges.language,
+  }).from(challenges).where(eq(challenges.id, attempt.challengeId)).limit(1);
 
   const [solver] = await db.select({ name: profiles.name, username: profiles.username })
     .from(profiles).where(eq(profiles.id, attempt.userId)).limit(1);
+
+  // Compute rank among all passed attempts for this challenge
+  const rankResult = await db.select({
+    rank: sql<number>`(SELECT COUNT(*) + 1 FROM attempts a2 WHERE a2.challenge_id = ${attempt.challengeId} AND a2.status = 'passed' AND a2.total_cost < ${attempt.totalCost})`,
+  }).from(attempts).where(eq(attempts.id, attempt.id)).limit(1);
+  const rank = rankResult[0]?.rank ?? 0;
 
   const costStr = (attempt.totalCost / 10000) < 0.01
     ? `$${(attempt.totalCost / 10000).toFixed(4)}`
@@ -341,22 +354,32 @@ async function handleAttemptBot(
   const tokens = attempt.inputTokens + attempt.outputTokens;
   const solverName = solver?.name || 'A developer';
   const challengeTitle = challenge?.title || 'Challenge';
+  const catLabel = categoryLabel(challenge?.category || null);
+  const diffLabel = challenge?.difficulty ? challenge.difficulty.charAt(0).toUpperCase() + challenge.difficulty.slice(1) : '';
+  const truncDesc = challenge?.description
+    ? (challenge.description.length > 100 ? challenge.description.slice(0, 100) + '...' : challenge.description)
+    : '';
+  const testsStr = attempt.passedTests != null && attempt.totalTests != null
+    ? `${attempt.passedTests}/${attempt.totalTests} tests passed.`
+    : '';
 
   const title = mode === 'share'
-    ? `${solverName} solved "${challengeTitle}" for ${costStr} | ruwt.dev`
+    ? `${solverName} solved "${challengeTitle}" for ${costStr}${rank ? ` — Ranked #${rank}` : ''} | ruwt.dev`
     : `Replay: ${challengeTitle} | ruwt.dev`;
 
   const description = mode === 'share'
-    ? `Solved with ${costStr} AI cost — ranked by efficiency on ruwt.dev`
-    : `${challenge?.difficulty || ''} challenge · ${tokens.toLocaleString()} tokens · ${attempt.status} | Watch the replay on ruwt.dev`;
+    ? `${diffLabel} ${catLabel} challenge. ${truncDesc} — ${testsStr} Can you solve it cheaper?`
+    : `${diffLabel} ${catLabel} challenge · ${tokens.toLocaleString()} tokens · ${attempt.status} | Watch the replay on ruwt.dev`;
 
   const canonicalUrl = `https://ruwt.dev/${mode}/${attemptId}`;
+  const ogImage = `https://ruwt.dev/api/og/${attemptId}`;
 
   return seoResponse(generateSeoHtml({
     title,
     description,
     canonicalUrl,
     ogType: 'article',
+    ogImage,
     jsonLd: buildArticleLd(title, solverName, canonicalUrl),
   }, `<h1>${escapeHtml(title)}</h1>
   <p>${escapeHtml(description)}</p>

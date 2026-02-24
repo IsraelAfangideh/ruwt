@@ -179,6 +179,23 @@ export function buildArticleLd(headline: string, authorName: string, url: string
   };
 }
 
+export function categoryLabel(cat: string | null): string {
+  switch (cat) {
+    case 'model_selection': return 'Model Selection';
+    case 'prompt_efficiency': return 'Prompt Efficiency';
+    case 'iterative_debugging': return 'Debugging';
+    case 'multi_model_strategy': return 'Multi-Model';
+    case 'real_world': return 'Real-World';
+    case 'qa_testing': return 'QA Testing';
+    case 'frontend': return 'Frontend';
+    case 'backend_api': return 'Backend API';
+    case 'data_engineering': return 'Data Engineering';
+    case 'devops': return 'DevOps';
+    case 'practice': return 'Practice';
+    default: return cat || 'Practice';
+  }
+}
+
 export function buildCertLd(title: string, holderName: string) {
   return {
     '@context': 'https://schema.org',
