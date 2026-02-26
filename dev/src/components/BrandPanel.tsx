@@ -13,7 +13,7 @@ export function BrandPanel() {
       <View style={styles.content}>
         <Text style={styles.logo}>Ruwt</Text>
         <Text style={styles.tagline}>
-          Prove you can use AI{'\n'}better than anyone
+          Prove you can use AI{'\n'}<Text style={{ color: '#c9a962' }}>better than anyone</Text>
         </Text>
         <View style={styles.features}>
           {FEATURES.map((feat) => (
