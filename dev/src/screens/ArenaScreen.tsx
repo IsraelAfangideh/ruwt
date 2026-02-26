@@ -835,7 +835,16 @@ export function ArenaScreen() {
                 onClick={handleRun}
                 disabled={isRunning || isExpired}
               >
-                {isExpired ? 'Time Expired' : isRunning ? 'Running...' : 'Run Tests'}
+                {isExpired ? 'Time Expired' : isRunning ? 'Running...' : (() => {
+                  const htc = challenge?.hiddenTestCount;
+                  if (htc && htc > 0) {
+                    try {
+                      const pubCount = JSON.parse(challenge?.testCases || '[]').length;
+                      return `Run Tests (${pubCount} public)`;
+                    } catch { return 'Run Tests'; }
+                  }
+                  return 'Run Tests';
+                })()}
               </button>
               <button
                 style={{
@@ -852,7 +861,16 @@ export function ArenaScreen() {
                 onClick={handleSubmit}
                 disabled={isRunning || isExpired}
               >
-                Submit
+                {(() => {
+                  const htc = challenge?.hiddenTestCount;
+                  if (htc && htc > 0) {
+                    try {
+                      const total = JSON.parse(challenge?.testCases || '[]').length + htc;
+                      return `Submit (${total} tests)`;
+                    } catch { return 'Submit'; }
+                  }
+                  return 'Submit';
+                })()}
               </button>
             </div>
           </div>
@@ -1131,6 +1149,17 @@ export function ArenaScreen() {
                       if (res.ok) {
                         const allChallenges = await res.json();
                         const sameCat = allChallenges.filter((ch: any) => ch.category === challenge?.category && ch.id !== challengeId);
+                        // Prefer difficulty progression: sprint → easy → medium → hard
+                        const difficultyOrder = ['sprint', 'easy', 'medium', 'hard', 'impossible'];
+                        const currentDiffIdx = difficultyOrder.indexOf(challenge?.difficulty || '');
+                        sameCat.sort((a: any, b: any) => {
+                          const aIdx = difficultyOrder.indexOf(a.difficulty || '');
+                          const bIdx = difficultyOrder.indexOf(b.difficulty || '');
+                          // Prefer same or next difficulty level
+                          const aDist = Math.abs(aIdx - currentDiffIdx) + (aIdx >= currentDiffIdx ? 0 : 5);
+                          const bDist = Math.abs(bIdx - currentDiffIdx) + (bIdx >= currentDiffIdx ? 0 : 5);
+                          return aDist - bDist;
+                        });
                         if (sameCat.length > 0) {
                           setSuccessOverlay(null);
                           (navigation.navigate as any)('Arena', { challengeId: sameCat[0].id });

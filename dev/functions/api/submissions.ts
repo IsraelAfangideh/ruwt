@@ -249,12 +249,27 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
       results: testResult.results.map((r, i) => {
         const isHidden = i >= publicCount;
         if (isHidden) {
+          // Provide a vague hint for failed hidden tests to help debugging
+          let hint: string | undefined;
+          if (!r.passed) {
+            const input = r.input.toLowerCase();
+            if (input === '' || input === 'null' || input === 'undefined' || input === '[]' || input === '{}') {
+              hint = 'Edge case: empty or null input';
+            } else if (/^\d{4,}/.test(r.input) || r.input.length > 100) {
+              hint = 'Edge case: large input';
+            } else if (/[^a-zA-Z0-9\s,.\-]/.test(r.input.slice(0, 50))) {
+              hint = 'Edge case: special characters';
+            } else {
+              hint = 'Hidden edge case — check boundary conditions';
+            }
+          }
           return {
             passed: r.passed,
             hidden: true,
             input: '(hidden)',
             expectedOutput: '(hidden)',
             actualOutput: '(hidden)',
+            hint,
           };
         }
         return {

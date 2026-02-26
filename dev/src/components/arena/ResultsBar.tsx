@@ -5,11 +5,11 @@ export interface TestResults {
   passed: boolean;
   passedTests: number;
   totalTests: number;
-  results: Array<{ passed: boolean; input: string; expectedOutput: string; actualOutput: string; error?: string; hidden?: boolean }>;
+  results: Array<{ passed: boolean; input: string; expectedOutput: string; actualOutput: string; error?: string; hidden?: boolean; hint?: string }>;
   isSubmission: boolean;
 }
 
-function ResultsBar({ results, onDismiss, onAskAI }: { results: TestResults; onDismiss?: () => void; onAskAI?: (prompt: string) => void }) {
+function ResultsBar({ results, onDismiss, onAskAI, hiddenTestCount }: { results: TestResults; onDismiss?: () => void; onAskAI?: (prompt: string) => void; hiddenTestCount?: number }) {
   const [expanded, setExpanded] = useState(!results.passed); // auto-expand on failure
   const allPassed = results.passed;
   const barBg = allPassed ? 'rgba(63,185,80,0.12)' : 'rgba(248,81,73,0.12)';
@@ -26,6 +26,15 @@ function ResultsBar({ results, onDismiss, onAskAI }: { results: TestResults; onD
           <span style={{ color: barColor, fontWeight: 700, fontSize: 13, fontFamily: 'Menlo, Monaco, "Courier New", monospace' }}>
             {allPassed ? '\u2713' : '\u2717'} {results.passedTests}/{results.totalTests} passed
           </span>
+          {/* After Run Tests pass, remind about hidden tests on submit */}
+          {!results.isSubmission && allPassed && hiddenTestCount != null && hiddenTestCount > 0 && (
+            <span style={{
+              fontSize: 11, color: arena.accent,
+              fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+            }}>
+              {'\u2014'} submit to run all {results.totalTests + hiddenTestCount} tests
+            </span>
+          )}
           {results.isSubmission && (
             <span style={{
               fontSize: 11, fontWeight: 600, color: barColor,
@@ -73,6 +82,12 @@ function ResultsBar({ results, onDismiss, onAskAI }: { results: TestResults; onD
               {!r.hidden && (
                 <span style={{ color: arena.textMuted }}>
                   {r.input.length > 40 ? r.input.slice(0, 40) + '...' : r.input}
+                </span>
+              )}
+              {/* For hidden test failures, show hint from API or generic advice */}
+              {!r.passed && r.hidden && (
+                <span style={{ color: arena.textMuted, fontSize: 11 }}>
+                  {r.hint || 'Try edge cases (empty input, large values, special characters)'}
                 </span>
               )}
               {!r.passed && !r.hidden && (

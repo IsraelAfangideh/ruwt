@@ -34,14 +34,20 @@ export async function onRequestGet(context: { request: Request; env: Env }) {
         .limit(10);
       const recentIds = new Set(recentDailies.map((d) => d.challengeId));
 
-      // Pick a challenge not recently used, rotating by category
+      // Pick a challenge not recently used, preferring sprint/easy difficulty for daily
       const allChallenges = await db.select().from(challenges);
       const candidates = allChallenges.filter((c) => !recentIds.has(c.id));
       const pool = candidates.length > 0 ? candidates : allChallenges;
 
+      // Prefer sprint/easy for daily challenges — never pick hard/impossible
+      const easyPool = pool.filter((c) => ['sprint', 'easy'].includes(c.difficulty || ''));
+      const mediumPool = pool.filter((c) => c.difficulty === 'medium');
+      const dailyPool = easyPool.length > 0 ? easyPool : mediumPool.length > 0 ? mediumPool : pool.filter((c) => !['hard', 'impossible'].includes(c.difficulty || ''));
+      const finalPool = dailyPool.length > 0 ? dailyPool : pool;
+
       // Simple rotation: pick based on day-of-year mod pool size
       const dayOfYear = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) / 86400000);
-      const picked = pool[dayOfYear % pool.length];
+      const picked = finalPool[dayOfYear % finalPool.length];
 
       // Get active season
       const [activeSeason] = await db

@@ -306,6 +306,22 @@ function DescriptionPanel({ challenge, pastAttempts }: { challenge: ArenaChallen
               <div style={{ ...s.exampleValue, color: arena.success }}>{tc.expectedOutput}</div>
             </div>
           ))}
+          {challenge.hiddenTestCount != null && challenge.hiddenTestCount > 0 && (
+            <div style={{
+              marginTop: 10,
+              padding: '8px 10px',
+              background: `${arena.accent}10`,
+              border: `1px solid ${arena.accent}30`,
+              borderRadius: 6,
+              fontSize: 11,
+              color: arena.textMuted,
+              fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+              lineHeight: '1.5',
+            }}>
+              <span style={{ color: arena.accent }}>{'\u{1F512}'}</span>{' '}
+              {testCases.length} public tests shown + {challenge.hiddenTestCount} hidden tests run on submission
+            </div>
+          )}
         </div>
       )}
 
@@ -1263,7 +1279,7 @@ export function ArenaIDE({
               )}
               </div>
 
-              {/* Model selector — 5 tiers */}
+              {/* Model selector — 5 tiers (star = recommended for this difficulty) */}
               <div style={isMobile ? s.tierBarMobile : s.tierBar}>
                 {(['micro', 'budget', 'mid', 'premium', 'reasoning'] as ModelTier[]).map((tier) => {
                   const m = TIER_MODELS[tier];
@@ -1271,6 +1287,10 @@ export function ArenaIDE({
                   const tc = tierColor(tier);
                   const modelsInTier = getModelsForTier(tier);
                   const hasMultiple = modelsInTier.length > 1;
+                  const diffToTier: Record<string, ModelTier> = {
+                    sprint: 'micro', easy: 'budget', medium: 'mid', hard: 'premium', impossible: 'reasoning',
+                  };
+                  const isRecommended = tier === (diffToTier[challenge.difficulty] || 'budget');
                   return (
                     <div key={tier} style={isMobile
                       ? { position: 'relative', minWidth: 80, flexShrink: 0 }
@@ -1281,10 +1301,11 @@ export function ArenaIDE({
                           ...s.tierPill,
                           width: '100%',
                           background: isActive ? `${tc}20` : 'transparent',
-                          borderColor: isActive ? tc : arena.border,
+                          borderColor: isActive ? tc : isRecommended ? `${arena.accent}60` : arena.border,
                           color: isActive ? tc : arena.textMuted,
                           opacity: isLoadingChat ? 0.5 : 1,
                         }}
+                        title={isRecommended ? `Recommended for ${challenge.difficulty} difficulty` : undefined}
                         disabled={isLoadingChat}
                         onClick={() => {
                           if (isActive && hasMultiple) {
@@ -1298,6 +1319,7 @@ export function ArenaIDE({
                       >
                         <span style={{ fontWeight: 600 }}>{m.costIndicator}</span>
                         {' '}{tierLabel(tier)}
+                        {isRecommended && <span style={{ fontSize: 7, marginLeft: 3, color: arena.accent, verticalAlign: 'super' }}>{'\u2605'}</span>}
                         {hasMultiple && isActive && <span style={{ fontSize: 8, marginLeft: 2 }}>{'\u25BC'}</span>}
                       </button>
                       {isActive && tierDropdownOpen && hasMultiple && (
@@ -1538,6 +1560,9 @@ export function ArenaIDE({
           <span style={{ fontSize: 16 }}>{'\u{1F4AC}'}</span>
           <span style={{ fontSize: 13, color: arena.text, flex: 1 }}>
             Start by asking the AI to help you solve this problem
+            <span style={{ display: 'block', fontSize: 11, color: arena.textMuted, marginTop: 2 }}>
+              First message costs ~$0.001 with Budget tier
+            </span>
           </span>
           <button
             style={{
@@ -1569,7 +1594,7 @@ export function ArenaIDE({
       )}
 
       {/* Test results bar */}
-      {testResults && <ResultsBar results={testResults} onDismiss={onDismissResults} onAskAI={(prompt) => {
+      {testResults && <ResultsBar results={testResults} hiddenTestCount={challenge.hiddenTestCount} onDismiss={onDismissResults} onAskAI={(prompt) => {
         // Inject test results into AI context and switch to debug mode
         pendingTestContextRef.current = testResults as AITestResults;
         setMode('debug');

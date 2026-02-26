@@ -6,7 +6,6 @@ import { DashboardLayout } from '@/components/DashboardLayout';
 
 import { Avatar } from '@/components/ui/Avatar';
 import { Button } from '@/components/ui/Button';
-import { PlatformStats } from '@/components/PlatformStats';
 import { ActivityFeed } from '@/components/ActivityFeed';
 import { ReplayViewer } from '@/components/ReplayViewer';
 import { useColors } from '@/theme';
@@ -165,11 +164,6 @@ export function LeaderboardScreen() {
     <DashboardLayout user={user}>
       <Text style={[styles.title, { color: c.text }]}>Leaderboard</Text>
 
-      {/* Platform stats */}
-      <View style={styles.statsWrap}>
-        <PlatformStats />
-      </View>
-
       {/* Period tabs */}
       <View style={[styles.periodBar, { borderBottomColor: c.border }]}>
         {([['all', 'All Time'], ['month', 'This Month'], ['week', 'This Week']] as const).map(([key, label]) => (
@@ -259,10 +253,10 @@ export function LeaderboardScreen() {
         globalEntries.length === 0 ? (
           <View style={{ padding: spacing.xl, alignItems: 'center', gap: spacing.md }}>
             <Text style={{ fontSize: fontSizes.lg, fontWeight: '700', color: c.text, textAlign: 'center' }}>
-              {period === 'week' ? 'No solves this week yet.' : period === 'month' ? 'No solves this month yet.' : 'No rankings yet.'}
+              {period === 'week' ? 'No solves this week yet.' : period === 'month' ? 'No solves this month yet.' : 'Early leaderboard \u2014 your scores set the benchmark.'}
             </Text>
             <Text style={{ fontSize: fontSizes.sm, color: c.textMuted, textAlign: 'center' }}>
-              Be the first to claim the #1 spot.
+              Be the first to claim the #1 spot. Solve a challenge and your rank appears here.
             </Text>
             <Button onPress={() => navigation.navigate('Challenges' as never)}>Browse Challenges</Button>
             <View style={{ marginTop: spacing.lg, width: '100%' }}>
@@ -403,7 +397,6 @@ export function LeaderboardScreen() {
 const styles = StyleSheet.create({
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: spacing.lg },
   title: { fontSize: fontSizes['3xl'], fontWeight: '700', marginBottom: spacing.md, fontFamily: fontFamily.body },
-  statsWrap: { marginBottom: spacing.lg },
   periodBar: { flexDirection: 'row', gap: spacing.md, marginBottom: spacing.sm, paddingBottom: spacing.sm, borderBottomWidth: 1 },
   periodTab: { paddingBottom: spacing.xs, borderBottomWidth: 2 },
   seasonBar: { flexDirection: 'row', marginBottom: spacing.sm },

@@ -1,5 +1,7 @@
 /**
  * PlatformStats: 3 stat cards showing platform-wide metrics.
+ * Shows challenge count, solves, and avg solve cost.
+ * Hides raw user count when below threshold to avoid anti-social-proof.
  */
 import { useState, useEffect } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
@@ -10,8 +12,10 @@ import { formatCostFromHundredths } from '@/lib/ai/pricing';
 
 interface Stats {
   users: number;
+  challenges: number;
   solves: number;
   totalSpend: number;
+  avgSolveCost: number;
 }
 
 export function PlatformStats() {
@@ -27,10 +31,10 @@ export function PlatformStats() {
 
   if (!stats) return null;
 
-  const items = [
-    { label: stats.users === 1 ? 'User' : 'Users', value: stats.users.toLocaleString() },
+  const items: { label: string; value: string }[] = [
+    { label: 'Challenges', value: `${stats.challenges}+` },
     { label: stats.solves === 1 ? 'Challenge Solved' : 'Challenges Solved', value: stats.solves.toLocaleString() },
-    { label: 'Total AI Spend', value: formatCostFromHundredths(stats.totalSpend) },
+    { label: 'Avg Solve Cost', value: stats.avgSolveCost > 0 ? formatCostFromHundredths(stats.avgSolveCost) : 'Free to try' },
   ];
 
   return (

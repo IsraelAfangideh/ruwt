@@ -140,7 +140,7 @@ export function DailyChallengeScreen() {
               <Card style={styles.empty}>
                 <CardContent>
                   <Text style={[styles.emptyText, { color: c.textMuted }]}>
-                    No one has solved today's challenge yet. Be the first!
+                    Be the first to solve today's challenge and set the record!
                   </Text>
                 </CardContent>
               </Card>

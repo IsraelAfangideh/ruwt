@@ -3,7 +3,6 @@ import { useNavigation } from '@react-navigation/native';
 import { Button } from '@/components/ui/Button';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
-import { PlatformStats } from '@/components/PlatformStats';
 import { FeaturedReplay } from '@/components/FeaturedReplay';
 import { ActivityFeed } from '@/components/ActivityFeed';
 import { useColors } from '@/theme';
@@ -69,7 +68,7 @@ export function LandingScreen() {
               variant="outline"
               size="lg"
               onPress={() => {
-                (navigation.navigate as any)('GuestArena', { challengeId: 'onboarding-fizzbuzz' });
+                (navigation.navigate as any)('GuestArena', { challengeId: 'fizzbuzz-budget' });
               }}
               style={{ borderColor: 'rgba(232,228,223,0.25)' }}
               textStyle={{ color: '#f5f3f0' }}
@@ -104,16 +103,11 @@ export function LandingScreen() {
         </Card>
       </View>
 
-      {/* ─── Live platform stats ─── */}
-      <View style={styles.section}>
-        <PlatformStats />
-      </View>
-
       {/* ─── Recent activity ─── */}
-      <View style={[styles.section, { paddingTop: 0 }]}>
+      <View style={styles.section}>
         <View style={styles.activityWrap}>
           <Text style={[styles.sectionTitle, { color: c.text, fontSize: fontSizes.xl, marginBottom: spacing.md }]}>
-            Developers are practicing right now
+            Recent Community Activity
           </Text>
           <ActivityFeed limit={5} />
         </View>
