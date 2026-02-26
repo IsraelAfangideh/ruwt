@@ -1,15 +1,18 @@
 /**
  * Ensure a D1 profile exists for the authenticated Supabase user.
  * Creates the profile + signup bonus transaction on first encounter.
+ * Sends welcome email + notification for new signups.
  * Safe to call multiple times (uses onConflictDoNothing).
  */
 import type { User } from '@supabase/supabase-js';
 import type { Db } from './db';
-import { profiles, transactions } from '../../drizzle/schema.d1';
+import { profiles, transactions, notifications } from '../../drizzle/schema.d1';
+import { sendEmail } from './newsletter/resend';
+import { welcomeEmail } from './email/templates';
 
 const SIGNUP_BONUS = 50000;
 
-export async function ensureProfile(db: Db, user: User) {
+export async function ensureProfile(db: Db, user: User, env?: { RESEND_API_KEY?: string }) {
   // Use INSERT OR IGNORE + check changes to avoid double-award race conditions.
   // If two concurrent requests both try to insert, only one will succeed (SQLite serializes writes).
   // We only award the bonus if this specific insert actually created the row.
@@ -35,5 +38,22 @@ export async function ensureProfile(db: Db, user: User) {
       type: 'signup_bonus',
       amount: SIGNUP_BONUS,
     });
+
+    // Welcome notification (shows in NotificationBell)
+    await db.insert(notifications).values({
+      id: crypto.randomUUID(),
+      userId: user.id,
+      type: 'new_challenge',
+      title: 'Welcome to ruwt.dev!',
+      body: 'Start with FizzBuzz Budget — a quick intro challenge to learn the arena.',
+      metadata: JSON.stringify({ challengeId: 'fizzbuzz-budget' }),
+    }).onConflictDoNothing();
+
+    // Welcome email (fire-and-forget)
+    if (env?.RESEND_API_KEY && user.email) {
+      const firstName = ((user.user_metadata?.full_name ?? user.user_metadata?.name) as string)?.split(' ')[0] || null;
+      const email = welcomeEmail({ name: firstName });
+      sendEmail(env, { to: user.email, subject: email.subject, html: email.html, text: email.text }).catch(() => {});
+    }
   }
 }

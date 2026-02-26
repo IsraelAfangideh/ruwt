@@ -1,5 +1,7 @@
+import { useEffect } from 'react';
 import { View, Text, ScrollView, Pressable, StyleSheet } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/Button';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
@@ -14,6 +16,13 @@ export function LandingScreen() {
   useDocumentMeta({ canonicalPath: '/' });
   const navigation = useNavigation();
   const c = useColors();
+
+  // Redirect logged-in users to Dashboard
+  useEffect(() => {
+    createClient().auth.getUser().then(({ data: { user } }) => {
+      if (user) navigation.reset({ index: 0, routes: [{ name: 'Dashboard' as never }] });
+    });
+  }, [navigation]);
   const width = useWindowWidth();
   const isMobile = width < 768;
 

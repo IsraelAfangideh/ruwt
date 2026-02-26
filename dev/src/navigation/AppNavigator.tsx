@@ -135,7 +135,7 @@ export function AppNavigator() {
       if (event === 'SIGNED_OUT') {
         Sentry.setUser(null);
         if (isNavigationReady.current && navigationRef.isReady()) {
-          navigationRef.reset({ index: 0, routes: [{ name: 'Login' }] });
+          navigationRef.reset({ index: 0, routes: [{ name: 'Landing' }] });
         }
       }
     });

@@ -91,7 +91,7 @@ export function LoginScreen() {
         )}
         <View style={styles.formWrap}>
           <View style={styles.formHeader}>
-            <Text style={[styles.formTitle, { color: c.text }]}>Welcome back</Text>
+            <Text style={[styles.formTitle, { color: c.text }]}>Sign in</Text>
             <Text style={[styles.formSubtitle, { color: c.textMuted }]}>
               Sign in to your account to continue
             </Text>

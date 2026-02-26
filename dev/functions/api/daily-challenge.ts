@@ -26,24 +26,24 @@ export async function onRequestGet(context: { request: Request; env: Env }) {
 
     // Auto-seed if none exists for today
     if (!daily) {
-      // Get recent daily challenge IDs to avoid repeats
+      // Get recent daily challenge IDs to avoid repeats (small window to preserve easy pool)
       const recentDailies = await db
         .select({ challengeId: dailyChallenges.challengeId })
         .from(dailyChallenges)
         .orderBy(desc(dailyChallenges.date))
-        .limit(10);
+        .limit(5);
       const recentIds = new Set(recentDailies.map((d) => d.challengeId));
 
-      // Pick a challenge not recently used, preferring sprint/easy difficulty for daily
+      // Pick a challenge not recently used — NEVER allow hard/impossible for daily
       const allChallenges = await db.select().from(challenges);
-      const candidates = allChallenges.filter((c) => !recentIds.has(c.id));
-      const pool = candidates.length > 0 ? candidates : allChallenges;
+      const eligible = allChallenges.filter((c) => !['hard', 'impossible'].includes(c.difficulty || ''));
+      const candidates = eligible.filter((c) => !recentIds.has(c.id));
+      const pool = candidates.length > 0 ? candidates : eligible;
 
-      // Prefer sprint/easy for daily challenges — never pick hard/impossible
+      // Prefer sprint/easy, then medium
       const easyPool = pool.filter((c) => ['sprint', 'easy'].includes(c.difficulty || ''));
       const mediumPool = pool.filter((c) => c.difficulty === 'medium');
-      const dailyPool = easyPool.length > 0 ? easyPool : mediumPool.length > 0 ? mediumPool : pool.filter((c) => !['hard', 'impossible'].includes(c.difficulty || ''));
-      const finalPool = dailyPool.length > 0 ? dailyPool : pool;
+      const finalPool = easyPool.length > 0 ? easyPool : mediumPool.length > 0 ? mediumPool : pool;
 
       // Simple rotation: pick based on day-of-year mod pool size
       const dayOfYear = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) / 86400000);

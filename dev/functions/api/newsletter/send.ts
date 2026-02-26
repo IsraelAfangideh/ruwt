@@ -62,14 +62,21 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
       fetchDevNews(),
     ]);
 
-    // Skip logic: if nothing happened and no news, don't send
-    const hasActivity = activity.recentCommits.length > 0
-      || activity.newUsers.length > 0
-      || activity.newChallenges.length > 0
-      || activity.recentSolves > 0;
+    // Note: the personal hook system (buildPersonalHook) always generates
+    // content based on user state, so there's always something to send.
+    // We only skip when there are literally 0 subscribers (handled above).
 
-    if (!hasActivity && rawNews.length === 0) {
-      return Response.json({ success: true, message: 'Nothing to report, skipped', sent: 0 });
+    // Create streak reminder notifications for users at risk of losing their streak
+    const today = new Date().toISOString().split('T')[0];
+    const streakUsers = await db.all<{ id: string; currentStreak: number; lastStreakDate: string | null }>(
+      sql`SELECT id, current_streak, last_streak_date FROM profiles WHERE current_streak > 0 AND (last_streak_date IS NULL OR last_streak_date < ${today})`
+    );
+    for (const su of streakUsers) {
+      await db.run(sql`INSERT OR IGNORE INTO notifications (id, user_id, type, title, body, metadata)
+        VALUES (${crypto.randomUUID()}, ${su.id}, 'streak_reminder',
+        ${'Don' + "'" + 't lose your ' + su.currentStreak + '-day streak!'},
+        ${'Solve today' + "'" + 's challenge to keep your streak alive.'},
+        ${JSON.stringify({ streak: su.currentStreak })})`);
     }
 
     // AI generates platform digest + curates dev news + LinkedIn draft (in parallel)

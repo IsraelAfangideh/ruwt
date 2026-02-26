@@ -16,7 +16,7 @@ export async function onRequestGet(context: { request: Request; env: Env }) {
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
     const db = getDb(context.env);
-    await ensureProfile(db, user);
+    await ensureProfile(db, user, context.env);
 
     const earned = await db
       .select()

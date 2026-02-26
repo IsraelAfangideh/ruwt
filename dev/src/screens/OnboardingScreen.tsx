@@ -108,9 +108,9 @@ export function OnboardingScreen() {
           {step === 1 && (
             <StepFirstChallenge
               colors={c}
-              onNext={goNext}
               onBack={goBack}
               onStartChallenge={() => navigateToArena('fizzbuzz-budget')}
+              onSkip={completeOnboarding}
             />
           )}
           {step === 2 && (
@@ -214,14 +214,14 @@ function StepWelcome({
  * ============================================================ */
 function StepFirstChallenge({
   colors: c,
-  onNext,
   onBack,
   onStartChallenge,
+  onSkip,
 }: {
   colors: any;
-  onNext: () => void;
   onBack: () => void;
   onStartChallenge: () => void;
+  onSkip: () => void;
 }) {
   return (
     <View style={styles.stepInner}>
@@ -281,8 +281,8 @@ function StepFirstChallenge({
         <Button variant="ghost" onPress={onBack}>
           Back
         </Button>
-        <Pressable onPress={onNext}>
-          <Text style={[styles.skipText, { color: c.textMuted }]}>Skip for now</Text>
+        <Pressable onPress={onSkip}>
+          <Text style={[styles.skipText, { color: c.textMuted }]}>I'll explore on my own</Text>
         </Pressable>
       </View>
     </View>

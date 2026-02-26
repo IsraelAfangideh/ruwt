@@ -143,7 +143,68 @@ export interface EmailTemplate {
 }
 
 // ---------------------------------------------------------------------------
-// 1. Candidate Invite
+// 1. Welcome Email (new signup)
+// ---------------------------------------------------------------------------
+
+export interface WelcomeParams {
+  name?: string | null;
+}
+
+export function welcomeEmail(params: WelcomeParams): EmailTemplate {
+  const greeting = params.name ? `Hi ${escapeHtml(params.name)},` : 'Hi there,';
+  const subject = 'Welcome to ruwt.dev';
+
+  const content = `
+            <p style="margin: 0 0 16px 0; font-size: 16px; color: #1a1816;">${greeting}</p>
+            <p style="margin: 0 0 20px 0; color: #1a1816; line-height: 1.6;">Welcome to <strong>ruwt.dev</strong> &mdash; the platform where you practice AI-assisted coding and compete on efficiency.</p>
+            <p style="margin: 0 0 20px 0; color: #1a1816; line-height: 1.6;">All practice challenges are <strong>100% free</strong>, including AI chat. Here&rsquo;s what you can do right now:</p>
+            <!-- What's waiting -->
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin: 0 0 28px 0; background-color: #f5f3f0; border-radius: 8px;">
+              <tr>
+                <td style="padding: 20px 24px;">
+                  <p style="margin: 0 0 12px 0; font-size: 14px; color: #1a1816;"><strong>60+ challenges</strong> across model selection, prompt efficiency, and debugging</p>
+                  <p style="margin: 0 0 12px 0; font-size: 14px; color: #1a1816;"><strong>8 AI models</strong> across 5 cost tiers &mdash; choose wisely</p>
+                  <p style="margin: 0; font-size: 14px; color: #1a1816;"><strong>Daily challenges</strong> &mdash; build a streak, climb the leaderboard</p>
+                </td>
+              </tr>
+            </table>
+            <!-- CTA -->
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+              <tr>
+                <td align="center" style="padding-bottom: 24px;">
+                  ${ctaButton('Start Your First Challenge', 'https://ruwt.dev/challenges')}
+                </td>
+              </tr>
+            </table>
+            <p style="margin: 0; font-size: 13px; color: #8a847a; text-align: center; line-height: 1.5;">We recommend starting with <strong>FizzBuzz Budget</strong> &mdash; it takes about 2 minutes and teaches you the core loop.</p>`;
+
+  const html = wrapInLayout(content, 'Welcome to ruwt.dev — start your first AI coding challenge');
+
+  const text = [
+    greeting,
+    '',
+    'Welcome to ruwt.dev — the platform where you practice AI-assisted coding and compete on efficiency.',
+    '',
+    'All practice challenges are 100% free, including AI chat.',
+    '',
+    '- 60+ challenges across model selection, prompt efficiency, and debugging',
+    '- 8 AI models across 5 cost tiers',
+    '- Daily challenges — build a streak, climb the leaderboard',
+    '',
+    'Start your first challenge: https://ruwt.dev/challenges',
+    '',
+    'We recommend starting with FizzBuzz Budget — it takes about 2 minutes.',
+    '',
+    '---',
+    'Sent by ruwt.dev -- AI-efficiency assessment platform',
+    'Unsubscribe: https://ruwt.dev/settings',
+  ].join('\n');
+
+  return { subject, html, text };
+}
+
+// ---------------------------------------------------------------------------
+// 2. Candidate Invite
 // ---------------------------------------------------------------------------
 
 export interface CandidateInviteParams {

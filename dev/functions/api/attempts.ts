@@ -31,7 +31,7 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
     const db = getDb(context.env);
 
     // Ensure profile exists (creates with signup bonus on first call)
-    await ensureProfile(db, user);
+    await ensureProfile(db, user, context.env);
 
     const [challenge] = await db
       .select()
