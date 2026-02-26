@@ -28,17 +28,19 @@ function timeAgo(ts: string | null): string {
   return `${days}d ago`;
 }
 
-export function ActivityFeed({ limit = 10 }: { limit?: number }) {
+export function ActivityFeed({ limit = 10, heading }: { limit?: number; heading?: string }) {
   const c = useColors();
   const [activities, setActivities] = useState<Activity[]>([]);
+  const [uniqueUsers, setUniqueUsers] = useState(0);
   const intervalRef = useRef<ReturnType<typeof setInterval>>();
 
   const fetchActivities = async () => {
     try {
       const res = await fetch(`/api/activity?limit=${limit}`);
       if (res.ok) {
-        const data = await res.json() as { activities: Activity[] };
+        const data = await res.json() as { activities: Activity[]; uniqueUsers: number };
         setActivities(data.activities);
+        setUniqueUsers(data.uniqueUsers);
       }
     } catch { /* ignore */ }
   };
@@ -49,11 +51,11 @@ export function ActivityFeed({ limit = 10 }: { limit?: number }) {
     return () => clearInterval(intervalRef.current);
   }, [limit]);
 
-  if (activities.length === 0) return null;
+  if (activities.length === 0 || uniqueUsers < 3) return null;
 
   return (
     <View style={styles.container}>
-      <Text style={[styles.heading, { color: c.textMuted }]}>Recent Solves</Text>
+      <Text style={[styles.heading, { color: c.textMuted }]}>{heading || 'Recent Solves'}</Text>
       {activities.map((a, i) => (
         <View key={i} style={[styles.item, { borderBottomColor: c.border }]}>
           <Text style={[styles.text, { color: c.text }]} numberOfLines={1}>
@@ -73,7 +75,7 @@ export function ActivityFeed({ limit = 10 }: { limit?: number }) {
 const styles = StyleSheet.create({
   container: {},
   heading: {
-    fontSize: fontSizes.xs,
+    fontSize: fontSizes.sm,
     fontWeight: '600',
     textTransform: 'uppercase',
     letterSpacing: 0.5,

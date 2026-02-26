@@ -194,7 +194,8 @@ function StepWelcome({
           </Text>
           <Text style={[styles.tipDetail, { color: c.textMuted }]}>
             Budget models ($) are cheap but may need more attempts. Premium models ($$$) are
-            powerful but expensive. The best engineers find the sweet spot.
+            powerful but expensive. The best engineers find the sweet spot. Look for the star
+            indicator next to the recommended tier for each challenge.
           </Text>
         </CardContent>
       </Card>
@@ -266,6 +267,7 @@ function StepFirstChallenge({
           <TipRow colors={c} label="$" text="Use budget models for simple tasks" />
           <TipRow colors={c} label="$$$" text="Save expensive models for hard problems" />
           <TipRow colors={c} label="<>" text="The fewer tokens you use, the less you spend" />
+          <TipRow colors={c} label="?" text="Hidden tests check edge cases on submit — public tests help you develop" />
         </CardContent>
       </Card>
 

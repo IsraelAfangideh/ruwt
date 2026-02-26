@@ -77,11 +77,6 @@ export function LandingScreen() {
             </Button>
           </View>
 
-          <Pressable onPress={() => navigation.navigate('Teams' as never)} style={styles.hiringLink}>
-            <Text style={styles.hiringLinkText}>
-              Hiring? Find developers who are great with AI {'\u2192'}
-            </Text>
-          </Pressable>
         </View>
       </View>
 
@@ -103,13 +98,10 @@ export function LandingScreen() {
         </Card>
       </View>
 
-      {/* ─── Recent activity ─── */}
+      {/* ─── Recent activity (auto-hides when < 3 unique users) ─── */}
       <View style={styles.section}>
         <View style={styles.activityWrap}>
-          <Text style={[styles.sectionTitle, { color: c.text, fontSize: fontSizes.xl, marginBottom: spacing.md }]}>
-            Recent Community Activity
-          </Text>
-          <ActivityFeed limit={5} />
+          <ActivityFeed limit={5} heading="Recent Community Activity" />
         </View>
       </View>
 
@@ -220,6 +212,26 @@ export function LandingScreen() {
             </Card>
           ))}
         </View>
+      </View>
+
+      {/* ─── For Hiring Managers ─── */}
+      <View style={styles.section}>
+        <Pressable onPress={() => navigation.navigate('Teams' as never)}>
+          <Card style={[styles.hiringCard, { borderColor: c.accent, borderWidth: 1 }]}>
+            <CardHeader>
+              <Badge variant="default">For Hiring Managers</Badge>
+              <CardTitle>Assess AI Proficiency with Real Engineering Challenges</CardTitle>
+              <CardDescription>
+                Send candidates real coding challenges. See how they choose models, manage budgets, and debug with AI — not just whether they can code.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button variant="outline" onPress={() => navigation.navigate('Teams' as never)}>
+                Learn More {'\u2192'}
+              </Button>
+            </CardContent>
+          </Card>
+        </Pressable>
       </View>
 
       {/* ─── Final CTA ─── */}
@@ -338,12 +350,7 @@ const styles = StyleSheet.create({
     gap: spacing.md,
     justifyContent: 'center',
   },
-  hiringLink: { marginTop: spacing.xs },
-  hiringLinkText: {
-    fontSize: fontSizes.sm,
-    fontFamily: fontFamily.body,
-    color: '#9a938a',
-  },
+  hiringCard: { maxWidth: 600, alignSelf: 'center' as const, width: '100%' as unknown as number },
 
   /* Sections */
   section: { padding: spacing.lg, paddingVertical: spacing.xl },

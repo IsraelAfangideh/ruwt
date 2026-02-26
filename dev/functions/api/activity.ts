@@ -28,15 +28,17 @@ export async function onRequestGet(context: { request: Request; env: Env }) {
       .orderBy(desc(attempts.submittedAt))
       .limit(limit);
 
-    return Response.json({
-      activities: results.map((r) => ({
-        user: r.userName || r.userEmail?.split('@')[0] || 'Anonymous',
-        avatarUrl: r.avatarUrl,
-        challenge: r.challengeTitle,
-        cost: r.totalCost,
-        timestamp: r.submittedAt,
-      })),
-    });
+    const activities = results.map((r) => ({
+      user: r.userName || r.userEmail?.split('@')[0] || 'Anonymous',
+      avatarUrl: r.avatarUrl,
+      challenge: r.challengeTitle,
+      cost: r.totalCost,
+      timestamp: r.submittedAt,
+    }));
+
+    const uniqueUsers = new Set(activities.map((a) => a.user)).size;
+
+    return Response.json({ activities, uniqueUsers });
   } catch (error) {
     console.error('Activity feed error:', error);
     return Response.json({ error: 'Internal server error' }, { status: 500 });

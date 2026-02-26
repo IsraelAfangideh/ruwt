@@ -8,95 +8,95 @@ const hidden = {};
 // ── Sprint ──────────────────────────────────────────────────────
 
 hidden['fizzbuzz-budget'] = [
-  { input: '1', expectedOutput: '1' },
-  { input: '9', expectedOutput: 'Fizz' },
-  { input: '10', expectedOutput: 'Buzz' },
-  { input: '45', expectedOutput: 'FizzBuzz' },
-  { input: '97', expectedOutput: '97' },
+  { input: '1', expectedOutput: '1', hint: 'Single value input' },
+  { input: '9', expectedOutput: 'Fizz', hint: 'Divisible by 3 only' },
+  { input: '10', expectedOutput: 'Buzz', hint: 'Divisible by 5 only' },
+  { input: '45', expectedOutput: 'FizzBuzz', hint: 'Divisible by both 3 and 5' },
+  { input: '97', expectedOutput: '97', hint: 'Not divisible by 3 or 5' },
 ];
 
 hidden['bug-hunt-off-by-one'] = [
-  { input: '[2,4,6,8,10]\n2', expectedOutput: '0' },
-  { input: '[2,4,6,8,10]\n10', expectedOutput: '4' },
-  { input: '[2,4,6,8,10]\n5', expectedOutput: '-1' },
-  { input: '[1]\n1', expectedOutput: '0' },
-  { input: '[1,2,3,4,5,6,7,8,9,10]\n6', expectedOutput: '5' },
+  { input: '[2,4,6,8,10]\n2', expectedOutput: '0', hint: 'First element search' },
+  { input: '[2,4,6,8,10]\n10', expectedOutput: '4', hint: 'Last element search' },
+  { input: '[2,4,6,8,10]\n5', expectedOutput: '-1', hint: 'Element not in array' },
+  { input: '[1]\n1', expectedOutput: '0', hint: 'Single-element array' },
+  { input: '[1,2,3,4,5,6,7,8,9,10]\n6', expectedOutput: '5', hint: 'Larger array search' },
 ];
 
 hidden['broken-iterator'] = [
-  { input: '0 0', expectedOutput: '[0]' },
-  { input: '-5 5 2', expectedOutput: '[-5,-3,-1,1,3,5]' },
-  { input: '10 1 -3', expectedOutput: '[10,7,4,1]' },
-  { input: '1 10 3', expectedOutput: '[1,4,7,10]' },
+  { input: '0 0', expectedOutput: '[0]', hint: 'Start equals end' },
+  { input: '-5 5 2', expectedOutput: '[-5,-3,-1,1,3,5]', hint: 'Negative to positive range' },
+  { input: '10 1 -3', expectedOutput: '[10,7,4,1]', hint: 'Descending with negative step' },
+  { input: '1 10 3', expectedOutput: '[1,4,7,10]', hint: 'Step that doesn\'t divide evenly' },
 ];
 
 hidden['qr-reverse-string'] = [
-  { input: '12345', expectedOutput: '54321' },
-  { input: 'ab cd ef', expectedOutput: 'fe dc ba' },
-  { input: 'A', expectedOutput: 'A' },
-  { input: 'abcba', expectedOutput: 'abcba' },
+  { input: '12345', expectedOutput: '54321', hint: 'Numeric-only string' },
+  { input: 'ab cd ef', expectedOutput: 'fe dc ba', hint: 'String with spaces' },
+  { input: 'A', expectedOutput: 'A', hint: 'Single character' },
+  { input: 'abcba', expectedOutput: 'abcba', hint: 'Palindrome input' },
 ];
 
 hidden['qr-is-palindrome'] = [
-  { input: 'Madam Im Adam', expectedOutput: 'true' },
-  { input: 'not a palindrome', expectedOutput: 'false' },
-  { input: 'a', expectedOutput: 'true' },
-  { input: '121', expectedOutput: 'true' },
+  { input: 'Madam Im Adam', expectedOutput: 'true', hint: 'Mixed case with spaces' },
+  { input: 'not a palindrome', expectedOutput: 'false', hint: 'Plain non-palindrome' },
+  { input: 'a', expectedOutput: 'true', hint: 'Single character' },
+  { input: '121', expectedOutput: 'true', hint: 'Numeric palindrome' },
 ];
 
 hidden['qr-sum-array'] = [
-  { input: '[100,200,300]', expectedOutput: '600' },
-  { input: '[-10,10,-20,20]', expectedOutput: '0' },
-  { input: '[1]', expectedOutput: '1' },
-  { input: '[1,2,3,4,5,6,7,8,9,10]', expectedOutput: '55' },
+  { input: '[100,200,300]', expectedOutput: '600', hint: 'Larger numbers' },
+  { input: '[-10,10,-20,20]', expectedOutput: '0', hint: 'Mixed positive and negative' },
+  { input: '[1]', expectedOutput: '1', hint: 'Single-element array' },
+  { input: '[1,2,3,4,5,6,7,8,9,10]', expectedOutput: '55', hint: 'Longer array' },
 ];
 
 hidden['qr-find-max'] = [
-  { input: '[1,2,3,4,5]', expectedOutput: '5' },
-  { input: '[-100,-50,-1]', expectedOutput: '-1' },
-  { input: '[999]', expectedOutput: '999' },
-  { input: '[7,7,7,7]', expectedOutput: '7' },
+  { input: '[1,2,3,4,5]', expectedOutput: '5', hint: 'Ascending array' },
+  { input: '[-100,-50,-1]', expectedOutput: '-1', hint: 'All negative numbers' },
+  { input: '[999]', expectedOutput: '999', hint: 'Single-element array' },
+  { input: '[7,7,7,7]', expectedOutput: '7', hint: 'All identical values' },
 ];
 
 hidden['qr-count-vowels'] = [
-  { input: 'aeiouAEIOU', expectedOutput: '10' },
-  { input: 'bcdfg', expectedOutput: '0' },
-  { input: 'The quick brown fox', expectedOutput: '4' },
-  { input: 'rhythm', expectedOutput: '0' },
+  { input: 'aeiouAEIOU', expectedOutput: '10', hint: 'Mixed case vowels' },
+  { input: 'bcdfg', expectedOutput: '0', hint: 'No vowels at all' },
+  { input: 'The quick brown fox', expectedOutput: '4', hint: 'Sentence with spaces' },
+  { input: 'rhythm', expectedOutput: '0', hint: 'Word with no standard vowels' },
 ];
 
 hidden['qr-capitalize-words'] = [
-  { input: 'one two three', expectedOutput: 'One Two Three' },
-  { input: 'HELLO', expectedOutput: 'HELLO' },
-  { input: 'a b c', expectedOutput: 'A B C' },
-  { input: 'hello', expectedOutput: 'Hello' },
+  { input: 'one two three', expectedOutput: 'One Two Three', hint: 'Multiple lowercase words' },
+  { input: 'HELLO', expectedOutput: 'HELLO', hint: 'Already uppercase' },
+  { input: 'a b c', expectedOutput: 'A B C', hint: 'Single-character words' },
+  { input: 'hello', expectedOutput: 'Hello', hint: 'Single word' },
 ];
 
 hidden['qr-remove-duplicates'] = [
-  { input: '[5,5,5,5]', expectedOutput: '[5]' },
-  { input: '[1,2,3]', expectedOutput: '[1,2,3]' },
-  { input: '["x","y","x","z","y"]', expectedOutput: '["x","y","z"]' },
+  { input: '[5,5,5,5]', expectedOutput: '[5]', hint: 'All identical elements' },
+  { input: '[1,2,3]', expectedOutput: '[1,2,3]', hint: 'No duplicates' },
+  { input: '["x","y","x","z","y"]', expectedOutput: '["x","y","z"]', hint: 'String elements with duplicates' },
 ];
 
 hidden['qr-chunk-array'] = [
-  { input: '4\n[1,2,3,4,5,6,7,8]', expectedOutput: '[[1, 2, 3, 4], [5, 6, 7, 8]]' },
-  { input: '2\n[1]', expectedOutput: '[[1]]' },
-  { input: '10\n[1,2,3]', expectedOutput: '[[1, 2, 3]]' },
+  { input: '4\n[1,2,3,4,5,6,7,8]', expectedOutput: '[[1, 2, 3, 4], [5, 6, 7, 8]]', hint: 'Evenly divisible chunks' },
+  { input: '2\n[1]', expectedOutput: '[[1]]', hint: 'Chunk size larger than array' },
+  { input: '10\n[1,2,3]', expectedOutput: '[[1, 2, 3]]', hint: 'Chunk size much larger than array' },
 ];
 
 hidden['qr-fibonacci'] = [
-  { input: '8', expectedOutput: '[0, 1, 1, 2, 3, 5, 8, 13]' },
-  { input: '3', expectedOutput: '[0, 1, 1]' },
-  { input: '15', expectedOutput: '[0, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233, 377]' },
+  { input: '8', expectedOutput: '[0, 1, 1, 2, 3, 5, 8, 13]', hint: 'Medium length sequence' },
+  { input: '3', expectedOutput: '[0, 1, 1]', hint: 'Short sequence' },
+  { input: '15', expectedOutput: '[0, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233, 377]', hint: 'Longer sequence with large values' },
 ];
 
 // ── Easy ────────────────────────────────────────────────────────
 
 hidden['two-sum'] = [
-  { input: '[-1,-2,-3,-4,-5]\n-8', expectedOutput: '[2,4]' },
-  { input: '[0,4,3,0]\n0', expectedOutput: '[0,3]' },
-  { input: '[1,5,8,3,7]\n12', expectedOutput: '[1,4]' },
-  { input: '[100,200,300,400]\n700', expectedOutput: '[2,3]' },
+  { input: '[-1,-2,-3,-4,-5]\n-8', expectedOutput: '[2,4]', hint: 'Negative numbers' },
+  { input: '[0,4,3,0]\n0', expectedOutput: '[0,3]', hint: 'Zeros in array' },
+  { input: '[1,5,8,3,7]\n12', expectedOutput: '[1,4]', hint: 'Sum in middle of array' },
+  { input: '[100,200,300,400]\n700', expectedOutput: '[2,3]', hint: 'Larger values' },
 ];
 
 hidden['fizzbuzz'] = [
@@ -106,11 +106,11 @@ hidden['fizzbuzz'] = [
 ];
 
 hidden['string-formatter'] = [
-  { input: 'XMLParser', expectedOutput: 'xml.parser' },
-  { input: 'myHTTPClient', expectedOutput: 'my.http.client' },
-  { input: 'a', expectedOutput: 'a' },
-  { input: 'HelloWorld', expectedOutput: 'hello.world' },
-  { input: 'one__two__three', expectedOutput: 'one.two.three' },
+  { input: 'XMLParser', expectedOutput: 'xml.parser', hint: 'Consecutive uppercase (acronym)' },
+  { input: 'myHTTPClient', expectedOutput: 'my.http.client', hint: 'Mixed camelCase with acronym' },
+  { input: 'a', expectedOutput: 'a', hint: 'Single character' },
+  { input: 'HelloWorld', expectedOutput: 'hello.world', hint: 'PascalCase input' },
+  { input: 'one__two__three', expectedOutput: 'one.two.three', hint: 'Double underscore separators' },
 ];
 
 hidden['broken-cache'] = [
@@ -133,21 +133,21 @@ hidden['matrix-operations'] = [
 ];
 
 hidden['qr-flatten-array'] = [
-  { input: '[[1,[2]],[3,[4,[5]]]]', expectedOutput: '[1,2,3,4,5]' },
-  { input: '[1,2,3]', expectedOutput: '[1,2,3]' },
-  { input: '[[[[1]],2],3]', expectedOutput: '[1,2,3]' },
-  { input: '[]', expectedOutput: '[]' },
+  { input: '[[1,[2]],[3,[4,[5]]]]', expectedOutput: '[1,2,3,4,5]', hint: 'Mixed nesting depths' },
+  { input: '[1,2,3]', expectedOutput: '[1,2,3]', hint: 'Already flat' },
+  { input: '[[[[1]],2],3]', expectedOutput: '[1,2,3]', hint: 'Deep nesting' },
+  { input: '[]', expectedOutput: '[]', hint: 'Empty array' },
 ];
 
 // ── Medium ──────────────────────────────────────────────────────
 
 hidden['valid-parentheses'] = [
-  { input: '', expectedOutput: 'true' },
-  { input: '(((())))' , expectedOutput: 'true' },
-  { input: '{[()]}', expectedOutput: 'true' },
-  { input: '(((', expectedOutput: 'false' },
-  { input: '}{', expectedOutput: 'false' },
-  { input: '([{}])', expectedOutput: 'true' },
+  { input: '', expectedOutput: 'true', hint: 'Empty string' },
+  { input: '(((())))' , expectedOutput: 'true', hint: 'Deeply nested parentheses' },
+  { input: '{[()]}', expectedOutput: 'true', hint: 'Mixed bracket types' },
+  { input: '(((', expectedOutput: 'false', hint: 'Unclosed brackets' },
+  { input: '}{', expectedOutput: 'false', hint: 'Wrong order' },
+  { input: '([{}])', expectedOutput: 'true', hint: 'All bracket types nested' },
 ];
 
 hidden['merge-sorted-arrays'] = [

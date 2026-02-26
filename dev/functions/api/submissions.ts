@@ -186,7 +186,7 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
       return Response.json({ error: 'Challenge data is corrupted' }, { status: 500 });
     }
 
-    let hiddenTests: Array<{ input: string; expectedOutput: string }> = [];
+    let hiddenTests: Array<{ input: string; expectedOutput: string; hint?: string }> = [];
     if (challenge.hiddenTestCases) {
       try {
         hiddenTests = JSON.parse(challenge.hiddenTestCases);
@@ -249,18 +249,33 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
       results: testResult.results.map((r, i) => {
         const isHidden = i >= publicCount;
         if (isHidden) {
-          // Provide a vague hint for failed hidden tests to help debugging
+          // Provide a hint for failed hidden tests to help debugging
           let hint: string | undefined;
           if (!r.passed) {
-            const input = r.input.toLowerCase();
-            if (input === '' || input === 'null' || input === 'undefined' || input === '[]' || input === '{}') {
-              hint = 'Edge case: empty or null input';
-            } else if (/^\d{4,}/.test(r.input) || r.input.length > 100) {
-              hint = 'Edge case: large input';
-            } else if (/[^a-zA-Z0-9\s,.\-]/.test(r.input.slice(0, 50))) {
-              hint = 'Edge case: special characters';
+            // Use stored hint from hidden test definition if available
+            const hiddenIndex = i - publicCount;
+            const storedHint = hiddenTests[hiddenIndex]?.hint;
+            if (storedHint) {
+              hint = storedHint;
             } else {
-              hint = 'Hidden edge case — check boundary conditions';
+              // Fallback to heuristic-based hints
+              const input = r.input;
+              const inputLower = input.toLowerCase();
+              if (inputLower === '' || inputLower === 'null' || inputLower === 'undefined' || inputLower === '[]' || inputLower === '{}') {
+                hint = 'Edge case: empty or null input';
+              } else if (input.length === 1) {
+                hint = 'Edge case: single character input';
+              } else if (/^\d+$/.test(input)) {
+                hint = 'Edge case: numeric-only input';
+              } else if (input === input.split('').reverse().join('')) {
+                hint = 'Edge case: palindromic input';
+              } else if (input.length > 100) {
+                hint = 'Edge case: large input';
+              } else if (/[^a-zA-Z0-9\s,.\-]/.test(input.slice(0, 50))) {
+                hint = 'Edge case: special characters';
+              } else {
+                hint = 'Edge case: check uncommon input patterns';
+              }
             }
           }
           return {
