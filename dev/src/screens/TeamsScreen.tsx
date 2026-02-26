@@ -24,7 +24,7 @@ const FAQ_ITEMS = [
   },
   {
     q: 'What if a candidate has never used AI for coding?',
-    a: "That's useful signal too. The assessment shows where a candidate is in their AI journey — and where they have room to grow. Candidates get access to real AI models and a clean editor, so the experience is straightforward even for first-timers.",
+    a: "That's valuable data too. The assessment reveals who can leverage AI effectively and who can't — which is exactly the signal you're hiring for. Candidates get access to real AI models and a clean editor, so the experience is straightforward even for first-timers.",
   },
   {
     q: 'Can candidates cheat?',
@@ -221,11 +221,11 @@ export function TeamsScreen() {
       <View style={styles.hero}>
         <Badge variant="secondary">For Hiring Teams</Badge>
         <Text style={[styles.heroTitle, { color: c.text }]}>
-          Find Developers Who Are{'\n'}
-          <Text style={{ color: c.accent }}>Great With AI</Text>
+          Measure How Your Candidates{'\n'}
+          <Text style={{ color: c.accent }}>Actually Use AI</Text>
         </Text>
         <Text style={[styles.heroSub, { color: c.textMuted }]}>
-          Thousands of developers practice AI-assisted coding on Ruwt every day. See how they solve real problems — which models they pick, how they prompt, what they spend. Hire from a community of proven skill.
+          Traditional coding tests don't measure AI fluency. Ruwt gives you real data — which models they pick, how they prompt, what they spend. Objective, comparable, and impossible to fake.
         </Text>
         <View style={styles.heroButtons}>
           <Button size="lg" onPress={handleStartAssessment}>Start Free Assessment</Button>
@@ -340,7 +340,7 @@ export function TeamsScreen() {
 
       {/* 3-step flow */}
       <View style={[styles.section, styles.sectionAlt, { backgroundColor: c.muted + '40' }]}>
-        <Text style={[styles.sectionTitle, { color: c.text }]}>Three Steps to Finding AI Talent</Text>
+        <Text style={[styles.sectionTitle, { color: c.text }]}>Three Steps to Better Hiring</Text>
         <View style={styles.cards}>
           {[
             { step: '1', title: 'Create an Assessment', desc: 'Choose from 4 pre-built templates or pick from 60+ challenges. Set time limits and add your company branding. Test the AI skills you care about.' },
@@ -486,7 +486,7 @@ export function TeamsScreen() {
 
       {/* Final CTA */}
       <View style={styles.cta}>
-        <Text style={[styles.ctaTitle, { color: c.text }]}>Find Your Next AI-Native Developer</Text>
+        <Text style={[styles.ctaTitle, { color: c.text }]}>Start Assessing AI Skills Today</Text>
         <Text style={[styles.ctaSub, { color: c.textMuted }]}>
           $200/month. Unlimited assessments. Cancel anytime.
         </Text>
@@ -516,7 +516,7 @@ export function TeamsScreen() {
       <View style={styles.crossLink}>
         <Pressable onPress={() => navigation.navigate('Landing' as never)}>
           <Text style={[styles.crossLinkText, { color: c.textMuted }]}>
-            Developer? Practice and get discovered {'\u2192'}
+            Developer? Try free challenges {'\u2192'}
           </Text>
         </Pressable>
       </View>

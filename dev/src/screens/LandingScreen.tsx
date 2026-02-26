@@ -42,11 +42,11 @@ export function LandingScreen() {
         <View style={styles.heroInner}>
           <Badge variant="secondary" style={{ alignSelf: 'center' }}>Now in Beta</Badge>
           <Text style={styles.heroTitle}>
-            Get Better at AI Coding.{'\n'}
-            <Text style={{ color: '#c9a962' }}>Get Discovered.</Text>
+            Prove You Can Use AI{'\n'}
+            <Text style={{ color: '#c9a962' }}>Better Than Anyone</Text>
           </Text>
           <Text style={styles.heroSub}>
-            Practice real coding challenges with AI models. Learn from the community.{'\n'}Let your skills speak for themselves.
+            Solve coding challenges using real AI models. The twist:{'\n'}you're ranked by how efficiently you use them.
           </Text>
 
           {/* Stats row */}
@@ -96,7 +96,7 @@ export function LandingScreen() {
             <Badge variant="default">Daily Challenge</Badge>
             <CardTitle>Today's Challenge</CardTitle>
             <CardDescription>
-              A new challenge every day. Practice alongside other developers. Share your approach and learn from theirs.
+              A new challenge every day. Compete against other developers for the lowest AI cost. Share your results.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -110,7 +110,7 @@ export function LandingScreen() {
       {/* ─── Recent activity (auto-hides when < 3 unique users) ─── */}
       <View style={styles.section}>
         <View style={styles.activityWrap}>
-          <ActivityFeed limit={5} heading="Recent Community Activity" />
+          <ActivityFeed limit={5} heading="Developers are solving challenges right now" />
         </View>
       </View>
 
@@ -136,7 +136,7 @@ export function LandingScreen() {
       <View style={styles.section}>
         <Text style={[styles.sectionTitle, { color: c.text }]}>Three Skills That Matter</Text>
         <Text style={[styles.sectionSub, { color: c.textMuted }]}>
-          Practice the AI skills that matter in real-world engineering.
+          We measure the AI skills that predict real-world engineering efficiency.
         </Text>
         <View style={styles.cards}>
           {[
@@ -171,9 +171,9 @@ export function LandingScreen() {
 
       {/* ─── Featured replay ─── */}
       <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: c.text }]}>Learn From the Community</Text>
+        <Text style={[styles.sectionTitle, { color: c.text }]}>Watch How Top Solvers Think</Text>
         <Text style={[styles.sectionSub, { color: c.textMuted }]}>
-          Watch how other developers approach challenges. Every replay is public and shareable — learn their strategies.
+          Watch how top solvers complete challenges for under $0.01. Every replay is public and shareable.
         </Text>
         <FeaturedReplay />
       </View>
@@ -185,7 +185,7 @@ export function LandingScreen() {
           {[
             { step: '1', title: 'Pick a Challenge', desc: 'Browse 60+ challenges across model selection, prompt efficiency, debugging, and multi-model strategy. Choose timed or untimed.' },
             { step: '2', title: 'Solve with AI', desc: 'Use the Arena IDE with 8 real AI models across 5 tiers. Switch between Micro, Budget, Mid, Premium, and Reasoning strategically.' },
-            { step: '3', title: 'See Where You Stand', desc: "Submit your solution. See how your approach compares, learn from others, and let your skills get noticed." },
+            { step: '3', title: 'Climb the Leaderboard', desc: "Submit your solution. You're ranked by cost efficiency — solve it correctly with the least spend." },
           ].map((item) => (
             <Card key={item.step} style={styles.card}>
               <CardHeader>
@@ -208,7 +208,7 @@ export function LandingScreen() {
             { icon: '\u26A1', title: 'Powered by Cloudflare', desc: 'Enterprise-grade infrastructure. Edge-deployed globally for low latency.' },
             { icon: '\u{1F513}', title: 'Open Source Models', desc: 'No vendor lock-in. All models are open-weight and community-audited.' },
             { icon: '\u{1F6E1}', title: 'Your Data Stays Private', desc: 'Code runs in sandboxed execution. We never store your solutions beyond the session.' },
-            { icon: '\u{1F3C6}', title: 'Real Leaderboard', desc: 'Rankings based on actual AI costs. See where you stand, learn what works, get noticed.' },
+            { icon: '\u{1F3C6}', title: 'Real Leaderboard', desc: 'Rankings are based on actual AI costs — no gamification tricks or vanity metrics.' },
           ].map((item) => (
             <Card key={item.title} style={styles.trustCard}>
               <CardHeader>
@@ -245,9 +245,9 @@ export function LandingScreen() {
 
       {/* ─── Final CTA ─── */}
       <View style={[styles.ctaSection, { backgroundColor: '#1a1816' }]}>
-        <Text style={styles.ctaTitle}>Ready to get better at AI coding?</Text>
+        <Text style={styles.ctaTitle}>Ready to prove your AI skills?</Text>
         <Text style={styles.ctaSub}>
-          Free practice. 60+ challenges. 8 AI models. Hints when you're stuck. No credit card required.
+          Free unlimited practice. 60+ challenges. 8 AI models. No credit card required.
         </Text>
         <View style={styles.heroCtas}>
           <Button

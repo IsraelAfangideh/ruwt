@@ -3,8 +3,8 @@ import { spacing, fontSizes, fontFamily } from '@/theme/tokens';
 
 const FEATURES = [
   '60+ real-world challenges',
-  'Hints when you get stuck',
-  'Get discovered by employers',
+  '8 AI models across 5 tiers',
+  '50,000 free credits to start',
 ];
 
 export function BrandPanel() {
@@ -13,7 +13,7 @@ export function BrandPanel() {
       <View style={styles.content}>
         <Text style={styles.logo}>Ruwt</Text>
         <Text style={styles.tagline}>
-          Get better at AI coding.{'\n'}Get discovered.
+          Prove you can use AI{'\n'}better than anyone
         </Text>
         <View style={styles.features}>
           {FEATURES.map((feat) => (
