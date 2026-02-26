@@ -248,54 +248,26 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
       failedTests: testResult.failedTests,
       results: testResult.results.map((r, i) => {
         const isHidden = i >= publicCount;
+        const truncate = (s: string, max = 500) => s.length > max ? s.substring(0, max) + '...' : s;
+
+        // For hidden tests, include stored hint as a label (e.g., "Numeric-only string")
+        let hint: string | undefined;
         if (isHidden) {
-          // Provide a hint for failed hidden tests to help debugging
-          let hint: string | undefined;
-          if (!r.passed) {
-            // Use stored hint from hidden test definition if available
-            const hiddenIndex = i - publicCount;
-            const storedHint = hiddenTests[hiddenIndex]?.hint;
-            if (storedHint) {
-              hint = storedHint;
-            } else {
-              // Fallback to heuristic-based hints
-              const input = r.input;
-              const inputLower = input.toLowerCase();
-              if (inputLower === '' || inputLower === 'null' || inputLower === 'undefined' || inputLower === '[]' || inputLower === '{}') {
-                hint = 'Edge case: empty or null input';
-              } else if (input.length === 1) {
-                hint = 'Edge case: single character input';
-              } else if (/^\d+$/.test(input)) {
-                hint = 'Edge case: numeric-only input';
-              } else if (input === input.split('').reverse().join('')) {
-                hint = 'Edge case: palindromic input';
-              } else if (input.length > 100) {
-                hint = 'Edge case: large input';
-              } else if (/[^a-zA-Z0-9\s,.\-]/.test(input.slice(0, 50))) {
-                hint = 'Edge case: special characters';
-              } else {
-                hint = 'Edge case: check uncommon input patterns';
-              }
-            }
-          }
-          return {
-            passed: r.passed,
-            hidden: true,
-            input: '(hidden)',
-            expectedOutput: '(hidden)',
-            actualOutput: '(hidden)',
-            hint,
-          };
+          const hiddenIndex = i - publicCount;
+          hint = hiddenTests[hiddenIndex]?.hint;
         }
+
+        // Show full details for ALL tests (hidden + public) — like LeetCode
         return {
           passed: r.passed,
-          hidden: false,
-          input: r.input.substring(0, 200) + (r.input.length > 200 ? '...' : ''),
-          expectedOutput: r.expectedOutput.substring(0, 200) + (r.expectedOutput.length > 200 ? '...' : ''),
-          actualOutput: r.actualOutput.substring(0, 200) + (r.actualOutput.length > 200 ? '...' : ''),
+          hidden: isHidden,
+          input: truncate(r.input),
+          expectedOutput: truncate(r.expectedOutput),
+          actualOutput: truncate(r.actualOutput),
           error: r.error,
           time: r.time,
           memory: r.memory,
+          hint,
         };
       }),
       attempt: {
