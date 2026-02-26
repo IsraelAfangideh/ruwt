@@ -26,9 +26,15 @@ export async function onRequestGet(context: {
     if (!challenge) {
       return Response.json({ error: 'Challenge not found' }, { status: 404 });
     }
+    let hiddenTestCount = 0;
+    if (challenge.hiddenTestCases) {
+      try { hiddenTestCount = JSON.parse(challenge.hiddenTestCases).length; } catch {}
+    }
+    const { hiddenTestCases: _stripped, ...rest } = challenge;
     return Response.json({
-      ...challenge,
-      tags: challenge.tags ? JSON.parse(challenge.tags) : [],
+      ...rest,
+      tags: challenge.tags ? (() => { try { return JSON.parse(challenge.tags); } catch { return []; } })() : [],
+      hiddenTestCount,
     });
   } catch (error) {
     console.error('Challenge get error:', error);
