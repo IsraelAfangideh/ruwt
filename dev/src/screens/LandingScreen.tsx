@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { View, Text, ScrollView, Pressable, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, Pressable, StyleSheet, Image } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/Button';
@@ -87,6 +87,22 @@ export function LandingScreen() {
           </View>
 
         </View>
+      </View>
+
+      {/* ─── Arena Preview ─── */}
+      <View style={styles.section}>
+        <Text style={[styles.sectionTitle, { color: c.text }]}>The Arena IDE</Text>
+        <Text style={[styles.sectionSub, { color: c.textMuted }]}>
+          Monaco editor, AI chat with 8 models, and a built-in terminal — all in your browser.
+        </Text>
+        <Card style={styles.previewCard}>
+          <Image
+            source={{ uri: '/arena-preview.png' }}
+            style={styles.previewImage}
+            resizeMode="contain"
+            accessibilityLabel="Arena IDE showing code editor, AI chat, and terminal"
+          />
+        </Card>
       </View>
 
       {/* ─── Daily Challenge CTA ─── */}
@@ -389,6 +405,18 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
   },
   card: { flex: 1, minWidth: 240 },
+  previewCard: {
+    maxWidth: 800,
+    alignSelf: 'center',
+    width: '100%',
+    overflow: 'hidden',
+    padding: 0,
+  },
+  previewImage: {
+    width: '100%',
+    aspectRatio: 1.6,
+    borderRadius: 8,
+  },
   tryChallengeCard: { maxWidth: 500, alignSelf: 'center', width: '100%' },
   iconCircle: {
     width: 48,
