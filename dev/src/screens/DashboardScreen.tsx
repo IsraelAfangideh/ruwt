@@ -255,6 +255,36 @@ function GreetingSection({
   );
 }
 
+function GetStartedBanner({ onTryFizzBuzz, onBrowse }: { onTryFizzBuzz: () => void; onBrowse: () => void }) {
+  const c = useColors();
+  return (
+    <Card style={{ borderColor: c.accent, borderWidth: 1, borderLeftWidth: 4 }}>
+      <CardHeader>
+        <CardTitle>Start Your First Challenge</CardTitle>
+        <CardDescription>
+          Pick an easy challenge, use AI to solve it, and see how efficiently you can do it. Most people finish their first one in under 3 minutes.
+        </CardDescription>
+      </CardHeader>
+      <CardContent style={{ gap: spacing.sm }}>
+        <Button
+          size="lg"
+          fullWidth
+          onPress={onTryFizzBuzz}
+          style={{ backgroundColor: c.accent }}
+          textStyle={{ color: c.primaryForeground, fontWeight: '700' }}
+        >
+          Try FizzBuzz Budget
+        </Button>
+        <Pressable onPress={onBrowse}>
+          <Text style={{ color: c.accent, textAlign: 'center', fontSize: fontSizes.sm, fontFamily: fontFamily.body }}>
+            Browse all challenges
+          </Text>
+        </Pressable>
+      </CardContent>
+    </Card>
+  );
+}
+
 function DailyChallengeSection({
   data,
   countdown,
@@ -368,8 +398,8 @@ function StatsRow({ data }: { data: DashboardData }) {
       icon: '\uD83D\uDD25', // fire emoji
     },
     {
-      label: 'Credits Used',
-      value: creditsUsed > 0 ? creditsUsed.toLocaleString() : '0',
+      label: 'AI Spend',
+      value: formatCost(creditsUsed),
       icon: '\uD83D\uDCB0', // money bag emoji
     },
   ];
@@ -649,15 +679,18 @@ function ActivityFeedSection({ data }: { data: DashboardData }) {
   const c = useColors();
   const activity = data.recentActivity;
 
-  if (activity.length === 0) {
+  // Count unique users — hide feed if < 3 to avoid "ghost town" feel
+  const uniqueUsers = new Set(activity.map((e) => e.user)).size;
+
+  if (activity.length === 0 || uniqueUsers < 3) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Recent Activity</CardTitle>
+          <CardTitle>Community</CardTitle>
         </CardHeader>
         <CardContent>
           <Text style={[styles.emptyFeedText, { color: c.textMuted }]}>
-            No recent activity yet. Solve a challenge to appear here!
+            Be among the first to set the benchmark. Solve a challenge and your result appears here.
           </Text>
         </CardContent>
       </Card>
@@ -842,6 +875,16 @@ export function DashboardScreen() {
       >
         {/* 1. Greeting + Streak */}
         <GreetingSection data={data} />
+
+        {/* Get Started Banner — new users only */}
+        {data.progress.solvedCount === 0 && (
+          <View style={styles.section}>
+            <GetStartedBanner
+              onTryFizzBuzz={() => (navigation.navigate as any)('Arena', { challengeId: 'fizzbuzz-budget' })}
+              onBrowse={() => (navigation.navigate as any)('Challenges')}
+            />
+          </View>
+        )}
 
         {/* 2. Daily Challenge */}
         <View style={styles.section}>

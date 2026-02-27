@@ -100,10 +100,15 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
         classifyUserState(db, user.id),
         getRecommendedChallenge(db, user.id),
       ]);
-      const personalHook = buildPersonalHook(user.name, stateData, recommended, activity);
+      const hookResult = buildPersonalHook(user.name, stateData, recommended, activity);
       const isAdmin = adminIds.includes(user.id);
 
-      const newsletterData = { date, platformDigest, stories, activity, personalHook, linkedinDraft: isAdmin ? linkedinDraft : null };
+      const newsletterData = {
+        date, platformDigest, stories, activity,
+        personalHook: hookResult?.text ?? null,
+        personalHookChallengeUrl: hookResult?.challengeUrl ?? null,
+        linkedinDraft: isAdmin ? linkedinDraft : null,
+      };
       const html = buildNewsletterHtml(newsletterData);
       const text = buildNewsletterText(newsletterData);
 

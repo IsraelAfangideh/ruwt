@@ -66,7 +66,17 @@ export function OnboardingScreen() {
     if (step > 0) setStep(step - 1);
   };
 
-  const navigateToArena = (challengeId: string) => {
+  const navigateToArena = async (challengeId: string) => {
+    // Mark onboarding complete before navigating — prevents onboarding loop
+    try {
+      await fetch('/api/profile', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ onboardingCompleted: 1 }),
+      });
+    } catch {
+      // Non-blocking
+    }
     (navigation.navigate as any)('Arena', { challengeId });
   };
 
@@ -328,7 +338,7 @@ function StepComplete({
             All practice challenges are 100% free — AI chat included.
           </Text>
           <Text style={[styles.creditsDetail, { color: c.textSubtle }]}>
-            Your 50,000 credits ($5.00) are reserved for team assessments and premium features.
+            Practice is completely free. Credits are only used for team assessment features.
           </Text>
         </CardContent>
       </Card>

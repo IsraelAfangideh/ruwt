@@ -110,32 +110,46 @@ export async function getRecommendedChallenge(db: Db, userId: string): Promise<{
   return rows[0] ?? null;
 }
 
+export interface PersonalHookResult {
+  text: string;
+  challengeUrl?: string;
+}
+
 export function buildPersonalHook(
   userName: string | null,
   stateData: UserStateData,
   recommended: { title: string; id: string; difficulty: string } | null,
   activity: PlatformActivity,
-): string | null {
+): PersonalHookResult | null {
   const name = userName?.split(' ')[0] ?? 'Hey';
 
   switch (stateData.state) {
     case 'brand_new': {
-      if (!recommended) return `${name} — you've got 50k credits waiting. Come try your first challenge.`;
-      return `${name} — you haven't tried a challenge yet. "${recommended.title}" is a good place to start.`;
+      if (!recommended) return { text: `${name} — you've got free credits waiting. Come try your first challenge.` };
+      return {
+        text: `${name} — you haven't tried a challenge yet. "${recommended.title}" is a good place to start.`,
+        challengeUrl: `https://ruwt.dev/arena/${recommended.id}`,
+      };
     }
     case 'tried_stuck': {
       const challenge = stateData.lastChallengeName ?? 'a challenge';
-      return `${name} — you were working on "${challenge}". The AI chat is there to help — sometimes a different prompt is all it takes.`;
+      return {
+        text: `${name} — you were working on "${challenge}". The AI chat is there to help — sometimes a different prompt is all it takes.`,
+        challengeUrl: recommended ? `https://ruwt.dev/arena/${recommended.id}` : undefined,
+      };
     }
     case 'got_one': {
-      if (!recommended) return `${name} — nice first solve! There are more challenges waiting.`;
-      return `${name} — nice first solve! "${recommended.title}" (${recommended.difficulty}) is a good next one.`;
+      if (!recommended) return { text: `${name} — nice first solve! There are more challenges waiting.` };
+      return {
+        text: `${name} — nice first solve! "${recommended.title}" (${recommended.difficulty}) is a good next one.`,
+        challengeUrl: `https://ruwt.dev/arena/${recommended.id}`,
+      };
     }
     case 'active': {
       if (stateData.currentStreak > 0) {
-        return `${name} — ${stateData.currentStreak}-day streak. Keep it going.`;
+        return { text: `${name} — ${stateData.currentStreak}-day streak. Keep it going.` };
       }
-      return `${name} — ${stateData.totalPassed} solves and counting.`;
+      return { text: `${name} — ${stateData.totalPassed} solves and counting.` };
     }
     case 'dormant': {
       const newThings: string[] = [];
@@ -143,7 +157,10 @@ export function buildPersonalHook(
       if (activity.newUsers.length > 0) newThings.push(`${activity.newUsers.length} new dev${activity.newUsers.length > 1 ? 's' : ''}`);
       if (activity.recentCommits.length > 0) newThings.push('fresh platform updates');
       const whatsNew = newThings.length > 0 ? ` Since you've been away: ${newThings.join(', ')}.` : '';
-      return `${name} — it's been a minute.${whatsNew} Come back and solve one.`;
+      return {
+        text: `${name} — it's been a minute.${whatsNew} Come back and solve one.`,
+        challengeUrl: recommended ? `https://ruwt.dev/arena/${recommended.id}` : undefined,
+      };
     }
   }
 }

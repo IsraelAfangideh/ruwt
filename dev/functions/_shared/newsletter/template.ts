@@ -12,12 +12,17 @@ interface NewsletterData {
   stories: CuratedStory[];
   activity: PlatformActivity;
   personalHook?: string | null;
+  personalHookChallengeUrl?: string | null;
   linkedinDraft?: string | null;
 }
 
 export function buildNewsletterHtml(data: NewsletterData): string {
+  const hookCtaHtml = data.personalHookChallengeUrl
+    ? `<p style="margin: 0 0 18px 0;"><a href="${escapeHtml(data.personalHookChallengeUrl)}" style="display: inline-block; padding: 8px 20px; background-color: #c9a962; color: #1a1816; text-decoration: none; border-radius: 6px; font-size: 14px; font-weight: 600;">Try it now</a></p>\n`
+    : '';
+
   const hookHtml = data.personalHook
-    ? `<p style="margin: 0 0 18px 0; line-height: 1.6; font-style: italic; color: #5c564e;">${escapeHtml(data.personalHook)}</p>\n`
+    ? `<p style="margin: 0 0 18px 0; line-height: 1.6; font-style: italic; color: #5c564e;">${escapeHtml(data.personalHook)}</p>\n${hookCtaHtml}`
     : '';
 
   const digestHtml = data.platformDigest
@@ -62,7 +67,8 @@ ${data.linkedinDraft ? `<p style="margin: 28px 0 12px 0; font-size: 12px; text-t
 export function buildNewsletterText(data: NewsletterData): string {
   const header = `ruwt.dev daily — ${data.date}\n---\n\n`;
 
-  const hook = data.personalHook ? data.personalHook + '\n\n' : '';
+  const hookCta = data.personalHookChallengeUrl ? `Try it now: ${data.personalHookChallengeUrl}\n\n` : '';
+  const hook = data.personalHook ? data.personalHook + '\n\n' + hookCta : '';
 
   const digest = data.platformDigest + '\n';
 
