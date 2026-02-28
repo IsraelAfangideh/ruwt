@@ -297,38 +297,40 @@ export function ArenaScreen() {
       // Show success overlay for passed submissions
       if (result.passed) {
         setSuccessOverlay({ attemptId: finalAttemptId, passed: true });
-        // Fetch rank info for the overlay
-        try {
-          const lbRes = await fetch(`/api/leaderboard?challengeId=${challengeId}`);
-          if (lbRes.ok) {
-            const lb = await lbRes.json();
-            const entries = lb.entries ?? [];
-            const myIdx = entries.findIndex((e: any) => e.attemptId === finalAttemptId);
-            setSuccessStats({
-              rank: myIdx >= 0 ? myIdx + 1 : entries.length + 1,
-              total: entries.length,
-              topCost: entries[0]?.totalCost ?? null,
-            });
-          }
-        } catch { /* leaderboard fetch failed — show overlay without stats */ }
-        // Pre-compute next challenge for the "Try Next Challenge" link
-        try {
-          const chRes = await fetch('/api/challenges');
-          if (chRes.ok) {
-            const allChallenges = await chRes.json();
-            const sameCat = allChallenges.filter((ch: any) => ch.category === challenge?.category && ch.id !== challengeId);
-            const difficultyOrder = ['sprint', 'easy', 'medium', 'hard', 'impossible'];
-            const currentDiffIdx = difficultyOrder.indexOf(challenge?.difficulty || '');
-            sameCat.sort((a: any, b: any) => {
-              const aIdx = difficultyOrder.indexOf(a.difficulty || '');
-              const bIdx = difficultyOrder.indexOf(b.difficulty || '');
-              const aDist = Math.abs(aIdx - currentDiffIdx) + (aIdx >= currentDiffIdx ? 0 : 5);
-              const bDist = Math.abs(bIdx - currentDiffIdx) + (bIdx >= currentDiffIdx ? 0 : 5);
-              return aDist - bDist;
-            });
-            if (sameCat.length > 0) setNextChallengeId(sameCat[0].id);
-          }
-        } catch { /* next challenge fetch failed — button will link to challenges list */ }
+        // Fire leaderboard + next challenge fetches in parallel (don't block each other)
+        const leaderboardPromise = fetch(`/api/leaderboard?challengeId=${challengeId}`)
+          .then(async (lbRes) => {
+            if (lbRes.ok) {
+              const lb = await lbRes.json();
+              const entries = lb.entries ?? [];
+              const myIdx = entries.findIndex((e: any) => e.attemptId === finalAttemptId);
+              setSuccessStats({
+                rank: myIdx >= 0 ? myIdx + 1 : entries.length + 1,
+                total: entries.length,
+                topCost: entries[0]?.totalCost ?? null,
+              });
+            }
+          })
+          .catch(() => { /* leaderboard fetch failed */ });
+        const nextChallengePromise = fetch('/api/challenges')
+          .then(async (chRes) => {
+            if (chRes.ok) {
+              const allChallenges = await chRes.json();
+              const sameCat = allChallenges.filter((ch: any) => ch.category === challenge?.category && ch.id !== challengeId);
+              const difficultyOrder = ['sprint', 'easy', 'medium', 'hard', 'impossible'];
+              const currentDiffIdx = difficultyOrder.indexOf(challenge?.difficulty || '');
+              sameCat.sort((a: any, b: any) => {
+                const aIdx = difficultyOrder.indexOf(a.difficulty || '');
+                const bIdx = difficultyOrder.indexOf(b.difficulty || '');
+                const aDist = Math.abs(aIdx - currentDiffIdx) + (aIdx >= currentDiffIdx ? 0 : 5);
+                const bDist = Math.abs(bIdx - currentDiffIdx) + (bIdx >= currentDiffIdx ? 0 : 5);
+                return aDist - bDist;
+              });
+              if (sameCat.length > 0) setNextChallengeId(sameCat[0].id);
+            }
+          })
+          .catch(() => { /* next challenge fetch failed */ });
+        await Promise.all([leaderboardPromise, nextChallengePromise]);
       }
       // Refresh past attempts list
       fetchPastAttempts();
@@ -1124,6 +1126,27 @@ export function ArenaScreen() {
                 </button>
                 <a
                   href={nextChallengeId ? `/arena/${nextChallengeId}` : '/challenges'}
+                  onClick={(e) => {
+                    // If next challenge isn't preloaded yet, fetch it on the spot
+                    if (!nextChallengeId) {
+                      e.preventDefault();
+                      fetch('/api/challenges')
+                        .then(r => r.json())
+                        .then((all) => {
+                          const sameCat = all.filter((ch: any) => ch.category === challenge?.category && ch.id !== challengeId);
+                          const difficultyOrder = ['sprint', 'easy', 'medium', 'hard', 'impossible'];
+                          const currentDiffIdx = difficultyOrder.indexOf(challenge?.difficulty || '');
+                          sameCat.sort((a: any, b: any) => {
+                            const aDist = Math.abs(difficultyOrder.indexOf(a.difficulty || '') - currentDiffIdx) + (difficultyOrder.indexOf(a.difficulty || '') >= currentDiffIdx ? 0 : 5);
+                            const bDist = Math.abs(difficultyOrder.indexOf(b.difficulty || '') - currentDiffIdx) + (difficultyOrder.indexOf(b.difficulty || '') >= currentDiffIdx ? 0 : 5);
+                            return aDist - bDist;
+                          });
+                          window.location.href = sameCat.length > 0 ? `/arena/${sameCat[0].id}` : '/challenges';
+                        })
+                        .catch(() => { window.location.href = '/challenges'; });
+                    }
+                    // If nextChallengeId exists, the <a href> handles it natively
+                  }}
                   style={{
                     display: 'block',
                     background: 'transparent',
