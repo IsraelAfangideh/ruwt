@@ -99,7 +99,7 @@ export function LoginScreen() {
         )}
         <View style={styles.formWrap}>
           <View style={styles.formHeader}>
-            <Text style={[styles.formTitle, { color: c.text }]}>Sign in</Text>
+            <Text style={[styles.formTitle, { color: c.text }]} accessibilityRole="header" aria-level={1}>Sign in</Text>
             <Text style={[styles.formSubtitle, { color: c.textMuted }]}>
               Sign in to your account to continue
             </Text>
@@ -132,7 +132,7 @@ export function LoginScreen() {
               loading && { opacity: 0.5 },
             ]}
           >
-            <Image source={{ uri: githubIconUri(c.text) }} style={styles.oauthIcon} resizeMode="contain" />
+            <Image source={{ uri: githubIconUri(c.text) }} style={styles.oauthIcon} resizeMode="contain" accessibilityLabel="" />
             <Text style={[styles.oauthBtnText, { color: c.text }]}>Continue with GitHub</Text>
           </Pressable>
 

@@ -214,7 +214,7 @@ function GreetingSection({
   return (
     <View style={styles.greetingRow}>
       <View style={styles.greetingTextWrap}>
-        <Text style={[styles.greeting, { color: c.text }]}>
+        <Text style={[styles.greeting, { color: c.text }]} accessibilityRole="header" aria-level={1}>
           {getGreeting()}, {firstName}
         </Text>
         <Text style={[styles.greetingSub, { color: c.textMuted }]}>
@@ -405,12 +405,12 @@ function StatsRow({ data }: { data: DashboardData }) {
   ];
 
   return (
-    <View style={styles.statsRow}>
+    <View style={styles.statsRow} accessibilityRole="group" accessibilityLabel="Your statistics">
       {stats.map((s) => (
         <Card key={s.label} style={styles.statCard}>
           <CardContent style={styles.statContent}>
-            <Text style={styles.statIcon}>{s.icon}</Text>
-            <Text style={[styles.statValue, { color: c.text }]}>{s.value}</Text>
+            <Text style={styles.statIcon} accessibilityRole="none">{s.icon}</Text>
+            <Text style={[styles.statValue, { color: c.text }]} accessibilityLabel={`${s.label}: ${s.value}`}>{s.value}</Text>
             <Text style={[styles.statLabel, { color: c.textMuted }]}>{s.label}</Text>
           </CardContent>
         </Card>
@@ -501,6 +501,8 @@ function ActivityHeatmap({ data }: { data: DashboardData }) {
 
   // Determine max count for intensity scaling
   const maxCount = Math.max(1, ...Object.values(heatmap));
+  const totalActivity = Object.values(heatmap).reduce((s, v) => s + v, 0);
+  const activeDays = Object.values(heatmap).filter((v) => v > 0).length;
 
   function getCellColor(count: number): string {
     if (count === 0) return c.border;
@@ -532,7 +534,11 @@ function ActivityHeatmap({ data }: { data: DashboardData }) {
         </View>
       </CardHeader>
       <CardContent>
-        <View style={styles.heatmapContainer}>
+        {/* Accessible text summary of heatmap data */}
+        <Text style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden' }} accessibilityRole="summary">
+          {totalActivity} activities across {activeDays} active days in the last 90 days
+        </Text>
+        <View style={styles.heatmapContainer} accessibilityRole="img" accessibilityLabel={`Activity heatmap: ${totalActivity} activities across ${activeDays} days in the last 90 days`}>
           {/* Day labels column */}
           <View style={styles.heatmapDayLabels}>
             {dayLabels.map((label, i) => (

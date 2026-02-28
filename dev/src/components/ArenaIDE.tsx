@@ -1065,32 +1065,43 @@ export function ArenaIDE({
       {/* Main content area */}
       <div style={isMobile ? s.mainRowMobile : s.mainRow}>
         {/* LEFT SIDEBAR: Description/Chat tabs */}
-        <div style={isMobile
+        <div
+          role="complementary"
+          aria-label="Challenge description and AI chat"
+          style={isMobile
           ? { ...s.sidebarMobile, display: mobilePanel === 'sidebar' ? 'flex' : 'none' }
           : { ...s.sidebar, width: sidebarWidth }
         }>
           {/* Tab bar */}
-          <div style={s.tabBar}>
+          <div style={s.tabBar} role="tablist" aria-label="Sidebar panels">
             <button
               style={activeTab === 'description' ? s.tabActive : s.tab}
               onClick={() => setActiveTab('description')}
+              role="tab"
+              aria-selected={activeTab === 'description'}
+              aria-controls="panel-description"
             >
               Description
             </button>
             <button
               style={activeTab === 'chat' ? s.tabActive : s.tab}
               onClick={() => { setActiveTab('chat'); setHasUnreadChat(false); }}
+              role="tab"
+              aria-selected={activeTab === 'chat'}
+              aria-controls="panel-chat"
             >
               AI Chat
-              {hasUnreadChat && <span style={s.unreadDot} />}
+              {hasUnreadChat && <span style={s.unreadDot} aria-label="unread messages" />}
             </button>
           </div>
 
           {/* Tab content */}
           {activeTab === 'description' ? (
+            <div id="panel-description" role="tabpanel" aria-label="Challenge description" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
             <DescriptionPanel challenge={challenge} pastAttempts={pastAttempts} notepadContent={notepadContent} onNotepadChange={setNotepadContent} />
+            </div>
           ) : (
-            <>
+            <div id="panel-chat" role="tabpanel" aria-label="AI Chat" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
               {/* Mode selector + Clear */}
               <div style={{ borderBottom: `1px solid ${arena.border}`, display: 'flex', alignItems: 'center' }}>
                 <div style={{ flex: 1 }}><ModeSelector mode={mode} onModeChange={setMode} disabled={isLoadingChat} /></div>
@@ -1103,6 +1114,9 @@ export function ArenaIDE({
               <div
                 ref={chatScrollRef}
                 style={s.chatScroll}
+                role="log"
+                aria-label="Chat messages"
+                aria-live="polite"
                 onScroll={(e) => {
                   const el = e.currentTarget;
                   setShowScrollBtn(el.scrollHeight - el.scrollTop - el.clientHeight > 100);
@@ -1449,6 +1463,7 @@ export function ArenaIDE({
                     }}
                     onClick={handleStopChat}
                     title="Stop generating"
+                    aria-label="Stop generating"
                   >
                     &#9632;
                   </button>
@@ -1461,12 +1476,13 @@ export function ArenaIDE({
                     }}
                     onClick={() => sendMessage()}
                     disabled={!chatInput.trim() || chatDisabled || !!guestMode}
+                    aria-label="Send message"
                   >
                     &#9658;
                   </button>
                 )}
               </div>
-            </>
+            </div>
           )}
         </div>
 
@@ -1474,12 +1490,12 @@ export function ArenaIDE({
         {!isMobile && <div style={s.sidebarDragHandle} onMouseDown={handleSidebarDragStart} />}
 
         {/* RIGHT PANE: Editor + Terminal */}
-        <div ref={rightPaneRef} style={isMobile
+        <div ref={rightPaneRef} role="region" aria-label="Code editor and terminal" style={isMobile
           ? { ...s.rightPane, display: mobilePanel === 'editor' ? 'flex' : 'none' }
           : s.rightPane
         }>
           {/* Editor */}
-          <div style={s.editorWrap}>
+          <div style={s.editorWrap} role="region" aria-label="Code editor">
             <CodeUpdateToast visible={showToast} message={toastMessage} />
             <PasteBlockedToast visible={showPasteBlocked} />
             <ApplyFailureToast visible={showApplyFailure} onDismiss={() => setShowApplyFailure(false)} />

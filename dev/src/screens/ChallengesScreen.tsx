@@ -267,17 +267,20 @@ export function ChallengesScreen() {
       {/* Header with title + progress */}
       <View style={styles.headerSection}>
         <View style={styles.headerLeft}>
-          <Text style={[styles.title, { color: c.text }]}>Engineering Challenges</Text>
+          <Text style={[styles.title, { color: c.text }]} accessibilityRole="header" aria-level={1}>Engineering Challenges</Text>
           <Text style={[styles.subtitle, { color: c.textMuted }]}>
             Real engineering problems. Real AI models. Ranked by efficiency.
           </Text>
         </View>
         {/* Progress summary — clickable stats filter */}
-        <View style={[styles.progressCard, { backgroundColor: c.muted, borderColor: c.border }]}>
+        <View style={[styles.progressCard, { backgroundColor: c.muted, borderColor: c.border }]} accessibilityRole="group" accessibilityLabel="Challenge progress">
           <View style={styles.progressStats}>
             <Pressable
               onPress={() => setStatusFilter(statusFilter === 'solved' ? 'all' : 'solved')}
               style={[styles.progressStat, { cursor: 'pointer' as any }]}
+              accessibilityRole="button"
+              accessibilityLabel={`${displayStats.solved} solved${hasNonStatusFilters ? ` of ${progressStats.solved}` : ''}`}
+              accessibilityState={{ selected: statusFilter === 'solved' }}
             >
               <Text style={[styles.progressNum, { color: c.success }]}>{displayStats.solved}</Text>
               <Text style={[styles.progressLabel, { color: statusFilter === 'solved' ? c.success : c.textMuted, fontWeight: statusFilter === 'solved' ? '700' : '400' }]}>
@@ -289,6 +292,9 @@ export function ChallengesScreen() {
             <Pressable
               onPress={() => setStatusFilter(statusFilter === 'in_progress' ? 'all' : 'in_progress')}
               style={[styles.progressStat, { cursor: 'pointer' as any }]}
+              accessibilityRole="button"
+              accessibilityLabel={`${displayStats.inProgress} in progress${hasNonStatusFilters ? ` of ${progressStats.inProgress}` : ''}`}
+              accessibilityState={{ selected: statusFilter === 'in_progress' }}
             >
               <Text style={[styles.progressNum, { color: c.accent }]}>{displayStats.inProgress}</Text>
               <Text style={[styles.progressLabel, { color: statusFilter === 'in_progress' ? c.accent : c.textMuted, fontWeight: statusFilter === 'in_progress' ? '700' : '400' }]}>
@@ -300,6 +306,9 @@ export function ChallengesScreen() {
             <Pressable
               onPress={() => setStatusFilter(statusFilter === 'not_started' ? 'all' : 'not_started')}
               style={[styles.progressStat, { cursor: 'pointer' as any }]}
+              accessibilityRole="button"
+              accessibilityLabel={`${displayStats.notStarted} not started`}
+              accessibilityState={{ selected: statusFilter === 'not_started' }}
             >
               <Text style={[styles.progressNum, { color: c.textMuted }]}>{displayStats.notStarted}</Text>
               <Text style={[styles.progressLabel, { color: statusFilter === 'not_started' ? c.text : c.textMuted, fontWeight: statusFilter === 'not_started' ? '700' : '400' }]}>
@@ -311,12 +320,19 @@ export function ChallengesScreen() {
             <Pressable
               onPress={() => setStatusFilter('all')}
               style={[styles.progressStat, { cursor: 'pointer' as any }]}
+              accessibilityRole="button"
+              accessibilityLabel={`${displayStats.total} total challenges`}
             >
               <Text style={[styles.progressNum, { color: c.text }]}>{displayStats.total}</Text>
               <Text style={[styles.progressLabel, { color: c.textMuted }]}>total</Text>
             </Pressable>
           </View>
-          <View style={[styles.progressBarBg, { backgroundColor: c.border }]}>
+          <View
+            style={[styles.progressBarBg, { backgroundColor: c.border }]}
+            accessibilityRole="progressbar"
+            accessibilityValue={{ min: 0, max: 100, now: progressPct }}
+            accessibilityLabel={`${progressPct}% of challenges completed`}
+          >
             <View style={[styles.progressBarFill, { width: `${progressPct}%` as any, backgroundColor: c.success }]} />
           </View>
         </View>
@@ -366,6 +382,7 @@ export function ChallengesScreen() {
               }}
               style={[styles.sortButton, { backgroundColor: c.muted, borderColor: c.border }]}
               accessibilityRole="button"
+              accessibilityLabel={`Sort challenges by ${SORT_OPTIONS.find((s) => s.key === sortBy)?.label}${sortBy !== 'default' ? (sortDirection === 'asc' ? ', ascending' : ', descending') : ''}`}
               accessibilityState={{ expanded: showSortMenu }}
               testID="sort-button"
             >
@@ -379,7 +396,7 @@ export function ChallengesScreen() {
         </View>
 
         {/* Filter pills - all in one compact row */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll} contentContainerStyle={styles.filterScrollContent}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll} contentContainerStyle={styles.filterScrollContent} accessibilityRole="toolbar" accessibilityLabel="Filter challenges">
           {/* Language pills */}
           {LANGUAGES.map((lang) => {
             const isActive = activeLang === lang.key;
@@ -387,6 +404,8 @@ export function ChallengesScreen() {
               <Pressable
                 key={`lang-${lang.key}`}
                 onPress={() => handleLangChange(lang.key)}
+                accessibilityRole="button"
+                accessibilityLabel={`Filter by ${lang.label}`}
                 accessibilityState={{ selected: isActive }}
                 style={[
                   styles.filterPill,
@@ -403,7 +422,7 @@ export function ChallengesScreen() {
             );
           })}
 
-          <View style={[styles.filterDivider, { backgroundColor: c.border }]} />
+          <View style={[styles.filterDivider, { backgroundColor: c.border }]} accessibilityRole="none" />
 
           {/* Difficulty pills */}
           {DIFFICULTIES.map((diff) => {
@@ -413,6 +432,8 @@ export function ChallengesScreen() {
               <Pressable
                 key={`diff-${diff.key}`}
                 onPress={() => handleDifficultyChange(diff.key)}
+                accessibilityRole="button"
+                accessibilityLabel={`Filter by ${diff.label} difficulty`}
                 accessibilityState={{ selected: isActive }}
                 style={[
                   styles.filterPill,
@@ -429,7 +450,7 @@ export function ChallengesScreen() {
             );
           })}
 
-          <View style={[styles.filterDivider, { backgroundColor: c.border }]} />
+          <View style={[styles.filterDivider, { backgroundColor: c.border }]} accessibilityRole="none" />
 
           {/* Category pills */}
           {CATEGORIES.map((cat) => {
@@ -438,6 +459,8 @@ export function ChallengesScreen() {
               <Pressable
                 key={`cat-${cat.key}`}
                 onPress={() => handleCategoryChange(cat.key)}
+                accessibilityRole="button"
+                accessibilityLabel={`Filter by ${cat.label} category`}
                 accessibilityState={{ selected: isActive }}
                 style={[
                   styles.filterPill,
@@ -457,7 +480,7 @@ export function ChallengesScreen() {
 
         {/* Result count */}
         <View style={styles.resultRow}>
-          <Text style={[styles.resultCount, { color: c.textMuted }]}>
+          <Text style={[styles.resultCount, { color: c.textMuted }]} accessibilityRole="status" accessibilityLiveRegion="polite">
             Showing {filtered.length} challenge{filtered.length !== 1 ? 's' : ''}
             {hasActiveFilters && (
               <Text> (filtered)</Text>
@@ -474,6 +497,8 @@ export function ChallengesScreen() {
                 syncUrlParams('all', 'all', 'all');
               }}
               style={[styles.clearFilters, { borderColor: c.border }]}
+              accessibilityRole="button"
+              accessibilityLabel="Clear all filters"
             >
               <Text style={[styles.clearFiltersText, { color: c.accent }]}>Clear filters</Text>
             </Pressable>
@@ -517,10 +542,10 @@ export function ChallengesScreen() {
               <View style={styles.tierSection}>
                 {/* @ts-ignore position: sticky is web-only */}
                 <View style={[styles.tierHeader, { backgroundColor: c.bg }]}>
-                  <Text style={[styles.tierTitle, { color: c.text }]}>{group.meta.label}</Text>
+                  <Text style={[styles.tierTitle, { color: c.text }]} accessibilityRole="header" aria-level={2}>{group.meta.label}</Text>
                   <Text style={[styles.tierDesc, { color: c.textMuted }]}>{group.meta.description}</Text>
                 </View>
-                <View style={isMobile ? styles.gridMobile : styles.grid}>
+                <View style={isMobile ? styles.gridMobile : styles.grid} accessibilityRole="list" accessibilityLabel={`${group.meta.label} challenges`}>
                   {group.items.map((ch) => (
                     <ChallengeCard key={ch.id} challenge={ch} />
                   ))}
@@ -531,7 +556,7 @@ export function ChallengesScreen() {
                 <View style={styles.tierSection}>
                   {/* @ts-ignore position: sticky is web-only */}
                   <View style={[styles.tierHeader, { backgroundColor: c.bg }]}>
-                    <Text style={[styles.tierTitle, { color: c.text }]}>Where LLMs Struggle</Text>
+                    <Text style={[styles.tierTitle, { color: c.text }]} accessibilityRole="header" aria-level={2}>Where LLMs Struggle</Text>
                     <Text style={[styles.tierDesc, { color: c.textMuted }]}>
                       These challenges push the limits of AI. Your prompting skills matter here.
                     </Text>
@@ -562,6 +587,8 @@ export function ChallengesScreen() {
         <Pressable
           onPress={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
           style={[styles.backToTop, { backgroundColor: c.accent }]}
+          accessibilityRole="button"
+          accessibilityLabel="Back to top"
         >
           <Text style={styles.backToTopText}>{'\u2191'} Back to top</Text>
         </Pressable>
@@ -570,9 +597,9 @@ export function ChallengesScreen() {
       {/* Sort menu — rendered outside filter bar as fixed overlay to escape stacking context */}
       {showSortMenu && sortMenuPos && (
         <>
-          <Pressable style={styles.sortBackdrop} onPress={() => setShowSortMenu(false)} />
+          <Pressable style={styles.sortBackdrop} onPress={() => setShowSortMenu(false)} accessibilityRole="button" accessibilityLabel="Close sort menu" />
           {/* @ts-ignore web-only fixed positioning */}
-          <View style={[styles.sortMenu, { backgroundColor: c.card, borderColor: c.border, top: sortMenuPos.top, right: sortMenuPos.right }]}>
+          <View style={[styles.sortMenu, { backgroundColor: c.card, borderColor: c.border, top: sortMenuPos.top, right: sortMenuPos.right }]} accessibilityRole="menu" accessibilityLabel="Sort options">
             {SORT_OPTIONS.map((opt) => (
               <Pressable
                 key={opt.key}
@@ -585,6 +612,9 @@ export function ChallengesScreen() {
                   }
                   setShowSortMenu(false);
                 }}
+                accessibilityRole="menuitem"
+                accessibilityLabel={`Sort by ${opt.label}${sortBy === opt.key && opt.key !== 'default' ? (sortDirection === 'asc' ? ', ascending' : ', descending') : ''}`}
+                accessibilityState={{ selected: sortBy === opt.key }}
                 style={[
                   styles.sortMenuItem,
                   sortBy === opt.key && { backgroundColor: c.accentBg },

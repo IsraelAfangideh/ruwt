@@ -14,7 +14,12 @@ export function Progress({ value = 0, style }: ProgressProps) {
   const borderRadius = style?.borderRadius ?? radii.full;
   const clamped = Math.min(100, Math.max(0, value));
   return (
-    <View style={[styles.track, { height, borderRadius, backgroundColor: c.border }]}>
+    <View
+      style={[styles.track, { height, borderRadius, backgroundColor: c.border }]}
+      accessibilityRole="progressbar"
+      accessibilityValue={{ min: 0, max: 100, now: clamped }}
+      accessibilityLabel={`${clamped}% complete`}
+    >
       <View style={[styles.bar, { width: `${clamped}%`, height, borderRadius, backgroundColor: c.accent }]} />
     </View>
   );

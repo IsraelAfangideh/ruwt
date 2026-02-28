@@ -35,7 +35,9 @@ export function DashboardNav({ accountType }: DashboardNavProps) {
             onPress={() => navigation.navigate(item.name as never)}
             style={styles.item}
             accessibilityRole="link"
+            accessibilityLabel={item.label}
             accessibilityState={{ selected: active }}
+            {...(active ? { 'aria-current': 'page' as any } : {})}
             testID={`nav-${item.label.toLowerCase()}`}
           >
             <Text style={[styles.text, { color: active ? c.text : c.textMuted }]}>{item.label}</Text>

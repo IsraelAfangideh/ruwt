@@ -43,6 +43,9 @@ interface TerminalPanelProps {
   isExpired: () => boolean;
 }
 
+/** Max lines kept in the accessible transcript buffer */
+const A11Y_TRANSCRIPT_MAX = 200;
+
 export const TerminalPanel = React.forwardRef<TerminalPanelHandle, TerminalPanelProps>(
   function TerminalPanel(props, ref) {
     const {
@@ -57,6 +60,7 @@ export const TerminalPanel = React.forwardRef<TerminalPanelHandle, TerminalPanel
     const shellRef = useRef<VirtualShell | null>(null);
     const tuiRef = useRef<RuwtTUI | null>(null);
     const modeRef = useRef<'shell' | 'ruwt'>('ruwt');
+    const [transcript, setTranscript] = React.useState<string[]>([]);
 
     // Expose focus method
     useImperativeHandle(ref, () => ({
@@ -144,6 +148,30 @@ export const TerminalPanel = React.forwardRef<TerminalPanelHandle, TerminalPanel
       termRef.current = term;
       fitRef.current = fitAddon;
 
+      // Capture terminal output for accessible transcript
+      let lineBuf = '';
+      const onWriteDisposable = term.onWriteParsed(() => {
+        const buffer = term.buffer.active;
+        const lines: string[] = [];
+        for (let i = Math.max(0, buffer.baseY); i <= buffer.baseY + buffer.cursorY; i++) {
+          const line = buffer.getLine(i);
+          if (line) {
+            const text = line.translateToString(true);
+            if (text.trim()) lines.push(text);
+          }
+        }
+        if (lines.length > 0) {
+          const latest = lines[lines.length - 1];
+          if (latest !== lineBuf) {
+            lineBuf = latest;
+            setTranscript((prev) => {
+              const next = [...prev, latest];
+              return next.length > A11Y_TRANSCRIPT_MAX ? next.slice(-A11Y_TRANSCRIPT_MAX) : next;
+            });
+          }
+        }
+      });
+
       // Create shell
       const shell = new VirtualShell(term, fs, language, {
         onRunCode: (...args) => shellCallbacksRef.current.onRunCode(...args),
@@ -179,6 +207,7 @@ export const TerminalPanel = React.forwardRef<TerminalPanelHandle, TerminalPanel
 
       return () => {
         onData.dispose();
+        onWriteDisposable.dispose();
         observer.disconnect();
         window.removeEventListener('resize', handleResize);
         clearTimeout(resizeTimer);
@@ -192,16 +221,51 @@ export const TerminalPanel = React.forwardRef<TerminalPanelHandle, TerminalPanel
 
     return (
       <div
-        ref={containerRef}
-        onClick={() => termRef.current?.focus()}
         style={{
           flex: 1,
           minHeight: 0,
-          background: arena.bg,
-          padding: '4px 0 0 4px',
-          overflow: 'hidden',
+          display: 'flex',
+          flexDirection: 'column',
+          position: 'relative',
         }}
-      />
+        role="region"
+        aria-label="Terminal"
+      >
+        <div
+          ref={containerRef}
+          onClick={() => termRef.current?.focus()}
+          role="application"
+          aria-roledescription="terminal"
+          aria-label="Interactive terminal — type commands here"
+          tabIndex={0}
+          style={{
+            flex: 1,
+            minHeight: 0,
+            background: arena.bg,
+            padding: '4px 0 0 4px',
+            overflow: 'hidden',
+          }}
+        />
+        {/* Accessible transcript for screen readers and AI automation */}
+        <div
+          aria-live="polite"
+          aria-atomic={false}
+          role="log"
+          aria-label="Terminal output"
+          style={{
+            position: 'absolute',
+            width: 1,
+            height: 1,
+            overflow: 'hidden',
+            clip: 'rect(0,0,0,0)',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {transcript.slice(-5).map((line, i) => (
+            <div key={`${transcript.length - 5 + i}`}>{line}</div>
+          ))}
+        </div>
+      </div>
     );
   }
 );

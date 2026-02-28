@@ -20,9 +20,12 @@ interface InputProps extends Omit<TextInputProps, 'style'> {
   testID?: string;
 }
 
+let inputIdCounter = 0;
+
 export function Input({ label, containerStyle, inputStyle, onFocus, onBlur, ...props }: InputProps) {
   const c = useColors();
   const [focused, setFocused] = useState(false);
+  const [inputId] = useState(() => `input-${++inputIdCounter}`);
 
   const handleFocus = useCallback((e: any) => {
     setFocused(true);
@@ -36,10 +39,12 @@ export function Input({ label, containerStyle, inputStyle, onFocus, onBlur, ...p
 
   return (
     <View style={[styles.wrap, containerStyle]}>
-      {label ? <Text style={[styles.label, { color: c.text }]}>{label}</Text> : null}
+      {label ? <Text style={[styles.label, { color: c.text }]} nativeID={`${inputId}-label`}>{label}</Text> : null}
       <TextInput
         placeholderTextColor={c.textSubtle}
         accessibilityLabel={label}
+        accessibilityLabelledBy={label ? `${inputId}-label` : undefined}
+        nativeID={inputId}
         onFocus={handleFocus}
         onBlur={handleBlur}
         style={[
