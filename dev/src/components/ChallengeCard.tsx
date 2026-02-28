@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/Card';
-import { useColors } from '@/theme';
+import { useColors, useTheme } from '@/theme';
 import { spacing, fontSizes, fontFamily, radii } from '@/theme/tokens';
 import { getDifficultyStyle } from '@/lib/difficulty';
 
@@ -49,23 +49,24 @@ function formatCost(raw: number): string {
 export function ChallengeCard({ challenge }: { challenge: Challenge }) {
   const navigation = useNavigation();
   const c = useColors();
+  const { isDark } = useTheme();
   const [hovered, setHovered] = useState(false);
 
-  const diffStyle = getDifficultyStyle(challenge.difficulty);
+  const diffStyle = getDifficultyStyle(challenge.difficulty, isDark);
   const diffColor = diffStyle.color;
   const diffBg = diffStyle.bg;
 
   const catLabel = categoryLabel(challenge.category);
-  const catColor = challenge.category === 'model_selection' ? c.accent
-    : challenge.category === 'prompt_efficiency' ? c.success
-    : challenge.category === 'iterative_debugging' ? c.destructive
-    : challenge.category === 'multi_model_strategy' ? '#a78bfa'
-    : challenge.category === 'real_world' ? '#f59e0b'
-    : challenge.category === 'qa_testing' ? '#ec4899'
-    : challenge.category === 'frontend' ? '#06b6d4'
-    : challenge.category === 'backend_api' ? '#8b5cf6'
-    : challenge.category === 'data_engineering' ? '#10b981'
-    : challenge.category === 'devops' ? '#f97316'
+  const catColor = challenge.category === 'model_selection' ? (isDark ? c.accent : '#6b5520')
+    : challenge.category === 'prompt_efficiency' ? (isDark ? c.success : '#3a6b3a')
+    : challenge.category === 'iterative_debugging' ? (isDark ? c.destructive : '#8b4040')
+    : challenge.category === 'multi_model_strategy' ? (isDark ? '#c4b5fd' : '#6d28d9')
+    : challenge.category === 'real_world' ? (isDark ? '#fbbf24' : '#a16207')
+    : challenge.category === 'qa_testing' ? (isDark ? '#f9a8d4' : '#be185d')
+    : challenge.category === 'frontend' ? (isDark ? '#67e8f9' : '#0e7490')
+    : challenge.category === 'backend_api' ? (isDark ? '#c4b5fd' : '#6d28d9')
+    : challenge.category === 'data_engineering' ? (isDark ? '#6ee7b7' : '#047857')
+    : challenge.category === 'devops' ? (isDark ? '#fdba74' : '#c2410c')
     : c.textMuted;
   const catBg = challenge.category === 'model_selection' ? c.accentBg
     : challenge.category === 'prompt_efficiency' ? c.successBg
@@ -137,7 +138,7 @@ export function ChallengeCard({ challenge }: { challenge: Challenge }) {
             )}
             {langLabel && (
               <View style={[styles.pill, { backgroundColor: '#3b82f615' }]}>
-                <Text style={[styles.pillText, { color: '#3b82f6' }]}>{langLabel}</Text>
+                <Text style={[styles.pillText, { color: isDark ? '#93c5fd' : '#1d4ed8' }]}>{langLabel}</Text>
               </View>
             )}
             {isSolved && (
