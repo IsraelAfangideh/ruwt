@@ -24,6 +24,7 @@ export const profiles = sqliteTable('profiles', {
   onboardingCompleted: integer('onboarding_completed').default(0).notNull(),
   newsletterSubscribed: integer('newsletter_subscribed').default(1).notNull(),
   timezone: text('timezone'), // IANA timezone (e.g., 'America/New_York'), captured from Cloudflare request.cf
+  leaderboardExcluded: integer('leaderboard_excluded').default(0).notNull(), // 1 = hidden from leaderboard (QA/system accounts)
   createdAt: text('created_at').default(sql`(datetime('now'))`).notNull(),
 });
 

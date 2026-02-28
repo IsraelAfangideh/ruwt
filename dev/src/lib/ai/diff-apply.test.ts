@@ -5,6 +5,8 @@ import {
   hasEditBlocks,
   parseUnifiedDiff,
   hasUnifiedDiff,
+  hasBareConflictMarkers,
+  parseBareConflictBlocks,
 } from './diff-apply';
 
 describe('parseEditBlocks', () => {
@@ -231,5 +233,280 @@ This change fixes the bug by updating the logic.
     const blocks = parseEditBlocks(text);
     expect(blocks).toHaveLength(1);
     expect(blocks[0].replace).toBe('new code here');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Strategy 3: Space-stripped matching
+// ---------------------------------------------------------------------------
+
+describe('applyEditBlocks — space-stripped matching (strategy 3)', () => {
+  it('matches when all whitespace differs but characters are the same', () => {
+    // Code has different spacing that won't match exact or whitespace-normalized
+    const code = "function   foo()  {\n    return   1;\n}";
+    const blocks = [{
+      search: "function foo() {\n  return 1;\n}",
+      replace: "function foo() {\n  return 2;\n}",
+    }];
+    const result = applyEditBlocks(code, blocks);
+    expect(result.applied).toBe(1);
+    expect(result.newCode).toContain('return 2');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Strategy 4: Line-level similarity matching
+// ---------------------------------------------------------------------------
+
+describe('applyEditBlocks — similarity matching (strategy 4)', () => {
+  it('matches code with ~60% line similarity after stripping', () => {
+    // Original has 5 lines, search has 5 lines, 3 match exactly, 2 differ = 60%
+    const code = [
+      'function greet(name) {',
+      '  const msg = "hello";',
+      '  console.log(msg);',
+      '  return msg + name;',
+      '}',
+    ].join('\n');
+    const blocks = [{
+      search: [
+        'function greet(name) {',
+        '  const msg = "hello";',
+        '  console.log(msg);',
+        '  return msg;',        // different
+        '};',                    // different
+      ].join('\n'),
+      replace: [
+        'function greet(name) {',
+        '  const msg = "hi";',
+        '  console.log(msg);',
+        '  return msg + name;',
+        '}',
+      ].join('\n'),
+    }];
+    const result = applyEditBlocks(code, blocks);
+    expect(result.applied).toBe(1);
+    expect(result.newCode).toContain('"hi"');
+  });
+
+  it('fails when similarity is below 60% threshold', () => {
+    const code = "line1\nline2\nline3\nline4\nline5";
+    const blocks = [{
+      search: "totally\ndifferent\ncode\nhere\nnow",
+      replace: "replacement",
+    }];
+    const result = applyEditBlocks(code, blocks);
+    expect(result.failed).toBe(1);
+    expect(result.applied).toBe(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Empty search with non-empty code and multiple blocks
+// ---------------------------------------------------------------------------
+
+describe('applyEditBlocks — empty search edge cases', () => {
+  it('does not apply empty search as full replacement when there are multiple blocks', () => {
+    const code = "existing code";
+    const blocks = [
+      { search: '', replace: 'new code' },
+      { search: 'existing code', replace: 'updated code' },
+    ];
+    const result = applyEditBlocks(code, blocks);
+    // First block: empty search with non-empty code and multiple blocks -> skip
+    // Second block: exact match -> applies
+    expect(result.newCode).toContain('updated code');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// hasBareConflictMarkers
+// ---------------------------------------------------------------------------
+
+describe('hasBareConflictMarkers', () => {
+  it('detects bare conflict markers without SEARCH/REPLACE labels', () => {
+    const text = '<<<<<<\noriginal code\n>>>>>>\n<<<<<<\nnew code\n>>>>>>';
+    expect(hasBareConflictMarkers(text)).toBe(true);
+  });
+
+  it('returns false when SEARCH labels are present (not bare)', () => {
+    const text = '<<<<<<< SEARCH\nold\n=======\nnew\n>>>>>>> REPLACE';
+    expect(hasBareConflictMarkers(text)).toBe(false);
+  });
+
+  it('returns false when text has no conflict markers', () => {
+    expect(hasBareConflictMarkers('just regular text')).toBe(false);
+  });
+
+  it('returns false when only opening markers exist', () => {
+    const text = '<<<<<<<\nsome code';
+    expect(hasBareConflictMarkers(text)).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// parseBareConflictBlocks
+// ---------------------------------------------------------------------------
+
+describe('parseBareConflictBlocks', () => {
+  it('pairs consecutive bare conflict blocks as SEARCH/REPLACE', () => {
+    const text = `Some intro text
+<<<<
+function old() {
+  return 1;
+}
+>>>>
+<<<<
+function old() {
+  return 2;
+}
+>>>>
+`;
+    const blocks = parseBareConflictBlocks(text);
+    expect(blocks).toHaveLength(1);
+    expect(blocks[0].search).toContain('return 1');
+    expect(blocks[0].replace).toContain('return 2');
+  });
+
+  it('handles multiple pairs of bare conflict blocks', () => {
+    const text = `
+<<<
+old1
+>>>
+<<<
+new1
+>>>
+<<<
+old2
+>>>
+<<<
+new2
+>>>
+`;
+    const blocks = parseBareConflictBlocks(text);
+    expect(blocks).toHaveLength(2);
+    expect(blocks[0].search).toBe('old1');
+    expect(blocks[0].replace).toBe('new1');
+    expect(blocks[1].search).toBe('old2');
+    expect(blocks[1].replace).toBe('new2');
+  });
+
+  it('trims trailing blank lines from block content', () => {
+    const text = `
+<<<
+code line
+
+
+>>>
+<<<
+new code
+>>>
+`;
+    const blocks = parseBareConflictBlocks(text);
+    expect(blocks).toHaveLength(1);
+    expect(blocks[0].search).toBe('code line');
+  });
+
+  it('returns empty array when no conflict markers are present', () => {
+    expect(parseBareConflictBlocks('no markers')).toEqual([]);
+  });
+
+  it('ignores unpaired (odd) blocks', () => {
+    const text = `
+<<<
+only one block
+>>>
+`;
+    const blocks = parseBareConflictBlocks(text);
+    expect(blocks).toEqual([]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// cleanDiffContamination via parseEditBlocks
+// ---------------------------------------------------------------------------
+
+describe('cleanDiffContamination (via parseEditBlocks)', () => {
+  it('strips - prefix lines from SEARCH when heavily contaminated', () => {
+    const text = `
+<<<<<<< SEARCH
+-function old() {
+-  return 1;
+-}
+=======
++function old() {
++  return 2;
++}
+>>>>>>> REPLACE
+`;
+    const blocks = parseEditBlocks(text);
+    expect(blocks).toHaveLength(1);
+    // The - prefixes should be stripped from search
+    expect(blocks[0].search).toContain('function old()');
+    expect(blocks[0].search).not.toContain('-function');
+    // The + prefixes should be stripped from replace
+    expect(blocks[0].replace).toContain('function old()');
+    expect(blocks[0].replace).not.toContain('+function');
+  });
+
+  it('does not clean when contamination is below 40% threshold', () => {
+    const text = `
+<<<<<<< SEARCH
+function foo() {
+  return 1;
+}
+regular line
+another line
+=======
+function foo() {
+  return 2;
+}
++one added line
+regular line
+another line
+>>>>>>> REPLACE
+`;
+    const blocks = parseEditBlocks(text);
+    expect(blocks).toHaveLength(1);
+    // Only 1 out of 5 lines has + prefix = 20%, below 40% threshold
+    // So the + should NOT be stripped
+    expect(blocks[0].replace).toContain('+one added line');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// parseUnifiedDiff — additional edge cases
+// ---------------------------------------------------------------------------
+
+describe('parseUnifiedDiff — edge cases', () => {
+  it('handles multiple hunks in a single diff', () => {
+    const text = `--- a/file.js
++++ b/file.js
+@@ -1,3 +1,3 @@
+ const a = 1;
+-const b = 2;
++const b = 42;
+ const c = 3;
+@@ -10,3 +10,3 @@
+ function foo() {
+-  return 1;
++  return 2;
+ }`;
+    const blocks = parseUnifiedDiff(text);
+    expect(blocks).toHaveLength(2);
+    expect(blocks[0].search).toContain('const b = 2;');
+    expect(blocks[1].search).toContain('return 1;');
+  });
+
+  it('handles pure additions (no context or removal lines)', () => {
+    const text = `--- a/file.js
++++ b/file.js
+@@ -0,0 +1,2 @@
++const newVar = 1;
++console.log(newVar);`;
+    const blocks = parseUnifiedDiff(text);
+    expect(blocks).toHaveLength(1);
+    expect(blocks[0].search).toBe('');
+    expect(blocks[0].replace).toContain('newVar');
   });
 });

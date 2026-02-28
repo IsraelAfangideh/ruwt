@@ -1,0 +1,523 @@
+import { describe, it, expect } from 'vitest';
+import { applyCodeFromResponse, extractFileEdits } from './code-apply';
+import type { CodeApplyResult } from './code-apply';
+
+// ---------------------------------------------------------------------------
+// extractFileEdits
+// ---------------------------------------------------------------------------
+
+describe('extractFileEdits', () => {
+  it('extracts a single FILE: block with language tag', () => {
+    const response = `Here is the fix:
+
+FILE: src/utils.ts
+\`\`\`typescript
+export function add(a: number, b: number) {
+  return a + b;
+}
+\`\`\`
+
+Let me know if that works.`;
+
+    const { fileEdits, remaining } = extractFileEdits(response);
+    expect(fileEdits).toHaveLength(1);
+    expect(fileEdits[0].path).toBe('src/utils.ts');
+    expect(fileEdits[0].content).toBe(
+      'export function add(a: number, b: number) {\n  return a + b;\n}'
+    );
+    expect(remaining).toContain('Here is the fix:');
+    expect(remaining).toContain('Let me know if that works.');
+    expect(remaining).not.toContain('FILE:');
+  });
+
+  it('extracts multiple FILE: blocks', () => {
+    const response = `FILE: src/a.ts
+\`\`\`ts
+const a = 1;
+\`\`\`
+
+FILE: src/b.ts
+\`\`\`ts
+const b = 2;
+\`\`\``;
+
+    const { fileEdits, remaining } = extractFileEdits(response);
+    expect(fileEdits).toHaveLength(2);
+    expect(fileEdits[0].path).toBe('src/a.ts');
+    expect(fileEdits[0].content).toBe('const a = 1;');
+    expect(fileEdits[1].path).toBe('src/b.ts');
+    expect(fileEdits[1].content).toBe('const b = 2;');
+    expect(remaining).toBe('');
+  });
+
+  it('returns empty fileEdits when no FILE: blocks exist', () => {
+    const response = 'Just a plain explanation with no code.';
+    const { fileEdits, remaining } = extractFileEdits(response);
+    expect(fileEdits).toHaveLength(0);
+    expect(remaining).toBe(response);
+  });
+
+  it('trims trailing whitespace from extracted content', () => {
+    const response = `FILE: index.js
+\`\`\`js
+console.log("hello");
+
+\`\`\``;
+
+    const { fileEdits } = extractFileEdits(response);
+    expect(fileEdits[0].content).toBe('console.log("hello");');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// applyCodeFromResponse — mode = 'ask' bypass
+// ---------------------------------------------------------------------------
+
+describe('applyCodeFromResponse — ask mode', () => {
+  it('returns no-change result when mode is ask', () => {
+    const code = 'const x = 1;';
+    const response = `<<<<<<< SEARCH
+const x = 1;
+=======
+const x = 2;
+>>>>>>> REPLACE`;
+
+    const result = applyCodeFromResponse(response, code, 'typescript', 'ask');
+    expect(result.applied).toBe(false);
+    expect(result.newCode).toBe(code);
+    expect(result.method).toBe('none');
+    expect(result.needsApplyModel).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Tier 1: SEARCH/REPLACE blocks
+// ---------------------------------------------------------------------------
+
+describe('applyCodeFromResponse — SEARCH/REPLACE', () => {
+  it('applies a standard SEARCH/REPLACE block', () => {
+    const code = 'function greet() {\n  return "hello";\n}';
+    const response = `Here is the fix:
+
+<<<<<<< SEARCH
+function greet() {
+  return "hello";
+}
+=======
+function greet() {
+  return "world";
+}
+>>>>>>> REPLACE`;
+
+    const result = applyCodeFromResponse(response, code, 'typescript', 'code');
+    expect(result.applied).toBe(true);
+    expect(result.method).toBe('search_replace');
+    expect(result.newCode).toContain('"world"');
+    expect(result.message).toBe('Applied 1 edit(s)');
+    expect(result.needsApplyModel).toBe(false);
+  });
+
+  it('reports partial failures in message', () => {
+    const code = 'const a = 1;\nconst b = 2;';
+    const response = `<<<<<<< SEARCH
+const a = 1;
+=======
+const a = 10;
+>>>>>>> REPLACE
+
+<<<<<<< SEARCH
+const c = 999;
+=======
+const c = 0;
+>>>>>>> REPLACE`;
+
+    const result = applyCodeFromResponse(response, code, 'typescript', 'code');
+    expect(result.applied).toBe(true);
+    expect(result.method).toBe('search_replace');
+    expect(result.message).toBe('Applied 1 edit(s), 1 failed');
+  });
+
+  it('falls through when all SEARCH/REPLACE blocks fail to match', () => {
+    const code = 'const x = 1;';
+    // SEARCH text does not exist in code, and response also has backticks so hasCode is true
+    const response = `<<<<<<< SEARCH
+nonexistent code
+=======
+new code
+>>>>>>> REPLACE
+
+\`\`\`
+some fallback
+\`\`\``;
+
+    const result = applyCodeFromResponse(response, code, 'typescript', 'code');
+    // Should fall through past SEARCH/REPLACE since all blocks failed
+    // The fenced block "some fallback" is only 13 chars (< 20), so it skips tier 4
+    // Tier 5 detects hasCode (backticks present) and sets needsApplyModel
+    expect(result.needsApplyModel).toBe(true);
+  });
+
+  it('applies bare conflict markers (Llama-style)', () => {
+    const code = 'let val = "old";';
+    const response = `<<<<<<<
+let val = "old";
+>>>>>>>
+
+<<<<<<<
+let val = "new";
+>>>>>>>`;
+
+    const result = applyCodeFromResponse(response, code, 'javascript', 'code');
+    expect(result.applied).toBe(true);
+    expect(result.method).toBe('search_replace');
+    expect(result.newCode).toContain('"new"');
+  });
+
+  it('falls through when bare conflict blocks all fail to apply', () => {
+    const code = 'let x = 1;';
+    // Two bare blocks that pair up, but the search text does not match the code
+    const response = `<<<<<<<
+nonexistent line
+>>>>>>>
+
+<<<<<<<
+replacement line
+>>>>>>>`;
+
+    const result = applyCodeFromResponse(response, code, 'javascript', 'code');
+    // Bare conflict parsed but search did not match → falls through
+    // Tier 5 sees bare markers → needsApplyModel
+    expect(result.applied).toBe(false);
+    expect(result.needsApplyModel).toBe(true);
+  });
+
+  it('reports partial failures for bare conflict markers', () => {
+    const code = 'let a = 1;\nlet b = 2;';
+    // Two pairs: first matches, second does not
+    const response = `<<<<<<<
+let a = 1;
+>>>>>>>
+
+<<<<<<<
+let a = 10;
+>>>>>>>
+
+<<<<<<<
+nonexistent line
+>>>>>>>
+
+<<<<<<<
+replacement for nonexistent
+>>>>>>>`;
+
+    const result = applyCodeFromResponse(response, code, 'javascript', 'code');
+    expect(result.applied).toBe(true);
+    expect(result.method).toBe('search_replace');
+    expect(result.message).toBe('Applied 1 edit(s), 1 failed');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Tier 2: Unified diff
+// ---------------------------------------------------------------------------
+
+describe('applyCodeFromResponse — unified diff', () => {
+  it('falls through when hasUnifiedDiff is true but no hunks are parsed', () => {
+    const code = 'const x = 1;';
+    // Has --- a/ and +++ b/ and @@ markers, but @@ line has no valid hunk body
+    const response = `--- a/file.js
++++ b/file.js
+@@ -1 +1 @@`;
+
+    const result = applyCodeFromResponse(response, code, 'javascript', 'code');
+    // parseUnifiedDiff returns empty (no hunk body after @@)
+    // Falls through to tier 4 (no fenced code), tier 5 sees @@ → needsApplyModel
+    expect(result.applied).toBe(false);
+    expect(result.needsApplyModel).toBe(true);
+  });
+
+  it('falls through when unified diff hunks are parsed but none apply', () => {
+    const code = 'const x = 1;\nconst y = 2;';
+    // Bare unified diff (no fenced code block) so it does not trigger tier 4
+    const response = `--- a/solution.js
++++ b/solution.js
+@@ -1,2 +1,2 @@
+ this line does not exist in code
+-also not present
++replacement`;
+
+    const result = applyCodeFromResponse(response, code, 'javascript', 'code');
+    // Diff parsed but could not be applied — falls through
+    // Tier 5 sees @@ marker → needsApplyModel
+    expect(result.applied).toBe(false);
+    expect(result.needsApplyModel).toBe(true);
+  });
+
+  it('applies a unified diff hunk', () => {
+    const code = 'const a = 1;\nconst b = 2;\nconst c = 3;';
+    const response = `Here is the patch:
+
+\`\`\`diff
+--- a/solution.js
++++ b/solution.js
+@@ -1,3 +1,3 @@
+ const a = 1;
+-const b = 2;
++const b = 42;
+ const c = 3;
+\`\`\``;
+
+    const result = applyCodeFromResponse(response, code, 'javascript', 'code');
+    expect(result.applied).toBe(true);
+    expect(result.method).toBe('unified_diff');
+    expect(result.newCode).toContain('const b = 42;');
+    expect(result.message).toBe('Applied 1 diff hunk(s)');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Tier 3: Fenced code block extraction
+// ---------------------------------------------------------------------------
+
+describe('applyCodeFromResponse — fenced code block', () => {
+  it('extracts the largest code block when it looks like a complete file', () => {
+    const code = 'function old() { return 1; }';
+    const response = `Try this complete solution:
+
+\`\`\`javascript
+function newSolution() {
+  const result = computeValue();
+  return result * 2;
+}
+\`\`\``;
+
+    const result = applyCodeFromResponse(response, code, 'javascript', 'code');
+    expect(result.applied).toBe(true);
+    expect(result.method).toBe('code_block');
+    expect(result.newCode).toContain('newSolution');
+    expect(result.message).toBe('Code applied');
+  });
+
+  it('skips smaller code blocks in favor of the largest', () => {
+    // Tests the branch where content.length is NOT > bestLen (the smaller block seen second)
+    const code = 'old()';
+    const response = `Full solution first:
+
+\`\`\`js
+function fullSolution() {
+  const data = fetchData();
+  const processed = processData(data);
+  return formatOutput(processed);
+}
+\`\`\`
+
+Small snippet:
+
+\`\`\`js
+x()
+\`\`\``;
+
+    const result = applyCodeFromResponse(response, code, 'javascript', 'code');
+    expect(result.applied).toBe(true);
+    expect(result.method).toBe('code_block');
+    expect(result.newCode).toContain('fullSolution');
+    expect(result.newCode).not.toContain('x()');
+  });
+
+  it('selects the largest code block when multiple are present', () => {
+    const code = 'old()';
+    const response = `Small example:
+
+\`\`\`js
+x()
+\`\`\`
+
+Full solution:
+
+\`\`\`js
+function fullSolution() {
+  const data = fetchData();
+  const processed = processData(data);
+  return formatOutput(processed);
+}
+\`\`\``;
+
+    const result = applyCodeFromResponse(response, code, 'javascript', 'code');
+    expect(result.applied).toBe(true);
+    expect(result.method).toBe('code_block');
+    expect(result.newCode).toContain('fullSolution');
+  });
+
+  it('rejects tiny code blocks under 20 characters', () => {
+    const code = 'const longExistingCode = "something quite substantial here";';
+    const response = `Here is the fix:
+
+\`\`\`js
+x = 1;
+\`\`\``;
+
+    const result = applyCodeFromResponse(response, code, 'javascript', 'code');
+    // Block is < 20 chars, so tier 4 skips it; tier 5 sees backticks → needsApplyModel
+    expect(result.applied).toBe(false);
+    expect(result.needsApplyModel).toBe(true);
+  });
+
+  it('rejects code block that does not look complete (small fraction, no definition keywords)', () => {
+    // Block is >= 20 chars but less than 30% of currentCode and no function/class/import/const/def keywords
+    const code = 'a'.repeat(500);
+    // Use content that avoids all the looksComplete regex triggers:
+    // no function, class, const, def, import, or module.exports at start of line
+    const response = `\`\`\`js
+let result = data.map(
+  x => x.toString()
+);
+\`\`\``;
+
+    const result = applyCodeFromResponse(response, code, 'javascript', 'code');
+    // The block (~45 chars) is < 30% of 500, and no function/class/const/import/def → not complete
+    // Tier 5 sees backticks → needsApplyModel
+    expect(result.applied).toBe(false);
+    expect(result.needsApplyModel).toBe(true);
+  });
+
+  it('accepts code block with function keyword even if smaller than 30% of current code', () => {
+    const code = 'x'.repeat(500);
+    const response = `\`\`\`js
+function solve(input) {
+  return input.split('').reverse().join('');
+}
+\`\`\``;
+
+    const result = applyCodeFromResponse(response, code, 'javascript', 'code');
+    expect(result.applied).toBe(true);
+    expect(result.method).toBe('code_block');
+    expect(result.newCode).toContain('function solve');
+  });
+
+  it('accepts code block with import keyword as complete', () => {
+    const code = 'y'.repeat(500);
+    const response = `\`\`\`ts
+import { readFile } from 'fs/promises';
+const data = await readFile('input.txt', 'utf-8');
+\`\`\``;
+
+    const result = applyCodeFromResponse(response, code, 'typescript', 'code');
+    expect(result.applied).toBe(true);
+    expect(result.method).toBe('code_block');
+  });
+
+  it('accepts code block with class keyword as complete', () => {
+    const code = 'z'.repeat(500);
+    const response = `\`\`\`ts
+class Solution {
+  solve() { return 42; }
+}
+\`\`\``;
+
+    const result = applyCodeFromResponse(response, code, 'typescript', 'code');
+    expect(result.applied).toBe(true);
+    expect(result.method).toBe('code_block');
+  });
+
+  it('accepts code block with module.exports as complete', () => {
+    const code = 'w'.repeat(500);
+    const response = `\`\`\`js
+module.exports = function handler(req, res) {
+  res.send('ok');
+};
+\`\`\``;
+
+    const result = applyCodeFromResponse(response, code, 'javascript', 'code');
+    expect(result.applied).toBe(true);
+    expect(result.method).toBe('code_block');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Tier 5: Fallback — code-like content detected but unparseable
+// ---------------------------------------------------------------------------
+
+describe('applyCodeFromResponse — fallback detection', () => {
+  it('detects unparseable backtick blocks and sets needsApplyModel', () => {
+    const code = 'const original = true;';
+    // Has backticks but the block is too small / not complete
+    const response = 'Try changing it to:\n```\nfoo\n```';
+
+    const result = applyCodeFromResponse(response, code, 'javascript', 'code');
+    expect(result.applied).toBe(false);
+    expect(result.needsApplyModel).toBe(true);
+  });
+
+  it('detects stray SEARCH marker in unparseable response', () => {
+    const code = 'original';
+    const response = '<< SEARCH\nbut no proper block structure';
+
+    const result = applyCodeFromResponse(response, code, 'javascript', 'code');
+    expect(result.applied).toBe(false);
+    expect(result.needsApplyModel).toBe(true);
+  });
+
+  it('detects stray @@ diff marker in unparseable response', () => {
+    const code = 'original';
+    const response = '@@ -1 +1 @@\ngarbled content';
+
+    const result = applyCodeFromResponse(response, code, 'javascript', 'code');
+    expect(result.applied).toBe(false);
+    expect(result.needsApplyModel).toBe(true);
+  });
+
+  it('detects bare conflict markers as code-like content', () => {
+    const code = 'original';
+    // Bare markers that cannot be paired (only one block, not two)
+    const response = '<<<\nsomething\n>>>';
+
+    const result = applyCodeFromResponse(response, code, 'javascript', 'code');
+    // hasBareConflictMarkers would match, but parseBareConflictBlocks yields 1 block
+    // which cannot be paired (needs 2). Then hasCode sees the bare markers and sets needsApplyModel.
+    expect(result.applied).toBe(false);
+    expect(result.needsApplyModel).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// No code in response
+// ---------------------------------------------------------------------------
+
+describe('applyCodeFromResponse — no code', () => {
+  it('returns no-change when response has no code-like content', () => {
+    const code = 'const x = 1;';
+    const response = 'The solution looks correct. No changes needed.';
+
+    const result = applyCodeFromResponse(response, code, 'typescript', 'code');
+    expect(result.applied).toBe(false);
+    expect(result.newCode).toBe(code);
+    expect(result.method).toBe('none');
+    expect(result.needsApplyModel).toBe(false);
+    expect(result.message).toBe('');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Tier priority: SEARCH/REPLACE beats unified diff beats code block
+// ---------------------------------------------------------------------------
+
+describe('applyCodeFromResponse — tier priority', () => {
+  it('prefers SEARCH/REPLACE over a code block in the same response', () => {
+    const code = 'const x = 1;';
+    const response = `<<<<<<< SEARCH
+const x = 1;
+=======
+const x = 2;
+>>>>>>> REPLACE
+
+\`\`\`javascript
+function completelyDifferent() {
+  return "this is the code block";
+}
+\`\`\``;
+
+    const result = applyCodeFromResponse(response, code, 'javascript', 'code');
+    expect(result.method).toBe('search_replace');
+    expect(result.newCode).toBe('const x = 2;');
+  });
+});

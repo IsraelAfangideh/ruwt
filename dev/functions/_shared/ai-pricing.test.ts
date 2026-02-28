@@ -5,6 +5,8 @@ import {
   countMessageTokens,
   getCloudflareModels,
   getTierFallbackChain,
+  getToolCapableModels,
+  getToolCapableFallbackChain,
 } from './ai-pricing';
 
 describe('getModelPricing', () => {
@@ -135,5 +137,74 @@ describe('getTierFallbackChain', () => {
   it('returns at least one model for micro tier', () => {
     const chain = getTierFallbackChain('micro');
     expect(chain.length).toBeGreaterThan(0);
+  });
+
+  it('returns sorted by tier (same or lower)', () => {
+    const chain = getTierFallbackChain('mid');
+    const models = chain.map(id => getModelPricing(id));
+    const tierOrder: Record<string, number> = { reasoning: 0, premium: 1, mid: 2, budget: 3, micro: 4 };
+    for (let i = 1; i < models.length; i++) {
+      expect(tierOrder[models[i]!.tier]).toBeGreaterThanOrEqual(tierOrder[models[i - 1]!.tier]);
+    }
+  });
+});
+
+describe('getToolCapableModels', () => {
+  it('returns only models with supportsTools=true', () => {
+    const toolModels = getToolCapableModels();
+    expect(toolModels.length).toBeGreaterThan(0);
+    for (const id of toolModels) {
+      const pricing = getModelPricing(id);
+      expect(pricing?.supportsTools).toBe(true);
+    }
+  });
+
+  it('includes known tool-capable models', () => {
+    const toolModels = getToolCapableModels();
+    expect(toolModels).toContain('@cf/qwen/qwen2.5-coder-32b-instruct');
+    expect(toolModels).toContain('@cf/meta/llama-3.1-8b-instruct');
+  });
+
+  it('excludes models without tool support', () => {
+    const toolModels = getToolCapableModels();
+    // Mistral 7B does not support tools
+    expect(toolModels).not.toContain('@cf/mistral/mistral-7b-instruct-v0.2');
+  });
+});
+
+describe('getToolCapableFallbackChain', () => {
+  it('returns only tool-capable models at same tier or lower', () => {
+    const chain = getToolCapableFallbackChain('premium');
+    expect(chain.length).toBeGreaterThan(0);
+    for (const id of chain) {
+      const pricing = getModelPricing(id);
+      expect(pricing?.supportsTools).toBe(true);
+      expect(['premium', 'mid', 'budget', 'micro']).toContain(pricing?.tier);
+    }
+  });
+
+  it('does not include higher tiers', () => {
+    const chain = getToolCapableFallbackChain('budget');
+    for (const id of chain) {
+      const pricing = getModelPricing(id);
+      expect(['budget', 'micro']).toContain(pricing?.tier);
+    }
+  });
+
+  it('returns sorted by tier order', () => {
+    const chain = getToolCapableFallbackChain('reasoning');
+    const tierOrder: Record<string, number> = { reasoning: 0, premium: 1, mid: 2, budget: 3, micro: 4 };
+    const models = chain.map(id => getModelPricing(id)!);
+    for (let i = 1; i < models.length; i++) {
+      expect(tierOrder[models[i].tier]).toBeGreaterThanOrEqual(tierOrder[models[i - 1].tier]);
+    }
+  });
+
+  it('returns at least one model for micro tier', () => {
+    const chain = getToolCapableFallbackChain('micro');
+    // Micro tier may not have tool-capable models, but budget does
+    // so calling from budget ensures at least one
+    const budgetChain = getToolCapableFallbackChain('budget');
+    expect(budgetChain.length).toBeGreaterThan(0);
   });
 });

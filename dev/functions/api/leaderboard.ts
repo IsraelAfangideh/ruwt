@@ -64,6 +64,7 @@ export async function onRequestGet(context: { request: Request; env: Env }) {
       const conditions = [
         eq(attempts.challengeId, challengeId),
         eq(attempts.status, 'passed'),
+        eq(profiles.leaderboardExcluded, 0),
       ];
       if (threshold) {
         conditions.push(gte(attempts.submittedAt, threshold));
@@ -147,6 +148,7 @@ export async function onRequestGet(context: { request: Request; env: Env }) {
       })
       .from(profiles)
       .leftJoin(attempts, eq(profiles.id, attempts.userId))
+      .where(eq(profiles.leaderboardExcluded, 0))
       .groupBy(profiles.id, profiles.name, profiles.avatarUrl, profiles.username)
       .having(sql`COUNT(DISTINCT CASE WHEN ${attempts.status} = 'passed' ${combinedFilter} THEN ${attempts.challengeId} END) > 0`)
       .orderBy(

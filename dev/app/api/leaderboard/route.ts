@@ -29,7 +29,8 @@ export async function GET(req: NextRequest) {
         .where(
           and(
             eq(attempts.challengeId, challengeId),
-            eq(attempts.status, 'passed')
+            eq(attempts.status, 'passed'),
+            eq(profiles.leaderboardExcluded, 0)
           )
         )
         .orderBy(attempts.totalCost)
@@ -67,6 +68,7 @@ export async function GET(req: NextRequest) {
       })
       .from(profiles)
       .leftJoin(attempts, eq(profiles.id, attempts.userId))
+      .where(eq(profiles.leaderboardExcluded, 0))
       .groupBy(profiles.id, profiles.name, profiles.email, profiles.avatarUrl)
       .having(sql`COUNT(DISTINCT CASE WHEN ${attempts.status} = 'passed' THEN ${attempts.challengeId} END) > 0`)
       .orderBy(
