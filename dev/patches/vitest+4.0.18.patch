@@ -1,0 +1,90 @@
+diff --git a/node_modules/vitest/dist/chunks/coverage.AVPTjMgw.js b/node_modules/vitest/dist/chunks/coverage.AVPTjMgw.js
+index 9226d79..2f432c0 100644
+--- a/node_modules/vitest/dist/chunks/coverage.AVPTjMgw.js
++++ b/node_modules/vitest/dist/chunks/coverage.AVPTjMgw.js
+@@ -2953,21 +2953,21 @@ Update your dependencies and make sure the versions match.`));
+ 		return this.options;
+ 	}
+ 	async clean(clean = true) {
+-		if (clean && existsSync(this.options.reportsDirectory)) await promises.rm(this.options.reportsDirectory, {
+-			recursive: true,
+-			force: true,
+-			maxRetries: 10
+-		});
+-		if (existsSync(this.coverageFilesDirectory)) await promises.rm(this.coverageFilesDirectory, {
+-			recursive: true,
+-			force: true,
+-			maxRetries: 10
+-		});
++		if (clean && existsSync(this.options.reportsDirectory)) {
++			// Remove report files but preserve .tmp coverage data directory
++			const entries = readdirSync(this.options.reportsDirectory);
++			for (const entry of entries) {
++				const entryPath = resolve(this.options.reportsDirectory, entry);
++				if (entryPath === this.coverageFilesDirectory) continue;
++				await promises.rm(entryPath, { recursive: true, force: true, maxRetries: 10 });
++			}
++		}
+ 		await promises.mkdir(this.coverageFilesDirectory, { recursive: true });
+ 		this.coverageFiles = /* @__PURE__ */ new Map();
+ 		this.pendingPromises = [];
+ 	}
+ 	onAfterSuiteRun({ coverage, environment, projectName, testFiles }) {
++
+ 		if (!coverage) return;
+ 		let entry = this.coverageFiles.get(projectName || DEFAULT_PROJECT);
+ 		if (!entry) {
+@@ -2979,7 +2979,17 @@ Update your dependencies and make sure the versions match.`));
+ 		entry[environment] ??= {};
+ 		// If there's a result from previous run, overwrite it
+ 		entry[environment][testFilenames] = filename;
+-		const promise = promises.writeFile(filename, JSON.stringify(coverage), "utf-8");
++		// Store coverage data in memory to avoid ENOENT race condition
++		if (!this._inMemoryCoverage) this._inMemoryCoverage = new Map();
++		this._inMemoryCoverage.set(filename, coverage);
++		const data = JSON.stringify(coverage);
++		const promise = promises.writeFile(filename, data, "utf-8").catch(async (e) => {
++			if (e.code === 'ENOENT') {
++				await promises.mkdir(this.coverageFilesDirectory, { recursive: true });
++				return promises.writeFile(filename, data, "utf-8");
++			}
++			throw e;
++		});
+ 		this.pendingPromises.push(promise);
+ 	}
+ 	async readCoverageFiles({ onFileRead, onFinished, onDebug }) {
+@@ -2996,8 +3006,20 @@ Update your dependencies and make sure the versions match.`));
+ 					onDebug(`Reading coverage results ${index}/${total}`);
+ 				}
+ 				await Promise.all(chunk.map(async (filename) => {
+-					const contents = await promises.readFile(filename, "utf-8");
+-					onFileRead(JSON.parse(contents));
++					// Use in-memory cache if available, fall back to disk
++					if (this._inMemoryCoverage && this._inMemoryCoverage.has(filename)) {
++						onFileRead(this._inMemoryCoverage.get(filename));
++						return;
++					}
++					try {
++						const contents = await promises.readFile(filename, "utf-8");
++						onFileRead(JSON.parse(contents));
++					} catch (e) {
++						if (e && e.code === 'ENOENT') {
++							return;
++						}
++						throw e;
++					}
+ 				}));
+ 			}
+ 			await onFinished(project, environment);
+@@ -3005,9 +3027,9 @@ Update your dependencies and make sure the versions match.`));
+ 	}
+ 	async cleanAfterRun() {
+ 		this.coverageFiles = /* @__PURE__ */ new Map();
+-		await promises.rm(this.coverageFilesDirectory, { recursive: true });
++		await promises.rm(this.coverageFilesDirectory, { recursive: true, force: true });
+ 		// Remove empty reports directory, e.g. when only text-reporter is used
+-		if (readdirSync(this.options.reportsDirectory).length === 0) await promises.rm(this.options.reportsDirectory, { recursive: true });
++		try { if (readdirSync(this.options.reportsDirectory).length === 0) await promises.rm(this.options.reportsDirectory, { recursive: true, force: true }); } catch {}
+ 	}
+ 	async onTestFailure() {
+ 		if (!this.options.reportOnFailure) await this.cleanAfterRun();
