@@ -9,7 +9,7 @@ import { VirtualFileSystem } from './arena/VirtualFileSystem';
 import { useCodeSync } from './arena/useCodeSync';
 import { useAIChat, type MessageMeta } from './arena/useAIChat';
 import { TerminalPanel, type TerminalPanelHandle } from './arena/TerminalPanel';
-import { TIER_MODELS, getModelById, getModelsForTier, tierColor, tierLabel, type ModelTier } from '@/lib/ai/pricing';
+import { TIER_MODELS, getModelById, getModelsForTier, tierColor, tierLabel, estimateTypicalMessageCost, formatCostFromHundredths, type ModelTier } from '@/lib/ai/pricing';
 import { estimateChatCost, formatEstimatedCost } from '@/lib/cost-estimate';
 import { useIsMobile } from '@/lib/useIsMobile';
 import { buildSystemPrompt, formatTestResultsForMessage, type AIMode, type TestResults as AITestResults } from '@/lib/ai/system-prompts';
@@ -18,7 +18,7 @@ import { applyCodeFromResponse as sharedApplyCode, extractFileEdits } from '@/li
 import { callApplyModel } from '@/lib/ai/apply-model';
 import { useEditorDecorations } from './arena/useEditorDecorations';
 import { ModeSelector } from './arena/ModeSelector';
-import { Notepad } from './arena/Notepad';
+// Notepad is now embedded in DescriptionPanel
 import { renderMarkdown, ThinkingBlock } from './arena/ChatMarkdown';
 import { ResultsBar, type TestResults } from './arena/ResultsBar';
 import ExpiryOverlay from './arena/ExpiryOverlay';
@@ -70,6 +70,7 @@ export interface ArenaChallenge {
   language?: string | null;
   expiresAt?: string | null;
   hiddenTestCount?: number;
+  stats?: { solvers: number; avgCost: number | null; bestCost: number | null } | null;
 }
 
 export interface ArenaAttempt {
@@ -282,7 +283,8 @@ function MessageCopyButton({ content }: { content: string }) {
   );
 }
 
-function DescriptionPanel({ challenge, pastAttempts }: { challenge: ArenaChallenge; pastAttempts?: PastAttempt[] }) {
+function DescriptionPanel({ challenge, pastAttempts, notepadContent, onNotepadChange }: { challenge: ArenaChallenge; pastAttempts?: PastAttempt[]; notepadContent?: string; onNotepadChange?: (v: string) => void }) {
+  const [notesExpanded, setNotesExpanded] = React.useState(false);
   let testCases: Array<{ input: string; expectedOutput: string }> = [];
   try {
     testCases = JSON.parse(challenge.testCases);
@@ -337,6 +339,52 @@ function DescriptionPanel({ challenge, pastAttempts }: { challenge: ArenaChallen
       )}
 
       {pastAttempts && <PastAttemptsSection attempts={pastAttempts} />}
+
+      {/* Collapsible Your Notes section */}
+      {onNotepadChange && (
+        <div style={{ marginTop: 20, borderTop: `1px solid ${arena.border}`, paddingTop: 12 }}>
+          <button
+            onClick={() => setNotesExpanded(!notesExpanded)}
+            style={{
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              width: '100%',
+              padding: 0,
+            }}
+          >
+            <span style={{ fontSize: 8, color: arena.textMuted, transition: 'transform 0.15s', transform: notesExpanded ? 'rotate(90deg)' : 'rotate(0deg)' }}>{'\u25B6'}</span>
+            <span style={{ fontSize: 12, fontWeight: 600, color: arena.text }}>Your Notes</span>
+            <span style={{ fontSize: 10, color: arena.textSubtle, fontStyle: 'italic' }}>(AI can't see this)</span>
+          </button>
+          {notesExpanded && (
+            <textarea
+              value={notepadContent ?? ''}
+              onChange={(e) => onNotepadChange(e.target.value)}
+              placeholder="Jot down your approach, observations, or ideas..."
+              style={{
+                marginTop: 8,
+                width: '100%',
+                minHeight: 100,
+                background: arena.surface,
+                border: `1px solid ${arena.border}`,
+                borderRadius: 6,
+                color: arena.text,
+                fontSize: 12,
+                fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+                padding: 10,
+                resize: 'vertical' as const,
+                outline: 'none',
+                lineHeight: '1.5',
+                boxSizing: 'border-box' as const,
+              }}
+            />
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -374,7 +422,7 @@ export function ArenaIDE({
   const [tierDropdownOpen, setTierDropdownOpen] = useState(false);
   const [showExpiryOverlay, setShowExpiryOverlay] = useState(false);
   const [aiLimitReached, setAiLimitReached] = useState(false);
-  const [activeTab, setActiveTab] = useState<'description' | 'chat' | 'notepad'>('description');
+  const [activeTab, setActiveTab] = useState<'description' | 'chat'>('description');
   const [hasUnreadChat, setHasUnreadChat] = useState(false);
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
@@ -403,7 +451,7 @@ export function ArenaIDE({
   const isSidebarDragging = useRef(false);
 
   const isMobile = useIsMobile();
-  const activeTabRef = useRef<'description' | 'chat' | 'notepad'>('description');
+  const activeTabRef = useRef<'description' | 'chat'>('description');
   activeTabRef.current = activeTab;
   const chatScrollRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<unknown>(null);
@@ -1039,19 +1087,11 @@ export function ArenaIDE({
               AI Chat
               {hasUnreadChat && <span style={s.unreadDot} />}
             </button>
-            <button
-              style={activeTab === 'notepad' ? s.tabActive : s.tab}
-              onClick={() => setActiveTab('notepad')}
-            >
-              Notepad
-            </button>
           </div>
 
           {/* Tab content */}
           {activeTab === 'description' ? (
-            <DescriptionPanel challenge={challenge} pastAttempts={pastAttempts} />
-          ) : activeTab === 'notepad' ? (
-            <Notepad value={notepadContent} onChange={setNotepadContent} />
+            <DescriptionPanel challenge={challenge} pastAttempts={pastAttempts} notepadContent={notepadContent} onNotepadChange={setNotepadContent} />
           ) : (
             <>
               {/* Mode selector + Clear */}
@@ -1075,12 +1115,12 @@ export function ArenaIDE({
                   <div style={s.chatEmpty}>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: '0 12px', width: '100%', maxWidth: 360 }}>
                       <span style={{ color: arena.textSubtle, fontSize: 12, textAlign: 'center', lineHeight: '1.5' }}>
-                        Practice is free with open-source models. Pro models cost credits.
+                        Every message costs from your budget. Choose your tier wisely.
                       </span>
                       {[
-                        'Solve this problem step by step',
-                        'Explain the requirements first, then write the code',
-                        `Write a solution in ${language}`,
+                        'Write the solution',
+                        'What\'s the most efficient approach?',
+                        'Fix the failing tests',
                       ].map((prompt) => (
                         <button
                           key={prompt}
@@ -1104,7 +1144,9 @@ export function ArenaIDE({
                         </button>
                       ))}
                       <span style={{ color: arena.textSubtle, fontSize: 11, textAlign: 'center', lineHeight: '1.5', marginTop: 4 }}>
-                        Micro/Budget = cheap, Mid = balanced, Premium/Reasoning = powerful but costly.
+                        {challenge.maxCost
+                          ? `Budget: ${formatCost(challenge.maxCost)} \u2014 choose your tier wisely.`
+                          : 'Costs tracked for leaderboard ranking.'}
                       </span>
                     </div>
                   </div>
@@ -1304,6 +1346,8 @@ export function ArenaIDE({
                           borderColor: isActive ? tc : isRecommended ? `${arena.accent}60` : arena.border,
                           color: isActive ? tc : arena.textMuted,
                           opacity: isLoadingChat ? 0.5 : 1,
+                          flexDirection: 'column',
+                          alignItems: 'center',
                         }}
                         title={isRecommended ? `Recommended for ${challenge.difficulty} difficulty` : undefined}
                         disabled={isLoadingChat}
@@ -1317,10 +1361,15 @@ export function ArenaIDE({
                           }
                         }}
                       >
-                        <span style={{ fontWeight: 600 }}>{m.costIndicator}</span>
-                        {' '}{tierLabel(tier)}
-                        {isRecommended && <span style={{ fontSize: 7, marginLeft: 3, color: arena.accent, verticalAlign: 'super' }}>{'\u2605'}</span>}
-                        {hasMultiple && isActive && <span style={{ fontSize: 8, marginLeft: 2 }}>{'\u25BC'}</span>}
+                        <span>
+                          <span style={{ fontWeight: 600 }}>{m.costIndicator}</span>
+                          {' '}{tierLabel(tier)}
+                          {isRecommended && <span style={{ fontSize: 9, marginLeft: 3, color: arena.accent }}>{'\u2605'} Rec</span>}
+                          {hasMultiple && isActive && <span style={{ fontSize: 8, marginLeft: 2 }}>{'\u25BC'}</span>}
+                        </span>
+                        <span style={{ display: 'block', fontSize: 9, color: arena.textSubtle, fontWeight: 400 }}>
+                          ~{formatCostFromHundredths(estimateTypicalMessageCost(tier))}/msg
+                        </span>
                       </button>
                       {isActive && tierDropdownOpen && hasMultiple && (
                         <div style={s.tierDropdown}>
@@ -1611,7 +1660,7 @@ export function ArenaIDE({
             style={mobilePanel === 'sidebar' ? s.mobileFloatingTabActive : s.mobileFloatingTab}
             onClick={() => { setMobilePanel('sidebar'); }}
           >
-            <span>{activeTab === 'chat' ? 'AI Chat' : activeTab === 'notepad' ? 'Notepad' : 'Description'}</span>
+            <span>{activeTab === 'chat' ? 'AI Chat' : 'Description'}</span>
             {hasUnreadChat && mobilePanel === 'editor' && <span style={s.mobileUnreadDot} />}
           </button>
           <button
@@ -1972,7 +2021,7 @@ const s: Record<string, React.CSSProperties> = {
   } as React.CSSProperties,
   tierPill: {
     flex: 1,
-    padding: '5px 8px',
+    padding: '4px 6px',
     fontSize: 11,
     borderRadius: 6,
     border: `1px solid ${arena.border}`,
@@ -1981,6 +2030,10 @@ const s: Record<string, React.CSSProperties> = {
     fontFamily: 'Menlo, Monaco, "Courier New", monospace',
     textAlign: 'center' as const,
     transition: 'all 0.15s',
+    display: 'flex',
+    flexDirection: 'column' as const,
+    alignItems: 'center',
+    gap: 1,
   },
 
   // Tier dropdown

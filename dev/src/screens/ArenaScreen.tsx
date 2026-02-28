@@ -8,6 +8,41 @@ import { getDifficultyStyle } from '@/lib/difficulty';
 import { useAuthGuard } from '@/hooks/useAuthGuard';
 import { useToast } from '@/components/ui/Toast';
 import { ArenaErrorBoundary } from '@/components/arena/ArenaErrorBoundary';
+import { estimateMessagesForBudget } from '@/lib/ai/pricing';
+
+/* ─── Budget Progress Bar ──────────────────────────────────────────── */
+
+function BudgetProgressBar({ spent, budget }: { spent: number; budget: number | null; isOverBudget?: boolean }) {
+  if (budget == null) {
+    return (
+      <span style={{
+        fontSize: 14,
+        fontWeight: 700,
+        color: arena.accent,
+        fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+      }}>
+        {formatCost(spent)} spent
+      </span>
+    );
+  }
+  const pct = Math.min(100, (spent / budget) * 100);
+  const barColor = pct > 90 ? arena.error : pct > 70 ? arena.accent : '#3fb950';
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 180 }}
+      title={`${formatCost(spent)} of ${formatCost(budget)} budget used`}
+    >
+      <span style={{ fontSize: 11, color: arena.textMuted, fontFamily: 'Menlo, Monaco, "Courier New", monospace' }}>
+        {formatCost(spent)}
+      </span>
+      <div style={{ flex: 1, height: 6, background: arena.border, borderRadius: 3, overflow: 'hidden' }}>
+        <div style={{ width: `${pct}%`, height: '100%', background: barColor, borderRadius: 3, transition: 'width 0.3s ease' }} />
+      </div>
+      <span style={{ fontSize: 11, color: arena.textMuted, fontFamily: 'Menlo, Monaco, "Courier New", monospace' }}>
+        {formatCost(budget)}
+      </span>
+    </div>
+  );
+}
 
 function formatWallClock(seconds: number): string {
   const m = Math.floor(seconds / 60);
@@ -28,12 +63,6 @@ function formatTime(seconds: number): string {
   return `${m}:${s.toString().padStart(2, '0')}`;
 }
 
-/** Returns badge color based on credit balance thresholds. */
-function creditsBadgeColor(credits: number): string {
-  if (credits >= 20000) return arena.accent;   // gold — healthy
-  if (credits >= 5000) return '#e09040';        // orange — warning
-  return arena.error;                           // red — low
-}
 
 export function ArenaScreen() {
   const navigation = useNavigation();
@@ -447,7 +476,33 @@ export function ArenaScreen() {
               : challenge.description}
           </p>
 
-          {/* Limits info */}
+          {/* Budget primer card */}
+          {challenge.maxCost != null && (
+            <div style={{
+              background: `${arena.accent}10`,
+              border: `1px solid ${arena.accent}30`,
+              borderRadius: 10,
+              padding: '16px 20px',
+              marginBottom: 24,
+              maxWidth: 400,
+              width: '100%',
+            }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: arena.accent, marginBottom: 8 }}>
+                Your AI Budget: {formatCost(challenge.maxCost)}
+              </div>
+              <div style={{ fontSize: 12, color: arena.textMuted, lineHeight: '1.6' }}>
+                {'\u2248'} {estimateMessagesForBudget(challenge.maxCost, 'budget')} messages with Budget tier,
+                or ~{estimateMessagesForBudget(challenge.maxCost, 'premium')} with Premium
+              </div>
+              {challenge.stats?.bestCost != null && (challenge.stats?.solvers ?? 0) > 0 && (
+                <div style={{ fontSize: 12, color: arena.text, marginTop: 8, fontWeight: 500 }}>
+                  Best solver spent {formatCost(challenge.stats.bestCost)} — can you beat them?
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Time + token limits */}
           <div style={{
             display: 'flex',
             gap: 16,
@@ -462,8 +517,8 @@ export function ArenaScreen() {
             {challenge.maxTokens && (
               <span>{challenge.maxTokens.toLocaleString()} max tokens</span>
             )}
-            {challenge.maxCost && (
-              <span>${(challenge.maxCost / 10000).toFixed(2)} max cost</span>
+            {!challenge.maxCost && challenge.maxCost == null && (
+              <span>No budget limit</span>
             )}
           </div>
 
@@ -512,9 +567,7 @@ export function ArenaScreen() {
     );
   }
 
-  const totalTokens = (attempt.inputTokens || 0) + (attempt.outputTokens || 0);
   const costLimitReached = challenge.maxCost != null && attempt.totalCost >= challenge.maxCost;
-  const tokenLimitReached = challenge.maxTokens != null && totalTokens >= challenge.maxTokens;
 
   const timerUrgency: 'normal' | 'warning' | 'critical' =
     timeLeft == null ? 'normal' :
@@ -530,13 +583,6 @@ export function ArenaScreen() {
       color: arena.text,
       overflow: 'hidden',
     }}>
-      {/* Pulse animation for low-credit badge */}
-      <style>{`
-        @keyframes credit-pulse {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0.6; }
-        }
-      `}</style>
       {/* Header */}
       {isMobile ? (
         /* Mobile header — two rows */
@@ -632,55 +678,18 @@ export function ArenaScreen() {
             </button>
           </div>
 
-          {/* Row 2: Compact stats strip */}
+          {/* Row 2: Budget progress bar */}
           <div style={{
             display: 'flex',
             alignItems: 'center',
             height: 28,
             padding: '0 10px',
-            gap: 12,
+            gap: 8,
             borderTop: `1px solid ${arena.border}`,
-            fontSize: 11,
-            fontFamily: 'Menlo, Monaco, "Courier New", monospace',
           }}>
-            <span style={{
-              fontWeight: 700,
-              color: costLimitReached ? arena.error : arena.accent,
-            }}>
-              {formatCost(attempt.totalCost)}
-            </span>
-            <span style={{
-              color: tokenLimitReached ? arena.error : arena.textMuted,
-            }}>
-              {totalTokens.toLocaleString()} tok
-            </span>
-            {(() => {
-              const badgeColor = creditsBadgeColor(userCredits);
-              return (
-                <span style={{
-                  marginLeft: 'auto',
-                  fontSize: 10,
-                  fontWeight: userCredits < 5000 ? 700 : 600,
-                  color: badgeColor,
-                  padding: '1px 6px',
-                  borderRadius: 9999,
-                  border: `1px solid ${badgeColor}40`,
-                  background: `${badgeColor}10`,
-                  ...(userCredits < 5000 ? { animation: 'credit-pulse 2s ease-in-out infinite' } : {}),
-                }}>
-                  {userCredits.toLocaleString()} cr (${(userCredits / 10000).toFixed(2)})
-                </span>
-              );
-            })()}
-            {/* Practice mode indicator */}
-            <span style={{
-              fontSize: 9,
-              color: arena.textSubtle,
-              fontFamily: 'Menlo, Monaco, "Courier New", monospace',
-              whiteSpace: 'nowrap',
-            }}>
-              Free practice
-            </span>
+            <div style={{ flex: 1 }}>
+              <BudgetProgressBar spent={attempt.totalCost} budget={challenge.maxCost} isOverBudget={costLimitReached} />
+            </div>
           </div>
         </div>
       ) : (
@@ -743,32 +752,8 @@ export function ArenaScreen() {
 
           {/* Right: Stats + Actions */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            {/* Hero cost */}
-            <span style={{
-              fontSize: 20,
-              fontWeight: 700,
-              color: costLimitReached ? arena.error : arena.accent,
-              fontFamily: 'Menlo, Monaco, "Courier New", monospace',
-            }}>
-              {formatCost(attempt.totalCost)}
-            </span>
-            <span style={{ fontSize: 11, color: costLimitReached ? arena.error : arena.textMuted }}>
-              {costLimitReached ? 'limit reached' : 'spent'}
-            </span>
-
-            {/* Token detail with hover popover */}
-            <span
-              style={{
-                fontSize: 11,
-                color: tokenLimitReached ? arena.error : arena.textMuted,
-                fontFamily: 'Menlo, Monaco, "Courier New", monospace',
-                cursor: 'help',
-                position: 'relative',
-              }}
-              title={`Input: ${(attempt.inputTokens || 0).toLocaleString()} | Output: ${(attempt.outputTokens || 0).toLocaleString()} | Total: ${totalTokens.toLocaleString()}`}
-            >
-              {totalTokens.toLocaleString()} tok
-            </span>
+            {/* Budget progress bar */}
+            <BudgetProgressBar spent={attempt.totalCost} budget={challenge.maxCost} isOverBudget={costLimitReached} />
 
             {/* Timer — subtle when normal, bold pill when warning/critical */}
             {timeLeft != null && (
@@ -784,36 +769,6 @@ export function ArenaScreen() {
                 {formatTime(timeLeft)}
               </span>
             )}
-
-            {/* Credits badge */}
-            {(() => {
-              const badgeColor = creditsBadgeColor(userCredits);
-              return (
-                <span style={{
-                  fontSize: 10,
-                  fontWeight: userCredits < 5000 ? 700 : 600,
-                  color: badgeColor,
-                  padding: '2px 8px',
-                  borderRadius: 9999,
-                  border: `1px solid ${badgeColor}40`,
-                  background: `${badgeColor}10`,
-                  fontFamily: 'Menlo, Monaco, "Courier New", monospace',
-                  ...(userCredits < 5000 ? { animation: 'credit-pulse 2s ease-in-out infinite' } : {}),
-                }}>
-                  {userCredits.toLocaleString()} cr (${(userCredits / 10000).toFixed(2)})
-                </span>
-              );
-            })()}
-
-            {/* Practice mode indicator */}
-            <span style={{
-              fontSize: 10,
-              color: arena.textSubtle,
-              fontFamily: 'Menlo, Monaco, "Courier New", monospace',
-              whiteSpace: 'nowrap',
-            }}>
-              Free practice — costs tracked for ranking only
-            </span>
 
             {/* Divider */}
             <span style={{ width: 1, height: 24, background: arena.border }} />

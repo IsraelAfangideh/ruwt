@@ -1,10 +1,11 @@
 /**
  * GET /api/challenges/:id
  * Single challenge by id. No auth required.
+ * Includes solver stats (solvers, avgCost, bestCost).
  */
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { getDb } from '../../_shared/db';
-import { challenges } from '../../../drizzle/schema.d1';
+import { challenges, attempts } from '../../../drizzle/schema.d1';
 
 export async function onRequestGet(context: {
   request: Request;
@@ -26,6 +27,17 @@ export async function onRequestGet(context: {
     if (!challenge) {
       return Response.json({ error: 'Challenge not found' }, { status: 404 });
     }
+
+    // Compute solver stats from attempts
+    const [statsRow] = await db
+      .select({
+        solvers: sql<number>`COUNT(DISTINCT CASE WHEN ${attempts.status} = 'passed' THEN ${attempts.userId} END)`,
+        avgCost: sql<number>`AVG(CASE WHEN ${attempts.status} = 'passed' THEN ${attempts.totalCost} END)`,
+        bestCost: sql<number>`MIN(CASE WHEN ${attempts.status} = 'passed' THEN ${attempts.totalCost} END)`,
+      })
+      .from(attempts)
+      .where(eq(attempts.challengeId, id));
+
     let hiddenTestCount = 0;
     if (challenge.hiddenTestCases) {
       try { hiddenTestCount = JSON.parse(challenge.hiddenTestCases).length; } catch {}
@@ -35,6 +47,11 @@ export async function onRequestGet(context: {
       ...rest,
       tags: challenge.tags ? (() => { try { return JSON.parse(challenge.tags); } catch { return []; } })() : [],
       hiddenTestCount,
+      stats: {
+        solvers: statsRow?.solvers ?? 0,
+        avgCost: statsRow?.avgCost ?? null,
+        bestCost: statsRow?.bestCost ?? null,
+      },
     });
   } catch (error) {
     console.error('Challenge get error:', error);

@@ -8,11 +8,11 @@ interface ModeSelectorProps {
   disabled?: boolean;
 }
 
-const MODES: { key: AIMode; label: string; color: string }[] = [
-  { key: 'agent', label: 'Agent', color: arena.accent },
-  { key: 'plan', label: 'Plan', color: '#38bdf8' },
-  { key: 'debug', label: 'Debug', color: '#f85149' },
-  { key: 'ask', label: 'Ask', color: '#3fb950' },
+const MODES: { key: AIMode; label: string; subtitle: string; color: string }[] = [
+  { key: 'agent', label: 'Agent', subtitle: 'Writes & tests code', color: arena.accent },
+  { key: 'plan', label: 'Plan', subtitle: 'Plans before coding', color: '#38bdf8' },
+  { key: 'debug', label: 'Debug', subtitle: 'Fixes failing tests', color: '#f85149' },
+  { key: 'ask', label: 'Ask', subtitle: 'Answers questions', color: '#3fb950' },
 ];
 
 export function ModeSelector({ mode, onModeChange, disabled }: ModeSelectorProps) {
@@ -34,7 +34,8 @@ export function ModeSelector({ mode, onModeChange, disabled }: ModeSelectorProps
             disabled={disabled}
             onClick={() => onModeChange(m.key)}
           >
-            {m.label}
+            <span style={{ fontWeight: 600 }}>{m.label}</span>
+            <span style={{ fontSize: 9, opacity: 0.7, fontWeight: 400 }}>{m.subtitle}</span>
           </button>
         );
       })}
@@ -50,7 +51,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   pill: {
     flex: 1,
-    padding: '4px 8px',
+    padding: '5px 8px',
     border: '1px solid',
     borderRadius: 6,
     fontSize: 11,
@@ -60,5 +61,9 @@ const styles: Record<string, React.CSSProperties> = {
     cursor: 'pointer',
     transition: 'all 0.15s ease',
     letterSpacing: '0.02em',
+    display: 'flex',
+    flexDirection: 'column' as const,
+    alignItems: 'center',
+    gap: 1,
   },
 };

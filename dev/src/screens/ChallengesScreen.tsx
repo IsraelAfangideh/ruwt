@@ -239,6 +239,15 @@ export function ChallengesScreen() {
     })).filter((g) => g.items.length > 0);
   }, [filtered, sortBy]);
 
+  // "Where LLMs Struggle" — hard/impossible unsolved challenges for returning users
+  const llmStruggleChallenges = useMemo(() => {
+    if (progressStats.solved === 0) return []; // Only for returning users
+    return filtered
+      .filter((ch) => (ch.difficulty === 'hard' || ch.difficulty === 'impossible') && ch.userStatus !== 'passed')
+      .sort((a, b) => (a.stats?.solvers ?? 0) - (b.stats?.solvers ?? 0))
+      .slice(0, 4);
+  }, [filtered, progressStats.solved]);
+
   if (loading) {
     return (
       <View style={[styles.center, { backgroundColor: c.bg }]}>
@@ -493,21 +502,42 @@ export function ChallengesScreen() {
           </CardContent>
         </Card>
       ) : grouped ? (
-        // Default sort: grouped by tier
-        grouped.map((group) => (
-          <View key={group.tier} style={styles.tierSection}>
-            {/* @ts-ignore position: sticky is web-only */}
-            <View style={[styles.tierHeader, { backgroundColor: c.bg }]}>
-              <Text style={[styles.tierTitle, { color: c.text }]}>{group.meta.label}</Text>
-              <Text style={[styles.tierDesc, { color: c.textMuted }]}>{group.meta.description}</Text>
+        // Default sort: grouped by tier with "Where LLMs Struggle" after onboarding
+        <>
+          {grouped.map((group) => (
+            <View key={group.tier}>
+              <View style={styles.tierSection}>
+                {/* @ts-ignore position: sticky is web-only */}
+                <View style={[styles.tierHeader, { backgroundColor: c.bg }]}>
+                  <Text style={[styles.tierTitle, { color: c.text }]}>{group.meta.label}</Text>
+                  <Text style={[styles.tierDesc, { color: c.textMuted }]}>{group.meta.description}</Text>
+                </View>
+                <View style={isMobile ? styles.gridMobile : styles.grid}>
+                  {group.items.map((ch) => (
+                    <ChallengeCard key={ch.id} challenge={ch} />
+                  ))}
+                </View>
+              </View>
+              {/* Insert "Where LLMs Struggle" after onboarding tier */}
+              {group.tier === 'onboarding' && llmStruggleChallenges.length > 0 && (
+                <View style={styles.tierSection}>
+                  {/* @ts-ignore position: sticky is web-only */}
+                  <View style={[styles.tierHeader, { backgroundColor: c.bg }]}>
+                    <Text style={[styles.tierTitle, { color: c.text }]}>Where LLMs Struggle</Text>
+                    <Text style={[styles.tierDesc, { color: c.textMuted }]}>
+                      These challenges push the limits of AI. Your prompting skills matter here.
+                    </Text>
+                  </View>
+                  <View style={isMobile ? styles.gridMobile : styles.grid}>
+                    {llmStruggleChallenges.map((ch) => (
+                      <ChallengeCard key={`struggle-${ch.id}`} challenge={ch} />
+                    ))}
+                  </View>
+                </View>
+              )}
             </View>
-            <View style={isMobile ? styles.gridMobile : styles.grid}>
-              {group.items.map((ch) => (
-                <ChallengeCard key={ch.id} challenge={ch} />
-              ))}
-            </View>
-          </View>
-        ))
+          ))}
+        </>
       ) : (
         // Custom sort: flat list
         <View style={styles.tierSection}>

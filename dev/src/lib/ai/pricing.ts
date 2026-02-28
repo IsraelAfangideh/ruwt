@@ -239,3 +239,18 @@ export function tierLabel(tier: ModelTier): string {
     case 'micro': return 'Micro';
   }
 }
+
+/** Estimate cost of a typical chat message (in hundredths-of-a-cent) for a given tier. */
+export function estimateTypicalMessageCost(tier: ModelTier): number {
+  // Typical exchange: ~500 input tokens, ~750 output tokens
+  const m = TIER_MODELS[tier];
+  const inputCost = Math.ceil((500 / 1_000_000) * m.input * 10000);
+  const outputCost = Math.ceil((750 / 1_000_000) * m.output * 10000);
+  return inputCost + outputCost;
+}
+
+/** Estimate how many messages fit in a budget (in hundredths-of-a-cent) for a given tier. */
+export function estimateMessagesForBudget(budgetHundredths: number, tier: ModelTier): number {
+  const costPerMsg = estimateTypicalMessageCost(tier);
+  return costPerMsg > 0 ? Math.floor(budgetHundredths / costPerMsg) : 999;
+}
