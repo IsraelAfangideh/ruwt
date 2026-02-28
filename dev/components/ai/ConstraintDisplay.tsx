@@ -8,7 +8,7 @@ import { formatCost } from '@/lib/ai/pricing';
 import { getWarningThreshold } from '@/lib/ai/constraints';
 
 interface Constraint {
-  type: 'tokens' | 'cost' | 'time';
+  type: 'cost' | 'time';
   current: number;
   max: number;
   label: string;
@@ -48,9 +48,7 @@ function ConstraintBar({ constraint }: { constraint: Constraint }) {
           <span className="font-medium">
             {constraint.type === 'cost'
               ? `${formatCost(constraint.current)} / ${formatCost(constraint.max)}`
-              : constraint.type === 'time'
-              ? `${formatTime(constraint.current)} / ${formatTime(constraint.max)}`
-              : `${constraint.current.toLocaleString()} / ${constraint.max.toLocaleString()}`}
+              : `${formatTime(constraint.current)} / ${formatTime(constraint.max)}`}
           </span>
         </div>
       </div>

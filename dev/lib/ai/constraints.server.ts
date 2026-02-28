@@ -24,35 +24,20 @@ export async function getAttemptWithChallenge(attemptId: string) {
 export async function validateConstraints(attemptId: string): Promise<ConstraintValidation> {
   const { attempt, challenge } = await getAttemptWithChallenge(attemptId);
 
-  const totalTokens = attempt.inputTokens + attempt.outputTokens;
-
   return calculateConstraintStatus(
-    { tokens: totalTokens, cost: attempt.totalCost },
-    { maxTokens: challenge.maxTokens, maxCost: challenge.maxCost, wallClockLimit: challenge.wallClockLimit },
+    { cost: attempt.totalCost },
+    { maxCost: challenge.maxCost, wallClockLimit: challenge.wallClockLimit },
     attempt.expiresAt
   );
 }
 
 export async function checkPreCallConstraints(
   attemptId: string,
-  estimatedInputTokens: number,
-  estimatedOutputTokens: number,
   estimatedCost: number
 ): Promise<ConstraintValidation> {
   const { attempt, challenge } = await getAttemptWithChallenge(attemptId);
 
-  const currentTokens = attempt.inputTokens + attempt.outputTokens;
-  const projectedTokens = currentTokens + estimatedInputTokens + estimatedOutputTokens;
   const projectedCost = attempt.totalCost + estimatedCost;
-
-  // Check if this call would exceed token limit
-  if (challenge.maxTokens && projectedTokens > challenge.maxTokens) {
-    return {
-      valid: false,
-      violation: 'tokens',
-      message: `This call would exceed the token limit (${projectedTokens.toLocaleString()}/${challenge.maxTokens.toLocaleString()})`,
-    };
-  }
 
   // Check if this call would exceed cost limit
   if (challenge.maxCost && projectedCost > challenge.maxCost) {

@@ -3,15 +3,13 @@
 
 export interface ConstraintValidation {
   valid: boolean;
-  violation?: 'tokens' | 'cost' | 'time';
+  violation?: 'cost' | 'time';
   message?: string;
   remaining?: {
-    tokens?: number;
     cost?: number;
     timeSeconds?: number;
   };
   percentUsed?: {
-    tokens?: number;
     cost?: number;
     time?: number;
   };
@@ -24,28 +22,12 @@ export function getWarningThreshold(percentUsed: number): 'none' | 'warning' | '
 }
 
 export function calculateConstraintStatus(
-  current: { tokens: number; cost: number },
-  limits: { maxTokens?: number | null; maxCost?: number | null; wallClockLimit?: number | null },
+  current: { cost: number },
+  limits: { maxCost?: number | null; wallClockLimit?: number | null },
   expiresAt?: Date | null
 ): ConstraintValidation {
   const remaining: ConstraintValidation['remaining'] = {};
   const percentUsed: ConstraintValidation['percentUsed'] = {};
-
-  // Check token limit
-  if (limits.maxTokens) {
-    remaining.tokens = limits.maxTokens - current.tokens;
-    percentUsed.tokens = (current.tokens / limits.maxTokens) * 100;
-
-    if (current.tokens >= limits.maxTokens) {
-      return {
-        valid: false,
-        violation: 'tokens',
-        message: `Token limit exceeded (${current.tokens.toLocaleString()}/${limits.maxTokens.toLocaleString()})`,
-        remaining,
-        percentUsed,
-      };
-    }
-  }
 
   // Check cost limit
   if (limits.maxCost) {

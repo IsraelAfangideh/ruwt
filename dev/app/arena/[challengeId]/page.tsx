@@ -338,14 +338,6 @@ try {
 
   // Build constraints array for display
   const constraints = [];
-  if (challenge?.maxTokens) {
-    constraints.push({
-      type: 'tokens' as const,
-      current: inputTokens + outputTokens,
-      max: challenge.maxTokens,
-      label: 'Tokens',
-    });
-  }
   if (challenge?.maxCost) {
     constraints.push({
       type: 'cost' as const,

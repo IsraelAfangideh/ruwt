@@ -7,22 +7,15 @@ import { attempts, challenges } from '../../drizzle/schema.d1';
 
 export interface ConstraintValidation {
   valid: boolean;
-  violation?: 'tokens' | 'cost' | 'time';
+  violation?: 'cost' | 'time';
   message?: string;
 }
 
 function calculateConstraintStatus(
-  current: { tokens: number; cost: number },
-  limits: { maxTokens?: number | null; maxCost?: number | null; wallClockLimit?: number | null },
+  current: { cost: number },
+  limits: { maxCost?: number | null; wallClockLimit?: number | null },
   expiresAt?: Date | string | null
 ): ConstraintValidation {
-  if (limits.maxTokens && current.tokens >= limits.maxTokens) {
-    return {
-      valid: false,
-      violation: 'tokens',
-      message: `Token limit exceeded (${current.tokens.toLocaleString()}/${limits.maxTokens.toLocaleString()})`,
-    };
-  }
   if (limits.maxCost && current.cost >= limits.maxCost) {
     return {
       valid: false,
@@ -52,14 +45,9 @@ export async function getAttemptWithChallenge(db: Db, attemptId: string) {
 
 export async function validateConstraints(db: Db, attemptId: string): Promise<ConstraintValidation> {
   const { attempt, challenge } = await getAttemptWithChallenge(db, attemptId);
-  const totalTokens = attempt.inputTokens + attempt.outputTokens;
   return calculateConstraintStatus(
-    { tokens: totalTokens, cost: attempt.totalCost },
-    {
-      maxTokens: challenge.maxTokens,
-      maxCost: challenge.maxCost,
-      wallClockLimit: challenge.wallClockLimit,
-    },
+    { cost: attempt.totalCost },
+    { maxCost: challenge.maxCost, wallClockLimit: challenge.wallClockLimit },
     attempt.expiresAt ? new Date(attempt.expiresAt) : null
   );
 }
@@ -67,22 +55,11 @@ export async function validateConstraints(db: Db, attemptId: string): Promise<Co
 export async function checkPreCallConstraints(
   db: Db,
   attemptId: string,
-  estimatedInputTokens: number,
-  estimatedOutputTokens: number,
   estimatedCost: number
 ): Promise<ConstraintValidation> {
   const { attempt, challenge } = await getAttemptWithChallenge(db, attemptId);
-  const currentTokens = attempt.inputTokens + attempt.outputTokens;
-  const projectedTokens = currentTokens + estimatedInputTokens + estimatedOutputTokens;
   const projectedCost = attempt.totalCost + estimatedCost;
 
-  if (challenge.maxTokens && projectedTokens > challenge.maxTokens) {
-    return {
-      valid: false,
-      violation: 'tokens',
-      message: `This call would exceed the token limit (${projectedTokens.toLocaleString()}/${challenge.maxTokens.toLocaleString()})`,
-    };
-  }
   if (challenge.maxCost && projectedCost > challenge.maxCost) {
     return {
       valid: false,

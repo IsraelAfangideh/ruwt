@@ -13,16 +13,29 @@ import { estimateMessagesForBudget } from '@/lib/ai/pricing';
 /* ─── Budget Progress Bar ──────────────────────────────────────────── */
 
 function BudgetProgressBar({ spent, budget }: { spent: number; budget: number | null; isOverBudget?: boolean }) {
+  const mono = 'Menlo, Monaco, "Courier New", monospace';
   if (budget == null) {
+    // No budget limit — show running cost with a subtle open-ended bar
     return (
-      <span style={{
-        fontSize: 14,
-        fontWeight: 700,
-        color: arena.accent,
-        fontFamily: 'Menlo, Monaco, "Courier New", monospace',
-      }}>
-        {formatCost(spent)} spent
-      </span>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 160 }}
+        title="No budget limit — costs tracked for ranking"
+      >
+        <span style={{ fontSize: 12, fontWeight: 700, color: arena.accent, fontFamily: mono }}>
+          {formatCost(spent)}
+        </span>
+        <div style={{ flex: 1, height: 6, background: arena.border, borderRadius: 3, overflow: 'hidden', maxWidth: 80 }}>
+          <div style={{
+            width: spent > 0 ? '40%' : '0%',
+            height: '100%',
+            background: arena.accent,
+            borderRadius: 3,
+            transition: 'width 0.3s ease',
+          }} />
+        </div>
+        <span style={{ fontSize: 10, color: arena.textSubtle, fontFamily: mono }}>
+          no limit
+        </span>
+      </div>
     );
   }
   const pct = Math.min(100, (spent / budget) * 100);
@@ -31,13 +44,13 @@ function BudgetProgressBar({ spent, budget }: { spent: number; budget: number | 
     <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 180 }}
       title={`${formatCost(spent)} of ${formatCost(budget)} budget used`}
     >
-      <span style={{ fontSize: 11, color: arena.textMuted, fontFamily: 'Menlo, Monaco, "Courier New", monospace' }}>
+      <span style={{ fontSize: 11, color: arena.textMuted, fontFamily: mono }}>
         {formatCost(spent)}
       </span>
       <div style={{ flex: 1, height: 6, background: arena.border, borderRadius: 3, overflow: 'hidden' }}>
         <div style={{ width: `${pct}%`, height: '100%', background: barColor, borderRadius: 3, transition: 'width 0.3s ease' }} />
       </div>
-      <span style={{ fontSize: 11, color: arena.textMuted, fontFamily: 'Menlo, Monaco, "Courier New", monospace' }}>
+      <span style={{ fontSize: 11, color: arena.textMuted, fontFamily: mono }}>
         {formatCost(budget)}
       </span>
     </div>
@@ -514,32 +527,43 @@ export function ArenaScreen() {
               : challenge.description}
           </p>
 
-          {/* Budget primer card */}
-          {challenge.maxCost != null && (
-            <div style={{
-              background: `${arena.accent}10`,
-              border: `1px solid ${arena.accent}30`,
-              borderRadius: 10,
-              padding: '16px 20px',
-              marginBottom: 24,
-              maxWidth: 400,
-              width: '100%',
-              textAlign: 'center' as const,
-            }}>
-              <div style={{ fontSize: 13, fontWeight: 600, color: arena.accent, marginBottom: 8 }}>
-                Your AI Budget: {formatCost(challenge.maxCost)}
-              </div>
-              <div style={{ fontSize: 12, color: arena.textMuted, lineHeight: '1.6' }}>
-                {'\u2248'} {estimateMessagesForBudget(challenge.maxCost, 'budget')} messages with Budget tier,
-                or ~{estimateMessagesForBudget(challenge.maxCost, 'premium')} with Premium
-              </div>
-              {challenge.stats?.bestCost != null && (challenge.stats?.solvers ?? 0) > 0 && (
-                <div style={{ fontSize: 12, color: arena.text, marginTop: 8, fontWeight: 500 }}>
-                  Best solver spent {formatCost(challenge.stats.bestCost)} — can you beat them?
+          {/* Budget primer card — always shown, content varies */}
+          <div style={{
+            background: `${arena.accent}10`,
+            border: `1px solid ${arena.accent}30`,
+            borderRadius: 10,
+            padding: '16px 20px',
+            marginBottom: 24,
+            maxWidth: 400,
+            width: '100%',
+            textAlign: 'center' as const,
+          }}>
+            {challenge.maxCost != null ? (
+              <>
+                <div style={{ fontSize: 13, fontWeight: 600, color: arena.accent, marginBottom: 8 }}>
+                  Your AI Budget: {formatCost(challenge.maxCost)}
                 </div>
-              )}
-            </div>
-          )}
+                <div style={{ fontSize: 12, color: arena.textMuted, lineHeight: '1.6' }}>
+                  {'\u2248'} {estimateMessagesForBudget(challenge.maxCost, 'budget')} messages with Budget tier,
+                  or ~{estimateMessagesForBudget(challenge.maxCost, 'premium')} with Premium
+                </div>
+              </>
+            ) : (
+              <>
+                <div style={{ fontSize: 13, fontWeight: 600, color: arena.accent, marginBottom: 8 }}>
+                  No Budget Limit
+                </div>
+                <div style={{ fontSize: 12, color: arena.textMuted, lineHeight: '1.6' }}>
+                  Spend freely — but the leaderboard ranks by cost. Cheapest wins.
+                </div>
+              </>
+            )}
+            {challenge.stats?.bestCost != null && (challenge.stats?.solvers ?? 0) > 0 && (
+              <div style={{ fontSize: 12, color: arena.text, marginTop: 8, fontWeight: 500 }}>
+                Best solver spent {formatCost(challenge.stats.bestCost)} — can you beat them?
+              </div>
+            )}
+          </div>
 
           {/* Time + token limits */}
           <div style={{
@@ -552,12 +576,6 @@ export function ArenaScreen() {
           }}>
             {challenge.wallClockLimit && (
               <span>{formatWallClock(challenge.wallClockLimit)} time limit</span>
-            )}
-            {challenge.maxTokens && (
-              <span>{challenge.maxTokens.toLocaleString()} max tokens</span>
-            )}
-            {!challenge.maxCost && challenge.maxCost == null && (
-              <span>No budget limit</span>
             )}
           </div>
 

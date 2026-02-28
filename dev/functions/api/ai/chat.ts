@@ -53,10 +53,7 @@ export async function onRequestPost(context: {
     }
 
     const estimatedInputTokens = countMessageTokens(messages);
-    const estimatedOutputTokens = Math.min(
-      Math.ceil(estimatedInputTokens * 1.5),
-      maxTokens || 4096
-    );
+    const estimatedOutputTokens = Math.min(maxTokens || 1024, 1024);
     const estimatedCost = calculateCost(model, estimatedInputTokens, estimatedOutputTokens);
 
     const db = getDb(context.env);
@@ -102,7 +99,7 @@ export async function onRequestPost(context: {
     // Pre-call constraint check
     if (attemptId) {
       const constraintCheck = await checkPreCallConstraints(
-        db, attemptId, estimatedInputTokens, estimatedOutputTokens, estimatedCost
+        db, attemptId, estimatedCost
       );
       if (!constraintCheck.valid) {
         return Response.json(

@@ -40,7 +40,6 @@ function formatTime(seconds: number): string {
 
 const constraintMessages: Record<string, string> = {
   time: 'Time limit reached \u2014 you can review your code but can\'t make more AI requests.',
-  tokens: 'Token limit reached for this attempt.',
   cost: 'Cost limit reached for this attempt.',
 };
 
@@ -64,7 +63,6 @@ export interface ArenaChallenge {
   category?: string | null;
   starterCode: string | null;
   testCases: string;
-  maxTokens: number | null;
   maxCost: number | null;
   wallClockLimit: number | null;
   language?: string | null;
@@ -327,12 +325,11 @@ function DescriptionPanel({ challenge, pastAttempts, notepadContent, onNotepadCh
         </div>
       )}
 
-      {(challenge.maxTokens != null || challenge.maxCost != null || challenge.wallClockLimit != null) && (
+      {(challenge.maxCost != null || challenge.wallClockLimit != null) && (
         <div style={{ marginTop: 20 }}>
           <div style={s.sectionLabel}>Constraints</div>
           <div style={s.constraintsList}>
             {challenge.wallClockLimit != null && <div>Time limit: {formatTime(challenge.wallClockLimit)}</div>}
-            {challenge.maxTokens != null && <div>Max tokens: {challenge.maxTokens.toLocaleString()}</div>}
             {challenge.maxCost != null && <div>Max cost: ${(challenge.maxCost / 10000).toFixed(2)}</div>}
           </div>
         </div>
@@ -803,7 +800,7 @@ export function ArenaIDE({
               onExpire?.();
               setShowExpiryOverlay(true);
             }
-            if (violation === 'cost' || violation === 'tokens') {
+            if (violation === 'cost') {
               setAiLimitReached(true);
             }
             setIsLoadingChat(false);
@@ -1349,7 +1346,7 @@ export function ArenaIDE({
                           flexDirection: 'column',
                           alignItems: 'center',
                         }}
-                        title={isRecommended ? `Recommended for ${challenge.difficulty} difficulty` : undefined}
+                        title={`${tierLabel(tier)} tier — ${m.displayName}${isRecommended ? ` (recommended for ${challenge.difficulty})` : ''}`}
                         disabled={isLoadingChat}
                         onClick={() => {
                           if (isActive && hasMultiple) {
@@ -1361,13 +1358,12 @@ export function ArenaIDE({
                           }
                         }}
                       >
-                        <span>
-                          <span style={{ fontWeight: 600 }}>{m.costIndicator}</span>
-                          {' '}{tierLabel(tier)}
-                          {isRecommended && <span style={{ fontSize: 9, marginLeft: 3, color: arena.accent }}>{'\u2605'} Rec</span>}
-                          {hasMultiple && isActive && <span style={{ fontSize: 8, marginLeft: 2 }}>{'\u25BC'}</span>}
+                        <span style={{ fontWeight: 600, fontSize: 11, whiteSpace: 'nowrap' }}>
+                          {tierLabel(tier)}
+                          {isRecommended && <span style={{ fontSize: 8, marginLeft: 2, color: arena.accent }}>{'\u2605'}</span>}
+                          {hasMultiple && isActive && <span style={{ fontSize: 7, marginLeft: 2 }}>{'\u25BC'}</span>}
                         </span>
-                        <span style={{ display: 'block', fontSize: 9, color: arena.textSubtle, fontWeight: 400 }}>
+                        <span style={{ fontSize: 8, color: arena.textSubtle, fontWeight: 400, whiteSpace: 'nowrap' }}>
                           ~{formatCostFromHundredths(estimateTypicalMessageCost(tier))}/msg
                         </span>
                       </button>
@@ -2003,16 +1999,16 @@ const s: Record<string, React.CSSProperties> = {
   // Tier selector
   tierBar: {
     display: 'flex',
-    gap: 6,
-    padding: '6px 10px',
+    gap: 3,
+    padding: '6px 6px',
     borderTop: `1px solid ${arena.border}`,
     background: arena.surface,
     flexShrink: 0,
   },
   tierBarMobile: {
     display: 'flex',
-    gap: 6,
-    padding: '6px 10px',
+    gap: 3,
+    padding: '6px 6px',
     borderTop: `1px solid ${arena.border}`,
     background: arena.surface,
     flexShrink: 0,
@@ -2021,7 +2017,7 @@ const s: Record<string, React.CSSProperties> = {
   } as React.CSSProperties,
   tierPill: {
     flex: 1,
-    padding: '4px 6px',
+    padding: '3px 2px',
     fontSize: 11,
     borderRadius: 6,
     border: `1px solid ${arena.border}`,
