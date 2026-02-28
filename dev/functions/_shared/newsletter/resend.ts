@@ -32,13 +32,13 @@ export async function sendEmail(
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      from: params.from ?? 'ruwt.dev <newsletter@ruwt.dev>',
+      from: params.from ?? 'Israel from ruwt <israel@ruwt.dev>',
       to: [params.to],
       subject: params.subject,
       html: params.html,
       text: params.text,
       headers: {
-        'List-Unsubscribe': '<https://ruwt.dev/settings>',
+        'X-Entity-Ref-ID': crypto.randomUUID(),
       },
     }),
   });

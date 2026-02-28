@@ -23,6 +23,7 @@ export const profiles = sqliteTable('profiles', {
   streakFreezes: integer('streak_freezes').default(0).notNull(),
   onboardingCompleted: integer('onboarding_completed').default(0).notNull(),
   newsletterSubscribed: integer('newsletter_subscribed').default(1).notNull(),
+  timezone: text('timezone'), // IANA timezone (e.g., 'America/New_York'), captured from Cloudflare request.cf
   createdAt: text('created_at').default(sql`(datetime('now'))`).notNull(),
 });
 
@@ -338,6 +339,13 @@ export const newsletterLogs = sqliteTable('newsletter_logs', {
   subject: text('subject').notNull(),
   status: text('status').notNull(), // 'sent' | 'failed'
   errorMessage: text('error_message'),
+  htmlBody: text('html_body'),
+  textBody: text('text_body'),
+  resendId: text('resend_id'),
+  userId: text('user_id'),
+  userState: text('user_state'),
+  personalHook: text('personal_hook'),
+  digestType: text('digest_type').default('daily'), // 'daily' | 'weekly' | 'streak_nudge' | 'dormant_alert'
   sentAt: text('sent_at').default(sql`(datetime('now'))`).notNull(),
 });
 

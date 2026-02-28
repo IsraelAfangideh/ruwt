@@ -1,19 +1,19 @@
-name: Weekly Digest
+name: Daily Streak Nudge
 
 on:
   schedule:
-    - cron: '0 * * * 6' # Every hour on Saturday — sends to users whose local time is 8-9 AM
-  workflow_dispatch: # manual trigger for testing
+    - cron: '0 21 * * *'
+  workflow_dispatch:
 
 jobs:
   send:
-    name: Send Weekly Digest
+    name: Send Streak Nudge Emails
     runs-on: ubuntu-latest
     steps:
-      - name: Trigger weekly digest
+      - name: Trigger streak nudge
         run: |
           response=$(curl -s -w "\n%{http_code}" -X POST \
-            "https://ruwt.dev/api/newsletter/send" \
+            "https://ruwt.dev/api/streak-nudge" \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
             -H "Content-Type: application/json")
 
@@ -24,6 +24,6 @@ jobs:
           echo "Response: $body"
 
           if [ "$http_code" != "200" ]; then
-            echo "::error::Weekly digest failed with status $http_code"
+            echo "::error::Streak nudge failed with status $http_code"
             exit 1
           fi

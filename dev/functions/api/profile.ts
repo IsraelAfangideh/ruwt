@@ -30,6 +30,12 @@ export async function onRequestGet(context: { request: Request; env: Env }) {
       return Response.json({ error: 'Profile not found' }, { status: 404 });
     }
 
+    // Auto-capture timezone from Cloudflare's geolocation (non-blocking, one-time)
+    const cfTimezone = (context.request as any).cf?.timezone as string | undefined;
+    if (cfTimezone && profile.timezone !== cfTimezone) {
+      db.update(profiles).set({ timezone: cfTimezone }).where(eq(profiles.id, user.id)).run().catch(() => {});
+    }
+
     // Look up org subscription status
     let subscriptionStatus = 'none';
     let subscriptionPlan: string | null = null;

@@ -9,6 +9,8 @@ import { getUser } from '../_shared/auth';
 import { runTestCases, type SupportedLanguage } from '../_shared/judge';
 import { checkAndAwardBadges } from '../_shared/badges';
 import { updateStreak } from '../_shared/streaks';
+import { createCompetitiveNudges } from '../_shared/competitive-nudges';
+import { createNewUserNearRankNotifications } from '../_shared/new-user-alerts';
 import { attempts, challenges } from '../../drizzle/schema.d1';
 
 const submissionSchema = z.object({
@@ -237,6 +239,14 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
         newBadges = [...newBadges, ...streakResult.newBadges];
       } catch (e) {
         console.error('Badge/streak check error (non-blocking):', e);
+      }
+
+      // Competitive notifications (non-blocking)
+      try {
+        await createCompetitiveNudges(db, user.id, attempt.challengeId, attempt.totalCost ?? 0);
+        await createNewUserNearRankNotifications(db, user.id);
+      } catch (e) {
+        console.error('Competitive notification error (non-blocking):', e);
       }
     }
 

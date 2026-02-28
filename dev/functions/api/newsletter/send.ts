@@ -1,30 +1,47 @@
 /**
  * POST /api/newsletter/send
- * Generates and sends the daily newsletter to all subscribed users.
- * Secured with CRON_SECRET bearer token (called by GitHub Actions cron).
+ * Two-stage weekly digest: shared AI content + per-user personalized AI content.
+ * Secured with CRON_SECRET bearer token.
  *
- * Per-user personalization: each user gets a template-based personal hook
- * based on their activity state (brand new, tried/stuck, active, dormant, etc.)
+ * Called hourly on Saturdays by GitHub Actions cron. Each invocation:
+ * - Finds subscribers whose local time is 8-9 AM AND haven't been sent to this week
+ * - In test mode (?test=true), skips timezone/dedup checks and sends to admins only
+ * - In dry mode (?dry=true&test=true), generates but does NOT send — returns HTML in response
+ *
+ * Stage 1: generateSharedContent() — 1 AI call for "what we shipped"
+ * Stage 2: For each eligible user → classifyUserState + getRivals + getSmartRecommendations
+ *          → generatePerUserDigest (1 AI call per user) → build HTML → send
  */
 
 import { sql } from 'drizzle-orm';
 import { getDb } from '../../_shared/db';
 import { sendEmail } from '../../_shared/newsletter/resend';
 import {
-  fetchDevNews,
   getPlatformActivity,
-  generateNewsletterContent,
+  generateSharedContent,
+  generatePerUserDigest,
   generateLinkedinDraft,
   classifyUserState,
-  getRecommendedChallenge,
-  buildPersonalHook,
 } from '../../_shared/newsletter/content';
-import { buildNewsletterHtml, buildNewsletterText } from '../../_shared/newsletter/template';
+import { buildWeeklyHtml, buildWeeklyText } from '../../_shared/newsletter/template';
+import { getRivals } from '../../_shared/rivals';
+import { getSmartRecommendations } from '../../_shared/recommendations';
+
+/** Check if it's currently 8-9 AM in the given IANA timezone. */
+function isMorningLocal(timezone: string): boolean {
+  try {
+    const hour = parseInt(
+      new Date().toLocaleString('en-US', { timeZone: timezone, hour: 'numeric', hour12: false })
+    );
+    return hour >= 8 && hour < 9;
+  } catch {
+    return false; // invalid timezone
+  }
+}
 
 export async function onRequestPost(context: { request: Request; env: Env }) {
   const { request, env } = context;
 
-  // Auth: check CRON_SECRET
   const authHeader = request.headers.get('Authorization');
   const token = authHeader?.replace('Bearer ', '');
   if (!env.CRON_SECRET || token !== env.CRON_SECRET) {
@@ -35,56 +52,67 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
     const db = getDb(env);
     const url = new URL(request.url);
     const testMode = url.searchParams.get('test') === 'true';
+    const dryMode = url.searchParams.get('dry') === 'true';
 
-    // Admin user IDs who get the LinkedIn draft in their email
     const adminIds = env.ADMIN_USER_IDS?.split(',').map((id) => id.trim()) ?? [];
 
-    // Get subscribers — in test mode, only admins
-    let subscribers: Array<{ id: string; email: string; name: string | null }>;
+    // Week boundary: start of this week's Saturday (for dedup)
+    const now = new Date();
+    const dayOfWeek = now.getUTCDay(); // 0=Sun, 6=Sat
+    const daysSinceSaturday = dayOfWeek >= 6 ? dayOfWeek - 6 : dayOfWeek + 1;
+    const weekStart = new Date(now);
+    weekStart.setUTCDate(now.getUTCDate() - daysSinceSaturday);
+    weekStart.setUTCHours(0, 0, 0, 0);
+    const weekStartStr = weekStart.toISOString();
+
+    // Get subscribers with timezone
+    let allSubscribers: Array<{ id: string; email: string; name: string | null; timezone: string | null }>;
     if (testMode && adminIds.length > 0) {
       const placeholders = adminIds.map((id) => `'${id}'`).join(',');
-      subscribers = await db.all<{ id: string; email: string; name: string | null }>(
-        sql`SELECT id, email, name FROM profiles WHERE newsletter_subscribed = 1 AND id IN (${sql.raw(placeholders)})`
+      allSubscribers = await db.all<{ id: string; email: string; name: string | null; timezone: string | null }>(
+        sql`SELECT id, email, name, timezone FROM profiles WHERE newsletter_subscribed = 1 AND id IN (${sql.raw(placeholders)})`
       );
     } else {
-      subscribers = await db.all<{ id: string; email: string; name: string | null }>(
-        sql`SELECT id, email, name FROM profiles WHERE newsletter_subscribed = 1`
+      allSubscribers = await db.all<{ id: string; email: string; name: string | null; timezone: string | null }>(
+        sql`SELECT id, email, name, timezone FROM profiles WHERE newsletter_subscribed = 1`
       );
     }
 
-    if (subscribers.length === 0) {
+    if (allSubscribers.length === 0) {
       return Response.json({ success: true, message: 'No subscribers', sent: 0 });
     }
 
-    // Fetch platform activity and dev news in parallel
-    const [activity, rawNews] = await Promise.all([
-      getPlatformActivity(db, env),
-      fetchDevNews(),
-    ]);
+    // Filter to eligible users (timezone morning + not yet sent this week)
+    let subscribers: typeof allSubscribers;
+    if (testMode) {
+      // Test mode: skip timezone and dedup checks
+      subscribers = allSubscribers;
+    } else {
+      // Check who was already sent to this week
+      const alreadySent = await db.all<{ user_id: string }>(
+        sql`SELECT DISTINCT user_id FROM newsletter_logs WHERE digest_type = 'weekly' AND status = 'sent' AND sent_at >= ${weekStartStr}`
+      );
+      const sentIds = new Set(alreadySent.map((r) => r.user_id));
 
-    // Note: the personal hook system (buildPersonalHook) always generates
-    // content based on user state, so there's always something to send.
-    // We only skip when there are literally 0 subscribers (handled above).
-
-    // Create streak reminder notifications for users at risk of losing their streak
-    const today = new Date().toISOString().split('T')[0];
-    const streakUsers = await db.all<{ id: string; currentStreak: number; lastStreakDate: string | null }>(
-      sql`SELECT id, current_streak, last_streak_date FROM profiles WHERE current_streak > 0 AND (last_streak_date IS NULL OR last_streak_date < ${today})`
-    );
-    for (const su of streakUsers) {
-      await db.run(sql`INSERT OR IGNORE INTO notifications (id, user_id, type, title, body, metadata)
-        VALUES (${crypto.randomUUID()}, ${su.id}, 'streak_reminder',
-        ${'Don' + "'" + 't lose your ' + su.currentStreak + '-day streak!'},
-        ${'Solve today' + "'" + 's challenge to keep your streak alive.'},
-        ${JSON.stringify({ streak: su.currentStreak })})`);
+      subscribers = allSubscribers.filter((user) => {
+        if (sentIds.has(user.id)) return false; // already sent this week
+        if (user.timezone) return isMorningLocal(user.timezone); // has timezone: check if morning
+        // No timezone: send at 2 PM UTC (Saturday afternoon = morning in US)
+        return now.getUTCHours() === 14;
+      });
     }
 
-    // AI generates platform digest + curates dev news + LinkedIn draft (in parallel)
-    const [newsletterResult, linkedinDraft] = await Promise.all([
-      generateNewsletterContent(env, activity, rawNews),
+    if (subscribers.length === 0) {
+      return Response.json({ success: true, message: 'No users due for delivery this hour', sent: 0, total: allSubscribers.length });
+    }
+
+    // --- Stage 1: Fetch data + shared AI content ---
+    const activity = await getPlatformActivity(db, env);
+
+    const [sharedContent, linkedinDraft] = await Promise.all([
+      generateSharedContent(env, activity, []),
       generateLinkedinDraft(env, activity),
     ]);
-    const { platformDigest, stories, subject } = newsletterResult;
 
     const date = new Date().toLocaleDateString('en-US', {
       month: 'short',
@@ -92,25 +120,45 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
       year: 'numeric',
     });
 
-    // Send personalized email to each subscriber (sequential to respect Resend rate limits)
-    const results: Array<{ email: string; state: string; success: boolean; id?: string; error?: string }> = [];
+    // --- Stage 2: Per-user personalization + send ---
+    const results: Array<{ email: string; state: string; timezone: string | null; success: boolean; id?: string; error?: string; subject?: string; html?: string; text?: string }> = [];
+
     for (const user of subscribers) {
-      // Classify user state and build personal hook
-      const [stateData, recommended] = await Promise.all([
+      const [stateData, rivals, recommendations] = await Promise.all([
         classifyUserState(db, user.id),
-        getRecommendedChallenge(db, user.id),
+        getRivals(db, user.id),
+        getSmartRecommendations(db, user.id, 3),
       ]);
-      const hookResult = buildPersonalHook(user.name, stateData, recommended, activity);
+
+      const digest = await generatePerUserDigest(
+        env,
+        stateData,
+        { name: user.name, email: user.email },
+        rivals,
+        recommendations,
+        activity,
+        sharedContent,
+      );
+
       const isAdmin = adminIds.includes(user.id);
 
-      const newsletterData = {
-        date, platformDigest, stories, activity,
-        personalHook: hookResult?.text ?? null,
-        personalHookChallengeUrl: hookResult?.challengeUrl ?? null,
+      const weeklyData = {
+        date,
+        perUserBody: digest.body,
+        whatsNew: sharedContent.whatsNew,
+        stories: [],  // external links trigger Gmail Promotions — omitted
         linkedinDraft: isAdmin ? linkedinDraft : null,
       };
-      const html = buildNewsletterHtml(newsletterData);
-      const text = buildNewsletterText(newsletterData);
+
+      const html = buildWeeklyHtml(weeklyData);
+      const text = buildWeeklyText(weeklyData);
+      const subject = digest.subject;
+
+      if (dryMode) {
+        // Dry run: return generated content without sending
+        results.push({ email: user.email, state: stateData.state, timezone: user.timezone, success: true, subject, html, text });
+        continue;
+      }
 
       const result = await sendEmail(env, { to: user.email, subject, html, text });
 
@@ -118,11 +166,11 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
       const logId = crypto.randomUUID();
       const status = result.success ? 'sent' : 'failed';
       const errorMsg = result.error ?? null;
-      await db.run(sql`INSERT INTO newsletter_logs (id, recipient_email, subject, status, error_message) VALUES (${logId}, ${user.email}, ${subject}, ${status}, ${errorMsg})`);
+      await db.run(sql`INSERT INTO newsletter_logs (id, recipient_email, subject, status, error_message, html_body, text_body, resend_id, user_id, user_state, personal_hook, digest_type) VALUES (${logId}, ${user.email}, ${subject}, ${status}, ${errorMsg}, ${html}, ${text}, ${result.id ?? null}, ${user.id}, ${stateData.state}, ${digest.body.slice(0, 500)}, 'weekly')`);
 
-      results.push({ email: user.email, state: stateData.state, ...result });
+      results.push({ email: user.email, state: stateData.state, timezone: user.timezone, ...result });
 
-      // Rate limit: Resend allows 2 req/s, so pause 600ms between sends
+      // Rate limit: 600ms between sends
       if (subscribers.indexOf(user) < subscribers.length - 1) {
         await new Promise((r) => setTimeout(r, 600));
       }
@@ -132,8 +180,8 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
       success: true,
       sent: results.filter((r) => r.success).length,
       failed: results.filter((r) => !r.success).length,
+      skipped: allSubscribers.length - subscribers.length,
       results,
-      storiesCount: stories.length,
       commitsFound: activity.recentCommits.length,
     });
   } catch (err: any) {
