@@ -438,7 +438,7 @@ export function ArenaIDE({
   const [isToolLooping, setIsToolLooping] = useState(false);
   const [showScrollBtn, setShowScrollBtn] = useState(false);
   const [expandedMessages, setExpandedMessages] = useState<Set<number>>(new Set());
-  const [sidebarWidth, setSidebarWidth] = useState(360);
+  const [sidebarWidth, setSidebarWidth] = useState(420);
   const [queueLength, setQueueLength] = useState(0);
   const pendingTestContextRef = useRef<AITestResults | null>(null);
   const pendingRetryRef = useRef<string | null>(null);
@@ -1720,8 +1720,8 @@ const s: Record<string, React.CSSProperties> = {
   sidebar: {
     display: 'flex',
     flexDirection: 'column',
-    width: 360,
-    minWidth: 240,
+    width: 420,
+    minWidth: 300,
     maxWidth: 640,
     flexShrink: 0,
   },
