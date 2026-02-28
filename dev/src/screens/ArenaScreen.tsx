@@ -120,6 +120,22 @@ export function ArenaScreen() {
     }
   }, [challengeId]);
 
+  // Reset all state when challengeId changes (e.g. "Try Next Challenge")
+  useEffect(() => {
+    setChallenge(null);
+    setAttempt(null);
+    setCode('');
+    setTestResults(null);
+    setSuccessOverlay(null);
+    setSuccessStats(null);
+    setIsExpired(false);
+    isExpiredRef.current = false;
+    setError(null);
+    setIsRunning(false);
+    setLoading(true);
+    navigatingRef.current = false;
+  }, [challengeId]);
+
   // Load challenge + profile on mount (but don't create attempt yet)
   useEffect(() => {
     if (!challengeId) {
@@ -836,6 +852,7 @@ export function ArenaScreen() {
       <div style={{ flex: 1, minHeight: 0, position: 'relative' }}>
         <ArenaErrorBoundary>
           <ArenaIDE
+            key={challengeId}
             challenge={challenge}
             attempt={attempt}
             userCredits={userCredits}
