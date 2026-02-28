@@ -34,13 +34,16 @@ export async function createCompetitiveNudges(
   const solverName = solver?.name || 'Someone';
 
   for (const b of beaten) {
+    const challengeTitle = b.challenge_title || 'a challenge';
+    const solverCostDisplay = (solverCost ?? 0) / 10000;
+    const beatenCostDisplay = (b.best_cost ?? 0) / 10000;
     await db.run(sql`INSERT INTO notifications (id, user_id, type, title, body, metadata)
       VALUES (
         ${crypto.randomUUID()},
         ${b.user_id},
         'competitive_nudge',
         ${`${solverName} beat your solution`},
-        ${`${solverName} solved "${b.challenge_title}" for $${(solverCost / 10000).toFixed(4)}. your best was $${(b.best_cost / 10000).toFixed(4)}.`},
+        ${`${solverName} solved "${challengeTitle}" for $${solverCostDisplay.toFixed(4)}. your best was $${beatenCostDisplay.toFixed(4)}.`},
         ${JSON.stringify({ challengeId, solverUserId: solverId, solverCost, beatenCost: b.best_cost })}
       )`);
   }

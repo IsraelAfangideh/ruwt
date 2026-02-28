@@ -1,7 +1,7 @@
 /**
  * POST /api/streak-nudge
- * Send tiny plain-text streak reminder emails to users with active streaks
- * who haven't solved today's daily challenge.
+ * Send tiny plain-text streak reminder emails + in-app notifications to users
+ * with active streaks who haven't solved today's daily challenge.
  * Secured with CRON_SECRET. Called by GitHub Actions daily at 9 PM UTC.
  */
 import { sql } from 'drizzle-orm';
@@ -61,6 +61,20 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
 
       const result = await sendEmail(env, { to: user.email, subject, html, text });
       results.push({ email: user.email, success: result.success, error: result.error });
+
+      // Create in-app notification (guard against null/undefined streak)
+      const streakCount = user.current_streak ?? 0;
+      if (streakCount > 0) {
+        await db.run(sql`INSERT INTO notifications (id, user_id, type, title, body, metadata)
+          VALUES (
+            ${crypto.randomUUID()},
+            ${user.id},
+            'streak_reminder',
+            ${`Don't lose your ${streakCount}-day streak!`},
+            ${'Solve today\'s challenge to keep your streak alive.'},
+            ${JSON.stringify({ challengeId: daily.challenge_id, streak: streakCount })}
+          )`);
+      }
 
       if (eligibleUsers.indexOf(user) < eligibleUsers.length - 1) {
         await new Promise(r => setTimeout(r, 600));
