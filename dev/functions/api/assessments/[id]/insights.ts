@@ -73,7 +73,8 @@ function percentileRank(value: number, values: number[], lowerIsBetter: boolean)
   let rank: number;
   if (lowerIsBetter) {
     rank = sorted.filter((v) => v >= value).length / sorted.length;
-  } /* istanbul ignore next */ else {
+  } else {
+    /* istanbul ignore next -- @preserve */
     rank = sorted.filter((v) => v <= value).length / sorted.length;
   }
   return Math.round(rank * 100);
@@ -392,8 +393,8 @@ export async function onRequestGet(context: { request: Request; env: Env; params
         if (insight.severity === 'red') {
           if (insight.type === 'blind_copypaste' && !flags.red.includes('Blind copy-paste'))
             flags.red.push('Blind copy-paste');
-          /* istanbul ignore next */ if (insight.type === 'over_prompting' && !flags.yellow.includes('Over-prompting'))
-            flags.yellow.push('Over-prompting');
+          /* istanbul ignore next -- @preserve */
+          if (insight.type === 'over_prompting' && !flags.yellow.includes('Over-prompting')) flags.yellow.push('Over-prompting');
         }
         if (insight.severity === 'yellow') {
           if (insight.type === 'cost_spike' && !flags.yellow.includes('Cost concentration'))

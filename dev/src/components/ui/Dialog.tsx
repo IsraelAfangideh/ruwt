@@ -47,7 +47,7 @@ export function Dialog({ open, onOpenChange, children, 'aria-labelledby': ariaLa
         aria-labelledby={ariaLabelledBy ?? 'dialog-title'}
         aria-label={ariaLabel}
         style={[styles.content, { backgroundColor: c.card, borderColor: c.border }]}
-        onStartShouldSetResponder={/* istanbul ignore next -- RN responder negotiation not triggered in jsdom */ () => true}
+        onStartShouldSetResponder={/* istanbul ignore next -- @preserve RN responder negotiation not triggered in jsdom */ () => true}
       >
         {children}
       </View>

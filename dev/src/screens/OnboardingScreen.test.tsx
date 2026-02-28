@@ -316,4 +316,5 @@ describe('OnboardingScreen', () => {
     // Step 0 has no Back button, so we're verifying step 0 stays rendered
     expect(screen.queryByText('Back')).toBeNull();
   });
+
 });

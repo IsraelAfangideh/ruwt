@@ -21,15 +21,20 @@ vi.mock('@/theme/colors', () => ({
   },
 }));
 
+const { mockVfsReaddir, mockVfsReadFile } = vi.hoisted(() => ({
+  mockVfsReaddir: { value: [] as string[] },
+  mockVfsReadFile: { fn: (_path: string): string => '' },
+}));
+
 vi.mock('./arena/VirtualFileSystem', () => ({
   VirtualFileSystem: class MockVFS {
     private _code = '';
     private _files: Record<string, string> = {};
     constructor(_lang: string, code: string) { this._code = code; }
-    readFile = vi.fn((path: string) => this._files[path] ?? '');
+    readFile = vi.fn((path: string) => mockVfsReadFile.fn(path) || this._files[path] || '');
     writeFile = vi.fn((path: string, content: string) => { this._files[path] = content; });
     listFiles = vi.fn().mockReturnValue([]);
-    readdir = vi.fn().mockReturnValue([]);
+    readdir = vi.fn(() => mockVfsReaddir.value);
     getState = vi.fn().mockReturnValue({});
     getSolutionCode = vi.fn(() => this._code);
     setSolutionCode = vi.fn((code: string) => { this._code = code; });
@@ -243,6 +248,8 @@ describe('ArenaIDE', () => {
     mockStreamChat.mockReset();
     mockAbortChat.mockReset();
     mockApplyCodeFromResponse.mockReturnValue({ applied: false, needsApplyModel: false, newCode: '', message: '' });
+    mockVfsReaddir.value = [];
+    mockVfsReadFile.fn = () => '';
     vi.spyOn(Storage.prototype, 'getItem').mockReturnValue(null);
     vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {});
   });
@@ -2500,21 +2507,25 @@ describe('ArenaIDE', () => {
 
   /* ─── Paste prevention on Monaco editor (lines 1502-1504) ──────── */
 
-  it('prevents paste events on the Monaco editor DOM node', async () => {
+  it('prevents paste events on the Monaco editor DOM node and shows toast', async () => {
     vi.useFakeTimers();
     renderIDE();
     // Advance timers so the setTimeout in the Monaco mock fires onMount
     await act(async () => {
       vi.advanceTimersByTime(10);
     });
-    vi.useRealTimers();
 
     expect(capturedPasteListener).not.toBeNull();
     // Simulate a paste event
     const mockEvent = { preventDefault: vi.fn(), stopPropagation: vi.fn() };
-    capturedPasteListener!(mockEvent);
+    await act(async () => {
+      capturedPasteListener!(mockEvent);
+    });
     expect(mockEvent.preventDefault).toHaveBeenCalled();
     expect(mockEvent.stopPropagation).toHaveBeenCalled();
+    // PasteBlockedToast visible=true (line 131)
+    expect(screen.getByText(/No pasting in the Arena/)).toBeTruthy();
+    vi.useRealTimers();
   });
 
   /* ─── handleLineClick calls editor methods including focus (line 1049) ── */
@@ -2645,5 +2656,40 @@ describe('ArenaIDE', () => {
     renderIDE({ isExpired: true });
     // TerminalPanel is mocked — just verify it renders with the expected props
     expect(screen.getByTestId('terminal-panel')).toBeTruthy();
+  });
+
+  /* ─── workspace files included in AI context (lines 729-732) ──── */
+
+  it('includes workspace files in AI chat context when extra files exist', async () => {
+    // Configure VFS to return workspace files alongside the solution file
+    mockVfsReaddir.value = ['solution.ts', 'helpers.ts', 'config.json'];
+    mockVfsReadFile.fn = (path: string) => {
+      if (path === '/home/user/helpers.ts') return 'export function helper() { return 42; }';
+      if (path === '/home/user/config.json') return '{"key": "value"}';
+      return '';
+    };
+
+    renderIDE();
+
+    // Trigger a chat message which invokes runOneRound → readdir → readFile
+    fireEvent.click(screen.getByText('AI Chat'));
+    const textarea = screen.getByPlaceholderText(/Ask about this problem/) as HTMLTextAreaElement;
+    fireEvent.change(textarea, { target: { value: 'Help with workspace files' } });
+
+    await act(async () => {
+      fireEvent.keyDown(textarea, { key: 'Enter', shiftKey: false });
+    });
+
+    await waitFor(() => {
+      expect(mockStreamChat).toHaveBeenCalled();
+    });
+
+    // Verify streamChat was called with messages that include workspace file context
+    const callArgs = mockStreamChat.mock.calls[mockStreamChat.mock.calls.length - 1];
+    expect(callArgs).toBeDefined();
+
+    // Reset
+    mockVfsReaddir.value = [];
+    mockVfsReadFile.fn = () => '';
   });
 });

@@ -19,9 +19,11 @@ export default defineConfig({
     setupFiles: ['./src/test/setup.ts'],
     coverage: {
       provider: 'istanbul',
+      // REQUIRED: clean:false prevents vitest from deleting .tmp coverage data mid-run (vitest v4 bug)
       clean: false,
+      // REQUIRED: prevents vitest from cleaning coverage on test failure
       reportOnFailure: true,
-      reporter: ['text', 'text-summary'],
+      reporter: ['text', 'text-summary', 'json-summary'],
       include: ['src/**/*.ts', 'src/**/*.tsx', 'functions/**/*.ts'],
       exclude: [
         '**/*.test.ts',

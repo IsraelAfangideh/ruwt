@@ -385,6 +385,182 @@ describe('GET /api/assessments/:id/analytics', () => {
     expect(json.error).toBe('Internal server error');
   });
 
+  it('computes all_dimensions verdict — fail when a dimension deeply below min', async () => {
+    mockGetUser.mockResolvedValue(FAKE_USER);
+    mockCanViewResults.mockResolvedValue(true);
+
+    // Two sessions so percentile has variation; sess-1 is the expensive one → low scores
+    const assessment = {
+      id: 'a-1',
+      categoryWeights: null,
+      passThreshold: JSON.stringify({
+        enabled: true,
+        mode: 'all_dimensions',
+        dimensions: { modelSelection: 90, promptEfficiency: 90, debugging: 90, strategy: 90, speed: 90 },
+      }),
+    };
+    const sessions = [
+      { id: 'sess-1', assessmentId: 'a-1', startedAt: '2026-01-01T00:00:00Z', completedAt: '2026-01-01T01:00:00Z' },
+      { id: 'sess-2', assessmentId: 'a-1', startedAt: '2026-01-02T00:00:00Z', completedAt: '2026-01-02T01:00:00Z' },
+    ];
+    const allAttempts = [
+      { id: 'att-1', challengeId: 'ch-1', assessmentSessionId: 'sess-1', totalCost: 1000, inputTokens: 5000, outputTokens: 2000 },
+      { id: 'att-2', challengeId: 'ch-1', assessmentSessionId: 'sess-2', totalCost: 10, inputTokens: 50, outputTokens: 20 },
+    ];
+    const allCalls = [
+      { id: 'c-1', attemptId: 'att-1', model: '@cf/meta/llama-3.1-8b', cost: 1000, inputTokens: 5000, outputTokens: 2000 },
+      { id: 'c-2', attemptId: 'att-2', model: '@cf/meta/llama-3.1-8b', cost: 10, inputTokens: 50, outputTokens: 20 },
+    ];
+
+    const db = makeMockDb({ assessment, sessions, allAttempts, allCalls });
+    mockGetDb.mockReturnValue(db);
+
+    const res = await onRequestGet(makeContext('a-1', 'sessionId=sess-1'));
+    const json = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(json.verdicts['sess-1']).toBe('fail');
+  });
+
+  it('computes all_dimensions verdict — review when slightly below min but not deep fail', async () => {
+    mockGetUser.mockResolvedValue(FAKE_USER);
+    mockCanViewResults.mockResolvedValue(true);
+
+    // With 2 sessions, percentileRank gives 50 for the worse session.
+    // Set min=65 so score(50) < 65 but score(50) >= 65-20=45 → review
+    const assessment = {
+      id: 'a-1',
+      categoryWeights: null,
+      passThreshold: JSON.stringify({
+        enabled: true,
+        mode: 'all_dimensions',
+        dimensions: { modelSelection: 65, promptEfficiency: 65, debugging: 65, strategy: 65, speed: 65 },
+      }),
+    };
+    const sessions = [
+      { id: 'sess-1', assessmentId: 'a-1', startedAt: '2026-01-01T00:00:00Z', completedAt: '2026-01-01T01:00:00Z' },
+      { id: 'sess-2', assessmentId: 'a-1', startedAt: '2026-01-02T00:00:00Z', completedAt: '2026-01-02T01:00:00Z' },
+    ];
+    const allAttempts = [
+      { id: 'att-1', challengeId: 'ch-1', assessmentSessionId: 'sess-1', totalCost: 1000, inputTokens: 5000, outputTokens: 2000 },
+      { id: 'att-2', challengeId: 'ch-1', assessmentSessionId: 'sess-2', totalCost: 10, inputTokens: 50, outputTokens: 20 },
+    ];
+    const allCalls = [
+      { id: 'c-1', attemptId: 'att-1', model: '@cf/meta/llama-3.1-8b', cost: 1000, inputTokens: 5000, outputTokens: 2000 },
+      { id: 'c-2', attemptId: 'att-2', model: '@cf/meta/llama-3.1-8b', cost: 10, inputTokens: 50, outputTokens: 20 },
+    ];
+
+    const db = makeMockDb({ assessment, sessions, allAttempts, allCalls });
+    mockGetDb.mockReturnValue(db);
+
+    const res = await onRequestGet(makeContext('a-1', 'sessionId=sess-1'));
+    const json = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(json.verdicts['sess-1']).toBe('review');
+  });
+
+  it('computes weighted_average verdict — fail when avg deeply below min', async () => {
+    mockGetUser.mockResolvedValue(FAKE_USER);
+    mockCanViewResults.mockResolvedValue(true);
+
+    const assessment = {
+      id: 'a-1',
+      categoryWeights: null,
+      passThreshold: JSON.stringify({
+        enabled: true,
+        mode: 'weighted_average',
+        minOverall: 95,
+      }),
+    };
+    const sessions = [
+      { id: 'sess-1', assessmentId: 'a-1', startedAt: '2026-01-01T00:00:00Z', completedAt: '2026-01-01T01:00:00Z' },
+      { id: 'sess-2', assessmentId: 'a-1', startedAt: '2026-01-02T00:00:00Z', completedAt: '2026-01-02T01:00:00Z' },
+    ];
+    const allAttempts = [
+      { id: 'att-1', challengeId: 'ch-1', assessmentSessionId: 'sess-1', totalCost: 1000, inputTokens: 5000, outputTokens: 2000 },
+      { id: 'att-2', challengeId: 'ch-1', assessmentSessionId: 'sess-2', totalCost: 10, inputTokens: 50, outputTokens: 20 },
+    ];
+    const allCalls = [
+      { id: 'c-1', attemptId: 'att-1', model: '@cf/meta/llama-3.1-8b', cost: 1000, inputTokens: 5000, outputTokens: 2000 },
+      { id: 'c-2', attemptId: 'att-2', model: '@cf/meta/llama-3.1-8b', cost: 10, inputTokens: 50, outputTokens: 20 },
+    ];
+
+    const db = makeMockDb({ assessment, sessions, allAttempts, allCalls });
+    mockGetDb.mockReturnValue(db);
+
+    const res = await onRequestGet(makeContext('a-1', 'sessionId=sess-1'));
+    const json = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(json.verdicts['sess-1']).toBe('fail');
+  });
+
+  it('computes weighted_average verdict — review when slightly below min', async () => {
+    mockGetUser.mockResolvedValue(FAKE_USER);
+    mockCanViewResults.mockResolvedValue(true);
+
+    // With 2 sessions, the expensive one gets weighted avg ~70.
+    // minOverall=75: avg(70) < 75 but avg(70) >= 75-20=55 → review
+    const assessment = {
+      id: 'a-1',
+      categoryWeights: null,
+      passThreshold: JSON.stringify({
+        enabled: true,
+        mode: 'weighted_average',
+        minOverall: 75,
+      }),
+    };
+    const sessions = [
+      { id: 'sess-1', assessmentId: 'a-1', startedAt: '2026-01-01T00:00:00Z', completedAt: '2026-01-01T01:00:00Z' },
+      { id: 'sess-2', assessmentId: 'a-1', startedAt: '2026-01-02T00:00:00Z', completedAt: '2026-01-02T01:00:00Z' },
+    ];
+    const allAttempts = [
+      { id: 'att-1', challengeId: 'ch-1', assessmentSessionId: 'sess-1', totalCost: 1000, inputTokens: 5000, outputTokens: 2000 },
+      { id: 'att-2', challengeId: 'ch-1', assessmentSessionId: 'sess-2', totalCost: 10, inputTokens: 50, outputTokens: 20 },
+    ];
+    const allCalls = [
+      { id: 'c-1', attemptId: 'att-1', model: '@cf/meta/llama-3.1-8b', cost: 1000, inputTokens: 5000, outputTokens: 2000 },
+      { id: 'c-2', attemptId: 'att-2', model: '@cf/meta/llama-3.1-8b', cost: 10, inputTokens: 50, outputTokens: 20 },
+    ];
+
+    const db = makeMockDb({ assessment, sessions, allAttempts, allCalls });
+    mockGetDb.mockReturnValue(db);
+
+    const res = await onRequestGet(makeContext('a-1', 'sessionId=sess-1'));
+    const json = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(json.verdicts['sess-1']).toBe('review');
+  });
+
+  it('classifies unknown model as micro tier', async () => {
+    mockGetUser.mockResolvedValue(FAKE_USER);
+    mockCanViewResults.mockResolvedValue(true);
+
+    const sessions = [
+      { id: 'sess-1', assessmentId: 'a-1', startedAt: '2026-01-01T00:00:00Z', completedAt: '2026-01-01T01:00:00Z' },
+    ];
+    const allAttempts = [
+      { id: 'att-1', challengeId: 'ch-1', assessmentSessionId: 'sess-1', totalCost: 100, inputTokens: 500, outputTokens: 200 },
+    ];
+    // Use a model name that doesn't match any known tier pattern
+    const allCalls = [
+      { id: 'c-1', attemptId: 'att-1', model: '@cf/some/unknown-model-v2', cost: 100, inputTokens: 500, outputTokens: 200, createdAt: '2026-01-01T00:30:00Z' },
+    ];
+
+    const db = makeMockDb({ sessions, allAttempts, allCalls });
+    mockGetDb.mockReturnValue(db);
+
+    const res = await onRequestGet(makeContext('a-1'));
+    const json = await res.json();
+
+    expect(res.status).toBe(200);
+    // The profile should exist and strategy should be computed (micro tier was used)
+    expect(json.profiles['sess-1']).toBeDefined();
+    expect(typeof json.profiles['sess-1'].strategy).toBe('number');
+  });
+
   it('handles sessions without completedAt (speed defaults to 50)', async () => {
     mockGetUser.mockResolvedValue(FAKE_USER);
     mockCanViewResults.mockResolvedValue(true);

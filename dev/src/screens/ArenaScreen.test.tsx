@@ -960,8 +960,10 @@ describe('ArenaScreen', () => {
 
     render(<ArenaScreen />);
     await waitFor(() => expect(screen.getByText('FizzBuzz Budget')).toBeTruthy());
-    // Past attempts are fetched but shown in ArenaIDE (which is mocked)
-    expect(globalThis.fetch).toHaveBeenCalledWith(expect.stringContaining('/api/attempts'));
+    // Past attempts are fetched in a separate useEffect after challenge loads
+    await waitFor(() => {
+      expect(globalThis.fetch).toHaveBeenCalledWith(expect.stringContaining('/api/attempts'));
+    });
   });
 
   it('shows toast on past attempts fetch error', async () => {

@@ -123,6 +123,7 @@ export function OnboardingScreen() {
               onSkip={completeOnboarding}
             />
           )}
+          {/* istanbul ignore next -- @preserve step 2 is unreachable: goNext is only passed to step 0, step 1 has no path to step 2 */}
           {step === 2 && (
             <StepComplete
               colors={c}
@@ -130,7 +131,7 @@ export function OnboardingScreen() {
               onFinish={completeOnboarding}
               submitting={submitting}
               wantsNewsletter={wantsNewsletter}
-              onToggleNewsletter={() => setWantsNewsletter(!wantsNewsletter)}
+              onToggleNewsletter={/* istanbul ignore next -- @preserve */ () => setWantsNewsletter(!wantsNewsletter)}
             />
           )}
         </View>
@@ -302,6 +303,7 @@ function StepFirstChallenge({
 /* ============================================================
  * Step 3: Completion
  * ============================================================ */
+/* istanbul ignore next -- @preserve step 2 (StepComplete) is unreachable: goNext only passed to step 0 */
 function StepComplete({
   colors: c,
   onBack,

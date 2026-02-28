@@ -698,6 +698,69 @@ describe('ChallengesScreen', () => {
     });
   });
 
+  it('sorts LLM Struggle challenges by solver count when multiple exist (line 247)', async () => {
+    // Need 2+ hard/impossible unsolved challenges + at least 1 solved to enable the section
+    const extendedChallenges = [
+      ...mockChallenges,
+      { id: 'c5', title: 'Hard Unsolved', description: 'Hard one', difficulty: 'hard', category: 'prompt_efficiency', tier: 'core', sortOrder: 4, language: 'javascript', userStatus: null, skillTested: null, stats: { solvers: 1 }, maxCost: 500 },
+    ];
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve(extendedChallenges),
+    }));
+    render(<ChallengesScreen />);
+    await waitFor(() => {
+      // "Where LLMs Struggle" section should appear with multiple challenges sorted
+      expect(screen.getByText('Where LLMs Struggle')).toBeTruthy();
+    });
+    // Both hard/impossible unsolved challenges should appear (may appear in multiple sections)
+    expect(screen.getAllByText('Impossible Maze').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('Hard Unsolved').length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('clicking total stat sets statusFilter to all (line 321)', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve(mockChallenges),
+    }));
+    const { container } = render(<ChallengesScreen />);
+    await waitFor(() => {
+      expect(container.querySelectorAll('[data-testid="challenge-card"]').length).toBe(5);
+    });
+    // First filter to something specific
+    fireEvent.click(screen.getAllByText('solved')[0]);
+    await waitFor(() => {
+      expect(container.querySelectorAll('[data-testid="challenge-card"]').length).toBe(1);
+    });
+    // Now click the "total" stat to reset to 'all'
+    fireEvent.click(screen.getAllByText('total')[0]);
+    await waitFor(() => {
+      expect(container.querySelectorAll('[data-testid="challenge-card"]').length).toBe(5);
+    });
+  });
+
+  it('closes sort menu when sort backdrop is clicked (line 600)', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve(mockChallenges),
+    }));
+    render(<ChallengesScreen />);
+    await waitFor(() => {
+      expect(screen.getByText(/Sort: Default/)).toBeTruthy();
+    });
+    // Open sort menu
+    fireEvent.click(screen.getByText(/Sort: Default/));
+    await waitFor(() => {
+      expect(screen.getByText('Difficulty')).toBeTruthy();
+    });
+    // Close by clicking the sort backdrop (not the sort button)
+    const backdrop = screen.getByLabelText('Close sort menu');
+    fireEvent.click(backdrop);
+    await waitFor(() => {
+      expect(screen.queryByText('Most Solved')).toBeNull();
+    });
+  });
+
   it('renders flat list when sort is not default', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
       ok: true,
