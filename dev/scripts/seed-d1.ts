@@ -247,7 +247,7 @@ Example:
 Input: "name,age,city\\nAlice,30,\\"New York\\"\\nBob,25,London"
 Output: [{"name":"Alice","age":"30","city":"New York"},{"name":"Bob","age":"25","city":"London"}]
 
-Token limit is tight. Be concise with your AI prompts — describe the requirements clearly in as few tokens as possible.`,
+Efficiency tip: describe the requirements clearly in as few tokens as possible — your cost is tracked on the leaderboard.`,
     difficulty: 'medium',
     starterCode: `function parseCSV(csv) {
   // Your code here
