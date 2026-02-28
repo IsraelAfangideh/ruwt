@@ -56,8 +56,8 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
       const subject = `day ${user.current_streak}. don't break the streak.`;
       const line = `${firstName ? firstName + ' — ' : ''}day ${user.current_streak}. today's challenge: "${daily.title}" (${daily.difficulty}).`;
       const url = `https://ruwt.dev/arena/${daily.challenge_id}`;
-      const text = `${line}\n\n${url}\n\n---\nruwt.dev · unsubscribe: https://ruwt.dev/settings`;
-      const html = `<div dir="ltr"><p>${escapeHtml(line)}</p><p>${url}</p><p><font color="#b0aaa0" size="1"><a href="https://ruwt.dev">ruwt.dev</a> · <a href="https://ruwt.dev/settings">unsubscribe</a></font></p></div>`;
+      const text = `${line}\n\n${url}\n\n---\nreply stop to unsubscribe`;
+      const html = `<div dir="ltr"><p>${escapeHtml(line)}</p><p>${url}</p><p><font color="#b0aaa0" size="1">reply stop to unsubscribe</font></p></div>`;
 
       const result = await sendEmail(env, { to: user.email, subject, html, text });
       results.push({ email: user.email, success: result.success, error: result.error });

@@ -45,7 +45,7 @@ export function buildWeeklyHtml(data: WeeklyDigestData): string {
 ${body}
 ${whatsNew}${stories}
 ${linkedin}
-<p><font color="#b0aaa0" size="1"><a href="https://ruwt.dev">ruwt.dev</a> · <a href="https://ruwt.dev/settings">unsubscribe</a></font></p>
+<p><font color="#b0aaa0" size="1">reply stop to unsubscribe</font></p>
 </div>`;
 }
 
@@ -67,7 +67,7 @@ export function buildWeeklyText(data: WeeklyDigestData): string {
     ? `\n\n---\nlinkedin draft (copy & paste) —\n\n${data.linkedinDraft}`
     : '';
 
-  const footer = `\n\n---\nruwt.dev · unsubscribe: https://ruwt.dev/settings`;
+  const footer = `\n\n---\nreply stop to unsubscribe`;
 
   return header + body + whatsNew + stories + linkedin + footer;
 }

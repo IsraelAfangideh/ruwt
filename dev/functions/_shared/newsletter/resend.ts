@@ -32,7 +32,7 @@ export async function sendEmail(
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      from: params.from ?? 'Israel from ruwt <israel@ruwt.dev>',
+      from: params.from ?? 'Israel Afangideh <israel@ruwt.dev>',
       to: [params.to],
       subject: params.subject,
       html: params.html,
