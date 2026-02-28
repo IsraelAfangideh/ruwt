@@ -1134,8 +1134,7 @@ export function ArenaScreen() {
                           return aDist - bDist;
                         });
                         if (sameCat.length > 0) {
-                          setSuccessOverlay(null);
-                          (navigation.navigate as any)('Arena', { challengeId: sameCat[0].id });
+                          window.location.href = `/arena/${sameCat[0].id}`;
                           return;
                         }
                       }
