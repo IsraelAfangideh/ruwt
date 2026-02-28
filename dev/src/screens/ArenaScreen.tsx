@@ -88,6 +88,7 @@ export function ArenaScreen() {
   const [successOverlay, setSuccessOverlay] = useState<{ attemptId: string; passed: boolean } | null>(null);
   const [successStats, setSuccessStats] = useState<{ rank: number; total: number; topCost: number | null } | null>(null);
   const [copiedShareLink, setCopiedShareLink] = useState(false);
+  const [nextChallengeId, setNextChallengeId] = useState<string | null>(null);
   const navigatingRef = useRef(false);
   const isMobile = useIsMobile();
   const { showToast } = useToast();
@@ -133,6 +134,7 @@ export function ArenaScreen() {
     setError(null);
     setIsRunning(false);
     setLoading(true);
+    setNextChallengeId(null);
     navigatingRef.current = false;
   }, [challengeId]);
 
@@ -309,12 +311,30 @@ export function ArenaScreen() {
             });
           }
         } catch { /* leaderboard fetch failed — show overlay without stats */ }
+        // Pre-compute next challenge for the "Try Next Challenge" link
+        try {
+          const chRes = await fetch('/api/challenges');
+          if (chRes.ok) {
+            const allChallenges = await chRes.json();
+            const sameCat = allChallenges.filter((ch: any) => ch.category === challenge?.category && ch.id !== challengeId);
+            const difficultyOrder = ['sprint', 'easy', 'medium', 'hard', 'impossible'];
+            const currentDiffIdx = difficultyOrder.indexOf(challenge?.difficulty || '');
+            sameCat.sort((a: any, b: any) => {
+              const aIdx = difficultyOrder.indexOf(a.difficulty || '');
+              const bIdx = difficultyOrder.indexOf(b.difficulty || '');
+              const aDist = Math.abs(aIdx - currentDiffIdx) + (aIdx >= currentDiffIdx ? 0 : 5);
+              const bDist = Math.abs(bIdx - currentDiffIdx) + (bIdx >= currentDiffIdx ? 0 : 5);
+              return aDist - bDist;
+            });
+            if (sameCat.length > 0) setNextChallengeId(sameCat[0].id);
+          }
+        } catch { /* next challenge fetch failed — button will link to challenges list */ }
       }
       // Refresh past attempts list
       fetchPastAttempts();
       return result;
     },
-    [attempt?.id, fetchPastAttempts]
+    [attempt?.id, fetchPastAttempts, challengeId, challenge?.category, challenge?.difficulty]
   );
 
   // Execute code via Piston API (public, no server endpoint needed)
@@ -1102,8 +1122,10 @@ export function ArenaScreen() {
                 >
                   See How #1 Solved This
                 </button>
-                <button
+                <a
+                  href={nextChallengeId ? `/arena/${nextChallengeId}` : '/challenges'}
                   style={{
+                    display: 'block',
                     background: 'transparent',
                     border: `1px solid ${arena.border}`,
                     borderRadius: 8,
@@ -1113,42 +1135,13 @@ export function ArenaScreen() {
                     fontWeight: 500,
                     cursor: 'pointer',
                     width: '100%',
-                  }}
-                  onClick={async () => {
-                    if (navigatingRef.current) return;
-                    navigatingRef.current = true;
-                    try {
-                      const res = await fetch(`/api/challenges`);
-                      if (res.ok) {
-                        const allChallenges = await res.json();
-                        const sameCat = allChallenges.filter((ch: any) => ch.category === challenge?.category && ch.id !== challengeId);
-                        // Prefer difficulty progression: sprint → easy → medium → hard
-                        const difficultyOrder = ['sprint', 'easy', 'medium', 'hard', 'impossible'];
-                        const currentDiffIdx = difficultyOrder.indexOf(challenge?.difficulty || '');
-                        sameCat.sort((a: any, b: any) => {
-                          const aIdx = difficultyOrder.indexOf(a.difficulty || '');
-                          const bIdx = difficultyOrder.indexOf(b.difficulty || '');
-                          // Prefer same or next difficulty level
-                          const aDist = Math.abs(aIdx - currentDiffIdx) + (aIdx >= currentDiffIdx ? 0 : 5);
-                          const bDist = Math.abs(bIdx - currentDiffIdx) + (bIdx >= currentDiffIdx ? 0 : 5);
-                          return aDist - bDist;
-                        });
-                        if (sameCat.length > 0) {
-                          window.location.href = `/arena/${sameCat[0].id}`;
-                          return;
-                        }
-                      }
-                    } catch (err) {
-                      console.error('Failed to load next challenge:', err);
-                      showToast('Could not load next challenge', 'error');
-                    }
-                    navigatingRef.current = false;
-                    setSuccessOverlay(null);
-                    navigation.navigate('Challenges' as never);
+                    textAlign: 'center',
+                    textDecoration: 'none',
+                    boxSizing: 'border-box',
                   }}
                 >
                   Try Next Challenge
-                </button>
+                </a>
                 <button
                   style={{
                     background: 'transparent',
