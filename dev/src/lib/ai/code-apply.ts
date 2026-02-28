@@ -22,6 +22,7 @@ export interface CodeApplyResult {
   method: 'search_replace' | 'unified_diff' | 'code_block' | 'apply_model' | 'none';
   message: string;
   needsApplyModel: boolean;
+  failedCount: number;
 }
 
 export interface FileEdit {
@@ -85,28 +86,30 @@ export function applyCodeFromResponse(
     method: 'none',
     message: '',
     needsApplyModel: false,
+    failedCount: 0,
   };
 
   if (mode === 'ask') return noChange;
 
   // 1. Try SEARCH/REPLACE blocks (most precise, character-perfect)
+  //    Apply only the first block — subsequent blocks are applied in later agent loop
+  //    iterations after the model sees the updated file state. This prevents conflicts
+  //    where blocks 2–N reference code that block 1 already changed.
   if (hasEditBlocks(responseText)) {
     const blocks = parseEditBlocks(responseText);
     if (blocks.length > 0) {
-      const result = applyEditBlocks(currentCode, blocks);
+      const result = applyEditBlocks(currentCode, blocks.slice(0, 1));
       if (result.applied > 0) {
-        const msg = result.failed > 0
-          ? `Applied ${result.applied} edit(s), ${result.failed} failed`
-          : `Applied ${result.applied} edit(s)`;
         return {
           applied: true,
           newCode: result.newCode,
           method: 'search_replace',
-          message: msg,
+          message: `Applied 1 edit${blocks.length > 1 ? ` (${blocks.length - 1} deferred to next round)` : ''}`,
           needsApplyModel: false,
+          failedCount: result.failed,
         };
       }
-      // All blocks failed — fall through to other strategies
+      // Block failed — fall through to other strategies
     }
   }
 
@@ -115,17 +118,15 @@ export function applyCodeFromResponse(
   if (hasBareConflictMarkers(responseText)) {
     const bareBlocks = parseBareConflictBlocks(responseText);
     if (bareBlocks.length > 0) {
-      const result = applyEditBlocks(currentCode, bareBlocks);
+      const result = applyEditBlocks(currentCode, bareBlocks.slice(0, 1));
       if (result.applied > 0) {
-        const msg = result.failed > 0
-          ? `Applied ${result.applied} edit(s), ${result.failed} failed`
-          : `Applied ${result.applied} edit(s)`;
         return {
           applied: true,
           newCode: result.newCode,
           method: 'search_replace',
-          message: msg,
+          message: `Applied 1 edit${bareBlocks.length > 1 ? ` (${bareBlocks.length - 1} deferred to next round)` : ''}`,
           needsApplyModel: false,
+          failedCount: result.failed,
         };
       }
     }
@@ -143,6 +144,7 @@ export function applyCodeFromResponse(
           method: 'unified_diff',
           message: `Applied ${result.applied} diff hunk(s)`,
           needsApplyModel: false,
+          failedCount: result.failed,
         };
       }
     }
@@ -165,6 +167,7 @@ export function applyCodeFromResponse(
         method: 'code_block',
         message: 'Code applied',
         needsApplyModel: false,
+        failedCount: 0,
       };
     }
   }
@@ -183,6 +186,7 @@ export function applyCodeFromResponse(
       method: 'none',
       message: '',
       needsApplyModel: true,
+      failedCount: 0,
     };
   }
 

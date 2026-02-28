@@ -70,6 +70,7 @@ export class RuwtTUI {
   private isStreaming = false;
   private mode: AIMode = 'agent';
   private lastTestResults: TestResults | null = null;
+  private lastApplyFailedCount = 0;
   private static readonly MAX_HISTORY = 50;
   private history: Array<{ role: 'user' | 'assistant'; content: string }> = [];
   private messageQueue: string[] = [];
@@ -362,6 +363,7 @@ export class RuwtTUI {
 
     const oldCode = this.fs.getSolutionCode();
     const result = sharedApplyCode(remaining || responseText, oldCode, this.language, this.mode);
+    this.lastApplyFailedCount = result.failedCount;
 
     // Code block extracted directly (free, instant)
     if (result.applied) {
@@ -515,7 +517,11 @@ export class RuwtTUI {
           results: (testResult.results || []) as TestResults['results'],
         };
 
-        const resultMsg = formatTestResultsForMessage(this.lastTestResults);
+        const failNote = this.lastApplyFailedCount > 0
+          ? `\n[Note: ${this.lastApplyFailedCount} edit block(s) failed to apply — SEARCH text not found in current code. Re-read the current file above before writing SEARCH blocks.]`
+          : '';
+        this.lastApplyFailedCount = 0;
+        const resultMsg = formatTestResultsForMessage(this.lastTestResults) + failNote;
         this.term.write(`\x1b[90m${resultMsg.replace(/\n/g, '\r\n')}\x1b[0m\r\n`);
 
         // If all tests pass, stop looping

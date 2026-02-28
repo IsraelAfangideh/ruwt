@@ -320,7 +320,7 @@ function normalizeWhitespace(code: string): string {
 function findSimilarLines(
   codeLines: string[],
   searchLines: string[],
-  threshold = 0.6
+  threshold = 0.85
 ): number {
   if (searchLines.length === 0) return -1;
   const stripped = searchLines.map(l => l.replace(/\s+/g, ''));

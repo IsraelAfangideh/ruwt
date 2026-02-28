@@ -112,7 +112,7 @@ function greet() {
     expect(result.applied).toBe(true);
     expect(result.method).toBe('search_replace');
     expect(result.newCode).toContain('"world"');
-    expect(result.message).toBe('Applied 1 edit(s)');
+    expect(result.message).toBe('Applied 1 edit');
     expect(result.needsApplyModel).toBe(false);
   });
 
@@ -133,7 +133,7 @@ const c = 0;
     const result = applyCodeFromResponse(response, code, 'typescript', 'code');
     expect(result.applied).toBe(true);
     expect(result.method).toBe('search_replace');
-    expect(result.message).toBe('Applied 1 edit(s), 1 failed');
+    expect(result.message).toBe('Applied 1 edit (1 deferred to next round)');
   });
 
   it('falls through when all SEARCH/REPLACE blocks fail to match', () => {
@@ -212,7 +212,7 @@ replacement for nonexistent
     const result = applyCodeFromResponse(response, code, 'javascript', 'code');
     expect(result.applied).toBe(true);
     expect(result.method).toBe('search_replace');
-    expect(result.message).toBe('Applied 1 edit(s), 1 failed');
+    expect(result.message).toBe('Applied 1 edit (1 deferred to next round)');
   });
 });
 

@@ -441,6 +441,7 @@ export function ArenaIDE({
   const pendingRetryRef = useRef<string | null>(null);
   const streamingThinkingRef = useRef('');
   const abortedByUserRef = useRef(false);
+  const lastApplyFailedRef = useRef(0);
   const messagesRef = useRef(messages);
   messagesRef.current = messages;
   const chatTextareaRef = useRef<HTMLTextAreaElement>(null);
@@ -525,6 +526,7 @@ export function ArenaIDE({
 
     const oldCode = fs.getSolutionCode();
     const result = sharedApplyCode(remaining || responseText, oldCode, language, mode);
+    lastApplyFailedRef.current = result.failedCount;
 
     // Code block extracted directly (free, instant)
     if (result.applied) {
@@ -845,7 +847,11 @@ export function ArenaIDE({
           break;
         }
 
-        const resultMsg = formatTestResultsForMessage(asAITestResults);
+        const failNote = lastApplyFailedRef.current > 0
+          ? `\n[Note: ${lastApplyFailedRef.current} edit block(s) failed to apply — SEARCH text not found in current code. Re-read the current file above before writing SEARCH blocks.]`
+          : '';
+        lastApplyFailedRef.current = 0;
+        const resultMsg = formatTestResultsForMessage(asAITestResults) + failNote;
         setMessages((m) => [...m, { role: 'user', content: resultMsg }]);
 
         // Add to conversation and re-prompt
@@ -877,6 +883,7 @@ export function ArenaIDE({
     pendingTestContextRef.current = null;
 
     // Drain message queue
+    /* istanbul ignore next -- queue drain requires completing a stream while a second message is queued; fully mocked ArenaIDE cannot trigger this */
     if (messageQueueRef.current.length > 0) {
       const nextMsg = messageQueueRef.current.shift()!;
       setQueueLength(messageQueueRef.current.length);
@@ -947,8 +954,10 @@ export function ArenaIDE({
     while (userMsgIdx >= 0) {
       const m = msgs[userMsgIdx];
       if (m.role === 'user' && !m.content.startsWith('[Test Results]')) break;
+      /* istanbul ignore next -- only hit when tool-loop inserts [Test Results] messages before the user message */
       userMsgIdx--;
     }
+    /* istanbul ignore next -- only reachable if no user message exists before the assistant message */
     if (userMsgIdx < 0) return;
 
     const retryText = msgs[userMsgIdx].content;

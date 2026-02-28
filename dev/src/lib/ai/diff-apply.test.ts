@@ -259,28 +259,43 @@ describe('applyEditBlocks — space-stripped matching (strategy 3)', () => {
 // ---------------------------------------------------------------------------
 
 describe('applyEditBlocks — similarity matching (strategy 4)', () => {
-  it('matches code with ~60% line similarity after stripping', () => {
-    // Original has 5 lines, search has 5 lines, 3 match exactly, 2 differ = 60%
+  it('matches code with ~90% line similarity after stripping', () => {
+    // 10 lines, 9 match exactly, 1 differs = 90% similarity (above 85% threshold)
     const code = [
       'function greet(name) {',
-      '  const msg = "hello";',
-      '  console.log(msg);',
-      '  return msg + name;',
+      '  const a = 1;',
+      '  const b = 2;',
+      '  const c = 3;',
+      '  const d = 4;',
+      '  const e = 5;',
+      '  const f = 6;',
+      '  const g = 7;',
+      '  const msg = "hello";',  // code has "hello"
       '}',
     ].join('\n');
     const blocks = [{
       search: [
         'function greet(name) {',
-        '  const msg = "hello";',
-        '  console.log(msg);',
-        '  return msg;',        // different
-        '};',                    // different
+        '  const a = 1;',
+        '  const b = 2;',
+        '  const c = 3;',
+        '  const d = 4;',
+        '  const e = 5;',
+        '  const f = 6;',
+        '  const g = 7;',
+        '  const msg = "hi";',   // search has "hi" — only this line differs
+        '}',
       ].join('\n'),
       replace: [
         'function greet(name) {',
+        '  const a = 1;',
+        '  const b = 2;',
+        '  const c = 3;',
+        '  const d = 4;',
+        '  const e = 5;',
+        '  const f = 6;',
+        '  const g = 7;',
         '  const msg = "hi";',
-        '  console.log(msg);',
-        '  return msg + name;',
         '}',
       ].join('\n'),
     }];
@@ -289,7 +304,7 @@ describe('applyEditBlocks — similarity matching (strategy 4)', () => {
     expect(result.newCode).toContain('"hi"');
   });
 
-  it('fails when similarity is below 60% threshold', () => {
+  it('fails when similarity is below 85% threshold', () => {
     const code = "line1\nline2\nline3\nline4\nline5";
     const blocks = [{
       search: "totally\ndifferent\ncode\nhere\nnow",
