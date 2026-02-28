@@ -17,7 +17,7 @@ export const colors = {
     borderStrong: 'rgba(26, 24, 22, 0.15)',
     error: '#b06060',
     errorBg: 'rgba(176, 96, 96, 0.1)',
-    success: '#5a8a5a',
+    success: '#407040',
     successBg: 'rgba(90, 138, 90, 0.1)',
     accentBg: 'rgba(154, 123, 60, 0.1)',
     primary: '#1a1816',

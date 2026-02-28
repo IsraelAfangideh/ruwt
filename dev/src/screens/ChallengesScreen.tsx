@@ -90,7 +90,7 @@ export function ChallengesScreen() {
   const supabase = createClient();
   const c = useColors();
   const { isDark } = useTheme();
-  const activePillText = isDark ? '#0f0e0d' : '#0d1117';
+  const activePillText = isDark ? '#0f0e0d' : '#ffffff';
   const { showToast } = useToast();
   const isMobile = useIsMobile();
 
@@ -745,5 +745,5 @@ const styles = StyleSheet.create({
     marginTop: spacing.lg,
     marginBottom: spacing.xl,
   },
-  backToTopText: { color: '#0d1117', fontSize: fontSizes.sm, fontWeight: '600', fontFamily: fontFamily.body },
+  backToTopText: { color: '#ffffff', fontSize: fontSizes.sm, fontWeight: '600', fontFamily: fontFamily.body },
 });
