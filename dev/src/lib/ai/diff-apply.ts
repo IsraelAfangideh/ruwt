@@ -38,10 +38,10 @@ function isReplaceMarker(line: string): boolean {
   return /^>{2,}\s*REPLACE\b/i.test(line.trim());
 }
 
-/** Matches separator lines: =======, ===, --------, etc. */
+/** Matches separator lines: =======, ===, --------, or "becomes" (some models use this). */
 function isSeparator(line: string): boolean {
   const t = line.trim();
-  return /^={3,}\s*$/.test(t) || /^-{5,}\s*$/.test(t);
+  return /^={3,}\s*$/.test(t) || /^-{5,}\s*$/.test(t) || /^becomes\s*$/i.test(t);
 }
 
 /**
@@ -61,6 +61,8 @@ function isLikelyProse(line: string): boolean {
   if (/^[-*]\s+[A-Z]/.test(t)) return true;
   // Markdown bold/emphasis openers: **Fix**, *Note*
   if (/^\*{1,2}[A-Z]/.test(t)) return true;
+  // Diff transition keywords some models output: "becomes", "changes to", "now looks like"
+  if (/^(becomes|changes\s+to|now\s+looks?\s+like)\s*$/i.test(t)) return true;
   // Sentence-like: starts with capital + lowercase, no code punctuation.
   // Exclude code patterns like Object.keys(), Array.from(), Class.method().
   // Require 3+ words to distinguish prose from identifiers.

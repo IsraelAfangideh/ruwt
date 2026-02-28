@@ -1517,6 +1517,13 @@ export function ArenaIDE({
                   folding: isMobile ? false : true,
                   glyphMargin: isMobile ? false : true,
                   lineDecorationsWidth: isMobile ? 0 : 10,
+                  // Disable aggressive autocomplete — it mangles .catch(), async patterns,
+                  // causing SyntaxErrors that confuse users writing Promise/async code.
+                  quickSuggestions: false,
+                  suggestOnTriggerCharacters: false,
+                  acceptSuggestionOnEnter: 'off' as const,
+                  tabCompletion: 'off' as const,
+                  parameterHints: { enabled: false },
                 }}
               />
             </Suspense>

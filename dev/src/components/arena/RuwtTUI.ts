@@ -469,7 +469,13 @@ export class RuwtTUI {
           },
           onError: (error: string) => {
             this.isStreaming = false;
-            this.term.write(`\r\n\x1b[31mError: ${error}\x1b[0m`);
+            // Detect context window / token limit errors and give actionable guidance
+            const isContextError = /413|context.*(window|limit)|token.*(limit|exceed)|exceed.*(token|context)/i.test(error);
+            if (isContextError) {
+              this.term.write(`\r\n\x1b[33mContext window full \u2014 type \x1b[1m/clear\x1b[0m\x1b[33m to reset, or switch to a higher-tier model.\x1b[0m`);
+            } else {
+              this.term.write(`\r\n\x1b[31mError: ${error}\x1b[0m`);
+            }
             resolve(null);
           },
           onConstraint: (violation: string, message: string) => {
