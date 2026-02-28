@@ -163,7 +163,7 @@ export function welcomeEmail(params: WelcomeParams): EmailTemplate {
               <tr>
                 <td style="padding: 20px 24px;">
                   <p style="margin: 0 0 12px 0; font-size: 14px; color: #1a1816;"><strong>60+ challenges</strong> across model selection, prompt efficiency, and debugging</p>
-                  <p style="margin: 0 0 12px 0; font-size: 14px; color: #1a1816;"><strong>8 AI models</strong> across 5 cost tiers &mdash; choose wisely</p>
+                  <p style="margin: 0 0 12px 0; font-size: 14px; color: #1a1816;"><strong>17 AI models</strong> across 5 cost tiers &mdash; choose wisely</p>
                   <p style="margin: 0; font-size: 14px; color: #1a1816;"><strong>Daily challenges</strong> &mdash; build a streak, climb the leaderboard</p>
                 </td>
               </tr>
@@ -188,7 +188,7 @@ export function welcomeEmail(params: WelcomeParams): EmailTemplate {
     'All practice challenges are 100% free, including AI chat.',
     '',
     '- 60+ challenges across model selection, prompt efficiency, and debugging',
-    '- 8 AI models across 5 cost tiers',
+    '- 17 AI models across 5 cost tiers',
     '- Daily challenges — build a streak, climb the leaderboard',
     '',
     'Start your first challenge: https://ruwt.dev/challenges',
