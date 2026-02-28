@@ -28,6 +28,7 @@ function formatDate(iso: string): string {
       year: 'numeric',
     });
   } catch {
+    /* istanbul ignore next -- @preserve */
     return iso;
   }
 }

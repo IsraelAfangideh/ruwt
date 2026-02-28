@@ -209,6 +209,14 @@ describe('GET /api/assess/:sessionId', () => {
     expect(json.challengeProgress[1].status).toBe('in_progress');
   });
 
+  it('returns 500 on unexpected error', async () => {
+    mockGetUser.mockResolvedValue(FAKE_USER);
+    mockGetDb.mockImplementation(() => { throw new Error('fail'); });
+    const res = await onRequestGet(makeContext('sess-1'));
+    expect(res.status).toBe(500);
+    expect((await res.json()).error).toBe('Internal server error');
+  });
+
   it('handles completed session with no current challenge', async () => {
     mockGetUser.mockResolvedValue(FAKE_USER);
 

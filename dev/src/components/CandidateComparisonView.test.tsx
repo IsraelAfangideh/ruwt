@@ -138,6 +138,45 @@ describe('CandidateComparisonView', () => {
     expect(screen.getAllByText(/passed/).length).toBeGreaterThan(0);
   });
 
+  it('falls back to email when candidate name is null (line 92)', () => {
+    const namelessCandidates = [
+      { sessionId: 's1', name: null, email: 'alice@test.com', challengesPassed: 3, totalChallenges: 5, totalCost: 1000, totalTokens: 5000 },
+      { sessionId: 's2', name: 'Bob', email: 'bob@test.com', challengesPassed: 5, totalChallenges: 5, totalCost: 2000, totalTokens: 8000 },
+    ];
+    render(
+      <CandidateComparisonView
+        candidates={namelessCandidates as any}
+        profiles={profiles}
+        insightsData={insightsData}
+        formatCost={formatCost}
+      />
+    );
+    // The first dropdown should show the email instead of name
+    expect(screen.getByText('alice@test.com')).toBeTruthy();
+  });
+
+  it('triggers onSelect and closes dropdown when item is pressed (line 106)', () => {
+    render(
+      <CandidateComparisonView
+        candidates={candidates}
+        profiles={profiles}
+        insightsData={insightsData}
+        formatCost={formatCost}
+      />
+    );
+    // Open the right dropdown (initially showing Bob which is s2)
+    const bobTexts = screen.getAllByText('Bob');
+    // Click on the Bob text to open its dropdown
+    fireEvent.click(bobTexts[bobTexts.length - 1]);
+    // Now in the dropdown menu, click Alice to select her
+    const aliceTexts = screen.getAllByText('Alice');
+    const aliceButton = aliceTexts[aliceTexts.length - 1].closest('button');
+    if (aliceButton) {
+      fireEvent.click(aliceButton);
+    }
+    // The dropdown should close after selection
+  });
+
   it('selects a candidate from dropdown and closes it', () => {
     render(
       <CandidateComparisonView

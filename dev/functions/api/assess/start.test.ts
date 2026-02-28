@@ -573,4 +573,12 @@ describe('POST /api/assess/start', () => {
     const attemptInsert = insertValues[2];
     expect(attemptInsert.totalTests).toBe(4); // 2 test cases + 2 hidden
   });
+
+  it('returns 500 on unexpected error', async () => {
+    mockGetUser.mockResolvedValue(FAKE_USER);
+    mockGetDb.mockImplementation(() => { throw new Error('fail'); });
+    const res = await onRequestPost(makeContext({ token: 'tok-1' }));
+    expect(res.status).toBe(500);
+    expect((await res.json()).error).toBe('Internal server error');
+  });
 });

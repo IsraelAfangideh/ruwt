@@ -168,6 +168,18 @@ describe('GET /api/leaderboard', () => {
       expect(json.entries[1].user.id).toBe('u2');
     });
 
+    it('applies threshold filter for challenge leaderboard with period=week', async () => {
+      mockDb.limit.mockResolvedValueOnce([
+        { attemptId: 'a1', userId: 'u1', userName: 'Alice', avatarUrl: null, username: 'alice', totalCost: 100, inputTokens: 50, outputTokens: 30, submittedAt: '2026-01-01T00:00:00Z' },
+      ]);
+
+      const res = await onRequestGet(makeContext({ challengeId: 'fizzbuzz', period: 'week' }));
+      const json = await res.json();
+
+      expect(json.type).toBe('challenge');
+      expect(json.entries).toHaveLength(1);
+    });
+
     it('returns empty entries for a challenge nobody solved', async () => {
       mockDb.limit.mockResolvedValueOnce([]);
 

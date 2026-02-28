@@ -254,6 +254,13 @@ describe('GET /api/assess/preview', () => {
     expect(json.categoryBreakdown).toEqual({ practice: 2 });
   });
 
+  it('returns 500 on unexpected error', async () => {
+    mockGetDb.mockImplementation(() => { throw new Error('fail'); });
+    const res = await onRequestGet(makeContext('tok'));
+    expect(res.status).toBe(500);
+    expect((await res.json()).error).toBe('Internal server error');
+  });
+
   it('does not require auth (public endpoint)', async () => {
     // This test verifies no getUser mock is needed — preview has no auth check.
     // If auth were required, this would fail since we never configured mockGetUser.

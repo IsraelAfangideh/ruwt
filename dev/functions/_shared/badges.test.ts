@@ -524,6 +524,77 @@ describe('checkAndAwardBadges', () => {
     expect(awarded).toContain('speed_demon');
   });
 
+  it('awards twenty_five_solves milestone when user has 25+ unique passed challenges', async () => {
+    const db = createSequentialDb();
+
+    const twentyFiveChallenges = Array.from({ length: 25 }, (_, i) => ({
+      challengeId: `ch-${i}`,
+      totalCost: 500,
+      createdAt: '2026-01-01T00:00:00Z',
+      submittedAt: '2026-01-01T00:10:00Z',
+      expiresAt: null,
+    }));
+
+    // Query 0: passedAttempts
+    db._enqueue(twentyFiveChallenges);
+    // hasBadge('first_solve') -> already has it
+    db._enqueue([{ id: 'existing-badge' }]);
+    // hasBadge('ten_solves') -> already has it
+    db._enqueue([{ id: 'existing-badge' }]);
+    // hasBadge('twenty_five_solves') -> not yet
+    db._enqueue([]);
+    // distinctModels
+    db._enqueue([]);
+    // languages
+    db._enqueue(twentyFiveChallenges.map(() => ({ language: 'javascript' })));
+    // easy challenges (more exist than solved)
+    db._enqueue(Array.from({ length: 30 }, (_, i) => ({ id: `ch-${i}` })));
+    // medium challenges
+    db._enqueue([{ id: 'ch-medium-1' }]);
+
+    const awarded = await checkAndAwardBadges(db, userId);
+
+    expect(awarded).toContain('twenty_five_solves');
+    expect(awarded).not.toContain('first_solve');
+    expect(awarded).not.toContain('ten_solves');
+  });
+
+  it('awards fifty_solves milestone when user has 50+ unique passed challenges', async () => {
+    const db = createSequentialDb();
+
+    const fiftyChallenges = Array.from({ length: 50 }, (_, i) => ({
+      challengeId: `ch-${i}`,
+      totalCost: 500,
+      createdAt: '2026-01-01T00:00:00Z',
+      submittedAt: '2026-01-01T00:10:00Z',
+      expiresAt: null,
+    }));
+
+    // Query 0: passedAttempts
+    db._enqueue(fiftyChallenges);
+    // hasBadge('first_solve') -> already has it
+    db._enqueue([{ id: 'existing-badge' }]);
+    // hasBadge('ten_solves') -> already has it
+    db._enqueue([{ id: 'existing-badge' }]);
+    // hasBadge('twenty_five_solves') -> already has it
+    db._enqueue([{ id: 'existing-badge' }]);
+    // hasBadge('fifty_solves') -> not yet
+    db._enqueue([]);
+    // distinctModels
+    db._enqueue([]);
+    // languages
+    db._enqueue(fiftyChallenges.map(() => ({ language: 'javascript' })));
+    // easy challenges (more exist than solved)
+    db._enqueue(Array.from({ length: 60 }, (_, i) => ({ id: `ch-${i}` })));
+    // medium challenges
+    db._enqueue([{ id: 'ch-medium-1' }]);
+
+    const awarded = await checkAndAwardBadges(db, userId);
+
+    expect(awarded).toContain('fifty_solves');
+    expect(awarded).not.toContain('twenty_five_solves');
+  });
+
   it('returns empty array when user has zero passed attempts', async () => {
     const db = createSequentialDb();
 

@@ -527,4 +527,193 @@ describe('AssessmentResultsDashboardScreen', () => {
     fireEvent.click(screen.getByText('View Replay'));
     expect(mockNavigate).toHaveBeenCalledWith('Replay', { attemptId: 'att1' });
   });
+
+  /* ── categoryWeights parsing (line 147) ──────────────────────────── */
+  it('parses categoryWeights from assessment data', async () => {
+    setupFetch({
+      '/api/assessments/test-assessment-123/results': ok([mockCandidate1]),
+      '/api/assessments/test-assessment-123/analytics': ok({ profiles: mockProfiles }),
+      '/api/assessments/test-assessment-123/insights': ok(mockInsightsData),
+      '/api/assessments/test-assessment-123': ok({
+        passThreshold: JSON.stringify({ enabled: true, mode: 'weighted_average', minOverall: 70, dimensions: {} }),
+        categoryWeights: JSON.stringify({ modelSelection: 2, promptEfficiency: 1 }),
+      }),
+    });
+    render(<AssessmentResultsDashboardScreen />);
+    await waitFor(() => {
+      expect(screen.getByText('Alice Smith')).toBeTruthy();
+    });
+  });
+
+  /* ── formatDuration for <60 minutes (line 169) ───────────────────── */
+  it('renders short duration in minutes format', async () => {
+    const shortSession = {
+      ...mockCandidate1,
+      session: { ...mockCandidate1.session, id: 's3', startedAt: '2026-01-01T00:00:00Z', completedAt: '2026-01-01T00:25:00Z' },
+    };
+    setupFetch({
+      '/api/assessments/test-assessment-123/results': ok([shortSession]),
+      '/api/assessments/test-assessment-123/analytics': ok({ profiles: {} }),
+      '/api/assessments/test-assessment-123/insights': ok({}),
+      '/api/assessments/test-assessment-123': ok({ passThreshold: null, categoryWeights: null }),
+    });
+    render(<AssessmentResultsDashboardScreen />);
+    await waitFor(() => {
+      expect(screen.getByText('25m')).toBeTruthy();
+    });
+  });
+
+  /* ── handleSort: toggling sort direction and changing sort key (lines 174-179) ── */
+  it('sorts by candidate name when Candidate header is clicked and toggles direction', async () => {
+    render(<AssessmentResultsDashboardScreen />);
+    await waitFor(() => expect(screen.getByText('Alice Smith')).toBeTruthy());
+    // Default sort is by 'cost', so the Cost header has the ▲ indicator.
+    // The SortHeader text is: "Cost ▲" (ascending by cost)
+    expect(screen.getByText(/Cost.*\u25B2/)).toBeTruthy();
+
+    // Click "Candidate" header - find the parent Pressable element and click it
+    const candidateText = screen.getByText('Candidate');
+    // Click the text - this should bubble to the Pressable wrapper
+    fireEvent.click(candidateText);
+
+    // After clicking Candidate, sort changes to 'name' ascending
+    // The Candidate header should now show ▲
+    await waitFor(() => {
+      expect(screen.getByText(/Candidate.*\u25B2/)).toBeTruthy();
+    });
+
+    // Click Candidate header again to toggle direction to descending
+    fireEvent.click(screen.getByText(/Candidate.*\u25B2/));
+    await waitFor(() => {
+      expect(screen.getByText(/Candidate.*\u25BC/)).toBeTruthy();
+    });
+  });
+
+  it('sorts by status when Status header is clicked', async () => {
+    render(<AssessmentResultsDashboardScreen />);
+    await waitFor(() => expect(screen.getByText('Alice Smith')).toBeTruthy());
+    fireEvent.click(screen.getByText('Status'));
+    expect(screen.getByText('Alice Smith')).toBeTruthy();
+  });
+
+  it('sorts by passed when Passed header is clicked', async () => {
+    render(<AssessmentResultsDashboardScreen />);
+    await waitFor(() => expect(screen.getByText('Alice Smith')).toBeTruthy());
+    fireEvent.click(screen.getByText('Passed'));
+    expect(screen.getByText('Alice Smith')).toBeTruthy();
+  });
+
+  it('sorts by tokens when Tokens header is clicked', async () => {
+    render(<AssessmentResultsDashboardScreen />);
+    await waitFor(() => expect(screen.getByText('Alice Smith')).toBeTruthy());
+    fireEvent.click(screen.getByText('Tokens'));
+    expect(screen.getByText('Alice Smith')).toBeTruthy();
+  });
+
+  it('sorts by time when Time header is clicked', async () => {
+    render(<AssessmentResultsDashboardScreen />);
+    await waitFor(() => expect(screen.getByText('Alice Smith')).toBeTruthy());
+    fireEvent.click(screen.getByText('Time'));
+    expect(screen.getByText('Alice Smith')).toBeTruthy();
+  });
+
+  it('sorts by verdict when Verdict header is clicked (passThreshold enabled)', async () => {
+    setupFetch({
+      '/api/assessments/test-assessment-123/results': ok([mockCandidate1, mockCandidate2]),
+      '/api/assessments/test-assessment-123/analytics': ok({ profiles: mockProfiles }),
+      '/api/assessments/test-assessment-123/insights': ok(mockInsightsData),
+      '/api/assessments/test-assessment-123': ok({
+        passThreshold: JSON.stringify({ enabled: true, mode: 'weighted_average', minOverall: 70, dimensions: {} }),
+        categoryWeights: null,
+      }),
+    });
+    render(<AssessmentResultsDashboardScreen />);
+    await waitFor(() => expect(screen.getByText(/Verdict/)).toBeTruthy());
+    fireEvent.click(screen.getByText(/Verdict/));
+    expect(screen.getByText('Alice Smith')).toBeTruthy();
+  });
+
+  /* ── Verdict filter click (lines 190, 361) ────────────────────────── */
+  it('filters results by verdict when filter button is clicked', async () => {
+    setupFetch({
+      '/api/assessments/test-assessment-123/results': ok([mockCandidate1, mockCandidate2]),
+      '/api/assessments/test-assessment-123/analytics': ok({ profiles: mockProfiles }),
+      '/api/assessments/test-assessment-123/insights': ok(mockInsightsData),
+      '/api/assessments/test-assessment-123': ok({
+        passThreshold: JSON.stringify({ enabled: true, mode: 'weighted_average', minOverall: 70, dimensions: {} }),
+        categoryWeights: null,
+      }),
+    });
+    render(<AssessmentResultsDashboardScreen />);
+    // Wait for the verdict filter bar to render
+    await waitFor(() => {
+      expect(screen.getAllByText(/All/i).length).toBeGreaterThanOrEqual(1);
+    });
+    // The verdict filter bar has buttons: All, Pass, Fail, Review
+    // Find the exact "Fail" filter button and click it
+    // computeVerdict is mocked to always return 'pass', so filtering by 'fail' should hide all results
+    const failButtons = screen.getAllByText(/Fail/i);
+    // The last Fail button should be the verdict filter (not a verdict badge)
+    fireEvent.click(failButtons[failButtons.length - 1]);
+    // Since computeVerdict returns 'pass' for all, filtering by 'fail' means 0 candidates match
+    await waitFor(() => {
+      expect(screen.queryByText('Alice Smith')).toBeNull();
+    });
+  });
+
+  /* ── getRowBg: different backgrounds for pass/partial/fail (lines 225-227) ── */
+  it('renders green row background for candidate who passed all challenges', async () => {
+    const perfectCandidate = {
+      session: { id: 's-perf', status: 'completed', totalCost: 4000, totalTokens: 1200, startedAt: '2026-01-01T00:00:00Z', completedAt: '2026-01-01T00:30:00Z', shareToken: null },
+      candidate: { id: 'c-perf', name: 'Perfect Pat', email: 'pat@test.com', avatarUrl: null },
+      challengesPassed: 5,
+      totalChallenges: 5,
+      attempts: [],
+    };
+    const zeroCandidate = {
+      session: { id: 's-zero', status: 'completed', totalCost: 1000, totalTokens: 100, startedAt: '2026-01-01T00:00:00Z', completedAt: '2026-01-01T00:10:00Z', shareToken: null },
+      candidate: { id: 'c-zero', name: 'Zero Zach', email: 'zach@test.com', avatarUrl: null },
+      challengesPassed: 0,
+      totalChallenges: 5,
+      attempts: [],
+    };
+    setupFetch({
+      '/api/assessments/test-assessment-123/results': ok([perfectCandidate, zeroCandidate, mockCandidate1]),
+      '/api/assessments/test-assessment-123/analytics': ok({ profiles: {} }),
+      '/api/assessments/test-assessment-123/insights': ok({}),
+      '/api/assessments/test-assessment-123': ok({ passThreshold: null, categoryWeights: null }),
+    });
+    render(<AssessmentResultsDashboardScreen />);
+    await waitFor(() => {
+      expect(screen.getByText('Perfect Pat')).toBeTruthy();
+      expect(screen.getByText('Zero Zach')).toBeTruthy();
+      expect(screen.getByText('5/5')).toBeTruthy();
+      expect(screen.getByText('0/5')).toBeTruthy();
+    });
+  });
+
+  /* ── Tab switching back to results (line 327) ────────────────────── */
+  it('switches back to results tab after viewing invites', async () => {
+    render(<AssessmentResultsDashboardScreen />);
+    await waitFor(() => expect(screen.getByText('Invites')).toBeTruthy());
+    // Switch to invites
+    fireEvent.click(screen.getByText('Invites'));
+    await waitFor(() => expect(screen.queryByText('Alice Smith')).toBeNull());
+    // Switch back to results
+    fireEvent.click(screen.getByText(/Results \(/));
+    await waitFor(() => expect(screen.getByText('Alice Smith')).toBeTruthy());
+  });
+
+  /* ── Share token link click (lines 492-493) ──────────────────────── */
+  it('opens share results link in new tab when View Results is clicked', async () => {
+    const mockOpen = vi.fn();
+    vi.stubGlobal('open', mockOpen);
+
+    render(<AssessmentResultsDashboardScreen />);
+    await waitFor(() => expect(screen.getAllByText('View Results').length).toBeGreaterThanOrEqual(1));
+    fireEvent.click(screen.getAllByText('View Results')[0]);
+    expect(mockOpen).toHaveBeenCalledWith('/results/share-abc', '_blank');
+
+    vi.unstubAllGlobals();
+  });
 });

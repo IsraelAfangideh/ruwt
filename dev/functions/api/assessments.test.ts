@@ -193,6 +193,14 @@ describe('POST /api/assessments', () => {
     expect(insertedValues.createdBy).toBe('user-123');
   });
 
+  it('returns 500 on unexpected error', async () => {
+    mockGetUser.mockResolvedValue(FAKE_USER);
+    mockGetDb.mockImplementation(() => { throw new Error('fail'); });
+    const res = await onRequestPost(makePostContext({ title: 'Test', timeLimit: 3600 }));
+    expect(res.status).toBe(500);
+    expect((await res.json()).error).toBe('Internal server error');
+  });
+
   it('returns 400 for invalid JSON body', async () => {
     mockGetUser.mockResolvedValue(FAKE_USER);
     mockGetDb.mockReturnValue({});
@@ -308,5 +316,49 @@ describe('GET /api/assessments', () => {
     expect(json[1].challengeCount).toBe(3);
     expect(json[1].inviteCount).toBe(0); // No invites for a-2
     expect(json[1].completionCount).toBe(0);
+  });
+
+  it('includes orgId-based assessments when user belongs to orgs', async () => {
+    mockGetUser.mockResolvedValue(FAKE_USER);
+    mockGetUserOrgIds.mockResolvedValue(['org-1']);
+
+    const assessmentList = [
+      { id: 'a-org', title: 'Org Assessment', status: 'active', createdBy: 'other-user', orgId: 'org-1' },
+    ];
+
+    let selectCallCount = 0;
+    const db: Record<string, any> = {};
+    db.select = vi.fn().mockImplementation(() => {
+      selectCallCount++;
+      const chain: Record<string, any> = {};
+      chain.from = vi.fn().mockReturnValue(chain);
+      chain.where = vi.fn().mockImplementation(() => chain);
+      chain.orderBy = vi.fn().mockResolvedValue(assessmentList);
+      chain.groupBy = vi.fn().mockImplementation(() => {
+        if (selectCallCount === 2) return Promise.resolve([]);
+        if (selectCallCount === 3) return Promise.resolve([]);
+        if (selectCallCount === 4) return Promise.resolve([]);
+        return Promise.resolve([]);
+      });
+      chain.innerJoin = vi.fn().mockReturnValue(chain);
+      return chain;
+    });
+    mockGetDb.mockReturnValue(db);
+
+    const res = await onRequestGet(makeGetContext());
+    const json = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(json).toHaveLength(1);
+    expect(json[0].id).toBe('a-org');
+  });
+
+  it('returns 500 on unexpected error', async () => {
+    mockGetUser.mockResolvedValue(FAKE_USER);
+    mockGetUserOrgIds.mockRejectedValue(new Error('fail'));
+    mockGetDb.mockReturnValue({});
+    const res = await onRequestGet(makeGetContext());
+    expect(res.status).toBe(500);
+    expect((await res.json()).error).toBe('Internal server error');
   });
 });

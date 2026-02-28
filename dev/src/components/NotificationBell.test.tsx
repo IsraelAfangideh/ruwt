@@ -325,6 +325,74 @@ describe('NotificationBell', () => {
     await waitFor(() => expect(screen.getByText('2d')).toBeTruthy());
   });
 
+  it('shows default medal icon when badge_earned metadata is invalid JSON (catch branch)', async () => {
+    const notifications = [
+      { id: '1', type: 'badge_earned', title: 'Badge!', body: 'Earned it', metadata: '{invalid json', read: 0, createdAt: new Date().toISOString() },
+    ];
+    let callCount = 0;
+    vi.spyOn(global, 'fetch').mockImplementation(async () => {
+      callCount++;
+      return {
+        ok: true,
+        json: async () => ({ unreadCount: 1, notifications: callCount > 1 ? notifications : [] }),
+      } as Response;
+    });
+
+    render(<NotificationBell />);
+    await waitFor(() => expect(global.fetch).toHaveBeenCalled());
+
+    const bellButtons = screen.getAllByText(/\uD83D\uDD14/);
+    fireEvent.click(bellButtons[0]);
+    await waitFor(() => expect(screen.getByText('Badge!')).toBeTruthy());
+    expect(screen.getByText('\uD83C\uDFC5')).toBeTruthy(); // 🏅
+  });
+
+  it('shows default bell icon for unknown notification type', async () => {
+    const notifications = [
+      { id: '1', type: 'unknown_type', title: 'Unknown!', body: 'Something happened', metadata: null, read: 0, createdAt: new Date().toISOString() },
+    ];
+    let callCount = 0;
+    vi.spyOn(global, 'fetch').mockImplementation(async () => {
+      callCount++;
+      return {
+        ok: true,
+        json: async () => ({ unreadCount: 1, notifications: callCount > 1 ? notifications : [] }),
+      } as Response;
+    });
+
+    render(<NotificationBell />);
+    await waitFor(() => expect(global.fetch).toHaveBeenCalled());
+
+    const bellButtons = screen.getAllByText(/\uD83D\uDD14/);
+    fireEvent.click(bellButtons[0]);
+    await waitFor(() => expect(screen.getByText('Unknown!')).toBeTruthy());
+    // The default icon 🔔 is also used by the bell button, so check that at least 2 appear
+    const bellIcons = screen.getAllByText(/\uD83D\uDD14/);
+    expect(bellIcons.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('shows competitive_nudge icon', async () => {
+    const notifications = [
+      { id: '1', type: 'competitive_nudge', title: 'Nudge!', body: 'A challenger approaches', metadata: null, read: 0, createdAt: new Date().toISOString() },
+    ];
+    let callCount = 0;
+    vi.spyOn(global, 'fetch').mockImplementation(async () => {
+      callCount++;
+      return {
+        ok: true,
+        json: async () => ({ unreadCount: 1, notifications: callCount > 1 ? notifications : [] }),
+      } as Response;
+    });
+
+    render(<NotificationBell />);
+    await waitFor(() => expect(global.fetch).toHaveBeenCalled());
+
+    const bellButtons = screen.getAllByText(/\uD83D\uDD14/);
+    fireEvent.click(bellButtons[0]);
+    await waitFor(() => expect(screen.getByText('Nudge!')).toBeTruthy());
+    expect(screen.getByText('\u2694\uFE0F')).toBeTruthy(); // ⚔️
+  });
+
   it('closes dropdown when backdrop is clicked', async () => {
     vi.spyOn(global, 'fetch').mockResolvedValue({
       ok: true,

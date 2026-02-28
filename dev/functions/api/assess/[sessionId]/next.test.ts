@@ -365,4 +365,12 @@ describe('POST /api/assess/:sessionId/next', () => {
     // totalTests should be just the visible test cases count (2)
     expect(insertValues[0].totalTests).toBe(2);
   });
+
+  it('returns 500 on unexpected error', async () => {
+    mockGetUser.mockResolvedValue(FAKE_USER);
+    mockGetDb.mockImplementation(() => { throw new Error('fail'); });
+    const res = await onRequestPost(makeContext('sess-1'));
+    expect(res.status).toBe(500);
+    expect((await res.json()).error).toBe('Internal server error');
+  });
 });

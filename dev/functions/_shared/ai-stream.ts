@@ -419,5 +419,6 @@ export async function* streamCloudflareAIWithFallback(
     };
   }
 
+  /* istanbul ignore next -- @preserve */
   throw new Error(`All models failed. Last error: ${lastError}`);
 }

@@ -128,6 +128,7 @@ async function callWithTools(
     return { response, toolCalls, model };
   }
 
+  /* istanbul ignore next -- @preserve */
   throw new Error('All models failed');
 }
 

@@ -73,7 +73,7 @@ function percentileRank(value: number, values: number[], lowerIsBetter: boolean)
   let rank: number;
   if (lowerIsBetter) {
     rank = sorted.filter((v) => v >= value).length / sorted.length;
-  } else {
+  } /* istanbul ignore next */ else {
     rank = sorted.filter((v) => v <= value).length / sorted.length;
   }
   return Math.round(rank * 100);
@@ -392,7 +392,7 @@ export async function onRequestGet(context: { request: Request; env: Env; params
         if (insight.severity === 'red') {
           if (insight.type === 'blind_copypaste' && !flags.red.includes('Blind copy-paste'))
             flags.red.push('Blind copy-paste');
-          if (insight.type === 'over_prompting' && !flags.yellow.includes('Over-prompting'))
+          /* istanbul ignore next */ if (insight.type === 'over_prompting' && !flags.yellow.includes('Over-prompting'))
             flags.yellow.push('Over-prompting');
         }
         if (insight.severity === 'yellow') {

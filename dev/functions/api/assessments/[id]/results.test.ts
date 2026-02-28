@@ -226,4 +226,13 @@ describe('GET /api/assessments/:id/results', () => {
     expect(result.challengesPassed).toBe(0);
     expect(result.attempts).toEqual([]);
   });
+
+  it('returns 500 on unexpected error', async () => {
+    mockGetUser.mockResolvedValue(FAKE_USER);
+    mockCanViewResults.mockRejectedValue(new Error('fail'));
+    mockGetDb.mockReturnValue({});
+    const res = await onRequestGet(makeContext('a-1'));
+    expect(res.status).toBe(500);
+    expect((await res.json()).error).toBe('Internal server error');
+  });
 });

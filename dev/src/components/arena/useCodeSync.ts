@@ -62,7 +62,7 @@ export function useCodeSync(
       model.pushEditOperations(
         null,
         [{ range: fullRange, text: newCode }],
-        () => null
+        /* istanbul ignore next -- Monaco cursor computation callback, never invoked in tests */ () => null
       );
       model.pushStackElement();
 

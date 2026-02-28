@@ -133,9 +133,8 @@ export async function onRequestPatch(context: { request: Request; env: Env }) {
       updates.username = username;
     }
 
-    if (Object.keys(updates).length === 0) {
-      return Response.json({ error: 'No valid fields to update' }, { status: 400 });
-    }
+    /* istanbul ignore next -- @preserve Zod .refine() ensures at least one field; this is a safety net */
+    if (Object.keys(updates).length === 0) { return Response.json({ error: 'No valid fields to update' }, { status: 400 }); }
 
     await db
       .update(profiles)

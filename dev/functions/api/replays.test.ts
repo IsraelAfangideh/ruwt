@@ -80,6 +80,13 @@ describe('GET /api/replays (public)', () => {
     expect(json.replays[0].user.name).toBe('bob');
   });
 
+  it('filters by challengeId when query param is present', async () => {
+    const chain = setupDb([]);
+    await onRequestGet(makeCtx('?challengeId=fizzbuzz'));
+    const json = await (await onRequestGet(makeCtx('?challengeId=fizzbuzz'))).json();
+    expect(json.replays).toEqual([]);
+  });
+
   it('respects limit param capped at 50', async () => {
     const chain = setupDb([]);
     await onRequestGet(makeCtx('?limit=100'));

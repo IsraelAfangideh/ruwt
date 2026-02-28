@@ -155,6 +155,51 @@ describe('POST /api/admin/backfill-streaks', () => {
     expect(json.results[0].longestStreak).toBe(2);
   });
 
+  it('handles non-consecutive dates correctly (break in streak, longest streak detection)', async () => {
+    mockGetUser.mockResolvedValue(ADMIN_USER);
+
+    const today = new Date().toISOString().split('T')[0];
+    const yesterday = (() => { const d = new Date(); d.setUTCDate(d.getUTCDate() - 1); return d.toISOString().split('T')[0]; })();
+    // Gap of 1 day, then another pair of consecutive days
+    const fourDaysAgo = (() => { const d = new Date(); d.setUTCDate(d.getUTCDate() - 4); return d.toISOString().split('T')[0]; })();
+    const fiveDaysAgo = (() => { const d = new Date(); d.setUTCDate(d.getUTCDate() - 5); return d.toISOString().split('T')[0]; })();
+    const sixDaysAgo = (() => { const d = new Date(); d.setUTCDate(d.getUTCDate() - 6); return d.toISOString().split('T')[0]; })();
+
+    // Dates (most recent first): today, yesterday, [gap], 4 days ago, 5 days ago, 6 days ago
+    // Current streak: 2 (today + yesterday), then gap breaks it
+    // Longest streak: 3 (4-5-6 days ago are consecutive)
+    const dates = [
+      { date: today },
+      { date: yesterday },
+      { date: fourDaysAgo },
+      { date: fiveDaysAgo },
+      { date: sixDaysAgo },
+    ];
+
+    let selectCall = 0;
+    const db = {
+      select: vi.fn().mockImplementation(() => {
+        selectCall++;
+        if (selectCall === 1) return { from: vi.fn().mockResolvedValue([{ id: 'u-1' }]) };
+        return {
+          from: vi.fn().mockReturnThis(),
+          where: vi.fn().mockReturnThis(),
+          groupBy: vi.fn().mockReturnThis(),
+          orderBy: vi.fn().mockResolvedValue(dates),
+        };
+      }),
+      update: vi.fn().mockReturnValue({
+        set: vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue({}) }),
+      }),
+    };
+    mockGetDb.mockReturnValue(db);
+
+    const res = await onRequestPost(makeCtx());
+    const json = await res.json();
+    expect(json.results[0].currentStreak).toBe(2);
+    expect(json.results[0].longestStreak).toBe(3);
+  });
+
   it('handles users with no solves', async () => {
     mockGetUser.mockResolvedValue(ADMIN_USER);
 

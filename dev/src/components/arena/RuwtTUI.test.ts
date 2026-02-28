@@ -375,6 +375,20 @@ describe('RuwtTUI', () => {
       });
     });
 
+    it('handles context window / token limit error with actionable message', async () => {
+      const { tui, term, streamChat } = createTUI();
+      tui.enter();
+      mockStreamError(streamChat, '413 context window limit exceeded');
+      clearOutput(term);
+      typeAndEnter(tui, 'help me');
+
+      await vi.waitFor(() => {
+        const out = termOutput(term);
+        expect(out).toContain('Context window full');
+        expect(out).toContain('/clear');
+      });
+    });
+
     it('rejects message when session is expired', async () => {
       const { tui, term, isExpired, streamChat } = createTUI();
       tui.enter();

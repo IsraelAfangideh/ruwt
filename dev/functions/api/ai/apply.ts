@@ -433,6 +433,7 @@ export async function onRequestPost(context: {
       }
     }
 
+    /* istanbul ignore next */
     if (!mergedCode) {
       return Response.json({ error: 'All apply models failed' }, { status: 502 });
     }

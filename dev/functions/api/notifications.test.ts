@@ -80,6 +80,37 @@ describe('GET /api/notifications', () => {
     expect(json.unreadCount).toBe(3);
   });
 
+  it('filters by unread when unread=1 is passed', async () => {
+    mockGetUser.mockResolvedValue(FAKE_USER);
+    const rows = [{ id: 'n-1', userId: 'user-1', read: 0, title: 'Unread' }];
+
+    let selectCall = 0;
+    const db = {
+      select: vi.fn().mockImplementation(() => {
+        selectCall++;
+        if (selectCall === 1) {
+          return {
+            from: vi.fn().mockReturnThis(),
+            where: vi.fn().mockReturnThis(),
+            orderBy: vi.fn().mockReturnThis(),
+            limit: vi.fn().mockResolvedValue(rows),
+          };
+        }
+        return {
+          from: vi.fn().mockReturnThis(),
+          where: vi.fn().mockResolvedValue([{ count: 1 }]),
+        };
+      }),
+    };
+    mockGetDb.mockReturnValue(db);
+
+    const res = await onRequestGet(makeGetCtx('?unread=1'));
+    const json = await res.json();
+    expect(res.status).toBe(200);
+    expect(json.notifications).toHaveLength(1);
+    expect(json.unreadCount).toBe(1);
+  });
+
   it('respects limit param capped at 100', async () => {
     mockGetUser.mockResolvedValue(FAKE_USER);
     const chain = {

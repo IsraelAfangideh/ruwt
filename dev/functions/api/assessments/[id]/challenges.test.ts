@@ -215,4 +215,13 @@ describe('PUT /api/assessments/:id/challenges', () => {
     expect(res.status).toBe(200);
     expect(json.count).toBe(1);
   });
+
+  it('returns 500 on unexpected error', async () => {
+    mockGetUser.mockResolvedValue(FAKE_USER);
+    mockCanManageAssessment.mockResolvedValue(true);
+    mockGetDb.mockImplementation(() => { throw new Error('fail'); });
+    const res = await onRequestPut(makeContext('a-1', { challengeIds: ['ch-1'] }));
+    expect(res.status).toBe(500);
+    expect((await res.json()).error).toBe('Internal server error');
+  });
 });

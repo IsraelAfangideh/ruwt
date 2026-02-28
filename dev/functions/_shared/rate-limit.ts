@@ -93,6 +93,7 @@ function getTierEndpointKey(pathname: string, tier: RateLimitTier): string {
       return route;
     }
   }
+  /* istanbul ignore next -- @preserve */
   return '__default__';
 }
 
