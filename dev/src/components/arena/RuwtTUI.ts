@@ -22,6 +22,7 @@ interface RuwtTUIOptions {
   challengeCategory: string | null;
   challengeTestCases: string;
   hiddenTestCount?: number;
+  readonlyPrefix?: string | null;
   streamChat: (
     messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }>,
     callbacks: {
@@ -58,6 +59,7 @@ export class RuwtTUI {
   private challengeCategory: string | null;
   private challengeTestCases: string;
   private hiddenTestCount?: number;
+  private readonlyPrefix?: string | null;
   private streamChat: RuwtTUIOptions['streamChat'];
   private abortFn: () => void;
   private onExit: () => void;
@@ -92,6 +94,7 @@ export class RuwtTUI {
     this.challengeCategory = options.challengeCategory;
     this.challengeTestCases = options.challengeTestCases;
     this.hiddenTestCount = options.hiddenTestCount;
+    this.readonlyPrefix = options.readonlyPrefix;
     this.streamChat = options.streamChat;
     this.abortFn = options.abort;
     this.onExit = options.onExit;
@@ -320,6 +323,7 @@ export class RuwtTUI {
       hiddenTestCount: this.hiddenTestCount,
       lastTestResults: this.lastTestResults,
       workspaceFiles: workspaceFiles.length > 0 ? workspaceFiles : undefined,
+      readonlyPrefix: this.readonlyPrefix || null,
     });
   }
 

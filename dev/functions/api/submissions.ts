@@ -91,9 +91,9 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
         console.error('Corrupted testCases JSON for challenge:', challenge.id);
         return Response.json({ error: 'Challenge data is corrupted' }, { status: 500 });
       }
-      const codeToRun = challenge.testHarness
-        ? sourceCode + '\n' + challenge.testHarness
-        : sourceCode;
+      let codeToRun = sourceCode;
+      if (challenge.testHarness) codeToRun += '\n' + challenge.testHarness;
+      if (challenge.readonlyPrefix) codeToRun = challenge.readonlyPrefix + '\n' + codeToRun;
       const testResult = await runTestCases(
         context.env,
         codeToRun,
@@ -200,9 +200,9 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
     const allTests = [...publicTests, ...hiddenTests];
     const publicCount = publicTests.length;
 
-    const submitCodeToRun = challenge.testHarness
-      ? sourceCode + '\n' + challenge.testHarness
-      : sourceCode;
+    let submitCodeToRun = sourceCode;
+    if (challenge.testHarness) submitCodeToRun += '\n' + challenge.testHarness;
+    if (challenge.readonlyPrefix) submitCodeToRun = challenge.readonlyPrefix + '\n' + submitCodeToRun;
     const testResult = await runTestCases(
       context.env,
       submitCodeToRun,

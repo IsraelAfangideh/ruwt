@@ -35,6 +35,7 @@ interface BuildSystemPromptOptions {
   lastTestResults?: TestResults | null;
   isFollowUp?: boolean; // true = agent loop round, skip static context
   workspaceFiles?: Array<{ path: string; content: string }>; // non-solution files in workspace
+  readonlyPrefix?: string | null; // code pre-loaded in the sandbox (not editable)
 }
 
 function formatTestCaseSummary(testCasesJson: string, hiddenTestCount?: number): string {
@@ -93,6 +94,11 @@ function buildBaseContext(opts: BuildSystemPromptOptions): string {
       parts.push(testSummary);
       parts.push('');
     }
+  }
+
+  if (opts.readonlyPrefix) {
+    parts.push(`Read-only context (pre-loaded in the execution environment — do NOT redefine or include in edits):\n\`\`\`${opts.language}\n${opts.readonlyPrefix}\n\`\`\``);
+    parts.push('');
   }
 
   parts.push(`Current code:\n\`\`\`${opts.language}\n${opts.currentCode}\n\`\`\``);

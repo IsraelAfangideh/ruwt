@@ -68,6 +68,7 @@ export interface ArenaChallenge {
   language?: string | null;
   expiresAt?: string | null;
   hiddenTestCount?: number;
+  readonlyPrefix?: string | null;
   stats?: { solvers: number; avgCost: number | null; bestCost: number | null } | null;
 }
 
@@ -750,6 +751,7 @@ export function ArenaIDE({
         lastTestResults: pendingTestContextRef.current || (testResults as AITestResults | undefined) || null,
         isFollowUp,
         workspaceFiles: workspaceFiles.length > 0 ? workspaceFiles : undefined,
+        readonlyPrefix: challenge.readonlyPrefix || null,
       });
       const chatMessages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [
         { role: 'system', content: systemPrompt },
@@ -1620,6 +1622,7 @@ export function ArenaIDE({
               challengeCategory={challenge.category || null}
               challengeTestCases={challenge.testCases || '[]'}
               hiddenTestCount={challenge.hiddenTestCount}
+              readonlyPrefix={challenge.readonlyPrefix || null}
               shellCallbacks={shellCallbacks}
               streamChat={streamChat}
               abortChat={abortChat}
