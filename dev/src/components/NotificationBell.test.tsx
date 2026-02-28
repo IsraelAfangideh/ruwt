@@ -170,7 +170,7 @@ describe('NotificationBell', () => {
     await waitFor(() => {
       const postCall = fetchSpy.mock.calls.find((c: any[]) => c[1]?.method === 'POST');
       expect(postCall).toBeTruthy();
-      expect(JSON.parse(postCall![1].body)).toEqual({ action: 'mark_all_read' });
+      expect(JSON.parse(postCall![1]!.body as string)).toEqual({ action: 'mark_all_read' });
     });
   });
 

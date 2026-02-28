@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { ASSESSMENT_TEMPLATES, getTemplateById, type AssessmentTemplate } from './assessment-templates';
+import { ASSESSMENT_TEMPLATES, getTemplateById } from './assessment-templates';
 
 describe('assessment-templates', () => {
   // ---------------------------------------------------------------------------

@@ -202,6 +202,40 @@ describe('OrgJoinScreen', () => {
     });
   });
 
+  /* ── Navigation after successful join (line 50) ───────────────── */
+  it('navigates to Assessments after successful join via setTimeout', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ ok: true }),
+    }));
+
+    render(<OrgJoinScreen />);
+
+    await waitFor(() => {
+      expect(screen.getAllByText('Accept Invitation').length).toBeGreaterThanOrEqual(1);
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('Accept Invitation'));
+    });
+
+    await waitFor(() => {
+      expect(screen.getAllByText(/joined the team/).length).toBeGreaterThanOrEqual(1);
+    });
+
+    // Advance past the 2000ms setTimeout
+    await act(async () => {
+      vi.advanceTimersByTime(2100);
+    });
+
+    expect(mockReset).toHaveBeenCalledWith({
+      index: 0,
+      routes: [{ name: 'Assessments' }],
+    });
+    vi.useRealTimers();
+  });
+
   /* ── Loading state ─────────────────────────────────────────────── */
   it('shows loading spinner while checking auth', () => {
     // getUser never resolves

@@ -7,7 +7,7 @@ describe('utils', () => {
   // ---------------------------------------------------------------------------
   describe('flattenStyle', () => {
     it('returns undefined for null input', () => {
-      expect(flattenStyle(null)).toBeUndefined();
+      expect(flattenStyle(null as any)).toBeUndefined();
     });
 
     it('returns undefined for undefined input', () => {

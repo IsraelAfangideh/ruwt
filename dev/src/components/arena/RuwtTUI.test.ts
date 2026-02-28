@@ -591,7 +591,7 @@ describe('RuwtTUI', () => {
   // ---------------------------------------------------------------------------
   describe('code application', () => {
     it('applies code when applyCodeFromResponse returns applied=true', async () => {
-      const { tui, term, fs, streamChat, onCodeApplied } = createTUI();
+      const { tui, term, fs: _fs, streamChat, onCodeApplied } = createTUI();
       tui.enter();
 
       (extractFileEdits as Mock).mockReturnValue({
@@ -619,7 +619,7 @@ describe('RuwtTUI', () => {
     });
 
     it('applies file edits for non-solution files', async () => {
-      const { tui, term, fs, streamChat } = createTUI();
+      const { tui, term, fs: _fs, streamChat } = createTUI();
       tui.enter();
 
       (extractFileEdits as Mock).mockReturnValue({
@@ -705,7 +705,7 @@ describe('RuwtTUI', () => {
     });
 
     it('returns false when apply model fails (success:false, not verification)', async () => {
-      const { tui, term, streamChat, onCodeApplied } = createTUI();
+      const { tui, term: _term, streamChat, onCodeApplied } = createTUI();
       tui.enter();
 
       (extractFileEdits as Mock).mockReturnValue({ fileEdits: [], remaining: 'response' });
@@ -763,7 +763,7 @@ describe('RuwtTUI', () => {
     });
 
     it('skips apply when merged code matches old code', async () => {
-      const { tui, term, fs, streamChat, onCodeApplied } = createTUI();
+      const { tui, term: _term, fs, streamChat, onCodeApplied } = createTUI();
       tui.enter();
 
       const currentCode = fs.getSolutionCode();
@@ -797,7 +797,7 @@ describe('RuwtTUI', () => {
   // ---------------------------------------------------------------------------
   describe('agent tool loop', () => {
     it('auto-runs tests after code is applied in agent mode', async () => {
-      const { tui, term, streamChat, onRunTests, onCodeApplied } = createTUI();
+      const { tui, term, streamChat, onRunTests, onCodeApplied: _onCodeApplied } = createTUI();
       tui.enter();
 
       let callCount = 0;
@@ -1048,7 +1048,7 @@ describe('RuwtTUI', () => {
   // ---------------------------------------------------------------------------
   describe('input during streaming', () => {
     it('buffers printable characters during streaming', async () => {
-      const { tui, term, streamChat } = createTUI();
+      const { tui, term: _term, streamChat } = createTUI();
       tui.enter();
 
       // Start streaming that never resolves
@@ -1105,7 +1105,7 @@ describe('RuwtTUI', () => {
   // ---------------------------------------------------------------------------
   describe('diff summary', () => {
     it('shows diff summary when code is applied', async () => {
-      const { tui, term, streamChat, onCodeApplied } = createTUI();
+      const { tui, term, streamChat, onCodeApplied: _onCodeApplied } = createTUI();
       tui.enter();
 
       (extractFileEdits as Mock).mockReturnValue({ fileEdits: [], remaining: 'response' });

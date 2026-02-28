@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 
 /* ── Track fallback component ────────────────────────────────────── */
 let capturedFallback: any = null;
@@ -103,5 +103,23 @@ describe('App', () => {
     const button = getByText('Reload');
     expect(button).toBeTruthy();
     expect(button.tagName).toBe('BUTTON');
+  });
+
+  it('ErrorFallback reload button calls window.location.reload (line 30)', () => {
+    render(<App />);
+
+    expect(capturedFallback).toBeDefined();
+    const ErrorFallback = capturedFallback;
+
+    // Mock window.location.reload
+    const reloadMock = vi.fn();
+    Object.defineProperty(window, 'location', {
+      value: { ...window.location, reload: reloadMock },
+      writable: true,
+    });
+
+    const { getByText } = render(<ErrorFallback />);
+    fireEvent.click(getByText('Reload'));
+    expect(reloadMock).toHaveBeenCalled();
   });
 });

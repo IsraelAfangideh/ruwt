@@ -1,9 +1,15 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent, act } from '@testing-library/react';
 
-const mockNavigate = vi.fn();
-const mockReset = vi.fn();
+const { mockNavigate, mockReset, mockGetUser, agentChatProps, bulkInviteProps } = vi.hoisted(() => ({
+  mockNavigate: vi.fn(),
+  mockReset: vi.fn(),
+  mockGetUser: vi.fn().mockResolvedValue({ data: { user: { id: 'u1' } } }),
+  agentChatProps: { current: null as any },
+  bulkInviteProps: { current: null as any },
+}));
+
 let mockRouteParams: any = {};
 
 vi.mock('@react-navigation/native', () => ({
@@ -11,7 +17,6 @@ vi.mock('@react-navigation/native', () => ({
   useRoute: () => ({ params: mockRouteParams }),
 }));
 
-const mockGetUser = vi.fn().mockResolvedValue({ data: { user: { id: 'u1' } } });
 vi.mock('@/lib/supabase/client', () => ({
   createClient: () => ({
     auth: { getUser: mockGetUser },
@@ -57,13 +62,19 @@ vi.mock('@/lib/difficulty', () => ({
   getDifficultyStyle: () => ({ color: '#38bdf8', bg: 'rgba(56,189,248,0.12)', label: 'Medium' }),
 }));
 vi.mock('@/components/AssessmentAgentChat', () => ({
-  AssessmentAgentChat: () => <div data-testid="agent-chat" />,
+  AssessmentAgentChat: (props: any) => {
+    agentChatProps.current = props;
+    return <div data-testid="agent-chat" />;
+  },
 }));
 vi.mock('@/components/PassThresholdEditor', () => ({
   PassThresholdEditor: () => <div data-testid="pass-threshold" />,
 }));
 vi.mock('@/components/BulkInvitePanel', () => ({
-  BulkInvitePanel: () => <div data-testid="bulk-invite" />,
+  BulkInvitePanel: (props: any) => {
+    bulkInviteProps.current = props;
+    return <div data-testid="bulk-invite" />;
+  },
 }));
 vi.mock('@/components/InviteManagementTable', () => ({
   InviteManagementTable: () => <div data-testid="invite-table" />,
@@ -118,6 +129,8 @@ describe('AssessmentBuilderScreen', () => {
     vi.clearAllMocks();
     mockRouteParams = {};
     mockGetUser.mockResolvedValue({ data: { user: { id: 'u1' } } });
+    agentChatProps.current = null;
+    bulkInviteProps.current = null;
     setupFetch();
   });
 
@@ -151,12 +164,22 @@ describe('AssessmentBuilderScreen', () => {
     await waitFor(() => expect(screen.getByText('Start from a Template')).toBeTruthy());
   });
 
-  it('applies template on click', async () => {
+  it('applies template on click and matches challenge IDs from loaded challenges', async () => {
+    setupFetch({
+      '/api/challenges': ok([
+        { id: 'ch1', title: 'String Formatter', difficulty: 'easy', category: 'model_selection', skillTested: 'Strings' },
+        { id: 'ch2', title: 'Event Emitter', difficulty: 'medium', category: 'prompt_efficiency', skillTested: 'Events' },
+      ]),
+    });
     render(<AssessmentBuilderScreen />);
     await waitFor(() => expect(screen.getByText('Frontend Developer')).toBeTruthy());
+    // Wait for challenges to load too
+    await waitFor(() => expect(screen.getByText('String Formatter')).toBeTruthy());
     fireEvent.click(screen.getByText('Frontend Developer'));
     await waitFor(() => {
       expect(screen.getByDisplayValue('Frontend Developer Assessment')).toBeTruthy();
+      // Template has challengeTitles: ['String Formatter', 'Event Emitter'] which match ch1 and ch2
+      expect(screen.getByText(/2 selected/)).toBeTruthy();
     });
   });
 
@@ -219,6 +242,31 @@ describe('AssessmentBuilderScreen', () => {
     fireEvent.click(screen.getByText('Save Assessment'));
     await waitFor(() => {
       expect(fn).toHaveBeenCalledWith('/api/assessments', expect.objectContaining({ method: 'POST' }));
+    });
+  });
+
+  it('saves new assessment with branding fields populated', async () => {
+    const fn = setupFetch({
+      '/api/assessments': ok({ id: 'new-id' }),
+      '/api/assessments/new-id': ok({}),
+    });
+    render(<AssessmentBuilderScreen />);
+    await waitFor(() => expect(screen.getByText('Save Assessment')).toBeTruthy());
+    // Fill in title
+    const titleInput = screen.getByLabelText('Title');
+    fireEvent.change(titleInput, { target: { value: 'Branded Test' } });
+    // Fill in branding fields (covers lines 191-193)
+    const companyNameInput = screen.getByLabelText('Company Name');
+    fireEvent.change(companyNameInput, { target: { value: 'TestCo' } });
+    const logoInput = screen.getByLabelText('Company Logo URL');
+    fireEvent.change(logoInput, { target: { value: 'https://test.com/logo.png' } });
+    const welcomeInput = screen.getByLabelText('Welcome Message');
+    fireEvent.change(welcomeInput, { target: { value: 'Welcome!' } });
+    fireEvent.click(screen.getByText('Save Assessment'));
+    await waitFor(() => {
+      expect(fn).toHaveBeenCalledWith('/api/assessments', expect.objectContaining({ method: 'POST' }));
+      // After creating, should also PUT branding to the newly created assessment
+      expect(fn).toHaveBeenCalledWith('/api/assessments/new-id', expect.objectContaining({ method: 'PUT' }));
     });
   });
 
@@ -437,7 +485,8 @@ describe('AssessmentBuilderScreen', () => {
     expect(screen.queryByText('Start from a Template')).toBeNull();
   });
 
-  it('copies invite link to clipboard when Copy to Clipboard is clicked', async () => {
+  it('copies invite link to clipboard and resets copied state after timeout', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
     mockRouteParams = { assessmentId: 'active-id' };
     setupFetch({
       '/api/assessments/active-id': ok({
@@ -458,10 +507,15 @@ describe('AssessmentBuilderScreen', () => {
     await waitFor(() => {
       expect(mockClipboard.writeText).toHaveBeenCalledWith('https://ruwt.dev/invite/xyz');
     });
-    // Should show "Copied!" text
     await waitFor(() => {
       expect(screen.getByText('Copied!')).toBeTruthy();
     });
+    // Advance timers to trigger the setTimeout(() => setCopied(false), 2000) on line 670
+    vi.advanceTimersByTime(2100);
+    await waitFor(() => {
+      expect(screen.getByText('Copy to Clipboard')).toBeTruthy();
+    });
+    vi.useRealTimers();
   });
 
   it('toggles custom active challenge selection', async () => {
@@ -476,10 +530,8 @@ describe('AssessmentBuilderScreen', () => {
       expect(screen.getByText('Custom Active')).toBeTruthy();
     });
     expect(screen.getByText(/0 selected/)).toBeTruthy();
-    // Click to select custom active challenge
     fireEvent.click(screen.getByText('Custom Active'));
     await waitFor(() => expect(screen.getByText(/1 selected/)).toBeTruthy());
-    // Click again to deselect
     fireEvent.click(screen.getByText('Custom Active'));
     await waitFor(() => expect(screen.getByText(/0 selected/)).toBeTruthy());
   });
@@ -512,24 +564,14 @@ describe('AssessmentBuilderScreen', () => {
     });
     render(<AssessmentBuilderScreen />);
     await waitFor(() => expect(screen.getByText('Ch1')).toBeTruthy());
-    // Set title
     const inputs = screen.getAllByDisplayValue('');
     fireEvent.change(inputs[0], { target: { value: 'With Challenges' } });
-    // Select a challenge
     fireEvent.click(screen.getByText('Ch1'));
     await waitFor(() => expect(screen.getByText(/1 selected/)).toBeTruthy());
     fireEvent.click(screen.getByText('Save Assessment'));
     await waitFor(() => {
       expect(fn).toHaveBeenCalledWith('/api/assessments', expect.objectContaining({ method: 'POST' }));
     });
-  });
-
-  it('handles agent callbacks for weights, branding, time limit, and threshold', async () => {
-    // This test ensures the callback handlers exist and can be invoked.
-    // The agent chat component is mocked, so we test via the mocked component's props.
-    // We just verify the screen renders with the agent chat visible.
-    render(<AssessmentBuilderScreen />);
-    await waitFor(() => expect(screen.getByTestId('agent-chat')).toBeTruthy());
   });
 
   it('renders active custom challenges with "Custom" badge', async () => {
@@ -544,5 +586,186 @@ describe('AssessmentBuilderScreen', () => {
       expect(screen.getByText('My Custom Challenge')).toBeTruthy();
       expect(screen.getByText('Custom')).toBeTruthy();
     });
+  });
+
+  // --- New tests for uncovered lines ---
+
+  it('updates weight inputs (covers weight onChangeText)', async () => {
+    render(<AssessmentBuilderScreen />);
+    await waitFor(() => expect(screen.getByText('Score Weights')).toBeTruthy());
+    // Weight inputs all have default value "20" and placeholder "20"
+    // Find all inputs with value "20" and change the first one (Model Selection, covers line 511)
+    const weightInputs = screen.getAllByDisplayValue('20');
+    expect(weightInputs.length).toBe(5); // 5 weight dimensions
+    fireEvent.change(weightInputs[0], { target: { value: '30' } });
+    await waitFor(() => expect(screen.getByDisplayValue('30')).toBeTruthy());
+  });
+
+  it('invokes onChallengesChanged agent callback to refresh challenges', async () => {
+    mockRouteParams = { assessmentId: 'agent-test-id' };
+    const fn = setupFetch({
+      '/api/assessments/agent-test-id': ok({
+        title: 'Agent Test', description: '', timeLimit: 3600, status: 'draft',
+        // Need 2+ challenges so the .sort comparator actually executes (covers line 287)
+        challenges: [{ id: 'ch2', sortOrder: 1 }, { id: 'ch1', sortOrder: 0 }],
+      }),
+    });
+    render(<AssessmentBuilderScreen />);
+    await waitFor(() => expect(screen.getByDisplayValue('Agent Test')).toBeTruthy());
+    expect(agentChatProps.current).toBeTruthy();
+    expect(agentChatProps.current.onChallengesChanged).toBeTypeOf('function');
+    // Invoke the callback (covers lines 280-288 including the sort comparator)
+    await agentChatProps.current.onChallengesChanged();
+    await waitFor(() => {
+      const calls = fn.mock.calls.filter((c: any[]) => c[0].includes('/api/assessments/agent-test-id'));
+      expect(calls.length).toBeGreaterThanOrEqual(2); // initial load + refresh
+    });
+  });
+
+  it('invokes onWeightsChanged agent callback to update weights', async () => {
+    render(<AssessmentBuilderScreen />);
+    await waitFor(() => expect(screen.getByTestId('agent-chat')).toBeTruthy());
+    expect(agentChatProps.current).toBeTruthy();
+    expect(agentChatProps.current.onWeightsChanged).toBeTypeOf('function');
+    // Invoke the callback (covers line 295)
+    agentChatProps.current.onWeightsChanged({
+      modelSelection: 40,
+      promptEfficiency: 25,
+      debugging: 15,
+      strategy: 10,
+      speed: 10,
+    });
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('40')).toBeTruthy(); // Model Selection weight updated
+      expect(screen.getByDisplayValue('25')).toBeTruthy(); // Prompt Efficiency
+    });
+  });
+
+  it('invokes onBrandingChanged agent callback to update branding fields', async () => {
+    render(<AssessmentBuilderScreen />);
+    await waitFor(() => expect(screen.getByTestId('agent-chat')).toBeTruthy());
+    expect(agentChatProps.current).toBeTruthy();
+    expect(agentChatProps.current.onBrandingChanged).toBeTypeOf('function');
+    // Invoke the callback (covers lines 305-307)
+    agentChatProps.current.onBrandingChanged({
+      companyName: 'AgentCo',
+      companyLogoUrl: 'https://agent.co/logo.png',
+      welcomeMessage: 'Hello from agent',
+    });
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('AgentCo')).toBeTruthy();
+      expect(screen.getByDisplayValue('https://agent.co/logo.png')).toBeTruthy();
+      expect(screen.getByDisplayValue('Hello from agent')).toBeTruthy();
+    });
+  });
+
+  it('invokes onTimeLimitChanged agent callback to update time limit', async () => {
+    render(<AssessmentBuilderScreen />);
+    await waitFor(() => expect(screen.getByTestId('agent-chat')).toBeTruthy());
+    expect(agentChatProps.current).toBeTruthy();
+    expect(agentChatProps.current.onTimeLimitChanged).toBeTypeOf('function');
+    // Invoke the callback (covers line 311)
+    agentChatProps.current.onTimeLimitChanged(120);
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('120')).toBeTruthy();
+    });
+  });
+
+  it('invokes onThresholdChanged agent callback to update threshold', async () => {
+    render(<AssessmentBuilderScreen />);
+    await waitFor(() => expect(screen.getByTestId('agent-chat')).toBeTruthy());
+    expect(agentChatProps.current).toBeTruthy();
+    expect(agentChatProps.current.onThresholdChanged).toBeTypeOf('function');
+    // Invoke the callback (covers line 315)
+    const newThreshold = { enabled: true, mode: 'weighted_average' as const, minOverall: 80, dimensions: {} };
+    agentChatProps.current.onThresholdChanged(newThreshold);
+    // The threshold is set internally but not directly visible in the UI (PassThresholdEditor is mocked)
+    // Just ensure it doesn't crash
+  });
+
+  it('invokes onCustomChallengeCreated agent callback to refresh custom challenges', async () => {
+    setupFetch({
+      '/api/orgs': ok([{ orgId: 'org1', orgName: 'Test Org', role: 'owner' }]),
+      '/api/orgs/org1/challenges': ok([
+        { id: 'cc1', title: 'Initial Custom', description: '', difficulty: 'easy', category: 'model_selection', skillTested: null, language: 'javascript', starterCode: null, testCases: '[]', hiddenTestCases: null, testHarness: null, status: 'active', aiGenerated: 0, tags: null },
+      ]),
+    });
+    render(<AssessmentBuilderScreen />);
+    await waitFor(() => expect(screen.getByText('Initial Custom')).toBeTruthy());
+    expect(agentChatProps.current).toBeTruthy();
+    expect(agentChatProps.current.onCustomChallengeCreated).toBeTypeOf('function');
+    // Invoke the callback (covers lines 319-322)
+    await agentChatProps.current.onCustomChallengeCreated();
+    await waitFor(() => {
+      // Should re-fetch org challenges
+      const calls = (globalThis.fetch as any).mock.calls.filter((c: any[]) => c[0].includes('/api/orgs/org1/challenges'));
+      expect(calls.length).toBeGreaterThanOrEqual(2); // initial + refresh
+    });
+  });
+
+  it('invokes BulkInvitePanel onInvitesSent callback to refresh invite table', async () => {
+    mockRouteParams = { assessmentId: 'active-id' };
+    setupFetch({
+      '/api/assessments/active-id': ok({
+        title: 'Active', description: '', timeLimit: 3600, status: 'active', challenges: [],
+      }),
+    });
+    render(<AssessmentBuilderScreen />);
+    await waitFor(() => {
+      expect(screen.getByTestId('bulk-invite')).toBeTruthy();
+      expect(screen.getByTestId('invite-table')).toBeTruthy();
+    });
+    expect(bulkInviteProps.current).not.toBeNull();
+    expect(bulkInviteProps.current.onInvitesSent).toBeTypeOf('function');
+    // Invoke the inline callback: () => setInviteRefreshKey((k) => k + 1)
+    // Wrap in act() to flush state updates (covers line 689)
+    act(() => {
+      bulkInviteProps.current.onInvitesSent();
+    });
+  });
+
+  it('handles fetch rejection gracefully during init', async () => {
+    // Make fetch throw to cover the .catch(() => null) branches (lines 108-109)
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('Network error')));
+    render(<AssessmentBuilderScreen />);
+    await waitFor(() => {
+      // Should still render without crashing
+      expect(screen.getByText('Create Assessment')).toBeTruthy();
+    });
+  });
+
+  it('handles onChallengesChanged with no assessmentId (early return)', async () => {
+    // No assessmentId set = no route param and no save yet
+    render(<AssessmentBuilderScreen />);
+    await waitFor(() => expect(screen.getByTestId('agent-chat')).toBeTruthy());
+    // onChallengesChanged should return early when assessmentId is undefined
+    await agentChatProps.current.onChallengesChanged();
+    // Should not crash
+  });
+
+  it('handles onCustomChallengeCreated with no orgId (early return)', async () => {
+    // No orgs returned = orgId stays null
+    setupFetch({
+      '/api/orgs': ok([]),
+    });
+    render(<AssessmentBuilderScreen />);
+    await waitFor(() => expect(screen.getByTestId('agent-chat')).toBeTruthy());
+    // onCustomChallengeCreated should return early when orgId is null (line 319)
+    await agentChatProps.current.onCustomChallengeCreated();
+    // Should not crash
+  });
+
+  it('shows invite error with fallback message when no error field', async () => {
+    mockRouteParams = { assessmentId: 'active-id' };
+    setupFetch({
+      '/api/assessments/active-id': ok({
+        title: 'Active', description: '', timeLimit: 3600, status: 'active', challenges: [],
+      }),
+      '/api/assessments/active-id/invites': fail({}),
+    });
+    render(<AssessmentBuilderScreen />);
+    await waitFor(() => expect(screen.getByText('Generate Invite Link')).toBeTruthy());
+    fireEvent.click(screen.getByText('Generate Invite Link'));
+    await waitFor(() => expect(screen.getByText('Failed to generate invite link')).toBeTruthy());
   });
 });

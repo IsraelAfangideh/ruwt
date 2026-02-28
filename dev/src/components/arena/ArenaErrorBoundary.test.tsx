@@ -13,7 +13,7 @@ vi.mock('@/theme/colors', () => ({
   },
 }));
 
-function ThrowingChild() {
+function ThrowingChild(): JSX.Element {
   throw new Error('Test error');
 }
 

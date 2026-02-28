@@ -5,8 +5,6 @@ import {
   ENTERPRISE_TIER,
   getPackageById,
   getSubscriptionPlanById,
-  type CreditPackage,
-  type SubscriptionPlan,
 } from './stripe';
 
 describe('stripe', () => {

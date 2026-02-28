@@ -13,11 +13,12 @@ export default defineConfig({
     environment: 'node',
     setupFiles: ['./src/test/setup.ts'],
     coverage: {
-      provider: 'v8',
+      provider: 'istanbul',
       reporter: ['text', 'text-summary'],
       include: ['src/**/*.ts', 'src/**/*.tsx', 'functions/**/*.ts'],
       exclude: [
         '**/*.test.ts',
+        '**/*.test.tsx',
         '**/*.d.ts',
         'src/stubs/**',
         'src/vite-env.d.ts',

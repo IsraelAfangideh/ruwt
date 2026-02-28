@@ -242,7 +242,7 @@ describe('InviteManagementTable', () => {
     await waitFor(() => {
       const remindCall = fetchSpy.mock.calls.find((c: any[]) => c[0]?.includes('/remind'));
       expect(remindCall).toBeTruthy();
-      expect(JSON.parse(remindCall![1].body)).toEqual({ inviteIds: ['inv1'] });
+      expect(JSON.parse(remindCall![1]!.body as string)).toEqual({ inviteIds: ['inv1'] });
     });
   });
 

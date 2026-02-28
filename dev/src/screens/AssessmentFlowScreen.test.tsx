@@ -92,7 +92,7 @@ describe('AssessmentFlowScreen', () => {
 
   it('renders loading state initially', () => {
     vi.stubGlobal('fetch', vi.fn().mockReturnValue(new Promise(() => {})));
-    const { container } = render(<AssessmentFlowScreen />);
+    render(<AssessmentFlowScreen />);
     expect(screen.getByText('Loading assessment...')).toBeTruthy();
   });
 
@@ -344,14 +344,13 @@ describe('AssessmentFlowScreen', () => {
       const calls = fetchFn.mock.calls;
       const submissionCall = calls.find((c: any) => c[0]?.includes('/api/submissions'));
       expect(submissionCall).toBeTruthy();
-      const body = JSON.parse(submissionCall[1].body);
+      const body = JSON.parse(submissionCall![1].body);
       expect(body.mode).toBe('test');
       expect(body.attemptId).toBe('att1');
     });
   });
 
   it('onRunTests returns early if no attempt id', async () => {
-    const noAttemptData = { ...mockSessionData, currentAttempt: { id: '', status: 'in_progress' } };
     // attempt.id is falsy empty string
     const dataWithNullAttempt = { ...mockSessionData, currentAttempt: null };
     setupFetch({
@@ -422,7 +421,7 @@ describe('AssessmentFlowScreen', () => {
   it('handleNext advances to next challenge on success', async () => {
     // First render with passed test results - need to trigger tests first
     const nextChallenge = { id: 'c2', title: 'Challenge2', difficulty: 'medium', category: 'debug', description: 'Next', starterCode: '// next', testCases: '[]', language: 'javascript' };
-    const fetchFn = setupFetch({
+    setupFetch({
       '/api/assess/test-session-123': ok(mockSessionData),
       '/api/dashboard': ok(mockDashboardData),
       '/api/submissions': ok({ success: true, passedTests: 3, totalTests: 3, results: [] }),
@@ -449,7 +448,7 @@ describe('AssessmentFlowScreen', () => {
       ...mockSessionData,
       session: { ...mockSessionData.session, currentChallengeIndex: 2 },
     };
-    const fetchFn = setupFetch({
+    setupFetch({
       '/api/assess/test-session-123': ok(lastChallengeData),
       '/api/dashboard': ok(mockDashboardData),
       '/api/submissions': ok({ success: true, passedTests: 3, totalTests: 3, results: [] }),
@@ -532,7 +531,7 @@ describe('AssessmentFlowScreen', () => {
   });
 
   it('handleNext handles failed /next request gracefully', async () => {
-    const fetchFn = setupFetch({
+    setupFetch({
       '/api/assess/test-session-123': ok(mockSessionData),
       '/api/dashboard': ok(mockDashboardData),
       '/api/submissions': ok({ success: true, passedTests: 3, totalTests: 3, results: [] }),
@@ -586,5 +585,50 @@ describe('AssessmentFlowScreen', () => {
     await new Promise(r => setTimeout(r, 1200));
     // The timer text should have been set with MM:SS format in the Badge
     expect(container.textContent).toMatch(/\d{2}:\d{2}/);
+  });
+
+  it('onCodeChange updates code state', async () => {
+    render(<AssessmentFlowScreen />);
+    await waitFor(() => expect(screen.getByTestId('code-change-btn')).toBeTruthy());
+    fireEvent.click(screen.getByTestId('code-change-btn'));
+    expect(screen.getByTestId('arena-ide')).toBeTruthy();
+  });
+
+  it('handleComplete handles missing shareToken gracefully', async () => {
+    const lastChallengeData = {
+      ...mockSessionData,
+      session: { ...mockSessionData.session, currentChallengeIndex: 2 },
+    };
+    setupFetch({
+      '/api/assess/test-session-123': ok(lastChallengeData),
+      '/api/dashboard': ok(mockDashboardData),
+      '/api/submissions': ok({ success: true, passedTests: 3, totalTests: 3, results: [] }),
+      '/api/assess/test-session-123/complete': ok({ session: {} }),
+    });
+    render(<AssessmentFlowScreen />);
+    await waitFor(() => expect(screen.getByTestId('submit-btn')).toBeTruthy());
+    fireEvent.click(screen.getByTestId('submit-btn'));
+    await waitFor(() => {
+      expect(screen.getByText('Complete Assessment')).toBeTruthy();
+    });
+    fireEvent.click(screen.getByText('Complete Assessment'));
+    await waitFor(() => {
+      expect(screen.getByText('Assessment Complete')).toBeTruthy();
+    });
+  });
+
+  it('sets challengeProgress to empty array when not provided', async () => {
+    const noProgressData = {
+      ...mockSessionData,
+      challengeProgress: undefined,
+    };
+    setupFetch({
+      '/api/assess/test-session-123': ok(noProgressData),
+      '/api/dashboard': ok(mockDashboardData),
+    });
+    render(<AssessmentFlowScreen />);
+    await waitFor(() => {
+      expect(screen.getAllByText('FizzBuzz').length).toBeGreaterThanOrEqual(1);
+    });
   });
 });

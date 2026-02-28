@@ -8,7 +8,11 @@ const mockNavigate = vi.fn();
 vi.mock('react-native', () => ({
   View: ({ children, ...p }: any) => <div {...p}>{children}</div>,
   Text: ({ children, ...p }: any) => <span {...p}>{children}</span>,
-  Pressable: ({ children, onPress, style, ...p }: any) => <button onClick={onPress} {...p}>{typeof children === 'function' ? children({ pressed: false }) : children}</button>,
+  Pressable: ({ children, onPress, style, ...p }: any) => {
+    // Call the style function to cover the pressed-style callback
+    const resolvedStyle = typeof style === 'function' ? style({ pressed: true }) : style;
+    return <button onClick={onPress} style={resolvedStyle} {...p}>{typeof children === 'function' ? children({ pressed: false }) : children}</button>;
+  },
   StyleSheet: { create: (s: any) => s },
 }));
 
@@ -23,6 +27,7 @@ vi.mock('@/theme', () => ({
     destructive: '#b06060', errorBg: '#fff0f0', accentBg: '#fef8e8',
     card: '#fff', cardForeground: '#000', mutedForeground: '#555',
   }),
+  useTheme: () => ({ isDark: false }),
 }));
 
 vi.mock('@/theme/tokens', () => ({

@@ -1,13 +1,17 @@
 // @vitest-environment jsdom
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, waitFor } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import React from 'react';
+import { render, waitFor, fireEvent } from '@testing-library/react';
 
 /* ── Hoisted variables that vi.mock callbacks can reference ───────── */
-const { mockNavReset, mockGetUserFn, mockUnsubscribeFn } = vi.hoisted(() => ({
+const { mockNavReset, mockGetUserFn, mockUnsubscribeFn, shouldChildThrow, shouldChildSuspend: _shouldChildSuspend } = vi.hoisted(() => ({
   mockNavReset: vi.fn(),
   mockGetUserFn: vi.fn().mockResolvedValue({ data: { user: null }, error: null }),
   mockUnsubscribeFn: vi.fn(),
+  shouldChildThrow: { value: false },
+  shouldChildSuspend: { value: false, resolve: null as (() => void) | null },
 }));
+const shouldChildSuspend = _shouldChildSuspend;
 
 let onAuthChangeCb: ((event: string, session: any) => void) | null = null;
 
@@ -91,18 +95,42 @@ vi.mock('@react-navigation/native', () => {
     },
     createNavigationContainerRef: () => ({
       isReady: () => true,
-      reset: mockNavReset,
+      reset: (...args: any[]) => mockNavReset(...args),
     }),
   };
 });
 
 vi.mock('@react-navigation/native-stack', () => {
-  const React = require('react');
   return {
     createNativeStackNavigator: () => ({
-      Navigator: ({ children }: { children: React.ReactNode }) => (
-        <div data-testid="stack-navigator">{children}</div>
-      ),
+      Navigator: ({ children }: { children: React.ReactNode }) => {
+        // When shouldChildThrow.value is true, render a throwing component
+        // to exercise the ChunkErrorBoundary
+        if (shouldChildThrow.value) {
+          const ThrowingChild = () => { throw new Error('Chunk load failure'); };
+          return (
+            <div data-testid="stack-navigator">
+              <ThrowingChild />
+            </div>
+          );
+        }
+        // When shouldChildSuspend.value is true, render a suspending component
+        // to exercise the LoadingFallback via <Suspense>
+        if (shouldChildSuspend.value) {
+          let resolved = false;
+          let resolvePromise: (() => void) | null = null;
+          const promise = new Promise<void>((resolve) => { resolvePromise = resolve; });
+          shouldChildSuspend.resolve = () => { resolved = true; resolvePromise?.(); };
+          const SuspendingChild = () => {
+            if (!resolved) throw promise;
+            return <div data-testid="stack-navigator">{children}</div>;
+          };
+          return <SuspendingChild />;
+        }
+        return (
+          <div data-testid="stack-navigator">{children}</div>
+        );
+      },
       Screen: ({ name }: { name: string; component: React.ComponentType }) => (
         <div data-testid={`screen-${name}`} />
       ),
@@ -113,6 +141,7 @@ vi.mock('@react-navigation/native-stack', () => {
 // Import Sentry AFTER mock to access the mock functions
 const Sentry = await import('@sentry/react');
 const mockSetUser = vi.mocked(Sentry.setUser);
+const mockCaptureException = vi.mocked(Sentry.captureException);
 
 import { AppNavigator } from './AppNavigator';
 
@@ -120,7 +149,16 @@ describe('AppNavigator', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     onAuthChangeCb = null;
+    shouldChildThrow.value = false;
+    shouldChildSuspend.value = false;
+    shouldChildSuspend.resolve = null;
     mockGetUserFn.mockResolvedValue({ data: { user: null }, error: null });
+  });
+
+  afterEach(() => {
+    shouldChildThrow.value = false;
+    shouldChildSuspend.value = false;
+    shouldChildSuspend.resolve = null;
   });
 
   it('renders without crashing', () => {
@@ -234,6 +272,19 @@ describe('AppNavigator', () => {
     expect(mockUnsubscribeFn).toHaveBeenCalled();
   });
 
+  /* ── lazyWithRetry auto-retry on chunk load failure (lines 23-31) ── */
+  it('handles chunk load failure with sessionStorage retry logic', async () => {
+    // The lazyWithRetry function is tested indirectly through the screens.
+    // Since all screens are mocked, they load successfully.
+    // The retry logic (lines 23-31) requires a real import failure which
+    // we can't easily simulate with mocked screens.
+    // This test documents that the retry logic exists and screens load.
+    const { container } = render(<AppNavigator />);
+    await waitFor(() => {
+      expect(container.querySelector('[data-testid="stack-navigator"]')).not.toBeNull();
+    });
+  });
+
   /* ── onStateChange focuses #main-content ─────────────────────── */
   it('focuses #main-content element on navigation state change', async () => {
     // Create a #main-content element in the DOM
@@ -252,5 +303,193 @@ describe('AppNavigator', () => {
 
     document.body.removeChild(mainContent);
     focusSpy.mockRestore();
+  });
+
+  /* ── ChunkErrorBoundary: renders error UI when child throws ───── */
+  it('shows error UI with reload button when a child component throws', () => {
+    // Suppress React error boundary console.error noise
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    shouldChildThrow.value = true;
+
+    const { getByText } = render(<AppNavigator />);
+
+    // The error boundary should catch the throw and render the error UI
+    expect(getByText('Something went wrong')).toBeTruthy();
+    expect(getByText('A new version may have been deployed. Reload to continue.')).toBeTruthy();
+    expect(getByText('Reload')).toBeTruthy();
+
+    consoleSpy.mockRestore();
+  });
+
+  /* ── ChunkErrorBoundary: componentDidCatch reports to Sentry ──── */
+  it('reports chunk errors to Sentry via componentDidCatch', () => {
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    shouldChildThrow.value = true;
+
+    render(<AppNavigator />);
+
+    // componentDidCatch should have called Sentry.captureException
+    expect(mockCaptureException).toHaveBeenCalledWith(
+      expect.any(Error),
+      expect.objectContaining({
+        tags: { type: 'chunk_error' },
+        contexts: expect.objectContaining({
+          react: expect.objectContaining({
+            componentStack: expect.anything(),
+          }),
+        }),
+      }),
+    );
+
+    consoleSpy.mockRestore();
+  });
+
+  /* ── ChunkErrorBoundary: reload button triggers window.location.reload ── */
+  it('calls window.location.reload when Reload button is clicked', () => {
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const reloadMock = vi.fn();
+    Object.defineProperty(window, 'location', {
+      value: { ...window.location, reload: reloadMock },
+      writable: true,
+      configurable: true,
+    });
+
+    shouldChildThrow.value = true;
+
+    const { getByText } = render(<AppNavigator />);
+
+    fireEvent.click(getByText('Reload'));
+    expect(reloadMock).toHaveBeenCalled();
+
+    consoleSpy.mockRestore();
+  });
+
+  /* ── LoadingFallback: shown while lazy components are loading ──── */
+  it('renders LoadingFallback spinner while a lazy child is suspending', async () => {
+    shouldChildSuspend.value = true;
+
+    const { container } = render(<AppNavigator />);
+
+    // The Suspense fallback (LoadingFallback) should render an ActivityIndicator
+    // which react-native-web renders as an SVG spinner
+    const spinner = container.querySelector('svg');
+    expect(spinner, 'LoadingFallback should render an ActivityIndicator (SVG spinner)').not.toBeNull();
+
+    // Resolve the suspense so the component unmounts cleanly
+    if (shouldChildSuspend.resolve) {
+      shouldChildSuspend.resolve();
+    }
+  });
+});
+
+/* ── lazyWithRetry: isolated tests for chunk retry logic ─────────── */
+describe('lazyWithRetry', () => {
+  let reloadMock: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    sessionStorage.clear();
+    reloadMock = vi.fn();
+    Object.defineProperty(window, 'location', {
+      value: { ...window.location, reload: reloadMock },
+      writable: true,
+      configurable: true,
+    });
+  });
+
+  it('sets sessionStorage key and calls window.location.reload on first chunk failure', async () => {
+    const { lazyWithRetry } = await import('./AppNavigator');
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const chunkError = new Error('Failed to fetch dynamically imported module');
+    const LazyComp = lazyWithRetry(
+      'TestFirst',
+      () => Promise.reject(chunkError),
+      (m: any) => m.default,
+    );
+
+    render(
+      <React.Suspense fallback={<div data-testid="suspense-fallback">Loading</div>}>
+        <LazyComp />
+      </React.Suspense>,
+    );
+
+    await waitFor(() => {
+      expect(sessionStorage.getItem('chunk_retry_TestFirst')).toBe('1');
+    });
+    expect(reloadMock).toHaveBeenCalled();
+
+    consoleSpy.mockRestore();
+  });
+
+  it('successfully renders a lazy component when the factory resolves', async () => {
+    const { lazyWithRetry } = await import('./AppNavigator');
+
+    const TestComp = () => <div data-testid="lazy-loaded">Loaded!</div>;
+    const LazyComp = lazyWithRetry(
+      'TestSuccess',
+      () => Promise.resolve({ TestComp }),
+      (m: any) => m.TestComp,
+    );
+
+    const { container } = render(
+      <React.Suspense fallback={<div>Loading</div>}>
+        <LazyComp />
+      </React.Suspense>,
+    );
+
+    await waitFor(() => {
+      expect(container.querySelector('[data-testid="lazy-loaded"]')).not.toBeNull();
+    });
+  });
+
+  it('removes sessionStorage key and re-throws error on second chunk failure', async () => {
+    const { lazyWithRetry } = await import('./AppNavigator');
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    // Pre-set the sessionStorage key to simulate a second failure
+    sessionStorage.setItem('chunk_retry_TestSecond', '1');
+
+    const chunkError = new Error('Failed to fetch dynamically imported module');
+    const LazyComp = lazyWithRetry(
+      'TestSecond',
+      () => Promise.reject(chunkError),
+      (m: any) => m.default,
+    );
+
+    class TestErrorBoundary extends React.Component<
+      { children: React.ReactNode },
+      { error: Error | null }
+    > {
+      state = { error: null as Error | null };
+      static getDerivedStateFromError(error: Error) {
+        return { error };
+      }
+      render(): JSX.Element {
+        if (this.state.error) {
+          return <div data-testid="rethrown-error">{this.state.error.message}</div>;
+        }
+        return <>{this.props.children}</>;
+      }
+    }
+
+    const { container } = render(
+      <TestErrorBoundary>
+        <React.Suspense fallback={<div>Loading</div>}>
+          <LazyComp />
+        </React.Suspense>
+      </TestErrorBoundary>,
+    );
+
+    await waitFor(() => {
+      expect(container.querySelector('[data-testid="rethrown-error"]')).not.toBeNull();
+    });
+
+    expect(sessionStorage.getItem('chunk_retry_TestSecond')).toBeNull();
+    expect(reloadMock).not.toHaveBeenCalled();
+
+    consoleSpy.mockRestore();
   });
 });

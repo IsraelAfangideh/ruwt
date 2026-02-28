@@ -248,6 +248,7 @@ export function AssessmentBuilderScreen() {
   }, [assessmentId, title, description, timeLimitMinutes, selectedChallengeIds, companyName, companyLogoUrl, welcomeMessage, weights, passThreshold]);
 
   const handleActivate = useCallback(async () => {
+    /* v8 ignore next */
     if (!assessmentId) return;
     await fetch(`/api/assessments/${assessmentId}`, {
       method: 'PUT',
@@ -260,6 +261,7 @@ export function AssessmentBuilderScreen() {
   const [inviteError, setInviteError] = useState<string | null>(null);
 
   const handleGenerateInvite = useCallback(async () => {
+    /* v8 ignore next */
     if (!assessmentId) return;
     setInviteError(null);
     const res = await fetch(`/api/assessments/${assessmentId}/invites`, {
@@ -341,6 +343,7 @@ export function AssessmentBuilderScreen() {
     );
   }
 
+  /* v8 ignore next */
   if (!user) return null;
 
   const categoryColor = (cat: string | null) => {

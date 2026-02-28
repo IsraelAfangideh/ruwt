@@ -393,6 +393,23 @@ describe('OrgManagementScreen', () => {
     });
   });
 
+  it('calls handleChangeRole to demote admin when Demote is clicked (line 392)', async () => {
+    const fn = setupFetch({
+      '/api/orgs': ok([mockOrg]),
+      '/api/orgs/org1/members': ok(mockMembers),
+      '/api/orgs/org1/invitations': ok([]),
+    });
+    render(<OrgManagementScreen />);
+    await waitFor(() => expect(screen.getByText('Demote')).toBeTruthy());
+    fireEvent.click(screen.getByText('Demote'));
+    await waitFor(() => {
+      expect(fn).toHaveBeenCalledWith('/api/orgs/org1/members', expect.objectContaining({
+        method: 'PUT',
+        body: JSON.stringify({ userId: 'u2', role: 'member' }),
+      }));
+    });
+  });
+
   it('calls handleRemoveMember when Remove is clicked', async () => {
     const fn = setupFetch({
       '/api/orgs': ok([mockOrg]),
@@ -479,7 +496,7 @@ describe('OrgManagementScreen', () => {
   });
 
   it('opens billing portal when Manage Billing is clicked for active subscription', async () => {
-    const fn = setupFetch({
+    setupFetch({
       '/api/orgs': ok([mockOrg]),
       '/api/orgs/org1/members': ok(mockMembers),
       '/api/orgs/org1/invitations': ok([]),
@@ -494,12 +511,12 @@ describe('OrgManagementScreen', () => {
     await waitFor(() => {
       expect(window.location.href).toBe('https://billing.stripe.com/portal');
     });
-    window.location = originalLocation;
+    Object.defineProperty(window, 'location', { value: originalLocation, writable: true });
   });
 
   it('opens billing portal when Update Payment is clicked for past_due subscription', async () => {
     const pastDueOrg = { ...mockOrg, subscriptionStatus: 'past_due' };
-    const fn = setupFetch({
+    setupFetch({
       '/api/orgs': ok([pastDueOrg]),
       '/api/orgs/org1/members': ok(mockMembers),
       '/api/orgs/org1/invitations': ok([]),
@@ -514,7 +531,7 @@ describe('OrgManagementScreen', () => {
     await waitFor(() => {
       expect(window.location.href).toBe('https://billing.stripe.com/portal');
     });
-    window.location = originalLocation;
+    Object.defineProperty(window, 'location', { value: originalLocation, writable: true });
   });
 
   it('navigates to Teams when Subscribe is clicked for no-sub org', async () => {
@@ -541,5 +558,48 @@ describe('OrgManagementScreen', () => {
     await waitFor(() => expect(screen.getByText('Resubscribe')).toBeTruthy());
     fireEvent.click(screen.getByText('Resubscribe'));
     expect(mockNavigate).toHaveBeenCalledWith('Teams');
+  });
+
+  it('handleSaveSettings catches fetch exception gracefully (line 133/140)', async () => {
+    const fn = vi.fn().mockImplementation((url: string, opts?: any) => {
+      if (opts?.method === 'PUT') {
+        return Promise.reject(new Error('Network failure'));
+      }
+      if (url.includes('/api/orgs') && !url.includes('/members') && !url.includes('/invitations')) {
+        return Promise.resolve(ok([mockOrg]));
+      }
+      if (url.includes('/members')) return Promise.resolve(ok(mockMembers));
+      if (url.includes('/invitations')) return Promise.resolve(ok([]));
+      return Promise.resolve(ok([]));
+    });
+    vi.stubGlobal('fetch', fn);
+    render(<OrgManagementScreen />);
+    await waitFor(() => expect(screen.getByText('Save Settings')).toBeTruthy());
+    fireEvent.click(screen.getByText('Save Settings'));
+    await waitFor(() => {
+      expect(screen.getByText('Save Settings')).toBeTruthy();
+    });
+  });
+
+  it('handleCreateOrg does not submit when name is empty (line 114)', async () => {
+    const fn = setupFetch({ '/api/orgs': ok([]) });
+    render(<OrgManagementScreen />);
+    await waitFor(() => expect(screen.getByText('Create Organization')).toBeTruthy());
+    fireEvent.click(screen.getByText('Create Organization'));
+    const postCalls = fn.mock.calls.filter((c: any) => c[1]?.method === 'POST');
+    expect(postCalls.length).toBe(0);
+  });
+
+  it('shows annual plan label for active annual subscription', async () => {
+    const annualOrg = { ...mockOrg, subscriptionPlan: 'annual' };
+    setupFetch({
+      '/api/orgs': ok([annualOrg]),
+      '/api/orgs/org1/members': ok(mockMembers),
+      '/api/orgs/org1/invitations': ok([]),
+    });
+    render(<OrgManagementScreen />);
+    await waitFor(() => {
+      expect(screen.getByText(/Annual/)).toBeTruthy();
+    });
   });
 });

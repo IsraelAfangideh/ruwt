@@ -1,10 +1,13 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 
+const mockNavigate = vi.fn();
+const mockGoBack = vi.fn();
+let mockRouteParams: any = { username: 'testuser' };
 vi.mock('@react-navigation/native', () => ({
-  useNavigation: () => ({ navigate: vi.fn() }),
-  useRoute: () => ({ params: { username: 'testuser' } }),
+  useNavigation: () => ({ navigate: mockNavigate, goBack: mockGoBack }),
+  useRoute: () => ({ params: mockRouteParams }),
 }));
 vi.mock('@/components/ui/Avatar', () => ({ Avatar: () => <div data-testid="avatar" /> }));
 vi.mock('@/components/ui/Card', () => ({
@@ -37,22 +40,34 @@ const mockProfileData = {
   recentReplays: [],
 };
 
-describe('PublicProfileScreen', () => {
-  beforeEach(() => { vi.clearAllMocks(); });
+function setupFetch(response: any) {
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response));
+}
 
-  it('renders loading state initially', async () => {
+const { PublicProfileScreen } = await import('./PublicProfileScreen');
+
+describe('PublicProfileScreen', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockRouteParams = { username: 'testuser' };
+    setupFetch({ ok: true, json: () => Promise.resolve(mockProfileData) });
+  });
+
+  it('renders loading state initially', () => {
     vi.stubGlobal('fetch', vi.fn().mockReturnValue(new Promise(() => {})));
-    const { PublicProfileScreen } = await import('./PublicProfileScreen');
     const { container } = render(<PublicProfileScreen />);
     expect(container.querySelector('svg') || container.textContent).toBeTruthy();
   });
 
+  it('shows "No username provided" when route has no username (lines 70-72)', async () => {
+    mockRouteParams = {};
+    render(<PublicProfileScreen />);
+    await waitFor(() => {
+      expect(screen.getByText('No username provided')).toBeTruthy();
+    });
+  });
+
   it('renders profile data after loading', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve(mockProfileData),
-    }));
-    const { PublicProfileScreen } = await import('./PublicProfileScreen');
     render(<PublicProfileScreen />);
     await waitFor(() => {
       expect(screen.getAllByText(/TestUser/).length).toBeGreaterThanOrEqual(1);
@@ -60,14 +75,104 @@ describe('PublicProfileScreen', () => {
   });
 
   it('renders error state when user not found', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: false,
-      json: () => Promise.resolve({ error: 'User not found' }),
-    }));
-    const { PublicProfileScreen } = await import('./PublicProfileScreen');
+    setupFetch({ ok: false, json: () => Promise.resolve({ error: 'User not found' }) });
     render(<PublicProfileScreen />);
     await waitFor(() => {
       expect(screen.getAllByText('User not found').length).toBeGreaterThanOrEqual(1);
     });
+  });
+
+  it('renders "Failed to load profile" when fetch throws (catch branch line 85)', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('Network failure')));
+    render(<PublicProfileScreen />);
+    await waitFor(() => {
+      expect(screen.getByText('Failed to load profile')).toBeTruthy();
+    });
+  });
+
+  it('renders Back to Leaderboard link and navigates on click (line 104)', async () => {
+    setupFetch({ ok: false, json: () => Promise.resolve({ error: 'Not found' }) });
+    render(<PublicProfileScreen />);
+    await waitFor(() => {
+      expect(screen.getByText('Back to Leaderboard')).toBeTruthy();
+    });
+    fireEvent.click(screen.getByText('Back to Leaderboard'));
+    expect(mockNavigate).toHaveBeenCalledWith('Leaderboard');
+  });
+
+  it('renders full profile with stats, radar, and empty replays (lines 117-165)', async () => {
+    render(<PublicProfileScreen />);
+    await waitFor(() => {
+      expect(screen.getByText('TestUser')).toBeTruthy();
+    });
+    expect(screen.getByText(/Back/)).toBeTruthy();
+    expect(screen.getByText('@testuser')).toBeTruthy();
+    expect(screen.getByText(/Member since/)).toBeTruthy();
+    expect(screen.getByText('10')).toBeTruthy();
+    expect(screen.getByText('Challenges Solved')).toBeTruthy();
+    expect(screen.getByText('Avg Cost')).toBeTruthy();
+    expect(screen.getByText('#5')).toBeTruthy();
+    expect(screen.getByText('Global Rank')).toBeTruthy();
+    expect(screen.getByText('Skill Profile')).toBeTruthy();
+    expect(screen.getByTestId('radar-chart')).toBeTruthy();
+    expect(screen.getByText('Recent Replays')).toBeTruthy();
+    expect(screen.getByText('No public replays yet.')).toBeTruthy();
+  });
+
+  it('renders recent replays when present (lines 162-179)', async () => {
+    setupFetch({
+      ok: true,
+      json: () => Promise.resolve({
+        ...mockProfileData,
+        recentReplays: [{
+          attemptId: 'att1', challengeTitle: 'FizzBuzz Budget', challengeDifficulty: 'easy',
+          challengeCategory: 'prompt_efficiency', totalCost: 500, inputTokens: 100, outputTokens: 200,
+          submittedAt: '2026-01-01T00:00:00Z',
+        }],
+      }),
+    });
+    render(<PublicProfileScreen />);
+    await waitFor(() => {
+      expect(screen.getByText('FizzBuzz Budget')).toBeTruthy();
+    });
+    expect(screen.getByText(/\$0\.05/)).toBeTruthy();
+    expect(screen.getByText(/300 tokens/)).toBeTruthy();
+  });
+
+  it('renders fallback "User not found" when fetch !ok and json has no error field (line 103)', async () => {
+    setupFetch({ ok: false, json: () => Promise.reject(new Error('no json')) });
+    render(<PublicProfileScreen />);
+    await waitFor(() => {
+      expect(screen.getByText('User not found')).toBeTruthy();
+    });
+  });
+
+  it('navigates back when Back button is clicked (line 117)', async () => {
+    render(<PublicProfileScreen />);
+    await waitFor(() => {
+      expect(screen.getByText(/Back/)).toBeTruthy();
+    });
+    fireEvent.click(screen.getByText(/Back/));
+    expect(mockGoBack).toHaveBeenCalled();
+  });
+
+  it('navigates to Replay when replay card is clicked (line 165)', async () => {
+    setupFetch({
+      ok: true,
+      json: () => Promise.resolve({
+        ...mockProfileData,
+        recentReplays: [{
+          attemptId: 'att1', challengeTitle: 'Cache Buster', challengeDifficulty: 'medium',
+          challengeCategory: 'debugging', totalCost: 1000, inputTokens: 500, outputTokens: 500,
+          submittedAt: '2026-01-01',
+        }],
+      }),
+    });
+    render(<PublicProfileScreen />);
+    await waitFor(() => {
+      expect(screen.getByText('Cache Buster')).toBeTruthy();
+    });
+    fireEvent.click(screen.getByText('Cache Buster'));
+    expect(mockNavigate).toHaveBeenCalledWith('Replay', { attemptId: 'att1' });
   });
 });

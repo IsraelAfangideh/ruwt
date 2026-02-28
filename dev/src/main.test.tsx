@@ -32,7 +32,6 @@ describe('main.tsx', () => {
   });
 
   it('initializes Sentry', async () => {
-    const Sentry = await import('@sentry/react');
     // Re-run main module
     vi.resetModules();
     // Re-mock after reset

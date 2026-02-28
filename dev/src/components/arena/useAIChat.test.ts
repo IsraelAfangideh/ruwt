@@ -479,9 +479,6 @@ describe('useAIChat', () => {
   });
 
   it('aborts prior stream when streamChat is called again', async () => {
-    const abortSpy = vi.fn();
-    const originalAbortController = globalThis.AbortController;
-
     let callCount = 0;
     vi.spyOn(globalThis, 'fetch').mockImplementation(async (_url, init) => {
       callCount++;

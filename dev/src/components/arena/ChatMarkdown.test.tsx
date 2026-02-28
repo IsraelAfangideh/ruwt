@@ -2,7 +2,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { CodeBlock, renderMarkdown, renderInline, ThinkingBlock } from './ChatMarkdown';
-import React from 'react';
 
 vi.mock('@/theme/colors', () => ({
   arena: {
@@ -134,6 +133,37 @@ describe('renderInline', () => {
     expect(clickable).toBeTruthy();
     fireEvent.click(clickable!);
     expect(onLineClick).toHaveBeenCalledWith(42);
+  });
+
+  it('triggers onLineClick via Enter keydown on line reference (line 120)', () => {
+    const onLineClick = vi.fn();
+    const nodes = renderInline('See line 42 for details', onLineClick);
+    const { container } = render(<div>{nodes}</div>);
+    const clickable = container.querySelector('[role="button"]') as HTMLElement;
+    expect(clickable).toBeTruthy();
+    fireEvent.keyDown(clickable, { key: 'Enter' });
+    expect(onLineClick).toHaveBeenCalledWith(42);
+  });
+
+  it('triggers onLineClick via Space keydown on line reference (line 120)', () => {
+    const onLineClick = vi.fn();
+    const nodes = renderInline('See line 42 for details', onLineClick);
+    const { container } = render(<div>{nodes}</div>);
+    const clickable = container.querySelector('[role="button"]') as HTMLElement;
+    expect(clickable).toBeTruthy();
+    fireEvent.keyDown(clickable, { key: ' ' });
+    expect(onLineClick).toHaveBeenCalledWith(42);
+  });
+
+  it('does not trigger onLineClick for other keys on line reference', () => {
+    const onLineClick = vi.fn();
+    const nodes = renderInline('See line 42 for details', onLineClick);
+    const { container } = render(<div>{nodes}</div>);
+    const clickable = container.querySelector('[role="button"]') as HTMLElement;
+    expect(clickable).toBeTruthy();
+    fireEvent.keyDown(clickable, { key: 'Tab' });
+    // Only the click from the "it renders clickable line references" test should have called it
+    expect(onLineClick).not.toHaveBeenCalled();
   });
 
   it('returns non-breaking space for empty text', () => {

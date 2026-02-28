@@ -10,7 +10,7 @@ function createMockTerminal() {
     write: vi.fn(),
     writeln: vi.fn(),
     clear: vi.fn(),
-    onData: vi.fn((cb: (data: string) => void) => ({ dispose: vi.fn() })),
+    onData: vi.fn((_cb: (data: string) => void) => ({ dispose: vi.fn() })),
     cols: 80,
     rows: 24,
   };

@@ -70,7 +70,7 @@ describe('ReplayViewer', () => {
     vi.spyOn(global, 'fetch').mockResolvedValue({
       ok: false,
       json: async () => { throw new Error('bad json'); },
-    } as Response);
+    } as unknown as Response);
 
     render(<ReplayViewer attemptId="att-1" onClose={mockOnClose} />);
     await waitFor(() => expect(screen.getByText('Failed to load replay')).toBeTruthy());

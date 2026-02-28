@@ -223,7 +223,7 @@ describe('AssessmentListScreen', () => {
     Object.assign(navigator, {
       clipboard: { writeText: vi.fn().mockResolvedValue(undefined) },
     });
-    const fn = setupFetch({
+    setupFetch({
       '/api/assessments': ok([mockActiveAssessment]),
       '/api/assessments/a1/invites': ok({ url: 'https://ruwt.dev/inv/xyz' }),
     });
@@ -330,7 +330,7 @@ describe('AssessmentListScreen', () => {
     Object.assign(navigator, {
       clipboard: { writeText: vi.fn().mockResolvedValue(undefined) },
     });
-    const fn = setupFetch({
+    setupFetch({
       '/api/assessments': ok([mockActiveAssessment]),
       '/api/assessments/a1/invites': ok({ url: 'https://ruwt.dev/inv/abc' }),
     });
@@ -398,7 +398,7 @@ describe('AssessmentListScreen', () => {
       welcomeMessage: 'Welcome',
       categoryWeights: { prompt_efficiency: 2 },
     };
-    const fn = setupFetch({
+    setupFetch({
       '/api/assessments': ok([mockActiveAssessment]),
     });
     // Override fetch to handle the duplicate sequence

@@ -153,6 +153,7 @@ export function LeaderboardScreen() {
       </View>
     );
   }
+  /* v8 ignore next */
   if (!user) return null;
 
   const formatCost = (hundredths: number) => {

@@ -236,6 +236,26 @@ describe('LandingScreen', () => {
     expect(mockReset).not.toHaveBeenCalled();
   });
 
+  /* ── Navigation for CTA buttons ───────────────────────────────── */
+
+  it('navigates to Register when "See Today\'s Challenge" is clicked', () => {
+    render(<LandingScreen />);
+    fireEvent.click(screen.getByText("See Today's Challenge"));
+    expect(mockNavigate).toHaveBeenCalledWith('Register');
+  });
+
+  it('navigates to Register when "Try This Challenge" is clicked', () => {
+    render(<LandingScreen />);
+    fireEvent.click(screen.getByText('Try This Challenge'));
+    expect(mockNavigate).toHaveBeenCalledWith('Register');
+  });
+
+  it('navigates to Register when "Get Started Free" is clicked', () => {
+    render(<LandingScreen />);
+    fireEvent.click(screen.getByText('Get Started Free'));
+    expect(mockNavigate).toHaveBeenCalledWith('Register');
+  });
+
   /* ── Mobile responsive ─────────────────────────────────────────── */
   it('renders stats row on mobile (width < 768)', () => {
     mockWidth.mockReturnValue(375);

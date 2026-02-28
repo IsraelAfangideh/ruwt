@@ -12,7 +12,8 @@ import { createClient } from '@/lib/supabase/client';
 import { LandingScreen } from '@/screens/LandingScreen';
 
 // Auto-retry dynamic imports: on chunk load failure (stale deploy), reload once
-function lazyWithRetry<T extends { [key: string]: any }>(
+/** @internal Exported for testing only. */
+export function lazyWithRetry<T extends { [key: string]: any }>(
   name: string,
   factory: () => Promise<T>,
   extract: (m: T) => any,

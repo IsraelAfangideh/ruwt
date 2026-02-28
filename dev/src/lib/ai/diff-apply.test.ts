@@ -509,4 +509,105 @@ describe('parseUnifiedDiff — edge cases', () => {
     expect(blocks[0].search).toBe('');
     expect(blocks[0].replace).toContain('newVar');
   });
+
+  it('handles empty lines (no prefix) as context in a hunk body', () => {
+    // An empty line in a unified diff hunk (no space, +, or - prefix) is treated
+    // as a context line that appears in both search and replace
+    const text = `--- a/file.js
++++ b/file.js
+@@ -1,5 +1,5 @@
+ function foo() {
+-  return 1;
++  return 2;
+
+ }`;
+    const blocks = parseUnifiedDiff(text);
+    expect(blocks).toHaveLength(1);
+    // The empty line should appear in both search and replace
+    expect(blocks[0].search).toContain('function foo()');
+    expect(blocks[0].search).toContain('return 1;');
+    expect(blocks[0].replace).toContain('function foo()');
+    expect(blocks[0].replace).toContain('return 2;');
+    // The closing brace after the empty line should also be present
+    expect(blocks[0].search).toContain('}');
+    expect(blocks[0].replace).toContain('}');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Stray REPLACE marker outside any block (line 162)
+// ---------------------------------------------------------------------------
+
+describe('parseEditBlocks — stray REPLACE marker', () => {
+  it('ignores stray REPLACE markers that appear outside any SEARCH block', () => {
+    const text = `Some intro text
+>>>>>>> REPLACE
+This is just random text.
+
+<<<<<<< SEARCH
+old code
+=======
+new code
+>>>>>>> REPLACE
+`;
+    const blocks = parseEditBlocks(text);
+    // Only the valid SEARCH/REPLACE block should be parsed
+    expect(blocks).toHaveLength(1);
+    expect(blocks[0].search).toBe('old code');
+    expect(blocks[0].replace).toBe('new code');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// isLikelyProse returning false for non-prose, non-empty lines (line 71)
+// ---------------------------------------------------------------------------
+
+describe('isLikelyProse — false return for non-matching content (via parseEditBlocks)', () => {
+  it('does not end replacement at blank line followed by lowercase text', () => {
+    // A blank line followed by a line starting with lowercase is NOT prose
+    // (isLikelyProse requires capital letter start with 3+ words and no code punctuation)
+    // So the replacement should continue past the blank line
+    const text = `
+<<<<SEARCH
+old
+>>>>>>> REPLACE
+first line of replacement
+
+lowercase continuation here
+`;
+    const blocks = parseEditBlocks(text);
+    expect(blocks).toHaveLength(1);
+    // The blank line + lowercase line should be included in the replacement
+    expect(blocks[0].replace).toContain('lowercase continuation here');
+  });
+
+  it('does not end replacement at blank line followed by a single short word', () => {
+    const text = `
+<<<<SEARCH
+old
+>>>>>>> REPLACE
+code here
+
+x
+`;
+    const blocks = parseEditBlocks(text);
+    expect(blocks).toHaveLength(1);
+    // "x" is a single word (not 3+ words), so isLikelyProse returns false
+    expect(blocks[0].replace).toContain('x');
+  });
+
+  it('does not end replacement at blank line followed by code-like capital line', () => {
+    // "Config.set(value)" has code punctuation — not prose
+    const text = `
+<<<<SEARCH
+old
+>>>>>>> REPLACE
+new code
+
+Config.set(value)
+`;
+    const blocks = parseEditBlocks(text);
+    expect(blocks).toHaveLength(1);
+    expect(blocks[0].replace).toContain('Config.set(value)');
+  });
 });

@@ -11,7 +11,6 @@ import {
   estimateTypicalMessageCost,
   estimateMessagesForBudget,
   type ModelTier,
-  type ModelInfo,
 } from './pricing';
 
 describe('pricing', () => {

@@ -35,7 +35,7 @@ export function Tabs({ defaultValue, value: controlledValue, onValueChange, chil
   );
 }
 
-function TabsList({ value, onValueChange, children, style }: { value: string; onValueChange: (v: string) => void; children: React.ReactNode; style?: ViewStyle }) {
+function TabsList({ value, onValueChange, children, style }: { value?: string; onValueChange?: (v: string) => void; children: React.ReactNode; style?: ViewStyle }) {
   const c = useColors();
   return (
     <View style={[styles.list, { borderBottomColor: c.border }, style]} accessibilityRole="tablist">
@@ -44,7 +44,7 @@ function TabsList({ value, onValueChange, children, style }: { value: string; on
           const triggerValue = (child.props as { value: string }).value;
           return React.cloneElement(child as React.ReactElement<{ value: string; selected: boolean; onSelect: () => void }>, {
             selected: value === triggerValue,
-            onSelect: () => onValueChange(triggerValue),
+            onSelect: () => onValueChange?.(triggerValue),
           });
         }
         return child;

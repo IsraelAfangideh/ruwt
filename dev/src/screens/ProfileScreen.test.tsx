@@ -52,7 +52,18 @@ vi.mock('@/theme/tokens', () => ({
   radii: { sm: 4, md: 8, lg: 12, xl: 16, full: 9999 },
 }));
 
-const mockProfileData = {
+const mockProfileData: {
+  profile: {
+    name: string; email: string; avatarUrl: string | null; username: string | null;
+    credits: number; currentStreak: number; longestStreak: number; streakFreezes: number;
+  };
+  progress: {
+    totalChallenges: number; solvedCount: number;
+    categorySolves: Record<string, number>; categoryTotals: Record<string, number>;
+  };
+  rank: { position: number | null; totalRanked: number };
+  recentBadges: any[];
+} = {
   profile: {
     name: 'TestUser', email: 'test@test.com', avatarUrl: null, username: 'testuser',
     credits: 50000, currentStreak: 3, longestStreak: 7, streakFreezes: 2,
@@ -512,5 +523,31 @@ describe('ProfileScreen', () => {
       expect(screen.getByText('Achievements')).toBeTruthy();
     });
     expect(screen.getByText('0 of 0 unlocked')).toBeTruthy();
+  });
+
+  it('shows "User" when profile.name is empty (line 175)', async () => {
+    setupFetch({
+      ...mockProfileData,
+      profile: { ...mockProfileData.profile, name: '' },
+    });
+    render(<ProfileScreen />);
+    await waitFor(() => {
+      expect(screen.getByText('User')).toBeTruthy();
+    });
+  });
+
+  it('shows 0 for category with no solves (line 270)', async () => {
+    setupFetch({
+      ...mockProfileData,
+      progress: {
+        ...mockProfileData.progress,
+        categorySolves: {}, // no solves at all
+        categoryTotals: { prompt_efficiency: 10 },
+      },
+    });
+    render(<ProfileScreen />);
+    await waitFor(() => {
+      expect(screen.getByText(/0\/10/)).toBeTruthy();
+    });
   });
 });

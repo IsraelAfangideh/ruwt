@@ -27,7 +27,7 @@ vi.mock('@/theme/tokens', () => ({
 }));
 
 vi.mock('@/components/AIProfileRadar', () => ({
-  AIProfileRadar: ({ profile }: any) => <div data-testid="radar">Radar</div>,
+  AIProfileRadar: (_props: any) => <div data-testid="radar">Radar</div>,
 }));
 
 vi.mock('@/components/PercentileBar', () => ({
@@ -152,12 +152,13 @@ describe('CandidateComparisonView', () => {
     // The dropdown menu should now show items with pass counts
     const passedItems = screen.getAllByText(/passed/);
     expect(passedItems.length).toBeGreaterThan(0);
-    // Click on a dropdown item (Bob) to select and close
-    // Each dropdown item has "name" and "X/Y passed" text
-    // Find the Bob dropdown item and click it
-    const bobItems = screen.getAllByText('Bob');
-    // Click a Bob dropdown item — this triggers onSelect and setShow(false)
-    fireEvent.click(bobItems[bobItems.length - 1]);
-    // After selecting, the dropdown should close (no more "passed" text in dropdown)
+    // Find Bob's dropdown item button and click it directly
+    // The dropdown item Pressable renders as <button onClick={onPress}>
+    // We need to click the button, not the text, to ensure onPress fires
+    const bobTexts = screen.getAllByText('Bob');
+    const bobDropdownItem = bobTexts[bobTexts.length - 1].closest('button');
+    expect(bobDropdownItem).toBeTruthy();
+    fireEvent.click(bobDropdownItem!);
+    // After selecting, the dropdown should close
   });
 });

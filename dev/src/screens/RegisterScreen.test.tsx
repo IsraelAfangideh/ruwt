@@ -238,6 +238,31 @@ describe('RegisterScreen', () => {
     });
   });
 
+  it('navigates to Landing when mobile Ruwt logo in success screen is clicked (line 79)', async () => {
+    mockIsDesktopFn.mockReturnValue(false);
+    mockSignUp.mockResolvedValueOnce({ error: null });
+
+    render(<RegisterScreen />);
+
+    const emailInput = document.querySelector('input[placeholder="you@example.com"]') as HTMLInputElement;
+    const passwordInput = document.querySelector('input[type="password"]') as HTMLInputElement;
+
+    fireEvent.change(emailInput, { target: { value: 'jane@test.com' } });
+    fireEvent.change(passwordInput, { target: { value: 'password123' } });
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('Create account'));
+    });
+
+    await waitFor(() => {
+      expect(screen.getAllByText('Check your email').length).toBeGreaterThanOrEqual(1);
+    });
+
+    // Click the Ruwt logo in the success screen mobile header
+    fireEvent.click(screen.getByText('Ruwt'));
+    expect(mockNavigate).toHaveBeenCalledWith('Landing');
+  });
+
   it('shows error message on signup failure', async () => {
     mockSignUp.mockResolvedValueOnce({
       error: { message: 'Email already registered' },

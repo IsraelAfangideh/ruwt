@@ -196,6 +196,26 @@ describe('TeamsScreen', () => {
     });
   });
 
+  it('navigates to Dashboard when header Dashboard button is clicked (logged in, line 210)', async () => {
+    mockUser = { id: 'u1' };
+    render(<TeamsScreen />);
+    await waitFor(() => expect(screen.getByText('Dashboard')).toBeTruthy());
+    fireEvent.click(screen.getByText('Dashboard'));
+    expect(mockNavigate).toHaveBeenCalledWith('Dashboard');
+  });
+
+  it('navigates to Login when header Sign in button is clicked (line 213)', () => {
+    render(<TeamsScreen />);
+    fireEvent.click(screen.getByText('Sign in'));
+    expect(mockNavigate).toHaveBeenCalledWith('Login');
+  });
+
+  it('navigates to Register when header Get Started button is clicked (line 214)', () => {
+    render(<TeamsScreen />);
+    fireEvent.click(screen.getByText('Get Started'));
+    expect(mockNavigate).toHaveBeenCalledWith('Register');
+  });
+
   it('navigates to Register when Start Free Assessment is clicked (not logged in)', () => {
     render(<TeamsScreen />);
     fireEvent.click(screen.getByText('Start Free Assessment'));
@@ -305,7 +325,7 @@ describe('TeamsScreen', () => {
     await waitFor(() => {
       expect(window.location.href).toBe('https://stripe.com/checkout');
     });
-    window.location = originalLocation;
+    Object.defineProperty(window, 'location', { value: originalLocation, writable: true });
   });
 
   it('handles subscribe when user is unauthorized', async () => {
@@ -376,7 +396,7 @@ describe('TeamsScreen', () => {
     await waitFor(() => {
       expect(window.location.href).toBe('https://stripe.com/checkout');
     });
-    window.location = originalLocation;
+    Object.defineProperty(window, 'location', { value: originalLocation, writable: true });
   });
 
   it('shows Book a Demo button in final CTA when not submitted and form not shown', () => {
@@ -384,6 +404,14 @@ describe('TeamsScreen', () => {
     // The final CTA section has a Book a Demo button
     const demoButtons = screen.getAllByText('Book a Demo');
     expect(demoButtons.length).toBeGreaterThanOrEqual(2); // hero + final CTA
+  });
+
+  it('opens demo form when final CTA Book a Demo is clicked (line 498)', () => {
+    render(<TeamsScreen />);
+    const demoButtons = screen.getAllByText('Book a Demo');
+    // The last Book a Demo should be in the final CTA
+    fireEvent.click(demoButtons[demoButtons.length - 1]);
+    expect(screen.getAllByPlaceholderText('Jane Smith').length).toBeGreaterThanOrEqual(1);
   });
 
   it('shows "Demo requested!" badge after demo form submission in final CTA', async () => {
@@ -424,6 +452,58 @@ describe('TeamsScreen', () => {
     fireEvent.click(subscribeButtons[0]);
     await waitFor(() => {
       expect(mockAlert).toHaveBeenCalledWith('Create an organization first');
+    });
+  });
+
+  it('fills optional Team Size and Message fields in demo form (lines 181-182)', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockImplementation(() => Promise.resolve(ok({}))));
+    render(<TeamsScreen />);
+    const demoButtons = screen.getAllByText('Book a Demo');
+    fireEvent.click(demoButtons[0]);
+    // Fill all required fields
+    screen.getAllByPlaceholderText('Jane Smith').forEach((el) =>
+      fireEvent.change(el, { target: { value: 'Jane' } })
+    );
+    screen.getAllByPlaceholderText('jane@company.com').forEach((el) =>
+      fireEvent.change(el, { target: { value: 'jane@co.com' } })
+    );
+    screen.getAllByPlaceholderText('Acme Corp').forEach((el) =>
+      fireEvent.change(el, { target: { value: 'Acme' } })
+    );
+    // Fill the optional fields (lines 181-182)
+    screen.getAllByPlaceholderText('e.g. 5-10 engineers').forEach((el) =>
+      fireEvent.change(el, { target: { value: '15 engineers' } })
+    );
+    screen.getAllByPlaceholderText('Tell us about your hiring needs...').forEach((el) =>
+      fireEvent.change(el, { target: { value: 'We need AI assessment for our team' } })
+    );
+    const requestButtons = screen.getAllByText('Request Demo');
+    fireEvent.click(requestButtons[0]);
+    await waitFor(() => {
+      expect(screen.getAllByText("We'll be in touch!").length).toBeGreaterThanOrEqual(1);
+    });
+  });
+
+  it('shows fallback error when demo submission fails without error message', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockImplementation(() =>
+      Promise.resolve({ ok: false, json: () => Promise.reject(new Error('parse error')) })
+    ));
+    render(<TeamsScreen />);
+    const demoButtons = screen.getAllByText('Book a Demo');
+    fireEvent.click(demoButtons[0]);
+    screen.getAllByPlaceholderText('Jane Smith').forEach((el) =>
+      fireEvent.change(el, { target: { value: 'Jane' } })
+    );
+    screen.getAllByPlaceholderText('jane@company.com').forEach((el) =>
+      fireEvent.change(el, { target: { value: 'jane@co.com' } })
+    );
+    screen.getAllByPlaceholderText('Acme Corp').forEach((el) =>
+      fireEvent.change(el, { target: { value: 'Acme' } })
+    );
+    const requestButtons = screen.getAllByText('Request Demo');
+    fireEvent.click(requestButtons[0]);
+    await waitFor(() => {
+      expect(screen.getAllByText(/Something went wrong/).length).toBeGreaterThanOrEqual(1);
     });
   });
 });

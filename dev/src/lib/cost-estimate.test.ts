@@ -1,6 +1,5 @@
 import { describe, it, expect } from 'vitest';
 import { estimateChatCost, formatEstimatedCost } from './cost-estimate';
-import { getModelById } from '@/lib/ai/pricing';
 
 describe('cost-estimate', () => {
   // ---------------------------------------------------------------------------
@@ -57,7 +56,6 @@ describe('cost-estimate', () => {
       // outputTokens = max(100, ceil(1*1.5)) = max(100, 2) = 100
       // This means a 1-char and 5-char message should produce the same output cost
       // if the input difference is small enough
-      const model = getModelById(KNOWN_MODEL)!;
       const cost1 = estimateChatCost('a', KNOWN_MODEL);
       const cost5 = estimateChatCost('hello', KNOWN_MODEL);
       // Both should use 100 output tokens (messageTokens <=66 chars means ceil(n*1.5)<=100)

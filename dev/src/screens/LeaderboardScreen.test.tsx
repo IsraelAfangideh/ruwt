@@ -2,14 +2,18 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 
-const mockNavigate = vi.fn();
-const mockReset = vi.fn();
+const { mockNavigate, mockReset, mockGetUser } = vi.hoisted(() => ({
+  mockNavigate: vi.fn(),
+  mockReset: vi.fn(),
+  mockGetUser: vi.fn().mockResolvedValue({ data: { user: { id: 'u1' } } }),
+}));
+
 vi.mock('@react-navigation/native', () => ({
   useNavigation: () => ({ navigate: mockNavigate, reset: mockReset }),
 }));
 vi.mock('@/lib/supabase/client', () => ({
   createClient: () => ({
-    auth: { getUser: vi.fn().mockResolvedValue({ data: { user: { id: 'u1' } } }) },
+    auth: { getUser: mockGetUser },
   }),
 }));
 vi.mock('@/components/DashboardLayout', () => ({
@@ -23,7 +27,7 @@ vi.mock('@/components/ActivityFeed', () => ({
   ActivityFeed: () => <div data-testid="activity-feed" />,
 }));
 vi.mock('@/components/ReplayViewer', () => ({
-  ReplayViewer: ({ attemptId, onClose }: any) => <div data-testid="replay-viewer"><button onClick={onClose}>Close</button></div>,
+  ReplayViewer: ({ onClose }: any) => <div data-testid="replay-viewer"><button onClick={onClose}>Close</button></div>,
 }));
 vi.mock('@/hooks/useDocumentMeta', () => ({ useDocumentMeta: () => {} }));
 vi.mock('@/theme', () => ({
@@ -94,25 +98,23 @@ function setupFetch(overrides: { leaderboardEntries?: any[]; challenges?: any[];
 }
 
 describe('LeaderboardScreen', () => {
-  beforeEach(() => { vi.clearAllMocks(); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockGetUser.mockResolvedValue({ data: { user: { id: 'u1' } } });
+  });
 
   it('renders loading state initially', () => {
+    setupFetch();
     const { container } = render(<LeaderboardScreen />);
     expect(container.querySelector('svg') || container.textContent).toBeTruthy();
   });
 
   it('redirects to Login when user is not authenticated', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: () => Promise.resolve({ entries: [] }) }));
-    // Re-import with no user
-    const { createClient } = await import('@/lib/supabase/client');
-    (createClient as any).mockReturnValueOnce?.({
-      auth: { getUser: vi.fn().mockResolvedValue({ data: { user: null } }) },
-    });
-    // We can't easily re-import, but the existing mock always returns user, so test the baseline
+    mockGetUser.mockResolvedValue({ data: { user: null } });
+    setupFetch();
     render(<LeaderboardScreen />);
-    // Wait for loading to finish
     await waitFor(() => {
-      expect(screen.getAllByText('Leaderboard').length).toBeGreaterThanOrEqual(0);
+      expect(mockReset).toHaveBeenCalledWith({ index: 0, routes: [{ name: 'Login' }] });
     });
   });
 
@@ -217,7 +219,6 @@ describe('LeaderboardScreen', () => {
     await waitFor(() => {
       expect(screen.getByText('Dave')).toBeTruthy();
     });
-    // Dave has no stats, should show dashes
     const dashes = screen.getAllByText('-');
     expect(dashes.length).toBeGreaterThanOrEqual(3);
   });
@@ -226,8 +227,18 @@ describe('LeaderboardScreen', () => {
     setupFetch({ leaderboardEntries: globalEntries });
     render(<LeaderboardScreen />);
     await waitFor(() => {
-      // avgCost 500 hundredths = 0.05 dollars -> $0.05
       expect(screen.getAllByText('$0.05').length).toBeGreaterThanOrEqual(1);
+    });
+  });
+
+  it('formats very small costs with 4 decimal places', async () => {
+    const smallCostEntries = [
+      { rank: 1, user: { id: 'u1', name: 'Alice', avatarUrl: null, username: 'alice' }, stats: { solved: 1, attempts: 1, avgCost: 50, totalCost: 50 } },
+    ];
+    setupFetch({ leaderboardEntries: smallCostEntries });
+    render(<LeaderboardScreen />);
+    await waitFor(() => {
+      expect(screen.getAllByText('$0.0050').length).toBeGreaterThanOrEqual(1);
     });
   });
 
@@ -237,7 +248,6 @@ describe('LeaderboardScreen', () => {
     await waitFor(() => {
       expect(screen.getAllByText('Alice').length).toBeGreaterThanOrEqual(1);
     });
-    // Click "All Time" - there may be one in the period bar and one in the season dropdown
     const allTimeElements = screen.getAllByText('All Time');
     fireEvent.click(allTimeElements[0]);
     await waitFor(() => {
@@ -281,11 +291,22 @@ describe('LeaderboardScreen', () => {
     });
   });
 
+  it('switches back to global tab when Global button is clicked', async () => {
+    setupFetch({ leaderboardEntries: globalEntries, challenges: mockChallenges });
+    render(<LeaderboardScreen />);
+    await waitFor(() => expect(screen.getAllByText('Alice').length).toBeGreaterThanOrEqual(1));
+    // Switch to challenge tab
+    fireEvent.click(screen.getAllByText('By Challenge')[0]);
+    await waitFor(() => expect(screen.getByText('Select a challenge...')).toBeTruthy());
+    // Switch back to global tab
+    fireEvent.click(screen.getAllByText('Global')[0]);
+    await waitFor(() => expect(screen.getAllByText('Alice').length).toBeGreaterThanOrEqual(1));
+  });
+
   it('renders season filter when seasons are present', async () => {
     setupFetch({ leaderboardEntries: globalEntries, seasons: mockSeasons });
     render(<LeaderboardScreen />);
     await waitFor(() => {
-      // Season filter renders a <select> with season names
       expect(screen.getByText(/Season 1/)).toBeTruthy();
     });
     expect(screen.getByText(/Season 2.*Current/)).toBeTruthy();
@@ -306,13 +327,12 @@ describe('LeaderboardScreen', () => {
     }
   });
 
-  it('clears season when "All Time" is selected in season dropdown', async () => {
+  it('clears season when empty value selected in season dropdown', async () => {
     setupFetch({ leaderboardEntries: globalEntries, seasons: mockSeasons });
     const { container } = render(<LeaderboardScreen />);
     await waitFor(() => {
       expect(screen.getByText(/Season 1/)).toBeTruthy();
     });
-    // First select a season, then clear it
     const select = container.querySelectorAll('select')[0];
     if (select) {
       fireEvent.change(select, { target: { value: 's1' } });
@@ -320,7 +340,6 @@ describe('LeaderboardScreen', () => {
         expect(globalThis.fetch).toHaveBeenCalledWith(expect.stringContaining('season=s1'));
       });
       fireEvent.change(select, { target: { value: '' } });
-      // fetch should be called without season parameter
     }
   });
 
@@ -348,15 +367,31 @@ describe('LeaderboardScreen', () => {
     await waitFor(() => {
       expect(screen.getByText('Select a challenge...')).toBeTruthy();
     });
-    // Select a challenge from the dropdown
     const selects = container.querySelectorAll('select');
-    const challengeSelect = selects[selects.length - 1]; // Last select is the challenge dropdown
+    const challengeSelect = selects[selects.length - 1];
     if (challengeSelect) {
       fireEvent.change(challengeSelect, { target: { value: 'c1' } });
       await waitFor(() => {
         expect(globalThis.fetch).toHaveBeenCalledWith(expect.stringContaining('challengeId=c1'));
       });
     }
+  });
+
+  it('clears challenge entries when empty value selected in challenge dropdown', async () => {
+    setupFetch({ leaderboardEntries: [], challenges: mockChallenges, challengeEntries });
+    const { container } = render(<LeaderboardScreen />);
+    await waitFor(() => expect(screen.getByText('By Challenge')).toBeTruthy());
+    fireEvent.click(screen.getByText('By Challenge'));
+    await waitFor(() => expect(screen.getByText('Select a challenge...')).toBeTruthy());
+    const selects = container.querySelectorAll('select');
+    const challengeSelect = selects[selects.length - 1];
+    expect(challengeSelect).toBeTruthy();
+    // Select a challenge first
+    fireEvent.change(challengeSelect!, { target: { value: 'c1' } });
+    await waitFor(() => expect(screen.getAllByText('Alice').length).toBeGreaterThan(0));
+    // Clear the selection (empty challengeId triggers early return in fetchChallengeLeaderboard)
+    fireEvent.change(challengeSelect!, { target: { value: '' } });
+    // Should not crash, entries are cleared
   });
 
   it('shows empty state when no one solved the selected challenge', async () => {
@@ -393,10 +428,9 @@ describe('LeaderboardScreen', () => {
     if (challengeSelect) {
       fireEvent.change(challengeSelect, { target: { value: 'c1' } });
       await waitFor(() => {
-        // Medal emojis for rank 1-3
-        expect(screen.getByText('\uD83E\uDD47')).toBeTruthy(); // gold
-        expect(screen.getByText('\uD83E\uDD48')).toBeTruthy(); // silver
-        expect(screen.getByText('\uD83E\uDD49')).toBeTruthy(); // bronze
+        expect(screen.getByText('\uD83E\uDD47')).toBeTruthy();
+        expect(screen.getByText('\uD83E\uDD48')).toBeTruthy();
+        expect(screen.getByText('\uD83E\uDD49')).toBeTruthy();
       });
     }
   });
@@ -413,9 +447,9 @@ describe('LeaderboardScreen', () => {
     if (challengeSelect) {
       fireEvent.change(challengeSelect, { target: { value: 'c1' } });
       await waitFor(() => {
-        expect(screen.getByText('1 token')).toBeTruthy(); // rank 1 has 1 token
-        expect(screen.getByText('250 tokens')).toBeTruthy(); // rank 2
-        expect(screen.getByText('500 tokens')).toBeTruthy(); // rank 3
+        expect(screen.getByText('1 token')).toBeTruthy();
+        expect(screen.getByText('250 tokens')).toBeTruthy();
+        expect(screen.getByText('500 tokens')).toBeTruthy();
       });
     }
   });
@@ -460,16 +494,48 @@ describe('LeaderboardScreen', () => {
     }
   });
 
+  it('closes ReplayViewer when Close button is clicked', async () => {
+    setupFetch({ leaderboardEntries: [], challenges: mockChallenges, challengeEntries });
+    const { container } = render(<LeaderboardScreen />);
+    await waitFor(() => expect(screen.getByText('By Challenge')).toBeTruthy());
+    fireEvent.click(screen.getByText('By Challenge'));
+    const selects = container.querySelectorAll('select');
+    const challengeSelect = selects[selects.length - 1];
+    expect(challengeSelect).toBeTruthy();
+    fireEvent.change(challengeSelect!, { target: { value: 'c1' } });
+    await waitFor(() => expect(screen.getAllByText('Replay').length).toBeGreaterThan(0));
+    // Open replay viewer
+    fireEvent.click(screen.getAllByText('Replay')[0]);
+    await waitFor(() => expect(container.querySelector('[data-testid="replay-viewer"]')).toBeTruthy());
+    // Close replay viewer (covers line 402: setReplayAttemptId(null))
+    fireEvent.click(screen.getByText('Close'));
+    await waitFor(() => expect(container.querySelector('[data-testid="replay-viewer"]')).toBeNull());
+  });
+
   it('navigates to PublicProfile when clicking a user with username in global entries', async () => {
     setupFetch({ leaderboardEntries: globalEntries });
     render(<LeaderboardScreen />);
     await waitFor(() => {
       expect(screen.getAllByText('Alice').length).toBeGreaterThanOrEqual(1);
     });
-    // Alice appears in both the podium (not clickable for nav) and the table row (clickable).
-    // The table row Alice text has accent color; click on the last one which is in the table.
     const aliceTexts = screen.getAllByText('Alice');
     fireEvent.click(aliceTexts[aliceTexts.length - 1]);
+    expect(mockNavigate).toHaveBeenCalledWith('PublicProfile', { username: 'alice' });
+  });
+
+  it('navigates to PublicProfile when clicking a user with username in challenge entries', async () => {
+    setupFetch({ leaderboardEntries: [], challenges: mockChallenges, challengeEntries });
+    const { container } = render(<LeaderboardScreen />);
+    await waitFor(() => expect(screen.getByText('By Challenge')).toBeTruthy());
+    fireEvent.click(screen.getByText('By Challenge'));
+    const selects = container.querySelectorAll('select');
+    const challengeSelect = selects[selects.length - 1];
+    expect(challengeSelect).toBeTruthy();
+    fireEvent.change(challengeSelect!, { target: { value: 'c1' } });
+    await waitFor(() => expect(screen.getAllByText('Alice').length).toBeGreaterThan(0));
+    // Click Alice's name in the challenge entries (covers line 381)
+    const aliceTexts = screen.getAllByText('Alice');
+    fireEvent.click(aliceTexts[0]);
     expect(mockNavigate).toHaveBeenCalledWith('PublicProfile', { username: 'alice' });
   });
 
@@ -479,10 +545,8 @@ describe('LeaderboardScreen', () => {
     await waitFor(() => {
       expect(screen.getByText('By Challenge')).toBeTruthy();
     });
-    // Switch to challenge tab
     fireEvent.click(screen.getByText('By Challenge'));
     await waitFor(() => expect(screen.getByText('Select a challenge...')).toBeTruthy());
-    // Select a challenge first
     const selects = container.querySelectorAll('select');
     const challengeSelect = selects[selects.length - 1];
     if (challengeSelect) {
@@ -490,7 +554,6 @@ describe('LeaderboardScreen', () => {
       await waitFor(() => {
         expect(globalThis.fetch).toHaveBeenCalledWith(expect.stringContaining('challengeId=c1'));
       });
-      // Now change period
       fireEvent.click(screen.getAllByText('All Time')[0]);
       await waitFor(() => {
         expect(globalThis.fetch).toHaveBeenCalledWith(expect.stringContaining('period=all'));
@@ -523,11 +586,8 @@ describe('LeaderboardScreen', () => {
     await waitFor(() => {
       expect(screen.getByText(/No solves this week/)).toBeTruthy();
     });
-    // Switch to month
     fireEvent.click(screen.getAllByText('This Month')[0]);
-    // The empty state text changes
     await waitFor(() => {
-      // After period change, entries might be re-fetched
       expect(screen.getAllByText(/No solves this month|No solves this week|Early leaderboard/).length).toBeGreaterThanOrEqual(1);
     });
   });
@@ -538,7 +598,6 @@ describe('LeaderboardScreen', () => {
     await waitFor(() => {
       expect(screen.getAllByText('Alice').length).toBeGreaterThanOrEqual(1);
     });
-    // ActivityFeed should still be present
     expect(container.querySelector('[data-testid="activity-feed"]')).toBeTruthy();
   });
 
@@ -555,5 +614,44 @@ describe('LeaderboardScreen', () => {
       fireEvent.click(screen.getByText('Try This Challenge'));
       expect(mockNavigate).toHaveBeenCalledWith('Arena', { challengeId: 'c1' });
     }
+  });
+
+  it('handles podium rendering with fewer than 3 entries', async () => {
+    // Only 2 entries: podium indices [1,0,2] will have index 2 return undefined
+    const twoEntries = [
+      { rank: 1, user: { id: 'u1', name: 'Solo', avatarUrl: null, username: 'solo' }, stats: { solved: 1, attempts: 1, avgCost: 100, totalCost: 100 } },
+      { rank: 2, user: { id: 'u2', name: 'Duo', avatarUrl: null, username: null }, stats: { solved: 1, attempts: 1, avgCost: 200, totalCost: 200 } },
+    ];
+    setupFetch({ leaderboardEntries: twoEntries });
+    render(<LeaderboardScreen />);
+    await waitFor(() => {
+      expect(screen.getAllByText('Solo').length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText('Duo').length).toBeGreaterThanOrEqual(1);
+    });
+    // The podium renders without crashing even though entry at index 2 is undefined
+  });
+
+  it('handles leaderboard fetch returning not ok', async () => {
+    setupFetch({ leaderboardEntries: [], leaderboardOk: false });
+    render(<LeaderboardScreen />);
+    await waitFor(() => {
+      expect(screen.getAllByText('Leaderboard').length).toBeGreaterThanOrEqual(1);
+    });
+  });
+
+  it('handles division toggle on global tab with season selected', async () => {
+    setupFetch({ leaderboardEntries: globalEntries, seasons: mockSeasons });
+    const { container } = render(<LeaderboardScreen />);
+    await waitFor(() => expect(screen.getByText(/Season 1/)).toBeTruthy());
+    // Select a season first
+    const select = container.querySelectorAll('select')[0];
+    expect(select).toBeTruthy();
+    fireEvent.change(select!, { target: { value: 's1' } });
+    await waitFor(() => expect(globalThis.fetch).toHaveBeenCalledWith(expect.stringContaining('season=s1')));
+    // Now toggle division with season active
+    fireEvent.click(screen.getAllByText('Unlimited')[0]);
+    await waitFor(() => {
+      expect(globalThis.fetch).toHaveBeenCalledWith(expect.stringContaining('division=unlimited'));
+    });
   });
 });

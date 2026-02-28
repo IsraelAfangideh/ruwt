@@ -8,7 +8,7 @@
 
 | Tier | Total | Attempted | Passed | Blocked | Notes |
 |------|-------|-----------|--------|---------|-------|
-| Impossible | 14 | 5 | 1 | 3 | In progress |
+| Impossible | 14 | 8 | 1 | 6 | In progress |
 | Hard | ? | 0 | 0 | 0 | |
 | Medium | ? | 0 | 0 | 0 | |
 | Easy | ? | 0 | 0 | 0 | |
@@ -104,19 +104,39 @@
   - The 3/3 public test pass shows AI Chat sidebar is far more reliable than terminal `/agent` for Python challenges
 
 ### 7. Cache Layer Bug Hunt (JS, QA Testing)
-- **Status**: Not started
-- **Blocker**:
+- **Status**: BLOCKED — QA Testing challenge type is incompatible with AI Chat agent mode
+- **Best score**: 0/5 across all attempts
+- **Blockers**:
+  1. **CRITICAL: AI agent mode overwrites "DO NOT MODIFY" buggy module section** — The starter code is a single file containing both the buggy `CacheLayer` class (marked DO NOT MODIFY) and stub `solve()` test cases. AI Chat agent mode replaces the ENTIRE file content when applying edits, deleting the CacheLayer class. The judge then runs only the solve() function with no CacheLayer in scope → `ReferenceError: CacheLayer is not defined` on every test.
+  2. **AI misunderstands challenge intent** — Budget+ (Llama 3.1 8B) consistently interprets "write tests for the buggy CacheLayer" as "fix the buggy CacheLayer". It generates a corrected CacheLayer implementation instead of test stubs, even when explicitly told to write tests. The model cannot reliably distinguish "write tests that detect bugs" from "fix the bugs".
+  3. **Multiple queued messages compound damage** — each prompt sends multiple apply attempts to the file, leaving it in progressively worse states (at one point `solve()` was returning a CacheLayer instance object instead of a string)
 - **Notes**:
+  - The starter code structure is: `class CacheLayer { ... }` (lines 1–90) + `function solve(testName) { ... }` (lines 92+). The judge runs the FULL file, so CacheLayer IS in scope — but only if the AI doesn't replace the whole file.
+  - This is a fundamental platform design issue for QA Testing challenges: the file structure makes it trivially easy for AI to wipe the read-only module
+  - **Recommended fix**: Split the editor into two panes (read-only buggy module + editable test area), OR inject the buggy module separately in the judge rather than relying on it being in the same editable file
+  - The 5 bugs to test: TTL race condition, SWR never revalidates (stores callback but never calls it), cache stampede (no thundering herd protection), memory accounting ignores key size, clear() leaves dangling revalidation callbacks
+  - Challenge design note: test case names are `test-ttl-race`, `test-swr-never-revalidates`, `test-stampede`, `test-memory-key-size`, `test-clear-dangling`
 
 ### 8. Data Pipeline Bug Hunt (Python, QA Testing)
-- **Status**: Not started
-- **Blocker**:
-- **Notes**:
+- **Status**: BLOCKED (pre-assessed, timer not started)
+- **Blocker**: Same structural issue as #7 — buggy module (handle_nulls, parse_dates, deduplicate, aggregate functions) embedded in same editable file as solve(). AI agent mode will overwrite the buggy module on every edit. Not attempted to avoid wasting timer.
+- **Notes**: 4 bugs: (1) handle_nulls drops rows with ANY null instead of filling defaults, (2) parse_dates uses local time not UTC, (3) deduplicate keeps first instead of latest by sort_field, (4) aggregate uses int() truncating floats
 
 ### 9. Expression Interpreter (JS, Model Selection)
-- **Status**: Not started
-- **Blocker**:
+- **Status**: FAILED — persistent diff artifact loop, 0/6 at time expiry
+- **Best score**: 2/6 briefly (simple arithmetic tests only)
+- **Cost spent**: ~$0.24 of $1.50 budget
+- **Blockers**:
+  1. **Budget+ (Llama 3.1 8B) completely wrong approach** — tried to use `child_process.exec()` to evaluate expressions, then emptied the file entirely. Useless for complex algorithmic challenges.
+  2. **Mid/Premium multi-SEARCH/REPLACE blocks conflict** — each AI response sends 7-19 SEARCH/REPLACE blocks that queue and apply sequentially, but they conflict with each other (later blocks search for code that earlier blocks already changed). Result: oscillating broken states.
+  3. **New diff artifact variant: `// Fixed here` inline comment** — Qwen2.5 Coder (Mid/Premium) generates REPLACE blocks where the "fixed" line still contains the bug, with `// Fixed here` as a comment marker. `diff-apply.ts` applies this literally, inserting the broken code with the comment. Pattern: `while ((match = regex.exec(input)) !== ) { // Fixed here` — `null` is missing, comment signals the intended fix was here. This cycles: fix applied → next AI exchange re-introduces same `// Fixed here` bug → repeat.
+  4. **Architecture mismatch** — AI tokenizes entire program as one flat token array but parses per-line, causing `parseFactor` to hit `undefined` when tokens from a previous line are exhausted
 - **Notes**:
+  - Challenge IS solvable — standard recursive descent parser, well-known CS pattern
+  - Function correctly named `evaluate` after prompting; `module.exports = { evaluate }` correct
+  - Simple arithmetic tests (no variables) worked: Test 3 `5 + 3 * 2` = 11 ✓
+  - Variable assignment/lookup tests failed throughout
+  - **New diff artifact to fix**: In `diff-apply.ts`, detect when REPLACE block contains `// Fixed here` / `// fixed` / `// changed` comment patterns that signal model self-annotation, and either strip the comment or flag as potential artifact
 
 ### 10. Data Pipeline Transformer (JS, Model Selection)
 - **Status**: Not started
@@ -148,3 +168,5 @@
 - **CRITICAL: Terminal `/agent` inserts diff format artifacts into code** — When applying edits, agent output the literal keyword "becomes" into the code body (a SEARCH/REPLACE diff format token) instead of replacement code. This took working 4/5 code to 0/3 broken. Variant of the SEARCH/REPLACE truncation bug — the diff template leaks into the edit output.
 - **Terminal multiple message queueing (confirmed again in #6)** — Automation sends same message multiple times; each arrives as a separate terminal line, none triggering AI response until Enter is pressed manually. Affects all terminal modes. Root cause likely: terminal xterm intercepts keystrokes from DOM before focus is properly established.
 - **AI Chat textarea doesn't accept programmatic text input** — Setting textarea value via `form_input` tool or React's nativeInputValueSetter + dispatching `input` event does not cause the React component to register the value change. The send button stays disabled. Real users typing normally are unaffected, but this is a potential symptom of missing `onChange` handler on the textarea — worth verifying the chat input is a controlled component.
+- **CRITICAL: AI agent mode overwrites DO NOT MODIFY sections in QA Testing challenges** — When applying code edits, the AI agent replaces the entire file content including sections marked "DO NOT MODIFY". This is destructive for QA Testing challenge type where the buggy module must remain intact above the solve() function. The judge has no CacheLayer in scope because it was deleted from the file. Fix: the challenge editor should have a protected/read-only zone for the buggy module, or the judge should inject the buggy module separately rather than including it in the user-editable file.
+- **Budget+ model cannot distinguish "write tests for bugs" from "fix the bugs"** — On QA Testing challenges, Llama 3.1 8B consistently misinterprets the task and produces a fixed CacheLayer implementation instead of test stubs. Even with explicit instructions to "only modify the solve() cases", the model rewrites the buggy module. This is a model-tier limitation — higher-tier models (Qwen2.5 Coder, Premium) should be tested for this challenge type.

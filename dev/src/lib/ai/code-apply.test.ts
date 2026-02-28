@@ -1,6 +1,5 @@
 import { describe, it, expect } from 'vitest';
 import { applyCodeFromResponse, extractFileEdits } from './code-apply';
-import type { CodeApplyResult } from './code-apply';
 
 // ---------------------------------------------------------------------------
 // extractFileEdits

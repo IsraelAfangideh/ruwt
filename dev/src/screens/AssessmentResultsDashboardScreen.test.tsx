@@ -67,7 +67,6 @@ vi.mock('@/theme/tokens', () => ({
 }));
 
 const ok = (data: any) => ({ ok: true, json: () => Promise.resolve(data) });
-const fail = () => ({ ok: false, json: () => Promise.resolve({}) });
 
 const mockCandidate1 = {
   session: { id: 's1', status: 'completed', totalCost: 5000, totalTokens: 1500, startedAt: '2026-01-01T00:00:00Z', completedAt: '2026-01-01T01:00:00Z', shareToken: 'share-abc' },

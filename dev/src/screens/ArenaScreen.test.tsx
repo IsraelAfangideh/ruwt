@@ -19,24 +19,29 @@ vi.mock('@/hooks/useAuthGuard', () => ({
 }));
 
 /* ── ArenaIDE mock ─────────────────────────────────────────────── */
+let capturedOnRunCode: ((code: string, lang: string) => Promise<any>) | null = null;
 vi.mock('@/components/ArenaIDE', () => ({
-  ArenaIDE: (props: any) => (
-    <div data-testid="arena-ide">
-      <span data-testid="ide-title">{props.challenge?.title || 'IDE'}</span>
-      <span data-testid="ide-code">{props.code}</span>
-      <span data-testid="ide-lang">{props.language}</span>
-      <span data-testid="ide-expired">{String(!!props.isExpired)}</span>
-      {props.testResults && <span data-testid="ide-results">{JSON.stringify(props.testResults)}</span>}
-      {props.onRestart && <button data-testid="ide-restart" onClick={props.onRestart}>Restart</button>}
-      {props.onExpire && <button data-testid="ide-expire" onClick={props.onExpire}>Expire</button>}
-      {props.onAttemptUpdate && (
-        <button data-testid="ide-update-attempt" onClick={() => props.onAttemptUpdate({ id: 'att-updated', totalCost: 999, inputTokens: 50, outputTokens: 50, status: 'in_progress', expiresAt: null })}>
-          Update Attempt
-        </button>
-      )}
-      {props.onDismissResults && <button data-testid="ide-dismiss" onClick={props.onDismissResults}>Dismiss</button>}
-    </div>
-  ),
+  ArenaIDE: (props: any) => {
+    // Capture onRunCode so tests can invoke it
+    capturedOnRunCode = props.onRunCode || null;
+    return (
+      <div data-testid="arena-ide">
+        <span data-testid="ide-title">{props.challenge?.title || 'IDE'}</span>
+        <span data-testid="ide-code">{props.code}</span>
+        <span data-testid="ide-lang">{props.language}</span>
+        <span data-testid="ide-expired">{String(!!props.isExpired)}</span>
+        {props.testResults && <span data-testid="ide-results">{JSON.stringify(props.testResults)}</span>}
+        {props.onRestart && <button data-testid="ide-restart" onClick={props.onRestart}>Restart</button>}
+        {props.onExpire && <button data-testid="ide-expire" onClick={props.onExpire}>Expire</button>}
+        {props.onAttemptUpdate && (
+          <button data-testid="ide-update-attempt" onClick={() => props.onAttemptUpdate({ id: 'att-updated', totalCost: 999, inputTokens: 50, outputTokens: 50, status: 'in_progress', expiresAt: null })}>
+            Update Attempt
+          </button>
+        )}
+        {props.onDismissResults && <button data-testid="ide-dismiss" onClick={props.onDismissResults}>Dismiss</button>}
+      </div>
+    );
+  },
 }));
 
 /* ── theme & util mocks ────────────────────────────────────────── */
@@ -63,7 +68,7 @@ vi.mock('@/components/arena/ArenaErrorBoundary', () => ({
   ArenaErrorBoundary: ({ children }: any) => <div data-testid="error-boundary">{children}</div>,
 }));
 vi.mock('@/lib/ai/pricing', () => ({
-  estimateMessagesForBudget: (cost: number, tier: string) => tier === 'premium' ? 2 : 10,
+  estimateMessagesForBudget: (_cost: number, tier: string) => tier === 'premium' ? 2 : 10,
   getModelById: () => ({ name: 'Test Model' }),
   tierColor: () => '#ccc',
   formatCostFromHundredths: (c: number) => `$${(c / 10000).toFixed(4)}`,
@@ -86,7 +91,13 @@ vi.mock('@/theme/tokens', () => ({
 
 /* ── helpers ────────────────────────────────────────────────────── */
 
-const challengeData = {
+const challengeData: {
+  id: string; title: string; difficulty: string; category: string;
+  description: string; starterCode: string | null; testCases: string;
+  language: string; maxCost: number | null; wallClockLimit: number | null;
+  hiddenTestCount: number;
+  stats: { solvers: number; avgCost: number | null; bestCost: number | null } | null;
+} = {
   id: 'test-challenge',
   title: 'FizzBuzz Budget',
   difficulty: 'medium',
@@ -167,6 +178,7 @@ describe('ArenaScreen', () => {
     routeParams = { challengeId: 'test-challenge' };
     authReturn = { user: { id: 'u1', email: 'test@test.com' }, loading: false };
     isMobileReturn = false;
+    capturedOnRunCode = null;
     globalThis.fetch = mockFetchForChallenge();
     // Mock localStorage
     vi.spyOn(Storage.prototype, 'getItem').mockReturnValue(null);
@@ -996,6 +1008,73 @@ describe('ArenaScreen', () => {
     // The onRunCode callback is passed to ArenaIDE; it's tested via the ArenaIDE mock
   });
 
+  it('onRunCode calls /api/execute and returns stdout/stderr/exitCode', async () => {
+    render(<ArenaScreen />);
+    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeTruthy());
+    await act(async () => { fireEvent.click(screen.getByText('Start Challenge')); });
+    await waitFor(() => expect(screen.getByTestId('arena-ide')).toBeTruthy());
+
+    // capturedOnRunCode was captured from the ArenaIDE mock
+    expect(capturedOnRunCode).not.toBeNull();
+    const result = await capturedOnRunCode!('console.log("hello")', 'javascript');
+    expect(result).toEqual({ stdout: 'hello', stderr: '', exitCode: 0 });
+    // Verify fetch was called with /api/execute
+    expect(globalThis.fetch).toHaveBeenCalledWith('/api/execute', expect.objectContaining({
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: expect.stringContaining('"language":"javascript"'),
+    }));
+  });
+
+  it('onRunCode falls back to javascript for unknown language', async () => {
+    render(<ArenaScreen />);
+    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeTruthy());
+    await act(async () => { fireEvent.click(screen.getByText('Start Challenge')); });
+    await waitFor(() => expect(screen.getByTestId('arena-ide')).toBeTruthy());
+
+    expect(capturedOnRunCode).not.toBeNull();
+    await capturedOnRunCode!('code', 'brainfuck');
+    // Should fall back to javascript mapping
+    expect(globalThis.fetch).toHaveBeenCalledWith('/api/execute', expect.objectContaining({
+      body: expect.stringContaining('"language":"javascript"'),
+    }));
+  });
+
+  it('onRunCode handles response with signal instead of code', async () => {
+    globalThis.fetch = vi.fn().mockImplementation((url: string, opts?: any) => {
+      if (url.includes('/api/challenges/')) return Promise.resolve({ ok: true, json: () => Promise.resolve(challengeData) });
+      if (url === '/api/profile') return Promise.resolve({ ok: true, json: () => Promise.resolve(profileData) });
+      if (url.includes('/api/attempts') && !opts?.method) return Promise.resolve({ ok: true, json: () => Promise.resolve({ attempts: [] }) });
+      if (url.includes('/api/attempts') && opts?.method === 'POST') {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({
+            attempt: { id: 'att-1', totalCost: 0, inputTokens: 0, outputTokens: 0, status: 'in_progress', expiresAt: null },
+            isExisting: false,
+            challenge: { starterCode: '// code' },
+          }),
+        });
+      }
+      if (url.includes('/api/execute')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ run: { stdout: '', stderr: 'killed', signal: 'SIGKILL' } }),
+        });
+      }
+      return Promise.resolve({ ok: false, json: () => Promise.resolve({}) });
+    });
+
+    render(<ArenaScreen />);
+    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeTruthy());
+    await act(async () => { fireEvent.click(screen.getByText('Start Challenge')); });
+    await waitFor(() => expect(screen.getByTestId('arena-ide')).toBeTruthy());
+
+    expect(capturedOnRunCode).not.toBeNull();
+    const result = await capturedOnRunCode!('while(true){}', 'javascript');
+    // When signal exists but no code, exitCode should be 1
+    expect(result).toEqual({ stdout: '', stderr: 'killed', exitCode: 1 });
+  });
+
   /* ─── Profile loading ─────────────────────────────────────────── */
 
   it('gracefully handles profile fetch failure (credits stay 0)', async () => {
@@ -1063,7 +1142,6 @@ describe('ArenaScreen', () => {
 
   it('"See How #1" handles leaderboard error gracefully', async () => {
     // Override fetch to fail on the second leaderboard call
-    let callCount = 0;
     const origFetch = mockFetchForChallenge();
     globalThis.fetch = vi.fn().mockImplementation((url: string, opts?: any) => {
       if (url.includes('/api/leaderboard') && url.includes('limit=1')) {
@@ -1336,11 +1414,13 @@ describe('ArenaScreen', () => {
           // First call (from submit) — return error so nextChallengeId stays null
           return Promise.reject(new Error('fail'));
         }
-        // Fallback fetch from clicking "Try Next Challenge"
+        // Fallback fetch from clicking "Try Next Challenge" — multiple challenges for sort coverage (lines 1158-1160)
         return Promise.resolve({
           ok: true,
           json: () => Promise.resolve([
             { id: 'fallback-ch', category: 'prompt_efficiency', difficulty: 'medium' },
+            { id: 'fallback-ch2', category: 'prompt_efficiency', difficulty: 'hard' },
+            { id: 'fallback-ch3', category: 'prompt_efficiency', difficulty: 'easy' },
           ]),
         });
       }
@@ -1365,6 +1445,63 @@ describe('ArenaScreen', () => {
     await waitFor(() => {
       expect(challengesFetchCount).toBeGreaterThanOrEqual(2);
     });
+  });
+
+  it('Try Next Challenge catch block redirects to /challenges when fallback fetch fails (line 1164)', async () => {
+    let challengesFetchCount = 0;
+    globalThis.fetch = vi.fn().mockImplementation((url: string, opts?: any) => {
+      if (url.includes('/api/challenges/')) return Promise.resolve({ ok: true, json: () => Promise.resolve(challengeData) });
+      if (url === '/api/profile') return Promise.resolve({ ok: true, json: () => Promise.resolve(profileData) });
+      if (url.includes('/api/attempts') && !opts?.method) return Promise.resolve({ ok: true, json: () => Promise.resolve({ attempts: [] }) });
+      if (url.includes('/api/attempts') && opts?.method === 'POST') {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({
+            attempt: { id: 'att-1', totalCost: 0, inputTokens: 0, outputTokens: 0, status: 'in_progress', expiresAt: null },
+            isExisting: false,
+            challenge: { starterCode: '// code' },
+          }),
+        });
+      }
+      if (url.includes('/api/submissions')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ success: true, passedTests: 1, totalTests: 1, results: [] }),
+        });
+      }
+      if (url.includes('/api/leaderboard')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ entries: [] }) });
+      }
+      if (url === '/api/challenges') {
+        challengesFetchCount++;
+        // ALL calls to /api/challenges fail so nextChallengeId stays null AND fallback catch fires
+        return Promise.reject(new Error('network error'));
+      }
+      return Promise.resolve({ ok: false, json: () => Promise.resolve({}) });
+    });
+
+    // Mock window.location so href assignment can be observed
+    const originalLocation = window.location;
+    delete (window as any).location;
+    (window as any).location = { ...originalLocation, href: 'http://localhost/' };
+
+    render(<ArenaScreen />);
+    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeTruthy());
+    await act(async () => { fireEvent.click(screen.getByText('Start Challenge')); });
+    await waitFor(() => expect(screen.getByText('Submit')).toBeTruthy());
+    await act(async () => { fireEvent.click(screen.getByText('Submit')); });
+    await waitFor(() => expect(screen.getByText('Challenge Passed!')).toBeTruthy());
+
+    const tryNextLink = screen.getByText('Try Next Challenge');
+    await act(async () => { fireEvent.click(tryNextLink); });
+    await waitFor(() => {
+      expect(challengesFetchCount).toBeGreaterThanOrEqual(2);
+    });
+    // The catch block sets window.location.href = '/challenges'
+    await waitFor(() => {
+      expect(window.location.href).toContain('/challenges');
+    });
+    Object.defineProperty(window, 'location', { value: originalLocation, writable: true });
   });
 
   /* ─── "View Your Replay" button ─────────────────────────────── */

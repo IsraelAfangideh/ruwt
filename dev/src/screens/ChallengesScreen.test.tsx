@@ -541,7 +541,7 @@ describe('ChallengesScreen', () => {
       ok: true,
       json: () => Promise.resolve(mockChallenges),
     }));
-    const { container } = render(<ChallengesScreen />);
+    render(<ChallengesScreen />);
     await waitFor(() => {
       expect(screen.getByText(/Sort: Default/)).toBeTruthy();
     });
@@ -576,7 +576,7 @@ describe('ChallengesScreen', () => {
       ok: true,
       json: () => Promise.resolve(mockChallenges),
     }));
-    const { container } = render(<ChallengesScreen />);
+    render(<ChallengesScreen />);
     await waitFor(() => {
       expect(screen.getByText(/Sort: Default/)).toBeTruthy();
     });

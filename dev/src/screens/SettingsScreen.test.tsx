@@ -5,8 +5,9 @@ import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 vi.mock('@react-navigation/native', () => ({
   useNavigation: () => ({ navigate: vi.fn(), reset: vi.fn() }),
 }));
+let mockAuthReturn: any = { user: { id: 'u1', email: 'test@test.com' }, loading: false };
 vi.mock('@/hooks/useAuthGuard', () => ({
-  useAuthGuard: () => ({ user: { id: 'u1', email: 'test@test.com' }, loading: false }),
+  useAuthGuard: () => mockAuthReturn,
 }));
 vi.mock('@/components/DashboardLayout', () => ({
   DashboardLayout: ({ children }: any) => <div data-testid="dashboard-layout">{children}</div>,
@@ -54,6 +55,7 @@ const { SettingsScreen } = await import('./SettingsScreen');
 describe('SettingsScreen', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockAuthReturn = { user: { id: 'u1', email: 'test@test.com' }, loading: false };
     window.history.replaceState({}, '', '/settings');
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
       ok: true,
@@ -179,7 +181,7 @@ describe('SettingsScreen', () => {
 
   it('reverts newsletter toggle on PATCH failure', async () => {
     let callCount = 0;
-    vi.stubGlobal('fetch', vi.fn().mockImplementation(async (url: string, opts: any) => {
+    vi.stubGlobal('fetch', vi.fn().mockImplementation(async (_url: string, opts: any) => {
       callCount++;
       if (opts?.method === 'PATCH') {
         return { ok: false, json: async () => ({}) } as Response;
@@ -226,7 +228,7 @@ describe('SettingsScreen', () => {
   });
 
   it('reverts newsletter toggle on network error (catch branch)', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockImplementation(async (url: string, opts: any) => {
+    vi.stubGlobal('fetch', vi.fn().mockImplementation(async (_url: string, opts: any) => {
       if (opts?.method === 'PATCH') {
         throw new Error('Network failure');
       }
@@ -249,7 +251,7 @@ describe('SettingsScreen', () => {
   });
 
   it('calls billing portal and redirects when Manage Billing is clicked', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockImplementation(async (url: string, opts: any) => {
+    vi.stubGlobal('fetch', vi.fn().mockImplementation(async (url: string) => {
       if (url.includes('/api/billing/portal')) {
         return { ok: true, json: async () => ({ url: 'https://billing.stripe.com/portal' }) } as Response;
       }
@@ -316,6 +318,12 @@ describe('SettingsScreen', () => {
     await waitFor(() => {
       expect(screen.getByText('Settings')).toBeTruthy();
     });
+  });
+
+  it('shows loading skeleton when auth is loading (line 78)', () => {
+    mockAuthReturn = { user: null, loading: true };
+    const { container } = render(<SettingsScreen />);
+    expect(container.querySelectorAll('[data-testid="skeleton"]').length).toBeGreaterThanOrEqual(1);
   });
 
   it('sets newsletterSubscribed to false when API returns 0', async () => {

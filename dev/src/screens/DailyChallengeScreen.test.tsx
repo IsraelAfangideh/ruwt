@@ -1,15 +1,17 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 
 const mockNavigate = vi.fn();
 const mockReset = vi.fn();
+const mockGetUser = vi.fn().mockResolvedValue({ data: { user: { id: 'u1' } } });
+
 vi.mock('@react-navigation/native', () => ({
   useNavigation: () => ({ navigate: mockNavigate, reset: mockReset }),
 }));
 vi.mock('@/lib/supabase/client', () => ({
   createClient: () => ({
-    auth: { getUser: vi.fn().mockResolvedValue({ data: { user: { id: 'u1' } } }) },
+    auth: { getUser: mockGetUser },
   }),
 }));
 vi.mock('@/components/DashboardLayout', () => ({
@@ -26,7 +28,7 @@ vi.mock('@/components/ui/Badge', () => ({
   Badge: ({ children }: any) => <span>{children}</span>,
 }));
 vi.mock('@/components/ui/Button', () => ({
-  Button: ({ children, ...props }: any) => <button {...props}>{children}</button>,
+  Button: ({ children, onPress, ...props }: any) => <button onClick={onPress} {...props}>{children}</button>,
 }));
 vi.mock('@/components/ui/Avatar', () => ({ Avatar: () => <div data-testid="avatar" /> }));
 vi.mock('@/hooks/useDocumentMeta', () => ({ useDocumentMeta: () => {} }));
@@ -63,7 +65,14 @@ vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
 const { DailyChallengeScreen } = await import('./DailyChallengeScreen');
 
 describe('DailyChallengeScreen', () => {
-  beforeEach(() => { vi.clearAllMocks(); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockGetUser.mockResolvedValue({ data: { user: { id: 'u1' } } });
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve(mockDailyData),
+    }));
+  });
 
   it('renders loading state initially', () => {
     const { container } = render(<DailyChallengeScreen />);
@@ -71,10 +80,6 @@ describe('DailyChallengeScreen', () => {
   });
 
   it('renders daily challenge title after loading', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve(mockDailyData),
-    }));
     render(<DailyChallengeScreen />);
     await waitFor(() => {
       expect(screen.getAllByText(/Daily FizzBuzz/).length).toBeGreaterThanOrEqual(1);
@@ -82,13 +87,43 @@ describe('DailyChallengeScreen', () => {
   });
 
   it('renders dashboard layout wrapper', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve(mockDailyData),
-    }));
     const { container } = render(<DailyChallengeScreen />);
     await waitFor(() => {
       expect(container.querySelector('[data-testid="dashboard-layout"]')).not.toBeNull();
     });
+  });
+
+  it('redirects to Login when user is not authenticated (lines 52-53)', async () => {
+    mockGetUser.mockResolvedValueOnce({ data: { user: null } });
+    render(<DailyChallengeScreen />);
+    await waitFor(() => {
+      expect(mockReset).toHaveBeenCalledWith({
+        index: 0,
+        routes: [{ name: 'Login' }],
+      });
+    });
+  });
+
+  it('renders countdown timer from secondsUntilNext and starts interval (line 73)', async () => {
+    render(<DailyChallengeScreen />);
+    await waitFor(() => {
+      // The countdown should render from secondsUntilNext=3600 = 1h 0m 0s
+      expect(screen.getByText(/1h 0m 0s/)).toBeTruthy();
+    });
+    // The countdown interval (line 73) is running, which calls setCountdown(prev => Math.max(0, prev - 1)).
+    // After a real second passes, it will decrement. We verify the interval fires:
+    await waitFor(() => {
+      // After at least 1s, the countdown should have changed
+      expect(screen.getByText(/0h 59m/)).toBeTruthy();
+    }, { timeout: 3000 });
+  });
+
+  it('navigates to Arena when Start Today\'s Challenge is clicked (line 124)', async () => {
+    render(<DailyChallengeScreen />);
+    await waitFor(() => {
+      expect(screen.getByText("Start Today's Challenge")).toBeTruthy();
+    }, { timeout: 3000 });
+    fireEvent.click(screen.getByText("Start Today's Challenge"));
+    expect(mockNavigate).toHaveBeenCalledWith('Arena', { challengeId: 'dc1' });
   });
 });

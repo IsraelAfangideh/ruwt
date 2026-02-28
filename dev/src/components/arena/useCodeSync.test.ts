@@ -60,16 +60,16 @@ describe('useCodeSync', () => {
   let editor: ReturnType<typeof makeMockEditor>;
   let editorRef: { current: ReturnType<typeof makeMockEditor> | null };
   let fs: ReturnType<typeof makeMockFs>;
-  let onCodeChange: ReturnType<typeof vi.fn>;
-  let clearDecorations: ReturnType<typeof vi.fn>;
+  let onCodeChange: ReturnType<typeof vi.fn<(code: string) => void>>;
+  let clearDecorations: ReturnType<typeof vi.fn<() => void>>;
 
   beforeEach(() => {
     model = makeMockModel('old code');
     editor = makeMockEditor(model);
     editorRef = { current: editor };
     fs = makeMockFs('initial code');
-    onCodeChange = vi.fn();
-    clearDecorations = vi.fn();
+    onCodeChange = vi.fn<(code: string) => void>();
+    clearDecorations = vi.fn<() => void>();
   });
 
   // ─── Monaco → VFS direction ─────────────────────────────────────────
@@ -241,7 +241,7 @@ describe('useCodeSync', () => {
       // Simulate the editor change handler — this sets suppressSync = true during setSolutionCode
       // The VFS listener fires synchronously inside setSolutionCode
       const originalSetSolution = fs.setSolutionCode as ReturnType<typeof vi.fn>;
-      originalSetSolution.mockImplementation((code: string) => {
+      originalSetSolution.mockImplementation((_code: string) => {
         // Simulate VFS firing onChange synchronously
         fs._triggerChange('/home/user/solution.ts');
       });

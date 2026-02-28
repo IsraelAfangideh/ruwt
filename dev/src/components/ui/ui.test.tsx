@@ -382,6 +382,25 @@ describe('Dialog', () => {
     expect(onOpenChange).toHaveBeenCalledWith(false);
   });
 
+  it('dialog content stops event propagation (onStartShouldSetResponder, line 50)', () => {
+    const onOpenChange = vi.fn();
+    const { container } = render(
+      <Wrapper>
+        <Dialog open={true} onOpenChange={onOpenChange}>
+          <span>Content</span>
+        </Dialog>
+      </Wrapper>,
+    );
+    // Find the dialog content element (the one with role="dialog")
+    const dialogContent = container.querySelector('[role="dialog"]') as HTMLElement;
+    expect(dialogContent).not.toBeNull();
+    // Dispatch a pointerdown event on the dialog content
+    // This triggers onStartShouldSetResponder which returns true
+    fireEvent.pointerDown(dialogContent);
+    // The overlay's onPress should NOT have been called since content captures the event
+    expect(onOpenChange).not.toHaveBeenCalled();
+  });
+
   it('does not call onOpenChange on non-Escape keys', () => {
     const onOpenChange = vi.fn();
     render(
@@ -648,7 +667,6 @@ describe('Tabs', () => {
       </Wrapper>,
     );
     // Find the "Second" trigger - use querySelector to avoid multiple text node matching
-    const triggers = container.querySelectorAll('[role="tab"]');
     // In RNW, Pressable with accessibilityRole="tab" renders with role="tab"
     // If that doesn't work, find by text content
     let secondTrigger: HTMLElement | null = null;

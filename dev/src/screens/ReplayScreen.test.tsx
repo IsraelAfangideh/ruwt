@@ -442,6 +442,24 @@ describe('ReplayScreen', () => {
     });
   });
 
+  it('opens ruwt.dev link in embed mode when clicked (line 173)', async () => {
+    window.history.replaceState({}, '', '/replay/test-attempt-123?embed=1');
+    const mockOpen = vi.fn();
+    vi.stubGlobal('open', mockOpen);
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve(mockReplayData),
+    }));
+    const { ReplayScreen } = await import('./ReplayScreen');
+    render(<ReplayScreen />);
+    await waitFor(() => {
+      expect(screen.getByText('ruwt.dev')).toBeTruthy();
+    });
+    fireEvent.click(screen.getByText('ruwt.dev'));
+    expect(mockOpen).toHaveBeenCalledWith(expect.stringContaining('/replay/'), '_blank');
+    window.history.replaceState({}, '', '/replay/test-attempt-123');
+  });
+
   it('navigates to Challenges when "Back to Challenges" is clicked in error state', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
       ok: false,
@@ -454,5 +472,56 @@ describe('ReplayScreen', () => {
     });
     fireEvent.click(screen.getByText('Back to Challenges'));
     expect(mockNavigate).toHaveBeenCalledWith('Challenges');
+  });
+
+  it('shows error when attemptId is empty string (line 65)', async () => {
+    mockRouteParams = { attemptId: '' };
+    vi.stubGlobal('fetch', vi.fn());
+    const { ReplayScreen } = await import('./ReplayScreen');
+    render(<ReplayScreen />);
+    await waitFor(() => {
+      expect(screen.getByText('No attempt ID provided')).toBeTruthy();
+    });
+  });
+
+  it('renders fallback model name when model is unknown (lines 225-227)', async () => {
+    vi.mock('@/lib/ai/pricing', () => ({
+      getModelById: (id: string) => {
+        if (id === 'unknown-model') return null;
+        return { name: 'Test Model', displayName: 'Test Model', tier: 'free' };
+      },
+      tierColor: () => '#ccc',
+      formatCostFromHundredths: (c: number) => `$${(c / 10000).toFixed(4)}`,
+    }));
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({
+        ...mockReplayData,
+        stats: { ...mockReplayData.stats, modelsUsed: ['unknown-model'] },
+      }),
+    }));
+    const { ReplayScreen } = await import('./ReplayScreen');
+    render(<ReplayScreen />);
+    await waitFor(() => {
+      // When getModelById returns null, should use modelId.split('/').pop() as fallback
+      expect(screen.getByText('unknown-model')).toBeTruthy();
+    });
+  });
+
+  it('renders singular "token" for single token count (line 254)', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({
+        ...mockReplayData,
+        messages: [
+          { role: 'assistant', content: 'One token', model: 'llama-3.3-70b', inputTokens: 1, outputTokens: 0, cost: 100, createdAt: '2026-01-01T00:00:01Z' },
+        ],
+      }),
+    }));
+    const { ReplayScreen } = await import('./ReplayScreen');
+    render(<ReplayScreen />);
+    await waitFor(() => {
+      expect(screen.getByText(/1 token$/)).toBeTruthy();
+    });
   });
 });

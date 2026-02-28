@@ -405,6 +405,25 @@ describe('AssessmentResultsScreen', () => {
     });
   });
 
+  it('classifies model as micro tier when name does not match premium/mid/budget patterns (line 186)', async () => {
+    const microTierResult = {
+      ...mockChallengeResult,
+      modelUsage: {
+        '@cf/qwen/qwen1.5-0.5b-chat': { calls: 1, cost: 100, tokens: 200 },
+      },
+    };
+    const withMicroTier = {
+      ...mockResultsData,
+      challengeResults: [microTierResult],
+    };
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(ok(withMicroTier)));
+    render(<AssessmentResultsScreen />);
+    await waitFor(() => {
+      // The micro tier model should appear in model usage section
+      expect(screen.getByText(/qwen1.5-0.5b/)).toBeTruthy();
+    });
+  });
+
   it('renders total token count in per-challenge stats', async () => {
     const withChallenge = {
       ...mockResultsData,

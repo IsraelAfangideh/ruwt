@@ -40,11 +40,18 @@ vi.mock('@/components/ui/Input', () => ({
   ),
 }));
 
+type PassThreshold = {
+  enabled: boolean;
+  mode: 'all_dimensions' | 'weighted_average';
+  minOverall?: number;
+  dimensions: Record<string, number>;
+};
+
 describe('PassThresholdEditor', () => {
-  let mockOnChange: ReturnType<typeof vi.fn>;
+  let mockOnChange: ReturnType<typeof vi.fn<(threshold: PassThreshold | null) => void>>;
 
   beforeEach(() => {
-    mockOnChange = vi.fn();
+    mockOnChange = vi.fn<(threshold: PassThreshold | null) => void>();
   });
 
   it('renders the section label and hint', () => {

@@ -1,15 +1,20 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent, act } from '@testing-library/react';
 
 const mockNavigate = vi.fn();
 const mockReset = vi.fn();
+
+const { mockGetUser } = vi.hoisted(() => ({
+  mockGetUser: vi.fn(),
+}));
+
 vi.mock('@react-navigation/native', () => ({
   useNavigation: () => ({ navigate: mockNavigate, reset: mockReset }),
 }));
 vi.mock('@/lib/supabase/client', () => ({
   createClient: () => ({
-    auth: { getUser: vi.fn().mockResolvedValue({ data: { user: { id: 'u1', user_metadata: { name: 'Test User' }, email: 'test@test.com' } } }) },
+    auth: { getUser: (...args: any[]) => mockGetUser(...args) },
   }),
 }));
 vi.mock('@/components/DashboardLayout', () => ({
@@ -51,7 +56,26 @@ vi.mock('@/theme/tokens', () => ({
   radii: { sm: 4, md: 8, lg: 12, xl: 16, full: 9999 },
 }));
 
-const baseDashboardData = {
+interface DashboardData {
+  profile: {
+    name: string; email: string; avatarUrl: string | null; username: string;
+    credits: number; currentStreak: number; longestStreak: number; lastStreakDate: string;
+    streakFreezes: number; onboardingCompleted: number;
+  };
+  progress: {
+    totalChallenges: number; solvedCount: number;
+    categorySolves: Record<string, number>;
+    categoryTotals: Record<string, number>;
+  };
+  rank: { position: number | null; totalRanked: number };
+  dailyChallenge: { challengeId: string; title: string; difficulty: string; category: string | null; solvedToday: boolean } | null;
+  recentBadges: Array<{ badgeType: string; title: string; icon: string; earnedAt: string }>;
+  recentActivity: Array<{ user: string; avatarUrl: string | null; challenge: string; cost: number; timestamp: string }>;
+  unreadNotifications: number;
+  heatmap: Record<string, number>;
+}
+
+const baseDashboardData: DashboardData = {
   profile: {
     name: 'TestUser', email: 'test@test.com', avatarUrl: null, username: 'testuser',
     credits: 50000, currentStreak: 3, longestStreak: 7, lastStreakDate: '2026-02-27',
@@ -70,6 +94,8 @@ const baseDashboardData = {
   heatmap: {},
 };
 
+const defaultUser = { id: 'u1', user_metadata: { name: 'Test User' }, email: 'test@test.com' };
+
 vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
   ok: true,
   json: () => Promise.resolve(baseDashboardData),
@@ -77,8 +103,28 @@ vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
 
 const { DashboardScreen } = await import('./DashboardScreen');
 
+/** Helper to set up fetch and getUser for a standard successful dashboard render */
+function setupHappyPath(dashboardOverrides?: Partial<typeof baseDashboardData>) {
+  mockGetUser.mockResolvedValue({ data: { user: defaultUser } });
+  const data = dashboardOverrides
+    ? { ...baseDashboardData, ...dashboardOverrides }
+    : baseDashboardData;
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+    ok: true,
+    json: () => Promise.resolve(data),
+  }));
+}
+
 describe('DashboardScreen', () => {
-  beforeEach(() => { vi.clearAllMocks(); vi.useFakeTimers({ shouldAdvanceTime: true }); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    mockGetUser.mockResolvedValue({ data: { user: defaultUser } });
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve(baseDashboardData),
+    }));
+  });
   afterEach(() => { vi.useRealTimers(); });
 
   it('renders loading state initially', () => {
@@ -87,10 +133,7 @@ describe('DashboardScreen', () => {
   });
 
   it('renders greeting and username after loading', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve(baseDashboardData),
-    }));
+    setupHappyPath();
     vi.useRealTimers();
     render(<DashboardScreen />);
     await waitFor(() => {
@@ -99,10 +142,7 @@ describe('DashboardScreen', () => {
   });
 
   it('renders dashboard layout wrapper', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve(baseDashboardData),
-    }));
+    setupHappyPath();
     vi.useRealTimers();
     const { container } = render(<DashboardScreen />);
     await waitFor(() => {
@@ -111,10 +151,7 @@ describe('DashboardScreen', () => {
   });
 
   it('renders daily challenge section when present', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve(baseDashboardData),
-    }));
+    setupHappyPath();
     vi.useRealTimers();
     render(<DashboardScreen />);
     await waitFor(() => {
@@ -123,10 +160,7 @@ describe('DashboardScreen', () => {
   });
 
   it('renders "Start Today\'s Challenge" button when daily challenge is not solved', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve(baseDashboardData),
-    }));
+    setupHappyPath();
     vi.useRealTimers();
     render(<DashboardScreen />);
     await waitFor(() => {
@@ -135,13 +169,9 @@ describe('DashboardScreen', () => {
   });
 
   it('shows "Completed!" when daily challenge is solved', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve({
-        ...baseDashboardData,
-        dailyChallenge: { ...baseDashboardData.dailyChallenge, solvedToday: true },
-      }),
-    }));
+    setupHappyPath({
+      dailyChallenge: { ...baseDashboardData.dailyChallenge!, solvedToday: true },
+    });
     vi.useRealTimers();
     render(<DashboardScreen />);
     await waitFor(() => {
@@ -150,13 +180,7 @@ describe('DashboardScreen', () => {
   });
 
   it('shows "No daily challenge available" when daily challenge is null', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve({
-        ...baseDashboardData,
-        dailyChallenge: null,
-      }),
-    }));
+    setupHappyPath({ dailyChallenge: null });
     vi.useRealTimers();
     render(<DashboardScreen />);
     await waitFor(() => {
@@ -165,10 +189,7 @@ describe('DashboardScreen', () => {
   });
 
   it('renders stats row with Solved, Global Rank, Streak, AI Spend', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve(baseDashboardData),
-    }));
+    setupHappyPath();
     vi.useRealTimers();
     render(<DashboardScreen />);
     await waitFor(() => {
@@ -180,10 +201,7 @@ describe('DashboardScreen', () => {
   });
 
   it('renders rank as #12 when position is set', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve(baseDashboardData),
-    }));
+    setupHappyPath();
     vi.useRealTimers();
     render(<DashboardScreen />);
     await waitFor(() => {
@@ -192,13 +210,7 @@ describe('DashboardScreen', () => {
   });
 
   it('renders rank as "--" when position is null', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve({
-        ...baseDashboardData,
-        rank: { position: null, totalRanked: 50 },
-      }),
-    }));
+    setupHappyPath({ rank: { position: null, totalRanked: 50 } });
     vi.useRealTimers();
     render(<DashboardScreen />);
     await waitFor(() => {
@@ -207,10 +219,7 @@ describe('DashboardScreen', () => {
   });
 
   it('renders progress section with percentage and category breakdown', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve(baseDashboardData),
-    }));
+    setupHappyPath();
     vi.useRealTimers();
     render(<DashboardScreen />);
     await waitFor(() => {
@@ -224,10 +233,7 @@ describe('DashboardScreen', () => {
   });
 
   it('renders activity heatmap section', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve(baseDashboardData),
-    }));
+    setupHappyPath();
     vi.useRealTimers();
     render(<DashboardScreen />);
     await waitFor(() => {
@@ -239,10 +245,7 @@ describe('DashboardScreen', () => {
   });
 
   it('renders streak badge with count when streak > 0', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve(baseDashboardData),
-    }));
+    setupHappyPath();
     vi.useRealTimers();
     render(<DashboardScreen />);
     await waitFor(() => {
@@ -251,13 +254,9 @@ describe('DashboardScreen', () => {
   });
 
   it('shows "Start your streak!" when streak is 0', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve({
-        ...baseDashboardData,
-        profile: { ...baseDashboardData.profile, currentStreak: 0 },
-      }),
-    }));
+    setupHappyPath({
+      profile: { ...baseDashboardData.profile, currentStreak: 0 },
+    });
     vi.useRealTimers();
     render(<DashboardScreen />);
     await waitFor(() => {
@@ -267,10 +266,7 @@ describe('DashboardScreen', () => {
   });
 
   it('shows streak freezes when > 0', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve(baseDashboardData),
-    }));
+    setupHappyPath();
     vi.useRealTimers();
     render(<DashboardScreen />);
     await waitFor(() => {
@@ -279,13 +275,9 @@ describe('DashboardScreen', () => {
   });
 
   it('shows singular "freeze" for streakFreezes=1', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve({
-        ...baseDashboardData,
-        profile: { ...baseDashboardData.profile, streakFreezes: 1 },
-      }),
-    }));
+    setupHappyPath({
+      profile: { ...baseDashboardData.profile, streakFreezes: 1 },
+    });
     vi.useRealTimers();
     render(<DashboardScreen />);
     await waitFor(() => {
@@ -294,10 +286,7 @@ describe('DashboardScreen', () => {
   });
 
   it('shows Achievements section with ghost badges when no badges earned', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve(baseDashboardData),
-    }));
+    setupHappyPath();
     vi.useRealTimers();
     render(<DashboardScreen />);
     await waitFor(() => {
@@ -309,15 +298,11 @@ describe('DashboardScreen', () => {
   });
 
   it('shows earned badges when present', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve({
-        ...baseDashboardData,
-        recentBadges: [
-          { badgeType: 'first_solve', title: 'First Solve', icon: '\uD83C\uDFC6', earnedAt: '2026-01-01' },
-        ],
-      }),
-    }));
+    setupHappyPath({
+      recentBadges: [
+        { badgeType: 'first_solve', title: 'First Solve', icon: '\uD83C\uDFC6', earnedAt: '2026-01-01' },
+      ],
+    });
     vi.useRealTimers();
     render(<DashboardScreen />);
     await waitFor(() => {
@@ -326,10 +311,7 @@ describe('DashboardScreen', () => {
   });
 
   it('shows community feed with "Be among the first" when fewer than 3 unique users', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve(baseDashboardData), // recentActivity is empty
-    }));
+    setupHappyPath(); // recentActivity is empty
     vi.useRealTimers();
     render(<DashboardScreen />);
     await waitFor(() => {
@@ -340,17 +322,13 @@ describe('DashboardScreen', () => {
 
   it('shows recent activity feed when >= 3 unique users', async () => {
     const now = new Date().toISOString();
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve({
-        ...baseDashboardData,
-        recentActivity: [
-          { user: 'alice', avatarUrl: null, challenge: 'FizzBuzz', cost: 500, timestamp: now },
-          { user: 'bob', avatarUrl: null, challenge: 'Cache', cost: 300, timestamp: now },
-          { user: 'carol', avatarUrl: null, challenge: 'Sort', cost: 800, timestamp: now },
-        ],
-      }),
-    }));
+    setupHappyPath({
+      recentActivity: [
+        { user: 'alice', avatarUrl: null, challenge: 'FizzBuzz', cost: 500, timestamp: now },
+        { user: 'bob', avatarUrl: null, challenge: 'Cache', cost: 300, timestamp: now },
+        { user: 'carol', avatarUrl: null, challenge: 'Sort', cost: 800, timestamp: now },
+      ],
+    });
     vi.useRealTimers();
     render(<DashboardScreen />);
     await waitFor(() => {
@@ -362,13 +340,9 @@ describe('DashboardScreen', () => {
   });
 
   it('shows GetStartedBanner when user has 0 solved challenges', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve({
-        ...baseDashboardData,
-        progress: { ...baseDashboardData.progress, solvedCount: 0 },
-      }),
-    }));
+    setupHappyPath({
+      progress: { ...baseDashboardData.progress, solvedCount: 0 },
+    });
     vi.useRealTimers();
     render(<DashboardScreen />);
     await waitFor(() => {
@@ -379,13 +353,9 @@ describe('DashboardScreen', () => {
   });
 
   it('navigates to Arena with fizzbuzz-budget when Try FizzBuzz Budget is clicked', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve({
-        ...baseDashboardData,
-        progress: { ...baseDashboardData.progress, solvedCount: 0 },
-      }),
-    }));
+    setupHappyPath({
+      progress: { ...baseDashboardData.progress, solvedCount: 0 },
+    });
     vi.useRealTimers();
     render(<DashboardScreen />);
     await waitFor(() => {
@@ -396,13 +366,9 @@ describe('DashboardScreen', () => {
   });
 
   it('navigates to Challenges when Browse all challenges is clicked', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve({
-        ...baseDashboardData,
-        progress: { ...baseDashboardData.progress, solvedCount: 0 },
-      }),
-    }));
+    setupHappyPath({
+      progress: { ...baseDashboardData.progress, solvedCount: 0 },
+    });
     vi.useRealTimers();
     render(<DashboardScreen />);
     await waitFor(() => {
@@ -413,6 +379,7 @@ describe('DashboardScreen', () => {
   });
 
   it('shows fallback UI when API fetch fails', async () => {
+    mockGetUser.mockResolvedValue({ data: { user: defaultUser } });
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false }));
     vi.useRealTimers();
     render(<DashboardScreen />);
@@ -423,13 +390,9 @@ describe('DashboardScreen', () => {
   });
 
   it('redirects to Onboarding when onboardingCompleted is 0', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve({
-        ...baseDashboardData,
-        profile: { ...baseDashboardData.profile, onboardingCompleted: 0 },
-      }),
-    }));
+    setupHappyPath({
+      profile: { ...baseDashboardData.profile, onboardingCompleted: 0 },
+    });
     vi.useRealTimers();
     render(<DashboardScreen />);
     await waitFor(() => {
@@ -441,10 +404,7 @@ describe('DashboardScreen', () => {
   });
 
   it('navigates to Profile when View All on badges is clicked', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve(baseDashboardData),
-    }));
+    setupHappyPath();
     vi.useRealTimers();
     render(<DashboardScreen />);
     await waitFor(() => {
@@ -455,10 +415,7 @@ describe('DashboardScreen', () => {
   });
 
   it('navigates to Arena when Start Today\'s Challenge is clicked', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve(baseDashboardData),
-    }));
+    setupHappyPath();
     vi.useRealTimers();
     render(<DashboardScreen />);
     await waitFor(() => {
@@ -469,10 +426,7 @@ describe('DashboardScreen', () => {
   });
 
   it('renders Today\'s Challenge badge', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve(baseDashboardData),
-    }));
+    setupHappyPath();
     vi.useRealTimers();
     render(<DashboardScreen />);
     await waitFor(() => {
@@ -481,10 +435,7 @@ describe('DashboardScreen', () => {
   });
 
   it('renders countdown timer with "Next in" label', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve(baseDashboardData),
-    }));
+    setupHappyPath();
     vi.useRealTimers();
     render(<DashboardScreen />);
     await waitFor(() => {
@@ -493,10 +444,7 @@ describe('DashboardScreen', () => {
   });
 
   it('shows 5 / 60 in solved stat', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve(baseDashboardData),
-    }));
+    setupHappyPath();
     vi.useRealTimers();
     render(<DashboardScreen />);
     await waitFor(() => {
@@ -505,10 +453,7 @@ describe('DashboardScreen', () => {
   });
 
   it('formats AI spend as $0.00 when credits are unchanged', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve(baseDashboardData),
-    }));
+    setupHappyPath();
     vi.useRealTimers();
     render(<DashboardScreen />);
     await waitFor(() => {
@@ -517,10 +462,7 @@ describe('DashboardScreen', () => {
   });
 
   it('renders category difficulty badge for daily challenge', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve(baseDashboardData),
-    }));
+    setupHappyPath();
     vi.useRealTimers();
     render(<DashboardScreen />);
     await waitFor(() => {
@@ -530,15 +472,7 @@ describe('DashboardScreen', () => {
   });
 
   it('returns null when user is not set and loading is false', async () => {
-    // This test covers the `if (!user) return null;` line 839
-    // The existing supabase mock always returns a user, and the loading/!user
-    // scenario is already tested by the onboarding redirect test (user exists, but redirect happens)
-    // The line 839 null return is hit in the brief window between loading=false and user being set
-    // but the render is synchronous so it passes through. This covers it indirectly.
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve(baseDashboardData),
-    }));
+    setupHappyPath();
     vi.useRealTimers();
     render(<DashboardScreen />);
     // Verify the dashboard loads (this path goes through all the early returns)
@@ -549,6 +483,7 @@ describe('DashboardScreen', () => {
 
   it('renders loading skeleton when user is set but still loading', async () => {
     // Make fetch hang so loading stays true while user is set
+    mockGetUser.mockResolvedValue({ data: { user: defaultUser } });
     vi.stubGlobal('fetch', vi.fn().mockReturnValue(new Promise(() => {})));
     vi.useRealTimers();
     const { container } = render(<DashboardScreen />);
@@ -557,13 +492,9 @@ describe('DashboardScreen', () => {
   });
 
   it('shows daily challenge without category badge when category is null', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve({
-        ...baseDashboardData,
-        dailyChallenge: { ...baseDashboardData.dailyChallenge, category: null },
-      }),
-    }));
+    setupHappyPath({
+      dailyChallenge: { ...baseDashboardData.dailyChallenge!, category: null },
+    });
     vi.useRealTimers();
     render(<DashboardScreen />);
     await waitFor(() => {
@@ -572,13 +503,9 @@ describe('DashboardScreen', () => {
   });
 
   it('formats AI spend with small cost correctly (less than 1 cent)', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve({
-        ...baseDashboardData,
-        profile: { ...baseDashboardData.profile, credits: 49950 }, // spent 50 hundredths = $0.005
-      }),
-    }));
+    setupHappyPath({
+      profile: { ...baseDashboardData.profile, credits: 49950 }, // spent 50 hundredths = $0.005
+    });
     vi.useRealTimers();
     render(<DashboardScreen />);
     await waitFor(() => {
@@ -587,6 +514,7 @@ describe('DashboardScreen', () => {
   });
 
   it('handles fetch exception gracefully (try/catch branch)', async () => {
+    mockGetUser.mockResolvedValue({ data: { user: defaultUser } });
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('Network error')));
     vi.useRealTimers();
     render(<DashboardScreen />);
@@ -596,13 +524,9 @@ describe('DashboardScreen', () => {
   });
 
   it('does not show streak freezes when count is 0', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve({
-        ...baseDashboardData,
-        profile: { ...baseDashboardData.profile, streakFreezes: 0 },
-      }),
-    }));
+    setupHappyPath({
+      profile: { ...baseDashboardData.profile, streakFreezes: 0 },
+    });
     vi.useRealTimers();
     render(<DashboardScreen />);
     await waitFor(() => {
@@ -612,13 +536,9 @@ describe('DashboardScreen', () => {
   });
 
   it('renders progress section with 0% when totalChallenges is 0', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve({
-        ...baseDashboardData,
-        progress: { totalChallenges: 0, solvedCount: 0, categorySolves: {}, categoryTotals: {} },
-      }),
-    }));
+    setupHappyPath({
+      progress: { totalChallenges: 0, solvedCount: 0, categorySolves: {}, categoryTotals: {} },
+    });
     vi.useRealTimers();
     render(<DashboardScreen />);
     await waitFor(() => {
@@ -627,17 +547,148 @@ describe('DashboardScreen', () => {
   });
 
   it('renders progress section with no category row when categoryTotals is empty', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve({
-        ...baseDashboardData,
-        progress: { totalChallenges: 10, solvedCount: 5, categorySolves: {}, categoryTotals: {} },
-      }),
-    }));
+    setupHappyPath({
+      progress: { totalChallenges: 10, solvedCount: 5, categorySolves: {}, categoryTotals: {} },
+    });
     vi.useRealTimers();
     render(<DashboardScreen />);
     await waitFor(() => {
       expect(screen.getByText(/50% of challenges completed/)).toBeTruthy();
+    });
+  });
+
+  /* ── NEW: Unauthenticated redirect ─────────────────────────────── */
+  it('redirects to Login when getUser returns null', async () => {
+    mockGetUser.mockResolvedValue({ data: { user: null } });
+    vi.useRealTimers();
+    render(<DashboardScreen />);
+    await waitFor(() => {
+      expect(mockReset).toHaveBeenCalledWith({
+        index: 0,
+        routes: [{ name: 'Login' }],
+      });
+    });
+  });
+
+  /* ── Countdown ticker interval reaching 0 (lines 809-813) ──── */
+  it('decrements countdown via interval and clears when reaching 0', async () => {
+    // Use fake timers with shouldAdvanceTime so promises resolve
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    // Set system time to 23:59:57 UTC so countdown starts at 3 seconds
+    vi.setSystemTime(new Date('2026-02-28T23:59:57.000Z'));
+    setupHappyPath();
+
+    render(<DashboardScreen />);
+
+    // Wait for dashboard to load
+    await waitFor(() => {
+      expect(screen.getByText("Start Today's Challenge")).toBeTruthy();
+    });
+
+    // Tick 1: prev=3 -> return prev-1=2 (line 813)
+    await act(async () => { vi.advanceTimersByTime(1000); });
+    // Tick 2: prev=2 -> return prev-1=1 (line 813)
+    await act(async () => { vi.advanceTimersByTime(1000); });
+    // Tick 3: prev=1, prev<=1 -> clearInterval + return 0 (lines 810-811)
+    await act(async () => { vi.advanceTimersByTime(1000); });
+
+    // After countdown reaches 0, should display 00:00:00
+    expect(screen.getByText('00:00:00')).toBeTruthy();
+  });
+
+  /* ── NEW: Fallback Refresh button calls window.location.reload ── */
+  it('calls window.location.reload when fallback Refresh button is clicked', async () => {
+    mockGetUser.mockResolvedValue({ data: { user: defaultUser } });
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false }));
+    const reloadMock = vi.fn();
+    Object.defineProperty(window, 'location', {
+      value: { ...window.location, reload: reloadMock },
+      writable: true,
+      configurable: true,
+    });
+    vi.useRealTimers();
+    render(<DashboardScreen />);
+    await waitFor(() => {
+      expect(screen.getByText('Refresh')).toBeTruthy();
+    });
+    fireEvent.click(screen.getByText('Refresh'));
+    expect(reloadMock).toHaveBeenCalled();
+  });
+
+  /* ── NEW: Activity feed with < 3 unique users but non-empty ───── */
+  it('shows community fallback when activity has entries but fewer than 3 unique users', async () => {
+    const now = new Date().toISOString();
+    setupHappyPath({
+      recentActivity: [
+        { user: 'alice', avatarUrl: null, challenge: 'FizzBuzz', cost: 500, timestamp: now },
+        { user: 'alice', avatarUrl: null, challenge: 'Cache', cost: 300, timestamp: now },
+      ],
+    });
+    vi.useRealTimers();
+    render(<DashboardScreen />);
+    await waitFor(() => {
+      expect(screen.getByText('Community')).toBeTruthy();
+    });
+    expect(screen.getByText(/Be among the first/)).toBeTruthy();
+  });
+
+  /* ── NEW: Heatmap with actual data for intensity color branches ── */
+  it('renders heatmap cells with varying intensity when heatmap data is present', async () => {
+    const today = new Date().toISOString().split('T')[0];
+    const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+    const twoDaysAgo = new Date(Date.now() - 172800000).toISOString().split('T')[0];
+    setupHappyPath({
+      heatmap: {
+        [today]: 10,       // high intensity
+        [yesterday]: 3,    // medium intensity
+        [twoDaysAgo]: 1,   // low intensity
+      },
+    });
+    vi.useRealTimers();
+    render(<DashboardScreen />);
+    await waitFor(() => {
+      expect(screen.getByText('Activity')).toBeTruthy();
+    });
+    // The accessible summary should reflect the activity data
+    expect(screen.getByText(/14 activities across 3 active days/)).toBeTruthy();
+  });
+
+  /* ── NEW: relativeTime helper covers various time ranges ──────── */
+  it('shows relative timestamps in activity feed (minutes, hours, days, months)', async () => {
+    const now = Date.now();
+    setupHappyPath({
+      recentActivity: [
+        { user: 'alice', avatarUrl: null, challenge: 'A', cost: 100, timestamp: new Date(now - 30 * 1000).toISOString() },       // ~30s ago = "just now"
+        { user: 'bob', avatarUrl: null, challenge: 'B', cost: 200, timestamp: new Date(now - 5 * 60 * 1000).toISOString() },     // 5 min ago
+        { user: 'carol', avatarUrl: null, challenge: 'C', cost: 300, timestamp: new Date(now - 3 * 3600 * 1000).toISOString() }, // 3 hours ago
+        { user: 'dave', avatarUrl: null, challenge: 'D', cost: 400, timestamp: new Date(now - 86400000).toISOString() },          // 1 day ago
+        { user: 'eve', avatarUrl: null, challenge: 'E', cost: 500, timestamp: new Date(now - 5 * 86400000).toISOString() },      // 5 days ago
+        { user: 'frank', avatarUrl: null, challenge: 'F', cost: 600, timestamp: new Date(now - 45 * 86400000).toISOString() },   // ~45 days ago
+      ],
+    });
+    vi.useRealTimers();
+    render(<DashboardScreen />);
+    await waitFor(() => {
+      expect(screen.getByText('Recent Activity')).toBeTruthy();
+    });
+    expect(screen.getByText('just now')).toBeTruthy();
+    expect(screen.getByText('5m ago')).toBeTruthy();
+    expect(screen.getByText('3h ago')).toBeTruthy();
+    expect(screen.getByText('yesterday')).toBeTruthy();
+    expect(screen.getByText('5d ago')).toBeTruthy();
+    expect(screen.getByText('1mo ago')).toBeTruthy();
+  });
+
+  /* ── NEW: formatCost with larger spend (>= 1 cent) ─────────────── */
+  it('formats AI spend >= 1 cent with 2 decimal places', async () => {
+    // credits: 40000 → spent 10000 hundredths = $1.00
+    setupHappyPath({
+      profile: { ...baseDashboardData.profile, credits: 40000 },
+    });
+    vi.useRealTimers();
+    render(<DashboardScreen />);
+    await waitFor(() => {
+      expect(screen.getByText('$1.00')).toBeTruthy();
     });
   });
 });
