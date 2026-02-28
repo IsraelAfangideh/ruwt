@@ -137,7 +137,7 @@ export function GuestArenaScreen() {
     );
   }
 
-  const diffStyle = getDifficultyStyle(challenge.difficulty);
+  const diffStyle = getDifficultyStyle(challenge.difficulty, true);
   const difficultyColor = diffStyle.color;
 
   return (

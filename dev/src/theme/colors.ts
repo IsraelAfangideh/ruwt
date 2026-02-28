@@ -69,7 +69,7 @@ export const arena = {
   border: 'rgba(240,246,252,0.1)',
   text: '#e6edf3',
   textMuted: '#7d8590',
-  textSubtle: '#6b7385',
+  textSubtle: '#8490a5',
   accent: '#c9a962',
   accentBg: 'rgba(201,169,98,0.12)',
   success: '#3fb950',

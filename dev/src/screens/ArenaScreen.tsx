@@ -462,13 +462,13 @@ export function ArenaScreen() {
 
   if (!challenge) return null;
 
-  const diffStyle = getDifficultyStyle(challenge.difficulty);
+  const diffStyle = getDifficultyStyle(challenge.difficulty, true);
   const difficultyColor = diffStyle.color;
 
   // Pre-attempt screen — show challenge info + timed/untimed choice
   if (!attempt) {
     return (
-      <div style={{
+      <main style={{
         display: 'flex',
         flexDirection: 'column',
         height: '100vh',
@@ -620,7 +620,7 @@ export function ArenaScreen() {
             &larr; Back to Challenges
           </button>
         </div>
-      </div>
+      </main>
     );
   }
 
@@ -632,7 +632,7 @@ export function ArenaScreen() {
     timeLeft <= 120 ? 'warning' : 'normal';
 
   return (
-    <div style={{
+    <main style={{
       display: 'flex',
       flexDirection: 'column',
       height: '100vh',
@@ -1206,6 +1206,6 @@ export function ArenaScreen() {
           </div>
         )}
       </div>
-    </div>
+    </main>
   );
 }
