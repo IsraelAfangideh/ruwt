@@ -502,6 +502,7 @@ export function ArenaScreen() {
               marginBottom: 24,
               maxWidth: 400,
               width: '100%',
+              textAlign: 'center' as const,
             }}>
               <div style={{ fontSize: 13, fontWeight: 600, color: arena.accent, marginBottom: 8 }}>
                 Your AI Budget: {formatCost(challenge.maxCost)}
