@@ -38,7 +38,7 @@ export function Tabs({ defaultValue, value: controlledValue, onValueChange, chil
 function TabsList({ value, onValueChange, children, style }: { value: string; onValueChange: (v: string) => void; children: React.ReactNode; style?: ViewStyle }) {
   const c = useColors();
   return (
-    <View style={[styles.list, { borderBottomColor: c.border }, style]}>
+    <View style={[styles.list, { borderBottomColor: c.border }, style]} accessibilityRole="tablist">
       {React.Children.map(children, (child) => {
         if (React.isValidElement(child) && child.type === TabsTrigger) {
           const triggerValue = (child.props as { value: string }).value;
@@ -68,14 +68,14 @@ function TabsTrigger({
 }) {
   const c = useColors();
   return (
-    <Pressable onPress={onSelect} style={[styles.trigger, selected && { borderBottomColor: c.accent, borderBottomWidth: 2 }, style]} accessibilityRole="tab">
+    <Pressable onPress={onSelect} style={[styles.trigger, selected && { borderBottomColor: c.accent, borderBottomWidth: 2 }, style]} accessibilityRole="tab" accessibilityState={{ selected: !!selected }}>
       <Text style={[styles.triggerText, { color: selected ? c.text : c.textMuted }]}>{children}</Text>
     </Pressable>
   );
 }
 
 function TabsContent({ value: _value, children, style }: { value: string; children: React.ReactNode; style?: ViewStyle }) {
-  return <View style={[styles.content, style]}>{children}</View>;
+  return <View style={[styles.content, style]} accessibilityRole="tabpanel">{children}</View>;
 }
 
 const styles = StyleSheet.create({

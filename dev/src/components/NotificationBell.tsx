@@ -97,7 +97,14 @@ export function NotificationBell() {
 
   return (
     <View style={styles.container}>
-      <Pressable onPress={toggleOpen} style={styles.bellButton}>
+      <Pressable
+        onPress={toggleOpen}
+        style={styles.bellButton}
+        accessibilityRole="button"
+        accessibilityLabel={unreadCount > 0 ? `Notifications, ${unreadCount} unread` : 'Notifications'}
+        accessibilityState={{ expanded: open }}
+        testID="notification-bell"
+      >
         <Text style={[styles.bellIcon, { color: c.textMuted }]}>🔔</Text>
         {unreadCount > 0 && (
           <View style={[styles.badge, { backgroundColor: c.error }]}>
@@ -111,13 +118,13 @@ export function NotificationBell() {
       {open && (
         <>
           {/* Backdrop */}
-          <Pressable style={styles.backdrop} onPress={() => setOpen(false)} />
+          <Pressable style={styles.backdrop} onPress={() => setOpen(false)} accessibilityLabel="Close notifications" />
           {/* Dropdown */}
-          <View style={[styles.dropdown, { backgroundColor: c.card, borderColor: c.border }]}>
+          <View style={[styles.dropdown, { backgroundColor: c.card, borderColor: c.border }]} accessibilityRole="menu" accessibilityViewIsModal={true}>
             <View style={[styles.dropdownHeader, { borderBottomColor: c.border }]}>
               <Text style={[styles.dropdownTitle, { color: c.text }]}>Notifications</Text>
               {unreadCount > 0 && (
-                <Pressable onPress={markAllRead}>
+                <Pressable onPress={markAllRead} accessibilityRole="button" accessibilityLabel="Mark all as read">
                   <Text style={[styles.markRead, { color: c.accent }]}>Mark all read</Text>
                 </Pressable>
               )}
@@ -169,6 +176,10 @@ const styles = StyleSheet.create({
   bellButton: {
     padding: spacing.xs,
     position: 'relative',
+    minWidth: 44,
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   bellIcon: {
     fontSize: 18,

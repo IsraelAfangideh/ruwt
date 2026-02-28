@@ -16,6 +16,47 @@ body {
   50% { opacity: 1; }
 }
 
+/* Keyboard-only focus ring (gold accent) */
+*:focus-visible {
+  outline: 2px solid #846a30;
+  outline-offset: 2px;
+}
+
+/* Reduce motion for users who prefer it */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Skip-to-content link: hidden until focused */
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: auto;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  z-index: 10001;
+  padding: 8px 16px;
+  background: #846a30;
+  color: #fff;
+  font-family: 'Libre Franklin', sans-serif;
+  font-size: 14px;
+  text-decoration: none;
+  border-radius: 4px;
+}
+.skip-link:focus {
+  position: fixed;
+  top: 8px;
+  left: 8px;
+  width: auto;
+  height: auto;
+}
+
 /* Optional grain overlay for social aesthetic */
 .grain-overlay {
   position: fixed;

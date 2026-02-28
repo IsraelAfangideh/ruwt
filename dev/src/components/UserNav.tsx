@@ -29,7 +29,7 @@ export function UserNav({ user }: UserNavProps) {
 
   return (
     <View style={styles.wrap}>
-      <Pressable onPress={() => setOpen((v) => !v)} style={styles.trigger}>
+      <Pressable onPress={() => setOpen((v) => !v)} style={styles.trigger} accessibilityRole="button" accessibilityLabel="Account menu" accessibilityState={{ expanded: open }} testID="user-menu">
         <Avatar
           src={user.user_metadata?.avatar_url}
           fallback={initials}
@@ -38,23 +38,25 @@ export function UserNav({ user }: UserNavProps) {
       </Pressable>
       {open && (
         <>
-          <Pressable style={styles.overlay} onPress={() => setOpen(false)}>{null}</Pressable>
-          <View style={[styles.menu, { backgroundColor: c.card, borderColor: c.border }]}>
+          <Pressable style={styles.overlay} onPress={() => setOpen(false)} accessibilityLabel="Close account menu">{null}</Pressable>
+          <View style={[styles.menu, { backgroundColor: c.card, borderColor: c.border }]} accessibilityRole="menu">
             <Text style={[styles.menuName, { color: c.text }]}>{user.user_metadata?.name || 'User'}</Text>
             <Text style={[styles.menuEmail, { color: c.mutedForeground }]} numberOfLines={1}>{user.email}</Text>
             <Pressable
               style={[styles.menuItem, { borderTopColor: c.border }]}
               onPress={() => { setOpen(false); navigation.navigate('Profile' as never); }}
+              accessibilityRole="menuitem"
             >
               <Text style={{ color: c.text, fontSize: fontSizes.sm }}>Profile</Text>
             </Pressable>
             <Pressable
               style={[styles.menuItem, { borderTopColor: c.border }]}
               onPress={() => { setOpen(false); navigation.navigate('Settings' as never); }}
+              accessibilityRole="menuitem"
             >
               <Text style={{ color: c.text, fontSize: fontSizes.sm }}>Settings</Text>
             </Pressable>
-            <Pressable style={[styles.menuItem, { borderTopColor: c.border }]} onPress={handleSignOut}>
+            <Pressable style={[styles.menuItem, { borderTopColor: c.border }]} onPress={handleSignOut} accessibilityRole="menuitem">
               <Text style={{ color: c.destructive, fontSize: fontSizes.sm }}>Sign out</Text>
             </Pressable>
           </View>

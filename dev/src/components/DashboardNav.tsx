@@ -26,7 +26,7 @@ export function DashboardNav({ accountType }: DashboardNavProps) {
     : baseNavItems;
 
   return (
-    <View style={styles.container}>
+    <View style={styles.container} accessibilityRole="navigation" accessibilityLabel="Main navigation">
       {navItems.map((item) => {
         const active = route.name === item.name;
         return (
@@ -34,6 +34,9 @@ export function DashboardNav({ accountType }: DashboardNavProps) {
             key={item.name}
             onPress={() => navigation.navigate(item.name as never)}
             style={styles.item}
+            accessibilityRole="link"
+            accessibilityState={{ selected: active }}
+            testID={`nav-${item.label.toLowerCase()}`}
           >
             <Text style={[styles.text, { color: active ? c.text : c.textMuted }]}>{item.label}</Text>
           </Pressable>
@@ -45,6 +48,6 @@ export function DashboardNav({ accountType }: DashboardNavProps) {
 
 const styles = StyleSheet.create({
   container: { flexDirection: 'row', alignItems: 'center', gap: spacing.lg },
-  item: { paddingVertical: spacing.xs },
+  item: { paddingVertical: spacing.xs, minHeight: 44, justifyContent: 'center' },
   text: { fontSize: fontSizes.sm, fontWeight: '500', fontFamily: fontFamily.body },
 });

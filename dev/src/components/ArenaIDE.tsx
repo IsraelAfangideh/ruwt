@@ -362,6 +362,7 @@ function DescriptionPanel({ challenge, pastAttempts, notepadContent, onNotepadCh
               value={notepadContent ?? ''}
               onChange={(e) => onNotepadChange(e.target.value)}
               placeholder="Jot down your approach, observations, or ideas..."
+              aria-label="Notes"
               style={{
                 marginTop: 8,
                 width: '100%',
@@ -374,7 +375,6 @@ function DescriptionPanel({ challenge, pastAttempts, notepadContent, onNotepadCh
                 fontFamily: 'Menlo, Monaco, "Courier New", monospace',
                 padding: 10,
                 resize: 'vertical' as const,
-                outline: 'none',
                 lineHeight: '1.5',
                 boxSizing: 'border-box' as const,
               }}
@@ -1408,6 +1408,8 @@ export function ArenaIDE({
                     }}
                     rows={1}
                     placeholder={guestMode ? 'Sign up to chat with AI' : chatDisabled ? (aiLimitReached ? 'AI limit reached \u2014 budget exhausted' : 'Chat disabled \u2014 time expired') : 'Ask about this problem... (Shift+Enter for newline)'}
+                    aria-label="Chat message"
+                    data-testid="chat-input"
                     value={chatInput}
                     onChange={(e) => {
                       setChatInput(e.target.value);
@@ -2122,7 +2124,6 @@ const s: Record<string, React.CSSProperties> = {
     padding: '8px 12px',
     fontSize: 13,
     color: arena.text,
-    outline: 'none',
     fontFamily: 'inherit',
   },
   sendButton: {

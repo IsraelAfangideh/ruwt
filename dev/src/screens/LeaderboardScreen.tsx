@@ -171,6 +171,7 @@ export function LeaderboardScreen() {
             key={key}
             onPress={() => handlePeriodChange(key)}
             style={[styles.periodTab, { borderBottomColor: period === key ? c.accent : 'transparent' }]}
+            accessibilityState={{ selected: period === key }}
           >
             <Text style={{ fontSize: fontSizes.xs, fontWeight: period === key ? '700' : '500', color: period === key ? c.text : c.textMuted }}>
               {label}
@@ -193,6 +194,7 @@ export function LeaderboardScreen() {
               }
             }}
             style={[styles.periodTab, { borderBottomColor: division === key ? c.accent : 'transparent' }]}
+            accessibilityState={{ selected: division === key }}
           >
             <Text style={{ fontSize: fontSizes.xs, fontWeight: division === key ? '700' : '500', color: division === key ? c.text : c.textMuted }}>
               {label}
@@ -210,6 +212,7 @@ export function LeaderboardScreen() {
           <select
             value={selectedSeason}
             onChange={(e: any) => handleSeasonChange(e.target.value)}
+            aria-label="Filter by season"
             style={{
               padding: '6px 10px',
               fontSize: 13,
@@ -269,8 +272,9 @@ export function LeaderboardScreen() {
               {[1, 0, 2].map((i) => {
                 const e = globalEntries[i];
                 if (!e) return null;
+                const ordinal = e.rank === 1 ? '1st' : e.rank === 2 ? '2nd' : '3rd';
                 return (
-                  <View key={e.user.id} style={[styles.podiumItem, i === 1 && styles.podiumFirst]}>
+                  <View key={e.user.id} style={[styles.podiumItem, i === 1 && styles.podiumFirst]} accessibilityLabel={`${ordinal} place: ${e.user.name}`}>
                     <Avatar src={e.user.avatarUrl} fallback={e.user.name?.[0] ?? '?'} size={i === 1 ? 56 : 40} />
                     <Text style={[styles.podiumName, { color: c.text }]} numberOfLines={1}>{e.user.name}</Text>
                     <Text style={[styles.podiumRank, { color: c.accent }]}>#{e.rank}</Text>
@@ -278,37 +282,43 @@ export function LeaderboardScreen() {
                 );
               })}
             </View>
-            <View style={styles.table}>
-              <View style={[styles.tableHeader, { borderBottomColor: c.border }]}>
-                <Text style={[styles.thRank, { color: c.textMuted }]}>#</Text>
-                <Text style={[styles.thName, { color: c.textMuted }]}>User</Text>
-                <Text style={[styles.thStat, { color: c.textMuted }]}>Solved</Text>
-                <Text style={[styles.thStat, { color: c.textMuted }]}>Avg Cost</Text>
-                <Text style={[styles.thStat, { color: c.textMuted }]}>Total Cost</Text>
-              </View>
-              {globalEntries.map((e) => (
-                <View key={e.user.id} style={[styles.row, { borderBottomColor: c.border }]}>
-                  <Text style={[styles.rank, { color: c.textMuted }]}>{e.rank}</Text>
-                  <Pressable style={styles.nameCell} onPress={() => e.user.username && (navigation.navigate as any)('PublicProfile', { username: e.user.username })}>
-                    <Avatar src={e.user.avatarUrl} fallback={e.user.name?.[0] ?? '?'} size={28} />
-                    <Text style={[styles.name, { color: e.user.username ? c.accent : c.text }]} numberOfLines={1}>{e.user.name}</Text>
-                  </Pressable>
-                  {e.stats ? (
-                    <>
-                      <Text style={[styles.stat, { color: c.text }]}>{e.stats.solved}</Text>
-                      <Text style={[styles.stat, { color: c.textMuted }]}>{formatCost(e.stats.avgCost)}</Text>
-                      <Text style={[styles.stat, { color: c.textMuted }]}>{formatCost(e.stats.totalCost)}</Text>
-                    </>
-                  ) : (
-                    <>
-                      <Text style={[styles.stat, { color: c.textMuted }]}>-</Text>
-                      <Text style={[styles.stat, { color: c.textMuted }]}>-</Text>
-                      <Text style={[styles.stat, { color: c.textMuted }]}>-</Text>
-                    </>
-                  )}
-                </View>
-              ))}
-            </View>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: fontFamily.body }}>
+              <thead>
+                <tr style={{ borderBottom: `2px solid ${c.border}` }}>
+                  <th style={{ width: 32, fontSize: fontSizes.xs, fontWeight: 600, color: c.textMuted as string, textAlign: 'left', padding: `${spacing.xs}px 0` }}>#</th>
+                  <th style={{ fontSize: fontSizes.xs, fontWeight: 600, color: c.textMuted as string, textAlign: 'left', padding: `${spacing.xs}px 0` }}>User</th>
+                  <th style={{ width: 80, fontSize: fontSizes.xs, fontWeight: 600, color: c.textMuted as string, textAlign: 'right', padding: `${spacing.xs}px 0` }}>Solved</th>
+                  <th style={{ width: 80, fontSize: fontSizes.xs, fontWeight: 600, color: c.textMuted as string, textAlign: 'right', padding: `${spacing.xs}px 0` }}>Avg Cost</th>
+                  <th style={{ width: 80, fontSize: fontSizes.xs, fontWeight: 600, color: c.textMuted as string, textAlign: 'right', padding: `${spacing.xs}px 0` }}>Total Cost</th>
+                </tr>
+              </thead>
+              <tbody>
+                {globalEntries.map((e) => (
+                  <tr key={e.user.id} style={{ borderBottom: `1px solid ${c.border}` }}>
+                    <td style={{ width: 32, fontSize: fontSizes.sm, color: c.textMuted as string, padding: `${spacing.sm}px 0` }}>{e.rank}</td>
+                    <td style={{ padding: `${spacing.sm}px 0` }}>
+                      <Pressable style={styles.nameCell} onPress={() => e.user.username && (navigation.navigate as any)('PublicProfile', { username: e.user.username })}>
+                        <Avatar src={e.user.avatarUrl} fallback={e.user.name?.[0] ?? '?'} size={28} />
+                        <Text style={[styles.name, { color: e.user.username ? c.accent : c.text }]} numberOfLines={1}>{e.user.name}</Text>
+                      </Pressable>
+                    </td>
+                    {e.stats ? (
+                      <>
+                        <td style={{ width: 80, fontSize: fontSizes.xs, color: c.text as string, textAlign: 'right', padding: `${spacing.sm}px 0` }}>{e.stats.solved}</td>
+                        <td style={{ width: 80, fontSize: fontSizes.xs, color: c.textMuted as string, textAlign: 'right', padding: `${spacing.sm}px 0` }}>{formatCost(e.stats.avgCost)}</td>
+                        <td style={{ width: 80, fontSize: fontSizes.xs, color: c.textMuted as string, textAlign: 'right', padding: `${spacing.sm}px 0` }}>{formatCost(e.stats.totalCost)}</td>
+                      </>
+                    ) : (
+                      <>
+                        <td style={{ width: 80, fontSize: fontSizes.xs, color: c.textMuted as string, textAlign: 'right', padding: `${spacing.sm}px 0` }}>-</td>
+                        <td style={{ width: 80, fontSize: fontSizes.xs, color: c.textMuted as string, textAlign: 'right', padding: `${spacing.sm}px 0` }}>-</td>
+                        <td style={{ width: 80, fontSize: fontSizes.xs, color: c.textMuted as string, textAlign: 'right', padding: `${spacing.sm}px 0` }}>-</td>
+                      </>
+                    )}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
 
             {/* Activity feed below */}
             <View style={styles.activitySection}>
@@ -324,6 +334,7 @@ export function LeaderboardScreen() {
             <select
               value={selectedChallenge}
               onChange={handleChallengeSelect as any}
+              aria-label="Select challenge"
               style={{
                 width: '100%',
                 padding: '10px 12px',

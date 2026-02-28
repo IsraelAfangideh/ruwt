@@ -35,9 +35,11 @@ export function DashboardLayout({ user, children }: DashboardLayoutProps) {
 
   return (
     <View style={[styles.page, { backgroundColor: c.bg }]}>
-      <View style={[styles.header, { backgroundColor: c.bg, borderBottomColor: c.border }]}>
+      {/* Skip to main content link */}
+      <a className="skip-link" href="#main-content">Skip to main content</a>
+      <View style={[styles.header, { backgroundColor: c.bg, borderBottomColor: c.border }]} accessibilityRole="banner">
         <View style={styles.headerLeft}>
-          <Pressable onPress={() => navigation.navigate('Dashboard' as never)} style={styles.logo}>
+          <Pressable onPress={() => navigation.navigate('Dashboard' as never)} style={styles.logo} accessibilityRole="link" accessibilityLabel="Ruwt – go to dashboard">
             <View style={[styles.logoBox, { backgroundColor: c.primary + '20', borderColor: c.accent }]}>
               <Text style={[styles.logoLetter, { color: c.primary }]}>R</Text>
             </View>
@@ -54,7 +56,7 @@ export function DashboardLayout({ user, children }: DashboardLayoutProps) {
           <UserNav user={user} />
         </View>
       </View>
-      <View style={styles.main}>{children}</View>
+      <View style={styles.main} accessibilityRole="main" nativeID="main-content" tabIndex={-1}>{children}</View>
     </View>
   );
 }

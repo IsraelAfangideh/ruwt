@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { View, Text, ScrollView, StyleSheet, Image, Pressable } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { createClient } from '@/lib/supabase/client';
@@ -26,6 +26,13 @@ export function RegisterScreen() {
   const supabase = createClient();
   const c = useColors();
   const isDesktop = useIsDesktop();
+  const errorRef = useRef<any>(null);
+
+  useEffect(() => {
+    if (error && errorRef.current) {
+      (errorRef.current as any).focus?.();
+    }
+  }, [error]);
 
   const handleRegister = async () => {
     setLoading(true);
@@ -126,7 +133,7 @@ export function RegisterScreen() {
           </View>
 
           {error && (
-            <View style={[styles.errorBox, { backgroundColor: c.errorBg }]}>
+            <View ref={errorRef} style={[styles.errorBox, { backgroundColor: c.errorBg }]} accessibilityRole="alert" accessibilityLiveRegion="polite" tabIndex={-1}>
               <Text style={[styles.errorText, { color: c.error }]}>{error}</Text>
             </View>
           )}
@@ -134,6 +141,9 @@ export function RegisterScreen() {
           <Pressable
             onPress={() => handleOAuth('github')}
             disabled={loading}
+            accessibilityRole="button"
+            accessibilityLabel="Continue with GitHub"
+            testID="github-oauth-button"
             style={({ pressed }: { pressed: boolean }) => [
               styles.oauthBtn,
               { borderColor: c.borderStrong },
@@ -158,6 +168,8 @@ export function RegisterScreen() {
               value={name}
               onChangeText={setName}
               editable={!loading}
+              label="Name"
+              testID="name-input"
             />
           </View>
 
@@ -170,6 +182,7 @@ export function RegisterScreen() {
               keyboardType="email-address"
               autoCapitalize="none"
               editable={!loading}
+              label="Email"
             />
           </View>
 
@@ -182,11 +195,12 @@ export function RegisterScreen() {
               secureTextEntry
               editable={!loading}
               onSubmitEditing={handleRegister}
+              label="Password"
             />
             <Text style={[styles.hint, { color: c.textMuted }]}>Must be at least 6 characters</Text>
           </View>
 
-          <Button onPress={handleRegister} disabled={loading} fullWidth size="lg">
+          <Button onPress={handleRegister} disabled={loading} fullWidth size="lg" testID="register-button">
             {loading ? 'Creating account...' : 'Create account'}
           </Button>
 
@@ -195,6 +209,7 @@ export function RegisterScreen() {
             <Text
               style={{ color: c.accent, fontWeight: '600' }}
               onPress={() => navigation.navigate('Login' as never)}
+              accessibilityRole="link"
             >
               Sign in
             </Text>

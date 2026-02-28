@@ -14,6 +14,8 @@ export function Skeleton({ width = '100%', height = 16, borderRadius = radii.md,
 
   return (
     <View
+      accessible={false}
+      aria-hidden={true}
       style={[
         styles.skeleton,
         {

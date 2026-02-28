@@ -29,7 +29,7 @@ export function LandingScreen() {
   return (
     <ScrollView style={[styles.page, { backgroundColor: c.bg }]}>
       {/* ─── Nav ─── */}
-      <View style={[styles.header, { borderBottomColor: c.border }]}>
+      <View style={[styles.header, { borderBottomColor: c.border }]} accessibilityRole="banner">
         <Text style={[styles.logo, { color: c.text }]}>Ruwt</Text>
         <View style={styles.headerActions}>
           <Button variant="ghost" onPress={() => navigation.navigate('Login' as never)}>Sign in</Button>
@@ -41,7 +41,7 @@ export function LandingScreen() {
       <View style={[styles.hero, { backgroundColor: '#1a1816' }]}>
         <View style={styles.heroInner}>
           <Badge variant="secondary" style={{ alignSelf: 'center' }}>Now in Beta</Badge>
-          <Text style={styles.heroTitle}>
+          <Text style={styles.heroTitle} accessibilityRole="heading">
             Prove You Can Use AI{'\n'}
             <Text style={{ color: '#c9a962' }}>Better Than Anyone</Text>
           </Text>
@@ -91,7 +91,7 @@ export function LandingScreen() {
 
       {/* ─── Arena Preview ─── */}
       <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: c.text }]}>The Arena IDE</Text>
+        <Text style={[styles.sectionTitle, { color: c.text }]} accessibilityRole="heading">The Arena IDE</Text>
         <Text style={[styles.sectionSub, { color: c.textMuted }]}>
           Monaco editor, AI chat with 17 models, and a built-in terminal — all in your browser.
         </Text>
@@ -150,7 +150,7 @@ export function LandingScreen() {
 
       {/* ─── Three Skills ─── */}
       <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: c.text }]}>Three Skills That Matter</Text>
+        <Text style={[styles.sectionTitle, { color: c.text }]} accessibilityRole="heading">Three Skills That Matter</Text>
         <Text style={[styles.sectionSub, { color: c.textMuted }]}>
           We measure the AI skills that predict real-world engineering efficiency.
         </Text>
@@ -187,7 +187,7 @@ export function LandingScreen() {
 
       {/* ─── Featured replay ─── */}
       <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: c.text }]}>Watch How Top Solvers Think</Text>
+        <Text style={[styles.sectionTitle, { color: c.text }]} accessibilityRole="heading">Watch How Top Solvers Think</Text>
         <Text style={[styles.sectionSub, { color: c.textMuted }]}>
           Watch how top solvers complete challenges for under $0.01. Every replay is public and shareable.
         </Text>
@@ -196,7 +196,7 @@ export function LandingScreen() {
 
       {/* ─── How It Works ─── */}
       <View style={[styles.section, styles.sectionAlt, { backgroundColor: c.muted + '40' }]}>
-        <Text style={[styles.sectionTitle, { color: c.text }]}>How It Works</Text>
+        <Text style={[styles.sectionTitle, { color: c.text }]} accessibilityRole="heading">How It Works</Text>
         <View style={styles.cards}>
           {[
             { step: '1', title: 'Pick a Challenge', desc: 'Browse 100+ challenges across model selection, prompt efficiency, debugging, and multi-model strategy. Choose timed or untimed.' },
@@ -218,7 +218,7 @@ export function LandingScreen() {
 
       {/* ─── Trust Signals ─── */}
       <View style={[styles.section, { backgroundColor: c.bg }]}>
-        <Text style={[styles.sectionTitle, { color: c.text }]}>Built on Trust</Text>
+        <Text style={[styles.sectionTitle, { color: c.text }]} accessibilityRole="heading">Built on Trust</Text>
         <View style={styles.trustGrid}>
           {[
             { icon: '\u26A1', title: 'Powered by Cloudflare', desc: 'Enterprise-grade infrastructure. Edge-deployed globally for low latency.' },
@@ -287,7 +287,7 @@ export function LandingScreen() {
       </View>
 
       {/* ─── Footer ─── */}
-      <View style={[styles.footer, { borderTopColor: c.border }]}>
+      <View style={[styles.footer, { borderTopColor: c.border }]} accessibilityRole="contentinfo">
         <Text style={[styles.footerText, { color: c.textMuted }]}>
           {'\u00A9'} {new Date().getFullYear()} Ruwt. All rights reserved.
         </Text>

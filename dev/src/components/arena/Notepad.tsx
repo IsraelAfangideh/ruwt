@@ -13,6 +13,7 @@ export function Notepad({ value, onChange }: NotepadProps) {
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder="Jot down your approach, paste reference snippets, plan your solution..."
+        aria-label="Notes – not visible to the AI"
         style={styles.textarea}
         spellCheck={false}
       />
@@ -33,7 +34,6 @@ const styles: Record<string, React.CSSProperties> = {
     background: arena.bg,
     color: arena.text,
     border: 'none',
-    outline: 'none',
     resize: 'none',
     padding: '16px 18px',
     fontSize: 13,

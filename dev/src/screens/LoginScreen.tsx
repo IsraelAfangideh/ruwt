@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { View, Text, ScrollView, StyleSheet, Image, Pressable } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { createClient } from '@/lib/supabase/client';
@@ -28,6 +28,14 @@ export function LoginScreen() {
   const supabase = createClient();
   const c = useColors();
   const isDesktop = useIsDesktop();
+  const errorRef = useRef<any>(null);
+
+  // Focus error message when it appears
+  useEffect(() => {
+    if (error && errorRef.current) {
+      (errorRef.current as any).focus?.();
+    }
+  }, [error]);
 
   const handleEmailLogin = async () => {
     setLoading(true);
@@ -98,13 +106,13 @@ export function LoginScreen() {
           </View>
 
           {error && (
-            <View style={[styles.errorBox, { backgroundColor: c.errorBg }]}>
+            <View ref={errorRef} style={[styles.errorBox, { backgroundColor: c.errorBg }]} accessibilityRole="alert" accessibilityLiveRegion="polite" tabIndex={-1}>
               <Text style={[styles.errorText, { color: c.error }]}>{error}</Text>
             </View>
           )}
 
           {resetSent && (
-            <View style={[styles.successBox, { backgroundColor: c.successBg }]}>
+            <View style={[styles.successBox, { backgroundColor: c.successBg }]} accessibilityRole="status" accessibilityLiveRegion="polite">
               <Text style={[styles.successText, { color: c.success }]}>
                 Password reset link sent to {email}
               </Text>
@@ -114,6 +122,9 @@ export function LoginScreen() {
           <Pressable
             onPress={() => handleOAuth('github')}
             disabled={loading}
+            accessibilityRole="button"
+            accessibilityLabel="Continue with GitHub"
+            testID="github-oauth-button"
             style={({ pressed }: { pressed: boolean }) => [
               styles.oauthBtn,
               { borderColor: c.borderStrong },
@@ -140,13 +151,15 @@ export function LoginScreen() {
               keyboardType="email-address"
               autoCapitalize="none"
               editable={!loading}
+              label="Email"
+              testID="email-input"
             />
           </View>
 
           <View style={styles.inputGroup}>
             <View style={styles.labelRow}>
               <Label>Password</Label>
-              <Pressable onPress={handleForgotPassword}>
+              <Pressable onPress={handleForgotPassword} accessibilityRole="link">
                 <Text style={[styles.forgotLink, { color: c.accent }]}>Forgot password?</Text>
               </Pressable>
             </View>
@@ -157,10 +170,12 @@ export function LoginScreen() {
               secureTextEntry
               editable={!loading}
               onSubmitEditing={handleEmailLogin}
+              label="Password"
+              testID="password-input"
             />
           </View>
 
-          <Button onPress={handleEmailLogin} disabled={loading} fullWidth size="lg">
+          <Button onPress={handleEmailLogin} disabled={loading} fullWidth size="lg" testID="login-button">
             {loading ? 'Signing in...' : 'Sign in'}
           </Button>
 
@@ -169,6 +184,7 @@ export function LoginScreen() {
             <Text
               style={{ color: c.accent, fontWeight: '600' }}
               onPress={() => navigation.navigate('Register' as never)}
+              accessibilityRole="link"
             >
               Sign up
             </Text>

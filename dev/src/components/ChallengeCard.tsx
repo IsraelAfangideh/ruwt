@@ -103,6 +103,9 @@ export function ChallengeCard({ challenge }: { challenge: Challenge }) {
   return (
     <Pressable
       onPress={() => (navigation.navigate as any)('Arena', { challengeId: challenge.id })}
+      accessibilityRole="button"
+      accessibilityLabel={`${challenge.title}, ${diffStyle.label} difficulty${isSolved ? ', Solved' : isInProgress ? ', In progress' : ''}`}
+      testID={`challenge-${challenge.id}`}
       style={({ pressed }: { pressed: boolean }) => [
         styles.pressable,
         pressed && styles.pressed,
@@ -138,7 +141,7 @@ export function ChallengeCard({ challenge }: { challenge: Challenge }) {
               </View>
             )}
             {isSolved && (
-              <View style={[styles.statusBadge, { backgroundColor: c.successBg, marginLeft: 'auto' as any }]}>
+              <View style={[styles.statusBadge, { backgroundColor: c.successBg, marginLeft: 'auto' as any }]} accessibilityLabel="Solved">
                 <Text style={[styles.statusText, { color: c.success }]}>{'\u2713'}</Text>
               </View>
             )}

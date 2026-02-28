@@ -11,6 +11,8 @@ export function ThemeToggle() {
         variant="outline"
         size="icon"
         onPress={() => setMode(mode === 'dark' ? 'light' : 'dark')}
+        accessibilityLabel={mode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+        testID="theme-toggle"
       >
         {mode === 'dark' ? '☀' : '☽'}
       </Button>

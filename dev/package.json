@@ -18,6 +18,8 @@
     "db:d1:generate": "drizzle-kit generate --config=drizzle.config.d1.ts",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "test:a11y": "vitest run --reporter=verbose src/test/a11y.test.tsx",
     "pages:dev": "wrangler pages dev dist --compatibility-date=2024-01-01"
   },
   "dependencies": {
@@ -45,18 +47,25 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@testing-library/dom": "^10.4.1",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
     "@types/react-native-web": "^0.19.2",
     "@vitejs/plugin-react": "^4.3.4",
+    "@vitest/coverage-v8": "^4.0.18",
+    "axe-core": "^4.11.1",
     "dotenv": "^17.2.4",
     "drizzle-kit": "^0.31.8",
     "drizzle-orm": "^0.45.1",
+    "jsdom": "^28.1.0",
     "postgres": "^3.4.8",
     "sharp": "^0.34.5",
     "typescript": "^5",
     "vite": "^6.0.3",
-    "vitest": "^4.0.18"
+    "vitest": "^4.0.18",
+    "vitest-axe": "^0.1.0"
   }
 }

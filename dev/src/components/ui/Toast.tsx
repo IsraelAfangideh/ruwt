@@ -67,6 +67,8 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       {/* Toast container — fixed top-right */}
       {toasts.length > 0 && (
         <div
+          role="region"
+          aria-label="Notifications"
           style={{
             position: 'fixed',
             top: spacing.md,
@@ -84,6 +86,8 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
             return (
               <div
                 key={toast.id}
+                role={toast.variant === 'error' ? 'alert' : 'status'}
+                aria-live={toast.variant === 'error' ? 'assertive' : 'polite'}
                 style={{
                   background: c.bgElevated,
                   borderLeft: `3px solid ${vc.border}`,

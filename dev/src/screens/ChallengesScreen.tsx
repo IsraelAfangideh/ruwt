@@ -338,9 +338,11 @@ export function ChallengesScreen() {
               placeholder="Search challenges..."
               placeholderTextColor={c.textSubtle}
               style={[styles.searchInput, { color: c.text }]}
+              accessibilityLabel="Search challenges"
+              testID="challenge-search"
             />
             {searchQuery.length > 0 && (
-              <Pressable onPress={() => setSearchQuery('')} style={styles.clearBtn}>
+              <Pressable onPress={() => setSearchQuery('')} style={styles.clearBtn} accessibilityRole="button" accessibilityLabel="Clear search">
                 <Text style={{ color: c.textMuted, fontSize: 16 }}>{'\u2715'}</Text>
               </Pressable>
             )}
@@ -363,6 +365,9 @@ export function ChallengesScreen() {
                 setShowSortMenu(true);
               }}
               style={[styles.sortButton, { backgroundColor: c.muted, borderColor: c.border }]}
+              accessibilityRole="button"
+              accessibilityState={{ expanded: showSortMenu }}
+              testID="sort-button"
             >
               <Text style={[styles.sortButtonText, { color: c.text }]}>
                 Sort: {SORT_OPTIONS.find((s) => s.key === sortBy)?.label}
@@ -382,6 +387,7 @@ export function ChallengesScreen() {
               <Pressable
                 key={`lang-${lang.key}`}
                 onPress={() => handleLangChange(lang.key)}
+                accessibilityState={{ selected: isActive }}
                 style={[
                   styles.filterPill,
                   {
@@ -407,6 +413,7 @@ export function ChallengesScreen() {
               <Pressable
                 key={`diff-${diff.key}`}
                 onPress={() => handleDifficultyChange(diff.key)}
+                accessibilityState={{ selected: isActive }}
                 style={[
                   styles.filterPill,
                   {
@@ -431,6 +438,7 @@ export function ChallengesScreen() {
               <Pressable
                 key={`cat-${cat.key}`}
                 onPress={() => handleCategoryChange(cat.key)}
+                accessibilityState={{ selected: isActive }}
                 style={[
                   styles.filterPill,
                   {
@@ -656,8 +664,6 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: fontSizes.sm,
     fontFamily: fontFamily.body,
-    // @ts-ignore web-only
-    outlineStyle: 'none',
   },
   clearBtn: { padding: spacing.xs },
 
@@ -693,7 +699,7 @@ const styles = StyleSheet.create({
   filterScrollContent: { flexDirection: 'row', gap: spacing.sm, alignItems: 'center', paddingVertical: 2 },
   filterPill: {
     paddingHorizontal: 14,
-    paddingVertical: 5,
+    paddingVertical: 12,
     borderRadius: 9999,
     borderWidth: 1,
   },

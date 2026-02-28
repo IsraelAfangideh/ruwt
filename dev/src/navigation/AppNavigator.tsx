@@ -149,6 +149,11 @@ export function AppNavigator() {
       ref={navigationRef}
       linking={linking}
       onReady={() => { isNavigationReady.current = true; }}
+      onStateChange={() => {
+        // Move focus to main content on route change so screen readers announce the new page
+        const main = document.getElementById('main-content');
+        if (main) main.focus();
+      }}
     >
       <ChunkErrorBoundary>
       <Suspense fallback={<LoadingFallback />}>

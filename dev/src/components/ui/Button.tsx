@@ -14,6 +14,8 @@ interface ButtonProps {
   style?: ViewStyle;
   textStyle?: TextStyle;
   fullWidth?: boolean;
+  accessibilityLabel?: string;
+  testID?: string;
 }
 
 export function Button({
@@ -25,6 +27,8 @@ export function Button({
   style,
   textStyle,
   fullWidth,
+  accessibilityLabel,
+  testID,
 }: ButtonProps) {
   const c = useColors();
 
@@ -54,10 +58,15 @@ export function Button({
     <Pressable
       onPress={onPress}
       disabled={disabled}
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
+      accessibilityState={{ disabled: !!disabled }}
+      testID={testID}
       style={({ pressed }: { pressed: boolean }) => [
         styles.base,
         v.container,
         s.container,
+        size === 'icon' && styles.iconMinHeight,
         fullWidth && styles.fullWidth,
         pressed && styles.pressed,
         disabled && styles.disabled,
@@ -81,6 +90,7 @@ const styles = StyleSheet.create({
     fontFamily: fontFamily.body,
     fontWeight: '600',
   },
+  iconMinHeight: { minHeight: 44, minWidth: 44 },
   fullWidth: { width: '100%' },
   pressed: { opacity: 0.9 },
   disabled: { opacity: 0.5 },

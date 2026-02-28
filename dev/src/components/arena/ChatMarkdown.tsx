@@ -19,7 +19,7 @@ export const CodeBlock = React.memo(function CodeBlock({ lang, code }: { lang: s
     <div style={mdStyles.codeBlock}>
       <div style={mdStyles.codeHeader}>
         {lang && <span style={mdStyles.codeLang}>{lang}</span>}
-        <button onClick={handleCopy} style={mdStyles.copyBtn}>
+        <button onClick={handleCopy} style={mdStyles.copyBtn} aria-label={copied ? 'Copied to clipboard' : 'Copy code'}>
           {copied ? 'Copied!' : 'Copy'}
         </button>
       </div>
@@ -117,6 +117,9 @@ function renderPlainWithLineRefs(text: string, keyBase: number, onLineClick?: (l
       <span
         key={keyBase + parts.length}
         onClick={() => onLineClick(startLine)}
+        onKeyDown={(e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onLineClick(startLine); } }}
+        role="button"
+        tabIndex={0}
         style={mdStyles.lineRef}
         title={`Go to line ${startLine}${m[2] ? `-${m[2]}` : ''}`}
       >
@@ -271,6 +274,7 @@ export const ThinkingBlock = React.memo(function ThinkingBlock({ text, isStreami
     }}>
       <button
         onClick={() => setExpanded(!expanded)}
+        aria-expanded={expanded}
         style={{
           display: 'flex',
           alignItems: 'center',

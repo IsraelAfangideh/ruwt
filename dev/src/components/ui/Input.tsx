@@ -17,6 +17,7 @@ interface InputProps extends Omit<TextInputProps, 'style'> {
   onSubmitEditing?: () => void;
   onFocus?: (e: any) => void;
   onBlur?: (e: any) => void;
+  testID?: string;
 }
 
 export function Input({ label, containerStyle, inputStyle, onFocus, onBlur, ...props }: InputProps) {
@@ -38,6 +39,7 @@ export function Input({ label, containerStyle, inputStyle, onFocus, onBlur, ...p
       {label ? <Text style={[styles.label, { color: c.text }]}>{label}</Text> : null}
       <TextInput
         placeholderTextColor={c.textSubtle}
+        accessibilityLabel={label}
         onFocus={handleFocus}
         onBlur={handleBlur}
         style={[
@@ -66,7 +68,6 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm + 2,
     fontSize: fontSizes.md,
     fontFamily: fontFamily.body,
-    outlineWidth: 0,
   } as any,
   inputFocused: {
     borderWidth: 2,
