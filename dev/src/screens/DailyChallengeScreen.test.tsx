@@ -257,7 +257,7 @@ describe('DailyChallengeScreen', () => {
 
   it('returns null when user is null after loading (line 98)', async () => {
     mockGetUser.mockResolvedValueOnce({ data: { user: null } });
-    const { container } = render(<DailyChallengeScreen />);
+    render(<DailyChallengeScreen />);
     await waitFor(() => {
       expect(mockReset).toHaveBeenCalled();
     });

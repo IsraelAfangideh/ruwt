@@ -8,14 +8,14 @@ import { vi } from 'vitest';
 // ── Environment / Context Factories ──────────────────────────────────
 
 /** Creates a mock Env object for Cloudflare Functions tests */
-export function makeEnv(overrides?: Partial<Env>): Env {
+export function makeEnv(overrides?: Partial<Record<string, unknown>>): Record<string, unknown> {
   return {
-    DB: {} as D1Database,
+    DB: {} as unknown,
     VITE_SUPABASE_URL: 'https://test.supabase.co',
     VITE_SUPABASE_ANON_KEY: 'anon-key',
     RESEND_API_KEY: 'test-key',
     ...overrides,
-  } as Env;
+  };
 }
 
 /** Creates a mock request context for Cloudflare Functions handlers */

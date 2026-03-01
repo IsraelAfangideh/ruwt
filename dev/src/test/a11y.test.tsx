@@ -5,6 +5,7 @@
  * Run: npm run test:a11y
  */
 // @vitest-environment jsdom
+import 'vitest-axe/extend-expect';
 import { describe, it, expect, vi } from 'vitest';
 import { render } from '@testing-library/react';
 import { axe } from 'vitest-axe';
@@ -29,7 +30,7 @@ vi.mock('@/theme', () => ({
     primary: '#000', primaryForeground: '#fff', secondary: '#eee',
     secondaryForeground: '#000', destructive: '#f00', textSubtle: '#aaa',
     bgElevated: '#fafafa', accentBg: '#ffe', cardForeground: '#000',
-    mutedForeground: '#555', successBg: '#f0fff0', errorBg: '#fff0f0',
+    mutedForeground: '#555',
   }),
 }));
 

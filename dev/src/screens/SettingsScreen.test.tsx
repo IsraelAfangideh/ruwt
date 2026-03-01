@@ -418,7 +418,7 @@ describe('SettingsScreen', () => {
   });
 
   it('reverts newsletter toggle and shows toast when PATCH returns non-ok (line 66-68)', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockImplementation((url: string, opts?: any) => {
+    vi.stubGlobal('fetch', vi.fn().mockImplementation((_url: string, opts?: any) => {
       if (opts?.method === 'PATCH') {
         return Promise.resolve({ ok: false } as Response);
       }
@@ -444,7 +444,7 @@ describe('SettingsScreen', () => {
   });
 
   it('reverts newsletter toggle and shows toast when PATCH throws (line 70-72)', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockImplementation((url: string, opts?: any) => {
+    vi.stubGlobal('fetch', vi.fn().mockImplementation((_url: string, opts?: any) => {
       if (opts?.method === 'PATCH') {
         return Promise.reject(new Error('Network error'));
       }
