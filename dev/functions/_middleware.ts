@@ -25,7 +25,8 @@ const SECURITY_HEADERS: Record<string, string> = {
   'Strict-Transport-Security': 'max-age=63072000; includeSubDomains; preload',
   'Content-Security-Policy': [
     "default-src 'self'",
-    "script-src 'self' 'wasm-unsafe-eval'",
+    "script-src 'self' 'unsafe-eval' 'wasm-unsafe-eval'",
+    "worker-src 'self' blob:",
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "font-src 'self' https://fonts.gstatic.com",
     "img-src 'self' data: blob: https://*.supabase.co",
