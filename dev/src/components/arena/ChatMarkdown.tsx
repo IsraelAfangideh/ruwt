@@ -314,6 +314,7 @@ export const ThinkingBlock = React.memo(function ThinkingBlock({ text, isStreami
       <button
         onClick={() => setExpanded(!expanded)}
         aria-expanded={expanded}
+        aria-label={isStreaming ? 'Thinking in progress' : `Toggle thinking block, ${lineCount} lines`}
         style={{
           display: 'flex',
           alignItems: 'center',

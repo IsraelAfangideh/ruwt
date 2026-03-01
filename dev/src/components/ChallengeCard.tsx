@@ -121,7 +121,7 @@ export function ChallengeCard({ challenge }: { challenge: Challenge }) {
       ]}>
         {/* Status indicator stripe for in-progress */}
         {isInProgress && (
-          <View style={[styles.progressStripe, { backgroundColor: c.accent }]} />
+          <View style={[styles.progressStripe, { backgroundColor: c.accent }]} accessible={false} aria-hidden={true} />
         )}
 
         <CardHeader>

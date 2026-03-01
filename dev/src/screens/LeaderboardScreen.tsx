@@ -286,11 +286,11 @@ export function LeaderboardScreen() {
             <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: fontFamily.body }}>
               <thead>
                 <tr style={{ borderBottom: `2px solid ${c.border}` }}>
-                  <th style={{ width: 32, fontSize: fontSizes.xs, fontWeight: 600, color: c.textMuted as string, textAlign: 'left', padding: `${spacing.xs}px 0` }}>#</th>
-                  <th style={{ fontSize: fontSizes.xs, fontWeight: 600, color: c.textMuted as string, textAlign: 'left', padding: `${spacing.xs}px 0` }}>User</th>
-                  <th style={{ width: 80, fontSize: fontSizes.xs, fontWeight: 600, color: c.textMuted as string, textAlign: 'right', padding: `${spacing.xs}px 0` }}>Solved</th>
-                  <th style={{ width: 80, fontSize: fontSizes.xs, fontWeight: 600, color: c.textMuted as string, textAlign: 'right', padding: `${spacing.xs}px 0` }}>Avg Cost</th>
-                  <th style={{ width: 80, fontSize: fontSizes.xs, fontWeight: 600, color: c.textMuted as string, textAlign: 'right', padding: `${spacing.xs}px 0` }}>Total Cost</th>
+                  <th scope="col" style={{ width: 32, fontSize: fontSizes.xs, fontWeight: 600, color: c.textMuted as string, textAlign: 'left', padding: `${spacing.xs}px 0` }}>#</th>
+                  <th scope="col" style={{ fontSize: fontSizes.xs, fontWeight: 600, color: c.textMuted as string, textAlign: 'left', padding: `${spacing.xs}px 0` }}>User</th>
+                  <th scope="col" style={{ width: 80, fontSize: fontSizes.xs, fontWeight: 600, color: c.textMuted as string, textAlign: 'right', padding: `${spacing.xs}px 0` }}>Solved</th>
+                  <th scope="col" style={{ width: 80, fontSize: fontSizes.xs, fontWeight: 600, color: c.textMuted as string, textAlign: 'right', padding: `${spacing.xs}px 0` }}>Avg Cost</th>
+                  <th scope="col" style={{ width: 80, fontSize: fontSizes.xs, fontWeight: 600, color: c.textMuted as string, textAlign: 'right', padding: `${spacing.xs}px 0` }}>Total Cost</th>
                 </tr>
               </thead>
               <tbody>

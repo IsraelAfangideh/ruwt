@@ -1685,6 +1685,7 @@ export function ArenaIDE({
           </button>
           <button
             onClick={() => setNudgeDismissed(true)}
+            aria-label="Dismiss nudge"
             style={{ background: 'transparent', border: 'none', color: arena.textMuted, fontSize: 14, cursor: 'pointer', padding: '0 4px' }}
           >
             {'\u00D7'}

@@ -140,13 +140,15 @@ export function NotificationBell() {
                 notifications.map((n) => (
                   <View
                     key={n.id}
+                    accessibilityRole="menuitem"
+                    accessibilityLabel={`${n.title}: ${n.body}`}
                     style={[
                       styles.notifRow,
                       { borderBottomColor: c.border },
                       !n.read && { backgroundColor: c.accentBg },
                     ]}
                   >
-                    <Text style={styles.notifIcon}>{getIcon(n.type, n.metadata)}</Text>
+                    <Text style={styles.notifIcon} aria-hidden={true}>{getIcon(n.type, n.metadata)}</Text>
                     <View style={styles.notifContent}>
                       <Text style={[styles.notifTitle, { color: c.text }]} numberOfLines={1}>
                         {n.title}

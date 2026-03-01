@@ -78,6 +78,8 @@ function ResultsBar({ results, onDismiss, onAskAI, hiddenTestCount }: { results:
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <button
             onClick={() => setExpanded(!expanded)}
+            aria-expanded={expanded}
+            aria-label={expanded ? 'Hide test details' : 'Show test details'}
             style={{
               background: 'transparent', border: `1px solid ${arena.border}`,
               borderRadius: 4, color: arena.textMuted, fontSize: 10,
@@ -89,6 +91,7 @@ function ResultsBar({ results, onDismiss, onAskAI, hiddenTestCount }: { results:
           {onDismiss && (
             <button
               onClick={onDismiss}
+              aria-label="Close results"
               style={{
                 background: 'transparent', border: 'none', color: arena.textMuted,
                 fontSize: 14, cursor: 'pointer', padding: '0 4px',
