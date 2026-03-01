@@ -17,6 +17,13 @@ function makeEnv(): Env {
   return { DB: {} as D1Database, VITE_SUPABASE_URL: 'u', VITE_SUPABASE_ANON_KEY: 'k' } as Env;
 }
 
+function makeContext() {
+  return {
+    request: new Request('https://ruwt.dev/api/stats'),
+    env: makeEnv(),
+  };
+}
+
 describe('GET /api/stats (public)', () => {
   beforeEach(() => vi.resetAllMocks());
 
@@ -42,7 +49,7 @@ describe('GET /api/stats (public)', () => {
     };
     mockGetDb.mockReturnValue(db);
 
-    const res = await onRequestGet({ env: makeEnv() });
+    const res = await onRequestGet(makeContext());
     const json = await res.json();
     expect(res.status).toBe(200);
     expect(json.users).toBe(150);
@@ -68,7 +75,7 @@ describe('GET /api/stats (public)', () => {
     };
     mockGetDb.mockReturnValue(db);
 
-    const res = await onRequestGet({ env: makeEnv() });
+    const res = await onRequestGet(makeContext());
     const json = await res.json();
     expect(json.users).toBe(0);
     expect(json.challenges).toBe(0);
@@ -85,14 +92,14 @@ describe('GET /api/stats (public)', () => {
     };
     mockGetDb.mockReturnValue(db);
 
-    const res = await onRequestGet({ env: makeEnv() });
+    const res = await onRequestGet(makeContext());
     const json = await res.json();
     expect(json.users).toBe(0);
   });
 
   it('returns 500 on error', async () => {
     mockGetDb.mockImplementation(() => { throw new Error('fail'); });
-    const res = await onRequestGet({ env: makeEnv() });
+    const res = await onRequestGet(makeContext());
     expect(res.status).toBe(500);
   });
 });

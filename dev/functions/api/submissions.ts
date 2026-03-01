@@ -11,6 +11,7 @@ import { checkAndAwardBadges } from '../_shared/badges';
 import { updateStreak } from '../_shared/streaks';
 import { createCompetitiveNudges } from '../_shared/competitive-nudges';
 import { createNewUserNearRankNotifications } from '../_shared/new-user-alerts';
+import { invalidateCache } from '../_shared/cache';
 import { attempts, challenges } from '../../drizzle/schema.d1';
 
 const submissionSchema = z.object({
@@ -247,6 +248,25 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
         await createNewUserNearRankNotifications(db, user.id);
       } catch (e) {
         console.error('Competitive notification error (non-blocking):', e);
+      }
+
+      // Invalidate edge caches affected by a new solve (non-blocking)
+      try {
+        const baseUrl = new URL(context.request.url).origin;
+        await invalidateCache(baseUrl, [
+          '/api/stats',
+          '/api/activity',
+          '/api/activity?limit=20',
+          '/api/leaderboard',
+          '/api/leaderboard?limit=50&period=all&division=open',
+          '/api/leaderboard?limit=50&period=week&division=open',
+          '/api/leaderboard?limit=50&period=month&division=open',
+          `/api/leaderboard?challengeId=${attempt.challengeId}&limit=50&period=all&division=open`,
+          '/api/challenges',
+          `/api/challenges/${attempt.challengeId}`,
+        ]);
+      } catch (e) {
+        console.error('Cache invalidation error (non-blocking):', e);
       }
     }
 

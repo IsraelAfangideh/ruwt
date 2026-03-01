@@ -47,7 +47,7 @@ export async function onRequestGet(context: { request: Request; env: Env }) {
       recentBadgeRows,
       unreadCountRow,
       dailyChallengeRow,
-      globalRankings,
+      rankResult,
       heatmapRows,
     ] = await Promise.all([
       // 1. Profile info
@@ -131,21 +131,29 @@ export async function onRequestGet(context: { request: Request; env: Env }) {
         .where(eq(dailyChallenges.date, today))
         .limit(1),
 
-      // 8. Global rankings: all users with at least 1 solve, ranked by solves desc then avg cost asc
-      db
-        .select({
-          userId: profiles.id,
-          solvedCount: sql<number>`COUNT(DISTINCT CASE WHEN ${attempts.status} = 'passed' THEN ${attempts.challengeId} END)`,
-          avgCost: sql<number>`AVG(CASE WHEN ${attempts.status} = 'passed' THEN ${attempts.totalCost} END)`,
-        })
-        .from(profiles)
-        .leftJoin(attempts, eq(profiles.id, attempts.userId))
-        .groupBy(profiles.id)
-        .having(sql`COUNT(DISTINCT CASE WHEN ${attempts.status} = 'passed' THEN ${attempts.challengeId} END) > 0`)
-        .orderBy(
-          desc(sql`COUNT(DISTINCT CASE WHEN ${attempts.status} = 'passed' THEN ${attempts.challengeId} END)`),
-          sql`AVG(CASE WHEN ${attempts.status} = 'passed' THEN ${attempts.totalCost} END)`
+      // 8. User's rank + total ranked count (CTE — avoids transferring the full ranked list)
+      context.env.DB.prepare(`
+        WITH all_stats AS (
+          SELECT
+            user_id,
+            COUNT(DISTINCT CASE WHEN status = 'passed' THEN challenge_id END) AS solved,
+            AVG(CASE WHEN status = 'passed' THEN total_cost END) AS avg_cost
+          FROM attempts
+          GROUP BY user_id
+          HAVING solved > 0
         ),
+        user_stats AS (
+          SELECT solved, avg_cost FROM all_stats WHERE user_id = ?
+        )
+        SELECT
+          COALESCE(
+            (SELECT COUNT(*) + 1 FROM all_stats, user_stats
+             WHERE all_stats.solved > user_stats.solved
+             OR (all_stats.solved = user_stats.solved AND all_stats.avg_cost < user_stats.avg_cost)),
+            NULL
+          ) AS user_rank,
+          (SELECT COUNT(*) FROM all_stats) AS total_ranked
+      `).bind(user.id).first<{ user_rank: number | null; total_ranked: number }>(),
 
       // 9. Heatmap: count of challenges solved per day for last 90 days
       db
@@ -195,15 +203,9 @@ export async function onRequestGet(context: { request: Request; env: Env }) {
       categoryTotals[cat] = (categoryTotals[cat] || 0) + 1;
     }
 
-    // --- Compute rank ---
-    let userRank: number | null = null;
-    for (let i = 0; i < globalRankings.length; i++) {
-      if (globalRankings[i].userId === user.id) {
-        userRank = i + 1;
-        break;
-      }
-    }
-    const totalRanked = globalRankings.length;
+    // --- Rank (computed directly in SQL via CTE) ---
+    const userRank = rankResult?.user_rank ?? null;
+    const totalRanked = rankResult?.total_ranked ?? 0;
 
     // --- Check if user already solved today's daily challenge ---
     let dailyChallengeSolvedToday = false;

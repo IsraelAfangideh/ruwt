@@ -17,8 +17,8 @@ vi.mock('../_shared/ensure-profile', () => ({
   ensureProfile: mockEnsureProfile,
 }));
 
-// The dashboard runs 9 parallel Promise.all queries.
-// We model the DB as a sequential-call mock where each terminal call
+// The dashboard runs 8 Drizzle queries in Promise.all + 1 raw D1 CTE query.
+// We model the Drizzle DB as a sequential-call mock where each terminal call
 // (.limit or resolved-from-where/groupBy) returns the next item from a queue.
 let dbCallResults: unknown[][];
 let dbCallIndex: number;
@@ -62,11 +62,17 @@ vi.mock('../_shared/db', () => ({
 
 import { onRequestGet } from './dashboard';
 
-function makeContext() {
+function makeContext(rankResult: { user_rank: number | null; total_ranked: number } = { user_rank: 1, total_ranked: 2 }) {
   return {
     request: new Request('https://ruwt.dev/api/dashboard'),
     env: {
-      DB: {},
+      DB: {
+        prepare: vi.fn().mockReturnValue({
+          bind: vi.fn().mockReturnValue({
+            first: vi.fn().mockResolvedValue(rankResult),
+          }),
+        }),
+      },
       VITE_SUPABASE_URL: 'https://test.supabase.co',
       VITE_SUPABASE_ANON_KEY: 'test-key',
     } as any,
@@ -74,7 +80,7 @@ function makeContext() {
 }
 
 /**
- * Set up DB results for the 9 parallel queries in order:
+ * Set up DB results for the 8 Drizzle queries in Promise.all:
  * 1. profileRow
  * 2. allChallenges
  * 3. userPassedAttempts
@@ -82,8 +88,8 @@ function makeContext() {
  * 5. recentBadgeRows
  * 6. unreadCountRow
  * 7. dailyChallengeRow
- * 8. globalRankings
- * 9. heatmapRows
+ * 8. heatmapRows
+ * (Query 8 = rank CTE is via DB.prepare(), mocked in makeContext())
  *
  * IMPORTANT: The dashboard uses Promise.all, but each DB query goes through
  * the same mock chain. Since the queries all use different terminal methods,
@@ -118,7 +124,6 @@ function setupDefaultResults(overrides: Partial<{
   recentBadges: any[];
   unreadCount: any[];
   dailyChallenge: any[];
-  globalRankings: any[];
   heatmap: any[];
 }> = {}) {
   // The dashboard runs 9 queries in Promise.all.
@@ -192,11 +197,6 @@ function setupDefaultResults(overrides: Partial<{
     category: 'practice',
   }];
 
-  const globalRankings = overrides.globalRankings ?? [
-    { userId: 'user-1', solvedCount: 5, avgCost: 200 },
-    { userId: 'other-user', solvedCount: 3, avgCost: 500 },
-  ];
-
   const heatmap = overrides.heatmap ?? [
     { date: '2026-02-27', count: 2 },
     { date: '2026-02-28', count: 1 },
@@ -223,40 +223,7 @@ function setupDefaultResults(overrides: Partial<{
   // Reset and set up fresh
   dbCallIndex = 0;
 
-  // Override terminal methods to return from a results queue
-  let fromCallIndex = 0;
-  const fromResults = [allChallenges]; // Query 2
-
-  let whereCallIndex = 0;
-  const whereResults = [userPassedAttempts, unreadCount]; // Queries 3, 6
-
-  let limitCallIndex = 0;
-  const limitResults = [profile, recentActivity, recentBadges, dailyChallenge]; // Queries 1, 4, 5, 7
-
-  let orderByCallIndex = 0;
-  const orderByResults = [globalRankings]; // Query 8 (after .having)
-
-  let groupByCallIndex = 0;
-  const groupByResults = [heatmap]; // Query 9
-
-  // We need a smarter approach. The issue is that `.from()`, `.where()`, etc.
-  // are called by MULTIPLE queries but only SOME of them are terminals.
-  // A `.from()` call is terminal for query 2 (allChallenges) but not for others.
-  //
-  // The cleanest solution: make each method return a fresh chain-like object
-  // that tracks its own query identity. But that's complex.
-  //
-  // Pragmatic solution: just make ALL methods return `self` AND make .limit,
-  // .orderBy, .groupBy, .where all resolve as thenables when they ARE the terminal.
-  //
-  // Actually, the simplest working approach: each query is `await db.select().from()...terminal()`.
-  // Since all 9 queries are in Promise.all, they're all constructed synchronously.
-  // Each construction chain calls mockDb methods. The LAST method in each chain
-  // must return a thenable.
-  //
-  // Looking at the actual query chains:
-  // Q1: select→from→where→limit ✓ (limit returns promise)
-  // Q2: select→from ← from must return a thenable here!
+  // Each select() call creates a fresh chain that resolves to the next result.
   // Q3: select→from→innerJoin→where ← where must return thenable
   // Q4: select→from→innerJoin→innerJoin→where→orderBy→limit ✓
   // Q5: select→from→where→orderBy→limit ✓
@@ -275,6 +242,7 @@ function setupDefaultResults(overrides: Partial<{
 
   // Reset the entire mockDb approach for dashboard tests
   let selectCallIndex = 0;
+  // Q8 (rank) is now via DB.prepare() CTE — mocked in makeContext(), not here
   const allQueryResults = [
     profile,           // Q1
     allChallenges,     // Q2
@@ -283,8 +251,7 @@ function setupDefaultResults(overrides: Partial<{
     recentBadges,      // Q5
     unreadCount,       // Q6
     dailyChallenge,    // Q7
-    globalRankings,    // Q8
-    heatmap,           // Q9
+    heatmap,           // Q8 (was Q9, now renumbered since Q8 is via DB.prepare)
   ];
 
   // Each select() call creates a new chain that ultimately resolves to
@@ -464,31 +431,22 @@ describe('GET /api/dashboard', () => {
   // -----------------------------------------------------------------------
   it('returns null rank when user has no solves', async () => {
     mockGetUser.mockResolvedValue({ id: 'user-1' });
-    setupDefaultResults({
-      userPassedAttempts: [],
-      globalRankings: [
-        { userId: 'other-user', solvedCount: 5, avgCost: 200 },
-      ],
-    });
+    setupDefaultResults({ userPassedAttempts: [] });
 
-    const res = await onRequestGet(makeContext());
+    const ctx = makeContext({ user_rank: null, total_ranked: 1 });
+    const res = await onRequestGet(ctx);
     const json = await res.json();
 
     expect(json.rank.position).toBeNull();
     expect(json.rank.totalRanked).toBe(1);
   });
 
-  it('computes correct rank position based on array index', async () => {
+  it('computes correct rank position from CTE query result', async () => {
     mockGetUser.mockResolvedValue({ id: 'user-1' });
-    setupDefaultResults({
-      globalRankings: [
-        { userId: 'top-user', solvedCount: 10, avgCost: 100 },
-        { userId: 'user-1', solvedCount: 5, avgCost: 200 },
-        { userId: 'bottom-user', solvedCount: 2, avgCost: 500 },
-      ],
-    });
+    setupDefaultResults();
 
-    const res = await onRequestGet(makeContext());
+    const ctx = makeContext({ user_rank: 2, total_ranked: 3 });
+    const res = await onRequestGet(ctx);
     const json = await res.json();
 
     expect(json.rank.position).toBe(2);

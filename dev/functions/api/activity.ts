@@ -5,8 +5,10 @@
 import { eq, desc, sql } from 'drizzle-orm';
 import { getDb } from '../_shared/db';
 import { attempts, profiles, challenges } from '../../drizzle/schema.d1';
+import { withCache } from '../_shared/cache';
 
 export async function onRequestGet(context: { request: Request; env: Env }) {
+  return withCache(context.request, 120, async () => {
   try {
     const db = getDb(context.env);
     const url = new URL(context.request.url);
@@ -43,4 +45,5 @@ export async function onRequestGet(context: { request: Request; env: Env }) {
     console.error('Activity feed error:', error);
     return Response.json({ error: 'Internal server error' }, { status: 500 });
   }
+  });
 }

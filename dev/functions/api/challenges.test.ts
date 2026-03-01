@@ -66,8 +66,6 @@ function makeChallengeRow(overrides: Partial<Record<string, any>> = {}) {
     title: 'FizzBuzz Budget',
     description: 'Write fizzbuzz under budget',
     difficulty: 'easy',
-    starterCode: 'function solve() {}',
-    testCases: '[{"input":[],"expected":"1"}]',
     execTimeLimit: 5000,
     execMemoryLimit: 256,
     maxTokens: null,
@@ -79,8 +77,10 @@ function makeChallengeRow(overrides: Partial<Record<string, any>> = {}) {
     tier: 'onboarding',
     language: 'javascript',
     tags: '["backend","easy"]',
-    hiddenTestCases: '[{"input":[],"expected":"2"}]',
     createdAt: '2026-01-01T00:00:00Z',
+    // SQL now computes counts instead of returning raw JSON blobs
+    testCount: 1,
+    hiddenTestCount: 1,
     solvers: 5,
     avgCost: 150,
     ...overrides,
@@ -113,10 +113,10 @@ describe('GET /api/challenges', () => {
     expect(json[1].stats.avgCost).toBeNull();
   });
 
-  it('strips hiddenTestCases, testCases, and starterCode from response', async () => {
+  it('does not include hiddenTestCases, testCases, or starterCode (not selected from DB)', async () => {
     mockGetUser.mockResolvedValue(null);
     queryResults = [
-      [makeChallengeRow({ hiddenTestCases: '[{"input":[],"expected":"x"},{"input":[],"expected":"y"}]' })],
+      [makeChallengeRow({ hiddenTestCount: 2 })],
     ];
 
     const res = await onRequestGet(makeContext());
@@ -129,9 +129,9 @@ describe('GET /api/challenges', () => {
     expect(json[0].testCount).toBe(1); // from default makeChallengeRow
   });
 
-  it('returns hiddenTestCount=0 when hiddenTestCases is null', async () => {
+  it('returns hiddenTestCount=0 when SQL returns 0', async () => {
     mockGetUser.mockResolvedValue(null);
-    queryResults = [[makeChallengeRow({ hiddenTestCases: null })]];
+    queryResults = [[makeChallengeRow({ hiddenTestCount: 0 })]];
 
     const res = await onRequestGet(makeContext());
     const json = await res.json();
@@ -139,9 +139,9 @@ describe('GET /api/challenges', () => {
     expect(json[0].hiddenTestCount).toBe(0);
   });
 
-  it('handles malformed hiddenTestCases JSON gracefully', async () => {
+  it('returns hiddenTestCount=0 when SQL returns null', async () => {
     mockGetUser.mockResolvedValue(null);
-    queryResults = [[makeChallengeRow({ hiddenTestCases: 'not-json' })]];
+    queryResults = [[makeChallengeRow({ hiddenTestCount: null })]];
 
     const res = await onRequestGet(makeContext());
     const json = await res.json();
@@ -244,8 +244,8 @@ describe('GET /api/challenges', () => {
       queryResults = [
         // Q1: Challenge list
         [makeChallengeRow({ id: 'ch-1' })],
-        // Q2: User attempts
-        [{ challengeId: 'ch-1', status: 'passed', totalCost: 200 }],
+        // Q2: User progress (SQL GROUP BY result)
+        [{ challengeId: 'ch-1', bestStatus: 'passed', bestCost: 200 }],
       ];
 
       const res = await onRequestGet(makeContext());
@@ -255,15 +255,12 @@ describe('GET /api/challenges', () => {
       expect(json[0].userBestCost).toBe(200);
     });
 
-    it('picks the cheapest passed attempt as bestCost', async () => {
+    it('picks the cheapest passed attempt as bestCost (computed by SQL MIN)', async () => {
       mockGetUser.mockResolvedValue({ id: 'user-1' });
       queryResults = [
         [makeChallengeRow({ id: 'ch-1' })],
-        [
-          { challengeId: 'ch-1', status: 'passed', totalCost: 500 },
-          { challengeId: 'ch-1', status: 'passed', totalCost: 200 },
-          { challengeId: 'ch-1', status: 'passed', totalCost: 300 },
-        ],
+        // SQL GROUP BY returns the MIN cost directly
+        [{ challengeId: 'ch-1', bestStatus: 'passed', bestCost: 200 }],
       ];
 
       const res = await onRequestGet(makeContext());
@@ -277,7 +274,7 @@ describe('GET /api/challenges', () => {
       mockGetUser.mockResolvedValue({ id: 'user-1' });
       queryResults = [
         [makeChallengeRow({ id: 'ch-1' })],
-        [{ challengeId: 'ch-1', status: 'in_progress', totalCost: 0 }],
+        [{ challengeId: 'ch-1', bestStatus: 'in_progress', bestCost: null }],
       ];
 
       const res = await onRequestGet(makeContext());
@@ -291,7 +288,7 @@ describe('GET /api/challenges', () => {
       mockGetUser.mockResolvedValue({ id: 'user-1' });
       queryResults = [
         [makeChallengeRow({ id: 'ch-1' })],
-        [{ challengeId: 'ch-1', status: 'failed', totalCost: 100 }],
+        [{ challengeId: 'ch-1', bestStatus: 'attempted', bestCost: null }],
       ];
 
       const res = await onRequestGet(makeContext());
@@ -305,7 +302,7 @@ describe('GET /api/challenges', () => {
       mockGetUser.mockResolvedValue({ id: 'user-1' });
       queryResults = [
         [makeChallengeRow({ id: 'ch-1' }), makeChallengeRow({ id: 'ch-2', title: 'Other' })],
-        [{ challengeId: 'ch-1', status: 'passed', totalCost: 100 }],
+        [{ challengeId: 'ch-1', bestStatus: 'passed', bestCost: 100 }],
       ];
 
       const res = await onRequestGet(makeContext());
@@ -315,14 +312,12 @@ describe('GET /api/challenges', () => {
       expect(json[1].userStatus).toBe('not_started');
     });
 
-    it('passed status takes priority over in_progress for same challenge', async () => {
+    it('passed status takes priority over in_progress for same challenge (MAX in SQL)', async () => {
       mockGetUser.mockResolvedValue({ id: 'user-1' });
       queryResults = [
         [makeChallengeRow({ id: 'ch-1' })],
-        [
-          { challengeId: 'ch-1', status: 'in_progress', totalCost: 0 },
-          { challengeId: 'ch-1', status: 'passed', totalCost: 300 },
-        ],
+        // SQL MAX picks 'passed' over 'in_progress'
+        [{ challengeId: 'ch-1', bestStatus: 'passed', bestCost: 300 }],
       ];
 
       const res = await onRequestGet(makeContext());
@@ -332,18 +327,18 @@ describe('GET /api/challenges', () => {
       expect(json[0].userBestCost).toBe(300);
     });
 
-    it('handles null totalCost on passed attempt (treats as 0)', async () => {
+    it('handles null bestCost on passed attempt', async () => {
       mockGetUser.mockResolvedValue({ id: 'user-1' });
       queryResults = [
         [makeChallengeRow({ id: 'ch-1' })],
-        [{ challengeId: 'ch-1', status: 'passed', totalCost: null }],
+        [{ challengeId: 'ch-1', bestStatus: 'passed', bestCost: null }],
       ];
 
       const res = await onRequestGet(makeContext());
       const json = await res.json();
 
       expect(json[0].userStatus).toBe('passed');
-      expect(json[0].userBestCost).toBe(0);
+      expect(json[0].userBestCost).toBeNull();
     });
   });
 

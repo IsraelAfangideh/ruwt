@@ -8,8 +8,24 @@ import { sql, eq, and, type SQL } from 'drizzle-orm';
 import { getDb } from '../_shared/db';
 import { getUser } from '../_shared/auth';
 import { challenges, attempts } from '../../drizzle/schema.d1';
+import { withCache } from '../_shared/cache';
 
 export async function onRequestGet(context: { env: Env; request: Request }) {
+  // Check auth first — cache only unauthenticated requests (public browse page)
+  let userId: string | null = null;
+  try {
+    const user = await getUser(context.request, context.env);
+    if (user) userId = user.id;
+  } catch { /* not authenticated — no user progress */ }
+
+  const handler = () => handleChallengesList(context, userId);
+  return userId ? handler() : withCache(context.request, 300, handler);
+}
+
+async function handleChallengesList(
+  context: { env: Env; request: Request },
+  userId: string | null,
+): Promise<Response> {
   try {
     const url = new URL(context.request.url);
     const langFilter = url.searchParams.get('language');
@@ -18,15 +34,7 @@ export async function onRequestGet(context: { env: Env; request: Request }) {
 
     const db = getDb(context.env);
 
-    // Optionally get authenticated user for progress indicators
-    let userId: string | null = null;
-    try {
-      const user = await getUser(context.request, context.env);
-      if (user) userId = user.id;
-    } catch { /* not authenticated — no user progress */ }
-
     // Build WHERE conditions — filter in SQL, not JS.
-    // Smaller payloads, faster queries, less work on the edge.
     const conditions: SQL[] = [];
     if (langFilter) {
       conditions.push(sql`COALESCE(${challenges.language}, 'javascript') = ${langFilter}`);
@@ -44,8 +52,6 @@ export async function onRequestGet(context: { env: Env; request: Request }) {
         title: challenges.title,
         description: challenges.description,
         difficulty: challenges.difficulty,
-        starterCode: challenges.starterCode,
-        testCases: challenges.testCases,
         execTimeLimit: challenges.execTimeLimit,
         execMemoryLimit: challenges.execMemoryLimit,
         maxTokens: challenges.maxTokens,
@@ -57,8 +63,10 @@ export async function onRequestGet(context: { env: Env; request: Request }) {
         tier: challenges.tier,
         language: challenges.language,
         tags: challenges.tags,
-        hiddenTestCases: challenges.hiddenTestCases,
         createdAt: challenges.createdAt,
+        // Compute test counts in SQL instead of transferring large JSON blobs
+        testCount: sql<number>`COALESCE(json_array_length(${challenges.testCases}), 0)`,
+        hiddenTestCount: sql<number>`COALESCE(json_array_length(${challenges.hiddenTestCases}), 0)`,
         solvers: sql<number>`COUNT(DISTINCT CASE WHEN ${attempts.status} = 'passed' THEN ${attempts.userId} END)`,
         avgCost: sql<number>`AVG(CASE WHEN ${attempts.status} = 'passed' THEN ${attempts.totalCost} END)`,
       })
@@ -68,54 +76,39 @@ export async function onRequestGet(context: { env: Env; request: Request }) {
       .groupBy(challenges.id)
       .orderBy(challenges.sortOrder, challenges.createdAt);
 
-    // Build per-user progress map when authenticated
+    // Build per-user progress map when authenticated (SQL GROUP BY instead of JS loop)
     let userProgress: Record<string, { status: string; bestCost: number | null }> = {};
     if (userId) {
-      const userAttempts = await db
+      const progressRows = await db
         .select({
           challengeId: attempts.challengeId,
-          status: attempts.status,
-          totalCost: attempts.totalCost,
+          bestStatus: sql<string>`MAX(CASE
+            WHEN ${attempts.status} = 'passed' THEN 'passed'
+            WHEN ${attempts.status} = 'in_progress' THEN 'in_progress'
+            ELSE 'attempted'
+          END)`,
+          bestCost: sql<number | null>`MIN(CASE WHEN ${attempts.status} = 'passed' THEN ${attempts.totalCost} END)`,
         })
         .from(attempts)
-        .where(eq(attempts.userId, userId));
+        .where(eq(attempts.userId, userId))
+        .groupBy(attempts.challengeId);
 
-      for (const a of userAttempts) {
-        const existing = userProgress[a.challengeId];
-        if (a.status === 'passed') {
-          const cost = a.totalCost ?? 0;
-          userProgress[a.challengeId] = {
-            status: 'passed',
-            bestCost: existing?.status === 'passed' && existing.bestCost != null
-              ? Math.min(existing.bestCost, cost) : cost,
-          };
-        } else if (a.status === 'in_progress' && existing?.status !== 'passed') {
-          userProgress[a.challengeId] = { status: 'in_progress', bestCost: existing?.bestCost ?? null };
-        } else if (!existing) {
-          userProgress[a.challengeId] = { status: 'attempted', bestCost: null };
-        }
+      for (const row of progressRows) {
+        userProgress[row.challengeId] = {
+          status: row.bestStatus,
+          bestCost: row.bestCost,
+        };
       }
     }
 
     return Response.json(
       list.map((ch) => {
-        let hiddenTestCount = 0;
-        if (ch.hiddenTestCases) {
-          try { hiddenTestCount = JSON.parse(ch.hiddenTestCases).length; } catch {}
-        }
-        let testCount = 0;
-        if (ch.testCases) {
-          try { testCount = JSON.parse(ch.testCases).length; } catch {}
-        }
-        // Strip testCases, hiddenTestCases, and starterCode from listing — not needed
-        // for browse page and exposes solution hints. Available via /api/challenges/:id.
-        const { hiddenTestCases: _h, testCases: _t, starterCode: _s, ...rest } = ch;
         const progress = userId ? userProgress[ch.id] : undefined;
         return {
-          ...rest,
+          ...ch,
           tags: ch.tags ? (() => { try { return JSON.parse(ch.tags); } catch { return []; } })() : [],
-          testCount,
-          hiddenTestCount,
+          testCount: Number(ch.testCount) || 0,
+          hiddenTestCount: Number(ch.hiddenTestCount) || 0,
           stats: {
             solvers: Number(ch.solvers) || 0,
             avgCost: ch.avgCost != null ? Math.round(Number(ch.avgCost)) : null,

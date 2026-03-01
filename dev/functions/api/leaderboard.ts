@@ -7,6 +7,7 @@
 import { eq, and, desc, sql, gte } from 'drizzle-orm';
 import { getDb } from '../_shared/db';
 import { attempts, profiles, seasons } from '../../drizzle/schema.d1';
+import { withCache } from '../_shared/cache';
 
 function getPeriodThreshold(period: string): string | null {
   const now = new Date();
@@ -22,6 +23,7 @@ function getPeriodThreshold(period: string): string | null {
 }
 
 export async function onRequestGet(context: { request: Request; env: Env }) {
+  return withCache(context.request, 180, async () => {
   try {
     const { env } = context;
     const db = getDb(env);
@@ -181,4 +183,5 @@ export async function onRequestGet(context: { request: Request; env: Env }) {
     console.error('Leaderboard error:', error);
     return Response.json({ error: 'Internal server error' }, { status: 500 });
   }
+  });
 }

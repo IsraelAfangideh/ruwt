@@ -6,12 +6,14 @@
 import { eq, sql } from 'drizzle-orm';
 import { getDb } from '../../_shared/db';
 import { challenges, attempts } from '../../../drizzle/schema.d1';
+import { withCache } from '../../_shared/cache';
 
 export async function onRequestGet(context: {
   request: Request;
   env: Env;
   params: Promise<{ id?: string }>;
 }) {
+  return withCache(context.request, 600, async () => {
   try {
     const params = await context.params;
     const id = params?.id;
@@ -57,4 +59,5 @@ export async function onRequestGet(context: {
     console.error('Challenge get error:', error);
     return Response.json({ error: 'Internal server error' }, { status: 500 });
   }
+  });
 }
