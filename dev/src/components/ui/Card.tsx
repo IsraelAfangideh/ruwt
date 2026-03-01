@@ -1,11 +1,11 @@
-import { View, Text, StyleSheet, type ViewStyle, type AccessibilityRole } from 'react-native';
+import { View, Text, StyleSheet, type ViewStyle } from 'react-native';
 import { useColors } from '@/theme';
 import { spacing, radii, fontSizes, fontFamily } from '@/theme/tokens';
 
 export function Card({ children, style, accessibilityRole, accessibilityLabel, nativeID }: {
   children: React.ReactNode;
   style?: ViewStyle;
-  accessibilityRole?: AccessibilityRole;
+  accessibilityRole?: string;
   accessibilityLabel?: string;
   nativeID?: string;
 }) {
