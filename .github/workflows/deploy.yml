@@ -160,7 +160,7 @@ jobs:
       run: { working-directory: ./social/code/mobile }
     steps:
       - uses: actions/checkout@v4
-      - uses: oven-sh/setup-bun@v1
+      - uses: oven-sh/setup-bun@v2
       
       # Install dependencies (from root because monorepo)
       - name: Install Deps
@@ -201,7 +201,7 @@ jobs:
           node-version: '20'
       
       # Setup Bun for monorepo install
-      - uses: oven-sh/setup-bun@v1
+      - uses: oven-sh/setup-bun@v2
       
       # Install ALL dependencies from monorepo root
       # This resolves @ruwt/shared workspace package
@@ -259,7 +259,7 @@ jobs:
       run: { working-directory: ./social/code/mobile }
     steps:
       - uses: actions/checkout@v4
-      - uses: oven-sh/setup-bun@v1
+      - uses: oven-sh/setup-bun@v2
       - uses: expo/expo-github-action@v8
         with:
           eas-version: latest
@@ -282,7 +282,7 @@ jobs:
       run: { working-directory: ./social/code/mobile }
     steps:
       - uses: actions/checkout@v4
-      - uses: oven-sh/setup-bun@v1
+      - uses: oven-sh/setup-bun@v2
       - uses: ruby/setup-ruby@v1
         with:
           ruby-version: '3.2'
