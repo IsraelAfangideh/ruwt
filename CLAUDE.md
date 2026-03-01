@@ -173,6 +173,90 @@ print('Token saved!')
 ```
 This opens the browser once — user approves — token is saved and auto-refreshes from then on.
 
+## ruwt.dev Arena — User Flow
+
+1. Landing → Register/Login (GitHub OAuth or email, 50k free credits)
+2. Browse challenges at `/challenges` (filter by category: Model Selection, Prompt Efficiency, Debugging)
+3. Pick challenge → choose Timed or Untimed → Arena IDE opens
+4. IDE layout: sidebar LEFT (description/AI chat tabs), editor+terminal RIGHT, xterm virtual shell with `ruwt` TUI mode
+5. Iterate: write code, chat with AI (costs credits), run tests, debug
+6. Submit → attempt marked passed/failed
+7. Leaderboard ranks by challenges solved, then avg cost (cheapest wins)
+- Core concept: measures how *efficiently* you use AI, not just correctness
+- Philosophy: easy challenge + premium model = should pass. The game is efficiency, not fighting the platform.
+
+## Arena Challenge Harness
+
+- `judge.ts` `buildTestCode()` calls exported functions as `funcName(...args)` — NO `new` keyword
+- Class-based challenges MUST have `test_harness` column with a `solve()` dispatch function that uses `new`
+- Challenges with complex input (command sequences, test scenario names) also need harnesses
+- Safety net: `judge.ts` detects `class` declarations and adds `new` automatically
+- If `module.exports = { ..., solve }` includes `solve`, it's used as single dispatch (not multi-export table)
+- Challenge design guidelines in `dev/marketing/CONSTITUTION.md`
+
+## /executor — Code Execution Sandbox
+
+- **Runs on**: Fly.io (`ruwt-exec.fly.dev`), Docker container
+- **Source**: `executor/` directory (Dockerfile, server.js, entrypoint.sh)
+- **Piston-compatible API**: `POST /api/v2/piston/execute` and `POST /execute`
+- **Auth**: `EXECUTOR_SECRET` env var, checked via `X-Executor-Secret` header (conditional — unauthenticated if not set)
+- **Languages**: JavaScript (Node 18), TypeScript (tsx), Python 3
+
+### Security layers
+1. **Network isolation**: `entrypoint.sh` sets iptables to block outbound for `executor` uid (REJECT, not DROP — gives instant errors)
+2. **Filesystem**: `chmod 700 /app` (can't read server code), `/etc/passwd|shadow|group` restricted
+3. **Process group kill**: `detached: true` + `kill(-pid, SIGKILL)` on timeout (handles forks)
+4. **Python memory limit**: 256MB `RLIMIT_AS` preamble prepended to all Python code
+5. **Temp cleanup**: `rmSync(recursive: true, force: true)` handles nested dirs user code creates
+6. **Code size limit**: 1MB max enforced at `dev/functions/api/execute.ts` Zod schema
+7. **Auth propagation**: CF Pages (`execute.ts`) → `judge.ts` → executor, CI workflows also send header
+
+### Testing executor changes locally (Docker)
+
+No staging Fly.io app exists — Docker is the only pre-production gate.
+
+```bash
+docker build -t ruwt-exec-test ./executor
+docker run --privileged -d --name ruwt-exec-test -p 8080:8080 -e EXECUTOR_SECRET=test123 ruwt-exec-test
+```
+
+Test matrix (curl against `localhost:8080`):
+| Test | Payload | Expected |
+|------|---------|----------|
+| Auth blocked | POST without secret | 403 |
+| Auth works | POST with `X-Executor-Secret: test123` | 200 + stdout |
+| Network blocked | Python `urllib.request.urlopen(...)` | Immediate URLError |
+| Filesystem blocked | Python `open("/app/server.js")` | PermissionError |
+| Process group kill | Python fork + sleep, 3s timeout | SIGKILL, no orphans |
+| Python memory | Python `[0] * (300*1024*1024)` | MemoryError |
+| Nested cleanup | Python `os.makedirs("a/b/c")` | `/tmp/exec-*` clean after |
+| executionTimeMs | Any code | Field present in response |
+
+Cleanup: `docker stop ruwt-exec-test && docker rm ruwt-exec-test`
+
+### Deploy order (critical — backward compatibility)
+1. **CF Pages first** (judge.ts auth header + execute.ts code limit) — backward-compatible, sends header when available
+2. **CI workflows** (keep-alive.yml + eval.yml auth headers)
+3. **Executor to Fly.io last** — `flyctl deploy` from `executor/`
+
+## Test Coverage (dev/)
+
+- Provider: `istanbul` (NOT v8 — v8 has ENOENT race condition with vitest)
+- Config: `vitest.config.ts` needs `clean: false` and `reportOnFailure: true`
+- Barrel file exclusions: `src/components/ui/index.ts`, `src/theme/index.ts`, `src/navigation/types.ts`
+- `patch-package` persists vitest ENOENT fix — see `patches/vitest+4.0.18.patch`
+- Istanbul ignore syntax: `/* istanbul ignore next -- @preserve */` (the `@preserve` is REQUIRED — esbuild strips comments without it)
+- React Native Web testing: use `fireEvent.click()` not `fireEvent.press()`; never mock `react-native` directly (alias handles it)
+- Monaco editor uses `React.lazy` + `Suspense` (not manual DOM mount) for reactive props
+- SSE stream parsing must buffer incomplete lines across `read()` calls — split by `\n`, keep last part as buffer
+
+## Additional Gotchas
+
+- `develop` branch is heavily diverged from `main` — use feature branches off `main` for new work
+- Docker Desktop must be running for local executor tests (`open -a Docker` on macOS)
+- `--privileged` flag required for iptables inside Docker on macOS
+- CF Pages preview deploys only trigger for `main` branch pushes with `dev/**` changes — feature branches won't auto-deploy previews via the GitHub Actions workflow
+
 ## Knowledge Sharing
 
 When you discover something non-obvious (gotchas, architecture decisions, debug findings, deploy quirks), update this file or your auto-memory notes so future Claude instances benefit. Specifically:
