@@ -22,6 +22,7 @@ import { ModeSelector } from './arena/ModeSelector';
 import { renderMarkdown, ThinkingBlock } from './arena/ChatMarkdown';
 import { ResultsBar, type TestResults } from './arena/ResultsBar';
 import ExpiryOverlay from './arena/ExpiryOverlay';
+import '@/lib/monaco-init';
 
 const MonacoEditor = React.lazy(() => import('@monaco-editor/react'));
 

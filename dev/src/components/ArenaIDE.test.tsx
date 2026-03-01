@@ -111,6 +111,8 @@ vi.mock('./arena/ExpiryOverlay', () => ({
   ),
 }));
 
+vi.mock('@/lib/monaco-init', () => ({}));
+
 // Capture the paste listener so tests can invoke it
 let capturedPasteListener: ((e: any) => void) | null = null;
 vi.mock('@monaco-editor/react', () => ({

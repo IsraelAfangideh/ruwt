@@ -17,4 +17,5 @@ interface Env {
   GITHUB_TOKEN?: string;
   ERROR_ALERT_EMAIL?: string;
   SENTRY_DSN?: string;
+  EXECUTOR_SECRET?: string;
 }

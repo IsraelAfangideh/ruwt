@@ -33,7 +33,7 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks: {
-          monaco: ['@monaco-editor/react'],
+          monaco: ['@monaco-editor/react', 'monaco-editor'],
         },
       },
     },

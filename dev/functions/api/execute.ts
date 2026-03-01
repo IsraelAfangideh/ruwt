@@ -41,9 +41,14 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
       );
     }
 
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (context.env.EXECUTOR_SECRET) {
+      headers['X-Executor-Secret'] = context.env.EXECUTOR_SECRET;
+    }
+
     const res = await fetch(`${execUrl}/execute`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify(parsed.data),
     });
 

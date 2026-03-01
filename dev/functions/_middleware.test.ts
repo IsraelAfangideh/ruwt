@@ -3,12 +3,13 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 // ---------------------------------------------------------------------------
 // Hoisted mocks — set up before module evaluation
 // ---------------------------------------------------------------------------
-const { mockGetUser, mockCheckRateLimit, mockBuildKey, mockGetDb, mockLogError } = vi.hoisted(() => ({
+const { mockGetUser, mockCheckRateLimit, mockBuildKey, mockGetDb, mockLogError, mockLogSecurityEvent } = vi.hoisted(() => ({
   mockGetUser: vi.fn(),
   mockCheckRateLimit: vi.fn(),
   mockBuildKey: vi.fn(),
   mockGetDb: vi.fn(),
   mockLogError: vi.fn().mockResolvedValue(undefined),
+  mockLogSecurityEvent: vi.fn(),
 }));
 
 vi.mock('./_shared/auth', () => ({
@@ -22,6 +23,10 @@ vi.mock('./_shared/rate-limit', () => ({
 
 vi.mock('./_shared/error-monitor', () => ({
   logError: mockLogError,
+}));
+
+vi.mock('./_shared/security-log', () => ({
+  logSecurityEvent: mockLogSecurityEvent,
 }));
 
 vi.mock('./_shared/db', () => ({
@@ -1180,5 +1185,129 @@ describe('non-API routes are not rate limited', () => {
     await onRequest(ctx);
 
     expect(mockCheckRateLimit).not.toHaveBeenCalled();
+  });
+});
+
+// ===========================================================================
+// CSRF protection — Origin header validation
+// ===========================================================================
+describe('CSRF protection', () => {
+  it('allows POST with valid Origin https://ruwt.dev', async () => {
+    mockCheckRateLimit.mockResolvedValue({ allowed: true });
+    mockBuildKey.mockReturnValue('user:u1');
+    mockGetUser.mockResolvedValue({ id: 'u1' });
+
+    const req = makeRequest('https://ruwt.dev/api/ai/chat', {
+      method: 'POST',
+      headers: { Origin: 'https://ruwt.dev', 'Content-Type': 'application/json' },
+    });
+    const ctx = makeContext(req);
+    const response = await onRequest(ctx);
+
+    expect(response.status).toBe(200);
+  });
+
+  it('allows POST with valid Origin https://ruwt-dev.pages.dev', async () => {
+    mockCheckRateLimit.mockResolvedValue({ allowed: true });
+    mockBuildKey.mockReturnValue('user:u1');
+    mockGetUser.mockResolvedValue({ id: 'u1' });
+
+    const req = makeRequest('https://ruwt.dev/api/submissions', {
+      method: 'POST',
+      headers: { Origin: 'https://ruwt-dev.pages.dev' },
+    });
+    const ctx = makeContext(req);
+    const response = await onRequest(ctx);
+
+    expect(response.status).toBe(200);
+  });
+
+  it('allows POST with valid Origin http://localhost:5173', async () => {
+    mockCheckRateLimit.mockResolvedValue({ allowed: true });
+    mockBuildKey.mockReturnValue('user:u1');
+    mockGetUser.mockResolvedValue({ id: 'u1' });
+
+    const req = makeRequest('https://ruwt.dev/api/profile', {
+      method: 'POST',
+      headers: { Origin: 'http://localhost:5173' },
+    });
+    const ctx = makeContext(req);
+    const response = await onRequest(ctx);
+
+    expect(response.status).toBe(200);
+  });
+
+  it('rejects POST with invalid Origin', async () => {
+    const req = makeRequest('https://ruwt.dev/api/ai/chat', {
+      method: 'POST',
+      headers: { Origin: 'https://evil.com', 'Content-Type': 'application/json' },
+    });
+    const ctx = makeContext(req);
+    const response = await onRequest(ctx);
+
+    expect(response.status).toBe(403);
+    const body = await response.json() as any;
+    expect(body.error).toContain('invalid origin');
+  });
+
+  it('rejects DELETE with invalid Origin', async () => {
+    const req = makeRequest('https://ruwt.dev/api/profile', {
+      method: 'DELETE',
+      headers: { Origin: 'https://attacker.com' },
+    });
+    const ctx = makeContext(req);
+    const response = await onRequest(ctx);
+
+    expect(response.status).toBe(403);
+  });
+
+  it('allows POST without Origin header (same-origin)', async () => {
+    mockCheckRateLimit.mockResolvedValue({ allowed: true });
+    mockBuildKey.mockReturnValue('ip:1.2.3.4');
+    mockGetUser.mockResolvedValue(null);
+
+    const req = makeRequest('https://ruwt.dev/api/ai/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+    });
+    const ctx = makeContext(req);
+    const response = await onRequest(ctx);
+
+    expect(response.status).toBe(200);
+  });
+
+  it('allows GET with any Origin (read-only)', async () => {
+    mockCheckRateLimit.mockResolvedValue({ allowed: true });
+    mockBuildKey.mockReturnValue('ip:1.2.3.4');
+    mockGetUser.mockResolvedValue(null);
+
+    const req = makeRequest('https://ruwt.dev/api/challenges', {
+      method: 'GET',
+      headers: { Origin: 'https://evil.com' },
+    });
+    const ctx = makeContext(req);
+    const response = await onRequest(ctx);
+
+    expect(response.status).toBe(200);
+  });
+
+  it('logs CSRF rejections via logSecurityEvent', async () => {
+    const req = makeRequest('https://ruwt.dev/api/ai/chat', {
+      method: 'POST',
+      headers: { Origin: 'https://phishing-site.com', 'CF-Connecting-IP': '10.0.0.1' },
+    });
+    const ctx = makeContext(req);
+    await onRequest(ctx);
+
+    expect(mockLogSecurityEvent).toHaveBeenCalledWith(
+      ctx.env.DB,
+      expect.objectContaining({
+        type: 'csrf_reject',
+        endpoint: '/api/ai/chat',
+        method: 'POST',
+        ip: '10.0.0.1',
+        details: expect.stringContaining('phishing-site.com'),
+      }),
+    );
   });
 });

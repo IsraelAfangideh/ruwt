@@ -10,6 +10,7 @@ import { eq, isNotNull, sql } from 'drizzle-orm';
 import { checkRateLimit, buildKey } from './_shared/rate-limit';
 import { getUser } from './_shared/auth';
 import { logError } from './_shared/error-monitor';
+import { logSecurityEvent } from './_shared/security-log';
 import {
   generateSeoHtml, seoResponse, escapeHtml,
   STATIC_ROUTE_META,
@@ -25,12 +26,12 @@ const SECURITY_HEADERS: Record<string, string> = {
   'Strict-Transport-Security': 'max-age=63072000; includeSubDomains; preload',
   'Content-Security-Policy': [
     "default-src 'self'",
-    "script-src 'self' 'unsafe-eval' 'wasm-unsafe-eval' https://cdn.jsdelivr.net",
+    "script-src 'self' 'unsafe-eval' 'wasm-unsafe-eval'",
     "worker-src 'self' blob:",
-    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net",
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "font-src 'self' https://fonts.gstatic.com",
     "img-src 'self' data: blob: https://*.supabase.co",
-    "connect-src 'self' https://*.supabase.co https://*.sentry.io https://ruwt-exec.fly.dev https://cdn.jsdelivr.net",
+    "connect-src 'self' https://*.supabase.co https://*.sentry.io https://ruwt-exec.fly.dev",
     "frame-ancestors 'none'",
     "base-uri 'self'",
     "form-action 'self'",
@@ -42,8 +43,34 @@ const BOT_UA_REGEX = /Twitterbot|LinkedInBot|Slackbot|facebookexternalhit|Discor
 export async function onRequest(context: { request: Request; env: Env; next: () => Promise<Response> }) {
   const url = new URL(context.request.url);
 
-  // --- Rate limiting for /api/ routes ---
+  // --- CSRF protection + Rate limiting for /api/ routes ---
   if (url.pathname.startsWith('/api/')) {
+    const ALLOWED_ORIGINS = new Set([
+      'https://ruwt.dev',
+      'https://ruwt-dev.pages.dev',
+      'http://localhost:5173',
+    ]);
+
+    // CSRF: reject cross-origin state-changing requests
+    const method = context.request.method;
+    if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(method)) {
+      const origin = context.request.headers.get('Origin');
+      if (origin && !ALLOWED_ORIGINS.has(origin)) {
+        const ip = context.request.headers.get('CF-Connecting-IP') || '0.0.0.0';
+        logSecurityEvent(context.env.DB, {
+          type: 'csrf_reject',
+          endpoint: url.pathname,
+          method,
+          ip,
+          details: `Rejected origin: ${origin}`,
+        });
+        return new Response(
+          JSON.stringify({ error: 'Forbidden: invalid origin' }),
+          { status: 403, headers: { 'Content-Type': 'application/json' } }
+        );
+      }
+    }
+
     // Resolve identity: authenticated user ID or client IP
     let userId: string | null = null;
     try {
@@ -65,6 +92,14 @@ export async function onRequest(context: { request: Request; env: Env; next: () 
 
       if (!result.allowed) {
         const retryAfter = result.retryAfter ?? 60;
+        logSecurityEvent(context.env.DB, {
+          type: 'rate_limit',
+          endpoint: url.pathname,
+          method: context.request.method,
+          ip,
+          userId: userId ?? undefined,
+          details: `Rate limit exceeded (retry after ${retryAfter}s)`,
+        });
         return new Response(
           JSON.stringify({ error: 'Rate limit exceeded', retryAfter }),
           {

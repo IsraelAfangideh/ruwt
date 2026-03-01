@@ -8,6 +8,9 @@ RUN apt-get update && \
 # Install TypeScript runner (tsx) globally
 RUN npm install -g tsx typescript
 
+# Create non-root user for executing untrusted code
+RUN useradd --create-home --shell /bin/bash executor
+
 WORKDIR /app
 COPY server.js ./
 
