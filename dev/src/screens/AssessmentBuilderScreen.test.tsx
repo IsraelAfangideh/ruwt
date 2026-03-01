@@ -60,6 +60,14 @@ vi.mock('@/lib/assessment-templates', () => ({
 }));
 vi.mock('@/lib/difficulty', () => ({
   getDifficultyStyle: () => ({ color: '#38bdf8', bg: 'rgba(56,189,248,0.12)', label: 'Medium' }),
+  DIFFICULTIES: [
+    { key: 'all', label: 'All Levels' },
+    { key: 'sprint', label: 'Sprint' },
+    { key: 'easy', label: 'Easy' },
+    { key: 'medium', label: 'Medium' },
+    { key: 'hard', label: 'Hard' },
+    { key: 'impossible', label: 'Impossible' },
+  ],
 }));
 vi.mock('@/components/AssessmentAgentChat', () => ({
   AssessmentAgentChat: (props: any) => {

@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { View, Text, ActivityIndicator, StyleSheet, Pressable } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { createClient } from '@/lib/supabase/client';
@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/Input';
 import { useColors } from '@/theme';
 import { spacing, fontSizes, fontFamily } from '@/theme/tokens';
 import { ASSESSMENT_TEMPLATES, type AssessmentTemplate } from '@/lib/assessment-templates';
-import { getDifficultyStyle } from '@/lib/difficulty';
+import { DIFFICULTIES, getDifficultyStyle } from '@/lib/difficulty';
 import { AssessmentAgentChat } from '@/components/AssessmentAgentChat';
 import { PassThresholdEditor } from '@/components/PassThresholdEditor';
 import { BulkInvitePanel } from '@/components/BulkInvitePanel';
@@ -47,6 +47,20 @@ interface CustomChallenge {
   aiGenerated: number;
   tags: string | null;
 }
+
+const PICKER_CATEGORIES = [
+  { key: 'all', label: 'All' },
+  { key: 'real_world', label: 'Real-World' },
+  { key: 'model_selection', label: 'Model Selection' },
+  { key: 'prompt_efficiency', label: 'Prompt Efficiency' },
+  { key: 'iterative_debugging', label: 'Iterative Debugging' },
+  { key: 'multi_model_strategy', label: 'Multi-Model' },
+  { key: 'qa_testing', label: 'QA Testing' },
+  { key: 'frontend', label: 'Frontend' },
+  { key: 'backend_api', label: 'Backend API' },
+  { key: 'data_engineering', label: 'Data Engineering' },
+  { key: 'devops', label: 'DevOps' },
+];
 
 export function AssessmentBuilderScreen() {
   const navigation = useNavigation();
@@ -95,6 +109,11 @@ export function AssessmentBuilderScreen() {
 
   // Invite management
   const [inviteRefreshKey, setInviteRefreshKey] = useState(0);
+
+  // Challenge picker filters
+  const [challengeSearch, setChallengeSearch] = useState('');
+  const [difficultyFilter, setDifficultyFilter] = useState('all');
+  const [categoryFilter, setCategoryFilter] = useState('all');
 
   useEffect(() => {
     const init = async () => {
@@ -344,6 +363,27 @@ export function AssessmentBuilderScreen() {
     setCustomChallenges((prev) => prev.filter((ch) => ch.id !== id));
   }, []);
 
+  const filteredChallenges = useMemo(() => {
+    const q = challengeSearch.toLowerCase();
+    return allChallenges.filter((ch) => {
+      if (q && !ch.title.toLowerCase().includes(q) && !(ch.skillTested ?? '').toLowerCase().includes(q)) return false;
+      if (difficultyFilter !== 'all' && ch.difficulty !== difficultyFilter) return false;
+      if (categoryFilter !== 'all' && ch.category !== categoryFilter) return false;
+      return true;
+    });
+  }, [allChallenges, challengeSearch, difficultyFilter, categoryFilter]);
+
+  const filteredCustomChallenges = useMemo(() => {
+    const q = challengeSearch.toLowerCase();
+    return customChallenges.filter((ch) => {
+      if (ch.status !== 'active') return false;
+      if (q && !ch.title.toLowerCase().includes(q) && !(ch.skillTested ?? '').toLowerCase().includes(q)) return false;
+      if (difficultyFilter !== 'all' && ch.difficulty !== difficultyFilter) return false;
+      if (categoryFilter !== 'all' && ch.category !== categoryFilter) return false;
+      return true;
+    });
+  }, [customChallenges, challengeSearch, difficultyFilter, categoryFilter]);
+
   if (loading) {
     return (
       <View style={[styles.center, { backgroundColor: c.bg }]}>
@@ -364,15 +404,11 @@ export function AssessmentBuilderScreen() {
   };
 
   const categoryLabel = (cat: string | null) => {
-    if (cat === 'model_selection') return 'Model Selection';
-    if (cat === 'prompt_efficiency') return 'Prompt Efficiency';
-    if (cat === 'iterative_debugging') return 'Iterative Debugging';
-    if (cat === 'multi_model_strategy') return 'Multi-Model';
-    return 'Practice';
+    const found = PICKER_CATEGORIES.find((c) => c.key === cat);
+    return found ? found.label : 'Practice';
   };
 
   const draftCustomChallenges = customChallenges.filter((ch) => ch.status === 'draft');
-  const activeCustomChallenges = customChallenges.filter((ch) => ch.status === 'active');
 
   return (
     <DashboardLayout user={user} requireTeam>
@@ -540,9 +576,61 @@ export function AssessmentBuilderScreen() {
               Select Challenges ({selectedChallengeIds.length} selected)
             </Text>
 
+            {/* Search + filters */}
+            <View style={styles.filterBar}>
+              <View style={{ maxWidth: 300, marginBottom: spacing.sm }}>
+                <Input
+                  placeholder="Search challenges..."
+                  value={challengeSearch}
+                  onChangeText={setChallengeSearch}
+                />
+              </View>
+              <View style={styles.filterPills}>
+                {DIFFICULTIES.map((d) => (
+                  <Pressable
+                    key={d.key}
+                    onPress={() => setDifficultyFilter(d.key)}
+                    style={[
+                      styles.filterPill,
+                      {
+                        backgroundColor: difficultyFilter === d.key ? c.accent + '20' : 'transparent',
+                        borderColor: difficultyFilter === d.key ? c.accent : c.border,
+                      },
+                    ]}
+                  >
+                    <Text style={{ fontSize: fontSizes.xs, color: difficultyFilter === d.key ? c.accent : c.textMuted }}>
+                      {d.label}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+              <View style={styles.filterPills}>
+                {PICKER_CATEGORIES.map((cat) => (
+                  <Pressable
+                    key={cat.key}
+                    onPress={() => setCategoryFilter(cat.key)}
+                    style={[
+                      styles.filterPill,
+                      {
+                        backgroundColor: categoryFilter === cat.key ? c.accent + '20' : 'transparent',
+                        borderColor: categoryFilter === cat.key ? c.accent : c.border,
+                      },
+                    ]}
+                  >
+                    <Text style={{ fontSize: fontSizes.xs, color: categoryFilter === cat.key ? c.accent : c.textMuted }}>
+                      {cat.label}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+              <Text style={{ fontSize: fontSizes.xs, color: c.textMuted, marginTop: spacing.xs }}>
+                {filteredChallenges.length + filteredCustomChallenges.length} challenges shown
+              </Text>
+            </View>
+
             {/* Platform challenges */}
             <View style={styles.challengeGrid}>
-              {allChallenges.map((ch) => {
+              {filteredChallenges.map((ch) => {
                 const selected = selectedChallengeIds.includes(ch.id);
                 return (
                   <Pressable key={ch.id} onPress={() => toggleChallenge(ch.id)}>
@@ -588,7 +676,7 @@ export function AssessmentBuilderScreen() {
               })}
 
               {/* Active custom challenges */}
-              {activeCustomChallenges.map((ch) => {
+              {filteredCustomChallenges.map((ch) => {
                 const selected = selectedChallengeIds.includes(ch.id);
                 return (
                   <Pressable key={ch.id} onPress={() => toggleChallenge(ch.id)}>
@@ -791,4 +879,12 @@ const styles = StyleSheet.create({
   weightLabel: { fontSize: fontSizes.sm, fontWeight: '500', width: 120 },
   draftSection: { marginBottom: spacing.lg },
   inviteSection: { marginBottom: spacing.lg },
+  filterBar: { marginBottom: spacing.md },
+  filterPills: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs, marginBottom: spacing.xs },
+  filterPill: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 4,
+    borderWidth: 1,
+    borderRadius: 999,
+  },
 });

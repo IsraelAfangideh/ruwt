@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent, act } from '@testing-library/react';
 
 const mockNavigate = vi.fn();
 vi.mock('@react-navigation/native', () => ({
@@ -434,17 +434,21 @@ describe('TeamsScreen', () => {
     expect(mockNavigate).toHaveBeenCalledWith('Landing');
   });
 
-  it('handles subscribe error alert', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockImplementation(() =>
+  it('handles subscribe error by showing demo form', async () => {
+    const mockFetch = vi.fn().mockImplementation(() =>
       Promise.resolve(ok({ error: 'Create an organization first' }))
-    ));
-    const mockAlert = vi.fn();
-    vi.stubGlobal('alert', mockAlert);
+    );
+    vi.stubGlobal('fetch', mockFetch);
     render(<TeamsScreen />);
     const subscribeButtons = screen.getAllByText('Start Free Trial');
-    fireEvent.click(subscribeButtons[0]);
+    await act(async () => {
+      fireEvent.click(subscribeButtons[0]);
+    });
+    // Verify checkout was called
+    expect(mockFetch).toHaveBeenCalledWith('/api/checkout', expect.anything());
+    // Button resets (not stuck on Loading)
     await waitFor(() => {
-      expect(mockAlert).toHaveBeenCalledWith('Create an organization first');
+      expect(screen.getAllByText('Start Free Trial').length).toBeGreaterThan(0);
     });
   });
 

@@ -125,8 +125,8 @@ describe('AssessmentListScreen', () => {
     });
     render(<AssessmentListScreen />);
     await waitFor(() => {
-      expect(screen.getByText('No Assessments Yet')).toBeTruthy();
-      expect(screen.getByText(/Create your first assessment/)).toBeTruthy();
+      expect(screen.getByText('Get started in 3 steps')).toBeTruthy();
+      expect(screen.getByText(/Create Your First Assessment/)).toBeTruthy();
     });
   });
 
@@ -318,7 +318,7 @@ describe('AssessmentListScreen', () => {
       '/api/assessments': ok([]),
     });
     render(<AssessmentListScreen />);
-    await waitFor(() => expect(screen.getByText('No Assessments Yet')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Get started in 3 steps')).toBeTruthy());
     // Click the "Create Assessment" button in the empty state card
     const btns = screen.getAllByText('Create Assessment');
     // The last one is in the empty state card
@@ -550,7 +550,7 @@ describe('AssessmentListScreen', () => {
     render(<AssessmentListScreen />);
     // Should still render dashboard layout (catches error, assessments stay empty)
     await waitFor(() => {
-      expect(screen.getByText('No Assessments Yet')).toBeTruthy();
+      expect(screen.getByText('Get started in 3 steps')).toBeTruthy();
     });
   });
 
@@ -563,7 +563,7 @@ describe('AssessmentListScreen', () => {
     vi.stubGlobal('fetch', fn);
     render(<AssessmentListScreen />);
     await waitFor(() => {
-      expect(screen.getByText('No Assessments Yet')).toBeTruthy();
+      expect(screen.getByText('Get started in 3 steps')).toBeTruthy();
     });
     // No org banner should be shown
     expect(screen.queryByText('Manage Team')).toBeNull();

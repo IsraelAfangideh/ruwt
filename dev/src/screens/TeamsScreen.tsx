@@ -115,16 +115,23 @@ export function TeamsScreen() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ packageId: planId, type: 'subscription' }),
       });
+      if (!res.ok) {
+        // Checkout not configured (503) or other error — show demo form
+        setShowDemoForm(true);
+        setCheckoutLoading(null);
+        return;
+      }
       const data = await res.json();
       if (data.url) {
         window.location.href = data.url;
       } else if (data.error === 'Unauthorized') {
         navigation.navigate('Register' as never);
       } else if (data.error) {
-        // e.g. "Create an organization first"
-        alert(data.error);
+        setShowDemoForm(true);
       }
-    } catch {}
+    } catch {
+      setShowDemoForm(true);
+    }
     setCheckoutLoading(null);
   };
 

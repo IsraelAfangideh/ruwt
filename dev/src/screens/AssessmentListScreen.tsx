@@ -240,16 +240,40 @@ export function AssessmentListScreen() {
       {assessments.length === 0 ? (
         <Card style={[styles.empty, { borderStyle: 'dashed', backgroundColor: c.muted + '20' }]}>
           <CardContent style={styles.emptyContent}>
-            <Text style={[styles.emptyTitle, { color: c.text }]}>No Assessments Yet</Text>
-            <Text style={[styles.emptySub, { color: c.textMuted }]}>
-              Create your first assessment to start evaluating candidates.
-            </Text>
+            <Text style={[styles.emptyTitle, { color: c.text }]}>Get started in 3 steps</Text>
+            <View style={styles.stepsRow}>
+              <View style={styles.step}>
+                <Text style={[styles.stepNumber, { color: c.accent }]}>{'\u2460'}</Text>
+                <Text style={[styles.stepLabel, { color: c.text }]}>Create</Text>
+                <Text style={[styles.stepDesc, { color: c.textMuted }]}>Build an assessment in minutes</Text>
+              </View>
+              <Text style={[styles.stepArrow, { color: c.textMuted }]}>{'\u2192'}</Text>
+              <View style={styles.step}>
+                <Text style={[styles.stepNumber, { color: c.accent }]}>{'\u2461'}</Text>
+                <Text style={[styles.stepLabel, { color: c.text }]}>Invite</Text>
+                <Text style={[styles.stepDesc, { color: c.textMuted }]}>Send a link to candidates</Text>
+              </View>
+              <Text style={[styles.stepArrow, { color: c.textMuted }]}>{'\u2192'}</Text>
+              <View style={styles.step}>
+                <Text style={[styles.stepNumber, { color: c.accent }]}>{'\u2462'}</Text>
+                <Text style={[styles.stepLabel, { color: c.text }]}>Review</Text>
+                <Text style={[styles.stepDesc, { color: c.textMuted }]}>See AI profiles, radar charts, and comparisons</Text>
+              </View>
+            </View>
             <Button
-              style={{ marginTop: spacing.md }}
+              style={{ marginTop: spacing.lg }}
               onPress={() => navigation.navigate('AssessmentBuilder' as never)}
             >
-              Create Assessment
+              Create Your First Assessment
             </Button>
+            <Pressable
+              onPress={() => navigation.navigate('AssessmentBuilder' as never)}
+              style={{ marginTop: spacing.sm }}
+            >
+              <Text style={{ fontSize: fontSizes.sm, color: c.accent }}>
+                Or start from a template {'\u2192'}
+              </Text>
+            </Pressable>
           </CardContent>
         </Card>
       ) : (
@@ -404,4 +428,17 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     marginBottom: spacing.lg,
   },
+  stepsRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'center',
+    gap: spacing.md,
+    marginTop: spacing.lg,
+    flexWrap: 'wrap',
+  },
+  step: { alignItems: 'center', maxWidth: 160 },
+  stepNumber: { fontSize: fontSizes['2xl'], marginBottom: spacing.xs },
+  stepLabel: { fontSize: fontSizes.md, fontWeight: '600', marginBottom: 2 },
+  stepDesc: { fontSize: fontSizes.xs, textAlign: 'center' },
+  stepArrow: { fontSize: fontSizes.xl, marginTop: spacing.md },
 });
