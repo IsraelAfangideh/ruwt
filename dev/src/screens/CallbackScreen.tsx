@@ -26,10 +26,16 @@ export function CallbackScreen() {
     const supabase = createClient();
 
     const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
-    const redirectTo =
+    const ALLOWED_ROUTES = new Set([
+      'Dashboard', 'Challenges', 'Leaderboard', 'Profile', 'Settings',
+      'Arena', 'DailyChallenge', 'Assessments', 'AssessmentBuilder',
+      'Teams', 'OrgManagement', 'Replay', 'Share', 'Certificate',
+    ]);
+    const rawRedirect =
       (typeof window !== 'undefined' && localStorage.getItem('oauth_redirect')) ||
       urlParams?.get('redirectTo') ||
       'Dashboard';
+    const redirectTo = ALLOWED_ROUTES.has(rawRedirect) ? rawRedirect : 'Dashboard';
 
     if (typeof window !== 'undefined') {
       localStorage.removeItem('oauth_redirect');
@@ -110,8 +116,8 @@ export function CallbackScreen() {
   }, [navigation]);
 
   const handlePasswordReset = async () => {
-    if (newPassword.length < 6) {
-      setResetError('Password must be at least 6 characters');
+    if (newPassword.length < 8) {
+      setResetError('Password must be at least 8 characters');
       return;
     }
     if (newPassword !== confirmPassword) {
@@ -187,7 +193,7 @@ export function CallbackScreen() {
                     label="New password"
                     aria-describedby="reset-password-hint"
                   />
-                  <Text nativeID="reset-password-hint" style={[styles.hint, { color: c.textMuted }]}>Must be at least 6 characters</Text>
+                  <Text nativeID="reset-password-hint" style={[styles.hint, { color: c.textMuted }]}>Must be at least 8 characters</Text>
                 </View>
 
                 <View style={styles.inputGroup}>

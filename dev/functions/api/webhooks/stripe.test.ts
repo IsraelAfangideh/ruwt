@@ -40,7 +40,7 @@ async function signPayload(payload: string, secret: string, timestamp: string): 
 // ---------------------------------------------------------------------------
 
 const WEBHOOK_SECRET = 'whsec_test_secret_123';
-const TIMESTAMP = '1700000000';
+const TIMESTAMP = String(Math.floor(Date.now() / 1000));
 
 function makeEnv(overrides: Record<string, string> = {}) {
   return {
@@ -208,6 +208,22 @@ describe('POST /api/webhooks/stripe', () => {
 
       expect(res.status).toBe(400);
       expect(json.error).toBe('Invalid signature');
+    });
+
+    it('returns 400 when webhook timestamp is stale (replay protection)', async () => {
+      const staleTimestamp = String(Math.floor(Date.now() / 1000) - 600); // 10 min ago
+      const request = await makeSignedRequest(
+        makeEvent('checkout.session.completed', { payment_status: 'paid', metadata: { userId: 'u1', credits: '100' } }),
+        WEBHOOK_SECRET,
+        staleTimestamp,
+      );
+      const ctx = { request, env: makeEnv() };
+
+      const res = await onRequestPost(ctx);
+      const json = await res.json() as { error: string };
+
+      expect(res.status).toBe(400);
+      expect(json.error).toBe('Webhook timestamp too old');
     });
 
     it('returns 400 when body is not valid JSON (after signature passes)', async () => {

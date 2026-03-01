@@ -63,16 +63,16 @@ describe('checkRateLimit', () => {
     expect(result.retryAfter).toBeGreaterThanOrEqual(1);
   });
 
-  it('uses public read tier (60 req/60s) for /api/challenges', async () => {
-    mockDb = { prepare: makePrepare(59) };
+  it('uses public read tier (30 req/60s) for /api/challenges', async () => {
+    mockDb = { prepare: makePrepare(29) };
 
     const result = await checkRateLimit(mockDb as unknown as D1Database, 'ip:1.2.3.4', '/api/challenges');
 
     expect(result.allowed).toBe(true);
   });
 
-  it('uses default tier (120 req/60s) for unmatched /api/ routes', async () => {
-    mockDb = { prepare: makePrepare(119) };
+  it('uses default tier (60 req/60s) for unmatched /api/ routes', async () => {
+    mockDb = { prepare: makePrepare(59) };
 
     const result = await checkRateLimit(mockDb as unknown as D1Database, 'user:u1', '/api/some-unknown');
 
@@ -102,9 +102,7 @@ describe('checkRateLimit', () => {
     expect(runMock).toHaveBeenCalled();
   });
 
-  it('triggers probabilistic cleanup when random < 0.01', async () => {
-    vi.spyOn(Math, 'random').mockReturnValue(0.005); // < 0.01 threshold
-
+  it('triggers deterministic cleanup when currentCount is a multiple of 20', async () => {
     const deleteMock = vi.fn().mockResolvedValue(undefined);
     let callIndex = 0;
     mockDb = {
@@ -113,7 +111,7 @@ describe('checkRateLimit', () => {
         const currentCall = callIndex;
         return {
           bind: vi.fn().mockReturnValue({
-            first: vi.fn().mockResolvedValue(currentCall === 1 ? { cnt: 0 } : null),
+            first: vi.fn().mockResolvedValue(currentCall === 1 ? { cnt: 20 } : null),
             run: vi.fn().mockImplementation(() => {
               if (currentCall === 3) {
                 // cleanup DELETE
@@ -206,7 +204,7 @@ describe('checkRateLimit', () => {
 
   it('shares rate limit bucket for sub-paths of the same tier route', async () => {
     // /api/challenges and /api/challenges/abc should share the same bucket
-    mockDb = { prepare: makePrepare(59) };
+    mockDb = { prepare: makePrepare(29) };
 
     const result = await checkRateLimit(mockDb as unknown as D1Database, 'ip:1.2.3.4', '/api/challenges/abc');
 

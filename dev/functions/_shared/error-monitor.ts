@@ -37,11 +37,21 @@ export interface Diagnosis {
  *   }
  * }
  */
+const SENSITIVE_KEYS_REGEX = /("(?:password|token|secret|authorization|api_key|apiKey|credit_card|ssn|access_token|refresh_token)")\s*:\s*"[^"]*"/gi;
+
+function sanitizeBody(body: string | undefined): string | undefined {
+  if (!body) return body;
+  return body.replace(SENSITIVE_KEYS_REGEX, '$1: "[REDACTED]"');
+}
+
 export async function logError(
   db: D1Database,
   env: { RESEND_API_KEY?: string; ERROR_ALERT_EMAIL?: string; SENTRY_DSN?: string },
   info: ErrorInfo,
 ): Promise<void> {
+  // Sanitize request body to prevent logging sensitive fields
+  info.requestBody = sanitizeBody(info.requestBody);
+
   const id = crypto.randomUUID();
   const diagnosis = diagnoseError(info);
 

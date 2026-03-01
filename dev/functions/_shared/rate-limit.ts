@@ -55,7 +55,7 @@ const TIERS: RateLimitTier[] = [
   {
     // Public read endpoints — keyed by IP, not user
     routes: ['/api/challenges', '/api/leaderboard', '/api/users/'],
-    limit: 60,
+    limit: 30,
     windowSeconds: 60,
   },
 ];
@@ -63,7 +63,7 @@ const TIERS: RateLimitTier[] = [
 /** Default tier for any authenticated /api/ endpoint not matched above. */
 const DEFAULT_TIER: RateLimitTier = {
   routes: [],
-  limit: 120,
+  limit: 60,
   windowSeconds: 60,
 };
 
@@ -166,9 +166,9 @@ export async function checkRateLimit(
     .bind(key, endpoint, now)
     .run();
 
-  // Probabilistic cleanup: ~1% of requests trigger a purge of expired entries.
+  // Deterministic cleanup: every 20th request purges expired entries.
   // Only deletes rows older than 2x the max window to avoid contention.
-  if (Math.random() < 0.01) {
+  if (currentCount > 0 && currentCount % 20 === 0) {
     const cutoff = now - 120; // 2 minutes (2x the 60s window)
     db.prepare('DELETE FROM rate_limits WHERE ts < ?')
       .bind(cutoff)

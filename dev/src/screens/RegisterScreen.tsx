@@ -201,7 +201,7 @@ export function RegisterScreen() {
               label="Password"
               aria-describedby="register-password-hint"
             />
-            <Text nativeID="register-password-hint" style={[styles.hint, { color: c.textMuted }]}>Must be at least 6 characters</Text>
+            <Text nativeID="register-password-hint" style={[styles.hint, { color: c.textMuted }]}>Must be at least 8 characters</Text>
           </View>
 
           <Button onPress={handleRegister} disabled={loading} fullWidth size="lg" testID="register-button">

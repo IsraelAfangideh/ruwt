@@ -86,7 +86,7 @@ describe('RegisterScreen', () => {
 
   it('renders password hint', () => {
     render(<RegisterScreen />);
-    expect(screen.getAllByText(/at least 6 characters/).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText(/at least 8 characters/).length).toBeGreaterThanOrEqual(1);
   });
 
   it('shows BrandPanel on desktop', () => {

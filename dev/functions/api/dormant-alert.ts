@@ -12,8 +12,16 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
 
   const authHeader = request.headers.get('Authorization');
   const token = authHeader?.replace('Bearer ', '');
+  const cronTimestamp = request.headers.get('X-Cron-Timestamp');
   if (!env.CRON_SECRET || token !== env.CRON_SECRET) {
     return Response.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+  // Reject requests with stale timestamps (>5 min) to prevent replay attacks
+  if (cronTimestamp) {
+    const ts = parseInt(cronTimestamp, 10);
+    if (Number.isFinite(ts) && Math.abs(Date.now() / 1000 - ts) > 300) {
+      return Response.json({ error: 'Request expired' }, { status: 401 });
+    }
   }
 
   try {

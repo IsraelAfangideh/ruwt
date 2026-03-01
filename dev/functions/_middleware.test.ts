@@ -56,9 +56,9 @@ const SECURITY_HEADER_KEYS = [
   'X-Content-Type-Options',
   'X-Frame-Options',
   'Referrer-Policy',
-  'X-XSS-Protection',
   'Permissions-Policy',
   'Strict-Transport-Security',
+  'Content-Security-Policy',
 ];
 
 function makeEnv(): Env {

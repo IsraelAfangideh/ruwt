@@ -61,14 +61,26 @@ export async function onRequestPost(context: {
     return Response.json({ error: 'Invalid signature' }, { status: 400 });
   }
 
-  let event: { type: string; data: { object: Record<string, unknown> } };
+  let event: { id?: string; type: string; data: { object: Record<string, unknown> } };
   try {
     event = JSON.parse(body) as {
+      id?: string;
       type: string;
       data: { object: Record<string, unknown> };
     };
   } catch {
     return Response.json({ error: 'Invalid JSON' }, { status: 400 });
+  }
+
+  // Replay protection: reject events with timestamps older than 5 minutes
+  const sigParts = signature.split(',');
+  const tPart = sigParts.find((p) => p.startsWith('t='));
+  if (tPart) {
+    const eventTimestamp = parseInt(tPart.slice(2), 10);
+    const now = Math.floor(Date.now() / 1000);
+    if (Math.abs(now - eventTimestamp) > 300) {
+      return Response.json({ error: 'Webhook timestamp too old' }, { status: 400 });
+    }
   }
 
   const db = getDb(context.env);

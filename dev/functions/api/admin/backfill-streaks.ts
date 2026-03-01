@@ -9,11 +9,11 @@ import { getUser } from '../../_shared/auth';
 import { profiles, attempts } from '../../../drizzle/schema.d1';
 
 export async function onRequestPost(context: { request: Request; env: Env }) {
-  const user = await getUser(context);
+  const user = await getUser(context.request, context.env);
   if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const adminIds = context.env.ADMIN_USER_IDS?.split(',').map((id) => id.trim()) ?? [];
-  if (!adminIds.includes(user.id)) {
+  const adminIds = context.env.ADMIN_USER_IDS?.split(',').map((id) => id.trim()).filter(Boolean) ?? [];
+  if (adminIds.length === 0 || !adminIds.includes(user.id)) {
     return Response.json({ error: 'Forbidden' }, { status: 403 });
   }
 

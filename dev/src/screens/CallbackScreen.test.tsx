@@ -358,7 +358,7 @@ describe('CallbackScreen', () => {
     fireEvent.click(screen.getByText('Update password'));
 
     await waitFor(() => {
-      expect(screen.getAllByText('Password must be at least 6 characters').length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText('Password must be at least 8 characters').length).toBeGreaterThanOrEqual(1);
     });
   });
 
