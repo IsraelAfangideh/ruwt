@@ -113,7 +113,7 @@ describe('GET /api/challenges', () => {
     expect(json[1].stats.avgCost).toBeNull();
   });
 
-  it('strips hiddenTestCases from response but includes hiddenTestCount', async () => {
+  it('strips hiddenTestCases, testCases, and starterCode from response', async () => {
     mockGetUser.mockResolvedValue(null);
     queryResults = [
       [makeChallengeRow({ hiddenTestCases: '[{"input":[],"expected":"x"},{"input":[],"expected":"y"}]' })],
@@ -123,7 +123,10 @@ describe('GET /api/challenges', () => {
     const json = await res.json();
 
     expect(json[0].hiddenTestCases).toBeUndefined();
+    expect(json[0].testCases).toBeUndefined();
+    expect(json[0].starterCode).toBeUndefined();
     expect(json[0].hiddenTestCount).toBe(2);
+    expect(json[0].testCount).toBe(1); // from default makeChallengeRow
   });
 
   it('returns hiddenTestCount=0 when hiddenTestCases is null', async () => {

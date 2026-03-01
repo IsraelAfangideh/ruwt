@@ -103,11 +103,18 @@ export async function onRequestGet(context: { env: Env; request: Request }) {
         if (ch.hiddenTestCases) {
           try { hiddenTestCount = JSON.parse(ch.hiddenTestCases).length; } catch {}
         }
-        const { hiddenTestCases: _stripped, ...rest } = ch;
+        let testCount = 0;
+        if (ch.testCases) {
+          try { testCount = JSON.parse(ch.testCases).length; } catch {}
+        }
+        // Strip testCases, hiddenTestCases, and starterCode from listing — not needed
+        // for browse page and exposes solution hints. Available via /api/challenges/:id.
+        const { hiddenTestCases: _h, testCases: _t, starterCode: _s, ...rest } = ch;
         const progress = userId ? userProgress[ch.id] : undefined;
         return {
           ...rest,
           tags: ch.tags ? (() => { try { return JSON.parse(ch.tags); } catch { return []; } })() : [],
+          testCount,
           hiddenTestCount,
           stats: {
             solvers: Number(ch.solvers) || 0,
