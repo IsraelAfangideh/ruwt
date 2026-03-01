@@ -126,4 +126,140 @@ describe('DailyChallengeScreen', () => {
     fireEvent.click(screen.getByText("Start Today's Challenge"));
     expect(mockNavigate).toHaveBeenCalledWith('Arena', { challengeId: 'dc1' });
   });
+
+  it('handles fetch returning res.ok=false gracefully (line 58)', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: false,
+      json: () => Promise.resolve({ error: 'Server error' }),
+    }));
+    const { container } = render(<DailyChallengeScreen />);
+    await waitFor(() => {
+      expect(container.querySelector('[data-testid="dashboard-layout"]')).not.toBeNull();
+    });
+  });
+
+  it('handles fetch network error in catch block (line 63)', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('Network error')));
+    const { container } = render(<DailyChallengeScreen />);
+    await waitFor(() => {
+      expect(container.querySelector('[data-testid="dashboard-layout"]')).not.toBeNull();
+    });
+  });
+
+  it('renders "No daily challenge available" when challenge is null (lines 166-170)', async () => {
+    const noChallenge = { ...mockDailyData, challenge: null, leaderboard: [] };
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve(noChallenge),
+    }));
+    render(<DailyChallengeScreen />);
+    await waitFor(() => {
+      expect(screen.getByText('No daily challenge available.')).toBeTruthy();
+    });
+  });
+
+  it('renders category badge when challenge has a category (line 114)', async () => {
+    render(<DailyChallengeScreen />);
+    await waitFor(() => {
+      expect(screen.getByText('prompt efficiency')).toBeTruthy();
+    });
+  });
+
+  it('does not render category badge when category is null (line 114)', async () => {
+    const noCat = { ...mockDailyData, challenge: { ...mockDailyData.challenge, category: null } };
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve(noCat),
+    }));
+    render(<DailyChallengeScreen />);
+    await waitFor(() => {
+      expect(screen.getByText('easy')).toBeTruthy();
+    });
+    // Category badge should not appear
+    expect(screen.queryByText('prompt efficiency')).toBeNull();
+  });
+
+  it('formats cost with toFixed(2) for costs >= $0.01 (line 87)', async () => {
+    const highCost = {
+      ...mockDailyData,
+      leaderboard: [
+        { rank: 1, user: { id: 'u2', name: 'Alice', avatarUrl: null }, attemptId: 'a1', cost: 150000, tokens: 500, submittedAt: null },
+      ],
+    };
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve(highCost),
+    }));
+    render(<DailyChallengeScreen />);
+    await waitFor(() => {
+      expect(screen.getByText('$15.00')).toBeTruthy();
+    });
+  });
+
+  it('formats cost with toFixed(4) for costs < $0.01 (line 87)', async () => {
+    const lowCost = {
+      ...mockDailyData,
+      leaderboard: [
+        { rank: 1, user: { id: 'u2', name: 'Alice', avatarUrl: null }, attemptId: 'a1', cost: 50, tokens: 500, submittedAt: null },
+      ],
+    };
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve(lowCost),
+    }));
+    render(<DailyChallengeScreen />);
+    await waitFor(() => {
+      expect(screen.getByText('$0.0050')).toBeTruthy();
+    });
+  });
+
+  it('renders #N for leaderboard ranks > 3 instead of medals (line 151-152)', async () => {
+    const ranked = {
+      ...mockDailyData,
+      leaderboard: [
+        { rank: 1, user: { id: 'u2', name: 'Alice', avatarUrl: null }, attemptId: 'a1', cost: 1000, tokens: 500, submittedAt: null },
+        { rank: 5, user: { id: 'u3', name: 'Bob', avatarUrl: null }, attemptId: 'a2', cost: 2000, tokens: 800, submittedAt: null },
+      ],
+    };
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve(ranked),
+    }));
+    render(<DailyChallengeScreen />);
+    await waitFor(() => {
+      expect(screen.getByText('#5')).toBeTruthy();
+    });
+  });
+
+  it('renders empty leaderboard message when no entries (line 139-146)', async () => {
+    const empty = { ...mockDailyData, leaderboard: [] };
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve(empty),
+    }));
+    render(<DailyChallengeScreen />);
+    await waitFor(() => {
+      expect(screen.getByText(/Be the first to solve/)).toBeTruthy();
+    });
+  });
+
+  it('does not start countdown interval when secondsUntilNext is 0 (line 71)', async () => {
+    const noCountdown = { ...mockDailyData, secondsUntilNext: 0 };
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve(noCountdown),
+    }));
+    render(<DailyChallengeScreen />);
+    await waitFor(() => {
+      expect(screen.getByText(/0h 0m 0s/)).toBeTruthy();
+    });
+  });
+
+  it('returns null when user is null after loading (line 98)', async () => {
+    mockGetUser.mockResolvedValueOnce({ data: { user: null } });
+    const { container } = render(<DailyChallengeScreen />);
+    await waitFor(() => {
+      expect(mockReset).toHaveBeenCalled();
+    });
+  });
 });

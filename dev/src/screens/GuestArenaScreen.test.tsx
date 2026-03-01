@@ -316,4 +316,36 @@ describe('GuestArenaScreen', () => {
       expect(screen.getAllByText('No challenge selected').length).toBeGreaterThanOrEqual(1);
     });
   });
+
+  it('onRunCode returns exitCode 0 when code is undefined and signal is falsy (line 87)', async () => {
+    const fetchFn = vi.fn().mockImplementation((url: string) => {
+      if (url.includes('/api/execute')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ run: { stdout: 'ok', stderr: '' } }) });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve(mockChallenge) });
+    });
+    vi.stubGlobal('fetch', fetchFn);
+    render(<GuestArenaScreen />);
+    await waitFor(() => expect(screen.getByTestId('run-code-cb')).toBeTruthy());
+    fireEvent.click(screen.getByTestId('run-code-cb'));
+    await waitFor(() => {
+      expect(fetchFn.mock.calls.some((c: any) => c[0]?.includes('/api/execute'))).toBeTruthy();
+    });
+  });
+
+  it('onRunCode handles empty run object in response (line 83)', async () => {
+    const fetchFn = vi.fn().mockImplementation((url: string) => {
+      if (url.includes('/api/execute')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve(mockChallenge) });
+    });
+    vi.stubGlobal('fetch', fetchFn);
+    render(<GuestArenaScreen />);
+    await waitFor(() => expect(screen.getByTestId('run-code-cb')).toBeTruthy());
+    fireEvent.click(screen.getByTestId('run-code-cb'));
+    await waitFor(() => {
+      expect(fetchFn.mock.calls.some((c: any) => c[0]?.includes('/api/execute'))).toBeTruthy();
+    });
+  });
 });

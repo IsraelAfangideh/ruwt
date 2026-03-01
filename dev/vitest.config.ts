@@ -34,6 +34,7 @@ export default defineConfig({
         'src/components/ui/index.ts',
         'src/theme/index.ts',
         'src/navigation/types.ts',
+        'src/test/helpers.ts',
       ],
     },
   },

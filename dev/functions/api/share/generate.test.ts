@@ -117,4 +117,49 @@ describe('POST /api/share/generate', () => {
     const res = await onRequestPost(makeCtx({ attemptId: 'att-1' }));
     expect(res.status).toBe(500);
   });
+
+  it('returns rank=0 when rank query returns empty (line 67 fallback)', async () => {
+    mockGetUser.mockResolvedValue(FAKE_USER);
+    const attempt = { id: 'att-1', userId: FAKE_USER.id, status: 'passed', challengeId: 'ch-1', totalCost: 500, passedTests: 5, totalTests: 5 };
+    const challenge = { title: 'T', difficulty: 'easy', category: 'c' };
+
+    let selectCall = 0;
+    const db = {
+      select: vi.fn().mockImplementation(() => {
+        selectCall++;
+        if (selectCall === 1) return { from: vi.fn().mockReturnThis(), where: vi.fn().mockReturnThis(), limit: vi.fn().mockResolvedValue([attempt]) };
+        if (selectCall === 2) return { from: vi.fn().mockReturnThis(), where: vi.fn().mockReturnThis(), limit: vi.fn().mockResolvedValue([challenge]) };
+        // rank query returns empty
+        return { from: vi.fn().mockReturnThis(), where: vi.fn().mockReturnThis(), limit: vi.fn().mockResolvedValue([]) };
+      }),
+    };
+    mockGetDb.mockReturnValue(db);
+
+    const res = await onRequestPost(makeCtx({ attemptId: 'att-1' }));
+    const json = await res.json();
+    expect(res.status).toBe(200);
+    expect(json.rank).toBe(0);
+  });
+
+  it('returns challenge=null when challenge not found (line 79)', async () => {
+    mockGetUser.mockResolvedValue(FAKE_USER);
+    const attempt = { id: 'att-1', userId: FAKE_USER.id, status: 'passed', challengeId: 'ch-missing', totalCost: 500, passedTests: 5, totalTests: 5 };
+
+    let selectCall = 0;
+    const db = {
+      select: vi.fn().mockImplementation(() => {
+        selectCall++;
+        if (selectCall === 1) return { from: vi.fn().mockReturnThis(), where: vi.fn().mockReturnThis(), limit: vi.fn().mockResolvedValue([attempt]) };
+        // challenge not found
+        if (selectCall === 2) return { from: vi.fn().mockReturnThis(), where: vi.fn().mockReturnThis(), limit: vi.fn().mockResolvedValue([]) };
+        return { from: vi.fn().mockReturnThis(), where: vi.fn().mockReturnThis(), limit: vi.fn().mockResolvedValue([{ rank: 1 }]) };
+      }),
+    };
+    mockGetDb.mockReturnValue(db);
+
+    const res = await onRequestPost(makeCtx({ attemptId: 'att-1' }));
+    const json = await res.json();
+    expect(res.status).toBe(200);
+    expect(json.challenge).toBeNull();
+  });
 });

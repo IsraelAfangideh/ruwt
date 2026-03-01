@@ -125,4 +125,38 @@ describe('DashboardLayout', () => {
     fireEvent.click(logoLink!);
     expect(mockNavigate).toHaveBeenCalledWith('Dashboard');
   });
+
+  it('handles profile fetch returning non-ok (line 27 false branch)', async () => {
+    vi.spyOn(global, 'fetch').mockResolvedValue({
+      ok: false,
+      json: async () => ({}),
+    } as Response);
+
+    render(
+      <DashboardLayout user={mockUser}>
+        <span>Content</span>
+      </DashboardLayout>
+    );
+    // Should still render without crashing, using default 'individual' account type
+    expect(screen.getByText('Content')).toBeTruthy();
+  });
+
+  it('handles profile with missing accountType (line 29 false branch)', async () => {
+    vi.spyOn(global, 'fetch').mockResolvedValue({
+      ok: true,
+      json: async () => ({}),
+    } as Response);
+
+    render(
+      <DashboardLayout user={mockUser}>
+        <span>Content</span>
+      </DashboardLayout>
+    );
+    // Should render with default 'individual' — no BalanceTicker
+    expect(screen.getByText('Content')).toBeTruthy();
+    // BalanceTicker (Credits) should NOT appear for individual
+    await waitFor(() => {
+      expect(screen.queryByText('Credits')).toBeNull();
+    });
+  });
 });

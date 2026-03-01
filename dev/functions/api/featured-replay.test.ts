@@ -166,4 +166,73 @@ describe('GET /api/featured-replay (public)', () => {
     expect(res.status).toBe(200);
     expect(await res.json()).toBeNull();
   });
+
+  it('uses email prefix as solver name when name is missing (line 86)', async () => {
+    const attempt = { attemptId: 'att-1', userId: 'u1', totalCost: 100, inputTokens: 10, outputTokens: 20, submittedAt: 't', createdAt: 't', challengeTitle: 'T', challengeDifficulty: 'easy', challengeCategory: 'c' };
+    const solver = { name: null, email: 'alice@test.com', avatarUrl: null };
+    const msgs = [{ role: 'user', content: 'Hi', model: null, inputTokens: 5, outputTokens: 0, cost: 0, createdAt: 't', sequence: 1 }];
+
+    let selectCall = 0;
+    const db = {
+      select: vi.fn().mockImplementation(() => {
+        selectCall++;
+        if (selectCall === 1) return { from: vi.fn().mockReturnThis(), innerJoin: vi.fn().mockReturnThis(), where: vi.fn().mockReturnThis(), orderBy: vi.fn().mockReturnThis(), limit: vi.fn().mockResolvedValue([attempt]) };
+        if (selectCall === 2) return { from: vi.fn().mockReturnThis(), where: vi.fn().mockReturnThis(), limit: vi.fn().mockResolvedValue([solver]) };
+        if (selectCall === 3) return { from: vi.fn().mockReturnThis(), where: vi.fn().mockReturnThis(), orderBy: vi.fn().mockResolvedValue(msgs) };
+        return { from: vi.fn().mockReturnThis(), where: vi.fn().mockReturnThis(), limit: vi.fn().mockResolvedValue([]), orderBy: vi.fn().mockResolvedValue([]) };
+      }),
+    };
+    mockGetDb.mockReturnValue(db);
+
+    const res = await onRequestGet(makeCtx());
+    const json = await res.json();
+    expect(json.solver.name).toBe('alice');
+  });
+
+  it('uses Anonymous as solver name when solver profile is missing (line 86)', async () => {
+    const attempt = { attemptId: 'att-1', userId: 'u1', totalCost: 100, inputTokens: 10, outputTokens: 20, submittedAt: 't', createdAt: 't', challengeTitle: 'T', challengeDifficulty: 'easy', challengeCategory: 'c' };
+    const msgs = [{ role: 'user', content: 'Hi', model: null, inputTokens: 5, outputTokens: 0, cost: 0, createdAt: 't', sequence: 1 }];
+
+    let selectCall = 0;
+    const db = {
+      select: vi.fn().mockImplementation(() => {
+        selectCall++;
+        if (selectCall === 1) return { from: vi.fn().mockReturnThis(), innerJoin: vi.fn().mockReturnThis(), where: vi.fn().mockReturnThis(), orderBy: vi.fn().mockReturnThis(), limit: vi.fn().mockResolvedValue([attempt]) };
+        if (selectCall === 2) return { from: vi.fn().mockReturnThis(), where: vi.fn().mockReturnThis(), limit: vi.fn().mockResolvedValue([]) }; // no solver
+        if (selectCall === 3) return { from: vi.fn().mockReturnThis(), where: vi.fn().mockReturnThis(), orderBy: vi.fn().mockResolvedValue(msgs) };
+        return { from: vi.fn().mockReturnThis(), where: vi.fn().mockReturnThis(), limit: vi.fn().mockResolvedValue([]), orderBy: vi.fn().mockResolvedValue([]) };
+      }),
+    };
+    mockGetDb.mockReturnValue(db);
+
+    const res = await onRequestGet(makeCtx());
+    const json = await res.json();
+    expect(json.solver.name).toBe('Anonymous');
+  });
+
+  it('correctly counts total cost from messages with null costs (line 68)', async () => {
+    const attempt = { attemptId: 'att-1', userId: 'u1', totalCost: 200, inputTokens: 30, outputTokens: 40, submittedAt: 't', createdAt: 't', challengeTitle: 'T', challengeDifficulty: 'easy', challengeCategory: 'c' };
+    const solver = { name: 'Bob', email: 'b@b.com', avatarUrl: null };
+    const msgs = [
+      { role: 'user', content: 'Hi', model: null, inputTokens: 5, outputTokens: 0, cost: null, createdAt: 't', sequence: 1 },
+      { role: 'assistant', content: 'Hello', model: 'gpt-4', inputTokens: 10, outputTokens: 20, cost: 100, createdAt: 't', sequence: 2 },
+    ];
+
+    let selectCall = 0;
+    const db = {
+      select: vi.fn().mockImplementation(() => {
+        selectCall++;
+        if (selectCall === 1) return { from: vi.fn().mockReturnThis(), innerJoin: vi.fn().mockReturnThis(), where: vi.fn().mockReturnThis(), orderBy: vi.fn().mockReturnThis(), limit: vi.fn().mockResolvedValue([attempt]) };
+        if (selectCall === 2) return { from: vi.fn().mockReturnThis(), where: vi.fn().mockReturnThis(), limit: vi.fn().mockResolvedValue([solver]) };
+        if (selectCall === 3) return { from: vi.fn().mockReturnThis(), where: vi.fn().mockReturnThis(), orderBy: vi.fn().mockResolvedValue(msgs) };
+        return { from: vi.fn().mockReturnThis(), where: vi.fn().mockReturnThis(), limit: vi.fn().mockResolvedValue([]), orderBy: vi.fn().mockResolvedValue([]) };
+      }),
+    };
+    mockGetDb.mockReturnValue(db);
+
+    const res = await onRequestGet(makeCtx());
+    const json = await res.json();
+    // null cost should be treated as 0: 0 + 100 = 100
+    expect(json.stats.totalCost).toBe(100);
+  });
 });

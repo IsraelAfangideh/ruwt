@@ -162,6 +162,61 @@ describe('GET /api/og/:attemptId (public OG image)', () => {
     expect(mockCtx.free).toHaveBeenCalled();
   });
 
+  it('formats cost with 2 decimal places when >= 0.01 (line 60 false branch)', async () => {
+    const attempt = { id: 'att-1', status: 'passed', totalCost: 500000, passedTests: 5, totalTests: 5, userId: 'u-1', challengeId: 'ch-1' };
+    const challenge = { title: 'Expensive', difficulty: 'hard', category: 'debugging' };
+    const solver = { name: 'Bob' };
+
+    let selectCall = 0;
+    const db = {
+      select: vi.fn().mockImplementation(() => {
+        selectCall++;
+        if (selectCall === 1) return { from: vi.fn().mockReturnThis(), where: vi.fn().mockReturnThis(), limit: vi.fn().mockResolvedValue([attempt]) };
+        if (selectCall === 2) return { from: vi.fn().mockReturnThis(), where: vi.fn().mockReturnThis(), limit: vi.fn().mockResolvedValue([challenge]) };
+        if (selectCall === 3) return { from: vi.fn().mockReturnThis(), where: vi.fn().mockReturnThis(), limit: vi.fn().mockResolvedValue([solver]) };
+        if (selectCall === 4) return { from: vi.fn().mockReturnThis(), where: vi.fn().mockReturnThis(), limit: vi.fn().mockResolvedValue([{ rank: 1 }]) };
+        return { from: vi.fn().mockReturnThis(), where: vi.fn().mockReturnThis(), limit: vi.fn().mockResolvedValue([{ total: 5 }]) };
+      }),
+    };
+    mockGetDb.mockReturnValue(db);
+
+    await onRequestGet(makeCtx('att-1'));
+    // 500000 / 10000 = 50.00 which is >= 0.01, so should use 2 decimal places
+    expect(mockBuildShareSvg).toHaveBeenCalledWith(expect.objectContaining({
+      costStr: '$50.00',
+    }));
+  });
+
+  it('uses fallback values when challenge is null (line 63-69)', async () => {
+    const attempt = { id: 'att-1', status: 'passed', totalCost: 100, passedTests: null, totalTests: null, userId: 'u-1', challengeId: 'ch-missing' };
+
+    let selectCall = 0;
+    const db = {
+      select: vi.fn().mockImplementation(() => {
+        selectCall++;
+        if (selectCall === 1) return { from: vi.fn().mockReturnThis(), where: vi.fn().mockReturnThis(), limit: vi.fn().mockResolvedValue([attempt]) };
+        // challenge not found
+        if (selectCall === 2) return { from: vi.fn().mockReturnThis(), where: vi.fn().mockReturnThis(), limit: vi.fn().mockResolvedValue([]) };
+        // solver not found
+        if (selectCall === 3) return { from: vi.fn().mockReturnThis(), where: vi.fn().mockReturnThis(), limit: vi.fn().mockResolvedValue([]) };
+        if (selectCall === 4) return { from: vi.fn().mockReturnThis(), where: vi.fn().mockReturnThis(), limit: vi.fn().mockResolvedValue([]) };
+        return { from: vi.fn().mockReturnThis(), where: vi.fn().mockReturnThis(), limit: vi.fn().mockResolvedValue([]) };
+      }),
+    };
+    mockGetDb.mockReturnValue(db);
+
+    await onRequestGet(makeCtx('att-1'));
+    expect(mockBuildShareSvg).toHaveBeenCalledWith(expect.objectContaining({
+      challengeTitle: 'Challenge',
+      solverName: 'A developer',
+      difficulty: 'medium',
+      rank: 0,
+      totalSolvers: 0,
+      passedTests: 0,
+      totalTests: 0,
+    }));
+  });
+
   it('falls back to SVG when resvg-wasm returns null pngData', async () => {
     const attempt = { id: 'att-1', status: 'passed', totalCost: 5000, passedTests: 5, totalTests: 5, userId: 'u-1', challengeId: 'ch-1' };
     const challenge = { title: 'FizzBuzz', difficulty: 'easy', category: 'prompt_efficiency' };

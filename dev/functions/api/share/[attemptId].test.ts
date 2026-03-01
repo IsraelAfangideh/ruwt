@@ -100,4 +100,73 @@ describe('GET /api/share/:attemptId (public)', () => {
     const res = await onRequestGet(makeCtx('att-1'));
     expect(res.status).toBe(500);
   });
+
+  it('returns rank=0 when rank query returns empty (line 79 fallback)', async () => {
+    const attempt = { id: 'att-1', status: 'passed', totalCost: 500, passedTests: 5, totalTests: 5, userId: 'u-1', challengeId: 'ch-1', submittedAt: '2024-01-01' };
+    const challenge = { id: 'ch-1', title: 'FizzBuzz', difficulty: 'easy', category: 'prompt_efficiency', language: 'javascript' };
+    const solver = { name: 'Alice', username: 'alice', avatarUrl: null };
+
+    let selectCall = 0;
+    const db = {
+      select: vi.fn().mockImplementation(() => {
+        selectCall++;
+        if (selectCall === 1) return { from: vi.fn().mockReturnThis(), where: vi.fn().mockReturnThis(), limit: vi.fn().mockResolvedValue([attempt]) };
+        if (selectCall === 2) return { from: vi.fn().mockReturnThis(), where: vi.fn().mockReturnThis(), limit: vi.fn().mockResolvedValue([challenge]) };
+        if (selectCall === 3) return { from: vi.fn().mockReturnThis(), where: vi.fn().mockReturnThis(), limit: vi.fn().mockResolvedValue([solver]) };
+        // rank query returns empty → fallback to 0
+        return { from: vi.fn().mockReturnThis(), where: vi.fn().mockReturnThis(), limit: vi.fn().mockResolvedValue([]) };
+      }),
+    };
+    mockGetDb.mockReturnValue(db);
+
+    const res = await onRequestGet(makeCtx('att-1'));
+    const json = await res.json();
+    expect(res.status).toBe(200);
+    expect(json.rank).toBe(0);
+  });
+
+  it('returns solver=null when profile not found (line 81 false branch)', async () => {
+    const attempt = { id: 'att-1', status: 'passed', totalCost: 500, passedTests: 5, totalTests: 5, userId: 'u-1', challengeId: 'ch-1', submittedAt: '2024-01-01' };
+    const challenge = { id: 'ch-1', title: 'FizzBuzz', difficulty: 'easy', category: 'prompt_efficiency', language: 'javascript' };
+
+    let selectCall = 0;
+    const db = {
+      select: vi.fn().mockImplementation(() => {
+        selectCall++;
+        if (selectCall === 1) return { from: vi.fn().mockReturnThis(), where: vi.fn().mockReturnThis(), limit: vi.fn().mockResolvedValue([attempt]) };
+        if (selectCall === 2) return { from: vi.fn().mockReturnThis(), where: vi.fn().mockReturnThis(), limit: vi.fn().mockResolvedValue([challenge]) };
+        // profile query returns empty → solver is undefined
+        if (selectCall === 3) return { from: vi.fn().mockReturnThis(), where: vi.fn().mockReturnThis(), limit: vi.fn().mockResolvedValue([]) };
+        return { from: vi.fn().mockReturnThis(), where: vi.fn().mockReturnThis(), limit: vi.fn().mockResolvedValue([{ rank: 1 }]) };
+      }),
+    };
+    mockGetDb.mockReturnValue(db);
+
+    const res = await onRequestGet(makeCtx('att-1'));
+    const json = await res.json();
+    expect(res.status).toBe(200);
+    expect(json.solver).toBeNull();
+  });
+
+  it('returns challenge=null when challenge not found (line 80)', async () => {
+    const attempt = { id: 'att-1', status: 'passed', totalCost: 500, passedTests: 5, totalTests: 5, userId: 'u-1', challengeId: 'ch-missing', submittedAt: '2024-01-01' };
+
+    let selectCall = 0;
+    const db = {
+      select: vi.fn().mockImplementation(() => {
+        selectCall++;
+        if (selectCall === 1) return { from: vi.fn().mockReturnThis(), where: vi.fn().mockReturnThis(), limit: vi.fn().mockResolvedValue([attempt]) };
+        // challenge not found
+        if (selectCall === 2) return { from: vi.fn().mockReturnThis(), where: vi.fn().mockReturnThis(), limit: vi.fn().mockResolvedValue([]) };
+        if (selectCall === 3) return { from: vi.fn().mockReturnThis(), where: vi.fn().mockReturnThis(), limit: vi.fn().mockResolvedValue([]) };
+        return { from: vi.fn().mockReturnThis(), where: vi.fn().mockReturnThis(), limit: vi.fn().mockResolvedValue([]) };
+      }),
+    };
+    mockGetDb.mockReturnValue(db);
+
+    const res = await onRequestGet(makeCtx('att-1'));
+    const json = await res.json();
+    expect(res.status).toBe(200);
+    expect(json.challenge).toBeNull();
+  });
 });

@@ -317,4 +317,20 @@ describe('OnboardingScreen', () => {
     expect(screen.queryByText('Back')).toBeNull();
   });
 
+  it('continues onboarding when profile fetch returns res.ok=false (line 46)', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: false,
+      json: () => Promise.resolve({}),
+    });
+    (globalThis.fetch as any) = mockFetch;
+
+    render(<OnboardingScreen />);
+
+    await waitFor(() => {
+      expect(screen.getAllByText(/Welcome to ruwt.dev/).length).toBeGreaterThanOrEqual(1);
+    });
+    // Should not redirect — stays on onboarding
+    expect(mockReset).not.toHaveBeenCalled();
+  });
+
 });

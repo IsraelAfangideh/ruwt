@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent, act } from '@testing-library/react';
 
 vi.mock('@react-navigation/native', () => ({
   useNavigation: () => ({ navigate: vi.fn(), reset: vi.fn() }),
@@ -26,8 +26,9 @@ vi.mock('@/components/ui/Skeleton', () => ({
   Skeleton: () => <div data-testid="skeleton" />,
   SkeletonLines: () => <div data-testid="skeleton-lines" />,
 }));
+const mockShowToast = vi.fn();
 vi.mock('@/components/ui/Toast', () => ({
-  useToast: () => ({ showToast: vi.fn() }),
+  useToast: () => ({ showToast: mockShowToast }),
 }));
 vi.mock('@/theme', () => ({
   useColors: () => ({
@@ -334,6 +335,170 @@ describe('SettingsScreen', () => {
     render(<SettingsScreen />);
     await waitFor(() => {
       expect(screen.getByText('Daily newsletter')).toBeTruthy();
+    });
+  });
+
+  it('does not redirect when billing portal returns no url (line 134)', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockImplementation(async (url: string) => {
+      if (url.includes('/api/billing/portal')) {
+        return { ok: true, json: async () => ({}) } as Response;
+      }
+      return {
+        ok: true,
+        json: async () => ({ accountType: 'team', newsletterSubscribed: 1, subscriptionStatus: 'active', subscriptionPlan: 'monthly' }),
+      } as Response;
+    }));
+    const hrefSetter = vi.fn();
+    const originalLocation = window.location;
+    Object.defineProperty(window, 'location', {
+      value: { ...originalLocation, href: '', origin: originalLocation.origin, search: '' },
+      writable: true,
+    });
+    Object.defineProperty(window.location, 'href', {
+      set: hrefSetter,
+      get: () => '',
+    });
+
+    render(<SettingsScreen />);
+    await waitFor(() => {
+      expect(screen.getByText('Manage Billing')).toBeTruthy();
+    });
+    fireEvent.click(screen.getByText('Manage Billing'));
+    await waitFor(() => {
+      const calls = (global.fetch as any).mock.calls;
+      expect(calls.some((c: any[]) => c[0]?.includes('/api/billing/portal'))).toBeTruthy();
+    });
+    // Should NOT redirect since data.url is falsy
+    expect(hrefSetter).not.toHaveBeenCalled();
+
+    Object.defineProperty(window, 'location', { value: originalLocation, writable: true });
+  });
+
+  it('handles billing portal fetch exception (line 135 catch)', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockImplementation(async (url: string) => {
+      if (url.includes('/api/billing/portal')) {
+        throw new Error('Portal unavailable');
+      }
+      return {
+        ok: true,
+        json: async () => ({ accountType: 'team', newsletterSubscribed: 1, subscriptionStatus: 'active', subscriptionPlan: 'monthly' }),
+      } as Response;
+    }));
+
+    render(<SettingsScreen />);
+    await waitFor(() => {
+      expect(screen.getByText('Manage Billing')).toBeTruthy();
+    });
+    // Clicking should not throw — catch block handles exception silently
+    await act(async () => {
+      fireEvent.click(screen.getByText('Manage Billing'));
+    });
+  });
+
+  it('shows annual plan description when subscriptionPlan is annual (line 118)', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ accountType: 'team', newsletterSubscribed: 1, subscriptionStatus: 'active', subscriptionPlan: 'annual' }),
+    }));
+    render(<SettingsScreen />);
+    await waitFor(() => {
+      expect(screen.getByText(/annual/i)).toBeTruthy();
+    });
+  });
+
+  it('shows canceled subscription with Resubscribe button (line 146)', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ accountType: 'team', newsletterSubscribed: 1, subscriptionStatus: 'canceled', subscriptionPlan: 'monthly' }),
+    }));
+    render(<SettingsScreen />);
+    await waitFor(() => {
+      expect(screen.getByText('Resubscribe')).toBeTruthy();
+    });
+  });
+
+  it('reverts newsletter toggle and shows toast when PATCH returns non-ok (line 66-68)', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockImplementation((url: string, opts?: any) => {
+      if (opts?.method === 'PATCH') {
+        return Promise.resolve({ ok: false } as Response);
+      }
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ accountType: 'individual', newsletterSubscribed: 1, subscriptionStatus: 'none', subscriptionPlan: null }),
+      } as Response);
+    }));
+
+    render(<SettingsScreen />);
+    await waitFor(() => {
+      expect(screen.getByText(/newsletter/i)).toBeTruthy();
+    });
+
+    // Toggle newsletter — should revert after PATCH fails
+    // Click on the "Daily newsletter" pressable to toggle
+    const toggle = screen.getByText('Daily newsletter');
+    await act(async () => { fireEvent.click(toggle); });
+
+    await waitFor(() => {
+      expect(mockShowToast).toHaveBeenCalledWith('Failed to update preference', 'error');
+    });
+  });
+
+  it('reverts newsletter toggle and shows toast when PATCH throws (line 70-72)', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockImplementation((url: string, opts?: any) => {
+      if (opts?.method === 'PATCH') {
+        return Promise.reject(new Error('Network error'));
+      }
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ accountType: 'individual', newsletterSubscribed: 1, subscriptionStatus: 'none', subscriptionPlan: null }),
+      } as Response);
+    }));
+
+    render(<SettingsScreen />);
+    await waitFor(() => {
+      expect(screen.getByText(/newsletter/i)).toBeTruthy();
+    });
+
+    const toggle = screen.getByText('Daily newsletter');
+    await act(async () => { fireEvent.click(toggle); });
+
+    await waitFor(() => {
+      expect(mockShowToast).toHaveBeenCalledWith('Failed to update preference', 'error');
+    });
+  });
+
+  it('shows toast when profile fetch fails (line 37-38)', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('Network error')));
+
+    render(<SettingsScreen />);
+    await waitFor(() => {
+      expect(mockShowToast).toHaveBeenCalledWith('Failed to load profile', 'error');
+    });
+  });
+
+  it('handles profile response with missing optional fields (line 32-35)', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ newsletterSubscribed: 0 }),
+    }));
+
+    render(<SettingsScreen />);
+    await waitFor(() => {
+      // Should render without errors even with missing accountType, subscriptionStatus, etc.
+      expect(screen.getByText(/newsletter/i)).toBeTruthy();
+    });
+  });
+
+  it('handles profile fetch returning non-ok status (line 30)', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: false,
+      json: () => Promise.resolve({}),
+    }));
+
+    render(<SettingsScreen />);
+    // Should still render the settings page (with defaults)
+    await waitFor(() => {
+      expect(screen.getByTestId('dashboard-layout')).toBeTruthy();
     });
   });
 });

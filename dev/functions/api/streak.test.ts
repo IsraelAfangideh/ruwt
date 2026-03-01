@@ -171,4 +171,27 @@ describe('POST /api/streak', () => {
     const res = await onRequestPost(makePostCtx({ action: 'buy_freeze' }));
     expect(res.status).toBe(500);
   });
+
+  it('uses fallback values when profile is null after buy_freeze (lines 85-88)', async () => {
+    mockGetUser.mockResolvedValue(FAKE_USER);
+    mockBuyStreakFreeze.mockResolvedValue({ success: true });
+
+    // Profile re-query returns empty array → profile is undefined → ?? fallbacks kick in
+    const chain = {
+      from: vi.fn().mockReturnThis(),
+      where: vi.fn().mockReturnThis(),
+      limit: vi.fn().mockResolvedValue([]),
+    };
+    mockGetDb.mockReturnValue({ select: vi.fn().mockReturnValue(chain) });
+
+    const res = await onRequestPost(makePostCtx({ action: 'buy_freeze' }));
+    const json = await res.json();
+    expect(res.status).toBe(200);
+    expect(json.success).toBe(true);
+    expect(json.currentStreak).toBe(0);
+    expect(json.longestStreak).toBe(0);
+    expect(json.lastStreakDate).toBeNull();
+    expect(json.streakFreezes).toBe(0);
+    expect(json.freezeCost).toBe(5000);
+  });
 });

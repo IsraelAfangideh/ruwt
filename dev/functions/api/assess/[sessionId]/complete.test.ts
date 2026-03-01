@@ -431,6 +431,205 @@ describe('POST /api/assess/:sessionId/complete', () => {
     expect(json.error).toBe('Internal server error');
   });
 
+  it('skips email when assessment not found in fire-and-forget (line 86)', async () => {
+    mockGetUser.mockResolvedValue(FAKE_USER);
+
+    const session = {
+      id: 'sess-1',
+      userId: 'user-123',
+      assessmentId: 'a-1',
+      status: 'in_progress',
+      inviteId: null,
+    };
+
+    let selectCallCount = 0;
+    const db: Record<string, any> = {};
+    db.select = vi.fn().mockImplementation(() => {
+      selectCallCount++;
+      const chain: Record<string, any> = {};
+      chain.from = vi.fn().mockReturnValue(chain);
+      chain.where = vi.fn().mockImplementation(() => {
+        if (selectCallCount === 2) return Promise.resolve([]);
+        return chain;
+      });
+      chain.limit = vi.fn().mockImplementation(() => {
+        if (selectCallCount === 1) return Promise.resolve([session]);
+        if (selectCallCount === 3) return Promise.resolve([{ ...session, status: 'completed', shareToken: 'tok' }]);
+        // Fire-and-forget: assessment NOT found
+        if (selectCallCount === 4) return Promise.resolve([]);
+        return Promise.resolve([]);
+      });
+      chain.innerJoin = vi.fn().mockReturnValue(chain);
+      return chain;
+    });
+    db.update = vi.fn().mockReturnValue({
+      set: vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue(undefined) }),
+    });
+    db.insert = vi.fn().mockReturnValue({
+      values: vi.fn().mockReturnValue({ catch: vi.fn().mockResolvedValue(undefined) }),
+    });
+    mockGetDb.mockReturnValue(db);
+
+    const res = await onRequestPost(makeContext('sess-1'));
+    expect(res.status).toBe(200);
+
+    await new Promise(r => setTimeout(r, 50));
+    // Email should NOT have been sent since assessment was not found
+    expect(mockSendEmail).not.toHaveBeenCalled();
+  });
+
+  it('skips email when creator has no email address (line 93)', async () => {
+    mockGetUser.mockResolvedValue(FAKE_USER);
+
+    const session = {
+      id: 'sess-1',
+      userId: 'user-123',
+      assessmentId: 'a-1',
+      status: 'in_progress',
+      inviteId: null,
+    };
+
+    let selectCallCount = 0;
+    const db: Record<string, any> = {};
+    db.select = vi.fn().mockImplementation(() => {
+      selectCallCount++;
+      const chain: Record<string, any> = {};
+      chain.from = vi.fn().mockReturnValue(chain);
+      chain.where = vi.fn().mockImplementation(() => {
+        if (selectCallCount === 2) return Promise.resolve([]);
+        return chain;
+      });
+      chain.limit = vi.fn().mockImplementation(() => {
+        if (selectCallCount === 1) return Promise.resolve([session]);
+        if (selectCallCount === 3) return Promise.resolve([{ ...session, status: 'completed', shareToken: 'tok' }]);
+        // Fire-and-forget: assessment found
+        if (selectCallCount === 4) return Promise.resolve([{ id: 'a-1', createdBy: 'c-1', title: 'Test' }]);
+        // Creator profile: NO email
+        if (selectCallCount === 5) return Promise.resolve([{ email: null, displayName: 'NoEmail' }]);
+        return Promise.resolve([]);
+      });
+      chain.innerJoin = vi.fn().mockReturnValue(chain);
+      return chain;
+    });
+    db.update = vi.fn().mockReturnValue({
+      set: vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue(undefined) }),
+    });
+    db.insert = vi.fn().mockReturnValue({
+      values: vi.fn().mockReturnValue({ catch: vi.fn().mockResolvedValue(undefined) }),
+    });
+    mockGetDb.mockReturnValue(db);
+
+    const res = await onRequestPost(makeContext('sess-1'));
+    expect(res.status).toBe(200);
+
+    await new Promise(r => setTimeout(r, 50));
+    // Email should NOT have been sent since creator has no email
+    expect(mockSendEmail).not.toHaveBeenCalled();
+  });
+
+  it('handles emailLogs insert failure gracefully (line 134)', async () => {
+    mockGetUser.mockResolvedValue(FAKE_USER);
+
+    const session = {
+      id: 'sess-1',
+      userId: 'user-123',
+      assessmentId: 'a-1',
+      status: 'in_progress',
+      inviteId: null,
+    };
+
+    let selectCallCount = 0;
+    const db: Record<string, any> = {};
+    db.select = vi.fn().mockImplementation(() => {
+      selectCallCount++;
+      const chain: Record<string, any> = {};
+      chain.from = vi.fn().mockReturnValue(chain);
+      chain.where = vi.fn().mockImplementation(() => {
+        if (selectCallCount === 2) return Promise.resolve([{ totalCost: 50, inputTokens: 100, outputTokens: 50, status: 'passed' }]);
+        return chain;
+      });
+      chain.limit = vi.fn().mockImplementation(() => {
+        if (selectCallCount === 1) return Promise.resolve([session]);
+        if (selectCallCount === 3) return Promise.resolve([{ ...session, status: 'completed', shareToken: 'tok' }]);
+        if (selectCallCount === 4) return Promise.resolve([{ id: 'a-1', createdBy: 'c-1', title: 'Test' }]);
+        if (selectCallCount === 5) return Promise.resolve([{ email: 'c@test.com', displayName: 'C' }]);
+        if (selectCallCount === 6) return Promise.resolve([{ email: 'u@test.com', displayName: 'U' }]);
+        return Promise.resolve([]);
+      });
+      chain.innerJoin = vi.fn().mockReturnValue(chain);
+      return chain;
+    });
+    db.update = vi.fn().mockReturnValue({
+      set: vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue(undefined) }),
+    });
+    // emailLogs insert throws
+    db.insert = vi.fn().mockReturnValue({
+      values: vi.fn().mockReturnValue({
+        catch: vi.fn().mockImplementation((fn: Function) => { fn(new Error('insert fail')); return Promise.resolve(); }),
+      }),
+    });
+    mockGetDb.mockReturnValue(db);
+
+    const res = await onRequestPost(makeContext('sess-1'));
+    expect(res.status).toBe(200);
+
+    await new Promise(r => setTimeout(r, 50));
+    // Email was sent, insert failure was caught — no crash
+    expect(mockSendEmail).toHaveBeenCalled();
+  });
+
+  it('uses candidate email as fallback name when displayName is missing (line 110)', async () => {
+    mockGetUser.mockResolvedValue(FAKE_USER);
+
+    const session = {
+      id: 'sess-1',
+      userId: 'user-123',
+      assessmentId: 'a-1',
+      status: 'in_progress',
+      inviteId: null,
+    };
+
+    let selectCallCount = 0;
+    const db: Record<string, any> = {};
+    db.select = vi.fn().mockImplementation(() => {
+      selectCallCount++;
+      const chain: Record<string, any> = {};
+      chain.from = vi.fn().mockReturnValue(chain);
+      chain.where = vi.fn().mockImplementation(() => {
+        if (selectCallCount === 2) return Promise.resolve([{ totalCost: 50, inputTokens: 100, outputTokens: 50, status: 'passed' }]);
+        return chain;
+      });
+      chain.limit = vi.fn().mockImplementation(() => {
+        if (selectCallCount === 1) return Promise.resolve([session]);
+        if (selectCallCount === 3) return Promise.resolve([{ ...session, status: 'completed', shareToken: 'tok' }]);
+        if (selectCallCount === 4) return Promise.resolve([{ id: 'a-1', createdBy: 'c-1', title: 'Test' }]);
+        if (selectCallCount === 5) return Promise.resolve([{ email: 'c@test.com', displayName: 'C' }]);
+        // Candidate: no displayName, only email
+        if (selectCallCount === 6) return Promise.resolve([{ email: 'candidate@test.com', displayName: null }]);
+        return Promise.resolve([]);
+      });
+      chain.innerJoin = vi.fn().mockReturnValue(chain);
+      return chain;
+    });
+    db.update = vi.fn().mockReturnValue({
+      set: vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue(undefined) }),
+    });
+    db.insert = vi.fn().mockReturnValue({
+      values: vi.fn().mockReturnValue({ catch: vi.fn().mockResolvedValue(undefined) }),
+    });
+    mockGetDb.mockReturnValue(db);
+
+    const res = await onRequestPost(makeContext('sess-1'));
+    expect(res.status).toBe(200);
+
+    await new Promise(r => setTimeout(r, 50));
+    expect(mockResultsReadyEmail).toHaveBeenCalledWith(
+      expect.objectContaining({
+        candidateName: 'candidate@test.com',
+      }),
+    );
+  });
+
   it('includes shareUrl in response using the shareToken', async () => {
     mockGetUser.mockResolvedValue(FAKE_USER);
 

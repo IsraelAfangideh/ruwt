@@ -110,4 +110,20 @@ describe('UserNav', () => {
     // Menu items should no longer be visible
     expect(screen.queryByText('Profile')).toBeNull();
   });
+
+  it('closes menu on Escape key press (line 21)', () => {
+    render(<UserNav user={mockUser} />);
+    fireEvent.click(screen.getByTestId('avatar'));
+    expect(screen.getByText('Profile')).toBeTruthy();
+    // Press Escape to close the menu
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(screen.queryByText('Profile')).toBeNull();
+  });
+
+  it('ignores Escape key when menu is closed (line 21 false branch)', () => {
+    render(<UserNav user={mockUser} />);
+    // Menu is closed — pressing Escape should do nothing
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(screen.queryByText('Profile')).toBeNull();
+  });
 });

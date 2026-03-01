@@ -200,4 +200,47 @@ describe('CandidateComparisonView', () => {
     fireEvent.click(bobDropdownItem!);
     // After selecting, the dropdown should close
   });
+
+  it('shows "No signals detected" when flags have no entries (line 128)', () => {
+    const emptyInsights = {
+      s1: { flags: { green: [], red: [], yellow: [] }, comparatives: [] },
+      s2: { flags: { green: [], red: [], yellow: [] }, comparatives: [] },
+    };
+    render(
+      <CandidateComparisonView
+        candidates={candidates}
+        profiles={profiles}
+        insightsData={emptyInsights}
+        formatCost={formatCost}
+      />
+    );
+    const noSignals = screen.getAllByText('No signals detected');
+    expect(noSignals.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('renders null flags section when insights is undefined (line 122)', () => {
+    render(
+      <CandidateComparisonView
+        candidates={candidates}
+        profiles={profiles}
+        insightsData={{}}
+        formatCost={formatCost}
+      />
+    );
+    // Should render without crashing when no insights for selected candidates
+    expect(screen.getByText('Compare Candidates')).toBeTruthy();
+  });
+
+  it('renders without profile radar when profile is undefined (line 172)', () => {
+    render(
+      <CandidateComparisonView
+        candidates={candidates}
+        profiles={{}}
+        insightsData={insightsData}
+        formatCost={formatCost}
+      />
+    );
+    // Should render without crashing when profiles are empty
+    expect(screen.getByText('3/5')).toBeTruthy();
+  });
 });

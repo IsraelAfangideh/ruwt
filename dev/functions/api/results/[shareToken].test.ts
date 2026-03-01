@@ -129,4 +129,121 @@ describe('GET /api/results/:shareToken (public)', () => {
     const res = await onRequestGet(makeCtx('tok-1'));
     expect(res.status).toBe(500);
   });
+
+  it('returns not_attempted for challenges with no matching attempt (line 102)', async () => {
+    const session = { id: 'sess-1', assessmentId: 'assess-1', userId: 'u-1', shareToken: 'tok-1', status: 'completed', totalCost: 0, totalTokens: 0, startedAt: 't', completedAt: 't' };
+    const assessment = { id: 'assess-1', title: 'Test', description: 'Desc', companyName: null, companyLogoUrl: null };
+    const candidate = { name: 'Bob', avatarUrl: null };
+    const challengeList = [
+      { sortOrder: 1, challenge: { id: 'ch-1', title: 'Challenge One', difficulty: 'easy', category: 'c', skillTested: 'b' } },
+    ];
+
+    let selectCall = 0;
+    const db = {
+      select: vi.fn().mockImplementation(() => {
+        selectCall++;
+        if (selectCall === 1) return { from: vi.fn().mockReturnThis(), where: vi.fn().mockReturnThis(), limit: vi.fn().mockResolvedValue([session]) };
+        if (selectCall === 2) return { from: vi.fn().mockReturnThis(), where: vi.fn().mockReturnThis(), limit: vi.fn().mockResolvedValue([assessment]) };
+        if (selectCall === 3) return { from: vi.fn().mockReturnThis(), where: vi.fn().mockReturnThis(), limit: vi.fn().mockResolvedValue([candidate]) };
+        if (selectCall === 4) return { from: vi.fn().mockReturnThis(), innerJoin: vi.fn().mockReturnThis(), where: vi.fn().mockReturnThis(), orderBy: vi.fn().mockResolvedValue(challengeList) };
+        if (selectCall === 5) return { from: vi.fn().mockReturnThis(), where: vi.fn().mockResolvedValue([]) }; // no attempts
+        return { from: vi.fn().mockReturnThis(), where: vi.fn().mockResolvedValue([]) };
+      }),
+    };
+    mockGetDb.mockReturnValue(db);
+
+    const res = await onRequestGet(makeCtx('tok-1'));
+    const json = await res.json();
+    expect(res.status).toBe(200);
+    expect(json.challengeResults[0].status).toBe('not_attempted');
+    expect(json.challengeResults[0].cost).toBe(0);
+    expect(json.challengeResults[0].passedTests).toBe(0);
+    expect(json.challengeResults[0].modelUsage).toEqual({});
+  });
+
+  it('returns empty aiCalls when attempt has no AI calls (line 87 ?? fallback)', async () => {
+    const session = { id: 'sess-1', assessmentId: 'assess-1', userId: 'u-1', shareToken: 'tok-1', status: 'completed', totalCost: 100, totalTokens: 50, startedAt: 't', completedAt: 't' };
+    const assessment = { id: 'assess-1', title: 'Test', description: 'Desc', companyName: 'Co', companyLogoUrl: null };
+    const candidate = { name: 'Carol', avatarUrl: null };
+    const challengeList = [{ sortOrder: 1, challenge: { id: 'ch-1', title: 'C1', difficulty: 'easy', category: 'c', skillTested: 'b' } }];
+    const sessionAttempts = [{ id: 'att-1', challengeId: 'ch-1', status: 'failed', totalCost: 100, inputTokens: 30, outputTokens: 20, passedTests: 2, totalTests: 5, assessmentSessionId: 'sess-1' }];
+
+    let selectCall = 0;
+    const db = {
+      select: vi.fn().mockImplementation(() => {
+        selectCall++;
+        if (selectCall === 1) return { from: vi.fn().mockReturnThis(), where: vi.fn().mockReturnThis(), limit: vi.fn().mockResolvedValue([session]) };
+        if (selectCall === 2) return { from: vi.fn().mockReturnThis(), where: vi.fn().mockReturnThis(), limit: vi.fn().mockResolvedValue([assessment]) };
+        if (selectCall === 3) return { from: vi.fn().mockReturnThis(), where: vi.fn().mockReturnThis(), limit: vi.fn().mockResolvedValue([candidate]) };
+        if (selectCall === 4) return { from: vi.fn().mockReturnThis(), innerJoin: vi.fn().mockReturnThis(), where: vi.fn().mockReturnThis(), orderBy: vi.fn().mockResolvedValue(challengeList) };
+        if (selectCall === 5) return { from: vi.fn().mockReturnThis(), where: vi.fn().mockResolvedValue(sessionAttempts) };
+        // AI calls: return empty
+        return { from: vi.fn().mockReturnThis(), where: vi.fn().mockResolvedValue([]) };
+      }),
+    };
+    mockGetDb.mockReturnValue(db);
+
+    const res = await onRequestGet(makeCtx('tok-1'));
+    const json = await res.json();
+    expect(res.status).toBe(200);
+    expect(json.challengeResults[0].status).toBe('failed');
+    expect(json.challengeResults[0].modelUsage).toEqual({});
+  });
+
+  it('returns null assessment when assessment record is missing (lines 115-122)', async () => {
+    const session = { id: 'sess-1', assessmentId: 'assess-1', userId: 'u-1', shareToken: 'tok-1', status: 'completed', totalCost: 0, totalTokens: 0, startedAt: 't', completedAt: 't' };
+
+    let selectCall = 0;
+    const db = {
+      select: vi.fn().mockImplementation(() => {
+        selectCall++;
+        if (selectCall === 1) return { from: vi.fn().mockReturnThis(), where: vi.fn().mockReturnThis(), limit: vi.fn().mockResolvedValue([session]) };
+        if (selectCall === 2) return { from: vi.fn().mockReturnThis(), where: vi.fn().mockReturnThis(), limit: vi.fn().mockResolvedValue([]) }; // no assessment
+        if (selectCall === 3) return { from: vi.fn().mockReturnThis(), where: vi.fn().mockReturnThis(), limit: vi.fn().mockResolvedValue([{ name: 'Dan', avatarUrl: null }]) };
+        if (selectCall === 4) return { from: vi.fn().mockReturnThis(), innerJoin: vi.fn().mockReturnThis(), where: vi.fn().mockReturnThis(), orderBy: vi.fn().mockResolvedValue([]) };
+        return { from: vi.fn().mockReturnThis(), where: vi.fn().mockResolvedValue([]) };
+      }),
+    };
+    mockGetDb.mockReturnValue(db);
+
+    const res = await onRequestGet(makeCtx('tok-1'));
+    const json = await res.json();
+    expect(res.status).toBe(200);
+    expect(json.assessment).toBeNull();
+    expect(json.candidate.name).toBe('Dan');
+  });
+
+  it('aggregates model usage across multiple AI calls for same model (lines 91-98)', async () => {
+    const session = { id: 'sess-1', assessmentId: 'assess-1', userId: 'u-1', shareToken: 'tok-1', status: 'completed', totalCost: 500, totalTokens: 300, startedAt: 't', completedAt: 't' };
+    const assessment = { id: 'assess-1', title: 'T', description: 'D', companyName: null, companyLogoUrl: null };
+    const candidate = { name: 'Eve', avatarUrl: null };
+    const challengeList = [{ sortOrder: 1, challenge: { id: 'ch-1', title: 'C', difficulty: 'easy', category: 'c', skillTested: 'b' } }];
+    const sessionAttempts = [{ id: 'att-1', challengeId: 'ch-1', status: 'passed', totalCost: 500, inputTokens: 200, outputTokens: 100, passedTests: 5, totalTests: 5, assessmentSessionId: 'sess-1' }];
+    const aiCallsForAttempt = [
+      { model: 'gpt-4', cost: 200, inputTokens: 80, outputTokens: 50 },
+      { model: 'gpt-4', cost: 100, inputTokens: 40, outputTokens: 30 },
+      { model: 'claude-3', cost: 200, inputTokens: 80, outputTokens: 20 },
+    ];
+
+    let selectCall = 0;
+    const db = {
+      select: vi.fn().mockImplementation(() => {
+        selectCall++;
+        if (selectCall === 1) return { from: vi.fn().mockReturnThis(), where: vi.fn().mockReturnThis(), limit: vi.fn().mockResolvedValue([session]) };
+        if (selectCall === 2) return { from: vi.fn().mockReturnThis(), where: vi.fn().mockReturnThis(), limit: vi.fn().mockResolvedValue([assessment]) };
+        if (selectCall === 3) return { from: vi.fn().mockReturnThis(), where: vi.fn().mockReturnThis(), limit: vi.fn().mockResolvedValue([candidate]) };
+        if (selectCall === 4) return { from: vi.fn().mockReturnThis(), innerJoin: vi.fn().mockReturnThis(), where: vi.fn().mockReturnThis(), orderBy: vi.fn().mockResolvedValue(challengeList) };
+        if (selectCall === 5) return { from: vi.fn().mockReturnThis(), where: vi.fn().mockResolvedValue(sessionAttempts) };
+        return { from: vi.fn().mockReturnThis(), where: vi.fn().mockResolvedValue(aiCallsForAttempt) };
+      }),
+    };
+    mockGetDb.mockReturnValue(db);
+
+    const res = await onRequestGet(makeCtx('tok-1'));
+    const json = await res.json();
+    expect(json.challengeResults[0].modelUsage['gpt-4'].calls).toBe(2);
+    expect(json.challengeResults[0].modelUsage['gpt-4'].cost).toBe(300);
+    expect(json.challengeResults[0].modelUsage['gpt-4'].tokens).toBe(200); // (80+50)+(40+30)
+    expect(json.challengeResults[0].modelUsage['claude-3'].calls).toBe(1);
+  });
 });

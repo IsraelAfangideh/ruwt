@@ -101,4 +101,100 @@ describe('CandidateInsightsPanel', () => {
     render(<CandidateInsightsPanel {...baseProps} highlights={highlights} />);
     expect(screen.getByTestId('highlight-reel')).toBeTruthy();
   });
+
+  it('does not render highlight reel when highlights are empty', () => {
+    render(<CandidateInsightsPanel {...baseProps} highlights={[]} />);
+    expect(screen.queryByTestId('highlight-reel')).toBeNull();
+  });
+
+  it('does not render comparative bars section when comparatives are empty', () => {
+    render(<CandidateInsightsPanel {...baseProps} comparatives={[]} />);
+    expect(screen.queryByText('vs. Candidate Pool')).toBeNull();
+  });
+
+  it('filters out yellow insights scoped to a specific challenge (line 58)', () => {
+    const insights = [
+      { type: 'cost', severity: 'yellow' as const, narrative: 'Challenge-scoped yellow', challengeIndex: 0, timestamp: '' },
+      { type: 'cost', severity: 'yellow' as const, narrative: 'Global yellow', challengeIndex: -1, timestamp: '' },
+      { type: 'speed', severity: 'red' as const, narrative: 'Red stays regardless', challengeIndex: 2, timestamp: '' },
+      { type: 'efficiency', severity: 'green' as const, narrative: 'Green stays regardless', challengeIndex: 1, timestamp: '' },
+    ];
+    render(<CandidateInsightsPanel {...baseProps} insights={insights} />);
+    expect(screen.queryByText('Challenge-scoped yellow')).toBeNull();
+    expect(screen.getByText('Global yellow')).toBeTruthy();
+    expect(screen.getByText('Red stays regardless')).toBeTruthy();
+    expect(screen.getByText('Green stays regardless')).toBeTruthy();
+  });
+
+  it('renders yellow severity insight with dot and narrative (line 103)', () => {
+    const insights = [
+      { type: 'test', severity: 'yellow' as const, narrative: 'Yellow insight', challengeIndex: -1, timestamp: '' },
+    ];
+    render(<CandidateInsightsPanel {...baseProps} insights={insights} />);
+    expect(screen.getByText('Yellow insight')).toBeTruthy();
+    expect(screen.getByText('Behavioral Insights')).toBeTruthy();
+  });
+
+  it('renders red severity insight with dot and narrative (line 103)', () => {
+    const insights = [
+      { type: 'cost', severity: 'red' as const, narrative: 'Red insight', challengeIndex: -1, timestamp: '' },
+    ];
+    render(<CandidateInsightsPanel {...baseProps} insights={insights} />);
+    expect(screen.getByText('Red insight')).toBeTruthy();
+    expect(screen.getByText('Behavioral Insights')).toBeTruthy();
+  });
+
+  it('displays Token Usage metric with locale formatted value (line 127)', () => {
+    const comparatives = [
+      { metric: 'Token Usage', candidateValue: 5000, medianValue: 4000, percentile: 60, narrative: 'Average tokens' },
+    ];
+    render(<CandidateInsightsPanel {...baseProps} comparatives={comparatives} />);
+    expect(screen.getByText('Token Usage')).toBeTruthy();
+  });
+
+  it('displays Speed metric formatted in minutes (line 128)', () => {
+    const comparatives = [
+      { metric: 'Speed', candidateValue: 180000, medianValue: 120000, percentile: 70, narrative: 'Fast' },
+    ];
+    render(<CandidateInsightsPanel {...baseProps} comparatives={comparatives} />);
+    expect(screen.getByText('Speed')).toBeTruthy();
+  });
+
+  it('displays undefined displayValue for Speed when candidateValue is 0 (line 128-129)', () => {
+    const comparatives = [
+      { metric: 'Speed', candidateValue: 0, medianValue: 100, percentile: 10, narrative: 'Slow' },
+    ];
+    render(<CandidateInsightsPanel {...baseProps} comparatives={comparatives} />);
+    expect(screen.getByText('Speed')).toBeTruthy();
+  });
+
+  it('displays undefined displayValue for unknown metric type (line 129)', () => {
+    const comparatives = [
+      { metric: 'Unknown Metric', candidateValue: 42, medianValue: 50, percentile: 30, narrative: 'Some metric' },
+    ];
+    render(<CandidateInsightsPanel {...baseProps} comparatives={comparatives} />);
+    expect(screen.getByText('Unknown Metric')).toBeTruthy();
+  });
+
+  it('limits narrative insights to at most 4 (line 59)', () => {
+    const insights = Array.from({ length: 6 }, (_, i) => ({
+      type: 'cost',
+      severity: 'green' as const,
+      narrative: `Insight number ${i + 1}`,
+      challengeIndex: -1,
+      timestamp: '',
+    }));
+    render(<CandidateInsightsPanel {...baseProps} insights={insights} />);
+    expect(screen.getByText('Insight number 1')).toBeTruthy();
+    expect(screen.getByText('Insight number 4')).toBeTruthy();
+    expect(screen.queryByText('Insight number 5')).toBeNull();
+  });
+
+  it('does not render Behavioral Insights heading when all insights are filtered out', () => {
+    const insights = [
+      { type: 'cost', severity: 'yellow' as const, narrative: 'Filtered out', challengeIndex: 0, timestamp: '' },
+    ];
+    render(<CandidateInsightsPanel {...baseProps} insights={insights} />);
+    expect(screen.queryByText('Behavioral Insights')).toBeNull();
+  });
 });

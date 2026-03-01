@@ -193,4 +193,100 @@ describe('GET /api/daily-challenge', () => {
     expect(res.status).toBe(200);
     expect(json.leaderboard).toEqual([]);
   });
+
+  it('auto-seeds with no active season (seasonId null) (line 64)', async () => {
+    const allChallenges = [
+      { id: 'ch-1', difficulty: 'easy', title: 'E1', description: 'D', category: 'c' },
+    ];
+    const insertValues = vi.fn().mockResolvedValue(undefined);
+
+    const db = buildDb([
+      [],                // no daily challenge for today
+      [],                // no recent dailies
+      allChallenges,     // all challenges
+      [],                // NO active season
+      [allChallenges[0]], // challenge details
+      [],                // leaderboard
+    ], insertValues);
+    mockGetDb.mockReturnValue(db);
+
+    const res = await onRequestGet(makeContext());
+    const json = await res.json() as any;
+
+    expect(res.status).toBe(200);
+    expect(db.insert).toHaveBeenCalled();
+    // seasonId should be null when no active season
+    expect(json.challenge).toBeDefined();
+  });
+
+  it('auto-seeds with medium pool when no easy/sprint challenges exist (line 46)', async () => {
+    const allChallenges = [
+      { id: 'ch-1', difficulty: 'medium', title: 'M1', description: 'D', category: 'c' },
+      { id: 'ch-2', difficulty: 'medium', title: 'M2', description: 'D', category: 'c' },
+    ];
+    const insertValues = vi.fn().mockResolvedValue(undefined);
+
+    const db = buildDb([
+      [],                // no daily challenge for today
+      [],                // no recent dailies
+      allChallenges,     // all medium challenges only
+      [{ id: 's-1' }],  // active season
+      [allChallenges[0]], // challenge details
+      [],                // leaderboard
+    ], insertValues);
+    mockGetDb.mockReturnValue(db);
+
+    const res = await onRequestGet(makeContext());
+    const json = await res.json() as any;
+
+    expect(res.status).toBe(200);
+    expect(db.insert).toHaveBeenCalled();
+  });
+
+  it('includes null difficulty challenges in eligible pool (line 39)', async () => {
+    const allChallenges = [
+      { id: 'ch-1', difficulty: null, title: 'Null Difficulty', description: 'D', category: 'c' },
+    ];
+    const insertValues = vi.fn().mockResolvedValue(undefined);
+
+    const db = buildDb([
+      [],                // no daily challenge for today
+      [],                // no recent dailies
+      allChallenges,     // challenge with null difficulty
+      [{ id: 's-1' }],  // active season
+      [allChallenges[0]], // challenge details
+      [],                // leaderboard
+    ], insertValues);
+    mockGetDb.mockReturnValue(db);
+
+    const res = await onRequestGet(makeContext());
+    const json = await res.json() as any;
+
+    expect(res.status).toBe(200);
+    // null difficulty is NOT hard/impossible, so should be eligible
+    expect(db.insert).toHaveBeenCalled();
+  });
+
+  it('skips recently used challenges and falls back to full eligible pool (line 41)', async () => {
+    const allChallenges = [
+      { id: 'ch-1', difficulty: 'easy', title: 'E1', description: 'D', category: 'c' },
+      { id: 'ch-2', difficulty: 'easy', title: 'E2', description: 'D', category: 'c' },
+    ];
+    const recentDailies = [{ challengeId: 'ch-1' }, { challengeId: 'ch-2' }];
+    const insertValues = vi.fn().mockResolvedValue(undefined);
+
+    const db = buildDb([
+      [],                // no daily challenge for today
+      recentDailies,     // both challenges recently used
+      allChallenges,     // all challenges
+      [{ id: 's-1' }],  // active season
+      [allChallenges[0]], // challenge details (falls back to full eligible pool)
+      [],                // leaderboard
+    ], insertValues);
+    mockGetDb.mockReturnValue(db);
+
+    const res = await onRequestGet(makeContext());
+    expect(res.status).toBe(200);
+    expect(db.insert).toHaveBeenCalled();
+  });
 });

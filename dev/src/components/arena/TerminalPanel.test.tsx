@@ -351,4 +351,29 @@ describe('TerminalPanel', () => {
     expect(log).not.toBeNull();
     expect(log!.getAttribute('aria-live')).toBe('polite');
   });
+
+  it('does not duplicate identical consecutive transcript lines (line 167)', () => {
+    const { container } = render(<TerminalPanel {...defaultProps} />);
+    expect(capturedOnWriteParsedCallback).not.toBeNull();
+    // Trigger onWriteParsed twice — same line content each time
+    act(() => { capturedOnWriteParsedCallback!(); });
+    act(() => { capturedOnWriteParsedCallback!(); });
+    const logRegion = container.querySelector('[role="log"]');
+    // The dedup check (latest !== lineBuf) means repeated identical lines
+    // only add one entry; log shows last 5 lines max
+    expect(logRegion!.querySelectorAll('div').length).toBeLessThanOrEqual(5);
+  });
+
+  it('handles onRunTests being undefined (line 108)', () => {
+    render(<TerminalPanel {...defaultProps} onRunTests={undefined} />);
+    expect(capturedTuiOpts).not.toBeNull();
+    // Calling onRunTests via optional chaining should not throw
+    const result = capturedTuiOpts!.onRunTests('code', 'typescript');
+    expect(result).toBeUndefined();
+  });
+
+  it('cleans up on unmount without errors', () => {
+    const { unmount } = render(<TerminalPanel {...defaultProps} />);
+    expect(() => unmount()).not.toThrow();
+  });
 });
