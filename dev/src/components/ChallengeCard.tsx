@@ -104,7 +104,7 @@ export function ChallengeCard({ challenge }: { challenge: Challenge }) {
   return (
     <Pressable
       onPress={() => (navigation.navigate as any)('Arena', { challengeId: challenge.id })}
-      accessibilityRole="button"
+      accessibilityRole="link"
       accessibilityLabel={`${challenge.title}, ${diffStyle.label} difficulty${isSolved ? ', Solved' : isInProgress ? ', In progress' : ''}`}
       testID={`challenge-${challenge.id}`}
       style={({ pressed }: { pressed: boolean }) => [

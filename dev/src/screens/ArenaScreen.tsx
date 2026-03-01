@@ -671,7 +671,7 @@ export function ArenaScreen() {
             >
               &larr;
             </button>
-            <span style={{
+            <h1 style={{
               fontSize: 13,
               fontWeight: 600,
               color: arena.text,
@@ -680,9 +680,10 @@ export function ArenaScreen() {
               textOverflow: 'ellipsis',
               flex: 1,
               minWidth: 0,
+              margin: 0,
             }}>
               {challenge.title}
-            </span>
+            </h1>
             {timeLeft != null && (
               <span style={{
                 fontSize: 12,
@@ -782,16 +783,17 @@ export function ArenaScreen() {
               height: 20,
               background: arena.border,
             }} />
-            <span style={{
+            <h1 style={{
               fontSize: 14,
               fontWeight: 600,
               color: arena.text,
               whiteSpace: 'nowrap',
               overflow: 'hidden',
               textOverflow: 'ellipsis',
+              margin: 0,
             }}>
               {challenge.title}
-            </span>
+            </h1>
             <span style={{
               fontSize: 11,
               fontWeight: 600,

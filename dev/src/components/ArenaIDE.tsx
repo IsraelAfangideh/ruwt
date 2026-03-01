@@ -121,7 +121,7 @@ interface ArenaIDEProps {
 function CodeUpdateToast({ visible, message }: { visible: boolean; message?: string }) {
   if (!visible) return null;
   return (
-    <div style={s.toast}>
+    <div style={s.toast} role="status" aria-live="polite">
       <span style={{ color: arena.success }}>{'\u2713'}</span> {message || 'Code updated'}
     </div>
   );
@@ -130,7 +130,7 @@ function CodeUpdateToast({ visible, message }: { visible: boolean; message?: str
 function PasteBlockedToast({ visible }: { visible: boolean }) {
   if (!visible) return null;
   return (
-    <div style={{ ...s.toast, borderLeft: `3px solid ${arena.error}` }}>
+    <div style={{ ...s.toast, borderLeft: `3px solid ${arena.error}` }} role="alert" aria-live="assertive">
       <span style={{ color: arena.error }}>{'\u2718'}</span> No pasting in the Arena — let your AI write the code.
     </div>
   );
@@ -139,7 +139,7 @@ function PasteBlockedToast({ visible }: { visible: boolean }) {
 function ApplyFailureToast({ visible, onDismiss }: { visible: boolean; onDismiss: () => void }) {
   if (!visible) return null;
   return (
-    <div style={{
+    <div role="alert" aria-live="assertive" style={{
       position: 'absolute',
       top: 12,
       left: 12,
@@ -169,6 +169,7 @@ function ApplyFailureToast({ visible, onDismiss }: { visible: boolean; onDismiss
         </div>
         <button
           onClick={onDismiss}
+          aria-label="Dismiss notification"
           style={{
             background: 'none',
             border: 'none',
@@ -293,7 +294,7 @@ function DescriptionPanel({ challenge, pastAttempts, notepadContent, onNotepadCh
   return (
     <div style={s.descriptionScroll}>
       <div style={s.descriptionText}>
-        {renderMarkdown(challenge.description)}
+        {renderMarkdown(challenge.description, undefined, { collapsibleCodeBlocks: true })}
       </div>
 
       {examples.length > 0 && (
@@ -1449,6 +1450,7 @@ export function ArenaIDE({
                     rows={1}
                     placeholder={guestMode ? 'Sign up to chat with AI' : chatDisabled ? (aiLimitReached ? 'AI limit reached \u2014 budget exhausted' : 'Chat disabled \u2014 time expired') : 'Ask about this problem... (Shift+Enter for newline)'}
                     aria-label="Chat message"
+                    aria-describedby="chat-cost-estimate"
                     data-testid="chat-input"
                     value={chatInput}
                     onChange={(e) => {
@@ -1461,7 +1463,7 @@ export function ArenaIDE({
                   />
                   {/* Pre-call cost estimate + running total */}
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingLeft: 2, paddingRight: 2 }}>
-                    <span style={{ fontSize: 10, color: arena.textSubtle, fontFamily: 'Menlo, Monaco, "Courier New", monospace' }}>
+                    <span id="chat-cost-estimate" style={{ fontSize: 10, color: arena.textSubtle, fontFamily: 'Menlo, Monaco, "Courier New", monospace' }}>
                       {chatInput.trim() && !chatDisabled && !guestMode
                         ? `${formatEstimatedCost(estimateChatCost(chatInput, model))} est`
                         : '\u00A0'}
@@ -1914,6 +1916,7 @@ const s: Record<string, React.CSSProperties> = {
   descriptionScroll: {
     flex: 1,
     overflowY: 'auto',
+    overflowX: 'hidden',
     padding: '16px 18px',
   },
   descriptionText: {

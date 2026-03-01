@@ -7,8 +7,10 @@ import { arena } from '@/theme/colors';
 
 /* ─── Simple Markdown Renderer ────────────────────────────────────── */
 
-export const CodeBlock = React.memo(function CodeBlock({ lang, code }: { lang: string; code: string }) {
+export const CodeBlock = React.memo(function CodeBlock({ lang, code, collapsible }: { lang: string; code: string; collapsible?: boolean }) {
   const [copied, setCopied] = React.useState(false);
+  const [collapsed, setCollapsed] = React.useState(!!collapsible);
+  const lineCount = code.split('\n').length;
   const handleCopy = () => {
     navigator.clipboard.writeText(code).then(() => {
       setCopied(true);
@@ -19,16 +21,28 @@ export const CodeBlock = React.memo(function CodeBlock({ lang, code }: { lang: s
     <div style={mdStyles.codeBlock}>
       <div style={mdStyles.codeHeader}>
         {lang && <span style={mdStyles.codeLang}>{lang}</span>}
-        <button onClick={handleCopy} style={mdStyles.copyBtn} aria-label={copied ? 'Copied to clipboard' : 'Copy code'}>
-          {copied ? 'Copied!' : 'Copy'}
-        </button>
+        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+          {collapsible && (
+            <button
+              onClick={() => setCollapsed(!collapsed)}
+              style={mdStyles.collapseBtn}
+              aria-expanded={!collapsed}
+              aria-label={collapsed ? 'Expand code block' : 'Collapse code block'}
+            >
+              {collapsed ? `\u25B6 ${lineCount} lines` : '\u25BC collapse'}
+            </button>
+          )}
+          <button onClick={handleCopy} style={mdStyles.copyBtn} aria-label={copied ? 'Copied to clipboard' : 'Copy code'}>
+            {copied ? 'Copied!' : 'Copy'}
+          </button>
+        </div>
       </div>
-      <pre style={mdStyles.codePre}>{code}</pre>
+      {!collapsed && <pre style={mdStyles.codePre}>{code}</pre>}
     </div>
   );
 });
 
-export function renderMarkdown(text: string, onLineClick?: (line: number) => void): React.ReactNode[] {
+export function renderMarkdown(text: string, onLineClick?: (line: number) => void, opts?: { collapsibleCodeBlocks?: boolean }): React.ReactNode[] {
   const blocks: React.ReactNode[] = [];
   const lines = text.split('\n');
   let i = 0;
@@ -46,19 +60,29 @@ export function renderMarkdown(text: string, onLineClick?: (line: number) => voi
         i++;
       }
       i++; // skip closing ```
-      blocks.push(<CodeBlock key={blocks.length} lang={lang} code={codeLines.join('\n')} />);
+      const isLong = codeLines.length > 20;
+      const collapsible = opts?.collapsibleCodeBlocks && isLong;
+      blocks.push(<CodeBlock key={blocks.length} lang={lang} code={codeLines.join('\n')} collapsible={collapsible} />);
       continue;
     }
 
-    // headings
+    // horizontal rule
+    if (/^-{3,}$/.test(line.trim())) {
+      blocks.push(<hr key={blocks.length} style={mdStyles.hr} />);
+      i++;
+      continue;
+    }
+
+    // headings — offset by 1 (challenge title is h1, so # → h2, ## → h3, ### → h4)
     const headingMatch = line.match(/^(#{1,3})\s+(.+)$/);
     if (headingMatch) {
       const level = headingMatch[1].length as 1 | 2 | 3;
       const headingStyle = level === 1 ? mdStyles.h1 : level === 2 ? mdStyles.h2 : mdStyles.h3;
+      const Tag = level === 1 ? 'h2' : level === 2 ? 'h3' : 'h4';
       blocks.push(
-        <div key={blocks.length} style={headingStyle}>
+        <Tag key={blocks.length} style={headingStyle}>
           {renderInline(headingMatch[2], onLineClick)}
-        </div>
+        </Tag>
       );
       i++;
       continue;
@@ -212,6 +236,21 @@ export const mdStyles: Record<string, React.CSSProperties> = {
     padding: '2px 8px',
     cursor: 'pointer',
     fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+  },
+  collapseBtn: {
+    background: 'transparent',
+    border: `1px solid ${arena.border}`,
+    borderRadius: 4,
+    color: arena.textMuted,
+    fontSize: 10,
+    padding: '2px 8px',
+    cursor: 'pointer',
+    fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+  },
+  hr: {
+    border: 'none',
+    borderTop: `1px solid ${arena.border}`,
+    margin: '12px 0',
   },
   codePre: {
     margin: 0,

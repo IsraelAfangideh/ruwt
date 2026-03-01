@@ -97,7 +97,16 @@ function buildBaseContext(opts: BuildSystemPromptOptions): string {
   }
 
   if (opts.readonlyPrefix) {
-    parts.push(`Read-only context (pre-loaded in the execution environment — do NOT redefine or include in edits):\n\`\`\`${opts.language}\n${opts.readonlyPrefix}\n\`\`\``);
+    parts.push(
+      `## Read-Only Context (pre-loaded, NOT editable)\n` +
+      `The following code is injected into the execution environment before your code runs.\n` +
+      `CRITICAL rules:\n` +
+      `- Do NOT redefine, extend, override, or copy any part of this into your edits\n` +
+      `- Do NOT write class methods or function bodies that belong to this module\n` +
+      `- This code may be intentionally buggy — your job is to work WITH it, not fix it\n` +
+      `- Your edits are ONLY to "Current code" below\n` +
+      `\`\`\`${opts.language}\n${opts.readonlyPrefix}\n\`\`\``
+    );
     parts.push('');
   }
 

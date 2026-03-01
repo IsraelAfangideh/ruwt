@@ -449,7 +449,7 @@ function ProgressSection({ data }: { data: DashboardData }) {
   ];
 
   return (
-    <Card>
+    <Card accessibilityRole="region" accessibilityLabel="Your progress">
       <CardHeader>
         <CardTitle>Your Progress</CardTitle>
         <CardDescription>
@@ -527,7 +527,7 @@ function ActivityHeatmap({ data }: { data: DashboardData }) {
   const dayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
   return (
-    <Card>
+    <Card accessibilityRole="region" accessibilityLabel="Activity heatmap">
       <CardHeader>
         <View style={styles.heatmapHeaderRow}>
           <CardTitle>Activity</CardTitle>
@@ -621,7 +621,7 @@ function RecentBadgesSection({ data }: { data: DashboardData }) {
   ];
 
   return (
-    <Card>
+    <Card accessibilityRole="region" accessibilityLabel="Achievements">
       <CardHeader style={styles.badgesHeaderRow}>
         <CardTitle>Achievements</CardTitle>
         <Pressable onPress={() => (navigation.navigate as any)('Profile')}>
@@ -693,7 +693,7 @@ function ActivityFeedSection({ data }: { data: DashboardData }) {
 
   if (activity.length === 0 || uniqueUsers < 3) {
     return (
-      <Card>
+      <Card accessibilityRole="region" accessibilityLabel="Recent activity">
         <CardHeader>
           <CardTitle>Community</CardTitle>
         </CardHeader>
@@ -707,49 +707,53 @@ function ActivityFeedSection({ data }: { data: DashboardData }) {
   }
 
   return (
-    <Card>
+    <Card accessibilityRole="region" accessibilityLabel="Recent activity">
       <CardHeader>
         <CardTitle>Recent Activity</CardTitle>
         <CardDescription>Latest solves across the platform</CardDescription>
       </CardHeader>
       <CardContent>
-        {activity.map((entry, i) => (
-          <View
-            key={`${entry.user}-${entry.timestamp}-${i}`}
-            style={[
-              styles.activityRow,
-              i < activity.length - 1 && {
-                borderBottomWidth: 1,
-                borderBottomColor: c.border,
-              },
-            ]}
-          >
-            <Avatar
-              src={entry.avatarUrl}
-              fallback={entry.user?.[0]?.toUpperCase() ?? '?'}
-              size={32}
-            />
-            <View style={styles.activityTextWrap}>
-              <Text style={[styles.activityText, { color: c.text }]}>
-                <Text style={{ fontWeight: '600' }}>{entry.user}</Text> solved{' '}
-                <Text style={{ fontWeight: '600' }}>{entry.challenge}</Text>
-              </Text>
-              <Text style={[styles.activityTime, { color: c.textSubtle }]}>
-                {relativeTime(entry.timestamp)}
-              </Text>
-            </View>
+        <View accessibilityRole="list">
+          {activity.map((entry, i) => (
             <View
+              key={`${entry.user}-${entry.timestamp}-${i}`}
+              accessibilityRole="listitem"
+              accessibilityLabel={`${entry.user} solved ${entry.challenge}, ${relativeTime(entry.timestamp)}, ${formatCost(entry.cost)}`}
               style={[
-                styles.activityCostBadge,
-                { backgroundColor: c.accentBg, borderColor: c.accent + '30' },
+                styles.activityRow,
+                i < activity.length - 1 && {
+                  borderBottomWidth: 1,
+                  borderBottomColor: c.border,
+                },
               ]}
             >
-              <Text style={[styles.activityCostText, { color: c.accent }]}>
-                {formatCost(entry.cost)}
-              </Text>
+              <Avatar
+                src={entry.avatarUrl}
+                fallback={entry.user?.[0]?.toUpperCase() ?? '?'}
+                size={32}
+              />
+              <View style={styles.activityTextWrap}>
+                <Text style={[styles.activityText, { color: c.text }]}>
+                  <Text style={{ fontWeight: '600' }}>{entry.user}</Text> solved{' '}
+                  <Text style={{ fontWeight: '600' }}>{entry.challenge}</Text>
+                </Text>
+                <Text style={[styles.activityTime, { color: c.textSubtle }]}>
+                  {relativeTime(entry.timestamp)}
+                </Text>
+              </View>
+              <View
+                style={[
+                  styles.activityCostBadge,
+                  { backgroundColor: c.accentBg, borderColor: c.accent + '30' },
+                ]}
+              >
+                <Text style={[styles.activityCostText, { color: c.accent }]}>
+                  {formatCost(entry.cost)}
+                </Text>
+              </View>
             </View>
-          </View>
-        ))}
+          ))}
+        </View>
       </CardContent>
     </Card>
   );
