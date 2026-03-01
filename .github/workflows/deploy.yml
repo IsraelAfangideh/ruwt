@@ -79,7 +79,7 @@ jobs:
           # Output the SHA
           echo "base_ref=$BASE_REF" >> $GITHUB_OUTPUT
       
-      - uses: dorny/paths-filter@v2
+      - uses: dorny/paths-filter@v3
         id: filter
         with:
           # Now this is always a clean SHA (e.g., a1b2c3d...)
