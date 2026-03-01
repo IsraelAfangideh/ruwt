@@ -7,7 +7,7 @@
 import { eq, and } from 'drizzle-orm';
 import { getDb } from '../../../_shared/db';
 import { getUser } from '../../../_shared/auth';
-import { canViewResults } from '../../../_shared/org';
+import { canViewResults, requireTeamAccount } from '../../../_shared/org';
 import {
   assessments,
   assessmentSessions,
@@ -105,6 +105,9 @@ export async function onRequestGet(context: { request: Request; env: Env; params
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
     const db = getDb(context.env);
+
+    const teamCheck = await requireTeamAccount(db, user.id);
+    if (teamCheck) return teamCheck;
 
     // Verify access (creator or org member)
     const hasAccess = await canViewResults(db, user.id, context.params.id);

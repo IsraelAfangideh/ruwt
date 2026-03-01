@@ -3,7 +3,11 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { useColors } from '@/theme';
 import { spacing, fontSizes, fontFamily } from '@/theme/tokens';
 
-type NavItem = { name: 'Dashboard' | 'Challenges' | 'DailyChallenge' | 'Leaderboard' | 'Assessments'; label: string };
+type NavItem = {
+  name: 'Dashboard' | 'Challenges' | 'DailyChallenge' | 'Leaderboard' | 'Assessments' | 'Teams';
+  label: string;
+  accent?: boolean;
+};
 
 const baseNavItems: NavItem[] = [
   { name: 'Dashboard', label: 'Home' },
@@ -23,7 +27,7 @@ export function DashboardNav({ accountType }: DashboardNavProps) {
 
   const navItems: NavItem[] = accountType === 'team'
     ? [...baseNavItems, { name: 'Assessments', label: 'Assessments' }]
-    : baseNavItems;
+    : [...baseNavItems, { name: 'Teams', label: 'For Teams', accent: true }];
 
   return (
     <View style={styles.container} accessibilityRole="navigation" accessibilityLabel="Main navigation">
@@ -38,9 +42,13 @@ export function DashboardNav({ accountType }: DashboardNavProps) {
             accessibilityLabel={item.label}
             accessibilityState={{ selected: active }}
             {...(active ? { 'aria-current': 'page' as any } : {})}
-            testID={`nav-${item.label.toLowerCase()}`}
+            testID={`nav-${item.label.toLowerCase().replace(/\s+/g, '-')}`}
           >
-            <Text style={[styles.text, { color: active ? c.text : c.textMuted }]}>{item.label}</Text>
+            <Text style={[
+              styles.text,
+              { color: active ? c.text : item.accent ? c.accent : c.textMuted },
+              item.accent && !active && { fontWeight: '600' },
+            ]}>{item.label}</Text>
           </Pressable>
         );
       })}

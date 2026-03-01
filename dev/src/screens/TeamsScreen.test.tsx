@@ -83,7 +83,7 @@ describe('TeamsScreen', () => {
 
   it('renders the hero section headline', () => {
     render(<TeamsScreen />);
-    expect(screen.getByText(/Actually Use AI/)).toBeTruthy();
+    expect(screen.getByText(/AI-Fluent/)).toBeTruthy();
   });
 
   it('renders For Hiring Teams badge', () => {
@@ -118,8 +118,8 @@ describe('TeamsScreen', () => {
   it('renders comparison table headers', () => {
     render(<TeamsScreen />);
     expect(screen.getAllByText(/Ruwt/).length).toBeGreaterThanOrEqual(1);
-    expect(screen.getByText(/HackerRank/)).toBeTruthy();
-    expect(screen.getByText(/Codility/)).toBeTruthy();
+    expect(screen.getAllByText(/HackerRank/).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText(/Codility/).length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText(/Take-Home/).length).toBeGreaterThanOrEqual(1);
   });
 
@@ -147,39 +147,40 @@ describe('TeamsScreen', () => {
 
   it('renders the three-step flow section', () => {
     render(<TeamsScreen />);
-    expect(screen.getByText('Three Steps to Better Hiring')).toBeTruthy();
-    expect(screen.getByText('Create an Assessment')).toBeTruthy();
-    expect(screen.getByText('Invite Candidates')).toBeTruthy();
-    expect(screen.getByText('Review Results')).toBeTruthy();
+    expect(screen.getByText('Three Steps. Real Data.')).toBeTruthy();
+    expect(screen.getByText('Build Your Assessment')).toBeTruthy();
+    expect(screen.getByText('Send the Link')).toBeTruthy();
+    expect(screen.getAllByText('Compare Candidates').length).toBeGreaterThanOrEqual(1);
   });
 
-  it('renders Why Teams Choose Ruwt trust section', () => {
+  it('renders Why Teams Switch to Ruwt trust section', () => {
     render(<TeamsScreen />);
-    expect(screen.getByText('Why Teams Choose Ruwt')).toBeTruthy();
+    expect(screen.getByText('Why Teams Switch to Ruwt')).toBeTruthy();
     expect(screen.getByText('Real AI, Real Cost')).toBeTruthy();
-    expect(screen.getByText('Objective Metrics')).toBeTruthy();
-    expect(screen.getByText('Full Replay')).toBeTruthy();
-    expect(screen.getByText('Server-Tracked')).toBeTruthy();
+    expect(screen.getByText('Objective Comparison')).toBeTruthy();
+    expect(screen.getByText('Full Session Replay')).toBeTruthy();
+    expect(screen.getByText('Tamper-Proof Tracking')).toBeTruthy();
   });
 
-  it('renders results preview mockup', () => {
+  it('renders candidate comparison section', () => {
     render(<TeamsScreen />);
-    expect(screen.getByText("What You'll See")).toBeTruthy();
-    expect(screen.getByText('Jane Smith')).toBeTruthy();
-    expect(screen.getByText(/Passed 5\/5 challenges/)).toBeTruthy();
+    expect(screen.getByText('See What You Get')).toBeTruthy();
+    expect(screen.getByText('Candidate A')).toBeTruthy();
+    expect(screen.getAllByText(/Passed 5\/5/).length).toBeGreaterThanOrEqual(1);
   });
 
-  it('renders ROI banner', () => {
+  it('renders problem section', () => {
     render(<TeamsScreen />);
-    expect(screen.getByText(/Replace your take-home/)).toBeTruthy();
+    expect(screen.getByText(/Every Engineer Says They Use AI/)).toBeTruthy();
+    expect(screen.getByText(/Take-homes show the answer/)).toBeTruthy();
+    expect(screen.getByText(/HackerRank tests algorithms/)).toBeTruthy();
+  });
+
+  it('renders hero stats', () => {
+    render(<TeamsScreen />);
     expect(screen.getAllByText('5 min').length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText('Setup time').length).toBeGreaterThanOrEqual(1);
-  });
-
-  it('renders platform stats', () => {
-    render(<TeamsScreen />);
-    expect(screen.getByText('106')).toBeTruthy();
-    expect(screen.getByText('Challenges')).toBeTruthy();
+    expect(screen.getByText('SETUP')).toBeTruthy();
+    expect(screen.getByText('5 axes')).toBeTruthy();
   });
 
   it('shows Sign in and Get Started for logged-out users', () => {
@@ -216,17 +217,17 @@ describe('TeamsScreen', () => {
     expect(mockNavigate).toHaveBeenCalledWith('Register');
   });
 
-  it('navigates to Register when Start Free Assessment is clicked (not logged in)', () => {
+  it('navigates to Register when Create Your First Assessment is clicked (not logged in)', () => {
     render(<TeamsScreen />);
-    fireEvent.click(screen.getByText('Start Free Assessment'));
+    fireEvent.click(screen.getAllByText('Create Your First Assessment')[0]);
     expect(mockNavigate).toHaveBeenCalledWith('Register');
   });
 
-  it('navigates to AssessmentBuilder when Start Free Assessment is clicked (logged in)', async () => {
+  it('navigates to AssessmentBuilder when Create Your First Assessment is clicked (logged in)', async () => {
     mockUser = { id: 'u1' };
     render(<TeamsScreen />);
     await waitFor(() => expect(screen.getByText('Dashboard')).toBeTruthy());
-    fireEvent.click(screen.getByText('Start Free Assessment'));
+    fireEvent.click(screen.getAllByText('Create Your First Assessment')[0]);
     await waitFor(() => {
       expect(mockNavigate).toHaveBeenCalledWith('AssessmentBuilder');
     });
@@ -320,7 +321,7 @@ describe('TeamsScreen', () => {
     delete (window as any).location;
     (window as any).location = { href: '' };
     render(<TeamsScreen />);
-    const subscribeButtons = screen.getAllByText('Subscribe');
+    const subscribeButtons = screen.getAllByText('Start Free Trial');
     fireEvent.click(subscribeButtons[0]);
     await waitFor(() => {
       expect(window.location.href).toBe('https://stripe.com/checkout');
@@ -333,7 +334,7 @@ describe('TeamsScreen', () => {
       Promise.resolve(ok({ error: 'Unauthorized' }))
     ));
     render(<TeamsScreen />);
-    const subscribeButtons = screen.getAllByText('Subscribe');
+    const subscribeButtons = screen.getAllByText('Start Free Trial');
     fireEvent.click(subscribeButtons[0]);
     await waitFor(() => {
       expect(mockNavigate).toHaveBeenCalledWith('Register');
@@ -342,7 +343,7 @@ describe('TeamsScreen', () => {
 
   it('renders cross-link to developer challenges', () => {
     render(<TeamsScreen />);
-    expect(screen.getByText(/Developer\? Try free challenges/)).toBeTruthy();
+    expect(screen.getByText(/Developer\? Practice free challenges/)).toBeTruthy();
   });
 
   it('navigates to Landing when logo is clicked', () => {
@@ -358,8 +359,8 @@ describe('TeamsScreen', () => {
 
   it('renders final CTA section', () => {
     render(<TeamsScreen />);
-    expect(screen.getByText('Start Assessing AI Skills Today')).toBeTruthy();
-    expect(screen.getByText('Subscribe Now')).toBeTruthy();
+    expect(screen.getByText('Stop Guessing. Start Measuring.')).toBeTruthy();
+    expect(screen.getAllByText('Create Your First Assessment').length).toBeGreaterThanOrEqual(2);
   });
 
   it('renders guarantee text', () => {
@@ -379,24 +380,16 @@ describe('TeamsScreen', () => {
     expect(screen.getAllByPlaceholderText('Jane Smith').length).toBeGreaterThanOrEqual(1);
   });
 
-  it('renders Subscribe Now button in final CTA', () => {
+  it('renders pricing note in final CTA', () => {
     render(<TeamsScreen />);
-    expect(screen.getByText('Subscribe Now')).toBeTruthy();
+    expect(screen.getAllByText(/\$200\/month when you're ready/).length).toBeGreaterThanOrEqual(1);
   });
 
-  it('handles Subscribe Now click in final CTA section', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockImplementation(() =>
-      Promise.resolve(ok({ url: 'https://stripe.com/checkout' }))
-    ));
-    const originalLocation = window.location;
-    delete (window as any).location;
-    (window as any).location = { href: '' };
+  it('navigates to Register when final CTA button is clicked (not logged in)', () => {
     render(<TeamsScreen />);
-    fireEvent.click(screen.getByText('Subscribe Now'));
-    await waitFor(() => {
-      expect(window.location.href).toBe('https://stripe.com/checkout');
-    });
-    Object.defineProperty(window, 'location', { value: originalLocation, writable: true });
+    const ctaButtons = screen.getAllByText('Create Your First Assessment');
+    fireEvent.click(ctaButtons[ctaButtons.length - 1]);
+    expect(mockNavigate).toHaveBeenCalledWith('Register');
   });
 
   it('shows Book a Demo button in final CTA when not submitted and form not shown', () => {
@@ -437,7 +430,7 @@ describe('TeamsScreen', () => {
 
   it('navigates to Landing when cross-link is clicked', () => {
     render(<TeamsScreen />);
-    fireEvent.click(screen.getByText(/Developer\? Try free challenges/));
+    fireEvent.click(screen.getByText(/Developer\? Practice free challenges/));
     expect(mockNavigate).toHaveBeenCalledWith('Landing');
   });
 
@@ -448,7 +441,7 @@ describe('TeamsScreen', () => {
     const mockAlert = vi.fn();
     vi.stubGlobal('alert', mockAlert);
     render(<TeamsScreen />);
-    const subscribeButtons = screen.getAllByText('Subscribe');
+    const subscribeButtons = screen.getAllByText('Start Free Trial');
     fireEvent.click(subscribeButtons[0]);
     await waitFor(() => {
       expect(mockAlert).toHaveBeenCalledWith('Create an organization first');

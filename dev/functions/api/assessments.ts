@@ -6,7 +6,7 @@ import { eq, desc, and, sql, or, inArray } from 'drizzle-orm';
 import { z } from 'zod';
 import { getDb } from '../_shared/db';
 import { getUser } from '../_shared/auth';
-import { getUserOrgIds, requireOrgAccess } from '../_shared/org';
+import { getUserOrgIds, requireOrgAccess, requireTeamAccount } from '../_shared/org';
 import { assessments, assessmentChallenges, assessmentInvites, assessmentSessions } from '../../drizzle/schema.d1';
 
 const createAssessmentSchema = z.object({
@@ -21,6 +21,10 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
     const user = await getUser(context.request, context.env);
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
+    const db = getDb(context.env);
+    const teamCheck = await requireTeamAccount(db, user.id);
+    if (teamCheck) return teamCheck;
+
     const body = await context.request.json().catch(() => ({}));
     const parsed = createAssessmentSchema.safeParse(body);
     if (!parsed.success) {
@@ -29,8 +33,6 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
         { status: 400 }
       );
     }
-
-    const db = getDb(context.env);
 
     // If orgId provided, verify user is admin/owner in that org
     if (parsed.data.orgId) {
@@ -71,6 +73,8 @@ export async function onRequestGet(context: { request: Request; env: Env }) {
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
     const db = getDb(context.env);
+    const teamCheck = await requireTeamAccount(db, user.id);
+    if (teamCheck) return teamCheck;
 
     // Get org IDs the user belongs to
     const orgIds = await getUserOrgIds(db, user.id);

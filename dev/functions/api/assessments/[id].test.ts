@@ -1,15 +1,19 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // ── Mocks ────────────────────────────────────────────────────────────
-const { mockGetUser, mockGetDb, mockCanManageAssessment } = vi.hoisted(() => ({
+const { mockGetUser, mockGetDb, mockCanManageAssessment, mockRequireTeamAccount } = vi.hoisted(() => ({
   mockGetUser: vi.fn(),
   mockGetDb: vi.fn(),
   mockCanManageAssessment: vi.fn(),
+  mockRequireTeamAccount: vi.fn(),
 }));
 
 vi.mock('../../_shared/auth', () => ({ getUser: mockGetUser }));
 vi.mock('../../_shared/db', () => ({ getDb: mockGetDb }));
-vi.mock('../../_shared/org', () => ({ canManageAssessment: mockCanManageAssessment }));
+vi.mock('../../_shared/org', () => ({
+  canManageAssessment: mockCanManageAssessment,
+  requireTeamAccount: mockRequireTeamAccount,
+}));
 
 import { onRequestGet, onRequestPut } from './[id]';
 
@@ -52,6 +56,8 @@ describe('GET /api/assessments/:id', () => {
     mockGetUser.mockReset();
     mockGetDb.mockReset();
     mockCanManageAssessment.mockReset();
+    mockRequireTeamAccount.mockReset();
+    mockRequireTeamAccount.mockResolvedValue(null);
   });
 
   it('returns 401 when not authenticated', async () => {
@@ -74,6 +80,16 @@ describe('GET /api/assessments/:id', () => {
 
     expect(res.status).toBe(404);
     expect(json.error).toBe('Assessment not found');
+  });
+
+  it('returns 403 when user is not team account (GET)', async () => {
+    mockRequireTeamAccount.mockResolvedValue(
+      Response.json({ error: 'Team account required', code: 'TEAM_REQUIRED' }, { status: 403 })
+    );
+    mockGetUser.mockResolvedValue(FAKE_USER);
+
+    const res = await onRequestGet(makeGetContext('a-1'));
+    expect(res.status).toBe(403);
   });
 
   it('returns assessment with linked challenges on success', async () => {
@@ -128,6 +144,8 @@ describe('PUT /api/assessments/:id', () => {
     mockGetUser.mockReset();
     mockGetDb.mockReset();
     mockCanManageAssessment.mockReset();
+    mockRequireTeamAccount.mockReset();
+    mockRequireTeamAccount.mockResolvedValue(null);
   });
 
   it('returns 401 when not authenticated', async () => {
@@ -138,6 +156,16 @@ describe('PUT /api/assessments/:id', () => {
 
     expect(res.status).toBe(401);
     expect(json.error).toBe('Unauthorized');
+  });
+
+  it('returns 403 when user is not team account (PUT)', async () => {
+    mockRequireTeamAccount.mockResolvedValue(
+      Response.json({ error: 'Team account required', code: 'TEAM_REQUIRED' }, { status: 403 })
+    );
+    mockGetUser.mockResolvedValue(FAKE_USER);
+
+    const res = await onRequestPut(makePutContext('a-1', { title: 'Updated' }));
+    expect(res.status).toBe(403);
   });
 
   it('returns 400 for invalid update payload', async () => {
@@ -317,6 +345,8 @@ describe('GET /api/assessments/:id — error handling', () => {
     mockGetUser.mockReset();
     mockGetDb.mockReset();
     mockCanManageAssessment.mockReset();
+    mockRequireTeamAccount.mockReset();
+    mockRequireTeamAccount.mockResolvedValue(null);
   });
 
   it('returns 500 on unexpected error in GET handler', async () => {

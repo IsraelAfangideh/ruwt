@@ -5,7 +5,7 @@
 import { eq, and, sql } from 'drizzle-orm';
 import type { Db } from './db';
 import {
-  organizations, orgMembers, assessments,
+  organizations, orgMembers, assessments, profiles,
   type OrgRole,
 } from '../../drizzle/schema.d1';
 
@@ -118,4 +118,21 @@ export async function hasActiveSubscription(db: Db, orgId: string): Promise<bool
   }
 
   return false;
+}
+
+/** Check if user has a team account type. Returns 403 Response or null if authorized. */
+export async function requireTeamAccount(db: Db, userId: string): Promise<Response | null> {
+  const [profile] = await db
+    .select({ accountType: profiles.accountType })
+    .from(profiles)
+    .where(eq(profiles.id, userId))
+    .limit(1);
+
+  if (!profile || profile.accountType !== 'team') {
+    return Response.json(
+      { error: 'Team account required', code: 'TEAM_REQUIRED' },
+      { status: 403 },
+    );
+  }
+  return null;
 }

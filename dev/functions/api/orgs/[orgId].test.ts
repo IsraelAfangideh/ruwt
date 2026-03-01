@@ -1,10 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-const { mockGetUser, mockGetDb, mockGetUserOrgRole, mockRequireOrgAccess } = vi.hoisted(() => ({
+const { mockGetUser, mockGetDb, mockGetUserOrgRole, mockRequireOrgAccess, mockRequireTeamAccount } = vi.hoisted(() => ({
   mockGetUser: vi.fn(),
   mockGetDb: vi.fn(),
   mockGetUserOrgRole: vi.fn(),
   mockRequireOrgAccess: vi.fn(),
+  mockRequireTeamAccount: vi.fn(),
 }));
 
 vi.mock('../../_shared/auth', () => ({ getUser: mockGetUser }));
@@ -12,6 +13,7 @@ vi.mock('../../_shared/db', () => ({ getDb: mockGetDb }));
 vi.mock('../../_shared/org', () => ({
   getUserOrgRole: mockGetUserOrgRole,
   requireOrgAccess: mockRequireOrgAccess,
+  requireTeamAccount: mockRequireTeamAccount,
 }));
 vi.mock('../../../drizzle/schema.d1', () => ({
   organizations: { id: 'id', name: 'name' },
@@ -73,12 +75,23 @@ function setupDb(overrides: Record<string, any> = {}) {
 describe('GET /api/orgs/:orgId', () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    mockRequireTeamAccount.mockResolvedValue(null);
   });
 
   it('returns 401 when not authenticated', async () => {
     mockGetUser.mockResolvedValue(null);
     const res = await onRequestGet(makeGetCtx());
     expect(res.status).toBe(401);
+  });
+
+  it('returns 403 when user is not team account (GET)', async () => {
+    mockRequireTeamAccount.mockResolvedValue(
+      Response.json({ error: 'Team account required', code: 'TEAM_REQUIRED' }, { status: 403 })
+    );
+    mockGetUser.mockResolvedValue(FAKE_USER);
+
+    const res = await onRequestGet(makeGetCtx());
+    expect(res.status).toBe(403);
   });
 
   it('returns 403 when user is not a member', async () => {
@@ -143,12 +156,23 @@ describe('GET /api/orgs/:orgId', () => {
 describe('PUT /api/orgs/:orgId', () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    mockRequireTeamAccount.mockResolvedValue(null);
   });
 
   it('returns 401 when not authenticated', async () => {
     mockGetUser.mockResolvedValue(null);
     const res = await onRequestPut(makePutCtx({ name: 'New Name' }));
     expect(res.status).toBe(401);
+  });
+
+  it('returns 403 when user is not team account (PUT)', async () => {
+    mockRequireTeamAccount.mockResolvedValue(
+      Response.json({ error: 'Team account required', code: 'TEAM_REQUIRED' }, { status: 403 })
+    );
+    mockGetUser.mockResolvedValue(FAKE_USER);
+
+    const res = await onRequestPut(makePutCtx({ name: 'New Name' }));
+    expect(res.status).toBe(403);
   });
 
   it('returns 403 when user lacks admin role', async () => {

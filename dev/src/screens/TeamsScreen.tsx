@@ -14,6 +14,7 @@ import { Input } from '@/components/ui/Input';
 import { SUBSCRIPTION_PLANS, ENTERPRISE_TIER } from '@/lib/stripe';
 import { useColors } from '@/theme';
 import { spacing, fontSizes, fontFamily } from '@/theme/tokens';
+import { useWindowWidth } from '@/hooks/useWindowWidth';
 
 // ─── FAQ Data ────────────────────────────────────────────────────────────────
 
@@ -36,11 +37,11 @@ const FAQ_ITEMS = [
   },
   {
     q: 'What models do candidates have access to?',
-    a: 'Eight open-source models across five price tiers — from micro ($0.01/1M tokens) to reasoning ($0.50+/1M tokens). Part of the assessment is choosing the right model for each problem. Choosing a $0.50 model for a simple string formatter is a signal.',
+    a: 'Multiple models across five price tiers — from micro ($0.01/1M tokens) to reasoning ($0.50+/1M tokens). Part of the assessment is choosing the right model for each problem. Choosing an expensive model for a trivial task is a signal.',
   },
   {
     q: 'Can I customize the challenges?',
-    a: 'Yes. Choose from 60+ challenges across categories like Model Selection, Prompt Efficiency, Debugging, and more. Or start from a template (Frontend Developer, Backend Developer, Full Stack, AI Power User) and customize from there.',
+    a: 'Yes. Choose from 100+ challenges across categories like Model Selection, Prompt Efficiency, Debugging, and more. Or start from a template (Frontend Developer, Backend Developer, Full Stack, AI Power User) and customize from there.',
   },
   {
     q: 'What data do I get back?',
@@ -48,7 +49,7 @@ const FAQ_ITEMS = [
   },
   {
     q: 'Is candidate data private?',
-    a: 'Candidates only see their own results. Assessment data is only visible to the assessment creator. Shareable results links are opt-in and use unique tokens — candidates control whether to share their results publicly.',
+    a: 'Candidates only see their own results. Assessment data is only visible to the assessment creator and your team members. Shareable results links are opt-in and use unique tokens.',
   },
 ];
 
@@ -61,6 +62,7 @@ const COMPARISON_ROWS = [
   { label: 'Full session replay', ruwt: true, hackerrank: 'Partial', codility: false, takehome: false },
   { label: 'Behavioral insights', ruwt: true, hackerrank: false, codility: false, takehome: false },
   { label: 'Setup time', ruwt: '5 min', hackerrank: '30 min', codility: '30 min', takehome: '2+ hrs' },
+  { label: 'Anti-cheat (server-tracked)', ruwt: true, hackerrank: 'Partial', codility: 'Partial', takehome: false },
   { label: 'Pricing', ruwt: '$200/mo flat', hackerrank: '$100+/seat/mo', codility: '$100+/seat/mo', takehome: 'Free' },
 ];
 
@@ -69,6 +71,8 @@ const COMPARISON_ROWS = [
 export function TeamsScreen() {
   const navigation = useNavigation();
   const c = useColors();
+  const width = useWindowWidth();
+  const isMobile = width < 768;
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [expandedFaq, setExpandedFaq] = useState<number | null>(null);
 
@@ -163,7 +167,12 @@ export function TeamsScreen() {
 
     if (!showDemoForm) {
       return (
-        <Button size="lg" variant="outline" onPress={() => setShowDemoForm(true)}>Book a Demo</Button>
+        <Button size="lg" variant="outline" onPress={() => setShowDemoForm(true)}
+          style={{ borderColor: 'rgba(232,228,223,0.3)' }}
+          textStyle={{ color: '#f5f3f0' }}
+        >
+          Book a Demo
+        </Button>
       );
     }
 
@@ -193,95 +202,352 @@ export function TeamsScreen() {
   };
 
   const renderCheckOrX = (val: boolean | string) => {
-    if (val === true) return <Text style={{ color: c.success, fontSize: fontSizes.md, fontWeight: '700' }}>{'\u2713'}</Text>;
+    if (val === true) return <Text style={{ color: '#5a8a5a', fontSize: fontSizes.md, fontWeight: '700' }}>{'\u2713'}</Text>;
     if (val === false) return <Text style={{ color: c.textMuted, fontSize: fontSizes.md }}>{'\u2014'}</Text>;
     return <Text style={{ color: c.text, fontSize: fontSizes.xs }}>{val}</Text>;
   };
 
   return (
     <ScrollView style={[styles.page, { backgroundColor: c.bg }]}>
-      {/* Header */}
-      <View style={[styles.header, { borderBottomColor: c.border }]}>
+      {/* ─── Header ─── */}
+      <View style={[styles.header, { borderBottomColor: 'transparent' }]}>
         <Pressable onPress={() => navigation.navigate('Landing' as never)}>
-          <Text style={[styles.logo, { color: c.text }]}>Ruwt</Text>
+          <Text style={[styles.logo, { color: '#f5f3f0' }]}>Ruwt</Text>
         </Pressable>
         <View style={styles.headerActions}>
           {isLoggedIn ? (
-            <Button onPress={() => navigation.navigate('Dashboard' as never)}>Dashboard</Button>
+            <Button onPress={() => navigation.navigate('Dashboard' as never)}
+              style={{ backgroundColor: '#c9a962' }}
+              textStyle={{ color: '#1a1816' }}
+            >
+              Dashboard
+            </Button>
           ) : (
             <>
-              <Button variant="ghost" onPress={() => navigation.navigate('Login' as never)}>Sign in</Button>
-              <Button onPress={() => navigation.navigate('Register' as never)}>Get Started</Button>
+              <Button variant="ghost" onPress={() => navigation.navigate('Login' as never)}
+                textStyle={{ color: '#f5f3f0' }}
+              >
+                Sign in
+              </Button>
+              <Button onPress={() => navigation.navigate('Register' as never)}
+                style={{ backgroundColor: '#c9a962' }}
+                textStyle={{ color: '#1a1816' }}
+              >
+                Get Started
+              </Button>
             </>
           )}
         </View>
       </View>
 
-      {/* Hero */}
-      <View style={styles.hero}>
-        <Badge variant="secondary">For Hiring Teams</Badge>
-        <Text style={[styles.heroTitle, { color: c.text }]}>
-          Measure How Your Candidates{'\n'}
-          <Text style={{ color: c.accent }}>Actually Use AI</Text>
-        </Text>
-        <Text style={[styles.heroSub, { color: c.textMuted }]}>
-          Traditional coding tests don't measure AI fluency. Ruwt gives you real data — which models they pick, how they prompt, what they spend. Objective, comparable, and impossible to fake.
-        </Text>
-        <View style={styles.heroButtons}>
-          <Button size="lg" onPress={handleStartAssessment}>Start Free Assessment</Button>
-          <DemoFormSection />
+      {/* ─── Dark Hero ─── */}
+      <View style={[styles.hero, { backgroundColor: '#1a1816' }]}>
+        <View style={styles.heroInner}>
+          <Badge variant="secondary" style={{ alignSelf: 'center' }}>For Hiring Teams</Badge>
+          <Text style={styles.heroTitle}>
+            Your Candidates Claim{'\n'}They're{' '}
+            <Text style={{ color: '#c9a962' }}>AI-Fluent</Text>.{'\n'}
+            Now You Can Verify It.
+          </Text>
+          <Text style={styles.heroSub}>
+            Ruwt is the only assessment platform that measures how engineers actually use AI —
+            which models they pick, how they prompt, what they spend, and how they debug.
+            Objective data. Impossible to fake.
+          </Text>
+
+          {/* ROI Stats in hero */}
+          <View style={[styles.heroStats, isMobile && styles.heroStatsMobile]}>
+            {[
+              { value: '5 min', label: 'SETUP' },
+              { value: '60 min', label: 'CANDIDATE TIME' },
+              { value: '5 axes', label: 'AI PROFILE' },
+              { value: '100%', label: 'SERVER-TRACKED' },
+            ].map((s) => (
+              <View key={s.label} style={styles.heroStat}>
+                <Text style={styles.heroStatValue}>{s.value}</Text>
+                <Text style={styles.heroStatLabel}>{s.label}</Text>
+              </View>
+            ))}
+          </View>
+
+          <View style={styles.heroButtons}>
+            <Button
+              size="lg"
+              onPress={handleStartAssessment}
+              style={{ backgroundColor: '#c9a962' }}
+              textStyle={{ color: '#1a1816', fontWeight: '700' }}
+            >
+              Create Your First Assessment
+            </Button>
+            <DemoFormSection />
+          </View>
+          <Text style={styles.heroNote}>
+            Free to try. No credit card required.
+          </Text>
         </View>
       </View>
 
-      {/* Platform Stats */}
-      <View style={[styles.section, { backgroundColor: c.muted + '15' }]}>
-        <View style={styles.platformStats}>
+      {/* ─── The Problem ─── */}
+      <View style={[styles.section, { backgroundColor: c.bg }]}>
+        <Text style={[styles.sectionTitle, { color: c.text }]}>
+          Every Engineer Says They Use AI.{'\n'}How Do You Tell Who's Actually Good?
+        </Text>
+        <View style={styles.problemGrid}>
           {[
-            { value: '106', label: 'Challenges', sub: 'Across 11 categories' },
-            { value: '9', label: 'AI Models', sub: '5 price tiers' },
-            { value: '710K+', label: 'Tokens Processed', sub: 'Real AI usage data' },
-          ].map((s) => (
-            <View key={s.label} style={styles.platformStat}>
-              <Text style={[styles.platformStatValue, { color: c.accent }]}>{s.value}</Text>
-              <Text style={[styles.platformStatLabel, { color: c.text }]}>{s.label}</Text>
-              <Text style={[styles.platformStatSub, { color: c.textMuted }]}>{s.sub}</Text>
-            </View>
+            {
+              icon: '\u2753',
+              problem: 'Take-homes show the answer',
+              detail: 'but not the process. Did they use AI? Which model? How efficiently? You have no idea.',
+            },
+            {
+              icon: '\u274C',
+              problem: 'HackerRank tests algorithms',
+              detail: "not AI judgment. Sorting arrays in O(n log n) doesn't tell you if they'll waste $500/month on GPT-4 for tasks a free model handles.",
+            },
+            {
+              icon: '\u23F3',
+              problem: 'Interviews are subjective',
+              detail: 'Two interviewers, two opinions. No standardized way to compare candidates on the skill that matters most right now.',
+            },
+          ].map((item) => (
+            <Card key={item.problem} style={styles.problemCard}>
+              <CardContent style={styles.problemCardContent}>
+                <Text style={styles.problemIcon}>{item.icon}</Text>
+                <Text style={[styles.problemTitle, { color: c.text }]}>{item.problem}</Text>
+                <Text style={[styles.problemDetail, { color: c.textMuted }]}>{item.detail}</Text>
+              </CardContent>
+            </Card>
           ))}
         </View>
       </View>
 
-      {/* ROI Banner */}
-      <View style={[styles.roiBanner, { borderColor: c.accent + '40' }]}>
-        <Text style={[styles.roiText, { color: c.text }]}>
-          Replace your take-home with <Text style={{ color: c.accent, fontWeight: '700' }}>1 Ruwt assessment</Text>.
-        </Text>
-        <View style={styles.roiStats}>
-          <View style={styles.roiStat}>
-            <Text style={[styles.roiStatValue, { color: c.accent }]}>5 min</Text>
-            <Text style={[styles.roiStatLabel, { color: c.textMuted }]}>Setup time</Text>
-          </View>
-          <View style={styles.roiStat}>
-            <Text style={[styles.roiStatValue, { color: c.accent }]}>60 min</Text>
-            <Text style={[styles.roiStatLabel, { color: c.textMuted }]}>Candidate time</Text>
-          </View>
-          <View style={styles.roiStat}>
-            <Text style={[styles.roiStatValue, { color: c.accent }]}>5 axes</Text>
-            <Text style={[styles.roiStatLabel, { color: c.textMuted }]}>AI profile data</Text>
-          </View>
+      {/* ─── The Solution (3-step) ─── */}
+      <View style={[styles.section, styles.sectionAlt, { backgroundColor: c.muted + '15' }]}>
+        <Badge variant="default" style={{ alignSelf: 'center', marginBottom: spacing.md }}>How It Works</Badge>
+        <Text style={[styles.sectionTitle, { color: c.text }]}>Three Steps. Real Data.</Text>
+        <View style={styles.cards}>
+          {[
+            {
+              step: '1',
+              title: 'Build Your Assessment',
+              desc: 'Pick from 100+ challenges across 11 categories, or use a template (Frontend, Backend, Full Stack, AI Power User). Add your company branding. Set the time limit. Takes 5 minutes.',
+            },
+            {
+              step: '2',
+              title: 'Send the Link',
+              desc: 'Candidates get a branded assessment page with real AI models and a full IDE. They choose which models to use, how to prompt, and how to debug — all tracked server-side.',
+            },
+            {
+              step: '3',
+              title: 'Compare Candidates',
+              desc: 'Each candidate gets an AI Profile: a 5-axis radar chart, behavioral flags (green/red), cost breakdown, model patterns, and a full session replay. Export to CSV for your ATS.',
+            },
+          ].map((item) => (
+            <Card key={item.step} style={styles.card}>
+              <CardHeader>
+                <View style={[styles.stepNum, { backgroundColor: '#c9a962' + '20' }]}>
+                  <Text style={[styles.stepText, { color: '#c9a962' }]}>{item.step}</Text>
+                </View>
+                <CardTitle>{item.title}</CardTitle>
+                <CardDescription>{item.desc}</CardDescription>
+              </CardHeader>
+            </Card>
+          ))}
         </View>
       </View>
 
-      {/* Pricing */}
+      {/* ─── Candidate Comparison Preview ─── */}
       <View style={styles.section}>
+        <Text style={[styles.sectionTitle, { color: c.text }]}>See What You Get</Text>
+        <Text style={[styles.sectionSub, { color: c.textMuted }]}>
+          Two candidates. Same assessment. Very different AI profiles.
+        </Text>
+
+        <View style={styles.candidateComparison}>
+          {/* Candidate A — Strong */}
+          <Card style={[styles.candidateCard, { borderColor: '#5a8a5a' + '60', borderWidth: 1 }]}>
+            <CardContent>
+              <View style={styles.candidateHeader}>
+                <View style={[styles.candidateAvatar, { backgroundColor: '#5a8a5a' + '20' }]}>
+                  <Text style={{ fontSize: 18, color: '#5a8a5a', fontWeight: '700' }}>A</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.candidateName, { color: c.text }]}>Candidate A</Text>
+                  <Text style={{ fontSize: fontSizes.xs, color: '#5a8a5a', fontWeight: '600' }}>Passed 5/5</Text>
+                </View>
+                <Badge variant="outline" style={{ borderColor: '#5a8a5a', backgroundColor: '#5a8a5a' + '15' }}>
+                  <Text style={{ fontSize: 11, color: '#5a8a5a', fontWeight: '700' }}>RECOMMENDED</Text>
+                </Badge>
+              </View>
+
+              <View style={styles.candidateFlags}>
+                {['Strategic model switching', 'Concise prompting', 'Manual error correction'].map((f) => (
+                  <Badge key={f} variant="outline" style={{ borderColor: '#5a8a5a', backgroundColor: '#5a8a5a' + '10' }}>
+                    <Text style={{ fontSize: fontSizes.xs, color: '#5a8a5a' }}>{f}</Text>
+                  </Badge>
+                ))}
+              </View>
+
+              <View style={styles.candidateMetricsRow}>
+                <View style={styles.candidateMetric}>
+                  <Text style={[styles.candidateMetricVal, { color: '#c9a962' }]}>$0.28</Text>
+                  <Text style={[styles.candidateMetricLbl, { color: c.textMuted }]}>Total cost</Text>
+                </View>
+                <View style={styles.candidateMetric}>
+                  <Text style={[styles.candidateMetricVal, { color: c.text }]}>3,200</Text>
+                  <Text style={[styles.candidateMetricLbl, { color: c.textMuted }]}>Tokens</Text>
+                </View>
+                <View style={styles.candidateMetric}>
+                  <Text style={[styles.candidateMetricVal, { color: c.text }]}>42 min</Text>
+                  <Text style={[styles.candidateMetricLbl, { color: c.textMuted }]}>Time</Text>
+                </View>
+                <View style={styles.candidateMetric}>
+                  <Text style={[styles.candidateMetricVal, { color: c.text }]}>2.3</Text>
+                  <Text style={[styles.candidateMetricLbl, { color: c.textMuted }]}>Prompts/challenge</Text>
+                </View>
+              </View>
+
+              <Text style={[styles.candidateInsight, { color: c.textMuted }]}>
+                Started with Llama 8B for easy challenges, escalated to DeepSeek R1 for debugging.
+                Caught an incorrect AI suggestion and corrected it manually.
+              </Text>
+
+              <View style={[styles.costBar, { backgroundColor: c.muted + '30' }]}>
+                <View style={[styles.costBarFill, { backgroundColor: '#5a8a5a', width: '28%' }]} />
+              </View>
+              <Text style={[styles.costBarLabel, { color: c.textMuted }]}>
+                P28 — 40% cheaper than median
+              </Text>
+            </CardContent>
+          </Card>
+
+          {/* Candidate B — Weak */}
+          <Card style={[styles.candidateCard, { borderColor: c.destructive + '40', borderWidth: 1 }]}>
+            <CardContent>
+              <View style={styles.candidateHeader}>
+                <View style={[styles.candidateAvatar, { backgroundColor: c.destructive + '15' }]}>
+                  <Text style={{ fontSize: 18, color: c.destructive, fontWeight: '700' }}>B</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.candidateName, { color: c.text }]}>Candidate B</Text>
+                  <Text style={{ fontSize: fontSizes.xs, color: c.destructive, fontWeight: '600' }}>Passed 3/5</Text>
+                </View>
+                <Badge variant="outline" style={{ borderColor: c.destructive, backgroundColor: c.destructive + '10' }}>
+                  <Text style={{ fontSize: 11, color: c.destructive, fontWeight: '700' }}>CONCERNS</Text>
+                </Badge>
+              </View>
+
+              <View style={styles.candidateFlags}>
+                {['Used premium model for trivial tasks', 'Copy-pasted full errors', 'No model switching'].map((f) => (
+                  <Badge key={f} variant="outline" style={{ borderColor: c.destructive, backgroundColor: c.destructive + '10' }}>
+                    <Text style={{ fontSize: fontSizes.xs, color: c.destructive }}>{f}</Text>
+                  </Badge>
+                ))}
+              </View>
+
+              <View style={styles.candidateMetricsRow}>
+                <View style={styles.candidateMetric}>
+                  <Text style={[styles.candidateMetricVal, { color: c.destructive }]}>$4.12</Text>
+                  <Text style={[styles.candidateMetricLbl, { color: c.textMuted }]}>Total cost</Text>
+                </View>
+                <View style={styles.candidateMetric}>
+                  <Text style={[styles.candidateMetricVal, { color: c.text }]}>18,400</Text>
+                  <Text style={[styles.candidateMetricLbl, { color: c.textMuted }]}>Tokens</Text>
+                </View>
+                <View style={styles.candidateMetric}>
+                  <Text style={[styles.candidateMetricVal, { color: c.text }]}>78 min</Text>
+                  <Text style={[styles.candidateMetricLbl, { color: c.textMuted }]}>Time</Text>
+                </View>
+                <View style={styles.candidateMetric}>
+                  <Text style={[styles.candidateMetricVal, { color: c.text }]}>8.1</Text>
+                  <Text style={[styles.candidateMetricLbl, { color: c.textMuted }]}>Prompts/challenge</Text>
+                </View>
+              </View>
+
+              <Text style={[styles.candidateInsight, { color: c.textMuted }]}>
+                Used GPT-4 for every challenge including FizzBuzz. Pasted entire error traces
+                into prompts. Failed 2 challenges after running out of time.
+              </Text>
+
+              <View style={[styles.costBar, { backgroundColor: c.muted + '30' }]}>
+                <View style={[styles.costBarFill, { backgroundColor: c.destructive, width: '92%' }]} />
+              </View>
+              <Text style={[styles.costBarLabel, { color: c.textMuted }]}>
+                P92 — 3x more expensive than median
+              </Text>
+            </CardContent>
+          </Card>
+        </View>
+
+        <Text style={[styles.comparisonCaption, { color: c.textMuted }]}>
+          Both candidates passed the same interview. Only one of them is efficient with AI.
+          Without Ruwt, you'd never know the difference.
+        </Text>
+      </View>
+
+      {/* ─── Why Teams Choose Ruwt ─── */}
+      <View style={[styles.section, styles.sectionAlt, { backgroundColor: c.muted + '10' }]}>
+        <Text style={[styles.sectionTitle, { color: c.text }]}>Why Teams Switch to Ruwt</Text>
+        <View style={styles.trustGrid}>
+          {[
+            { icon: '\u{1F4B0}', title: 'Real AI, Real Cost', desc: 'Candidates use actual AI APIs with real pricing. No sandboxes, no simulations. Every decision has a real cost attached.' },
+            { icon: '\u{1F4CA}', title: 'Objective Comparison', desc: 'Compare candidates by cost, tokens, model strategy, and time. Numbers, not opinions. Export to CSV for your ATS.' },
+            { icon: '\u{1F3AC}', title: 'Full Session Replay', desc: 'Watch every prompt, every model switch, every debugging step. Understand how candidates actually think under pressure.' },
+            { icon: '\u{1F512}', title: 'Tamper-Proof Tracking', desc: 'All AI calls logged server-side. Candidates can\'t use external tools or swap API keys without it showing in the data.' },
+          ].map((item) => (
+            <Card key={item.title} style={styles.trustCard}>
+              <CardHeader>
+                <Text style={{ fontSize: 28, marginBottom: spacing.xs }}>{item.icon}</Text>
+                <CardTitle>{item.title}</CardTitle>
+                <CardDescription>{item.desc}</CardDescription>
+              </CardHeader>
+            </Card>
+          ))}
+        </View>
+      </View>
+
+      {/* ─── Comparison Table ─── */}
+      <View style={styles.section}>
+        <Text style={[styles.sectionTitle, { color: c.text }]}>How Ruwt Compares</Text>
+        <Text style={[styles.sectionSub, { color: c.textMuted }]}>
+          The only platform built specifically to measure AI-augmented engineering.
+        </Text>
+        <Card style={[styles.comparisonTable, { borderColor: c.border }]}>
+          <CardContent>
+            {/* Table header */}
+            <View style={[styles.compRow, styles.compHeaderRow, { borderBottomColor: c.accent }]}>
+              <View style={styles.compLabel} />
+              <View style={styles.compCell}><Text style={[styles.compHeader, { color: '#c9a962' }]}>Ruwt</Text></View>
+              <View style={styles.compCell}><Text style={[styles.compHeader, { color: c.textMuted }]}>HackerRank</Text></View>
+              <View style={styles.compCell}><Text style={[styles.compHeader, { color: c.textMuted }]}>Codility</Text></View>
+              <View style={styles.compCell}><Text style={[styles.compHeader, { color: c.textMuted }]}>Take-Home</Text></View>
+            </View>
+            {COMPARISON_ROWS.map((row, i) => (
+              <View key={i} style={[styles.compRow, i < COMPARISON_ROWS.length - 1 && { borderBottomColor: c.border, borderBottomWidth: 1 }]}>
+                <View style={styles.compLabel}>
+                  <Text style={[styles.compLabelText, { color: c.text }]}>{row.label}</Text>
+                </View>
+                <View style={[styles.compCell, { backgroundColor: '#c9a962' + '08' }]}>{renderCheckOrX(row.ruwt)}</View>
+                <View style={styles.compCell}>{renderCheckOrX(row.hackerrank)}</View>
+                <View style={styles.compCell}>{renderCheckOrX(row.codility)}</View>
+                <View style={styles.compCell}>{renderCheckOrX(row.takehome)}</View>
+              </View>
+            ))}
+          </CardContent>
+        </Card>
+      </View>
+
+      {/* ─── Pricing ─── */}
+      <View style={[styles.section, { backgroundColor: c.muted + '15' }]}>
         <Text style={[styles.sectionTitle, { color: c.text }]}>Simple, Flat-Rate Pricing</Text>
         <Text style={[styles.sectionSub, { color: c.textMuted }]}>
-          Unlimited assessments. Cancel anytime. 30-day money-back guarantee.
+          Unlimited assessments. Unlimited candidates. Cancel anytime.
         </Text>
         <View style={styles.tiers}>
           {SUBSCRIPTION_PLANS.map((plan) => {
             const isPopular = plan.badge === 'Most Popular';
             return (
-              <Card key={plan.id} style={[styles.tierCard, isPopular && { borderColor: c.accent, borderWidth: 2 }]}>
+              <Card key={plan.id} style={[styles.tierCard, isPopular && { borderColor: '#c9a962', borderWidth: 2 }]}>
                 <CardHeader>
                   {plan.badge && (
                     <Badge variant={isPopular ? 'default' : 'outline'}>{plan.badge}</Badge>
@@ -305,7 +571,7 @@ export function TeamsScreen() {
                     style={{ marginTop: spacing.md }}
                     fullWidth
                   >
-                    {checkoutLoading === plan.id ? 'Loading...' : 'Subscribe'}
+                    {checkoutLoading === plan.id ? 'Loading...' : 'Start Free Trial'}
                   </Button>
                 </CardContent>
               </Card>
@@ -338,130 +604,8 @@ export function TeamsScreen() {
         </Text>
       </View>
 
-      {/* 3-step flow */}
-      <View style={[styles.section, styles.sectionAlt, { backgroundColor: c.muted + '40' }]}>
-        <Text style={[styles.sectionTitle, { color: c.text }]}>Three Steps to Better Hiring</Text>
-        <View style={styles.cards}>
-          {[
-            { step: '1', title: 'Create an Assessment', desc: 'Choose from 4 pre-built templates or pick from 60+ challenges. Set time limits and add your company branding. Test the AI skills you care about.' },
-            { step: '2', title: 'Invite Candidates', desc: 'Send a unique assessment link. Candidates work through challenges with real AI models — no simulations, no toy environments. Your brand, our platform.' },
-            { step: '3', title: 'Review Results', desc: 'Get behavioral insights, AI profile radar charts, green/red flags, and candidate comparisons. Watch full session replays. Export to CSV for your ATS.' },
-          ].map((item) => (
-            <Card key={item.step} style={styles.card}>
-              <CardHeader>
-                <View style={[styles.stepNum, { backgroundColor: c.accent + '20' }]}>
-                  <Text style={[styles.stepText, { color: c.accent }]}>{item.step}</Text>
-                </View>
-                <CardTitle>{item.title}</CardTitle>
-                <CardDescription>{item.desc}</CardDescription>
-              </CardHeader>
-            </Card>
-          ))}
-        </View>
-      </View>
-
-      {/* Results Preview Mockup */}
+      {/* ─── FAQ ─── */}
       <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: c.text }]}>What You'll See</Text>
-        <Text style={[styles.sectionSub, { color: c.textMuted }]}>
-          Every candidate gets an AI Profile — a radar chart showing their strengths and weaknesses across five dimensions, plus behavioral flags that surface what metrics alone can't.
-        </Text>
-        <Card style={[styles.previewCard, { borderColor: c.accent + '40' }]}>
-          <CardContent>
-            <View style={styles.previewRow}>
-              <View style={styles.previewLeft}>
-                <Text style={[styles.previewTitle, { color: c.text }]}>Jane Smith</Text>
-                <Text style={[styles.previewSub, { color: c.textMuted }]}>Passed 5/5 challenges</Text>
-                <View style={styles.previewFlags}>
-                  <Badge variant="outline" style={{ borderColor: '#5a8a5a', backgroundColor: 'rgba(90,138,90,0.1)' }}>
-                    <Text style={{ fontSize: fontSizes.xs, color: '#5a8a5a' }}>Strategic model switching</Text>
-                  </Badge>
-                  <Badge variant="outline" style={{ borderColor: '#5a8a5a', backgroundColor: 'rgba(90,138,90,0.1)' }}>
-                    <Text style={{ fontSize: fontSizes.xs, color: '#5a8a5a' }}>Targeted prompting</Text>
-                  </Badge>
-                  <Badge variant="outline" style={{ borderColor: '#5a8a5a', backgroundColor: 'rgba(90,138,90,0.1)' }}>
-                    <Text style={{ fontSize: fontSizes.xs, color: '#5a8a5a' }}>Error recovery</Text>
-                  </Badge>
-                </View>
-                <View style={styles.previewMetrics}>
-                  <View style={styles.previewMetric}>
-                    <Text style={[styles.previewMetricValue, { color: c.accent }]}>$0.28</Text>
-                    <Text style={[styles.previewMetricLabel, { color: c.textMuted }]}>Total cost</Text>
-                  </View>
-                  <View style={styles.previewMetric}>
-                    <Text style={[styles.previewMetricValue, { color: c.text }]}>3,200</Text>
-                    <Text style={[styles.previewMetricLabel, { color: c.textMuted }]}>Tokens</Text>
-                  </View>
-                  <View style={styles.previewMetric}>
-                    <Text style={[styles.previewMetricValue, { color: c.text }]}>42m</Text>
-                    <Text style={[styles.previewMetricLabel, { color: c.textMuted }]}>Duration</Text>
-                  </View>
-                </View>
-              </View>
-              <View style={styles.previewRight}>
-                <Text style={[styles.previewInsight, { color: c.textMuted }]}>
-                  "Started with Llama 8B for easy challenges, escalated to DeepSeek R1 for the hard debugging task. Caught an incorrect AI suggestion and corrected it manually. Averaged 2.3 prompts per challenge."
-                </Text>
-                <View style={[styles.previewBar, { backgroundColor: c.muted + '30' }]}>
-                  <View style={[styles.previewBarFill, { backgroundColor: c.success, width: '72%' }]} />
-                  <Text style={{ fontSize: fontSizes.xs, color: c.textMuted, marginTop: 4 }}>Cost: P72 — 40% cheaper than median</Text>
-                </View>
-              </View>
-            </View>
-          </CardContent>
-        </Card>
-      </View>
-
-      {/* Trust signals */}
-      <View style={[styles.section, styles.sectionAlt, { backgroundColor: c.muted + '20' }]}>
-        <Text style={[styles.sectionTitle, { color: c.text }]}>Why Teams Choose Ruwt</Text>
-        <View style={styles.trustGrid}>
-          {[
-            { title: 'Real AI, Real Cost', desc: 'Candidates use actual AI APIs with real pricing. No sandboxes. Every decision has a cost.' },
-            { title: 'Objective Metrics', desc: 'Compare candidates by total cost, token usage, model selection, and time. No subjective grading.' },
-            { title: 'Full Replay', desc: 'Watch every prompt, every model switch, every debugging step. Understand how candidates think.' },
-            { title: 'Server-Tracked', desc: 'All AI calls are logged server-side with tamper-proof cost and token accounting.' },
-          ].map((item) => (
-            <Card key={item.title} style={styles.trustCard}>
-              <CardHeader>
-                <CardTitle>{item.title}</CardTitle>
-                <CardDescription>{item.desc}</CardDescription>
-              </CardHeader>
-            </Card>
-          ))}
-        </View>
-      </View>
-
-      {/* Comparison Table */}
-      <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: c.text }]}>How Ruwt Compares</Text>
-        <Card style={[styles.comparisonTable, { borderColor: c.border }]}>
-          <CardContent>
-            {/* Table header */}
-            <View style={[styles.compRow, styles.compHeaderRow, { borderBottomColor: c.border }]}>
-              <View style={styles.compLabel} />
-              <View style={styles.compCell}><Text style={[styles.compHeader, { color: c.accent }]}>Ruwt</Text></View>
-              <View style={styles.compCell}><Text style={[styles.compHeader, { color: c.textMuted }]}>HackerRank</Text></View>
-              <View style={styles.compCell}><Text style={[styles.compHeader, { color: c.textMuted }]}>Codility</Text></View>
-              <View style={styles.compCell}><Text style={[styles.compHeader, { color: c.textMuted }]}>Take-Home</Text></View>
-            </View>
-            {COMPARISON_ROWS.map((row, i) => (
-              <View key={i} style={[styles.compRow, i < COMPARISON_ROWS.length - 1 && { borderBottomColor: c.border, borderBottomWidth: 1 }]}>
-                <View style={styles.compLabel}>
-                  <Text style={[styles.compLabelText, { color: c.text }]}>{row.label}</Text>
-                </View>
-                <View style={styles.compCell}>{renderCheckOrX(row.ruwt)}</View>
-                <View style={styles.compCell}>{renderCheckOrX(row.hackerrank)}</View>
-                <View style={styles.compCell}>{renderCheckOrX(row.codility)}</View>
-                <View style={styles.compCell}>{renderCheckOrX(row.takehome)}</View>
-              </View>
-            ))}
-          </CardContent>
-        </Card>
-      </View>
-
-      {/* FAQ */}
-      <View style={[styles.section, { backgroundColor: c.muted + '15' }]}>
         <Text style={[styles.sectionTitle, { color: c.text }]}>Frequently Asked Questions</Text>
         <View style={styles.faqList}>
           {FAQ_ITEMS.map((item, i) => (
@@ -484,18 +628,30 @@ export function TeamsScreen() {
         </View>
       </View>
 
-      {/* Final CTA */}
-      <View style={styles.cta}>
-        <Text style={[styles.ctaTitle, { color: c.text }]}>Start Assessing AI Skills Today</Text>
-        <Text style={[styles.ctaSub, { color: c.textMuted }]}>
-          $200/month. Unlimited assessments. Cancel anytime.
+      {/* ─── Final CTA ─── */}
+      <View style={[styles.ctaSection, { backgroundColor: '#1a1816' }]}>
+        <Text style={styles.ctaTitle}>
+          Stop Guessing. Start Measuring.
+        </Text>
+        <Text style={styles.ctaSub}>
+          Your next hire will use AI every day. Find the one who uses it best.
         </Text>
         <View style={styles.ctaButtons}>
-          <Button size="lg" onPress={() => handleSubscribe('plan-monthly')}>
-            {checkoutLoading === 'plan-monthly' ? 'Loading...' : 'Subscribe Now'}
+          <Button
+            size="lg"
+            onPress={handleStartAssessment}
+            style={{ backgroundColor: '#c9a962' }}
+            textStyle={{ color: '#1a1816', fontWeight: '700' }}
+          >
+            Create Your First Assessment
           </Button>
           {!demoSubmitted && !showDemoForm && (
-            <Button size="lg" variant="outline" onPress={() => setShowDemoForm(true)}>Book a Demo</Button>
+            <Button size="lg" variant="outline" onPress={() => setShowDemoForm(true)}
+              style={{ borderColor: 'rgba(232,228,223,0.25)' }}
+              textStyle={{ color: '#f5f3f0' }}
+            >
+              Book a Demo
+            </Button>
           )}
           {demoSubmitted && (
             <Badge variant="default">
@@ -503,6 +659,9 @@ export function TeamsScreen() {
             </Badge>
           )}
         </View>
+        <Text style={{ color: '#6b6560', fontSize: fontSizes.sm, marginTop: spacing.md, fontFamily: fontFamily.body }}>
+          Free to try. $200/month when you're ready. Cancel anytime.
+        </Text>
       </View>
 
       {/* Bottom demo form */}
@@ -516,7 +675,7 @@ export function TeamsScreen() {
       <View style={styles.crossLink}>
         <Pressable onPress={() => navigation.navigate('Landing' as never)}>
           <Text style={[styles.crossLinkText, { color: c.textMuted }]}>
-            Developer? Try free challenges {'\u2192'}
+            Developer? Practice free challenges {'\u2192'}
           </Text>
         </Pressable>
       </View>
@@ -537,31 +696,80 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
     borderBottomWidth: 1,
+    backgroundColor: '#1a1816',
+    position: 'relative',
+    zIndex: 10,
   },
-  logo: { fontSize: fontSizes.xl, fontWeight: '700', fontFamily: fontFamily.body },
+  logo: { fontSize: fontSizes.xl, fontWeight: '700', fontFamily: fontFamily.display },
   headerActions: { flexDirection: 'row', gap: spacing.md },
+
+  // Hero (dark)
   hero: {
-    paddingVertical: spacing['2xl'],
+    paddingTop: spacing.xl,
+    paddingBottom: spacing['2xl'] + 16,
     paddingHorizontal: spacing.lg,
-    alignItems: 'center',
+  },
+  heroInner: {
     maxWidth: 800,
     alignSelf: 'center',
+    alignItems: 'center',
+    gap: spacing.md,
   },
   heroTitle: {
-    fontSize: 32,
+    fontSize: 38,
     fontWeight: '700',
     textAlign: 'center',
-    marginTop: spacing.md,
-    marginBottom: spacing.sm,
+    color: '#f5f3f0',
     fontFamily: fontFamily.body,
+    lineHeight: 48,
   },
   heroSub: {
     fontSize: fontSizes.lg,
     textAlign: 'center',
-    marginBottom: spacing.lg,
+    color: '#9a938a',
+    fontFamily: fontFamily.body,
+    lineHeight: 28,
+    maxWidth: 620,
+  },
+  heroStats: {
+    flexDirection: 'row',
+    gap: spacing.xl,
+    marginVertical: spacing.lg,
+  },
+  heroStatsMobile: {
+    gap: spacing.md,
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+  },
+  heroStat: { alignItems: 'center', gap: 2 },
+  heroStatValue: {
+    fontSize: fontSizes.xl,
+    fontWeight: '700',
+    color: '#c9a962',
     fontFamily: fontFamily.body,
   },
-  heroButtons: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md, justifyContent: 'center', alignItems: 'flex-start' },
+  heroStatLabel: {
+    fontSize: 10,
+    color: '#6b6560',
+    fontFamily: fontFamily.body,
+    textTransform: 'uppercase' as any,
+    letterSpacing: 1.5,
+  },
+  heroButtons: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.md,
+    justifyContent: 'center',
+    alignItems: 'flex-start',
+  },
+  heroNote: {
+    fontSize: fontSizes.sm,
+    color: '#6b6560',
+    fontFamily: fontFamily.body,
+    marginTop: spacing.xs,
+  },
+
+  // Sections
   section: { padding: spacing.lg, paddingVertical: spacing.xl },
   sectionAlt: { marginHorizontal: 0 },
   sectionTitle: {
@@ -570,6 +778,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: spacing.lg,
     fontFamily: fontFamily.body,
+    lineHeight: 38,
   },
   sectionSub: {
     textAlign: 'center',
@@ -578,48 +787,24 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     fontFamily: fontFamily.body,
     fontSize: fontSizes.md,
+    lineHeight: 24,
   },
-  // Platform stats
-  platformStats: {
+
+  // Problem section
+  problemGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: spacing.xl,
+    gap: spacing.md,
     justifyContent: 'center',
-    maxWidth: 800,
+    maxWidth: 1000,
     alignSelf: 'center',
   },
-  platformStat: { alignItems: 'center', minWidth: 150 },
-  platformStatValue: { fontSize: 40, fontWeight: '700', fontFamily: fontFamily.body },
-  platformStatLabel: { fontSize: fontSizes.md, fontWeight: '600', marginTop: spacing.xs },
-  platformStatSub: { fontSize: fontSizes.xs, marginTop: 2 },
-  // ROI banner
-  roiBanner: {
-    alignItems: 'center',
-    paddingVertical: spacing.xl,
-    paddingHorizontal: spacing.lg,
-    borderTopWidth: 1,
-    borderBottomWidth: 1,
-  },
-  roiText: {
-    fontSize: fontSizes.xl,
-    textAlign: 'center',
-    fontFamily: fontFamily.body,
-    marginBottom: spacing.lg,
-  },
-  roiStats: {
-    flexDirection: 'row',
-    gap: spacing.xl,
-    justifyContent: 'center',
-    flexWrap: 'wrap',
-  },
-  roiStat: { alignItems: 'center' },
-  roiStatValue: { fontSize: fontSizes['2xl'], fontWeight: '700', fontFamily: fontFamily.body },
-  roiStatLabel: { fontSize: fontSizes.xs, marginTop: 2 },
-  // Pricing
-  tiers: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md, justifyContent: 'center', maxWidth: 1100, alignSelf: 'center' },
-  tierCard: { flex: 1, minWidth: 220 },
-  featureItem: { fontSize: fontSizes.sm, marginBottom: spacing.xs },
-  guaranteeText: { textAlign: 'center', fontSize: fontSizes.sm, marginTop: spacing.lg, fontStyle: 'italic' },
+  problemCard: { flex: 1, minWidth: 260 },
+  problemCardContent: { gap: spacing.sm },
+  problemIcon: { fontSize: 28 },
+  problemTitle: { fontSize: fontSizes.md, fontWeight: '700', fontFamily: fontFamily.body },
+  problemDetail: { fontSize: fontSizes.sm, lineHeight: 22, fontFamily: fontFamily.body },
+
   // Steps
   cards: {
     flexDirection: 'row',
@@ -639,53 +824,120 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
   stepText: { fontSize: fontSizes.xl, fontWeight: '700' },
+
+  // Candidate comparison
+  candidateComparison: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.lg,
+    justifyContent: 'center',
+    maxWidth: 900,
+    alignSelf: 'center',
+  },
+  candidateCard: { flex: 1, minWidth: 320 },
+  candidateHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginBottom: spacing.md,
+  },
+  candidateAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  candidateName: { fontSize: fontSizes.md, fontWeight: '700', fontFamily: fontFamily.body },
+  candidateFlags: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs, marginBottom: spacing.md },
+  candidateMetricsRow: {
+    flexDirection: 'row',
+    gap: spacing.lg,
+    marginBottom: spacing.md,
+    flexWrap: 'wrap',
+  },
+  candidateMetric: { alignItems: 'center' },
+  candidateMetricVal: { fontSize: fontSizes.md, fontWeight: '700', fontFamily: fontFamily.body },
+  candidateMetricLbl: { fontSize: 10, marginTop: 2, fontFamily: fontFamily.body },
+  candidateInsight: {
+    fontSize: fontSizes.sm,
+    fontStyle: 'italic',
+    lineHeight: 20,
+    fontFamily: fontFamily.body,
+    marginBottom: spacing.md,
+  },
+  costBar: { height: 6, borderRadius: 3, overflow: 'hidden' },
+  costBarFill: { height: '100%', borderRadius: 3 },
+  costBarLabel: { fontSize: 11, marginTop: 4, fontFamily: fontFamily.body },
+  comparisonCaption: {
+    textAlign: 'center',
+    fontSize: fontSizes.md,
+    fontFamily: fontFamily.body,
+    fontWeight: '500',
+    marginTop: spacing.xl,
+    maxWidth: 600,
+    alignSelf: 'center',
+    lineHeight: 24,
+  },
+
   // Trust
   trustGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: spacing.md,
     justifyContent: 'center',
-    maxWidth: 800,
+    maxWidth: 900,
     alignSelf: 'center',
   },
   trustCard: { flex: 1, minWidth: 200 },
-  // Results preview mockup
-  previewCard: { maxWidth: 800, alignSelf: 'center', width: '100%', borderWidth: 1 },
-  previewRow: { flexDirection: 'row', gap: spacing.lg, flexWrap: 'wrap' },
-  previewLeft: { flex: 1, minWidth: 200 },
-  previewRight: { flex: 1, minWidth: 260 },
-  previewTitle: { fontSize: fontSizes.lg, fontWeight: '700', fontFamily: fontFamily.body },
-  previewSub: { fontSize: fontSizes.sm, marginBottom: spacing.sm },
-  previewFlags: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs, marginBottom: spacing.md },
-  previewMetrics: { flexDirection: 'row', gap: spacing.lg },
-  previewMetric: { alignItems: 'center' },
-  previewMetricValue: { fontSize: fontSizes.lg, fontWeight: '700' },
-  previewMetricLabel: { fontSize: fontSizes.xs, marginTop: 2 },
-  previewInsight: { fontSize: fontSizes.sm, fontStyle: 'italic', lineHeight: 20, fontFamily: fontFamily.body, marginBottom: spacing.md },
-  previewBar: { height: 8, borderRadius: 4, overflow: 'hidden' },
-  previewBarFill: { height: '100%', borderRadius: 4 },
+
   // Comparison table
   comparisonTable: { maxWidth: 800, alignSelf: 'center', width: '100%' },
   compRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.sm },
   compHeaderRow: { borderBottomWidth: 2 },
   compLabel: { flex: 2 },
   compLabelText: { fontSize: fontSizes.sm, fontWeight: '500' },
-  compCell: { flex: 1, alignItems: 'center' },
+  compCell: { flex: 1, alignItems: 'center', paddingVertical: 2 },
   compHeader: { fontSize: fontSizes.xs, fontWeight: '700', textTransform: 'uppercase' },
+
+  // Pricing
+  tiers: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md, justifyContent: 'center', maxWidth: 1100, alignSelf: 'center' },
+  tierCard: { flex: 1, minWidth: 220 },
+  featureItem: { fontSize: fontSizes.sm, marginBottom: spacing.xs },
+  guaranteeText: { textAlign: 'center', fontSize: fontSizes.sm, marginTop: spacing.lg, fontStyle: 'italic' },
+
   // FAQ
   faqList: { maxWidth: 700, alignSelf: 'center', width: '100%', gap: spacing.sm },
   faqCard: { borderWidth: 1 },
   faqHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   faqQuestion: { fontSize: fontSizes.md, fontWeight: '600', fontFamily: fontFamily.body, flex: 1, marginRight: spacing.md },
   faqAnswer: { fontSize: fontSizes.sm, marginTop: spacing.sm, lineHeight: 22, fontFamily: fontFamily.body },
+
   // CTA
-  cta: {
-    paddingVertical: spacing['2xl'],
+  ctaSection: {
+    paddingVertical: spacing['2xl'] + 16,
+    paddingHorizontal: spacing.lg,
     alignItems: 'center',
+    gap: spacing.md,
   },
-  ctaTitle: { fontSize: fontSizes['3xl'], fontWeight: '700', marginBottom: spacing.sm, fontFamily: fontFamily.body, textAlign: 'center' },
-  ctaSub: { marginBottom: spacing.lg, fontFamily: fontFamily.body, textAlign: 'center', maxWidth: 500 },
+  ctaTitle: {
+    fontSize: fontSizes['3xl'],
+    fontWeight: '700',
+    color: '#f5f3f0',
+    fontFamily: fontFamily.body,
+    textAlign: 'center',
+  },
+  ctaSub: {
+    color: '#9a938a',
+    fontFamily: fontFamily.body,
+    textAlign: 'center',
+    maxWidth: 500,
+    fontSize: fontSizes.lg,
+    lineHeight: 28,
+  },
   ctaButtons: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md, justifyContent: 'center', alignItems: 'center' },
+
+  // Footer
   crossLink: { alignItems: 'center', paddingBottom: spacing.lg },
   crossLinkText: { fontSize: fontSizes.sm, fontFamily: fontFamily.body },
   footer: {

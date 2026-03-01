@@ -7,7 +7,7 @@ import { eq, and, desc, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import { getDb } from '../../../_shared/db';
 import { getUser } from '../../../_shared/auth';
-import { canManageAssessment, getUserOrg, hasActiveSubscription } from '../../../_shared/org';
+import { canManageAssessment, getUserOrg, hasActiveSubscription, requireTeamAccount } from '../../../_shared/org';
 import { assessments, assessmentInvites, assessmentChallenges, profiles, organizations, emailLogs } from '../../../../drizzle/schema.d1';
 import { sendEmail } from '../../../_shared/newsletter/resend';
 import { candidateInviteEmail } from '../../../_shared/email/templates';
@@ -22,6 +22,11 @@ export async function onRequestPost(context: { request: Request; env: Env; param
     const user = await getUser(context.request, context.env);
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
+    const db = getDb(context.env);
+
+    const teamCheck = await requireTeamAccount(db, user.id);
+    if (teamCheck) return teamCheck;
+
     const body = await context.request.json().catch(() => ({}));
     const parsed = createInviteSchema.safeParse(body);
     if (!parsed.success) {
@@ -30,8 +35,6 @@ export async function onRequestPost(context: { request: Request; env: Env; param
         { status: 400 }
       );
     }
-
-    const db = getDb(context.env);
 
     const hasAccess = await canManageAssessment(db, user.id, context.params.id);
     if (!hasAccess) {
@@ -161,6 +164,9 @@ export async function onRequestGet(context: { request: Request; env: Env; params
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
     const db = getDb(context.env);
+
+    const teamCheck = await requireTeamAccount(db, user.id);
+    if (teamCheck) return teamCheck;
 
     const hasAccess = await canManageAssessment(db, user.id, context.params.id);
     if (!hasAccess) {

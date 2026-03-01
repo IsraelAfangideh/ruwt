@@ -288,7 +288,8 @@ describe('AssessmentBuilderScreen', () => {
     mockRouteParams = { assessmentId: 'existing-id' };
     const fn = setupFetch({
       '/api/assessments/existing-id': ok({
-        title: 'Draft', description: '', timeLimit: 3600, status: 'draft', challenges: [],
+        title: 'Draft', description: '', timeLimit: 3600, status: 'draft',
+        challenges: [{ id: 'ch1', sortOrder: 0 }],
       }),
     });
     render(<AssessmentBuilderScreen />);

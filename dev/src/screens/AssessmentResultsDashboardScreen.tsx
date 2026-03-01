@@ -266,6 +266,19 @@ export function AssessmentResultsDashboardScreen() {
 
   if (!user) return null;
 
+  // Summary stats for the header
+  const completed = results.filter((r) => r.session.status === 'completed');
+  const avgCost = completed.length > 0
+    ? completed.reduce((s, r) => s + r.session.totalCost, 0) / completed.length
+    : 0;
+  const passCount = passThreshold?.enabled
+    ? results.filter((r) => getVerdict(r.session.id) === 'pass').length
+    : completed.filter((r) => r.challengesPassed === r.totalChallenges).length;
+  const failCount = passThreshold?.enabled
+    ? results.filter((r) => getVerdict(r.session.id) === 'fail').length
+    : completed.filter((r) => r.challengesPassed === 0).length;
+  const inProgress = results.filter((r) => r.session.status === 'in_progress').length;
+
   const SortHeader = ({ label, sortKey, style }: { label: string; sortKey: SortKey; style?: any }) => (
     <Pressable onPress={() => handleSort(sortKey)} style={style}>
       <Text style={[styles.th, { color: c.textMuted }]}>
@@ -286,7 +299,7 @@ export function AssessmentResultsDashboardScreen() {
   }));
 
   return (
-    <DashboardLayout user={user}>
+    <DashboardLayout user={user} requireTeam>
       <View style={[styles.section, { borderBottomColor: c.border }]}>
         <View style={styles.headerRow}>
           <View style={{ flex: 1 }}>
@@ -320,6 +333,34 @@ export function AssessmentResultsDashboardScreen() {
           </View>
         </View>
       </View>
+
+      {/* Summary stats */}
+      {results.length > 0 && (
+        <View style={styles.summaryBar}>
+          <View style={styles.summaryItem}>
+            <Text style={[styles.summaryValue, { color: c.text }]}>{completed.length}</Text>
+            <Text style={[styles.summaryLabel, { color: c.textMuted }]}>Completed</Text>
+          </View>
+          {inProgress > 0 && (
+            <View style={styles.summaryItem}>
+              <Text style={[styles.summaryValue, { color: c.accent }]}>{inProgress}</Text>
+              <Text style={[styles.summaryLabel, { color: c.textMuted }]}>In Progress</Text>
+            </View>
+          )}
+          <View style={styles.summaryItem}>
+            <Text style={[styles.summaryValue, { color: c.success }]}>{passCount}</Text>
+            <Text style={[styles.summaryLabel, { color: c.textMuted }]}>{passThreshold?.enabled ? 'Pass' : 'All Passed'}</Text>
+          </View>
+          <View style={styles.summaryItem}>
+            <Text style={[styles.summaryValue, { color: c.destructive }]}>{failCount}</Text>
+            <Text style={[styles.summaryLabel, { color: c.textMuted }]}>{passThreshold?.enabled ? 'Fail' : 'None Passed'}</Text>
+          </View>
+          <View style={styles.summaryItem}>
+            <Text style={[styles.summaryValue, { color: c.accent }]}>{formatCost(avgCost)}</Text>
+            <Text style={[styles.summaryLabel, { color: c.textMuted }]}>Avg Cost</Text>
+          </View>
+        </View>
+      )}
 
       {/* Tab switcher: Results / Invites */}
       <View style={styles.tabBar}>
@@ -614,6 +655,30 @@ const styles = StyleSheet.create({
   thVerdict: { flex: 1, alignItems: 'center' },
   thSignals: { flex: 1.2, alignItems: 'center' },
   thActions: { flex: 1.2, alignItems: 'flex-end' },
+  summaryBar: {
+    flexDirection: 'row',
+    gap: spacing.xl,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.md,
+    marginBottom: spacing.md,
+    borderRadius: 8,
+    backgroundColor: 'rgba(201,169,98,0.04)',
+    borderWidth: 1,
+    borderColor: 'rgba(201,169,98,0.12)',
+  },
+  summaryItem: {
+    alignItems: 'center',
+    minWidth: 60,
+  },
+  summaryValue: {
+    fontSize: fontSizes.xl,
+    fontWeight: '700',
+    fontFamily: fontFamily.body,
+  },
+  summaryLabel: {
+    fontSize: fontSizes.xs,
+    marginTop: 2,
+  },
   tabBar: {
     flexDirection: 'row',
     gap: spacing.lg,

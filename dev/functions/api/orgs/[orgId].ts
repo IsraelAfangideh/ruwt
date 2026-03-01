@@ -7,7 +7,7 @@ import { eq, and } from 'drizzle-orm';
 import { z } from 'zod';
 import { getDb } from '../../_shared/db';
 import { getUser } from '../../_shared/auth';
-import { requireOrgAccess, getUserOrgRole } from '../../_shared/org';
+import { requireOrgAccess, getUserOrgRole, requireTeamAccount } from '../../_shared/org';
 import { organizations, orgMembers, profiles } from '../../../drizzle/schema.d1';
 
 export async function onRequestGet(context: { request: Request; env: Env; params: { orgId: string } }) {
@@ -16,6 +16,10 @@ export async function onRequestGet(context: { request: Request; env: Env; params
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
     const db = getDb(context.env);
+
+    const teamCheck = await requireTeamAccount(db, user.id);
+    if (teamCheck) return teamCheck;
+
     const orgId = context.params.orgId;
 
     // Check membership (any role)
@@ -69,6 +73,10 @@ export async function onRequestPut(context: { request: Request; env: Env; params
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
     const db = getDb(context.env);
+
+    const teamCheck = await requireTeamAccount(db, user.id);
+    if (teamCheck) return teamCheck;
+
     const orgId = context.params.orgId;
 
     // Must be admin or owner

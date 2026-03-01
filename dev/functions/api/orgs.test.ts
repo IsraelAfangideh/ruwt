@@ -1,13 +1,17 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // ── Mocks ────────────────────────────────────────────────────────────
-const { mockGetUser, mockGetDb } = vi.hoisted(() => ({
+const { mockGetUser, mockGetDb, mockRequireTeamAccount } = vi.hoisted(() => ({
   mockGetUser: vi.fn(),
   mockGetDb: vi.fn(),
+  mockRequireTeamAccount: vi.fn(),
 }));
 
 vi.mock('../_shared/auth', () => ({ getUser: mockGetUser }));
 vi.mock('../_shared/db', () => ({ getDb: mockGetDb }));
+vi.mock('../_shared/org', () => ({
+  requireTeamAccount: mockRequireTeamAccount,
+}));
 vi.mock('../../drizzle/schema.d1', () => ({
   organizations: { id: 'id', name: 'name', createdBy: 'created_by', assessmentCredits: 'assessment_credits' },
   orgMembers: { id: 'id', orgId: 'org_id', userId: 'user_id', role: 'role' },
@@ -67,6 +71,8 @@ describe('POST /api/orgs — create organization', () => {
   beforeEach(() => {
     mockGetUser.mockReset();
     mockGetDb.mockReset();
+    mockRequireTeamAccount.mockReset();
+    mockRequireTeamAccount.mockResolvedValue(null);
   });
 
   it('returns 401 when not authenticated', async () => {
@@ -74,6 +80,16 @@ describe('POST /api/orgs — create organization', () => {
     const res = await onRequestPost(makePostCtx({ name: 'Acme' }));
     expect(res.status).toBe(401);
     expect((await res.json()).error).toBe('Unauthorized');
+  });
+
+  it('returns 403 when user is not team account (POST)', async () => {
+    mockRequireTeamAccount.mockResolvedValue(
+      Response.json({ error: 'Team account required', code: 'TEAM_REQUIRED' }, { status: 403 })
+    );
+    mockGetUser.mockResolvedValue(FAKE_USER);
+
+    const res = await onRequestPost(makePostCtx({ name: 'Acme' }));
+    expect(res.status).toBe(403);
   });
 
   it('returns 400 when name is missing', async () => {
@@ -185,12 +201,24 @@ describe('GET /api/orgs — list user organizations', () => {
   beforeEach(() => {
     mockGetUser.mockReset();
     mockGetDb.mockReset();
+    mockRequireTeamAccount.mockReset();
+    mockRequireTeamAccount.mockResolvedValue(null);
   });
 
   it('returns 401 when not authenticated', async () => {
     mockGetUser.mockResolvedValue(null);
     const res = await onRequestGet(makeGetCtx());
     expect(res.status).toBe(401);
+  });
+
+  it('returns 403 when user is not team account (GET)', async () => {
+    mockRequireTeamAccount.mockResolvedValue(
+      Response.json({ error: 'Team account required', code: 'TEAM_REQUIRED' }, { status: 403 })
+    );
+    mockGetUser.mockResolvedValue(FAKE_USER);
+
+    const res = await onRequestGet(makeGetCtx());
+    expect(res.status).toBe(403);
   });
 
   it('returns orgs with member count on happy path', async () => {

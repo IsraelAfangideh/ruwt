@@ -109,6 +109,17 @@ export function AssessmentResultsScreen() {
     return 'Practice';
   };
 
+  const friendlyModelName = (model: string) => {
+    return model
+      .replace('@cf/meta/', '')
+      .replace('@cf/mistral/', '')
+      .replace('@cf/google/', '')
+      .replace('@cf/deepseek-ai/', '')
+      .replace('@hf/', '')
+      .replace(/-instruct$/, '')
+      .replace(/-chat$/, '');
+  };
+
   return (
     <ScrollView style={[styles.page, { backgroundColor: c.bg }]}>
       <View style={styles.container}>
@@ -140,6 +151,30 @@ export function AssessmentResultsScreen() {
           </Text>
         </View>
 
+        {/* Overall verdict banner */}
+        {(() => {
+          const passRate = data.summary.challengesPassed / Math.max(1, data.summary.totalChallenges);
+          const costDollars = data.summary.totalCost / 10000;
+          const isStrongPass = passRate === 1 && costDollars < 1;
+          const isPass = passRate >= 0.75;
+          const isFail = passRate < 0.25;
+
+          const verdictConfig = isStrongPass
+            ? { label: 'Strong Performance', color: c.success, bg: c.success + '12', border: c.success + '30', desc: 'Solved all challenges with efficient AI usage' }
+            : isPass
+            ? { label: 'Passed', color: c.success, bg: c.success + '08', border: c.success + '20', desc: `Solved ${data.summary.challengesPassed} of ${data.summary.totalChallenges} challenges` }
+            : isFail
+            ? { label: 'Needs Improvement', color: c.destructive, bg: c.destructive + '08', border: c.destructive + '20', desc: 'Solved fewer than 25% of challenges' }
+            : { label: 'Partial Completion', color: c.accent, bg: c.accent + '08', border: c.accent + '20', desc: `Solved ${data.summary.challengesPassed} of ${data.summary.totalChallenges} challenges` };
+
+          return (
+            <View style={[styles.verdictBanner, { backgroundColor: verdictConfig.bg, borderColor: verdictConfig.border }]}>
+              <Text style={[styles.verdictLabel, { color: verdictConfig.color }]}>{verdictConfig.label}</Text>
+              <Text style={[styles.verdictDesc, { color: c.textMuted }]}>{verdictConfig.desc}</Text>
+            </View>
+          );
+        })()}
+
         {/* Summary cards */}
         <View style={styles.summaryGrid}>
           <Card style={styles.summaryCard}>
@@ -166,6 +201,20 @@ export function AssessmentResultsScreen() {
               <Text style={[styles.summaryLabel, { color: c.textMuted }]}>Total Tokens</Text>
             </CardContent>
           </Card>
+          {data.session.completedAt && (
+            <Card style={styles.summaryCard}>
+              <CardContent style={styles.summaryContent}>
+                <Text style={[styles.summaryValue, { color: c.text }]}>
+                  {(() => {
+                    const ms = new Date(data.session.completedAt!).getTime() - new Date(data.session.startedAt).getTime();
+                    const mins = Math.floor(ms / 60000);
+                    return mins < 60 ? `${mins}m` : `${Math.floor(mins / 60)}h ${mins % 60}m`;
+                  })()}
+                </Text>
+                <Text style={[styles.summaryLabel, { color: c.textMuted }]}>Duration</Text>
+              </CardContent>
+            </Card>
+          )}
         </View>
 
         {/* AI Profile Radar */}
@@ -266,7 +315,7 @@ export function AssessmentResultsScreen() {
                   <Text style={[styles.modelTitle, { color: c.textMuted }]}>Models Used:</Text>
                   {Object.entries(cr.modelUsage).map(([model, usage]) => (
                     <Text key={model} style={[styles.modelRow, { color: c.text }]}>
-                      {model.replace('@cf/meta/', '').replace('@cf/mistral/', '')} — {usage.calls} call{usage.calls !== 1 ? 's' : ''} · {formatCost(usage.cost)}
+                      {friendlyModelName(model)} — {usage.calls} call{usage.calls !== 1 ? 's' : ''} · {formatCost(usage.cost)}
                     </Text>
                   ))}
                 </View>
@@ -280,6 +329,11 @@ export function AssessmentResultsScreen() {
             {data.assessment?.companyName
               ? `Powered by Ruwt \u2014 AI-Efficiency Assessment`
               : 'Ruwt \u2014 AI-Efficiency Assessment'}
+          </Text>
+          <Text style={[styles.footerLink, { color: c.accent }]}
+            onPress={() => { window.open('https://ruwt.dev/teams', '_blank'); }}
+          >
+            Assess your engineering candidates with Ruwt
           </Text>
         </View>
       </View>
@@ -303,7 +357,24 @@ const styles = StyleSheet.create({
   title: { fontSize: fontSizes['3xl'], fontWeight: '700', fontFamily: fontFamily.body },
   assessmentTitle: { fontSize: fontSizes.md, marginTop: spacing.xs },
   candidateName: { fontSize: fontSizes.lg, fontWeight: '600', marginTop: spacing.md },
-  summaryGrid: { flexDirection: 'row', gap: spacing.md, marginBottom: spacing.xl },
+  verdictBanner: {
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    marginBottom: spacing.lg,
+    alignItems: 'center',
+  },
+  verdictLabel: {
+    fontSize: fontSizes.xl,
+    fontWeight: '700',
+    fontFamily: fontFamily.body,
+  },
+  verdictDesc: {
+    fontSize: fontSizes.sm,
+    marginTop: spacing.xs,
+  },
+  summaryGrid: { flexDirection: 'row', gap: spacing.md, marginBottom: spacing.xl, flexWrap: 'wrap' },
   summaryCard: { flex: 1 },
   summaryContent: { alignItems: 'center', paddingVertical: spacing.md },
   summaryValue: { fontSize: fontSizes['2xl'], fontWeight: '700' },
@@ -322,6 +393,7 @@ const styles = StyleSheet.create({
   radarSection: { alignItems: 'center', marginBottom: spacing.xl },
   footer: { paddingVertical: spacing.lg, marginTop: spacing.xl, borderTopWidth: 1 },
   footerText: { fontSize: fontSizes.sm, textAlign: 'center' },
+  footerLink: { fontSize: fontSizes.sm, textAlign: 'center', marginTop: spacing.sm, textDecorationLine: 'underline' },
   brandingHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginBottom: spacing.lg },
   companyName: { fontSize: fontSizes['2xl'], fontWeight: '700', fontFamily: fontFamily.body, marginBottom: spacing.lg },
 });

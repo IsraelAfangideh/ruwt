@@ -136,10 +136,10 @@ describe('LandingScreen', () => {
     expect(screen.getAllByText('Real Leaderboard').length).toBeGreaterThanOrEqual(1);
   });
 
-  it('renders For Hiring Managers section', () => {
+  it('renders For Hiring Teams section', () => {
     render(<LandingScreen />);
-    expect(screen.getAllByText('For Hiring Managers').length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText(/Assess AI Proficiency/).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('For Hiring Teams').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText(/AI-Fluent/).length).toBeGreaterThanOrEqual(1);
   });
 
   it('renders Daily Challenge CTA section', () => {
@@ -198,7 +198,7 @@ describe('LandingScreen', () => {
 
   it('navigates to Teams when Book a Demo is clicked', () => {
     render(<LandingScreen />);
-    fireEvent.click(screen.getByText('Book a Demo'));
+    fireEvent.click(screen.getAllByText('Book a Demo')[0]);
     expect(mockNavigate).toHaveBeenCalledWith('Teams');
   });
 

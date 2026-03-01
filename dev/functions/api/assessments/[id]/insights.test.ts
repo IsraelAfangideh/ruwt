@@ -1,15 +1,19 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // ── Mocks ────────────────────────────────────────────────────────────
-const { mockGetUser, mockGetDb, mockCanViewResults } = vi.hoisted(() => ({
+const { mockGetUser, mockGetDb, mockCanViewResults, mockRequireTeamAccount } = vi.hoisted(() => ({
   mockGetUser: vi.fn(),
   mockGetDb: vi.fn(),
   mockCanViewResults: vi.fn(),
+  mockRequireTeamAccount: vi.fn(),
 }));
 
 vi.mock('../../../_shared/auth', () => ({ getUser: mockGetUser }));
 vi.mock('../../../_shared/db', () => ({ getDb: mockGetDb }));
-vi.mock('../../../_shared/org', () => ({ canViewResults: mockCanViewResults }));
+vi.mock('../../../_shared/org', () => ({
+  canViewResults: mockCanViewResults,
+  requireTeamAccount: mockRequireTeamAccount,
+}));
 
 import { onRequestGet } from './insights';
 
@@ -40,6 +44,8 @@ describe('GET /api/assessments/:id/insights', () => {
     mockGetUser.mockReset();
     mockGetDb.mockReset();
     mockCanViewResults.mockReset();
+    mockRequireTeamAccount.mockReset();
+    mockRequireTeamAccount.mockResolvedValue(null);
   });
 
   it('returns 401 when not authenticated', async () => {
@@ -50,6 +56,16 @@ describe('GET /api/assessments/:id/insights', () => {
 
     expect(res.status).toBe(401);
     expect(json.error).toBe('Unauthorized');
+  });
+
+  it('returns 403 when user is not team account', async () => {
+    mockRequireTeamAccount.mockResolvedValue(
+      Response.json({ error: 'Team account required', code: 'TEAM_REQUIRED' }, { status: 403 })
+    );
+    mockGetUser.mockResolvedValue(FAKE_USER);
+
+    const res = await onRequestGet(makeContext('a-1'));
+    expect(res.status).toBe(403);
   });
 
   it('returns 404 when user cannot view results', async () => {

@@ -759,6 +759,47 @@ function ActivityFeedSection({ data }: { data: DashboardData }) {
   );
 }
 
+function TeamsHint({ onLearnMore }: { onLearnMore: () => void }) {
+  const c = useColors();
+  const [dismissed, setDismissed] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && sessionStorage.getItem('ruwt_teams_hint_dismissed')) {
+      setDismissed(true);
+    }
+  }, []);
+
+  if (dismissed) return null;
+
+  const handleDismiss = () => {
+    setDismissed(true);
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('ruwt_teams_hint_dismissed', '1');
+    }
+  };
+
+  return (
+    <Card style={{ borderColor: c.accent + '30', borderWidth: 1 }}>
+      <CardContent style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md, flexWrap: 'wrap' }}>
+        <View style={{ flex: 1, minWidth: 200 }}>
+          <Text style={{ fontSize: fontSizes.sm, fontWeight: '600', color: c.text, fontFamily: fontFamily.body, marginBottom: 2 }}>
+            Hiring engineers?
+          </Text>
+          <Text style={{ fontSize: fontSizes.xs, color: c.textMuted, fontFamily: fontFamily.body, lineHeight: 18 }}>
+            Use Ruwt assessments to measure how candidates actually use AI. Same challenges, real data.
+          </Text>
+        </View>
+        <View style={{ flexDirection: 'row', gap: spacing.sm, alignItems: 'center' }}>
+          <Button size="sm" variant="outline" onPress={onLearnMore}>Learn More</Button>
+          <Pressable onPress={handleDismiss} hitSlop={8}>
+            <Text style={{ color: c.textMuted, fontSize: fontSizes.sm }}>{'\u2715'}</Text>
+          </Pressable>
+        </View>
+      </CardContent>
+    </Card>
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Main Component
 // ---------------------------------------------------------------------------
@@ -919,6 +960,13 @@ export function DashboardScreen() {
         <View style={styles.section}>
           <ProgressSection data={data} />
         </View>
+
+        {/* 4b. Teams upgrade hint (for individual accounts after solving >=3 challenges) */}
+        {data.progress.solvedCount >= 3 && (
+          <View style={styles.section}>
+            <TeamsHint onLearnMore={() => (navigation.navigate as any)('Teams')} />
+          </View>
+        )}
 
         {/* 5. Activity Heatmap */}
         <View style={styles.section}>

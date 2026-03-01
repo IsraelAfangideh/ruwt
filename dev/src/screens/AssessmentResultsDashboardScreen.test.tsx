@@ -243,10 +243,10 @@ describe('AssessmentResultsDashboardScreen', () => {
   it('renders cost formatted correctly', async () => {
     render(<AssessmentResultsDashboardScreen />);
     await waitFor(() => {
-      // 5000 / 10000 = 0.50
-      expect(screen.getByText('$0.50')).toBeTruthy();
+      // 5000 / 10000 = 0.50 (may appear in summary bar + table row)
+      expect(screen.getAllByText('$0.50').length).toBeGreaterThanOrEqual(1);
       // 3000 / 10000 = 0.30
-      expect(screen.getByText('$0.30')).toBeTruthy();
+      expect(screen.getAllByText('$0.30').length).toBeGreaterThanOrEqual(1);
     });
   });
 

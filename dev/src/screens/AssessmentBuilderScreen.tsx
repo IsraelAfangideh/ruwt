@@ -58,6 +58,8 @@ export function AssessmentBuilderScreen() {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
+  const [activateError, setActivateError] = useState<string | null>(null);
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -245,18 +247,25 @@ export function AssessmentBuilderScreen() {
       }
     } catch (_) {}
     setSaving(false);
+    setSaveSuccess(true);
+    setTimeout(() => setSaveSuccess(false), 2500);
   }, [assessmentId, title, description, timeLimitMinutes, selectedChallengeIds, companyName, companyLogoUrl, welcomeMessage, weights, passThreshold]);
 
   const handleActivate = useCallback(async () => {
     /* v8 ignore next */
     if (!assessmentId) return;
+    if (selectedChallengeIds.length === 0) {
+      setActivateError('Select at least one challenge before activating.');
+      return;
+    }
+    setActivateError(null);
     await fetch(`/api/assessments/${assessmentId}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status: 'active' }),
     });
     setStatus('active');
-  }, [assessmentId]);
+  }, [assessmentId, selectedChallengeIds.length]);
 
   const [inviteError, setInviteError] = useState<string | null>(null);
 
@@ -366,7 +375,7 @@ export function AssessmentBuilderScreen() {
   const activeCustomChallenges = customChallenges.filter((ch) => ch.status === 'active');
 
   return (
-    <DashboardLayout user={user}>
+    <DashboardLayout user={user} requireTeam>
       <View style={[styles.section, { borderBottomColor: c.border }]}>
         <Button
           variant="ghost"
@@ -381,7 +390,7 @@ export function AssessmentBuilderScreen() {
           </Text>
           <View style={styles.actions}>
             <Button onPress={handleSave} disabled={saving || !title}>
-              {saving ? 'Saving...' : 'Save Assessment'}
+              {saving ? 'Saving...' : saveSuccess ? '\u2713 Saved' : 'Save Assessment'}
             </Button>
             {assessmentId && status === 'draft' && (
               <Button variant="outline" onPress={handleActivate}>
@@ -648,7 +657,12 @@ export function AssessmentBuilderScreen() {
             </View>
           )}
 
-          {/* Invite error / link */}
+          {/* Activation / Invite errors */}
+          {activateError && (
+            <View style={[styles.inviteErrorBanner, { backgroundColor: c.destructive + '15', borderColor: c.destructive + '30' }]}>
+              <Text style={{ color: c.destructive, fontSize: fontSizes.sm }}>{activateError}</Text>
+            </View>
+          )}
           {inviteError && (
             <View style={[styles.inviteErrorBanner, { backgroundColor: c.destructive + '15', borderColor: c.destructive + '30' }]}>
               <Text style={{ color: c.destructive, fontSize: fontSizes.sm }}>{inviteError}</Text>

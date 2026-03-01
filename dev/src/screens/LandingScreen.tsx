@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { View, Text, ScrollView, Pressable, StyleSheet, Image } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, Image } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/Button';
@@ -33,6 +33,7 @@ export function LandingScreen() {
       <View style={[styles.header, { borderBottomColor: c.border }]} accessibilityRole="banner">
         <Text style={[styles.logo, { color: c.text }]}>Ruwt</Text>
         <View style={styles.headerActions} accessibilityRole="navigation" accessibilityLabel="Main navigation">
+          <Button variant="ghost" onPress={() => navigation.navigate('Teams' as never)} textStyle={{ color: c.accent }}>For Teams</Button>
           <Button variant="ghost" onPress={() => navigation.navigate('Login' as never)}>Sign in</Button>
           <Button onPress={() => navigation.navigate('Register' as never)}>Get Started</Button>
         </View>
@@ -87,6 +88,27 @@ export function LandingScreen() {
             </Button>
           </View>
 
+        </View>
+      </View>
+
+      {/* ─── Hiring strip — immediately visible ─── */}
+      <View style={[styles.hiringStrip, { borderBottomColor: c.border }]}>
+        <View style={styles.hiringStripInner}>
+          <Text style={[styles.hiringStripText, { color: c.text }]}>
+            Hiring engineers?{' '}
+            <Text style={{ color: c.accent, fontWeight: '700' }}>
+              Assess their AI fluency with real coding challenges.
+            </Text>
+          </Text>
+          <Button
+            size="sm"
+            variant="outline"
+            onPress={() => navigation.navigate('Teams' as never)}
+            style={{ borderColor: c.accent }}
+            textStyle={{ color: c.accent }}
+          >
+            Learn More
+          </Button>
         </View>
       </View>
 
@@ -240,24 +262,83 @@ export function LandingScreen() {
         </View>
       </View>
 
-      {/* ─── For Hiring Managers ─── */}
-      <View style={styles.section}>
-        <Pressable onPress={() => navigation.navigate('Teams' as never)}>
-          <Card style={[styles.hiringCard, { borderColor: c.accent, borderWidth: 1 }]}>
-            <CardHeader>
-              <Badge variant="default">For Hiring Managers</Badge>
-              <CardTitle>Assess AI Proficiency with Real Engineering Challenges</CardTitle>
-              <CardDescription>
-                Send candidates real coding challenges. See how they choose models, manage budgets, and debug with AI — not just whether they can code.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button variant="outline" onPress={() => navigation.navigate('Teams' as never)}>
-                Learn More {'\u2192'}
-              </Button>
-            </CardContent>
-          </Card>
-        </Pressable>
+      {/* ─── Social proof / developer quotes ─── */}
+      <View style={[styles.section, { backgroundColor: c.bg }]}>
+        <Text style={[styles.sectionTitle, { color: c.text }]} accessibilityRole="heading">
+          Why Developers Practice Here
+        </Text>
+        <View style={styles.cards}>
+          {[
+            {
+              quote: 'I used GPT-4 for everything. Ruwt showed me that a 7B model handles 80% of tasks for 1/50th the cost.',
+              author: 'Frontend Engineer',
+            },
+            {
+              quote: 'The leaderboard made me competitive about prompt efficiency. I now write better prompts at work too.',
+              author: 'Full-Stack Developer',
+            },
+            {
+              quote: 'Debugging challenges taught me when to switch models instead of burning tokens on retries.',
+              author: 'Backend Engineer',
+            },
+          ].map((item) => (
+            <Card key={item.author} style={styles.card}>
+              <CardContent>
+                <Text style={{ fontSize: fontSizes.sm, color: c.textMuted, fontStyle: 'italic', lineHeight: 22, fontFamily: fontFamily.body }}>
+                  "{item.quote}"
+                </Text>
+                <Text style={{ fontSize: fontSizes.xs, color: c.accent, marginTop: spacing.sm, fontWeight: '600' }}>
+                  — {item.author}
+                </Text>
+              </CardContent>
+            </Card>
+          ))}
+        </View>
+      </View>
+
+      {/* ─── For Hiring Teams ─── */}
+      <View style={[styles.section, { backgroundColor: '#1a1816', paddingVertical: spacing['2xl'] }]}>
+        <View style={styles.hiringSection}>
+          <Badge variant="secondary" style={{ alignSelf: 'center' }}>For Hiring Teams</Badge>
+          <Text style={[styles.hiringSectionTitle, { color: '#f5f3f0' }]}>
+            Your Candidates Claim They're AI-Fluent.{'\n'}
+            <Text style={{ color: '#c9a962' }}>Now You Can Verify It.</Text>
+          </Text>
+          <Text style={[styles.hiringSectionSub, { color: '#9a938a' }]}>
+            Send candidates the same challenges your developers solve here. Get objective data on their AI efficiency — which models they pick, how they prompt, what they spend.
+          </Text>
+          <View style={styles.hiringStats}>
+            {[
+              { value: '5 min', label: 'Setup' },
+              { value: '100+', label: 'Challenges' },
+              { value: '5-axis', label: 'AI Profile' },
+            ].map((s) => (
+              <View key={s.label} style={styles.hiringStat}>
+                <Text style={{ fontSize: fontSizes.xl, fontWeight: '700', color: '#c9a962', fontFamily: fontFamily.body }}>{s.value}</Text>
+                <Text style={{ fontSize: 10, color: '#6b6560', letterSpacing: 1, textTransform: 'uppercase' as any }}>{s.label}</Text>
+              </View>
+            ))}
+          </View>
+          <View style={styles.heroCtas}>
+            <Button
+              size="lg"
+              onPress={() => navigation.navigate('Teams' as never)}
+              style={{ backgroundColor: '#c9a962' }}
+              textStyle={{ color: '#1a1816', fontWeight: '700' }}
+            >
+              Explore Assessments
+            </Button>
+            <Button
+              variant="outline"
+              size="lg"
+              onPress={() => navigation.navigate('Teams' as never)}
+              style={{ borderColor: 'rgba(232,228,223,0.25)' }}
+              textStyle={{ color: '#f5f3f0' }}
+            >
+              Book a Demo
+            </Button>
+          </View>
+        </View>
       </View>
 
       {/* ─── Final CTA ─── */}
@@ -376,7 +457,53 @@ const styles = StyleSheet.create({
     gap: spacing.md,
     justifyContent: 'center',
   },
+  hiringStrip: {
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    borderBottomWidth: 1,
+    backgroundColor: 'rgba(201,169,98,0.04)',
+  },
+  hiringStripInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.lg,
+    maxWidth: 800,
+    alignSelf: 'center',
+    flexWrap: 'wrap',
+  },
+  hiringStripText: {
+    fontSize: fontSizes.sm,
+    fontFamily: fontFamily.body,
+  },
   hiringCard: { maxWidth: 600, alignSelf: 'center' as const, width: '100%' as unknown as number },
+  hiringSection: {
+    maxWidth: 700,
+    alignSelf: 'center',
+    alignItems: 'center',
+    gap: spacing.md,
+    paddingHorizontal: spacing.lg,
+  },
+  hiringSectionTitle: {
+    fontSize: fontSizes['3xl'],
+    fontWeight: '700',
+    textAlign: 'center',
+    fontFamily: fontFamily.body,
+    lineHeight: 38,
+  },
+  hiringSectionSub: {
+    fontSize: fontSizes.md,
+    textAlign: 'center',
+    fontFamily: fontFamily.body,
+    lineHeight: 24,
+    maxWidth: 560,
+  },
+  hiringStats: {
+    flexDirection: 'row',
+    gap: spacing.xl,
+    marginVertical: spacing.sm,
+  },
+  hiringStat: { alignItems: 'center', gap: 2 },
 
   /* Sections */
   section: { padding: spacing.lg, paddingVertical: spacing.xl },

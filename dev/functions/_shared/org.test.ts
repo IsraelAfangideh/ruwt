@@ -41,6 +41,7 @@ import {
   canViewResults,
   getUserOrgIds,
   hasActiveSubscription,
+  requireTeamAccount,
 } from './org';
 
 // ---------------------------------------------------------------------------
@@ -383,5 +384,35 @@ describe('hasActiveSubscription', () => {
     const result = await hasActiveSubscription(db, 'org-missing');
 
     expect(result).toBe(false);
+  });
+});
+
+describe('requireTeamAccount', () => {
+  it('returns null when user has team account type', async () => {
+    const { db } = createDb([{ accountType: 'team' }]);
+
+    const result = await requireTeamAccount(db, 'user-1');
+
+    expect(result).toBeNull();
+  });
+
+  it('returns 403 when user has individual account type', async () => {
+    const { db } = createDb([{ accountType: 'individual' }]);
+
+    const result = await requireTeamAccount(db, 'user-1');
+
+    expect(result).not.toBeNull();
+    expect(result!.status).toBe(403);
+    const body = await result!.json();
+    expect(body).toEqual({ error: 'Team account required', code: 'TEAM_REQUIRED' });
+  });
+
+  it('returns 403 when profile does not exist', async () => {
+    const { db } = createDb([]);
+
+    const result = await requireTeamAccount(db, 'user-missing');
+
+    expect(result).not.toBeNull();
+    expect(result!.status).toBe(403);
   });
 });

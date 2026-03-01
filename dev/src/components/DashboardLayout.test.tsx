@@ -159,4 +159,94 @@ describe('DashboardLayout', () => {
       expect(screen.queryByText('Credits')).toBeNull();
     });
   });
+
+  /* ── Team gating tests ───────────────────────────────────────── */
+
+  it('shows gate UI when requireTeam is true and account is individual', async () => {
+    vi.spyOn(global, 'fetch').mockResolvedValue({
+      ok: true,
+      json: async () => ({ accountType: 'individual' }),
+    } as Response);
+
+    render(
+      <DashboardLayout user={mockUser} requireTeam>
+        <span>Protected Content</span>
+      </DashboardLayout>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Team Account Required')).toBeTruthy();
+    });
+    expect(screen.queryByText('Protected Content')).toBeNull();
+    expect(screen.getByText('Upgrade to Teams')).toBeTruthy();
+  });
+
+  it('renders children when requireTeam is true and account is team', async () => {
+    vi.spyOn(global, 'fetch').mockResolvedValue({
+      ok: true,
+      json: async () => ({ accountType: 'team' }),
+    } as Response);
+
+    render(
+      <DashboardLayout user={mockUser} requireTeam>
+        <span>Protected Content</span>
+      </DashboardLayout>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Protected Content')).toBeTruthy();
+    });
+    expect(screen.queryByText('Team Account Required')).toBeNull();
+  });
+
+  it('navigates to Teams when Upgrade to Teams is clicked', async () => {
+    vi.spyOn(global, 'fetch').mockResolvedValue({
+      ok: true,
+      json: async () => ({ accountType: 'individual' }),
+    } as Response);
+
+    render(
+      <DashboardLayout user={mockUser} requireTeam>
+        <span>Protected Content</span>
+      </DashboardLayout>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Upgrade to Teams')).toBeTruthy();
+    });
+    fireEvent.click(screen.getByText('Upgrade to Teams'));
+    expect(mockNavigate).toHaveBeenCalledWith('Teams');
+  });
+
+  it('renders children without gating when requireTeam is false', async () => {
+    vi.spyOn(global, 'fetch').mockResolvedValue({
+      ok: true,
+      json: async () => ({ accountType: 'individual' }),
+    } as Response);
+
+    render(
+      <DashboardLayout user={mockUser}>
+        <span>Open Content</span>
+      </DashboardLayout>
+    );
+
+    expect(screen.getByText('Open Content')).toBeTruthy();
+    expect(screen.queryByText('Team Account Required')).toBeNull();
+  });
+
+  it('handles profile fetch error gracefully with requireTeam', async () => {
+    vi.spyOn(global, 'fetch').mockRejectedValue(new Error('Network error'));
+
+    render(
+      <DashboardLayout user={mockUser} requireTeam>
+        <span>Protected Content</span>
+      </DashboardLayout>
+    );
+
+    // After fetch fails, profileLoading becomes false, accountType stays 'individual' → gate shows
+    await waitFor(() => {
+      expect(screen.getByText('Team Account Required')).toBeTruthy();
+    });
+    expect(screen.queryByText('Protected Content')).toBeNull();
+  });
 });

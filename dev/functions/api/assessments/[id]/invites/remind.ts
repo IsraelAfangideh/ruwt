@@ -138,7 +138,7 @@ export async function onRequestPost(context: { request: Request; env: Env; param
         continue;
       }
 
-      const inviteUrl = `https://ruwt.dev/assess/${invite.token}`;
+      const inviteUrl = `${new URL(context.request.url).origin}/assess/${invite.token}`;
 
       try {
         const emailData = reminderEmail({

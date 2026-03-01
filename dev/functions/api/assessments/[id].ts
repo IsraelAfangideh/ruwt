@@ -6,7 +6,7 @@ import { eq, and, asc } from 'drizzle-orm';
 import { z } from 'zod';
 import { getDb } from '../../_shared/db';
 import { getUser } from '../../_shared/auth';
-import { canManageAssessment } from '../../_shared/org';
+import { canManageAssessment, requireTeamAccount } from '../../_shared/org';
 import { assessments, assessmentChallenges, challenges } from '../../../drizzle/schema.d1';
 
 export async function onRequestGet(context: { request: Request; env: Env; params: { id: string } }) {
@@ -15,6 +15,8 @@ export async function onRequestGet(context: { request: Request; env: Env; params
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
     const db = getDb(context.env);
+    const teamCheck = await requireTeamAccount(db, user.id);
+    if (teamCheck) return teamCheck;
 
     const hasAccess = await canManageAssessment(db, user.id, context.params.id);
     if (!hasAccess) {
@@ -78,6 +80,8 @@ export async function onRequestPut(context: { request: Request; env: Env; params
     }
 
     const db = getDb(context.env);
+    const teamCheck = await requireTeamAccount(db, user.id);
+    if (teamCheck) return teamCheck;
 
     const hasAccess = await canManageAssessment(db, user.id, context.params.id);
     if (!hasAccess) {

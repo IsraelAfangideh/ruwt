@@ -398,6 +398,20 @@ export function LeaderboardScreen() {
         </ScrollView>
       )}
 
+      {/* Teams hint — below the leaderboard content */}
+      <View style={[styles.teamsHint, { borderColor: c.accent + '20', backgroundColor: c.accent + '05' }]}>
+        <Text style={{ fontSize: fontSizes.sm, color: c.textMuted }}>
+          These rankings measure real AI efficiency. Use the same system to{' '}
+          <Text
+            style={{ color: c.accent, textDecorationLine: 'underline' }}
+            onPress={() => navigation.navigate('Teams' as never)}
+          >
+            assess engineering candidates
+          </Text>
+          .
+        </Text>
+      </View>
+
       {/* Replay modal */}
       {replayAttemptId && (
         <ReplayViewer attemptId={replayAttemptId} onClose={() => setReplayAttemptId(null)} />
@@ -452,4 +466,11 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
   },
   activitySection: { marginTop: spacing.xl, paddingTop: spacing.lg },
+  teamsHint: {
+    marginTop: spacing.xl,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    borderWidth: 1,
+    borderRadius: 8,
+  },
 });

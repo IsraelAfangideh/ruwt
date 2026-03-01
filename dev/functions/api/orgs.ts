@@ -7,6 +7,7 @@ import { eq, and, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import { getDb } from '../_shared/db';
 import { getUser } from '../_shared/auth';
+import { requireTeamAccount } from '../_shared/org';
 import { organizations, orgMembers, profiles } from '../../drizzle/schema.d1';
 
 const createOrgSchema = z.object({
@@ -20,6 +21,11 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
     const user = await getUser(context.request, context.env);
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
+    const db = getDb(context.env);
+
+    const teamCheck = await requireTeamAccount(db, user.id);
+    if (teamCheck) return teamCheck;
+
     const body = await context.request.json().catch(() => ({}));
     const parsed = createOrgSchema.safeParse(body);
     if (!parsed.success) {
@@ -29,7 +35,6 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
       );
     }
 
-    const db = getDb(context.env);
     const orgId = crypto.randomUUID();
     const memberId = crypto.randomUUID();
 
@@ -87,6 +92,9 @@ export async function onRequestGet(context: { request: Request; env: Env }) {
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
     const db = getDb(context.env);
+
+    const teamCheck = await requireTeamAccount(db, user.id);
+    if (teamCheck) return teamCheck;
 
     // Get all orgs the user belongs to
     const rows = await db

@@ -118,7 +118,7 @@ export async function onRequestPost(context: { request: Request; env: Env; param
       expiresAt.setDate(expiresAt.getDate() + expiresInDays);
 
       const inviteId = crypto.randomUUID();
-      const inviteUrl = `https://ruwt.dev/assess/${token}`;
+      const inviteUrl = `${new URL(context.request.url).origin}/assess/${token}`;
 
       // Insert invite
       await db.insert(assessmentInvites).values({
