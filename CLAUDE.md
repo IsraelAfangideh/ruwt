@@ -203,7 +203,7 @@ This opens the browser once — user approves — token is saved and auto-refres
 - **Languages**: JavaScript (Node 18), TypeScript (tsx), Python 3
 
 ### Security layers
-1. **Network isolation**: `entrypoint.sh` sets iptables to block outbound for `executor` uid (REJECT, not DROP — gives instant errors)
+1. **Network isolation**: `entrypoint.sh` tries iptables-legacy then iptables to block outbound for `executor` uid (REJECT, not DROP). **Note**: Fly.io Firecracker VMs lack nf_tables kernel module — iptables is NOT active there. Works in Docker with `--privileged`. Explore Fly.io network policies for production network isolation.
 2. **Filesystem**: `chmod 700 /app` (can't read server code), `/etc/passwd|shadow|group` restricted
 3. **Process group kill**: `detached: true` + `kill(-pid, SIGKILL)` on timeout (handles forks)
 4. **Python memory limit**: 256MB `RLIMIT_AS` preamble prepended to all Python code
