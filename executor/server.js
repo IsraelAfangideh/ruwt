@@ -5,13 +5,18 @@
  */
 const http = require('http');
 const { spawn, execSync } = require('child_process');
-const { writeFileSync, unlinkSync, mkdtempSync, rmdirSync, chownSync } = require('fs');
+const { writeFileSync, unlinkSync, mkdtempSync, rmSync, chownSync } = require('fs');
 const path = require('path');
 const os = require('os');
 
 const PORT = process.env.PORT || 8080;
 const EXECUTOR_SECRET = process.env.EXECUTOR_SECRET || '';
 const MAX_OUTPUT = 1024 * 1024; // 1MB cap on stdout/stderr
+
+// Warn at startup if EXECUTOR_SECRET is not configured
+if (!EXECUTOR_SECRET) {
+  console.warn('WARNING: EXECUTOR_SECRET is not set — authentication is disabled. Set it in production.');
+}
 
 // Resolve non-root user IDs for process isolation
 let EXEC_UID, EXEC_GID;
@@ -31,6 +36,14 @@ const LANGUAGES = {
   python3:    { cmd: 'python3', args: [], ext: '.py' },
 };
 
+// Python memory limit preamble — sets 256MB virtual memory limit
+const PYTHON_MEMORY_PREAMBLE = `import resource as __resource
+try:
+    __resource.setrlimit(__resource.RLIMIT_AS, (256 * 1024 * 1024, 256 * 1024 * 1024))
+except (ValueError, __resource.error):
+    pass
+`;
+
 // Allowed origins for CORS
 const ALLOWED_ORIGINS = [
   'https://ruwt.dev',
@@ -47,13 +60,19 @@ function execute(language, code, stdin, timeout) {
   return new Promise((resolve) => {
     const lang = LANGUAGES[language];
     if (!lang) {
-      resolve({ stdout: '', stderr: `Unsupported language: ${language}`, code: 1, signal: null });
+      resolve({ stdout: '', stderr: `Unsupported language: ${language}`, code: 1, signal: null, executionTimeMs: 0 });
       return;
     }
 
     const tmpDir = mkdtempSync(path.join(os.tmpdir(), 'exec-'));
+
+    // Prepend Python memory limit preamble
+    const finalCode = (language === 'python' || language === 'python3')
+      ? PYTHON_MEMORY_PREAMBLE + code
+      : code;
+
     const filePath = path.join(tmpDir, `main${lang.ext}`);
-    writeFileSync(filePath, code);
+    writeFileSync(filePath, finalCode);
 
     // Make temp dir and file accessible to non-root executor user
     if (EXEC_UID !== undefined) {
@@ -66,6 +85,7 @@ function execute(language, code, stdin, timeout) {
       timeout: timeout || 5000,
       cwd: tmpDir,
       stdio: ['pipe', 'pipe', 'pipe'],
+      detached: true, // Create process group for reliable cleanup
       // Minimal safe env — no secrets leaked to user code
       env: {
         PATH: '/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin',
@@ -82,6 +102,7 @@ function execute(language, code, stdin, timeout) {
       spawnOpts.gid = EXEC_GID;
     }
 
+    const startTime = Date.now();
     const proc = spawn(lang.cmd, args, spawnOpts);
 
     let stdout = '';
@@ -112,31 +133,48 @@ function execute(language, code, stdin, timeout) {
     if (stdin) proc.stdin.write(stdin);
     proc.stdin.end();
 
+    const effectiveTimeout = timeout || 5000;
     const timer = setTimeout(() => {
       killed = true;
-      proc.kill('SIGKILL');
-    }, timeout || 5000);
+      // Kill entire process group (handles child processes / forks)
+      try { process.kill(-proc.pid, 'SIGKILL'); } catch (_) {}
+    }, effectiveTimeout);
 
     proc.on('close', (code, signal) => {
       clearTimeout(timer);
-      try { unlinkSync(filePath); } catch (_) {}
-      try { rmdirSync(tmpDir); } catch (_) {}
+      const executionTimeMs = Date.now() - startTime;
 
-      if (stdoutTruncated) stdout += '\n[Output truncated at 1MB]';
-      if (stderrTruncated) stderr += '\n[Output truncated at 1MB]';
+      // Clean up temp dir (handles nested directories from user code)
+      try { rmSync(tmpDir, { recursive: true, force: true }); } catch (_) {}
+
+      if (stdoutTruncated) stdout += '\n[Output truncated — limit is 1MB. Reduce output to see full results.]';
+      if (stderrTruncated) stderr += '\n[Output truncated — limit is 1MB. Reduce output to see full results.]';
+
+      // Detect Python MemoryError
+      if (stderr.includes('MemoryError') || stderr.includes('Cannot allocate memory')) {
+        stderr += '\n[Memory limit exceeded (256MB)]';
+      }
 
       if (killed) {
-        resolve({ stdout, stderr: stderr + '\nExecution timed out', code: 1, signal: 'SIGKILL' });
+        resolve({
+          stdout,
+          stderr: stderr + `\n[Execution timed out after ${effectiveTimeout}ms]`,
+          code: 1,
+          signal: 'SIGKILL',
+          executionTimeMs,
+        });
       } else {
-        resolve({ stdout, stderr, code: code ?? 1, signal: signal || null });
+        resolve({ stdout, stderr, code: code ?? 1, signal: signal || null, executionTimeMs });
       }
     });
 
     proc.on('error', (err) => {
       clearTimeout(timer);
-      try { unlinkSync(filePath); } catch (_) {}
-      try { rmdirSync(tmpDir); } catch (_) {}
-      resolve({ stdout: '', stderr: err.message, code: 1, signal: null });
+      const executionTimeMs = Date.now() - startTime;
+      // Kill entire process group on error too
+      try { process.kill(-proc.pid, 'SIGKILL'); } catch (_) {}
+      try { rmSync(tmpDir, { recursive: true, force: true }); } catch (_) {}
+      resolve({ stdout: '', stderr: err.message, code: 1, signal: null, executionTimeMs });
     });
   });
 }
@@ -195,6 +233,7 @@ const server = http.createServer(async (req, res) => {
             signal: result.signal,
             output: result.stdout + result.stderr,
           },
+          executionTimeMs: result.executionTimeMs,
         }));
       } catch (err) {
         res.writeHead(400, { 'Content-Type': 'application/json' });

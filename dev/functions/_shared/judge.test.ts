@@ -232,6 +232,52 @@ describe('runTestCases — default Piston URL', () => {
 });
 
 // ---------------------------------------------------------------------------
+// Tests: EXECUTOR_SECRET auth header propagation
+// ---------------------------------------------------------------------------
+
+describe('runTestCases — EXECUTOR_SECRET header', () => {
+  it('sends X-Executor-Secret header when EXECUTOR_SECRET is set', async () => {
+    setupFetchMock([
+      { ok: true, body: mockPistonResponse('ok\n') },
+    ]);
+
+    await runTestCases(
+      { PISTON_API_URL: 'https://mock-piston.test/api/v2/piston', EXECUTOR_SECRET: 'test-secret-123' },
+      'function solve() { return "ok"; }\nmodule.exports = solve',
+      'javascript',
+      [{ input: '', expectedOutput: 'ok' }],
+    );
+
+    const fetchMock = vi.mocked(fetch);
+    const callArgs = fetchMock.mock.calls[0];
+    const init = callArgs[1] as RequestInit;
+    const headers = init.headers as Record<string, string>;
+    expect(headers['X-Executor-Secret']).toBe('test-secret-123');
+    expect(headers['Content-Type']).toBe('application/json');
+  });
+
+  it('does not send X-Executor-Secret header when EXECUTOR_SECRET is not set', async () => {
+    setupFetchMock([
+      { ok: true, body: mockPistonResponse('ok\n') },
+    ]);
+
+    await runTestCases(
+      { PISTON_API_URL: 'https://mock-piston.test/api/v2/piston' },
+      'function solve() { return "ok"; }\nmodule.exports = solve',
+      'javascript',
+      [{ input: '', expectedOutput: 'ok' }],
+    );
+
+    const fetchMock = vi.mocked(fetch);
+    const callArgs = fetchMock.mock.calls[0];
+    const init = callArgs[1] as RequestInit;
+    const headers = init.headers as Record<string, string>;
+    expect(headers['X-Executor-Secret']).toBeUndefined();
+    expect(headers['Content-Type']).toBe('application/json');
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Tests: buildTestCode — JS/TS function extraction patterns
 // ---------------------------------------------------------------------------
 

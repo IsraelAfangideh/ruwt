@@ -13,7 +13,7 @@ const executeSchema = z.object({
   version: z.string().default('*'),
   files: z.array(z.object({
     name: z.string().optional(),
-    content: z.string(),
+    content: z.string().max(1_000_000, 'Code exceeds 1MB limit'),
   })).min(1),
   stdin: z.string().optional().default(''),
   args: z.array(z.string()).optional().default([]),

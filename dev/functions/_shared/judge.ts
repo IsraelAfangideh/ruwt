@@ -32,6 +32,7 @@ export interface TestResult {
 
 interface PistonEnv {
   PISTON_API_URL?: string;
+  EXECUTOR_SECRET?: string;
 }
 
 interface PistonRunResult {
@@ -61,9 +62,14 @@ async function executeCode(
 
   const baseUrl = env.PISTON_API_URL || 'https://ruwt-exec.fly.dev/api/v2/piston';
 
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (env.EXECUTOR_SECRET) {
+    headers['X-Executor-Secret'] = env.EXECUTOR_SECRET;
+  }
+
   const response = await fetch(`${baseUrl}/execute`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     body: JSON.stringify({
       language: langConfig.language,
       version: langConfig.version,

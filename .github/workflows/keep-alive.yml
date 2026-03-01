@@ -57,6 +57,7 @@ jobs:
           run_piston() {
             curl -s --max-time 15 -X POST https://ruwt-exec.fly.dev/api/v2/piston/execute \
               -H "Content-Type: application/json" \
+              -H "X-Executor-Secret: ${{ secrets.EXECUTOR_SECRET }}" \
               -d '{"language":"python","version":"3.10.0","files":[{"content":"print(42)"}],"run_timeout":5000}'
           }
           parse_piston() {
