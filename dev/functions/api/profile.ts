@@ -49,7 +49,6 @@ export async function onRequestGet(context: { request: Request; env: Env }) {
     }
 
     return Response.json({
-      id: profile.id,
       email: profile.email,
       name: profile.name,
       avatarUrl: profile.avatarUrl,
@@ -62,7 +61,6 @@ export async function onRequestGet(context: { request: Request; env: Env }) {
       streakFreezes: profile.streakFreezes,
       newsletterSubscribed: profile.newsletterSubscribed,
       accountType: profile.accountType,
-      assessmentCredits: profile.assessmentCredits,
       subscriptionStatus,
       subscriptionPlan,
       subscriptionEndsAt,

@@ -4,6 +4,7 @@ import App from './App';
 
 Sentry.init({
   dsn: import.meta.env.VITE_SENTRY_DSN,
+  tunnel: '/api/sentry-tunnel',
   environment: import.meta.env.DEV ? 'development' : 'production',
   enabled: !!import.meta.env.VITE_SENTRY_DSN,
   integrations: [

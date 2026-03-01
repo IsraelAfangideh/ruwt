@@ -167,7 +167,6 @@ describe('GET /api/profile', () => {
 
     expect(res.status).toBe(200);
     expect(json).toEqual({
-      id: 'user-1',
       email: 'test@example.com',
       name: 'Test User',
       avatarUrl: 'avatar.jpg',
@@ -180,11 +179,13 @@ describe('GET /api/profile', () => {
       streakFreezes: 1,
       newsletterSubscribed: 1,
       accountType: 'individual',
-      assessmentCredits: 0,
       subscriptionStatus: 'none',
       subscriptionPlan: null,
       subscriptionEndsAt: null,
     });
+    // Security: internal ID and unused fields should not be exposed
+    expect(json.id).toBeUndefined();
+    expect(json.assessmentCredits).toBeUndefined();
   });
 
   it('includes org subscription status when user belongs to an org', async () => {

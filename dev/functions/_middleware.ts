@@ -31,7 +31,7 @@ const SECURITY_HEADERS: Record<string, string> = {
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "font-src 'self' https://fonts.gstatic.com",
     "img-src 'self' data: blob: https://*.supabase.co",
-    "connect-src 'self' https://*.supabase.co https://*.sentry.io https://ruwt-exec.fly.dev",
+    "connect-src 'self' https://*.supabase.co https://ruwt-exec.fly.dev",
     "frame-ancestors 'none'",
     "base-uri 'self'",
     "form-action 'self'",
