@@ -5,7 +5,7 @@
  */
 const http = require('http');
 const { spawn, execSync } = require('child_process');
-const { writeFileSync, unlinkSync, mkdtempSync, rmdirSync } = require('fs');
+const { writeFileSync, unlinkSync, mkdtempSync, rmdirSync, chownSync } = require('fs');
 const path = require('path');
 const os = require('os');
 
@@ -54,6 +54,12 @@ function execute(language, code, stdin, timeout) {
     const tmpDir = mkdtempSync(path.join(os.tmpdir(), 'exec-'));
     const filePath = path.join(tmpDir, `main${lang.ext}`);
     writeFileSync(filePath, code);
+
+    // Make temp dir and file accessible to non-root executor user
+    if (EXEC_UID !== undefined) {
+      chownSync(tmpDir, EXEC_UID, EXEC_GID);
+      chownSync(filePath, EXEC_UID, EXEC_GID);
+    }
 
     const args = [...lang.args, filePath];
     const spawnOpts = {
