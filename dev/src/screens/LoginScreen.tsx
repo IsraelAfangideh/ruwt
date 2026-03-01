@@ -143,8 +143,9 @@ export function LoginScreen() {
           </View>
 
           <View style={styles.inputGroup}>
-            <Label>Email</Label>
+            <Label htmlFor="login-email">Email</Label>
             <Input
+              id="login-email"
               placeholder="you@example.com"
               value={email}
               onChangeText={setEmail}
@@ -158,12 +159,13 @@ export function LoginScreen() {
 
           <View style={styles.inputGroup}>
             <View style={styles.labelRow}>
-              <Label>Password</Label>
+              <Label htmlFor="login-password">Password</Label>
               <Pressable onPress={handleForgotPassword} accessibilityRole="link">
                 <Text style={[styles.forgotLink, { color: c.accent }]}>Forgot password?</Text>
               </Pressable>
             </View>
             <Input
+              id="login-password"
               placeholder="••••••••"
               value={password}
               onChangeText={setPassword}

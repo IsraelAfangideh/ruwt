@@ -179,13 +179,15 @@ export function ProfileScreen() {
             {editingUsername ? (
               <View style={styles.usernameEditRow}>
                 <View style={styles.usernameInputWrap}>
-                  <Label>Username</Label>
+                  <Label htmlFor="profile-username">Username</Label>
                   <Input
+                    id="profile-username"
                     value={username}
                     onChangeText={setUsername}
                     placeholder="your-username"
                     autoCapitalize="none"
                     editable={!savingUsername}
+                    label="Username"
                   />
                   {usernameError && (
                     <Text style={[styles.errorText, { color: c.error }]}>{usernameError}</Text>

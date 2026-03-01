@@ -151,7 +151,7 @@ export function RegisterScreen() {
               loading && { opacity: 0.5 },
             ]}
           >
-            <Image source={{ uri: githubIconUri(c.text) }} style={styles.oauthIcon} resizeMode="contain" />
+            <Image source={{ uri: githubIconUri(c.text) }} style={styles.oauthIcon} resizeMode="contain" accessibilityLabel="" />
             <Text style={[styles.oauthBtnText, { color: c.text }]}>Continue with GitHub</Text>
           </Pressable>
 
@@ -162,8 +162,9 @@ export function RegisterScreen() {
           </View>
 
           <View style={styles.inputGroup}>
-            <Label>Name</Label>
+            <Label htmlFor="register-name">Name</Label>
             <Input
+              id="register-name"
               placeholder="Your name"
               value={name}
               onChangeText={setName}
@@ -174,8 +175,9 @@ export function RegisterScreen() {
           </View>
 
           <View style={styles.inputGroup}>
-            <Label>Email</Label>
+            <Label htmlFor="register-email">Email</Label>
             <Input
+              id="register-email"
               placeholder="you@example.com"
               value={email}
               onChangeText={setEmail}
@@ -187,8 +189,9 @@ export function RegisterScreen() {
           </View>
 
           <View style={styles.inputGroup}>
-            <Label>Password</Label>
+            <Label htmlFor="register-password">Password</Label>
             <Input
+              id="register-password"
               placeholder="••••••••"
               value={password}
               onChangeText={setPassword}
@@ -196,8 +199,9 @@ export function RegisterScreen() {
               editable={!loading}
               onSubmitEditing={handleRegister}
               label="Password"
+              aria-describedby="register-password-hint"
             />
-            <Text style={[styles.hint, { color: c.textMuted }]}>Must be at least 6 characters</Text>
+            <Text nativeID="register-password-hint" style={[styles.hint, { color: c.textMuted }]}>Must be at least 6 characters</Text>
           </View>
 
           <Button onPress={handleRegister} disabled={loading} fullWidth size="lg" testID="register-button">

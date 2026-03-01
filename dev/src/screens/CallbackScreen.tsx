@@ -176,26 +176,31 @@ export function CallbackScreen() {
                 )}
 
                 <View style={styles.inputGroup}>
-                  <Label>New password</Label>
+                  <Label htmlFor="reset-new-password">New password</Label>
                   <Input
+                    id="reset-new-password"
                     placeholder="••••••••"
                     value={newPassword}
                     onChangeText={setNewPassword}
                     secureTextEntry
                     editable={!resetLoading}
+                    label="New password"
+                    aria-describedby="reset-password-hint"
                   />
-                  <Text style={[styles.hint, { color: c.textMuted }]}>Must be at least 6 characters</Text>
+                  <Text nativeID="reset-password-hint" style={[styles.hint, { color: c.textMuted }]}>Must be at least 6 characters</Text>
                 </View>
 
                 <View style={styles.inputGroup}>
-                  <Label>Confirm password</Label>
+                  <Label htmlFor="reset-confirm-password">Confirm password</Label>
                   <Input
+                    id="reset-confirm-password"
                     placeholder="••••••••"
                     value={confirmPassword}
                     onChangeText={setConfirmPassword}
                     secureTextEntry
                     editable={!resetLoading}
                     onSubmitEditing={handlePasswordReset}
+                    label="Confirm password"
                   />
                 </View>
 

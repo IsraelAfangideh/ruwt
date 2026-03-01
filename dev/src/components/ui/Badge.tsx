@@ -16,7 +16,7 @@ export function Badge({
   const color = variant === 'outline' ? c.text : variant === 'secondary' ? c.secondaryForeground : c.primaryForeground;
 
   return (
-    <View style={[styles.badge, { backgroundColor: bg, borderColor: c.borderStrong }, style]}>
+    <View style={[styles.badge, { backgroundColor: bg, borderColor: c.borderStrong }, style]} role="status">
       <Text style={[styles.text, { color }, textStyle]}>{children}</Text>
     </View>
   );

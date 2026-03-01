@@ -1144,6 +1144,7 @@ export function ArenaIDE({
                 role="log"
                 aria-label="Chat messages"
                 aria-live="polite"
+                aria-atomic={false}
                 onScroll={(e) => {
                   const el = e.currentTarget;
                   setShowScrollBtn(el.scrollHeight - el.scrollTop - el.clientHeight > 100);
@@ -1360,7 +1361,7 @@ export function ArenaIDE({
               </div>
 
               {/* Model selector — 5 tiers (star = recommended for this difficulty) */}
-              <div style={isMobile ? s.tierBarMobile : s.tierBar}>
+              <div style={isMobile ? s.tierBarMobile : s.tierBar} role="radiogroup" aria-label="Model tier selector">
                 {(['micro', 'budget', 'mid', 'premium', 'reasoning'] as ModelTier[]).map((tier) => {
                   const m = TIER_MODELS[tier];
                   const isActive = selectedTier === tier;
@@ -1387,6 +1388,10 @@ export function ArenaIDE({
                           flexDirection: 'column',
                           alignItems: 'center',
                         }}
+                        role="radio"
+                        aria-checked={isActive}
+                        aria-expanded={isActive && hasMultiple ? tierDropdownOpen : undefined}
+                        aria-label={`${tierLabel(tier)} tier — ${m.displayName}${isRecommended ? ` (recommended for ${challenge.difficulty})` : ''}`}
                         title={`${tierLabel(tier)} tier — ${m.displayName}${isRecommended ? ` (recommended for ${challenge.difficulty})` : ''}`}
                         disabled={isLoadingChat}
                         onClick={() => {
@@ -1409,10 +1414,12 @@ export function ArenaIDE({
                         </span>
                       </button>
                       {isActive && tierDropdownOpen && hasMultiple && (
-                        <div style={s.tierDropdown}>
+                        <div style={s.tierDropdown} role="listbox" aria-label={`${tierLabel(tier)} tier models`}>
                           {modelsInTier.map((mi) => (
                             <button
                               key={mi.id}
+                              role="option"
+                              aria-selected={model === mi.id}
                               style={{
                                 ...s.tierDropdownItem,
                                 background: model === mi.id ? `${tc}15` : 'transparent',

@@ -28,17 +28,18 @@ export function LandingScreen() {
 
   return (
     <ScrollView style={[styles.page, { backgroundColor: c.bg }]}>
+      <a className="skip-link" href="#landing-main">Skip to main content</a>
       {/* ─── Nav ─── */}
       <View style={[styles.header, { borderBottomColor: c.border }]} accessibilityRole="banner">
         <Text style={[styles.logo, { color: c.text }]}>Ruwt</Text>
-        <View style={styles.headerActions}>
+        <View style={styles.headerActions} accessibilityRole="navigation" accessibilityLabel="Main navigation">
           <Button variant="ghost" onPress={() => navigation.navigate('Login' as never)}>Sign in</Button>
           <Button onPress={() => navigation.navigate('Register' as never)}>Get Started</Button>
         </View>
       </View>
 
       {/* ─── Hero ─── */}
-      <View style={[styles.hero, { backgroundColor: '#1a1816' }]}>
+      <View nativeID="landing-main" style={[styles.hero, { backgroundColor: '#1a1816' }]} tabIndex={-1}>
         <View style={styles.heroInner}>
           <Badge variant="secondary" style={{ alignSelf: 'center' }}>Now in Beta</Badge>
           <Text style={styles.heroTitle} accessibilityRole="heading">

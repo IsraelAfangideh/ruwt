@@ -4,6 +4,7 @@ import { useColors } from '@/theme';
 import { spacing, radii, fontSizes, fontFamily } from '@/theme/tokens';
 
 interface InputProps extends Omit<TextInputProps, 'style'> {
+  id?: string;
   label?: string;
   containerStyle?: ViewStyle;
   inputStyle?: ViewStyle;
@@ -22,10 +23,11 @@ interface InputProps extends Omit<TextInputProps, 'style'> {
 
 let inputIdCounter = 0;
 
-export function Input({ label, containerStyle, inputStyle, onFocus, onBlur, ...props }: InputProps) {
+export function Input({ id, label, containerStyle, inputStyle, onFocus, onBlur, ...props }: InputProps) {
   const c = useColors();
   const [focused, setFocused] = useState(false);
-  const [inputId] = useState(() => `input-${++inputIdCounter}`);
+  const [autoId] = useState(() => `input-${++inputIdCounter}`);
+  const inputId = id || autoId;
 
   const handleFocus = useCallback((e: any) => {
     setFocused(true);
