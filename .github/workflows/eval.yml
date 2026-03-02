@@ -33,10 +33,23 @@ jobs:
         run: |
           echo "=== AI Model Availability ==="
           MODELS=(
-            "@cf/meta/llama-3.1-8b-instruct"
-            "@cf/meta/llama-3.3-70b-instruct-fp8-fast"
+            "@cf/openai/gpt-oss-120b"
             "@cf/qwen/qwq-32b"
             "@cf/deepseek-ai/deepseek-r1-distill-qwen-32b"
+            "@cf/qwen/qwen2.5-coder-32b-instruct"
+            "@cf/mistralai/mistral-small-3.1-24b-instruct"
+            "@cf/meta/llama-3.3-70b-instruct-fp8-fast"
+            "@cf/meta/llama-4-scout-17b-16e-instruct"
+            "@cf/google/gemma-3-12b-it"
+            "@cf/openai/gpt-oss-20b"
+            "@cf/meta/llama-3.1-70b-instruct"
+            "@cf/qwen/qwen1.5-14b-chat-awq"
+            "@cf/qwen/qwen3-30b-a3b-fp8"
+            "@cf/zai-org/glm-4.7-flash"
+            "@cf/meta/llama-3.1-8b-instruct"
+            "@cf/mistral/mistral-7b-instruct-v0.2"
+            "@cf/ibm-granite/granite-4.0-h-micro"
+            "@cf/meta/llama-3.2-1b-instruct"
           )
           FAILED_MODELS=""
           TOTAL=0
