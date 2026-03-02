@@ -410,6 +410,7 @@ describe('POST /api/ai/assessment-agent', () => {
       categoryWeights: JSON.stringify({ modelSelection: 30, promptEfficiency: 20, debugging: 20, strategy: 15, speed: 15 }),
       companyName: 'Ruwt',
       welcomeMessage: 'Welcome!',
+      createdBy: 'user-1',
     }]);
     // Assessment challenges
     mockDb.selectResults.push([
@@ -442,6 +443,7 @@ describe('POST /api/ai/assessment-agent', () => {
       categoryWeights: '{invalid json}',
       companyName: null,
       welcomeMessage: null,
+      createdBy: 'user-1',
     }]);
     mockDb.selectResults.push([]); // assessment challenges
 

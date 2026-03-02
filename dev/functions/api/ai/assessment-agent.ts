@@ -188,7 +188,7 @@ export async function onRequestPost(context: {
       })
       .from(challenges);
 
-    // Load assessment state if editing
+    // Load assessment state if editing (verify ownership)
     let assessmentState = null;
     if (assessmentId) {
       const [assessment] = await db
@@ -196,6 +196,9 @@ export async function onRequestPost(context: {
         .from(assessments)
         .where(eq(assessments.id, assessmentId))
         .limit(1);
+      if (assessment && assessment.createdBy !== user.id) {
+        return Response.json({ error: 'Forbidden' }, { status: 403 });
+      }
       if (assessment) {
         const asmtChallenges = await db
           .select({ challengeId: assessmentChallenges.challengeId })
@@ -365,7 +368,7 @@ export async function onRequestPost(context: {
                 messages: JSON.stringify(allMessages),
                 updatedAt: new Date().toISOString(),
               })
-              .where(eq(agentConversations.id, conversationId));
+              .where(and(eq(agentConversations.id, conversationId), eq(agentConversations.userId, user.id)));
           } else {
             await db.insert(agentConversations).values({
               id: convId,

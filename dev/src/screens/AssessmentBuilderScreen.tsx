@@ -73,6 +73,8 @@ export function AssessmentBuilderScreen() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [activating, setActivating] = useState(false);
   const [activateError, setActivateError] = useState<string | null>(null);
 
   const [title, setTitle] = useState('');
@@ -211,6 +213,7 @@ export function AssessmentBuilderScreen() {
 
   const handleSave = useCallback(async () => {
     setSaving(true);
+    setSaveError(null);
     try {
       const rawMinutes = parseInt(timeLimitMinutes, 10);
       const timeLimit = Math.max(300, Number.isFinite(rawMinutes) ? rawMinutes * 60 : 3600);
@@ -232,7 +235,7 @@ export function AssessmentBuilderScreen() {
       const passThresholdStr = passThreshold ? JSON.stringify(passThreshold) : null;
 
       if (currentId) {
-        await fetch(`/api/assessments/${currentId}`, {
+        const res = await fetch(`/api/assessments/${currentId}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -244,38 +247,43 @@ export function AssessmentBuilderScreen() {
             passThreshold: passThresholdStr,
           }),
         });
+        if (!res.ok) throw new Error('Failed to save assessment');
       } else {
         const res = await fetch('/api/assessments', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ title, description: description || undefined, timeLimit }),
         });
-        if (res.ok) {
-          const data = await res.json();
-          currentId = data.id;
-          setAssessmentId(data.id);
-        }
+        if (!res.ok) throw new Error('Failed to create assessment');
+        const data = await res.json();
+        currentId = data.id;
+        setAssessmentId(data.id);
       }
 
       // Save branding + weights + threshold on newly created assessments
       if (currentId && !assessmentId && (Object.keys(brandingFields).length > 0 || categoryWeights || passThresholdStr)) {
-        await fetch(`/api/assessments/${currentId}`, {
+        const res = await fetch(`/api/assessments/${currentId}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ ...brandingFields, categoryWeights, passThreshold: passThresholdStr }),
         });
+        if (!res.ok) throw new Error('Failed to save assessment details');
       }
 
       if (currentId && selectedChallengeIds.length > 0) {
-        await fetch(`/api/assessments/${currentId}/challenges`, {
+        const res = await fetch(`/api/assessments/${currentId}/challenges`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ challengeIds: selectedChallengeIds }),
         });
+        if (!res.ok) throw new Error('Failed to save challenges');
       }
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 2500);
-    } catch (_) {}
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : 'Save failed');
+      setTimeout(() => setSaveError(null), 4000);
+    }
     setSaving(false);
   }, [assessmentId, title, description, timeLimitMinutes, selectedChallengeIds, companyName, companyLogoUrl, welcomeMessage, weights, passThreshold]);
 
@@ -291,31 +299,46 @@ export function AssessmentBuilderScreen() {
       return;
     }
     setActivateError(null);
-    await fetch(`/api/assessments/${assessmentId}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status: 'active' }),
-    });
-    setStatus('active');
+    setActivating(true);
+    try {
+      const res = await fetch(`/api/assessments/${assessmentId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'active' }),
+      });
+      if (!res.ok) throw new Error('Failed to activate');
+      setStatus('active');
+    } catch (err) {
+      setActivateError(err instanceof Error ? err.message : 'Activation failed');
+    }
+    setActivating(false);
   }, [assessmentId, title, selectedChallengeIds.length]);
 
   const [inviteError, setInviteError] = useState<string | null>(null);
+
+  const [generatingInvite, setGeneratingInvite] = useState(false);
 
   const handleGenerateInvite = useCallback(async () => {
     /* v8 ignore next */
     if (!assessmentId) return;
     setInviteError(null);
-    const res = await fetch(`/api/assessments/${assessmentId}/invites`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({}),
-    });
-    const data = await res.json();
-    if (res.ok) {
-      setInviteLink(data.url);
-    } else {
-      setInviteError(data.error || 'Failed to generate invite link');
+    setGeneratingInvite(true);
+    try {
+      const res = await fetch(`/api/assessments/${assessmentId}/invites`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      });
+      const data = await res.json().catch(() => ({ error: 'Invalid response' }));
+      if (res.ok) {
+        setInviteLink(data.url);
+      } else {
+        setInviteError(data.error || 'Failed to generate invite link');
+      }
+    } catch {
+      setInviteError('Network error — please try again');
     }
+    setGeneratingInvite(false);
   }, [assessmentId]);
 
   // Agent callbacks
@@ -445,17 +468,17 @@ export function AssessmentBuilderScreen() {
             {params.assessmentId ? 'Edit Assessment' : 'Create Assessment'}
           </Text>
           <View style={styles.actions}>
-            <Button onPress={handleSave} disabled={saving || !title}>
-              {saving ? 'Saving...' : saveSuccess ? '\u2713 Saved' : 'Save Assessment'}
+            <Button onPress={handleSave} disabled={saving || !title || (Number.isFinite(weightSum) && weightSum !== 100)}>
+              {saving ? 'Saving...' : saveError ? '\u2717 Error' : saveSuccess ? '\u2713 Saved' : 'Save Assessment'}
             </Button>
             {assessmentId && status === 'draft' && (
-              <Button variant="outline" onPress={handleActivate}>
-                Activate
+              <Button variant="outline" onPress={handleActivate} disabled={activating}>
+                {activating ? 'Activating...' : 'Activate'}
               </Button>
             )}
             {assessmentId && status === 'active' && (
-              <Button variant="secondary" onPress={handleGenerateInvite}>
-                Generate Invite Link
+              <Button variant="secondary" onPress={handleGenerateInvite} disabled={generatingInvite}>
+                {generatingInvite ? 'Generating...' : 'Generate Invite Link'}
               </Button>
             )}
             <Pressable
@@ -770,7 +793,12 @@ export function AssessmentBuilderScreen() {
             </View>
           )}
 
-          {/* Activation / Invite errors */}
+          {/* Save / Activation / Invite errors */}
+          {saveError && (
+            <View style={[styles.inviteErrorBanner, { backgroundColor: c.destructive + '15', borderColor: c.destructive + '30' }]}>
+              <Text style={{ color: c.destructive, fontSize: fontSizes.sm }}>{saveError}</Text>
+            </View>
+          )}
           {activateError && (
             <View style={[styles.inviteErrorBanner, { backgroundColor: c.destructive + '15', borderColor: c.destructive + '30' }]}>
               <Text style={{ color: c.destructive, fontSize: fontSizes.sm }}>{activateError}</Text>

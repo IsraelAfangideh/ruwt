@@ -114,11 +114,27 @@ describe('AssessmentAgentChat', () => {
     expect(screen.getByText('Clear')).toBeTruthy();
   });
 
-  it('calls clearHistory when Clear is clicked', () => {
+  it('calls clearHistory after two-step confirmation', () => {
     mockMessages = [{ role: 'user', content: 'test' }];
     render(<AssessmentAgentChat />);
     fireEvent.click(screen.getByText('Clear'));
+    // First click shows confirmation
+    expect(mockClearHistory).not.toHaveBeenCalled();
+    expect(screen.getByText('Confirm')).toBeTruthy();
+    expect(screen.getByText('Cancel')).toBeTruthy();
+    // Second click confirms
+    fireEvent.click(screen.getByText('Confirm'));
     expect(mockClearHistory).toHaveBeenCalled();
+  });
+
+  it('cancels clear when Cancel is clicked', () => {
+    mockMessages = [{ role: 'user', content: 'test' }];
+    render(<AssessmentAgentChat />);
+    fireEvent.click(screen.getByText('Clear'));
+    fireEvent.click(screen.getByText('Cancel'));
+    expect(mockClearHistory).not.toHaveBeenCalled();
+    // Should be back to showing Clear button
+    expect(screen.getByText('Clear')).toBeTruthy();
   });
 
   it('renders user messages with "You" label', () => {

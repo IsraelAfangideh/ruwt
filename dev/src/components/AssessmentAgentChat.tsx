@@ -43,6 +43,7 @@ export function AssessmentAgentChat({
 }: Props) {
   const c = useColors();
   const [input, setInput] = useState('');
+  const [confirmClear, setConfirmClear] = useState(false);
   const scrollRef = useRef<any>(null);
 
   const handleToolResult = useCallback((tool: string, result: any) => {
@@ -110,9 +111,20 @@ export function AssessmentAgentChat({
           </Badge>
         </View>
         {messages.length > 0 && (
-          <Pressable onPress={clearHistory}>
-            <Text style={{ fontSize: fontSizes.xs, color: c.textMuted }}>Clear</Text>
-          </Pressable>
+          confirmClear ? (
+            <View style={{ flexDirection: 'row', gap: spacing.xs }}>
+              <Pressable onPress={() => { clearHistory(); setConfirmClear(false); }}>
+                <Text style={{ fontSize: fontSizes.xs, color: c.destructive, fontWeight: '600' }}>Confirm</Text>
+              </Pressable>
+              <Pressable onPress={() => setConfirmClear(false)}>
+                <Text style={{ fontSize: fontSizes.xs, color: c.textMuted }}>Cancel</Text>
+              </Pressable>
+            </View>
+          ) : (
+            <Pressable onPress={() => setConfirmClear(true)}>
+              <Text style={{ fontSize: fontSizes.xs, color: c.textMuted }}>Clear</Text>
+            </Pressable>
+          )
         )}
       </View>
 
