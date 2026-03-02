@@ -112,12 +112,12 @@ describe('CustomChallengeReview', () => {
   it('shows Expand/Collapse in compact mode', () => {
     render(<CustomChallengeReview challenge={challenge} orgId="org1" onApprove={mockOnApprove} onDelete={mockOnDelete} compact />);
     // compact starts collapsed
-    expect(screen.getByText('Expand')).toBeTruthy();
+    expect(screen.getByText(/Expand/)).toBeTruthy();
   });
 
   it('toggles expanded state in compact mode', () => {
     render(<CustomChallengeReview challenge={challenge} orgId="org1" onApprove={mockOnApprove} onDelete={mockOnDelete} compact />);
-    fireEvent.click(screen.getByText('Expand'));
-    expect(screen.getByText('Collapse')).toBeTruthy();
+    fireEvent.click(screen.getByText(/Expand/));
+    expect(screen.getByText(/Collapse/)).toBeTruthy();
   });
 });

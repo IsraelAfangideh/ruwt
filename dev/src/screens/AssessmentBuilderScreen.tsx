@@ -74,6 +74,7 @@ export function AssessmentBuilderScreen() {
   const [generatingInvite, setGeneratingInvite] = useState(false);
   const [confirmActivate, setConfirmActivate] = useState(false);
   const [dirty, setDirty] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const initialLoadDone = useRef(false);
 
   const [title, setTitle] = useState('');
@@ -158,7 +159,11 @@ export function AssessmentBuilderScreen() {
         fetch('/api/orgs').catch(() => null),
       ]);
 
-      if (challengesRes?.ok) setAllChallenges(await challengesRes.json());
+      if (challengesRes?.ok) {
+        setAllChallenges(await challengesRes.json());
+      } else {
+        setLoadError('Failed to load challenges. Try refreshing the page.');
+      }
 
       // Get org and its custom challenges
       if (orgsRes?.ok) {
@@ -761,11 +766,29 @@ export function AssessmentBuilderScreen() {
               </View>
             </View>
 
+            {/* Load error */}
+            {loadError && (
+              <View style={[styles.inviteErrorBanner, { backgroundColor: c.destructive + '15', borderColor: c.destructive + '30' }]}>
+                <Text style={{ color: c.destructive, fontSize: fontSizes.sm }}>{loadError}</Text>
+              </View>
+            )}
+
             {/* Empty state when no challenges match filters */}
-            {filteredChallenges.length === 0 && filteredCustomChallenges.length === 0 && (
+            {!loadError && filteredChallenges.length === 0 && filteredCustomChallenges.length === 0 && (
               <View style={{ paddingVertical: spacing.xl, alignItems: 'center' }}>
                 <Text style={{ fontSize: fontSizes.md, color: c.textMuted, marginBottom: spacing.xs }}>
                   No challenges match your filters
+                  {(difficultyFilter !== 'all' || categoryFilter !== 'all' || challengeSearch) && (
+                    <>
+                      {' ('}
+                      {[
+                        difficultyFilter !== 'all' && difficultyFilter,
+                        categoryFilter !== 'all' && PICKER_CATEGORIES.find((cat) => cat.key === categoryFilter)?.label,
+                        challengeSearch && `"${challengeSearch}"`,
+                      ].filter(Boolean).join(', ')}
+                      {')'}
+                    </>
+                  )}
                 </Text>
                 <Pressable onPress={() => { setChallengeSearch(''); setDifficultyFilter('all'); setCategoryFilter('all'); }}>
                   <Text style={{ fontSize: fontSizes.sm, color: c.accent, fontWeight: '600' }}>Clear filters</Text>
@@ -826,6 +849,13 @@ export function AssessmentBuilderScreen() {
               })}
 
               {/* Active custom challenges */}
+              {filteredCustomChallenges.length > 0 && filteredChallenges.length > 0 && (
+                <View style={{ width: '100%', flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginVertical: spacing.sm }}>
+                  <View style={{ flex: 1, height: 1, backgroundColor: c.border }} />
+                  <Text style={{ fontSize: fontSizes.xs, color: c.textMuted, fontWeight: '600' }}>Custom Challenges</Text>
+                  <View style={{ flex: 1, height: 1, backgroundColor: c.border }} />
+                </View>
+              )}
               {filteredCustomChallenges.map((ch) => {
                 const selected = selectedChallengeIds.includes(ch.id);
                 return (

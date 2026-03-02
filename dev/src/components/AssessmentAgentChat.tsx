@@ -108,15 +108,15 @@ export function AssessmentAgentChat({
         {messages.length > 0 && (
           confirmClear ? (
             <View style={{ flexDirection: 'row', gap: spacing.xs }}>
-              <Pressable onPress={() => { clearHistory(); setConfirmClear(false); }}>
+              <Pressable onPress={() => { clearHistory(); setConfirmClear(false); }} accessibilityRole="button" accessibilityLabel="Confirm clear chat history">
                 <Text style={{ fontSize: fontSizes.xs, color: c.destructive, fontWeight: '600' }}>Confirm</Text>
               </Pressable>
-              <Pressable onPress={() => setConfirmClear(false)}>
+              <Pressable onPress={() => setConfirmClear(false)} accessibilityRole="button" accessibilityLabel="Cancel clear">
                 <Text style={{ fontSize: fontSizes.xs, color: c.textMuted }}>Cancel</Text>
               </Pressable>
             </View>
           ) : (
-            <Pressable onPress={() => setConfirmClear(true)}>
+            <Pressable onPress={() => setConfirmClear(true)} accessibilityRole="button" accessibilityLabel="Clear chat history">
               <Text style={{ fontSize: fontSizes.xs, color: c.textMuted }}>Clear</Text>
             </Pressable>
           )

@@ -35,12 +35,15 @@ export function InviteManagementTable({ assessmentId, refreshKey }: Props) {
   const [loading, setLoading] = useState(true);
   const [reminding, setReminding] = useState<string | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
+  const [fetchError, setFetchError] = useState(false);
 
   const fetchInvites = useCallback(async () => {
+    setFetchError(false);
     try {
       const res = await fetch(`/api/assessments/${assessmentId}/invites`);
       if (res.ok) setInvites(await res.json());
-    } catch {}
+      else setFetchError(true);
+    } catch { setFetchError(true); }
     setLoading(false);
   }, [assessmentId]);
 
@@ -87,6 +90,19 @@ export function InviteManagementTable({ assessmentId, refreshKey }: Props) {
     return (
       <View style={styles.center}>
         <ActivityIndicator size="small" color={c.accent} />
+      </View>
+    );
+  }
+
+  if (fetchError) {
+    return (
+      <View style={[styles.empty, { borderColor: c.destructive + '40' }]}>
+        <Text style={{ color: c.destructive, fontSize: fontSizes.sm, marginBottom: spacing.xs }}>
+          Failed to load invites.
+        </Text>
+        <Pressable onPress={fetchInvites}>
+          <Text style={{ fontSize: fontSizes.xs, color: c.accent, fontWeight: '600' }}>Retry</Text>
+        </Pressable>
       </View>
     );
   }

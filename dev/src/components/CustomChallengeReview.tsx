@@ -96,9 +96,9 @@ export function CustomChallengeReview({ challenge, orgId, onApprove, onDelete, c
             </Badge>
           </View>
           {compact && (
-            <Pressable onPress={() => setExpanded(!expanded)}>
+            <Pressable onPress={() => setExpanded(!expanded)} accessibilityRole="button" accessibilityLabel={expanded ? 'Collapse details' : 'Expand details'}>
               <Text style={{ fontSize: fontSizes.xs, color: c.accent }}>
-                {expanded ? 'Collapse' : 'Expand'}
+                {expanded ? '\u25B2 Collapse' : '\u25BC Expand'}
               </Text>
             </Pressable>
           )}
@@ -147,6 +147,11 @@ export function CustomChallengeReview({ challenge, orgId, onApprove, onDelete, c
               </View>
             </View>
           ))}
+          {testCases.length > 5 && (
+            <Text style={{ fontSize: fontSizes.xs, color: c.textMuted, fontStyle: 'italic', marginBottom: spacing.xs }}>
+              +{testCases.length - 5} more test case{testCases.length - 5 !== 1 ? 's' : ''} not shown
+            </Text>
+          )}
 
           {/* Test Harness */}
           {challenge.testHarness && (
