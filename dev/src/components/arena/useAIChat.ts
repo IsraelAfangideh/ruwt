@@ -16,6 +16,7 @@ interface SSEChunkData {
   outputTokens?: number;
   cost?: number;
   model?: string;
+  displayName?: string;
   violation?: string;
   message?: string;
 }
