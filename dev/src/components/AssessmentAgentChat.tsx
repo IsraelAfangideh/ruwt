@@ -1,10 +1,11 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { View, Text, TextInput, ScrollView, StyleSheet, Pressable } from 'react-native';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { useColors } from '@/theme';
 import { spacing, fontSizes, fontFamily } from '@/theme/tokens';
 import { useAssessmentAgent } from '@/hooks/useAssessmentAgent';
+import { renderMarkdown } from '@/components/arena/ChatMarkdown';
 interface PassThreshold {
   enabled: boolean;
   mode: 'all_dimensions' | 'weighted_average';
@@ -70,7 +71,7 @@ export function AssessmentAgentChat({
     }
   }, [onChallengesChanged, onWeightsChanged, onBrandingChanged, onTimeLimitChanged, onThresholdChanged, onCustomChallengeCreated]);
 
-  const { messages, sendMessage, streaming, clearHistory } = useAssessmentAgent({
+  const { messages, sendMessage, streaming, streamingStatus, clearHistory } = useAssessmentAgent({
     assessmentId,
     onToolResult: handleToolResult,
     onAssessmentCreated,
@@ -158,15 +159,21 @@ export function AssessmentAgentChat({
               >
                 {msg.role === 'user' ? 'You' : 'AI'}
               </Text>
-              <Text style={[styles.messageText, { color: c.text }]} selectable>
-                {msg.content}
-              </Text>
+              {msg.role === 'assistant' ? (
+                <div style={{ color: c.text, fontSize: fontSizes.sm, lineHeight: '20px', fontFamily: fontFamily.body }}>
+                  {renderMarkdown(msg.content)}
+                </div>
+              ) : (
+                <Text style={[styles.messageText, { color: c.text }]} selectable>
+                  {msg.content}
+                </Text>
+              )}
             </View>
           ))
         )}
         {streaming && (
           <View style={styles.streamingIndicator}>
-            <Text style={{ color: c.accent, fontSize: fontSizes.xs }}>Thinking...</Text>
+            <Text style={{ color: c.accent, fontSize: fontSizes.xs }}>{streamingStatus}</Text>
           </View>
         )}
       </ScrollView>

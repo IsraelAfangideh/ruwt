@@ -32,6 +32,13 @@ const requestSchema = z.object({
 const AGENT_MODEL = '@cf/meta/llama-3.3-70b-instruct-fp8-fast';
 const MAX_TOOL_ITERATIONS = 3;
 const AI_CALL_TIMEOUT_MS = 25_000; // 25s timeout per AI call (within 30s CF Pages limit)
+const MAX_CONVERSATION_MESSAGES = 20; // Keep last N messages to avoid blowing context window
+
+// Tools that require an assessmentId — auto-create draft if needed
+const ASSESSMENT_TOOLS = new Set([
+  'select_challenges', 'remove_challenges', 'set_weights',
+  'set_time_limit', 'set_branding', 'set_pass_threshold',
+]);
 
 interface AIMessage {
   role: 'system' | 'user' | 'assistant' | 'tool';
@@ -237,10 +244,13 @@ export async function onRequestPost(context: {
     });
     const tools = getAssessmentAgentTools();
 
-    // Build messages for the model
+    // Build messages for the model (truncate to prevent blowing context window)
+    const truncated = messages.length > MAX_CONVERSATION_MESSAGES
+      ? messages.slice(-MAX_CONVERSATION_MESSAGES)
+      : messages;
     const aiMessages: AIMessage[] = [
       { role: 'system', content: systemPrompt },
-      ...messages.map((m) => ({
+      ...truncated.map((m) => ({
         role: m.role as 'user' | 'assistant',
         content: m.content,
       })),
@@ -280,12 +290,6 @@ export async function onRequestPost(context: {
                 role: 'assistant',
                 content: result.response || '',
               });
-
-              // Tools that require an assessment — auto-create draft if needed
-              const ASSESSMENT_TOOLS = new Set([
-                'select_challenges', 'remove_challenges', 'set_weights',
-                'set_time_limit', 'set_branding', 'set_pass_threshold',
-              ]);
 
               // Execute each tool call
               for (const call of result.toolCalls) {

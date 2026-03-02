@@ -7,6 +7,7 @@ const mockClearHistory = vi.fn();
 
 let mockMessages: any[] = [];
 let mockStreaming = false;
+let mockStreamingStatus = 'Thinking...';
 
 vi.mock('@/theme', () => ({
   useColors: () => ({
@@ -35,6 +36,10 @@ vi.mock('@/components/ui/Badge', () => ({
 
 let capturedOnToolResult: ((tool: string, result: any) => void) | null = null;
 
+vi.mock('@/components/arena/ChatMarkdown', () => ({
+  renderMarkdown: (text: string) => [<span key="md">{text}</span>],
+}));
+
 vi.mock('@/hooks/useAssessmentAgent', () => ({
   useAssessmentAgent: (opts: any) => {
     capturedOnToolResult = opts?.onToolResult ?? null;
@@ -42,6 +47,7 @@ vi.mock('@/hooks/useAssessmentAgent', () => ({
       messages: mockMessages,
       sendMessage: mockSendMessage,
       streaming: mockStreaming,
+      streamingStatus: mockStreamingStatus,
       clearHistory: mockClearHistory,
     };
   },
@@ -54,6 +60,7 @@ describe('AssessmentAgentChat', () => {
     vi.clearAllMocks();
     mockMessages = [];
     mockStreaming = false;
+    mockStreamingStatus = 'Thinking...';
     capturedOnToolResult = null;
   });
 

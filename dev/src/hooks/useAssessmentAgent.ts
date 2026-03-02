@@ -22,9 +22,21 @@ interface UseAssessmentAgentParams {
   onAssessmentCreated?: (assessmentId: string) => void;
 }
 
+const TOOL_LABELS: Record<string, string> = {
+  search_challenges: 'Searching challenges...',
+  select_challenges: 'Adding challenges...',
+  remove_challenges: 'Removing challenges...',
+  set_weights: 'Setting score weights...',
+  set_time_limit: 'Setting time limit...',
+  set_branding: 'Updating branding...',
+  create_custom_challenge: 'Creating custom challenge...',
+  set_pass_threshold: 'Configuring thresholds...',
+};
+
 export function useAssessmentAgent({ assessmentId, onToolResult, onAssessmentCreated }: UseAssessmentAgentParams) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [streaming, setStreaming] = useState(false);
+  const [streamingStatus, setStreamingStatus] = useState<string>('Thinking...');
   const [conversationId, setConversationId] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const messagesRef = useRef<Message[]>(messages);
@@ -37,6 +49,7 @@ export function useAssessmentAgent({ assessmentId, onToolResult, onAssessmentCre
     const newMessages = [...messagesRef.current, userMsg];
     setMessages(newMessages);
     setStreaming(true);
+    setStreamingStatus('Thinking...');
 
     abortRef.current = new AbortController();
 
@@ -106,7 +119,7 @@ export function useAssessmentAgent({ assessmentId, onToolResult, onAssessmentCre
                 break;
 
               case 'tool_call':
-                // Tool call detected — will be followed by tool_result
+                setStreamingStatus(TOOL_LABELS[event.tool] || `Running ${event.tool}...`);
                 break;
 
               case 'tool_result':
@@ -168,5 +181,5 @@ export function useAssessmentAgent({ assessmentId, onToolResult, onAssessmentCre
     setStreaming(false);
   }, []);
 
-  return { messages, sendMessage, streaming, clearHistory, abort, conversationId };
+  return { messages, sendMessage, streaming, streamingStatus, clearHistory, abort, conversationId };
 }
