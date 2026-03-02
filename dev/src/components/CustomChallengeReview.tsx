@@ -36,6 +36,7 @@ export function CustomChallengeReview({ challenge, orgId, onApprove, onDelete, c
   const [expanded, setExpanded] = useState(!compact);
   const [approving, setApproving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   const handleApprove = useCallback(async () => {
     setApproving(true);
@@ -165,9 +166,20 @@ export function CustomChallengeReview({ challenge, orgId, onApprove, onDelete, c
               <Button onPress={handleApprove} disabled={approving}>
                 {approving ? 'Approving...' : 'Approve Challenge'}
               </Button>
-              <Button variant="outline" onPress={handleDelete} disabled={deleting}>
-                {deleting ? 'Deleting...' : 'Delete Draft'}
-              </Button>
+              {confirmDelete ? (
+                <View style={{ flexDirection: 'row', gap: spacing.sm, alignItems: 'center' }}>
+                  <Button variant="outline" onPress={() => { setConfirmDelete(false); handleDelete(); }} disabled={deleting}>
+                    {deleting ? 'Deleting...' : 'Confirm Delete'}
+                  </Button>
+                  <Pressable onPress={() => setConfirmDelete(false)}>
+                    <Text style={{ fontSize: fontSizes.xs, color: c.textMuted }}>Cancel</Text>
+                  </Pressable>
+                </View>
+              ) : (
+                <Button variant="outline" onPress={() => setConfirmDelete(true)} disabled={deleting}>
+                  Delete Draft
+                </Button>
+              )}
             </View>
           )}
         </CardContent>

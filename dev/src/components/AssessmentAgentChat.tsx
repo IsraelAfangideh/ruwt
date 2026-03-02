@@ -20,9 +20,9 @@ interface Props {
 }
 
 const QUICK_ACTIONS = [
-  { label: 'Analyze a job description', prompt: 'I\'d like to create an assessment. Let me paste the job description:', requiresAssessment: false },
-  { label: 'Suggest challenges for a role', prompt: 'Suggest challenges for a ', requiresAssessment: false },
-  { label: 'Create a custom challenge', prompt: 'Create a custom challenge for our team. Our domain is ', requiresAssessment: false },
+  { label: 'Analyze a job description', prompt: 'I\'d like to create an assessment. Here\'s the job description:\n\n', requiresAssessment: false },
+  { label: 'Suggest challenges for a role', prompt: 'Suggest challenges for a senior full-stack engineer role', requiresAssessment: false },
+  { label: 'Create a custom challenge', prompt: 'Create a custom coding challenge that tests real-world skills for our team', requiresAssessment: false },
   { label: 'Optimize score weights', prompt: 'Based on the current assessment, what score weights do you recommend and why?', requiresAssessment: true },
 ];
 

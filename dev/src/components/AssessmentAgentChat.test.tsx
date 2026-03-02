@@ -208,7 +208,7 @@ describe('AssessmentAgentChat', () => {
     render(<AssessmentAgentChat />);
     fireEvent.click(screen.getByText('Create a custom challenge'));
     const input = screen.getByPlaceholderText(/Describe the role/);
-    expect((input as HTMLInputElement).value).toContain('Create a custom challenge');
+    expect((input as HTMLInputElement).value).toContain('Create a custom coding challenge');
   });
 
   it('populates input for optimize score weights quick action', () => {

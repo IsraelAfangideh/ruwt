@@ -72,6 +72,9 @@ export function AssessmentBuilderScreen() {
   const [activateError, setActivateError] = useState<string | null>(null);
   const [inviteError, setInviteError] = useState<string | null>(null);
   const [generatingInvite, setGeneratingInvite] = useState(false);
+  const [confirmActivate, setConfirmActivate] = useState(false);
+  const [dirty, setDirty] = useState(false);
+  const initialLoadDone = useRef(false);
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -125,6 +128,20 @@ export function AssessmentBuilderScreen() {
   useEffect(() => {
     return () => { timersRef.current.forEach(clearTimeout); };
   }, []);
+
+  // Warn before unloading with unsaved changes
+  useEffect(() => {
+    const handler = (e: BeforeUnloadEvent) => {
+      if (dirty) { e.preventDefault(); }
+    };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [dirty]);
+
+  // Mark dirty when form fields change (skip first render / initial load)
+  useEffect(() => {
+    if (initialLoadDone.current) setDirty(true);
+  }, [title, description, timeLimitMinutes, selectedChallengeIds, companyName, companyLogoUrl, welcomeMessage, weights, passThreshold]);
 
   useEffect(() => {
     const init = async () => {
@@ -193,6 +210,8 @@ export function AssessmentBuilderScreen() {
         } catch (_) {}
       }
       setLoading(false);
+      // Allow a tick for state setters to flush before tracking dirty
+      setTimeout(() => { initialLoadDone.current = true; }, 0);
     };
     init();
   }, [navigation, supabase.auth, params.assessmentId]);
@@ -281,6 +300,7 @@ export function AssessmentBuilderScreen() {
         });
         if (!res.ok) throw new Error('Failed to save challenges');
       }
+      setDirty(false);
       setSaveSuccess(true);
       timersRef.current.push(setTimeout(() => setSaveSuccess(false), 2500));
     } catch (err) {
@@ -471,9 +491,20 @@ export function AssessmentBuilderScreen() {
               {saving ? 'Saving...' : saveError ? '\u2717 Error' : saveSuccess ? '\u2713 Saved' : 'Save Assessment'}
             </Button>
             {assessmentId && status === 'draft' && (
-              <Button variant="outline" onPress={handleActivate} disabled={activating}>
-                {activating ? 'Activating...' : 'Activate'}
-              </Button>
+              confirmActivate ? (
+                <View style={{ flexDirection: 'row', gap: spacing.sm, alignItems: 'center' }}>
+                  <Button variant="outline" onPress={() => { setConfirmActivate(false); handleActivate(); }} disabled={activating}>
+                    {activating ? 'Activating...' : 'Confirm Activate'}
+                  </Button>
+                  <Button variant="ghost" size="sm" onPress={() => setConfirmActivate(false)}>
+                    Cancel
+                  </Button>
+                </View>
+              ) : (
+                <Button variant="outline" onPress={() => setConfirmActivate(true)} disabled={activating}>
+                  Activate
+                </Button>
+              )
             )}
             {assessmentId && status === 'active' && (
               <Button variant="secondary" onPress={handleGenerateInvite} disabled={generatingInvite}>
@@ -540,13 +571,18 @@ export function AssessmentBuilderScreen() {
               value={description}
               onChangeText={setDescription}
             />
-            <Input
-              label="Time Limit (minutes)"
-              placeholder="60"
-              value={timeLimitMinutes}
-              onChangeText={setTimeLimitMinutes}
-              keyboardType="numeric"
-            />
+            <View>
+              <Input
+                label="Time Limit (minutes)"
+                placeholder="60"
+                value={timeLimitMinutes}
+                onChangeText={setTimeLimitMinutes}
+                keyboardType="numeric"
+              />
+              <Text style={{ fontSize: fontSizes.xs, color: c.textMuted, marginTop: 4 }}>
+                Minimum 5 min, maximum 240 min
+              </Text>
+            </View>
           </View>
 
           {/* Company Branding */}
@@ -562,12 +598,25 @@ export function AssessmentBuilderScreen() {
                 value={companyName}
                 onChangeText={setCompanyName}
               />
-              <Input
-                label="Company Logo URL"
-                placeholder="https://example.com/logo.png"
-                value={companyLogoUrl}
-                onChangeText={setCompanyLogoUrl}
-              />
+              <View>
+                <Input
+                  label="Company Logo URL"
+                  placeholder="https://example.com/logo.png"
+                  value={companyLogoUrl}
+                  onChangeText={setCompanyLogoUrl}
+                />
+                {companyLogoUrl && /^https?:\/\//i.test(companyLogoUrl) && (
+                  <View style={{ marginTop: spacing.sm, flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+                    <img
+                      src={companyLogoUrl}
+                      alt="Logo preview"
+                      style={{ maxHeight: 40, maxWidth: 120, objectFit: 'contain', borderRadius: 4 }}
+                      onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                    />
+                    <Text style={{ fontSize: fontSizes.xs, color: c.textMuted }}>Preview</Text>
+                  </View>
+                )}
+              </View>
               <Input
                 label="Welcome Message"
                 placeholder="Welcome to our AI engineering assessment..."
@@ -605,11 +654,31 @@ export function AssessmentBuilderScreen() {
                 </View>
               ))}
             </View>
-            {Number.isFinite(weightSum) && weightSum !== 100 && (
-              <Text style={{ fontSize: fontSizes.xs, color: c.destructive, marginTop: spacing.sm }}>
-                Weights must sum to 100 (currently {weightSum})
-              </Text>
-            )}
+            <View style={{ marginTop: spacing.sm }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: 4 }}>
+                <View style={{ flex: 1, height: 6, backgroundColor: c.border, borderRadius: 3, overflow: 'hidden' }}>
+                  <View style={{
+                    height: 6,
+                    borderRadius: 3,
+                    width: `${Math.min(100, Number.isFinite(weightSum) ? weightSum : 0)}%`,
+                    backgroundColor: weightSum === 100 ? c.success : weightSum > 100 ? c.destructive : c.accent,
+                  } as any} />
+                </View>
+                <Text style={{
+                  fontSize: fontSizes.xs,
+                  fontWeight: '600',
+                  color: weightSum === 100 ? c.success : Number.isFinite(weightSum) ? c.destructive : c.textMuted,
+                  minWidth: 50,
+                }}>
+                  {Number.isFinite(weightSum) ? `${weightSum}/100` : '—/100'}
+                </Text>
+              </View>
+              {Number.isFinite(weightSum) && weightSum !== 100 && (
+                <Text style={{ fontSize: fontSizes.xs, color: c.destructive }}>
+                  Weights must sum to 100
+                </Text>
+              )}
+            </View>
             <View style={[styles.divider, { borderBottomColor: c.border }]} />
           </View>
 
@@ -670,10 +739,39 @@ export function AssessmentBuilderScreen() {
                   </Pressable>
                 ))}
               </View>
-              <Text style={{ fontSize: fontSizes.xs, color: c.textMuted, marginTop: spacing.xs }}>
-                {filteredChallenges.length + filteredCustomChallenges.length} challenges shown
-              </Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginTop: spacing.xs }}>
+                <Text style={{ fontSize: fontSizes.xs, color: c.textMuted }}>
+                  {filteredChallenges.length + filteredCustomChallenges.length} challenges shown
+                </Text>
+                {filteredChallenges.length + filteredCustomChallenges.length > 0 && (
+                  <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+                    <Pressable onPress={() => {
+                      const visibleIds = [...filteredChallenges, ...filteredCustomChallenges].map((ch) => ch.id);
+                      setSelectedChallengeIds((prev) => [...new Set([...prev, ...visibleIds])]);
+                    }}>
+                      <Text style={{ fontSize: fontSizes.xs, color: c.accent, fontWeight: '600' }}>Select All Visible</Text>
+                    </Pressable>
+                    {selectedChallengeIds.length > 0 && (
+                      <Pressable onPress={() => setSelectedChallengeIds([])}>
+                        <Text style={{ fontSize: fontSizes.xs, color: c.textMuted, fontWeight: '600' }}>Clear All</Text>
+                      </Pressable>
+                    )}
+                  </View>
+                )}
+              </View>
             </View>
+
+            {/* Empty state when no challenges match filters */}
+            {filteredChallenges.length === 0 && filteredCustomChallenges.length === 0 && (
+              <View style={{ paddingVertical: spacing.xl, alignItems: 'center' }}>
+                <Text style={{ fontSize: fontSizes.md, color: c.textMuted, marginBottom: spacing.xs }}>
+                  No challenges match your filters
+                </Text>
+                <Pressable onPress={() => { setChallengeSearch(''); setDifficultyFilter('all'); setCategoryFilter('all'); }}>
+                  <Text style={{ fontSize: fontSizes.sm, color: c.accent, fontWeight: '600' }}>Clear filters</Text>
+                </Pressable>
+              </View>
+            )}
 
             {/* Platform challenges */}
             <View style={styles.challengeGrid}>
@@ -685,32 +783,37 @@ export function AssessmentBuilderScreen() {
                       style={[
                         styles.challengeCard,
                         { borderColor: selected ? c.accent : c.border },
-                        selected && { borderWidth: 2 },
+                        selected && { borderWidth: 2, backgroundColor: c.accent + '08' },
                       ]}
                     >
                       <CardHeader>
-                        <View style={styles.challengeBadges}>
-                          <Badge
-                            variant="outline"
-                            style={{
-                              borderColor: getDifficultyStyle(ch.difficulty).color,
-                              backgroundColor: getDifficultyStyle(ch.difficulty).bg,
-                            }}
-                          >
-                            <Text
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                          <View style={styles.challengeBadges}>
+                            <Badge
+                              variant="outline"
                               style={{
-                                fontSize: fontSizes.xs,
-                                color: getDifficultyStyle(ch.difficulty).color,
+                                borderColor: getDifficultyStyle(ch.difficulty).color,
+                                backgroundColor: getDifficultyStyle(ch.difficulty).bg,
                               }}
                             >
-                              {getDifficultyStyle(ch.difficulty).label}
-                            </Text>
-                          </Badge>
-                          <Badge variant="outline" style={{ borderColor: categoryColor(ch.category) }}>
-                            <Text style={{ fontSize: fontSizes.xs, color: categoryColor(ch.category) }}>
-                              {categoryLabel(ch.category)}
-                            </Text>
-                          </Badge>
+                              <Text
+                                style={{
+                                  fontSize: fontSizes.xs,
+                                  color: getDifficultyStyle(ch.difficulty).color,
+                                }}
+                              >
+                                {getDifficultyStyle(ch.difficulty).label}
+                              </Text>
+                            </Badge>
+                            <Badge variant="outline" style={{ borderColor: categoryColor(ch.category) }}>
+                              <Text style={{ fontSize: fontSizes.xs, color: categoryColor(ch.category) }}>
+                                {categoryLabel(ch.category)}
+                              </Text>
+                            </Badge>
+                          </View>
+                          {selected && (
+                            <Text style={{ fontSize: fontSizes.md, color: c.accent, fontWeight: '700' }}>{'\u2713'}</Text>
+                          )}
                         </View>
                         <CardTitle>{ch.title}</CardTitle>
                         {ch.skillTested && (
@@ -731,32 +834,37 @@ export function AssessmentBuilderScreen() {
                       style={[
                         styles.challengeCard,
                         { borderColor: selected ? c.accent : c.border },
-                        selected && { borderWidth: 2 },
+                        selected && { borderWidth: 2, backgroundColor: c.accent + '08' },
                       ]}
                     >
                       <CardHeader>
-                        <View style={styles.challengeBadges}>
-                          <Badge
-                            variant="outline"
-                            style={{
-                              borderColor: getDifficultyStyle(ch.difficulty).color,
-                              backgroundColor: getDifficultyStyle(ch.difficulty).bg,
-                            }}
-                          >
-                            <Text
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                          <View style={styles.challengeBadges}>
+                            <Badge
+                              variant="outline"
                               style={{
-                                fontSize: fontSizes.xs,
-                                color: getDifficultyStyle(ch.difficulty).color,
+                                borderColor: getDifficultyStyle(ch.difficulty).color,
+                                backgroundColor: getDifficultyStyle(ch.difficulty).bg,
                               }}
                             >
-                              {getDifficultyStyle(ch.difficulty).label}
-                            </Text>
-                          </Badge>
-                          <Badge variant="outline" style={{ borderColor: c.accent + '60', backgroundColor: c.accent + '10' }}>
-                            <Text style={{ fontSize: fontSizes.xs, color: c.accent }}>
-                              Custom
-                            </Text>
-                          </Badge>
+                              <Text
+                                style={{
+                                  fontSize: fontSizes.xs,
+                                  color: getDifficultyStyle(ch.difficulty).color,
+                                }}
+                              >
+                                {getDifficultyStyle(ch.difficulty).label}
+                              </Text>
+                            </Badge>
+                            <Badge variant="outline" style={{ borderColor: c.accent + '60', backgroundColor: c.accent + '10' }}>
+                              <Text style={{ fontSize: fontSizes.xs, color: c.accent }}>
+                                Custom
+                              </Text>
+                            </Badge>
+                          </View>
+                          {selected && (
+                            <Text style={{ fontSize: fontSizes.md, color: c.accent, fontWeight: '700' }}>{'\u2713'}</Text>
+                          )}
                         </View>
                         <CardTitle>{ch.title}</CardTitle>
                         {ch.skillTested && (

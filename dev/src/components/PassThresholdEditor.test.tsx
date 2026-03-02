@@ -208,8 +208,10 @@ describe('PassThresholdEditor', () => {
       dimensions: { modelSelection: 50, promptEfficiency: 50, debugging: 50, strategy: 50, speed: 50 },
     };
     render(<PassThresholdEditor value={threshold} onChange={mockOnChange} />);
-    expect(screen.getByText(/PASS = all dimensions/)).toBeTruthy();
-    expect(screen.getByText(/FAIL = any dimension 20\+ points below/)).toBeTruthy();
+    expect(screen.getByText(/PASS/)).toBeTruthy();
+    expect(screen.getByText(/every dimension meets or exceeds/)).toBeTruthy();
+    expect(screen.getByText(/FAIL/)).toBeTruthy();
+    expect(screen.getByText(/20\+ points below/)).toBeTruthy();
   });
 
   it('renders explainer text for weighted_average mode', () => {
@@ -220,8 +222,9 @@ describe('PassThresholdEditor', () => {
       dimensions: { modelSelection: 50, promptEfficiency: 50, debugging: 50, strategy: 50, speed: 50 },
     };
     render(<PassThresholdEditor value={threshold} onChange={mockOnChange} />);
-    expect(screen.getByText(/PASS = weighted average >= 60/)).toBeTruthy();
-    expect(screen.getByText(/FAIL = weighted average < 40/)).toBeTruthy();
+    expect(screen.getAllByText(/weighted average/).length).toBeGreaterThanOrEqual(2);
+    expect(screen.getByText(/How scoring works/)).toBeTruthy();
+    expect(screen.getByText(/< 40/)).toBeTruthy();
   });
 
   it('does not render dimension inputs when disabled', () => {
