@@ -114,7 +114,9 @@ describe('search_challenges', () => {
   });
 
   it('filters by category', async () => {
-    const db = createMockDb({ selectResult: sampleChallenges });
+    // SQL WHERE filters at DB level — mock returns pre-filtered results
+    const filtered = sampleChallenges.filter((c) => c.category === 'model_selection');
+    const db = createMockDb({ selectResult: filtered });
     const result = await run(db, 'search_challenges', { category: 'model_selection' });
 
     expect(result.success).toBe(true);
@@ -124,7 +126,9 @@ describe('search_challenges', () => {
   });
 
   it('filters by difficulty', async () => {
-    const db = createMockDb({ selectResult: sampleChallenges });
+    // SQL WHERE filters at DB level — mock returns pre-filtered results
+    const filtered = sampleChallenges.filter((c) => c.difficulty === 'hard');
+    const db = createMockDb({ selectResult: filtered });
     const result = await run(db, 'search_challenges', { difficulty: 'hard' });
 
     expect(result.success).toBe(true);
@@ -135,7 +139,9 @@ describe('search_challenges', () => {
   });
 
   it('filters by language', async () => {
-    const db = createMockDb({ selectResult: sampleChallenges });
+    // SQL WHERE filters at DB level — mock returns pre-filtered results
+    const filtered = sampleChallenges.filter((c) => c.language === 'python');
+    const db = createMockDb({ selectResult: filtered });
     const result = await run(db, 'search_challenges', { language: 'python' });
 
     expect(result.success).toBe(true);
@@ -1002,16 +1008,18 @@ describe('error handling', () => {
   });
 
   it('catches database errors from insert and returns them as error results', async () => {
-    // First select (catalog validation) succeeds, second select (existing) succeeds, but insert throws
-    let fromCallCount = 0;
-    const selectWhereMock = vi.fn().mockResolvedValue([]); // no existing junction rows
-    const fromMock = vi.fn().mockImplementation(() => {
-      fromCallCount++;
-      if (fromCallCount === 1) {
-        // First call: catalog validation — return valid IDs
-        return Object.assign(Promise.resolve([{ id: 'ch-1' }]), { where: selectWhereMock });
+    // First select (catalog validation via inArray) succeeds, second select (existing) succeeds, but insert throws
+    let whereCallCount = 0;
+    const selectWhereMock = vi.fn().mockImplementation(() => {
+      whereCallCount++;
+      if (whereCallCount === 1) {
+        // First where: inArray validation — return valid IDs
+        return Promise.resolve([{ id: 'ch-1' }]);
       }
-      // Second call: existing junction rows
+      // Second where: existing junction rows
+      return Promise.resolve([]);
+    });
+    const fromMock = vi.fn().mockImplementation(() => {
       return Object.assign(Promise.resolve([]), { where: selectWhereMock });
     });
     const valuesMock = vi.fn().mockRejectedValue(new Error('UNIQUE constraint failed'));

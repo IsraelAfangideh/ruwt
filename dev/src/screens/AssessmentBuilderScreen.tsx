@@ -76,6 +76,8 @@ export function AssessmentBuilderScreen() {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [activating, setActivating] = useState(false);
   const [activateError, setActivateError] = useState<string | null>(null);
+  const [inviteError, setInviteError] = useState<string | null>(null);
+  const [generatingInvite, setGeneratingInvite] = useState(false);
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -314,10 +316,6 @@ export function AssessmentBuilderScreen() {
     setActivating(false);
   }, [assessmentId, title, selectedChallengeIds.length]);
 
-  const [inviteError, setInviteError] = useState<string | null>(null);
-
-  const [generatingInvite, setGeneratingInvite] = useState(false);
-
   const handleGenerateInvite = useCallback(async () => {
     /* v8 ignore next */
     if (!assessmentId) return;
@@ -468,7 +466,7 @@ export function AssessmentBuilderScreen() {
             {params.assessmentId ? 'Edit Assessment' : 'Create Assessment'}
           </Text>
           <View style={styles.actions}>
-            <Button onPress={handleSave} disabled={saving || !title || (Number.isFinite(weightSum) && weightSum !== 100)}>
+            <Button onPress={handleSave} disabled={saving || !title || !Number.isFinite(weightSum) || weightSum !== 100}>
               {saving ? 'Saving...' : saveError ? '\u2717 Error' : saveSuccess ? '\u2713 Saved' : 'Save Assessment'}
             </Button>
             {assessmentId && status === 'draft' && (

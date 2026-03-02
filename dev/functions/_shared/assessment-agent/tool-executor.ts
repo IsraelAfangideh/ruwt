@@ -3,7 +3,7 @@
  * Tool calls now come from Cloudflare Workers AI native function calling
  * (structured tool_calls in the API response, not XML blocks in text).
  */
-import { eq, and } from 'drizzle-orm';
+import { eq, and, inArray } from 'drizzle-orm';
 import type { Db } from '../db';
 import {
   challenges, assessments, assessmentChallenges, customChallenges,
@@ -69,7 +69,13 @@ async function searchChallenges(db: Db, params: Record<string, unknown>): Promis
     query?: string; category?: string; difficulty?: string; language?: string;
   };
 
-  let rows = await db
+  // Build SQL WHERE conditions for exact-match filters
+  const conditions = [];
+  if (category) conditions.push(eq(challenges.category, category));
+  if (difficulty) conditions.push(eq(challenges.difficulty, difficulty));
+  if (language) conditions.push(eq(challenges.language, language));
+
+  let dbQuery = db
     .select({
       id: challenges.id,
       title: challenges.title,
@@ -81,15 +87,13 @@ async function searchChallenges(db: Db, params: Record<string, unknown>): Promis
     })
     .from(challenges);
 
-  if (category) {
-    rows = rows.filter((r) => r.category === category);
+  if (conditions.length > 0) {
+    dbQuery = dbQuery.where(conditions.length === 1 ? conditions[0] : and(...conditions)) as typeof dbQuery;
   }
-  if (difficulty) {
-    rows = rows.filter((r) => r.difficulty === difficulty);
-  }
-  if (language) {
-    rows = rows.filter((r) => r.language === language);
-  }
+
+  let rows = await dbQuery;
+
+  // Free-text search still done in JS (SQLite LIKE is case-sensitive by default)
   if (query) {
     const q = query.toLowerCase();
     rows = rows.filter((r) =>
@@ -121,10 +125,11 @@ async function selectChallenges(
   }
 
   // Validate that requested challenge IDs exist in the catalog
-  const allChallenges = await db
+  const found = await db
     .select({ id: challenges.id })
-    .from(challenges);
-  const validIds = new Set(allChallenges.map((c) => c.id));
+    .from(challenges)
+    .where(inArray(challenges.id, challengeIds));
+  const validIds = new Set(found.map((c) => c.id));
   const invalid = challengeIds.filter((id) => !validIds.has(id));
   const validChallengeIds = challengeIds.filter((id) => validIds.has(id));
   if (validChallengeIds.length === 0) {

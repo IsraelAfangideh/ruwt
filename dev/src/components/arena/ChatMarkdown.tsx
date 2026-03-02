@@ -15,6 +15,8 @@ export const CodeBlock = React.memo(function CodeBlock({ lang, code, collapsible
     navigator.clipboard.writeText(code).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
+    }).catch(() => {
+      // Clipboard API unavailable — no-op (button stays in default state)
     });
   };
   return (
@@ -190,11 +192,13 @@ export function renderInline(text: string, onLineClick?: (line: number) => void)
         <code key={parts.length} style={mdStyles.inlineCode}>{match[6]}</code>
       );
     } else if (match[7] && match[8]) {
-      // link
+      // link — only allow safe URL schemes
+      const href = match[8];
+      const isSafe = /^https?:\/\//i.test(href) || href.startsWith('/') || href.startsWith('#');
       parts.push(
-        <a key={parts.length} href={match[8]} target="_blank" rel="noopener noreferrer" style={mdStyles.link}>
-          {match[7]}
-        </a>
+        isSafe
+          ? <a key={parts.length} href={href} target="_blank" rel="noopener noreferrer" style={mdStyles.link}>{match[7]}</a>
+          : <span key={parts.length} style={mdStyles.link}>{match[7]}</span>
       );
     }
     last = match.index + match[0].length;
