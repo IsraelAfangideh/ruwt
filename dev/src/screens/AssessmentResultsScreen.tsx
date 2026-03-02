@@ -284,10 +284,10 @@ export function AssessmentResultsScreen() {
                   </View>
                 </View>
                 <Badge
-                  variant={cr.status === 'passed' ? 'default' : 'outline'}
-                  style={{ borderColor: statusColor(cr.status) }}
+                  variant="default"
+                  style={{ backgroundColor: statusColor(cr.status), borderColor: statusColor(cr.status) }}
                 >
-                  <Text style={{ color: statusColor(cr.status), fontWeight: '600', fontSize: fontSizes.xs }}>
+                  <Text style={{ color: c.primaryForeground, fontWeight: '600', fontSize: fontSizes.xs }}>
                     {cr.status === 'passed' ? 'PASSED' : cr.status === 'failed' ? 'FAILED' : cr.status.toUpperCase()}
                   </Text>
                 </Badge>
