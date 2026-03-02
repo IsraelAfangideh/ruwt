@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { View, Text, ActivityIndicator, StyleSheet, Pressable } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { createClient } from '@/lib/supabase/client';
@@ -81,6 +81,8 @@ export function AssessmentBuilderScreen() {
   const [selectedChallengeIds, setSelectedChallengeIds] = useState<string[]>([]);
   const [allChallenges, setAllChallenges] = useState<Challenge[]>([]);
   const [assessmentId, setAssessmentId] = useState<string | undefined>(params.assessmentId);
+  const assessmentIdRef = useRef(assessmentId);
+  assessmentIdRef.current = assessmentId;
   const [status, setStatus] = useState('draft');
   const [inviteLink, setInviteLink] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -99,6 +101,11 @@ export function AssessmentBuilderScreen() {
     strategy: '20',
     speed: '20',
   });
+
+  const weightSum = useMemo(() => {
+    const vals = Object.values(weights).map((v) => parseInt(v, 10));
+    return vals.every(Number.isFinite) ? vals.reduce((a, b) => a + b, 0) : NaN;
+  }, [weights]);
 
   // Pass threshold
   const [passThreshold, setPassThreshold] = useState<PassThreshold | null>(null);
@@ -205,7 +212,8 @@ export function AssessmentBuilderScreen() {
   const handleSave = useCallback(async () => {
     setSaving(true);
     try {
-      const timeLimit = Math.max(300, parseInt(timeLimitMinutes, 10) * 60 || 3600);
+      const rawMinutes = parseInt(timeLimitMinutes, 10);
+      const timeLimit = Math.max(300, Number.isFinite(rawMinutes) ? rawMinutes * 60 : 3600);
       let currentId = assessmentId;
 
       const brandingFields: Record<string, unknown> = {};
@@ -265,15 +273,19 @@ export function AssessmentBuilderScreen() {
           body: JSON.stringify({ challengeIds: selectedChallengeIds }),
         });
       }
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 2500);
     } catch (_) {}
     setSaving(false);
-    setSaveSuccess(true);
-    setTimeout(() => setSaveSuccess(false), 2500);
   }, [assessmentId, title, description, timeLimitMinutes, selectedChallengeIds, companyName, companyLogoUrl, welcomeMessage, weights, passThreshold]);
 
   const handleActivate = useCallback(async () => {
     /* v8 ignore next */
     if (!assessmentId) return;
+    if (!title.trim()) {
+      setActivateError('Enter a title before activating.');
+      return;
+    }
     if (selectedChallengeIds.length === 0) {
       setActivateError('Select at least one challenge before activating.');
       return;
@@ -285,7 +297,7 @@ export function AssessmentBuilderScreen() {
       body: JSON.stringify({ status: 'active' }),
     });
     setStatus('active');
-  }, [assessmentId, selectedChallengeIds.length]);
+  }, [assessmentId, title, selectedChallengeIds.length]);
 
   const [inviteError, setInviteError] = useState<string | null>(null);
 
@@ -308,9 +320,10 @@ export function AssessmentBuilderScreen() {
 
   // Agent callbacks
   const handleAgentChallengesChanged = useCallback(async () => {
-    if (!assessmentId) return;
+    const currentId = assessmentIdRef.current;
+    if (!currentId) return;
     try {
-      const res = await fetch(`/api/assessments/${assessmentId}`);
+      const res = await fetch(`/api/assessments/${currentId}`);
       if (res.ok) {
         const data = await res.json();
         setSelectedChallengeIds(
@@ -320,7 +333,7 @@ export function AssessmentBuilderScreen() {
         );
       }
     } catch {}
-  }, [assessmentId]);
+  }, []);
 
   const handleAgentWeightsChanged = useCallback((newWeights: Record<string, number>) => {
     setWeights({
@@ -570,6 +583,11 @@ export function AssessmentBuilderScreen() {
                 </View>
               ))}
             </View>
+            {Number.isFinite(weightSum) && weightSum !== 100 && (
+              <Text style={{ fontSize: fontSizes.xs, color: c.destructive, marginTop: spacing.sm }}>
+                Weights must sum to 100 (currently {weightSum})
+              </Text>
+            )}
             <View style={[styles.divider, { borderBottomColor: c.border }]} />
           </View>
 

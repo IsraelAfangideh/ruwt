@@ -4,7 +4,7 @@
  * Makes non-streaming calls with tools, executes tool calls in a loop (max 3 iterations),
  * then emits results via SSE.
  */
-import { eq } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 import { z } from 'zod';
 import { getDb } from '../../_shared/db';
 import { getUser } from '../../_shared/auth';
@@ -430,7 +430,7 @@ export async function onRequestDelete(context: {
     const db = getDb(context.env);
     await db
       .delete(agentConversations)
-      .where(eq(agentConversations.id, convId));
+      .where(and(eq(agentConversations.id, convId), eq(agentConversations.userId, user.id)));
     return Response.json({ ok: true });
   } catch (err) {
     return Response.json({ error: 'Internal error' }, { status: 500 });
