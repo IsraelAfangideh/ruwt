@@ -19,9 +19,13 @@ vi.mock('../../_shared/db', () => ({
   getDb: vi.fn(),
 }));
 
-vi.mock('../../_shared/ai-stream', () => ({
-  streamCloudflareAIWithFallback: vi.fn(),
-}));
+vi.mock('../../_shared/ai-stream', async (importOriginal) => {
+  const actual = await importOriginal() as Record<string, unknown>;
+  return {
+    ...actual,
+    streamCloudflareAIWithFallback: vi.fn(),
+  };
+});
 
 vi.mock('../../_shared/ai-pricing', () => ({
   getModelPricing: vi.fn(),
@@ -40,7 +44,7 @@ vi.mock('../../_shared/error-monitor', () => ({
 
 import { getUser } from '../../_shared/auth';
 import { getDb } from '../../_shared/db';
-import { streamCloudflareAIWithFallback } from '../../_shared/ai-stream';
+import { streamCloudflareAIWithFallback, ModelUnavailableError } from '../../_shared/ai-stream';
 import { getModelPricing, calculateCost, countMessageTokens } from '../../_shared/ai-pricing';
 import { validateConstraints, checkPreCallConstraints } from '../../_shared/constraints';
 import { logError } from '../../_shared/error-monitor';
@@ -652,6 +656,38 @@ describe('POST /api/ai/chat', () => {
     const errorEvents = events.filter((e: any) => e.type === 'error');
     expect(errorEvents).toHaveLength(1);
     expect((errorEvents[0] as any).message).toBe('No result from stream');
+  });
+
+  // ------------------------------------------------------------------
+  // ModelUnavailableError handling
+  // ------------------------------------------------------------------
+
+  it('emits model_unavailable SSE event when ModelUnavailableError is thrown', async () => {
+    (getUser as Mock).mockResolvedValue(TEST_USER);
+
+    mockDb.selectResults.push([{ id: TEST_USER.id, credits: 50000 }]);
+    mockDb.selectResults.push([{ userId: TEST_USER.id, assessmentSessionId: null }]);
+    mockDb.selectResults.push([{ maxSeq: -1 }]);
+
+    // Generator that throws ModelUnavailableError
+    const unavailableGen = async function* () {
+      throw new ModelUnavailableError('@cf/test/model');
+      // TypeScript needs a yield for generator type inference
+      yield { text: '', phase: 'content' as const };
+    };
+    (streamCloudflareAIWithFallback as Mock).mockReturnValue(unavailableGen());
+
+    const res = await onRequestPost(makeContext(validBody()));
+    const events = await readSSEEvents(res);
+
+    const unavailableEvents = events.filter((e: any) => e.type === 'model_unavailable');
+    expect(unavailableEvents).toHaveLength(1);
+    const event = unavailableEvents[0] as any;
+    expect(event.model).toBe('@cf/test/model');
+    expect(event.message).toContain('unavailable');
+
+    // logError should NOT have been called (this is expected, not an error)
+    expect(logError).not.toHaveBeenCalled();
   });
 
   // ------------------------------------------------------------------

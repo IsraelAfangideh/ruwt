@@ -547,6 +547,74 @@ describe('useAIChat', () => {
     expect(cbs.onError).toHaveBeenCalledWith('string error');
   });
 
+  // ─── Model unavailable SSE event ──────────────────────────────────
+
+  it('routes model_unavailable events to onModelUnavailable', async () => {
+    const chunks = [
+      encode(
+        sseLine({ type: 'model_unavailable', model: '@cf/test/dead', displayName: 'Dead Model', message: 'Dead Model is currently unavailable \u2014 pick another model' })
+      ),
+    ];
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(okResponse(chunks));
+
+    const { result } = renderHook(() => useAIChat(defaultOpts));
+    const onModelUnavailable = vi.fn();
+    const cbs = makeCallbacks({ onModelUnavailable });
+
+    await act(async () => {
+      await result.current.streamChat([], cbs);
+    });
+
+    expect(onModelUnavailable).toHaveBeenCalledWith(
+      '@cf/test/dead',
+      'Dead Model',
+      'Dead Model is currently unavailable \u2014 pick another model'
+    );
+  });
+
+  it('falls back to model ID for missing displayName in model_unavailable', async () => {
+    const chunks = [
+      encode(
+        sseLine({ type: 'model_unavailable', model: '@cf/test/dead', message: 'unavailable' })
+      ),
+    ];
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(okResponse(chunks));
+
+    const { result } = renderHook(() => useAIChat(defaultOpts));
+    const onModelUnavailable = vi.fn();
+    const cbs = makeCallbacks({ onModelUnavailable });
+
+    await act(async () => {
+      await result.current.streamChat([], cbs);
+    });
+
+    expect(onModelUnavailable).toHaveBeenCalledWith(
+      '@cf/test/dead',
+      '@cf/test/dead', // fallback to model id
+      'unavailable'
+    );
+  });
+
+  it('does not crash when onModelUnavailable is not provided', async () => {
+    const chunks = [
+      encode(
+        sseLine({ type: 'model_unavailable', model: '@cf/test/dead', message: 'gone' }) +
+        sseLine({ type: 'done', cost: 0 })
+      ),
+    ];
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(okResponse(chunks));
+
+    const { result } = renderHook(() => useAIChat(defaultOpts));
+    const cbs = makeCallbacks(); // no onModelUnavailable
+
+    await act(async () => {
+      await result.current.streamChat([], cbs);
+    });
+
+    // Should complete without error
+    expect(cbs.onDone).toHaveBeenCalled();
+  });
+
   // ─── No body ────────────────────────────────────────────────────────
 
   it('calls onDone when response has no body', async () => {

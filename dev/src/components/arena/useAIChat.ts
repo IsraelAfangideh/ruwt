@@ -40,6 +40,7 @@ export interface StreamCallbacks {
   onDone: (fullContent: string, meta?: MessageMeta) => void;
   onError: (error: string) => void;
   onConstraint?: (violation: string, message: string) => void;
+  onModelUnavailable?: (modelId: string, displayName: string, message: string) => void;
   userMessage?: string;
 }
 
@@ -49,7 +50,7 @@ export function useAIChat(options: UseAIChatOptions) {
 
   const streamChat = useCallback(
     async (messages: ChatMessage[], callbacks: StreamCallbacks) => {
-      const { onChunk, onThinking, onThinkingDone, onDone, onError, onConstraint, userMessage } = callbacks;
+      const { onChunk, onThinking, onThinkingDone, onDone, onError, onConstraint, onModelUnavailable, userMessage } = callbacks;
 
       // Abort any existing stream
       abortRef.current?.abort();
@@ -110,6 +111,8 @@ export function useAIChat(options: UseAIChatOptions) {
               cost: data.cost ?? 0,
               tokens: (data.inputTokens ?? 0) + (data.outputTokens ?? 0),
             };
+          } else if (data.type === 'model_unavailable') {
+            onModelUnavailable?.(data.model || '', data.displayName || data.model || '', data.message || 'Model unavailable');
           } else if (data.type === 'error') {
             onError(data.message || 'Unknown error');
           } else if (data.type === 'constraint_warning') {

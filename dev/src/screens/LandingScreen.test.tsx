@@ -79,7 +79,7 @@ describe('LandingScreen', () => {
   it('renders stats row', () => {
     render(<LandingScreen />);
     expect(screen.getAllByText('100+').length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText('17').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('15').length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText('Free').length).toBeGreaterThanOrEqual(1);
   });
 

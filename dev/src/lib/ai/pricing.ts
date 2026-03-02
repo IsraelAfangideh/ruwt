@@ -120,15 +120,6 @@ const MODELS: ModelInfo[] = [
     supportsTools: true,
     supportsJsonMode: true,
   },
-  {
-    id: '@cf/qwen/qwen1.5-14b-chat-awq',
-    displayName: 'Qwen 1.5 14B',
-    tier: 'mid',
-    input: 0.08,
-    output: 0.12,
-    costIndicator: '$$',
-    description: 'Fast mid-range, good at code',
-  },
   // Budget tier
   {
     id: '@cf/qwen/qwen3-30b-a3b-fp8',
@@ -158,15 +149,6 @@ const MODELS: ModelInfo[] = [
     description: 'Cheap and capable for straightforward tasks',
     supportsTools: true,
     supportsJsonMode: true,
-  },
-  {
-    id: '@cf/mistral/mistral-7b-instruct-v0.2',
-    displayName: 'Mistral 7B',
-    tier: 'budget',
-    input: 0.01,
-    output: 0.01,
-    costIndicator: '$',
-    description: 'Fast budget option',
   },
   // Micro tier
   {

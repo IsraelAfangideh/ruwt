@@ -167,8 +167,8 @@ describe('getToolCapableModels', () => {
 
   it('excludes models without tool support', () => {
     const toolModels = getToolCapableModels();
-    // Mistral 7B does not support tools
-    expect(toolModels).not.toContain('@cf/mistral/mistral-7b-instruct-v0.2');
+    // Gemma 3 12B does not support tools
+    expect(toolModels).not.toContain('@cf/google/gemma-3-12b-it');
   });
 });
 

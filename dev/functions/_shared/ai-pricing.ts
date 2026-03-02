@@ -109,14 +109,6 @@ const MODEL_PRICING: Record<string, ModelPricing> = {
     supportsTools: true,
     supportsJsonMode: true,
   },
-  '@cf/qwen/qwen1.5-14b-chat-awq': {
-    input: 0.08,
-    output: 0.12,
-    provider: 'cloudflare',
-    tier: 'mid',
-    displayName: 'Qwen 1.5 14B',
-    description: 'Fast mid-range, good at code',
-  },
   // Budget tier
   '@cf/qwen/qwen3-30b-a3b-fp8': {
     input: 0.051,
@@ -143,14 +135,6 @@ const MODEL_PRICING: Record<string, ModelPricing> = {
     description: 'Cheap and capable for straightforward tasks',
     supportsTools: true,
     supportsJsonMode: true,
-  },
-  '@cf/mistral/mistral-7b-instruct-v0.2': {
-    input: 0.01,
-    output: 0.01,
-    provider: 'cloudflare',
-    tier: 'budget',
-    displayName: 'Mistral 7B',
-    description: 'Fast budget option with good instruction following',
   },
   // Micro tier
   '@cf/ibm-granite/granite-4.0-h-micro': {

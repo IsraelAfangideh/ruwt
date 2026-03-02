@@ -43,11 +43,9 @@ jobs:
             "@cf/google/gemma-3-12b-it"
             "@cf/openai/gpt-oss-20b"
             "@cf/meta/llama-3.1-70b-instruct"
-            "@cf/qwen/qwen1.5-14b-chat-awq"
             "@cf/qwen/qwen3-30b-a3b-fp8"
             "@cf/zai-org/glm-4.7-flash"
             "@cf/meta/llama-3.1-8b-instruct"
-            "@cf/mistral/mistral-7b-instruct-v0.2"
             "@cf/ibm-granite/granite-4.0-h-micro"
             "@cf/meta/llama-3.2-1b-instruct"
           )

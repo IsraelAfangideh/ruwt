@@ -26,7 +26,7 @@ vi.mock('./ai-pricing', () => ({
   }),
 }));
 
-import { streamCloudflareAI, streamCloudflareAIWithFallback } from './ai-stream';
+import { streamCloudflareAI, streamCloudflareAIWithFallback, ModelUnavailableError } from './ai-stream';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -1135,5 +1135,109 @@ describe('streamCloudflareAIWithFallback', () => {
     );
     // Last model, retry failed => throws "empty response"
     await expect(drainGenerator(gen)).rejects.toThrow('@cf/only/model returned empty response');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// allowFallback: false → throws ModelUnavailableError
+// ---------------------------------------------------------------------------
+
+describe('streamCloudflareAIWithFallback — allowFallback: false', () => {
+  beforeEach(() => { vi.restoreAllMocks(); });
+
+  it('throws ModelUnavailableError when model returns 404 and allowFallback is false', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: false,
+      status: 404,
+      headers: new Headers({ 'content-type': 'application/json' }),
+      text: async () => 'model not found',
+    }));
+
+    const gen = streamCloudflareAIWithFallback(
+      validEnv, '@cf/meta/llama-3.1-8b-instruct', messages,
+      undefined, undefined, false
+    );
+
+    await expect(drainGenerator(gen)).rejects.toThrow(ModelUnavailableError);
+    await expect(drainGenerator(
+      streamCloudflareAIWithFallback(validEnv, '@cf/meta/llama-3.1-8b-instruct', messages, undefined, undefined, false)
+    )).rejects.toThrow('currently unavailable');
+  });
+
+  it('throws ModelUnavailableError when model returns 400 and allowFallback is false', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: false,
+      status: 400,
+      headers: new Headers({ 'content-type': 'application/json' }),
+      text: async () => 'no route to model',
+    }));
+
+    const gen = streamCloudflareAIWithFallback(
+      validEnv, '@cf/test/model', messages,
+      undefined, undefined, false
+    );
+
+    await expect(drainGenerator(gen)).rejects.toThrow(ModelUnavailableError);
+  });
+
+  it('sets modelId on ModelUnavailableError', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: false,
+      status: 404,
+      headers: new Headers({ 'content-type': 'application/json' }),
+      text: async () => 'not found',
+    }));
+
+    const gen = streamCloudflareAIWithFallback(
+      validEnv, '@cf/meta/llama-3.1-8b-instruct', messages,
+      undefined, undefined, false
+    );
+
+    try {
+      await drainGenerator(gen);
+      expect.fail('should have thrown');
+    } catch (err) {
+      expect(err).toBeInstanceOf(ModelUnavailableError);
+      expect((err as ModelUnavailableError).modelId).toBe('@cf/meta/llama-3.1-8b-instruct');
+    }
+  });
+
+  it('does NOT throw ModelUnavailableError when allowFallback is true (default)', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({
+        ok: false, status: 404,
+        headers: new Headers({ 'content-type': 'application/json' }),
+        text: async () => 'not found',
+      })
+      .mockResolvedValueOnce(
+        mockFetchResponse(createMockSSEStream([sseLines(['ok'])]))
+      );
+    vi.stubGlobal('fetch', fetchMock);
+
+    // allowFallback defaults to true — should fall through to next model
+    const gen = streamCloudflareAIWithFallback(
+      validEnv, '@cf/meta/llama-3.1-8b-instruct', messages
+    );
+    const { chunks } = await drainGenerator(gen);
+    expect(chunks.length).toBeGreaterThan(0);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('only tries the requested model when allowFallback is false', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: false, status: 404,
+      headers: new Headers({ 'content-type': 'application/json' }),
+      text: async () => 'not found',
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const gen = streamCloudflareAIWithFallback(
+      validEnv, '@cf/meta/llama-3.1-8b-instruct', messages,
+      undefined, undefined, false
+    );
+
+    await expect(drainGenerator(gen)).rejects.toThrow(ModelUnavailableError);
+    // Only 1 fetch call — no fallback attempts
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });

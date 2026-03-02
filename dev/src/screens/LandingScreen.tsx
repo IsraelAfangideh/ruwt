@@ -55,7 +55,7 @@ export function LandingScreen() {
           <View style={[styles.statsRow, isMobile && styles.statsRowMobile]}>
             {[
               { value: '100+', label: 'Challenges' },
-              { value: '17', label: 'AI Models' },
+              { value: '15', label: 'AI Models' },
               { value: '5', label: 'Cost Tiers' },
               { value: 'Free', label: 'To Start' },
             ].map((stat) => (
@@ -116,7 +116,7 @@ export function LandingScreen() {
       <View style={styles.section}>
         <Text style={[styles.sectionTitle, { color: c.text }]} accessibilityRole="heading">The Arena IDE</Text>
         <Text style={[styles.sectionSub, { color: c.textMuted }]}>
-          Monaco editor, AI chat with 17 models, and a built-in terminal — all in your browser.
+          Monaco editor, AI chat with 15 models, and a built-in terminal — all in your browser.
         </Text>
         <Card style={styles.previewCard}>
           <Image
@@ -223,7 +223,7 @@ export function LandingScreen() {
         <View style={styles.cards}>
           {[
             { step: '1', title: 'Pick a Challenge', desc: 'Browse 100+ challenges across model selection, prompt efficiency, debugging, and multi-model strategy. Choose timed or untimed.' },
-            { step: '2', title: 'Solve with AI', desc: 'Use the Arena IDE with 17 real AI models across 5 tiers. Switch between Micro, Budget, Mid, Premium, and Reasoning strategically.' },
+            { step: '2', title: 'Solve with AI', desc: 'Use the Arena IDE with 15 real AI models across 5 tiers. Switch between Micro, Budget, Mid, Premium, and Reasoning strategically.' },
             { step: '3', title: 'Climb the Leaderboard', desc: "Submit your solution. You're ranked by cost efficiency — solve it correctly with the least spend." },
           ].map((item) => (
             <Card key={item.step} style={styles.card}>
@@ -345,7 +345,7 @@ export function LandingScreen() {
       <View style={[styles.ctaSection, { backgroundColor: '#1a1816' }]}>
         <Text style={styles.ctaTitle}>Ready to prove your AI skills?</Text>
         <Text style={styles.ctaSub}>
-          Free unlimited practice. 100+ challenges. 17 AI models. No credit card required.
+          Free unlimited practice. 100+ challenges. 15 AI models. No credit card required.
         </Text>
         <View style={styles.heroCtas}>
           <Button

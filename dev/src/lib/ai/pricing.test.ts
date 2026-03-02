@@ -65,8 +65,8 @@ describe('pricing', () => {
   // getAllModels
   // ---------------------------------------------------------------------------
   describe('getAllModels', () => {
-    it('returns all 17 models', () => {
-      expect(getAllModels().length).toBe(17);
+    it('returns all 15 models', () => {
+      expect(getAllModels().length).toBe(15);
     });
 
     it('every model has required fields populated', () => {

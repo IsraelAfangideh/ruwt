@@ -187,6 +187,47 @@ function ApplyFailureToast({ visible, onDismiss }: { visible: boolean; onDismiss
   );
 }
 
+function ModelUnavailableToast({ visible, message, onDismiss }: { visible: boolean; message: string; onDismiss: () => void }) {
+  if (!visible) return null;
+  return (
+    <div role="alert" aria-live="assertive" style={{
+      position: 'absolute',
+      top: 12,
+      left: 12,
+      right: 12,
+      zIndex: 30,
+      background: '#1a1612',
+      border: `1px solid ${arena.accent}`,
+      borderLeft: `4px solid ${arena.accent}`,
+      borderRadius: 8,
+      padding: '14px 18px',
+      fontSize: 13,
+      fontFamily: 'Libre Franklin, -apple-system, sans-serif',
+      color: arena.text,
+      boxShadow: '0 4px 24px rgba(0,0,0,0.5)',
+      lineHeight: 1.5,
+    }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+        <span>{message}</span>
+        <button
+          onClick={onDismiss}
+          aria-label="Dismiss notification"
+          style={{
+            background: 'none',
+            border: 'none',
+            color: '#6e6560',
+            fontSize: 18,
+            cursor: 'pointer',
+            padding: '0 4px',
+            lineHeight: 1,
+            flexShrink: 0,
+          }}
+        >{'\u2715'}</button>
+      </div>
+    </div>
+  );
+}
+
 /* ─── Sub-components ──────────────────────────────────────────────── */
 
 function PastAttemptsSection({ attempts: pastAttempts }: { attempts: PastAttempt[] }) {
@@ -428,6 +469,9 @@ export function ArenaIDE({
   const [toastMessage, setToastMessage] = useState('');
   const [showPasteBlocked, setShowPasteBlocked] = useState(false);
   const [showApplyFailure, setShowApplyFailure] = useState(false);
+  const [showModelUnavailable, setShowModelUnavailable] = useState(false);
+  const [modelUnavailableMsg, setModelUnavailableMsg] = useState('');
+  const [disabledModels, setDisabledModels] = useState<Set<string>>(new Set());
   const [terminalHeight, setTerminalHeight] = useState(250);
   const [mobilePanel, setMobilePanel] = useState<'sidebar' | 'editor'>('editor');
   const [terminalExpanded, setTerminalExpanded] = useState(false);
@@ -821,6 +865,18 @@ export function ArenaIDE({
               setAiLimitReached(true);
             }
             setIsLoadingChat(false);
+            resolve(null);
+          },
+          onModelUnavailable: (_modelId, _displayName, message) => {
+            setDisabledModels((prev) => new Set(prev).add(_modelId));
+            setModelUnavailableMsg(message);
+            setShowModelUnavailable(true);
+            setStreamingContent('');
+            setStreamingThinking('');
+            streamingThinkingRef.current = '';
+            setIsThinkingPhase(false);
+            setIsLoadingChat(false);
+            setTimeout(() => setShowModelUnavailable(false), 5000);
             resolve(null);
           },
         });
@@ -1421,12 +1477,16 @@ export function ArenaIDE({
                               key={mi.id}
                               role="option"
                               aria-selected={model === mi.id}
+                              aria-disabled={disabledModels.has(mi.id)}
                               style={{
                                 ...s.tierDropdownItem,
                                 background: model === mi.id ? `${tc}15` : 'transparent',
-                                color: model === mi.id ? tc : arena.text,
+                                color: disabledModels.has(mi.id) ? arena.textSubtle : model === mi.id ? tc : arena.text,
+                                opacity: disabledModels.has(mi.id) ? 0.5 : 1,
+                                cursor: disabledModels.has(mi.id) ? 'not-allowed' : 'pointer',
                               }}
                               onClick={() => {
+                                if (disabledModels.has(mi.id)) return;
                                 setModel(mi.id);
                                 setTierDropdownOpen(false);
                               }}
@@ -1535,6 +1595,7 @@ export function ArenaIDE({
             <CodeUpdateToast visible={showToast} message={toastMessage} />
             <PasteBlockedToast visible={showPasteBlocked} />
             <ApplyFailureToast visible={showApplyFailure} onDismiss={() => setShowApplyFailure(false)} />
+            <ModelUnavailableToast visible={showModelUnavailable} message={modelUnavailableMsg} onDismiss={() => setShowModelUnavailable(false)} />
             <Suspense fallback={
               <div style={s.editorLoading}>
                 <span style={{ color: arena.textMuted, fontSize: 13 }}>Loading editor...</span>

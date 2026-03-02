@@ -3,7 +3,7 @@ import { spacing, fontSizes, fontFamily } from '@/theme/tokens';
 
 const FEATURES = [
   '60+ real-world challenges',
-  '17 AI models across 5 tiers',
+  '15 AI models across 5 tiers',
   '50,000 free credits to start',
 ];
 

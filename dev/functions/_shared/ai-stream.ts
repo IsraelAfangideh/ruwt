@@ -5,6 +5,13 @@
  * Yields StreamChunk objects with phase metadata to distinguish
  * reasoning tokens ('thinking') from answer tokens ('content').
  */
+export class ModelUnavailableError extends Error {
+  constructor(public readonly modelId: string) {
+    super(`Model ${modelId} is currently unavailable`);
+    this.name = 'ModelUnavailableError';
+  }
+}
+
 interface Env {
   CLOUDFLARE_ACCOUNT_ID?: string;
   CLOUDFLARE_API_TOKEN?: string;
@@ -113,7 +120,6 @@ const DEFAULT_FALLBACK_CHAIN = [
   '@cf/meta/llama-3.1-70b-instruct',
   '@cf/qwen/qwen3-30b-a3b-fp8',
   '@cf/meta/llama-3.1-8b-instruct',
-  '@cf/mistral/mistral-7b-instruct-v0.2',
   '@cf/ibm-granite/granite-4.0-h-micro',
   '@cf/meta/llama-3.2-1b-instruct',
 ];
@@ -243,13 +249,18 @@ export async function* streamCloudflareAIWithFallback(
   requestedModel: string,
   messages: Message[],
   options?: StreamOptions,
-  fallbackChain?: string[]
+  fallbackChain?: string[],
+  allowFallback: boolean = true
 ): AsyncGenerator<StreamChunk, { inputTokens: number; outputTokens: number; model: string }> {
-  // Build tier-aware fallback chain: only fall to same tier or lower
-  const pricing = getModelPricing(requestedModel);
-  const chain = fallbackChain || (pricing ? getTierFallbackChain(pricing.tier) : DEFAULT_FALLBACK_CHAIN);
-  // Build ordered list: requested model first, then fallbacks (deduped)
-  const models = [requestedModel, ...chain.filter((m) => m !== requestedModel)];
+  // When fallback is disabled, only try the requested model (user-selected chat)
+  // When enabled, build tier-aware fallback chain (system operations)
+  const models = allowFallback
+    ? (() => {
+        const pricing = getModelPricing(requestedModel);
+        const chain = fallbackChain || (pricing ? getTierFallbackChain(pricing.tier) : DEFAULT_FALLBACK_CHAIN);
+        return [requestedModel, ...chain.filter((m) => m !== requestedModel)];
+      })()
+    : [requestedModel];
 
   const accountId = env.CLOUDFLARE_ACCOUNT_ID;
   const apiToken = env.CLOUDFLARE_API_TOKEN;
@@ -280,13 +291,16 @@ export async function* streamCloudflareAIWithFallback(
 
     if (!response.ok) {
       const err = await response.text();
-      const isModelUnavailable =
+      const isUnavailable =
         response.status === 404 ||
         response.status === 400 ||
         err.toLowerCase().includes('model not found') ||
         err.toLowerCase().includes('not found') ||
         err.toLowerCase().includes('no route');
-      if (isModelUnavailable && modelId !== models[models.length - 1]) {
+      if (isUnavailable && !allowFallback) {
+        throw new ModelUnavailableError(modelId);
+      }
+      if (isUnavailable && modelId !== models[models.length - 1]) {
         lastError = `${modelId}: ${response.status} - ${err}`;
         continue; // try next model
       }

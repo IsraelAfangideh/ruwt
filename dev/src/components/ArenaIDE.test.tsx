@@ -2694,4 +2694,11 @@ describe('ArenaIDE', () => {
     mockVfsReaddir.value = [];
     mockVfsReadFile.fn = () => '';
   });
+
+  /* ─── ModelUnavailableToast ───────────────────────────────────── */
+
+  it('ModelUnavailableToast is not visible by default', () => {
+    renderIDE();
+    expect(screen.queryByText(/currently unavailable/)).toBeNull();
+  });
 });

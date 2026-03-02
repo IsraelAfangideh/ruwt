@@ -18,7 +18,7 @@ describe('BrandPanel', () => {
   it('renders all three feature items', () => {
     render(<BrandPanel />);
     expect(screen.getByText('60+ real-world challenges')).toBeTruthy();
-    expect(screen.getByText('17 AI models across 5 tiers')).toBeTruthy();
+    expect(screen.getByText('15 AI models across 5 tiers')).toBeTruthy();
     expect(screen.getByText('50,000 free credits to start')).toBeTruthy();
   });
 

@@ -1,7 +1,7 @@
 /**
  * Tests for POST /api/ai/apply — non-streaming code merge endpoint.
  *
- * Verifies 3-model fallback, verification checks (size, structure,
+ * Verifies 2-model fallback, verification checks (size, structure,
  * bracket balance), fence stripping, cost tracking, auth gating,
  * and invalid request handling.
  */
@@ -294,7 +294,7 @@ describe('POST /api/ai/apply', () => {
   });
 
   // ------------------------------------------------------------------
-  // 3-model fallback: first model 404, second succeeds
+  // 2-model fallback: first model 404, second succeeds
   // ------------------------------------------------------------------
 
   it('falls back to next model when first returns 404', async () => {
@@ -311,7 +311,7 @@ describe('POST /api/ai/apply', () => {
 
     const json = await res.json() as any;
     expect(json.verified).toBe(true);
-    expect(json.model).toBe('@cf/meta/llama-3.1-70b-instruct');
+    expect(json.model).toBe('@cf/meta/llama-3.3-70b-instruct-fp8-fast');
     // fetch called twice
     expect(mockFetch).toHaveBeenCalledTimes(2);
   });
@@ -337,13 +337,12 @@ describe('POST /api/ai/apply', () => {
   // All models fail
   // ------------------------------------------------------------------
 
-  it('throws when all 3 models return errors (last model error propagates)', async () => {
+  it('throws when all 2 models return errors (last model error propagates)', async () => {
     (getUser as Mock).mockResolvedValue(TEST_USER);
 
-    // All three models 404
+    // Both models 404
     mockFetch.mockResolvedValueOnce(cfAIErrorResponse(404, 'not found'));
-    mockFetch.mockResolvedValueOnce(cfAIErrorResponse(404, 'not found'));
-    // Third model (last) — NOT unavailable-type error — throws
+    // Second model (last) — NOT unavailable-type error — throws
     mockFetch.mockResolvedValueOnce(cfAIErrorResponse(404, 'not found'));
 
     const res = await onRequestPost(makeContext(validBody()));
@@ -361,10 +360,9 @@ describe('POST /api/ai/apply', () => {
   it('returns 502 when last model returns empty result', async () => {
     (getUser as Mock).mockResolvedValue(TEST_USER);
 
-    // First two: 404
+    // First: 404
     mockFetch.mockResolvedValueOnce(cfAIErrorResponse(404));
-    mockFetch.mockResolvedValueOnce(cfAIErrorResponse(404));
-    // Third: success but empty content
+    // Second: success but empty content
     mockFetch.mockResolvedValueOnce(
       new Response(
         JSON.stringify({ result: { response: '' }, success: true }),
@@ -640,7 +638,7 @@ describe('POST /api/ai/apply', () => {
     const json = await res.json() as any;
 
     // "42" is only 2 chars, < 10 minimum — falls through to next model
-    expect(json.model).toBe('@cf/meta/llama-3.1-70b-instruct');
+    expect(json.model).toBe('@cf/meta/llama-3.3-70b-instruct-fp8-fast');
     expect(json.verified).toBe(true);
   });
 
@@ -772,7 +770,7 @@ describe('POST /api/ai/apply', () => {
     const json = await res.json() as any;
 
     expect(json.verified).toBe(true);
-    expect(json.model).toBe('@cf/meta/llama-3.1-70b-instruct');
+    expect(json.model).toBe('@cf/meta/llama-3.3-70b-instruct-fp8-fast');
   });
 
   // ------------------------------------------------------------------
@@ -797,7 +795,7 @@ describe('POST /api/ai/apply', () => {
     const json = await res.json() as any;
 
     expect(json.verified).toBe(true);
-    expect(json.model).toBe('@cf/meta/llama-3.1-70b-instruct');
+    expect(json.model).toBe('@cf/meta/llama-3.3-70b-instruct-fp8-fast');
   });
 
   // ------------------------------------------------------------------

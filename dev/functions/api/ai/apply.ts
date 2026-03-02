@@ -26,11 +26,10 @@ const requestSchema = z.object({
   challengeTitle: z.string().optional(),
 });
 
-// Best code model first, general models as fallback
+// Best code models only — a bad merge from a weak model is worse than an error
 const APPLY_MODELS = [
   '@cf/qwen/qwen2.5-coder-32b-instruct',
-  '@cf/meta/llama-3.1-70b-instruct',
-  '@cf/meta/llama-3.1-8b-instruct',
+  '@cf/meta/llama-3.3-70b-instruct-fp8-fast',
 ];
 
 // Kortix FastApply-inspired prompt: show original, show update, ask for merge

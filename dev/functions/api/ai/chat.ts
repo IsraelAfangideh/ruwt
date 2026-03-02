@@ -8,7 +8,7 @@ import { getDb } from '../../_shared/db';
 import { getUser } from '../../_shared/auth';
 import { validateConstraints, checkPreCallConstraints } from '../../_shared/constraints';
 import { getModelPricing, calculateCost, countMessageTokens } from '../../_shared/ai-pricing';
-import { streamCloudflareAIWithFallback } from '../../_shared/ai-stream';
+import { streamCloudflareAIWithFallback, ModelUnavailableError } from '../../_shared/ai-stream';
 import { logError } from '../../_shared/error-monitor';
 import { profiles, attempts, aiCalls, attemptMessages } from '../../../drizzle/schema.d1';
 
@@ -138,7 +138,9 @@ export async function onRequestPost(context: {
           }
 
           const gen = streamCloudflareAIWithFallback(
-            context.env, model, messages, { maxTokens, temperature }
+            context.env, model, messages, { maxTokens, temperature },
+            undefined, // fallbackChain
+            false      // allowFallback — user selected this model
           );
 
           // Stream chunks — separate thinking (reasoning) from content (answer)
@@ -258,6 +260,24 @@ export async function onRequestPost(context: {
           );
           controller.close();
         } catch (err) {
+          // Model unavailable — tell user to pick another model (no error logging)
+          if (err instanceof ModelUnavailableError) {
+            const pricing = getModelPricing(err.modelId);
+            const displayName = pricing?.displayName || err.modelId;
+            controller.enqueue(
+              encoder.encode(
+                `data: ${JSON.stringify({
+                  type: 'model_unavailable',
+                  model: err.modelId,
+                  displayName,
+                  message: `${displayName} is currently unavailable \u2014 pick another model`,
+                })}\n\n`
+              )
+            );
+            controller.close();
+            return;
+          }
+
           const error = err instanceof Error ? err : new Error(String(err));
           console.error('AI chat stream error:', error);
 
