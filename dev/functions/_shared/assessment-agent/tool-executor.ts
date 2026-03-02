@@ -120,6 +120,17 @@ async function selectChallenges(
     return { tool: 'select_challenges', success: false, result: null, error: 'No assessment ID in context. Save the assessment first.' };
   }
 
+  // Validate that requested challenge IDs exist in the catalog
+  const allChallenges = await db
+    .select({ id: challenges.id })
+    .from(challenges);
+  const validIds = new Set(allChallenges.map((c) => c.id));
+  const invalid = challengeIds.filter((id) => !validIds.has(id));
+  const validChallengeIds = challengeIds.filter((id) => validIds.has(id));
+  if (validChallengeIds.length === 0) {
+    return { tool: 'select_challenges', success: false, result: null, error: `None of the challenge IDs are valid: ${invalid.join(', ')}` };
+  }
+
   // Get existing challenges
   const existing = await db
     .select({ challengeId: assessmentChallenges.challengeId, sortOrder: assessmentChallenges.sortOrder })
@@ -130,7 +141,7 @@ async function selectChallenges(
   const maxSort = existing.reduce((max, e) => Math.max(max, e.sortOrder), -1);
 
   let added = 0;
-  for (const id of challengeIds) {
+  for (const id of validChallengeIds) {
     if (existingIds.has(id)) continue;
     await db.insert(assessmentChallenges).values({
       id: crypto.randomUUID(),
@@ -144,7 +155,7 @@ async function selectChallenges(
   return {
     tool: 'select_challenges',
     success: true,
-    result: { added, total: existing.length + added },
+    result: { added, total: existing.length + added, ...(invalid.length > 0 ? { invalidIds: invalid } : {}) },
   };
 }
 
@@ -233,7 +244,8 @@ async function setTimeLimit(
   if (!context.assessmentId) {
     return { tool: 'set_time_limit', success: false, result: null, error: 'No assessment ID' };
   }
-  const minutes = Math.max(5, Math.min(240, Number(params.minutes) || 60));
+  const raw = Number(params.minutes);
+  const minutes = Math.max(5, Math.min(240, Number.isFinite(raw) ? raw : 60));
   await db
     .update(assessments)
     .set({ timeLimit: minutes * 60 })

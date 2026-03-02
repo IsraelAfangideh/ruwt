@@ -76,6 +76,15 @@ describe('AssessmentAgentChat', () => {
     expect(screen.getByText('Analyze a job description')).toBeTruthy();
     expect(screen.getByText('Suggest challenges for a role')).toBeTruthy();
     expect(screen.getByText('Create a custom challenge')).toBeTruthy();
+  });
+
+  it('hides Optimize score weights quick action when no assessmentId', () => {
+    render(<AssessmentAgentChat />);
+    expect(screen.queryByText('Optimize score weights')).toBeNull();
+  });
+
+  it('shows Optimize score weights quick action when assessmentId is set', () => {
+    render(<AssessmentAgentChat assessmentId="test-123" />);
     expect(screen.getByText('Optimize score weights')).toBeTruthy();
   });
 
@@ -187,7 +196,7 @@ describe('AssessmentAgentChat', () => {
   });
 
   it('populates input for optimize score weights quick action', () => {
-    render(<AssessmentAgentChat />);
+    render(<AssessmentAgentChat assessmentId="test-123" />);
     fireEvent.click(screen.getByText('Optimize score weights'));
     const input = screen.getByPlaceholderText(/Describe the role/);
     expect((input as HTMLInputElement).value).toContain('score weights');
@@ -325,5 +334,32 @@ describe('AssessmentAgentChat', () => {
     render(<AssessmentAgentChat onChallengesChanged={onChallengesChanged} />);
     capturedOnToolResult!('select_challenges', { success: false });
     expect(onChallengesChanged).not.toHaveBeenCalled();
+  });
+
+  it('renders system messages as compact chips', () => {
+    mockMessages = [
+      { role: 'user', content: 'Add some challenges' },
+      { role: 'system', content: 'Added 3 challenges', systemType: 'tool_result' },
+      { role: 'assistant', content: 'Done!' },
+    ];
+    render(<AssessmentAgentChat />);
+    expect(screen.getByText(/Added 3 challenges/)).toBeTruthy();
+  });
+
+  it('renders tool error system messages', () => {
+    mockMessages = [
+      { role: 'user', content: 'Try something' },
+      { role: 'system', content: 'Failed: No assessment ID', systemType: 'tool_error' },
+    ];
+    render(<AssessmentAgentChat />);
+    expect(screen.getByText(/Failed: No assessment ID/)).toBeTruthy();
+  });
+
+  it('renders assessment created system message', () => {
+    mockMessages = [
+      { role: 'system', content: 'New assessment draft created', systemType: 'assessment_created' },
+    ];
+    render(<AssessmentAgentChat />);
+    expect(screen.getByText(/New assessment draft created/)).toBeTruthy();
   });
 });

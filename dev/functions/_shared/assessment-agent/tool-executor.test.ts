@@ -16,17 +16,32 @@ import { executeToolCall, type ToolCall, type ToolResult } from './tool-executor
  */
 function createMockDb(opts: {
   selectResult?: unknown[];
+  /** For tools that make multiple select() calls (e.g. selectChallenges validates IDs then reads existing). */
+  selectResults?: unknown[][];
   insertFn?: ReturnType<typeof vi.fn>;
   updateFn?: ReturnType<typeof vi.fn>;
   deleteFn?: ReturnType<typeof vi.fn>;
 } = {}) {
   const selectResult = opts.selectResult ?? [];
+  const selectResults = opts.selectResults;
+  let selectCallIndex = 0;
 
   // select().from() can terminate (search_challenges) or chain .where() (select_challenges).
   // We make from() return a thenable that also has a .where() method.
-  const selectWhereMock = vi.fn().mockResolvedValue(selectResult);
-  const fromResult = Object.assign(Promise.resolve(selectResult), { where: selectWhereMock });
-  const fromMock = vi.fn().mockReturnValue(fromResult);
+  // When selectResults is provided, each from() call returns the next result in order.
+  // .where() always resolves to the same result as its parent from() call.
+  let lastFromResult: unknown[] = selectResult;
+
+  const selectWhereMock = vi.fn().mockImplementation(() => Promise.resolve(lastFromResult));
+  const fromMock = vi.fn().mockImplementation(() => {
+    if (selectResults) {
+      lastFromResult = selectResults[selectCallIndex] ?? [];
+      selectCallIndex++;
+    } else {
+      lastFromResult = selectResult;
+    }
+    return Object.assign(Promise.resolve(lastFromResult), { where: selectWhereMock });
+  });
   const selectMock = vi.fn().mockReturnValue({ from: fromMock });
 
   // .insert(table).values(data) — capture values for assertion
@@ -215,9 +230,13 @@ describe('search_challenges', () => {
 // 2. select_challenges
 // ===========================================================================
 describe('select_challenges', () => {
+  // Catalog IDs used for validation (first select call)
+  const catalogIds = [{ id: 'ch-1' }, { id: 'ch-2' }, { id: 'ch-new' }, { id: 'existing-1' }, { id: 'existing-2' }];
+
   it('inserts new challenge IDs and returns count', async () => {
     const valuesMock = vi.fn().mockResolvedValue(undefined);
-    const db = createMockDb({ selectResult: [], insertFn: valuesMock });
+    // First select: catalog validation, Second select: existing junction rows
+    const db = createMockDb({ selectResults: [catalogIds, []], insertFn: valuesMock });
     const result = await run(db, 'select_challenges', { challengeIds: ['ch-1', 'ch-2'] });
 
     expect(result.success).toBe(true);
@@ -233,7 +252,7 @@ describe('select_challenges', () => {
       { challengeId: 'existing-2', sortOrder: 1 },
     ];
     const valuesMock = vi.fn().mockResolvedValue(undefined);
-    const db = createMockDb({ selectResult: existing, insertFn: valuesMock });
+    const db = createMockDb({ selectResults: [catalogIds, existing], insertFn: valuesMock });
     const result = await run(db, 'select_challenges', { challengeIds: ['ch-new'] });
 
     expect(result.success).toBe(true);
@@ -249,7 +268,7 @@ describe('select_challenges', () => {
       { challengeId: 'ch-1', sortOrder: 0 },
     ];
     const valuesMock = vi.fn().mockResolvedValue(undefined);
-    const db = createMockDb({ selectResult: existing, insertFn: valuesMock });
+    const db = createMockDb({ selectResults: [catalogIds, existing], insertFn: valuesMock });
     const result = await run(db, 'select_challenges', { challengeIds: ['ch-1', 'ch-2'] });
 
     expect(result.success).toBe(true);
@@ -284,7 +303,7 @@ describe('select_challenges', () => {
 
   it('generates unique IDs using crypto.randomUUID', async () => {
     const valuesMock = vi.fn().mockResolvedValue(undefined);
-    const db = createMockDb({ selectResult: [], insertFn: valuesMock });
+    const db = createMockDb({ selectResults: [catalogIds, []], insertFn: valuesMock });
     await run(db, 'select_challenges', { challengeIds: ['ch-1'] });
 
     const insertedValues = valuesMock.mock.calls[0][0];
@@ -299,13 +318,32 @@ describe('select_challenges', () => {
       { challengeId: 'ch-2', sortOrder: 1 },
     ];
     const valuesMock = vi.fn().mockResolvedValue(undefined);
-    const db = createMockDb({ selectResult: existing, insertFn: valuesMock });
+    const db = createMockDb({ selectResults: [catalogIds, existing], insertFn: valuesMock });
     const result = await run(db, 'select_challenges', { challengeIds: ['ch-1', 'ch-2'] });
 
     expect(result.success).toBe(true);
     expect((result.result as any).added).toBe(0);
     expect((result.result as any).total).toBe(2);
     expect(valuesMock).not.toHaveBeenCalled();
+  });
+
+  it('returns invalidIds for challenge IDs not in catalog', async () => {
+    const valuesMock = vi.fn().mockResolvedValue(undefined);
+    // Catalog only has ch-1, not 'bogus-id'
+    const db = createMockDb({ selectResults: [catalogIds, []], insertFn: valuesMock });
+    const result = await run(db, 'select_challenges', { challengeIds: ['ch-1', 'bogus-id'] });
+
+    expect(result.success).toBe(true);
+    expect((result.result as any).added).toBe(1);
+    expect((result.result as any).invalidIds).toEqual(['bogus-id']);
+  });
+
+  it('returns error when all challenge IDs are invalid', async () => {
+    const db = createMockDb({ selectResults: [catalogIds, []] });
+    const result = await run(db, 'select_challenges', { challengeIds: ['no-1', 'no-2'] });
+
+    expect(result.success).toBe(false);
+    expect(result.error).toContain('None of the challenge IDs are valid');
   });
 });
 
@@ -964,10 +1002,18 @@ describe('error handling', () => {
   });
 
   it('catches database errors from insert and returns them as error results', async () => {
-    // select (for existing) succeeds, but insert throws
-    const selectWhereMock = vi.fn().mockResolvedValue([]); // no existing
-    const fromResult = Object.assign(Promise.resolve([]), { where: selectWhereMock });
-    const fromMock = vi.fn().mockReturnValue(fromResult);
+    // First select (catalog validation) succeeds, second select (existing) succeeds, but insert throws
+    let fromCallCount = 0;
+    const selectWhereMock = vi.fn().mockResolvedValue([]); // no existing junction rows
+    const fromMock = vi.fn().mockImplementation(() => {
+      fromCallCount++;
+      if (fromCallCount === 1) {
+        // First call: catalog validation — return valid IDs
+        return Object.assign(Promise.resolve([{ id: 'ch-1' }]), { where: selectWhereMock });
+      }
+      // Second call: existing junction rows
+      return Object.assign(Promise.resolve([]), { where: selectWhereMock });
+    });
     const valuesMock = vi.fn().mockRejectedValue(new Error('UNIQUE constraint failed'));
     const db = {
       select: vi.fn().mockReturnValue({ from: fromMock }),

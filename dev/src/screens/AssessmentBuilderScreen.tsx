@@ -212,12 +212,13 @@ export function AssessmentBuilderScreen() {
       if (companyName) brandingFields.companyName = companyName;
       if (companyLogoUrl) brandingFields.companyLogoUrl = companyLogoUrl;
       if (welcomeMessage) brandingFields.welcomeMessage = welcomeMessage;
+      const parseWeight = (v: string) => { const n = parseInt(v, 10); return Number.isFinite(n) ? n : 20; };
       const categoryWeights = JSON.stringify({
-        modelSelection: parseInt(weights.modelSelection, 10) || 20,
-        promptEfficiency: parseInt(weights.promptEfficiency, 10) || 20,
-        debugging: parseInt(weights.debugging, 10) || 20,
-        strategy: parseInt(weights.strategy, 10) || 20,
-        speed: parseInt(weights.speed, 10) || 20,
+        modelSelection: parseWeight(weights.modelSelection),
+        promptEfficiency: parseWeight(weights.promptEfficiency),
+        debugging: parseWeight(weights.debugging),
+        strategy: parseWeight(weights.strategy),
+        speed: parseWeight(weights.speed),
       });
 
       const passThresholdStr = passThreshold ? JSON.stringify(passThreshold) : null;

@@ -412,6 +412,31 @@ export async function onRequestPost(context: {
   }
 }
 
+/** DELETE /api/ai/assessment-agent?conversationId=... — clean up a conversation */
+export async function onRequestDelete(context: {
+  request: Request;
+  env: Env;
+}): Promise<Response> {
+  try {
+    const user = await getUser(context.request, context.env);
+    if (!user) {
+      return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    const url = new URL(context.request.url);
+    const convId = url.searchParams.get('conversationId');
+    if (!convId) {
+      return Response.json({ error: 'Missing conversationId' }, { status: 400 });
+    }
+    const db = getDb(context.env);
+    await db
+      .delete(agentConversations)
+      .where(eq(agentConversations.id, convId));
+    return Response.json({ ok: true });
+  } catch (err) {
+    return Response.json({ error: 'Internal error' }, { status: 500 });
+  }
+}
+
 /**
  * Emit text in small chunks via SSE for a progressive UX.
  * Since we're making non-streaming API calls, the text arrives all at once,
