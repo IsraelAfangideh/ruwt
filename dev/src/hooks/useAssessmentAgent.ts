@@ -19,17 +19,22 @@ interface ToolResult {
 interface UseAssessmentAgentParams {
   assessmentId?: string;
   onToolResult?: (tool: string, result: ToolResult) => void;
+  onAssessmentCreated?: (assessmentId: string) => void;
 }
 
-export function useAssessmentAgent({ assessmentId, onToolResult }: UseAssessmentAgentParams) {
+export function useAssessmentAgent({ assessmentId, onToolResult, onAssessmentCreated }: UseAssessmentAgentParams) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [streaming, setStreaming] = useState(false);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const messagesRef = useRef<Message[]>(messages);
+  messagesRef.current = messages;
+  const conversationIdRef = useRef<string | null>(conversationId);
+  conversationIdRef.current = conversationId;
 
   const sendMessage = useCallback(async (text: string) => {
     const userMsg: Message = { role: 'user', content: text };
-    const newMessages = [...messages, userMsg];
+    const newMessages = [...messagesRef.current, userMsg];
     setMessages(newMessages);
     setStreaming(true);
 
@@ -42,7 +47,7 @@ export function useAssessmentAgent({ assessmentId, onToolResult }: UseAssessment
         body: JSON.stringify({
           messages: newMessages,
           assessmentId,
-          conversationId,
+          conversationId: conversationIdRef.current,
         }),
         signal: abortRef.current.signal,
       });
@@ -110,6 +115,12 @@ export function useAssessmentAgent({ assessmentId, onToolResult }: UseAssessment
                 }
                 break;
 
+              case 'assessment_created':
+                if (event.assessmentId && onAssessmentCreated) {
+                  onAssessmentCreated(event.assessmentId);
+                }
+                break;
+
               case 'done':
                 if (event.conversationId) {
                   setConversationId(event.conversationId);
@@ -145,7 +156,7 @@ export function useAssessmentAgent({ assessmentId, onToolResult }: UseAssessment
     }
 
     setStreaming(false);
-  }, [messages, assessmentId, conversationId, onToolResult]);
+  }, [assessmentId, onToolResult, onAssessmentCreated]);
 
   const clearHistory = useCallback(() => {
     setMessages([]);

@@ -31,6 +31,7 @@ const requestSchema = z.object({
 // Primary model for the agent — must support native function calling
 const AGENT_MODEL = '@cf/meta/llama-3.3-70b-instruct-fp8-fast';
 const MAX_TOOL_ITERATIONS = 3;
+const AI_CALL_TIMEOUT_MS = 25_000; // 25s timeout per AI call (within 30s CF Pages limit)
 
 interface AIMessage {
   role: 'system' | 'user' | 'assistant' | 'tool';
@@ -61,22 +62,34 @@ async function callWithTools(
   const models = [modelId, ...fallbacks.filter((m) => m !== modelId)];
 
   for (const model of models) {
-    const res = await fetch(
-      `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/run/${model}`,
-      {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${apiToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          messages,
-          tools,
-          max_tokens: 4096,
-          temperature: 0.7,
-        }),
-      }
-    );
+    const timeoutController = new AbortController();
+    const timeoutId = setTimeout(() => timeoutController.abort(), AI_CALL_TIMEOUT_MS);
+    let res: Response;
+    try {
+      res = await fetch(
+        `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/run/${model}`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${apiToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            messages,
+            tools,
+            max_tokens: 4096,
+            temperature: 0.7,
+          }),
+          signal: timeoutController.signal,
+        }
+      );
+    } catch (fetchErr) {
+      clearTimeout(timeoutId);
+      // Timeout or network error — try next model
+      if (model !== models[models.length - 1]) continue;
+      throw new Error(`AI call failed: ${fetchErr instanceof Error ? fetchErr.message : String(fetchErr)}`);
+    }
+    clearTimeout(timeoutId);
 
     if (!res.ok) {
       const err = await res.text();
@@ -151,7 +164,8 @@ export async function onRequestPost(context: {
       );
     }
 
-    const { messages, assessmentId, conversationId } = parsed.data;
+    const { messages, conversationId } = parsed.data;
+    let assessmentId = parsed.data.assessmentId;
     const db = getDb(context.env);
 
     // Load challenge catalog
@@ -246,6 +260,7 @@ export async function onRequestPost(context: {
           let totalToolCalls = 0;
           let usedModel = AGENT_MODEL;
           const workingMessages = [...aiMessages];
+          const toolCallLog: Array<{ tool: string; params: Record<string, unknown>; result: unknown }> = [];
 
           // Tool call loop (max iterations to prevent runaway)
           for (let iteration = 0; iteration < MAX_TOOL_ITERATIONS; iteration++) {
@@ -266,9 +281,35 @@ export async function onRequestPost(context: {
                 content: result.response || '',
               });
 
+              // Tools that require an assessment — auto-create draft if needed
+              const ASSESSMENT_TOOLS = new Set([
+                'select_challenges', 'remove_challenges', 'set_weights',
+                'set_time_limit', 'set_branding', 'set_pass_threshold',
+              ]);
+
               // Execute each tool call
               for (const call of result.toolCalls) {
                 totalToolCalls++;
+
+                // Auto-create draft assessment when a tool needs one
+                if (!assessmentId && ASSESSMENT_TOOLS.has(call.name)) {
+                  const newId = crypto.randomUUID();
+                  const inferredTitle = typeof call.arguments.title === 'string'
+                    ? call.arguments.title : 'Untitled Assessment';
+                  await db.insert(assessments).values({
+                    id: newId,
+                    orgId: orgId || null,
+                    createdBy: user.id,
+                    title: inferredTitle,
+                    timeLimit: 3600,
+                    status: 'draft',
+                  });
+                  assessmentId = newId;
+                  controller.enqueue(
+                    encoder.encode(`data: ${JSON.stringify({ type: 'assessment_created', assessmentId: newId })}\n\n`)
+                  );
+                }
+
                 controller.enqueue(
                   encoder.encode(`data: ${JSON.stringify({ type: 'tool_call', tool: call.name, params: call.arguments })}\n\n`)
                 );
@@ -279,6 +320,7 @@ export async function onRequestPost(context: {
                   userId: user.id,
                 });
 
+                toolCallLog.push({ tool: call.name, params: call.arguments, result: toolResult });
                 controller.enqueue(
                   encoder.encode(`data: ${JSON.stringify({ type: 'tool_result', ...toolResult })}\n\n`)
                 );
@@ -301,11 +343,15 @@ export async function onRequestPost(context: {
             break;
           }
 
-          // Save conversation
+          // Save conversation (include tool calls so resumed conversations have context)
           const convId = conversationId || crypto.randomUUID();
+          const assistantMsg: Record<string, unknown> = { role: 'assistant', content: fullContent };
+          if (toolCallLog.length > 0) {
+            assistantMsg.toolCalls = toolCallLog;
+          }
           const allMessages = [
             ...messages,
-            { role: 'assistant' as const, content: fullContent },
+            assistantMsg,
           ];
 
           if (conversationId) {

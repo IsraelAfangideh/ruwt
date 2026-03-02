@@ -315,7 +315,11 @@ describe('select_challenges', () => {
 describe('remove_challenges', () => {
   it('deletes challenge associations and returns removed count', async () => {
     const deleteWhereMock = vi.fn().mockResolvedValue(undefined);
-    const db = createMockDb({ deleteFn: deleteWhereMock });
+    // Mock select to return existing challenge IDs so remove can find them
+    const db = createMockDb({
+      selectResult: [{ challengeId: 'ch-1' }, { challengeId: 'ch-2' }],
+      deleteFn: deleteWhereMock,
+    });
     const result = await run(db, 'remove_challenges', { challengeIds: ['ch-1', 'ch-2'] });
 
     expect(result.success).toBe(true);
@@ -350,11 +354,27 @@ describe('remove_challenges', () => {
 
   it('removes a single challenge', async () => {
     const deleteWhereMock = vi.fn().mockResolvedValue(undefined);
-    const db = createMockDb({ deleteFn: deleteWhereMock });
+    const db = createMockDb({
+      selectResult: [{ challengeId: 'ch-1' }],
+      deleteFn: deleteWhereMock,
+    });
     const result = await run(db, 'remove_challenges', { challengeIds: ['ch-1'] });
 
     expect(result.success).toBe(true);
     expect((result.result as any).removed).toBe(1);
+  });
+
+  it('reports notFound for IDs that do not exist in the assessment', async () => {
+    const deleteWhereMock = vi.fn().mockResolvedValue(undefined);
+    const db = createMockDb({
+      selectResult: [{ challengeId: 'ch-1' }],
+      deleteFn: deleteWhereMock,
+    });
+    const result = await run(db, 'remove_challenges', { challengeIds: ['ch-1', 'ch-nonexistent'] });
+
+    expect(result.success).toBe(true);
+    expect((result.result as any).removed).toBe(1);
+    expect((result.result as any).notFound).toEqual(['ch-nonexistent']);
   });
 });
 
@@ -394,17 +414,28 @@ describe('set_weights', () => {
     });
   });
 
-  it('defaults missing dimensions to 20', async () => {
+  it('defaults missing dimensions to 20 and validates sum', async () => {
     const db = createMockDb();
-    const result = await run(db, 'set_weights', { modelSelection: 50 });
+    // modelSelection: 50 + 4*20 = 130, should fail
+    const badResult = await run(db, 'set_weights', { modelSelection: 50 });
+    expect(badResult.success).toBe(false);
+    expect(badResult.error).toContain('Weights must sum to 100');
 
-    expect(result.success).toBe(true);
-    expect(result.result).toEqual({
-      modelSelection: 50,
-      promptEfficiency: 20,
-      debugging: 20,
-      strategy: 20,
-      speed: 20,
+    // Correct: 40 + 4*15 = 100
+    const goodResult = await run(db, 'set_weights', {
+      modelSelection: 40,
+      promptEfficiency: 15,
+      debugging: 15,
+      strategy: 15,
+      speed: 15,
+    });
+    expect(goodResult.success).toBe(true);
+    expect(goodResult.result).toEqual({
+      modelSelection: 40,
+      promptEfficiency: 15,
+      debugging: 15,
+      strategy: 15,
+      speed: 15,
     });
   });
 
@@ -422,26 +453,30 @@ describe('set_weights', () => {
     });
   });
 
-  it('converts non-numeric values to default 20', async () => {
+  it('converts non-numeric values to default 20, preserves zero', async () => {
     const db = createMockDb();
-    const result = await run(db, 'set_weights', {
+    // NaN values default to 20, zero is preserved (Number(null)=0 is finite, kept as-is)
+    // Sum: 20+0+20+20+0 = 80, so validation will reject
+    const badResult = await run(db, 'set_weights', {
       modelSelection: 'not-a-number',
       promptEfficiency: null,
       debugging: undefined,
       strategy: '',
-      speed: 0,  // falsy but numeric -> defaults to 20 via || operator
+      speed: 0,
     });
+    expect(badResult.success).toBe(false);
+    expect(badResult.error).toContain('Weights must sum to 100');
 
-    expect(result.success).toBe(true);
-    // All default to 20 because Number('not-a-number') is NaN, Number(null) is 0, etc.
-    // The || 20 fallback kicks in for all falsy results
-    expect(result.result).toEqual({
-      modelSelection: 20,
-      promptEfficiency: 20,
+    // With correct sum including a zero weight
+    const goodResult = await run(db, 'set_weights', {
+      modelSelection: 40,
+      promptEfficiency: 30,
       debugging: 20,
-      strategy: 20,
-      speed: 20,
+      strategy: 10,
+      speed: 0,
     });
+    expect(goodResult.success).toBe(true);
+    expect((goodResult.result as any).speed).toBe(0);
   });
 
   it('returns error when no assessmentId in context', async () => {
@@ -960,7 +995,7 @@ describe('error handling', () => {
     };
     const result = await executeToolCall(db as any, env, {
       name: 'set_weights',
-      arguments: { modelSelection: 30 },
+      arguments: { modelSelection: 30, promptEfficiency: 25, debugging: 20, strategy: 15, speed: 10 },
     }, withAssessment);
 
     expect(result.success).toBe(false);
@@ -969,8 +1004,12 @@ describe('error handling', () => {
 
   it('catches database errors from delete and returns them as error results', async () => {
     const deleteWhereMock = vi.fn().mockRejectedValue(new Error('Delete failed'));
+    // Need select mock for the pre-check query, returning ch-1 as existing
+    const selectWhereMock = vi.fn().mockResolvedValue([{ challengeId: 'ch-1' }]);
+    const fromResult = Object.assign(Promise.resolve([{ challengeId: 'ch-1' }]), { where: selectWhereMock });
+    const fromMock = vi.fn().mockReturnValue(fromResult);
     const db = {
-      select: vi.fn(),
+      select: vi.fn().mockReturnValue({ from: fromMock }),
       insert: vi.fn(),
       update: vi.fn(),
       delete: vi.fn().mockReturnValue({ where: deleteWhereMock }),
@@ -1057,8 +1096,8 @@ describe('executeToolCall interface', () => {
 
   it('passes context.assessmentId correctly to tools that need it', async () => {
     const db = createMockDb();
-    // set_weights uses context.assessmentId in the where clause
-    await run(db, 'set_weights', { modelSelection: 30 }, { userId: 'u1', assessmentId: 'special-id' });
+    // set_weights uses context.assessmentId in the where clause (weights must sum to 100)
+    await run(db, 'set_weights', { modelSelection: 30, promptEfficiency: 25, debugging: 20, strategy: 15, speed: 10 }, { userId: 'u1', assessmentId: 'special-id' });
     expect(db._mocks.updateWhereMock).toHaveBeenCalled();
     // The update was issued (would have used eq(assessments.id, 'special-id'))
     expect(db.update).toHaveBeenCalled();

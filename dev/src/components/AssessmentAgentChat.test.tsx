@@ -119,14 +119,12 @@ describe('AssessmentAgentChat', () => {
     expect(screen.getByText('I can help with that.')).toBeTruthy();
   });
 
-  it('strips tool_call blocks from displayed messages', () => {
+  it('displays assistant message content as-is', () => {
     mockMessages = [
-      { role: 'assistant', content: 'Done <tool_call>{"name":"select_challenges"}</tool_call> for you.' },
+      { role: 'assistant', content: 'Done selecting challenges for you.' },
     ];
     render(<AssessmentAgentChat />);
-    // The tool_call block should be stripped
-    expect(screen.getByText('Done for you.')).toBeTruthy();
-    expect(screen.queryByText(/tool_call/)).toBeNull();
+    expect(screen.getByText('Done selecting challenges for you.')).toBeTruthy();
   });
 
   it('shows Thinking... indicator when streaming', () => {

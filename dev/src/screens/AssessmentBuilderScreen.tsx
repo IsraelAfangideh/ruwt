@@ -332,6 +332,8 @@ export function AssessmentBuilderScreen() {
   }, []);
 
   const handleAgentBrandingChanged = useCallback((fields: Record<string, string>) => {
+    if (fields.title !== undefined) setTitle(fields.title);
+    if (fields.description !== undefined) setDescription(fields.description);
     if (fields.companyName !== undefined) setCompanyName(fields.companyName);
     if (fields.companyLogoUrl !== undefined) setCompanyLogoUrl(fields.companyLogoUrl);
     if (fields.welcomeMessage !== undefined) setWelcomeMessage(fields.welcomeMessage);
@@ -352,6 +354,10 @@ export function AssessmentBuilderScreen() {
       if (res.ok) setCustomChallenges(await res.json());
     } catch {}
   }, [orgId]);
+
+  const handleAgentAssessmentCreated = useCallback((newId: string) => {
+    setAssessmentId(newId);
+  }, []);
 
   const handleApproveCustomChallenge = useCallback((id: string) => {
     setCustomChallenges((prev) =>
@@ -815,6 +821,7 @@ export function AssessmentBuilderScreen() {
                 onTimeLimitChanged={handleAgentTimeLimitChanged}
                 onThresholdChanged={handleAgentThresholdChanged}
                 onCustomChallengeCreated={handleCustomChallengeCreated}
+                onAssessmentCreated={handleAgentAssessmentCreated}
               />
             </View>
           </View>

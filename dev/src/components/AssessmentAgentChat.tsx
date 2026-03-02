@@ -20,6 +20,7 @@ interface Props {
   onTimeLimitChanged?: (minutes: number) => void;
   onThresholdChanged?: (threshold: PassThreshold) => void;
   onCustomChallengeCreated?: (challenge: { id: string; title: string }) => void;
+  onAssessmentCreated?: (assessmentId: string) => void;
 }
 
 const QUICK_ACTIONS = [
@@ -37,6 +38,7 @@ export function AssessmentAgentChat({
   onTimeLimitChanged,
   onThresholdChanged,
   onCustomChallengeCreated,
+  onAssessmentCreated,
 }: Props) {
   const c = useColors();
   const [input, setInput] = useState('');
@@ -71,6 +73,7 @@ export function AssessmentAgentChat({
   const { messages, sendMessage, streaming, clearHistory } = useAssessmentAgent({
     assessmentId,
     onToolResult: handleToolResult,
+    onAssessmentCreated,
   });
 
   useEffect(() => {
@@ -156,7 +159,7 @@ export function AssessmentAgentChat({
                 {msg.role === 'user' ? 'You' : 'AI'}
               </Text>
               <Text style={[styles.messageText, { color: c.text }]} selectable>
-                {cleanToolCallsFromDisplay(msg.content)}
+                {msg.content}
               </Text>
             </View>
           ))
@@ -194,11 +197,6 @@ export function AssessmentAgentChat({
       </View>
     </View>
   );
-}
-
-/** Strip <tool_call> blocks from displayed text for cleaner UX. */
-function cleanToolCallsFromDisplay(text: string): string {
-  return text.replace(/<tool_call>[\s\S]*?<\/tool_call>/g, '').trim();
 }
 
 const styles = StyleSheet.create({

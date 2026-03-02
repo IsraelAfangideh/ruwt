@@ -158,8 +158,20 @@ async function removeChallenges(
     return { tool: 'remove_challenges', success: false, result: null, error: 'Missing data' };
   }
 
+  // Check which IDs actually exist before deleting
+  const existing = await db
+    .select({ challengeId: assessmentChallenges.challengeId })
+    .from(assessmentChallenges)
+    .where(eq(assessmentChallenges.assessmentId, context.assessmentId));
+  const existingIds = new Set(existing.map((e) => e.challengeId));
+
   let removed = 0;
+  const notFound: string[] = [];
   for (const id of challengeIds) {
+    if (!existingIds.has(id)) {
+      notFound.push(id);
+      continue;
+    }
     await db
       .delete(assessmentChallenges)
       .where(
@@ -171,7 +183,11 @@ async function removeChallenges(
     removed++;
   }
 
-  return { tool: 'remove_challenges', success: true, result: { removed } };
+  return {
+    tool: 'remove_challenges',
+    success: true,
+    result: { removed, ...(notFound.length > 0 ? { notFound } : {}) },
+  };
 }
 
 async function setWeights(
@@ -182,13 +198,25 @@ async function setWeights(
   if (!context.assessmentId) {
     return { tool: 'set_weights', success: false, result: null, error: 'No assessment ID' };
   }
-  const weights = {
-    modelSelection: Number(params.modelSelection) || 20,
-    promptEfficiency: Number(params.promptEfficiency) || 20,
-    debugging: Number(params.debugging) || 20,
-    strategy: Number(params.strategy) || 20,
-    speed: Number(params.speed) || 20,
+  const raw = {
+    modelSelection: params.modelSelection != null ? Number(params.modelSelection) : 20,
+    promptEfficiency: params.promptEfficiency != null ? Number(params.promptEfficiency) : 20,
+    debugging: params.debugging != null ? Number(params.debugging) : 20,
+    strategy: params.strategy != null ? Number(params.strategy) : 20,
+    speed: params.speed != null ? Number(params.speed) : 20,
   };
+  // Replace NaN with default
+  const weights = {
+    modelSelection: Number.isFinite(raw.modelSelection) ? raw.modelSelection : 20,
+    promptEfficiency: Number.isFinite(raw.promptEfficiency) ? raw.promptEfficiency : 20,
+    debugging: Number.isFinite(raw.debugging) ? raw.debugging : 20,
+    strategy: Number.isFinite(raw.strategy) ? raw.strategy : 20,
+    speed: Number.isFinite(raw.speed) ? raw.speed : 20,
+  };
+  const sum = weights.modelSelection + weights.promptEfficiency + weights.debugging + weights.strategy + weights.speed;
+  if (sum !== 100) {
+    return { tool: 'set_weights', success: false, result: null, error: `Weights must sum to 100, got ${sum}` };
+  }
   await db
     .update(assessments)
     .set({ categoryWeights: JSON.stringify(weights) })
@@ -292,16 +320,21 @@ async function setPassThreshold(
     return { tool: 'set_pass_threshold', success: false, result: null, error: 'No assessment ID' };
   }
 
+  const dims = params.dimensions as Record<string, unknown> | undefined;
+  const numOrDefault = (val: unknown, fallback: number) => {
+    const n = Number(val);
+    return Number.isFinite(n) ? n : fallback;
+  };
   const threshold = {
     enabled: params.enabled !== false,
     mode: params.mode === 'weighted_average' ? 'weighted_average' : 'all_dimensions',
-    minOverall: Number(params.minOverall) || 60,
+    minOverall: numOrDefault(params.minOverall, 60),
     dimensions: {
-      modelSelection: Number((params.dimensions as any)?.modelSelection) || 50,
-      promptEfficiency: Number((params.dimensions as any)?.promptEfficiency) || 50,
-      debugging: Number((params.dimensions as any)?.debugging) || 50,
-      strategy: Number((params.dimensions as any)?.strategy) || 50,
-      speed: Number((params.dimensions as any)?.speed) || 50,
+      modelSelection: numOrDefault(dims?.modelSelection, 50),
+      promptEfficiency: numOrDefault(dims?.promptEfficiency, 50),
+      debugging: numOrDefault(dims?.debugging, 50),
+      strategy: numOrDefault(dims?.strategy, 50),
+      speed: numOrDefault(dims?.speed, 50),
     },
   };
 
