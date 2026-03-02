@@ -14,6 +14,7 @@ function makeEnv(overrides: Partial<Env> = {}): Env {
     CLOUDFLARE_ACCOUNT_ID: 'acct-123',
     CLOUDFLARE_API_TOKEN: 'cf-token',
     PISTON_API_URL: 'https://piston.test/api/v2/piston',
+    EXECUTOR_SECRET: 'test-secret',
     ...overrides,
   } as Env;
 }
@@ -262,5 +263,37 @@ describe('GET /api/health (public)', () => {
 
     expect(json.checks.piston.ok).toBe(false);
     expect(json.checks.piston.error).toContain('HTTP 400');
+  });
+
+  it('sends X-Executor-Secret header to Piston when EXECUTOR_SECRET is set', async () => {
+    const fetchSpy = vi.fn().mockImplementation((url: string) => {
+      if (typeof url === 'string' && url.includes('piston')) {
+        return Promise.resolve(new Response(JSON.stringify({ run: { stdout: '42\n' } }), { status: 200 }));
+      }
+      return Promise.resolve(new Response('OK', { status: 200 }));
+    });
+    globalThis.fetch = fetchSpy;
+
+    await onRequestGet({ env: makeEnv({ EXECUTOR_SECRET: 'my-secret' }) });
+
+    const pistonCall = fetchSpy.mock.calls.find((c: any) => typeof c[0] === 'string' && c[0].includes('piston'));
+    expect(pistonCall).toBeDefined();
+    expect(pistonCall![1].headers['X-Executor-Secret']).toBe('my-secret');
+  });
+
+  it('does not send X-Executor-Secret header when EXECUTOR_SECRET is not set', async () => {
+    const fetchSpy = vi.fn().mockImplementation((url: string) => {
+      if (typeof url === 'string' && url.includes('piston')) {
+        return Promise.resolve(new Response(JSON.stringify({ run: { stdout: '42\n' } }), { status: 200 }));
+      }
+      return Promise.resolve(new Response('OK', { status: 200 }));
+    });
+    globalThis.fetch = fetchSpy;
+
+    await onRequestGet({ env: makeEnv({ EXECUTOR_SECRET: undefined }) });
+
+    const pistonCall = fetchSpy.mock.calls.find((c: any) => typeof c[0] === 'string' && c[0].includes('piston'));
+    expect(pistonCall).toBeDefined();
+    expect(pistonCall![1].headers['X-Executor-Secret']).toBeUndefined();
   });
 });
