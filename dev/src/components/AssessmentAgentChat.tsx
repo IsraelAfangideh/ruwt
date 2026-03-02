@@ -6,12 +6,7 @@ import { useColors } from '@/theme';
 import { spacing, fontSizes, fontFamily } from '@/theme/tokens';
 import { useAssessmentAgent } from '@/hooks/useAssessmentAgent';
 import { renderMarkdown } from '@/components/arena/ChatMarkdown';
-interface PassThreshold {
-  enabled: boolean;
-  mode: 'all_dimensions' | 'weighted_average';
-  minOverall?: number;
-  dimensions: Record<string, number>;
-}
+import type { PassThreshold } from '@/components/PassThresholdEditor';
 
 interface Props {
   assessmentId?: string;

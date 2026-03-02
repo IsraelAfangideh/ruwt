@@ -2,7 +2,7 @@
  * Hook for streaming AI assessment agent communication.
  * Connects to POST /api/ai/assessment-agent via SSE.
  */
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 
 export interface Message {
   role: 'user' | 'assistant' | 'system';
@@ -219,6 +219,11 @@ export function useAssessmentAgent({ assessmentId, onToolResult, onAssessmentCre
   const abort = useCallback(() => {
     abortRef.current?.abort();
     setStreaming(false);
+  }, []);
+
+  // Abort any in-flight stream on unmount
+  useEffect(() => {
+    return () => { abortRef.current?.abort(); };
   }, []);
 
   return { messages, sendMessage, streaming, streamingStatus, clearHistory, abort, conversationId };

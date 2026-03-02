@@ -12,16 +12,10 @@ import { spacing, fontSizes, fontFamily } from '@/theme/tokens';
 import { ASSESSMENT_TEMPLATES, type AssessmentTemplate } from '@/lib/assessment-templates';
 import { DIFFICULTIES, getDifficultyStyle } from '@/lib/difficulty';
 import { AssessmentAgentChat } from '@/components/AssessmentAgentChat';
-import { PassThresholdEditor } from '@/components/PassThresholdEditor';
+import { PassThresholdEditor, type PassThreshold } from '@/components/PassThresholdEditor';
 import { BulkInvitePanel } from '@/components/BulkInvitePanel';
 import { InviteManagementTable } from '@/components/InviteManagementTable';
 import { CustomChallengeReview } from '@/components/CustomChallengeReview';
-interface PassThreshold {
-  enabled: boolean;
-  mode: 'all_dimensions' | 'weighted_average';
-  minOverall?: number;
-  dimensions: Record<string, number>;
-}
 
 interface Challenge {
   id: string;
@@ -87,6 +81,7 @@ export function AssessmentBuilderScreen() {
   const [assessmentId, setAssessmentId] = useState<string | undefined>(params.assessmentId);
   const assessmentIdRef = useRef(assessmentId);
   assessmentIdRef.current = assessmentId;
+  const timersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
   const [status, setStatus] = useState('draft');
   const [inviteLink, setInviteLink] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -125,6 +120,11 @@ export function AssessmentBuilderScreen() {
   const [challengeSearch, setChallengeSearch] = useState('');
   const [difficultyFilter, setDifficultyFilter] = useState('all');
   const [categoryFilter, setCategoryFilter] = useState('all');
+
+  // Clear pending timers on unmount
+  useEffect(() => {
+    return () => { timersRef.current.forEach(clearTimeout); };
+  }, []);
 
   useEffect(() => {
     const init = async () => {
@@ -263,7 +263,8 @@ export function AssessmentBuilderScreen() {
       }
 
       // Save branding + weights + threshold on newly created assessments
-      if (currentId && !assessmentId && (Object.keys(brandingFields).length > 0 || categoryWeights || passThresholdStr)) {
+      // (POST endpoint only accepts title/description/timeLimit, so a follow-up PUT is required)
+      if (currentId && !assessmentId) {
         const res = await fetch(`/api/assessments/${currentId}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
@@ -281,10 +282,10 @@ export function AssessmentBuilderScreen() {
         if (!res.ok) throw new Error('Failed to save challenges');
       }
       setSaveSuccess(true);
-      setTimeout(() => setSaveSuccess(false), 2500);
+      timersRef.current.push(setTimeout(() => setSaveSuccess(false), 2500));
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : 'Save failed');
-      setTimeout(() => setSaveError(null), 4000);
+      timersRef.current.push(setTimeout(() => setSaveError(null), 4000));
     }
     setSaving(false);
   }, [assessmentId, title, description, timeLimitMinutes, selectedChallengeIds, companyName, companyLogoUrl, welcomeMessage, weights, passThreshold]);

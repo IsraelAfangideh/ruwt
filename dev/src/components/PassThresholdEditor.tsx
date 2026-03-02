@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/Input';
 import { useColors } from '@/theme';
 import { spacing, fontSizes, fontFamily } from '@/theme/tokens';
 
-interface PassThreshold {
+export interface PassThreshold {
   enabled: boolean;
   mode: 'all_dimensions' | 'weighted_average';
   minOverall?: number;
