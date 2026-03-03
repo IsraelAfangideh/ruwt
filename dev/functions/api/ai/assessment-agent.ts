@@ -30,7 +30,7 @@ const requestSchema = z.object({
 
 // Primary model for the agent — must support native function calling
 const AGENT_MODEL = '@cf/meta/llama-3.3-70b-instruct-fp8-fast';
-const MAX_TOOL_ITERATIONS = 3;
+const MAX_TOOL_ITERATIONS = 8;
 const AI_CALL_TIMEOUT_MS = 25_000; // 25s timeout per AI call (within 30s CF Pages limit)
 const MAX_CONVERSATION_MESSAGES = 20; // Keep last N messages to avoid blowing context window
 
@@ -348,6 +348,19 @@ export async function onRequestPost(context: {
             fullContent += result.response;
             emitChunked(controller, encoder, result.response);
             break;
+          }
+
+          // If the loop exhausted iterations without a text-only response, make one
+          // final call without tools to get a summary for the user.
+          if (!fullContent.trim() && totalToolCalls > 0) {
+            try {
+              const finalResult = await callWithTools(context.env, AGENT_MODEL, workingMessages, []);
+              usedModel = finalResult.model;
+              fullContent += finalResult.response;
+              emitChunked(controller, encoder, finalResult.response);
+            } catch {
+              // Best-effort — if it fails, at least tool results are visible
+            }
           }
 
           // Save conversation (include tool calls so resumed conversations have context)
