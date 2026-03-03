@@ -37,9 +37,11 @@ export function CustomChallengeReview({ challenge, orgId, onApprove, onDelete, c
   const [approving, setApproving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const handleApprove = useCallback(async () => {
     setApproving(true);
+    setActionError(null);
     try {
       const res = await fetch(`/api/orgs/${orgId}/challenges/${challenge.id}`, {
         method: 'PUT',
@@ -47,19 +49,27 @@ export function CustomChallengeReview({ challenge, orgId, onApprove, onDelete, c
         body: JSON.stringify({ status: 'active' }),
       });
       if (res.ok) onApprove(challenge.id);
-    } catch {}
+      else setActionError('Failed to approve challenge');
+    } catch {
+      setActionError('Network error — could not approve');
+    }
     setApproving(false);
   }, [challenge.id, orgId, onApprove]);
 
   const handleDelete = useCallback(async () => {
     setDeleting(true);
+    setActionError(null);
     try {
       const res = await fetch(`/api/orgs/${orgId}/challenges/${challenge.id}`, {
         method: 'DELETE',
       });
       if (res.ok) onDelete(challenge.id);
-    } catch {}
+      else setActionError('Failed to delete challenge');
+    } catch {
+      setActionError('Network error — could not delete');
+    }
     setDeleting(false);
+    setConfirmDelete(false);
   }, [challenge.id, orgId, onDelete]);
 
   let testCases: { input: string; expectedOutput: string }[] = [];
@@ -166,6 +176,11 @@ export function CustomChallengeReview({ challenge, orgId, onApprove, onDelete, c
           )}
 
           {/* Actions */}
+          {actionError && (
+            <Text style={{ color: c.destructive, fontSize: fontSizes.xs, marginTop: spacing.sm }}>
+              {actionError}
+            </Text>
+          )}
           {challenge.status === 'draft' && (
             <View style={styles.actions}>
               <Button onPress={handleApprove} disabled={approving}>
@@ -173,7 +188,7 @@ export function CustomChallengeReview({ challenge, orgId, onApprove, onDelete, c
               </Button>
               {confirmDelete ? (
                 <View style={{ flexDirection: 'row', gap: spacing.sm, alignItems: 'center' }}>
-                  <Button variant="outline" onPress={() => { setConfirmDelete(false); handleDelete(); }} disabled={deleting}>
+                  <Button variant="outline" onPress={handleDelete} disabled={deleting}>
                     {deleting ? 'Deleting...' : 'Confirm Delete'}
                   </Button>
                   <Pressable onPress={() => setConfirmDelete(false)}>

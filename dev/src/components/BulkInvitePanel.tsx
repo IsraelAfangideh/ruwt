@@ -82,6 +82,8 @@ export function BulkInvitePanel({ assessmentId, onInvitesSent }: Props) {
         setError(data.error || 'Failed to create invites');
       } else {
         setResults(data.results);
+        setEmailText('');
+        setCsvInfo(null);
         onInvitesSent();
       }
     } catch {

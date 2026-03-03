@@ -40,6 +40,8 @@ export function AssessmentAgentChat({
   const [input, setInput] = useState('');
   const [confirmClear, setConfirmClear] = useState(false);
   const scrollRef = useRef<any>(null);
+  const inputRef = useRef<any>(null);
+  const msgIdRef = useRef(0);
 
   const handleToolResult = useCallback((tool: string, result: any) => {
     if (!result.success) return;
@@ -67,11 +69,20 @@ export function AssessmentAgentChat({
     }
   }, [onChallengesChanged, onWeightsChanged, onBrandingChanged, onTimeLimitChanged, onThresholdChanged, onCustomChallengeCreated]);
 
-  const { messages, sendMessage, streaming, streamingStatus, clearHistory } = useAssessmentAgent({
+  const { messages, sendMessage, streaming, streamingStatus, clearHistory, abort } = useAssessmentAgent({
     assessmentId,
     onToolResult: handleToolResult,
     onAssessmentCreated,
   });
+
+  // Assign stable IDs to messages
+  const msgKeyMap = useRef(new WeakMap<object, number>());
+  const getMsgKey = useCallback((msg: object) => {
+    if (!msgKeyMap.current.has(msg)) {
+      msgKeyMap.current.set(msg, ++msgIdRef.current);
+    }
+    return msgKeyMap.current.get(msg)!;
+  }, []);
 
   useEffect(() => {
     setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
@@ -86,6 +97,7 @@ export function AssessmentAgentChat({
 
   const handleQuickAction = useCallback((prompt: string) => {
     setInput(prompt);
+    setTimeout(() => inputRef.current?.focus(), 50);
   }, []);
 
   const handleKeyPress = useCallback((e: any) => {
@@ -150,7 +162,8 @@ export function AssessmentAgentChat({
             </View>
           </View>
         ) : (
-          messages.map((msg, i) => {
+          messages.map((msg) => {
+            const msgKey = getMsgKey(msg);
             // System messages render as compact chips
             if (msg.role === 'system') {
               const isError = msg.systemType === 'tool_error';
@@ -158,7 +171,7 @@ export function AssessmentAgentChat({
               const chipColor = isError ? c.destructive : isCreated ? c.accent : c.success;
               return (
                 <View
-                  key={i}
+                  key={msgKey}
                   style={[
                     styles.systemChip,
                     { backgroundColor: chipColor + '12', borderColor: chipColor + '30' },
@@ -173,7 +186,7 @@ export function AssessmentAgentChat({
 
             return (
               <View
-                key={i}
+                key={msgKey}
                 style={[
                   styles.messageBubble,
                   msg.role === 'user'
@@ -212,6 +225,7 @@ export function AssessmentAgentChat({
       {/* Input */}
       <View style={[styles.inputArea, { borderTopColor: c.border }]}>
         <TextInput
+          ref={inputRef}
           style={[
             styles.input,
             { color: c.text, backgroundColor: c.bg, borderColor: c.border },
@@ -225,13 +239,15 @@ export function AssessmentAgentChat({
           numberOfLines={2}
           editable={!streaming}
         />
-        <Button
-          size="sm"
-          onPress={handleSend}
-          disabled={streaming || !input.trim()}
-        >
-          {streaming ? '...' : 'Send'}
-        </Button>
+        {streaming ? (
+          <Button size="sm" variant="outline" onPress={abort}>
+            Stop
+          </Button>
+        ) : (
+          <Button size="sm" onPress={handleSend} disabled={!input.trim()}>
+            Send
+          </Button>
+        )}
       </View>
     </View>
   );

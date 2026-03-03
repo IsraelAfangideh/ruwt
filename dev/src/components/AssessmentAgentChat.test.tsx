@@ -4,6 +4,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 
 const mockSendMessage = vi.fn();
 const mockClearHistory = vi.fn();
+const mockAbort = vi.fn();
 
 let mockMessages: any[] = [];
 let mockStreaming = false;
@@ -49,6 +50,7 @@ vi.mock('@/hooks/useAssessmentAgent', () => ({
       streaming: mockStreaming,
       streamingStatus: mockStreamingStatus,
       clearHistory: mockClearHistory,
+      abort: mockAbort,
     };
   },
 }));
@@ -166,10 +168,10 @@ describe('AssessmentAgentChat', () => {
     expect(screen.getByText('Thinking...')).toBeTruthy();
   });
 
-  it('shows ... on Send button when streaming', () => {
+  it('shows Stop button when streaming', () => {
     mockStreaming = true;
     render(<AssessmentAgentChat />);
-    expect(screen.getByText('...')).toBeTruthy();
+    expect(screen.getByText('Stop')).toBeTruthy();
   });
 
   it('does not show Thinking... when not streaming', () => {
@@ -268,14 +270,12 @@ describe('AssessmentAgentChat', () => {
     expect(mockSendMessage).not.toHaveBeenCalled();
   });
 
-  it('does not call sendMessage when streaming', () => {
+  it('shows Stop button and does not send when streaming', () => {
     mockStreaming = true;
     render(<AssessmentAgentChat />);
-    // Even with text, Send should not trigger when streaming
-    const input = screen.getByPlaceholderText(/Describe the role/);
-    fireEvent.change(input, { target: { value: 'test' } });
-    fireEvent.click(screen.getByText('...'));
-    expect(mockSendMessage).not.toHaveBeenCalled();
+    // While streaming, Stop button is shown instead of Send
+    expect(screen.getByText('Stop')).toBeTruthy();
+    expect(screen.queryByText('Send')).toBeNull();
   });
 
   it('triggers handleSend on Enter key press in input', () => {

@@ -297,7 +297,7 @@ export function AssessmentBuilderScreen() {
         if (!res.ok) throw new Error('Failed to save assessment details');
       }
 
-      if (currentId && selectedChallengeIds.length > 0) {
+      if (currentId) {
         const res = await fetch(`/api/assessments/${currentId}/challenges`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
@@ -483,18 +483,43 @@ export function AssessmentBuilderScreen() {
         <Button
           variant="ghost"
           size="sm"
-          onPress={() => navigation.navigate('Assessments' as never)}
+          onPress={() => {
+            if (dirty && !window.confirm('You have unsaved changes. Leave anyway?')) return;
+            navigation.navigate('Assessments' as never);
+          }}
         >
           {'\u2190'} Back to Assessments
         </Button>
         <View style={styles.titleRow}>
-          <Text style={[styles.title, { color: c.text }]}>
-            {params.assessmentId ? 'Edit Assessment' : 'Create Assessment'}
-          </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+            <Text style={[styles.title, { color: c.text }]}>
+              {params.assessmentId ? 'Edit Assessment' : 'Create Assessment'}
+            </Text>
+            {assessmentId && (
+              <Badge
+                variant="outline"
+                style={{
+                  borderColor: status === 'active' ? c.success + '60' : c.accent + '60',
+                  backgroundColor: status === 'active' ? c.success + '10' : c.accent + '10',
+                }}
+              >
+                <Text style={{ fontSize: 10, fontWeight: '600', color: status === 'active' ? c.success : c.accent }}>
+                  {status === 'active' ? 'ACTIVE' : 'DRAFT'}
+                </Text>
+              </Badge>
+            )}
+          </View>
           <View style={styles.actions}>
-            <Button onPress={handleSave} disabled={saving || !title || !Number.isFinite(weightSum) || weightSum !== 100}>
-              {saving ? 'Saving...' : saveError ? '\u2717 Error' : saveSuccess ? '\u2713 Saved' : 'Save Assessment'}
-            </Button>
+            <View style={{ alignItems: 'flex-start' }}>
+              <Button onPress={handleSave} disabled={saving || !title || !Number.isFinite(weightSum) || weightSum !== 100}>
+                {saving ? 'Saving...' : saveError ? '\u2717 Error' : saveSuccess ? '\u2713 Saved' : 'Save Assessment'}
+              </Button>
+              {!saving && !saveSuccess && !saveError && (!title || !Number.isFinite(weightSum) || weightSum !== 100) && (
+                <Text style={{ fontSize: 10, color: c.destructive, marginTop: 2 }}>
+                  {!title ? 'Title required' : 'Weights must = 100'}
+                </Text>
+              )}
+            </View>
             {assessmentId && status === 'draft' && (
               confirmActivate ? (
                 <View style={{ flexDirection: 'row', gap: spacing.sm, alignItems: 'center' }}>
@@ -518,6 +543,8 @@ export function AssessmentBuilderScreen() {
             )}
             <Pressable
               onPress={() => setShowAgent(!showAgent)}
+              accessibilityRole="button"
+              accessibilityLabel={showAgent ? 'Hide AI assistant' : 'Show AI assistant'}
               style={[
                 styles.agentToggle,
                 {
@@ -544,7 +571,7 @@ export function AssessmentBuilderScreen() {
               <Text style={[styles.sectionLabel, { color: c.text }]}>Start from a Template</Text>
               <View style={styles.templateGrid}>
                 {ASSESSMENT_TEMPLATES.map((t) => (
-                  <Pressable key={t.id} onPress={() => applyTemplate(t)}>
+                  <Pressable key={t.id} onPress={() => applyTemplate(t)} accessibilityRole="button">
                     <Card style={[styles.templateCard, { borderColor: c.border }]}>
                       <CardHeader>
                         <CardTitle>{t.name}</CardTitle>
@@ -584,9 +611,15 @@ export function AssessmentBuilderScreen() {
                 onChangeText={setTimeLimitMinutes}
                 keyboardType="numeric"
               />
-              <Text style={{ fontSize: fontSizes.xs, color: c.textMuted, marginTop: 4 }}>
-                Minimum 5 min, maximum 240 min
-              </Text>
+              {(() => {
+                const mins = parseInt(timeLimitMinutes, 10);
+                const invalid = timeLimitMinutes !== '' && (!Number.isFinite(mins) || mins < 5 || mins > 240);
+                return (
+                  <Text style={{ fontSize: fontSizes.xs, color: invalid ? c.destructive : c.textMuted, marginTop: 4 }}>
+                    {invalid ? `${!Number.isFinite(mins) ? 'Enter a number' : mins < 5 ? 'Minimum is 5 minutes' : 'Maximum is 240 minutes'}` : 'Minimum 5 min, maximum 240 min'}
+                  </Text>
+                );
+              })()}
             </View>
           </View>
 
@@ -711,6 +744,7 @@ export function AssessmentBuilderScreen() {
                   <Pressable
                     key={d.key}
                     onPress={() => setDifficultyFilter(d.key)}
+                    accessibilityRole="button"
                     style={[
                       styles.filterPill,
                       {
@@ -730,6 +764,7 @@ export function AssessmentBuilderScreen() {
                   <Pressable
                     key={cat.key}
                     onPress={() => setCategoryFilter(cat.key)}
+                    accessibilityRole="button"
                     style={[
                       styles.filterPill,
                       {
@@ -750,14 +785,14 @@ export function AssessmentBuilderScreen() {
                 </Text>
                 {filteredChallenges.length + filteredCustomChallenges.length > 0 && (
                   <View style={{ flexDirection: 'row', gap: spacing.sm }}>
-                    <Pressable onPress={() => {
+                    <Pressable accessibilityRole="button" onPress={() => {
                       const visibleIds = [...filteredChallenges, ...filteredCustomChallenges].map((ch) => ch.id);
                       setSelectedChallengeIds((prev) => [...new Set([...prev, ...visibleIds])]);
                     }}>
                       <Text style={{ fontSize: fontSizes.xs, color: c.accent, fontWeight: '600' }}>Select All Visible</Text>
                     </Pressable>
                     {selectedChallengeIds.length > 0 && (
-                      <Pressable onPress={() => setSelectedChallengeIds([])}>
+                      <Pressable accessibilityRole="button" onPress={() => setSelectedChallengeIds([])}>
                         <Text style={{ fontSize: fontSizes.xs, color: c.textMuted, fontWeight: '600' }}>Clear All</Text>
                       </Pressable>
                     )}
@@ -801,7 +836,7 @@ export function AssessmentBuilderScreen() {
               {filteredChallenges.map((ch) => {
                 const selected = selectedChallengeIds.includes(ch.id);
                 return (
-                  <Pressable key={ch.id} onPress={() => toggleChallenge(ch.id)}>
+                  <Pressable key={ch.id} onPress={() => toggleChallenge(ch.id)} accessibilityRole="button">
                     <Card
                       style={[
                         styles.challengeCard,
@@ -859,7 +894,7 @@ export function AssessmentBuilderScreen() {
               {filteredCustomChallenges.map((ch) => {
                 const selected = selectedChallengeIds.includes(ch.id);
                 return (
-                  <Pressable key={ch.id} onPress={() => toggleChallenge(ch.id)}>
+                  <Pressable key={ch.id} onPress={() => toggleChallenge(ch.id)} accessibilityRole="button">
                     <Card
                       style={[
                         styles.challengeCard,
@@ -1018,10 +1053,10 @@ export function AssessmentBuilderScreen() {
 const styles = StyleSheet.create({
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   section: { marginBottom: spacing.lg, paddingBottom: spacing.md, borderBottomWidth: 1 },
-  titleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: spacing.sm },
+  titleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: spacing.sm, flexWrap: 'wrap', gap: spacing.sm },
   title: { fontSize: fontSizes['3xl'], fontWeight: '700', fontFamily: fontFamily.body },
   form: { gap: spacing.md, marginBottom: spacing.lg },
-  actions: { flexDirection: 'row', gap: spacing.md, alignItems: 'center' },
+  actions: { flexDirection: 'row', gap: spacing.md, alignItems: 'center', flexWrap: 'wrap' },
   agentToggle: {
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.xs,
