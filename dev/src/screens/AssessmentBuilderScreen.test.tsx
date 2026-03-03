@@ -292,7 +292,7 @@ describe('AssessmentBuilderScreen', () => {
     });
   });
 
-  it('activates assessment when Activate button is clicked', async () => {
+  it('activates assessment after two-step confirmation', async () => {
     mockRouteParams = { assessmentId: 'existing-id' };
     const fn = setupFetch({
       '/api/assessments/existing-id': ok({
@@ -303,6 +303,9 @@ describe('AssessmentBuilderScreen', () => {
     render(<AssessmentBuilderScreen />);
     await waitFor(() => expect(screen.getByText('Activate')).toBeTruthy());
     fireEvent.click(screen.getByText('Activate'));
+    // Two-step: first click shows Confirm Activate
+    await waitFor(() => expect(screen.getByText('Confirm Activate')).toBeTruthy());
+    fireEvent.click(screen.getByText('Confirm Activate'));
     await waitFor(() => {
       expect(fn).toHaveBeenCalledWith(
         '/api/assessments/existing-id',

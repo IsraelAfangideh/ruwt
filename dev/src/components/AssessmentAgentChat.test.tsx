@@ -4,9 +4,11 @@ import { render, screen, fireEvent } from '@testing-library/react';
 
 const mockSendMessage = vi.fn();
 const mockClearHistory = vi.fn();
+const mockAbort = vi.fn();
 
 let mockMessages: any[] = [];
 let mockStreaming = false;
+let mockStreamingStatus = 'Thinking...';
 
 vi.mock('@/theme', () => ({
   useColors: () => ({
@@ -35,6 +37,10 @@ vi.mock('@/components/ui/Badge', () => ({
 
 let capturedOnToolResult: ((tool: string, result: any) => void) | null = null;
 
+vi.mock('@/components/arena/ChatMarkdown', () => ({
+  renderMarkdown: (text: string) => [<span key="md">{text}</span>],
+}));
+
 vi.mock('@/hooks/useAssessmentAgent', () => ({
   useAssessmentAgent: (opts: any) => {
     capturedOnToolResult = opts?.onToolResult ?? null;
@@ -42,7 +48,9 @@ vi.mock('@/hooks/useAssessmentAgent', () => ({
       messages: mockMessages,
       sendMessage: mockSendMessage,
       streaming: mockStreaming,
+      streamingStatus: mockStreamingStatus,
       clearHistory: mockClearHistory,
+      abort: mockAbort,
     };
   },
 }));
@@ -54,6 +62,7 @@ describe('AssessmentAgentChat', () => {
     vi.clearAllMocks();
     mockMessages = [];
     mockStreaming = false;
+    mockStreamingStatus = 'Thinking...';
     capturedOnToolResult = null;
   });
 
@@ -69,6 +78,15 @@ describe('AssessmentAgentChat', () => {
     expect(screen.getByText('Analyze a job description')).toBeTruthy();
     expect(screen.getByText('Suggest challenges for a role')).toBeTruthy();
     expect(screen.getByText('Create a custom challenge')).toBeTruthy();
+  });
+
+  it('hides Optimize score weights quick action when no assessmentId', () => {
+    render(<AssessmentAgentChat />);
+    expect(screen.queryByText('Optimize score weights')).toBeNull();
+  });
+
+  it('shows Optimize score weights quick action when assessmentId is set', () => {
+    render(<AssessmentAgentChat assessmentId="test-123" />);
     expect(screen.getByText('Optimize score weights')).toBeTruthy();
   });
 
@@ -98,11 +116,27 @@ describe('AssessmentAgentChat', () => {
     expect(screen.getByText('Clear')).toBeTruthy();
   });
 
-  it('calls clearHistory when Clear is clicked', () => {
+  it('calls clearHistory after two-step confirmation', () => {
     mockMessages = [{ role: 'user', content: 'test' }];
     render(<AssessmentAgentChat />);
     fireEvent.click(screen.getByText('Clear'));
+    // First click shows confirmation
+    expect(mockClearHistory).not.toHaveBeenCalled();
+    expect(screen.getByText('Confirm')).toBeTruthy();
+    expect(screen.getByText('Cancel')).toBeTruthy();
+    // Second click confirms
+    fireEvent.click(screen.getByText('Confirm'));
     expect(mockClearHistory).toHaveBeenCalled();
+  });
+
+  it('cancels clear when Cancel is clicked', () => {
+    mockMessages = [{ role: 'user', content: 'test' }];
+    render(<AssessmentAgentChat />);
+    fireEvent.click(screen.getByText('Clear'));
+    fireEvent.click(screen.getByText('Cancel'));
+    expect(mockClearHistory).not.toHaveBeenCalled();
+    // Should be back to showing Clear button
+    expect(screen.getByText('Clear')).toBeTruthy();
   });
 
   it('renders user messages with "You" label', () => {
@@ -119,14 +153,12 @@ describe('AssessmentAgentChat', () => {
     expect(screen.getByText('I can help with that.')).toBeTruthy();
   });
 
-  it('strips tool_call blocks from displayed messages', () => {
+  it('displays assistant message content as-is', () => {
     mockMessages = [
-      { role: 'assistant', content: 'Done <tool_call>{"name":"select_challenges"}</tool_call> for you.' },
+      { role: 'assistant', content: 'Done selecting challenges for you.' },
     ];
     render(<AssessmentAgentChat />);
-    // The tool_call block should be stripped
-    expect(screen.getByText('Done for you.')).toBeTruthy();
-    expect(screen.queryByText(/tool_call/)).toBeNull();
+    expect(screen.getByText('Done selecting challenges for you.')).toBeTruthy();
   });
 
   it('shows Thinking... indicator when streaming', () => {
@@ -136,10 +168,10 @@ describe('AssessmentAgentChat', () => {
     expect(screen.getByText('Thinking...')).toBeTruthy();
   });
 
-  it('shows ... on Send button when streaming', () => {
+  it('shows Stop button when streaming', () => {
     mockStreaming = true;
     render(<AssessmentAgentChat />);
-    expect(screen.getByText('...')).toBeTruthy();
+    expect(screen.getByText('Stop')).toBeTruthy();
   });
 
   it('does not show Thinking... when not streaming', () => {
@@ -178,11 +210,11 @@ describe('AssessmentAgentChat', () => {
     render(<AssessmentAgentChat />);
     fireEvent.click(screen.getByText('Create a custom challenge'));
     const input = screen.getByPlaceholderText(/Describe the role/);
-    expect((input as HTMLInputElement).value).toContain('Create a custom challenge');
+    expect((input as HTMLInputElement).value).toContain('Create a custom coding challenge');
   });
 
   it('populates input for optimize score weights quick action', () => {
-    render(<AssessmentAgentChat />);
+    render(<AssessmentAgentChat assessmentId="test-123" />);
     fireEvent.click(screen.getByText('Optimize score weights'));
     const input = screen.getByPlaceholderText(/Describe the role/);
     expect((input as HTMLInputElement).value).toContain('score weights');
@@ -238,14 +270,12 @@ describe('AssessmentAgentChat', () => {
     expect(mockSendMessage).not.toHaveBeenCalled();
   });
 
-  it('does not call sendMessage when streaming', () => {
+  it('shows Stop button and does not send when streaming', () => {
     mockStreaming = true;
     render(<AssessmentAgentChat />);
-    // Even with text, Send should not trigger when streaming
-    const input = screen.getByPlaceholderText(/Describe the role/);
-    fireEvent.change(input, { target: { value: 'test' } });
-    fireEvent.click(screen.getByText('...'));
-    expect(mockSendMessage).not.toHaveBeenCalled();
+    // While streaming, Stop button is shown instead of Send
+    expect(screen.getByText('Stop')).toBeTruthy();
+    expect(screen.queryByText('Send')).toBeNull();
   });
 
   it('triggers handleSend on Enter key press in input', () => {
@@ -320,5 +350,32 @@ describe('AssessmentAgentChat', () => {
     render(<AssessmentAgentChat onChallengesChanged={onChallengesChanged} />);
     capturedOnToolResult!('select_challenges', { success: false });
     expect(onChallengesChanged).not.toHaveBeenCalled();
+  });
+
+  it('renders system messages as compact chips', () => {
+    mockMessages = [
+      { role: 'user', content: 'Add some challenges' },
+      { role: 'system', content: 'Added 3 challenges', systemType: 'tool_result' },
+      { role: 'assistant', content: 'Done!' },
+    ];
+    render(<AssessmentAgentChat />);
+    expect(screen.getByText(/Added 3 challenges/)).toBeTruthy();
+  });
+
+  it('renders tool error system messages', () => {
+    mockMessages = [
+      { role: 'user', content: 'Try something' },
+      { role: 'system', content: 'Failed: No assessment ID', systemType: 'tool_error' },
+    ];
+    render(<AssessmentAgentChat />);
+    expect(screen.getByText(/Failed: No assessment ID/)).toBeTruthy();
+  });
+
+  it('renders assessment created system message', () => {
+    mockMessages = [
+      { role: 'system', content: 'New assessment draft created', systemType: 'assessment_created' },
+    ];
+    render(<AssessmentAgentChat />);
+    expect(screen.getByText(/New assessment draft created/)).toBeTruthy();
   });
 });

@@ -35,12 +35,16 @@ export function InviteManagementTable({ assessmentId, refreshKey }: Props) {
   const [loading, setLoading] = useState(true);
   const [reminding, setReminding] = useState<string | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
+  const [fetchError, setFetchError] = useState(false);
+  const [remindResult, setRemindResult] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   const fetchInvites = useCallback(async () => {
+    setFetchError(false);
     try {
       const res = await fetch(`/api/assessments/${assessmentId}/invites`);
       if (res.ok) setInvites(await res.json());
-    } catch {}
+      else setFetchError(true);
+    } catch { setFetchError(true); }
     setLoading(false);
   }, [assessmentId]);
 
@@ -59,34 +63,65 @@ export function InviteManagementTable({ assessmentId, refreshKey }: Props) {
 
   const handleRemind = useCallback(async (inviteId: string) => {
     setReminding(inviteId);
+    setRemindResult(null);
     try {
-      await fetch(`/api/assessments/${assessmentId}/invites/remind`, {
+      const res = await fetch(`/api/assessments/${assessmentId}/invites/remind`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ inviteIds: [inviteId] }),
       });
-      fetchInvites();
-    } catch {}
+      if (res.ok) {
+        setRemindResult({ type: 'success', text: 'Reminder sent' });
+        fetchInvites();
+      } else {
+        setRemindResult({ type: 'error', text: 'Failed to send reminder' });
+      }
+    } catch {
+      setRemindResult({ type: 'error', text: 'Network error' });
+    }
     setReminding(null);
+    setTimeout(() => setRemindResult(null), 3000);
   }, [assessmentId, fetchInvites]);
 
   const handleRemindAll = useCallback(async () => {
     setReminding('all');
+    setRemindResult(null);
     try {
-      await fetch(`/api/assessments/${assessmentId}/invites/remind`, {
+      const res = await fetch(`/api/assessments/${assessmentId}/invites/remind`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ all: true }),
       });
-      fetchInvites();
-    } catch {}
+      if (res.ok) {
+        setRemindResult({ type: 'success', text: 'Reminders sent to all pending' });
+        fetchInvites();
+      } else {
+        setRemindResult({ type: 'error', text: 'Failed to send reminders' });
+      }
+    } catch {
+      setRemindResult({ type: 'error', text: 'Network error' });
+    }
     setReminding(null);
+    setTimeout(() => setRemindResult(null), 3000);
   }, [assessmentId, fetchInvites]);
 
   if (loading) {
     return (
       <View style={styles.center}>
         <ActivityIndicator size="small" color={c.accent} />
+      </View>
+    );
+  }
+
+  if (fetchError) {
+    return (
+      <View style={[styles.empty, { borderColor: c.destructive + '40' }]}>
+        <Text style={{ color: c.destructive, fontSize: fontSizes.sm, marginBottom: spacing.xs }}>
+          Failed to load invites.
+        </Text>
+        <Pressable onPress={fetchInvites} accessibilityRole="button" accessibilityLabel="Retry loading invites">
+          <Text style={{ fontSize: fontSizes.xs, color: c.accent, fontWeight: '600' }}>Retry</Text>
+        </Pressable>
       </View>
     );
   }
@@ -105,6 +140,16 @@ export function InviteManagementTable({ assessmentId, refreshKey }: Props) {
 
   return (
     <View>
+      {remindResult && (
+        <Text style={{
+          fontSize: fontSizes.xs,
+          color: remindResult.type === 'success' ? c.success : c.destructive,
+          marginBottom: spacing.xs,
+          fontWeight: '600',
+        }}>
+          {remindResult.text}
+        </Text>
+      )}
       <View style={styles.headerRow}>
         <Text style={[styles.sectionLabel, { color: c.text }]}>
           Candidate Invites ({invites.length})
@@ -168,6 +213,8 @@ export function InviteManagementTable({ assessmentId, refreshKey }: Props) {
             <View style={[styles.cellActions, { flexDirection: 'row', gap: spacing.xs }]}>
               <Pressable
                 onPress={() => handleCopyLink(inv.token)}
+                accessibilityRole="button"
+                accessibilityLabel="Copy invite link"
                 style={[styles.actionBtn, { borderColor: c.border }]}
               >
                 <Text style={{ fontSize: 11, color: c.textMuted }}>
@@ -177,6 +224,8 @@ export function InviteManagementTable({ assessmentId, refreshKey }: Props) {
               {canRemind && (
                 <Pressable
                   onPress={() => handleRemind(inv.id)}
+                  accessibilityRole="button"
+                  accessibilityLabel="Send reminder email"
                   style={[styles.actionBtn, { borderColor: c.accent + '40' }]}
                   disabled={reminding === inv.id}
                 >

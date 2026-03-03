@@ -99,22 +99,25 @@ describe('CustomChallengeReview', () => {
     await waitFor(() => expect(mockOnApprove).toHaveBeenCalledWith('c1'));
   });
 
-  it('calls onDelete on successful delete click', async () => {
+  it('calls onDelete after two-step confirmation', async () => {
     vi.spyOn(global, 'fetch').mockResolvedValue({ ok: true } as Response);
     render(<CustomChallengeReview challenge={challenge} orgId="org1" onApprove={mockOnApprove} onDelete={mockOnDelete} />);
     fireEvent.click(screen.getByText('Delete Draft'));
+    expect(mockOnDelete).not.toHaveBeenCalled();
+    expect(screen.getByText('Confirm Delete')).toBeTruthy();
+    fireEvent.click(screen.getByText('Confirm Delete'));
     await waitFor(() => expect(mockOnDelete).toHaveBeenCalledWith('c1'));
   });
 
   it('shows Expand/Collapse in compact mode', () => {
     render(<CustomChallengeReview challenge={challenge} orgId="org1" onApprove={mockOnApprove} onDelete={mockOnDelete} compact />);
     // compact starts collapsed
-    expect(screen.getByText('Expand')).toBeTruthy();
+    expect(screen.getByText(/Expand/)).toBeTruthy();
   });
 
   it('toggles expanded state in compact mode', () => {
     render(<CustomChallengeReview challenge={challenge} orgId="org1" onApprove={mockOnApprove} onDelete={mockOnDelete} compact />);
-    fireEvent.click(screen.getByText('Expand'));
-    expect(screen.getByText('Collapse')).toBeTruthy();
+    fireEvent.click(screen.getByText(/Expand/));
+    expect(screen.getByText(/Collapse/)).toBeTruthy();
   });
 });

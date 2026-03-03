@@ -3,7 +3,7 @@
  * Tool calls now come from Cloudflare Workers AI native function calling
  * (structured tool_calls in the API response, not XML blocks in text).
  */
-import { eq, and } from 'drizzle-orm';
+import { eq, and, inArray } from 'drizzle-orm';
 import type { Db } from '../db';
 import {
   challenges, assessments, assessmentChallenges, customChallenges,
@@ -69,7 +69,13 @@ async function searchChallenges(db: Db, params: Record<string, unknown>): Promis
     query?: string; category?: string; difficulty?: string; language?: string;
   };
 
-  let rows = await db
+  // Build SQL WHERE conditions for exact-match filters
+  const conditions = [];
+  if (category) conditions.push(eq(challenges.category, category));
+  if (difficulty) conditions.push(eq(challenges.difficulty, difficulty));
+  if (language) conditions.push(eq(challenges.language, language));
+
+  let dbQuery = db
     .select({
       id: challenges.id,
       title: challenges.title,
@@ -81,15 +87,13 @@ async function searchChallenges(db: Db, params: Record<string, unknown>): Promis
     })
     .from(challenges);
 
-  if (category) {
-    rows = rows.filter((r) => r.category === category);
+  if (conditions.length > 0) {
+    dbQuery = dbQuery.where(conditions.length === 1 ? conditions[0] : and(...conditions)) as typeof dbQuery;
   }
-  if (difficulty) {
-    rows = rows.filter((r) => r.difficulty === difficulty);
-  }
-  if (language) {
-    rows = rows.filter((r) => r.language === language);
-  }
+
+  let rows = await dbQuery;
+
+  // Free-text search still done in JS (SQLite LIKE is case-sensitive by default)
   if (query) {
     const q = query.toLowerCase();
     rows = rows.filter((r) =>
@@ -120,6 +124,18 @@ async function selectChallenges(
     return { tool: 'select_challenges', success: false, result: null, error: 'No assessment ID in context. Save the assessment first.' };
   }
 
+  // Validate that requested challenge IDs exist in the catalog
+  const found = await db
+    .select({ id: challenges.id })
+    .from(challenges)
+    .where(inArray(challenges.id, challengeIds));
+  const validIds = new Set(found.map((c) => c.id));
+  const invalid = challengeIds.filter((id) => !validIds.has(id));
+  const validChallengeIds = challengeIds.filter((id) => validIds.has(id));
+  if (validChallengeIds.length === 0) {
+    return { tool: 'select_challenges', success: false, result: null, error: `None of the challenge IDs are valid: ${invalid.join(', ')}` };
+  }
+
   // Get existing challenges
   const existing = await db
     .select({ challengeId: assessmentChallenges.challengeId, sortOrder: assessmentChallenges.sortOrder })
@@ -130,7 +146,7 @@ async function selectChallenges(
   const maxSort = existing.reduce((max, e) => Math.max(max, e.sortOrder), -1);
 
   let added = 0;
-  for (const id of challengeIds) {
+  for (const id of validChallengeIds) {
     if (existingIds.has(id)) continue;
     await db.insert(assessmentChallenges).values({
       id: crypto.randomUUID(),
@@ -144,7 +160,7 @@ async function selectChallenges(
   return {
     tool: 'select_challenges',
     success: true,
-    result: { added, total: existing.length + added },
+    result: { added, total: existing.length + added, ...(invalid.length > 0 ? { invalidIds: invalid } : {}) },
   };
 }
 
@@ -158,8 +174,20 @@ async function removeChallenges(
     return { tool: 'remove_challenges', success: false, result: null, error: 'Missing data' };
   }
 
+  // Check which IDs actually exist before deleting
+  const existing = await db
+    .select({ challengeId: assessmentChallenges.challengeId })
+    .from(assessmentChallenges)
+    .where(eq(assessmentChallenges.assessmentId, context.assessmentId));
+  const existingIds = new Set(existing.map((e) => e.challengeId));
+
   let removed = 0;
+  const notFound: string[] = [];
   for (const id of challengeIds) {
+    if (!existingIds.has(id)) {
+      notFound.push(id);
+      continue;
+    }
     await db
       .delete(assessmentChallenges)
       .where(
@@ -171,7 +199,11 @@ async function removeChallenges(
     removed++;
   }
 
-  return { tool: 'remove_challenges', success: true, result: { removed } };
+  return {
+    tool: 'remove_challenges',
+    success: true,
+    result: { removed, ...(notFound.length > 0 ? { notFound } : {}) },
+  };
 }
 
 async function setWeights(
@@ -182,13 +214,25 @@ async function setWeights(
   if (!context.assessmentId) {
     return { tool: 'set_weights', success: false, result: null, error: 'No assessment ID' };
   }
-  const weights = {
-    modelSelection: Number(params.modelSelection) || 20,
-    promptEfficiency: Number(params.promptEfficiency) || 20,
-    debugging: Number(params.debugging) || 20,
-    strategy: Number(params.strategy) || 20,
-    speed: Number(params.speed) || 20,
+  const raw = {
+    modelSelection: params.modelSelection != null ? Number(params.modelSelection) : 20,
+    promptEfficiency: params.promptEfficiency != null ? Number(params.promptEfficiency) : 20,
+    debugging: params.debugging != null ? Number(params.debugging) : 20,
+    strategy: params.strategy != null ? Number(params.strategy) : 20,
+    speed: params.speed != null ? Number(params.speed) : 20,
   };
+  // Replace NaN with default
+  const weights = {
+    modelSelection: Number.isFinite(raw.modelSelection) ? raw.modelSelection : 20,
+    promptEfficiency: Number.isFinite(raw.promptEfficiency) ? raw.promptEfficiency : 20,
+    debugging: Number.isFinite(raw.debugging) ? raw.debugging : 20,
+    strategy: Number.isFinite(raw.strategy) ? raw.strategy : 20,
+    speed: Number.isFinite(raw.speed) ? raw.speed : 20,
+  };
+  const sum = weights.modelSelection + weights.promptEfficiency + weights.debugging + weights.strategy + weights.speed;
+  if (sum !== 100) {
+    return { tool: 'set_weights', success: false, result: null, error: `Weights must sum to 100, got ${sum}` };
+  }
   await db
     .update(assessments)
     .set({ categoryWeights: JSON.stringify(weights) })
@@ -205,7 +249,8 @@ async function setTimeLimit(
   if (!context.assessmentId) {
     return { tool: 'set_time_limit', success: false, result: null, error: 'No assessment ID' };
   }
-  const minutes = Math.max(5, Math.min(240, Number(params.minutes) || 60));
+  const raw = Number(params.minutes);
+  const minutes = Math.max(5, Math.min(240, Number.isFinite(raw) ? raw : 60));
   await db
     .update(assessments)
     .set({ timeLimit: minutes * 60 })
@@ -292,16 +337,21 @@ async function setPassThreshold(
     return { tool: 'set_pass_threshold', success: false, result: null, error: 'No assessment ID' };
   }
 
+  const dims = params.dimensions as Record<string, unknown> | undefined;
+  const numOrDefault = (val: unknown, fallback: number) => {
+    const n = Number(val);
+    return Number.isFinite(n) ? n : fallback;
+  };
   const threshold = {
     enabled: params.enabled !== false,
     mode: params.mode === 'weighted_average' ? 'weighted_average' : 'all_dimensions',
-    minOverall: Number(params.minOverall) || 60,
+    minOverall: numOrDefault(params.minOverall, 60),
     dimensions: {
-      modelSelection: Number((params.dimensions as any)?.modelSelection) || 50,
-      promptEfficiency: Number((params.dimensions as any)?.promptEfficiency) || 50,
-      debugging: Number((params.dimensions as any)?.debugging) || 50,
-      strategy: Number((params.dimensions as any)?.strategy) || 50,
-      speed: Number((params.dimensions as any)?.speed) || 50,
+      modelSelection: numOrDefault(dims?.modelSelection, 50),
+      promptEfficiency: numOrDefault(dims?.promptEfficiency, 50),
+      debugging: numOrDefault(dims?.debugging, 50),
+      strategy: numOrDefault(dims?.strategy, 50),
+      speed: numOrDefault(dims?.speed, 50),
     },
   };
 

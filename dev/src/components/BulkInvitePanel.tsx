@@ -30,6 +30,7 @@ export function BulkInvitePanel({ assessmentId, onInvitesSent }: Props) {
   const [sending, setSending] = useState(false);
   const [results, setResults] = useState<InviteResult[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [csvInfo, setCsvInfo] = useState<string | null>(null);
 
   const emails = parseEmails(emailText);
 
@@ -40,24 +41,27 @@ export function BulkInvitePanel({ assessmentId, onInvitesSent }: Props) {
     input.onchange = async (e) => {
       const file = (e.target as HTMLInputElement).files?.[0];
       if (!file) return;
+      setCsvInfo(null);
       const text = await file.text();
       const lines = text.split(/\r?\n/).filter(Boolean);
-      // Try to find email column header
+      // Try to find email column header (matches "email", "e-mail", "email address", etc.)
       const headers = lines[0]?.toLowerCase().split(',') ?? [];
-      const emailIdx = headers.findIndex((h) => h.trim().includes('email'));
+      const emailIdx = headers.findIndex((h) => /e[-_]?mail/.test(h.trim()));
       const dataLines = emailIdx >= 0 ? lines.slice(1) : lines;
       const colIdx = emailIdx >= 0 ? emailIdx : 0;
-      const parsed = dataLines
-        .map((line) => {
-          const cols = line.split(',');
-          return (cols[colIdx] ?? '').trim().replace(/^"|"$/g, '');
-        })
-        .filter((e) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e));
+      const rawEntries = dataLines.map((line) => {
+        const cols = line.split(',');
+        return (cols[colIdx] ?? '').trim().replace(/^"|"$/g, '');
+      });
+      const parsed = rawEntries.filter((e) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e));
+      const rejected = rawEntries.length - parsed.length;
       setEmailText((prev) => {
         const existing = parseEmails(prev);
         const merged = [...new Set([...existing, ...parsed])];
         return merged.join('\n');
       });
+      const info = `Imported ${parsed.length} email${parsed.length !== 1 ? 's' : ''} from ${file.name}`;
+      setCsvInfo(rejected > 0 ? `${info} (${rejected} invalid row${rejected !== 1 ? 's' : ''} skipped)` : info);
     };
     input.click();
   }, []);
@@ -78,6 +82,8 @@ export function BulkInvitePanel({ assessmentId, onInvitesSent }: Props) {
         setError(data.error || 'Failed to create invites');
       } else {
         setResults(data.results);
+        setEmailText('');
+        setCsvInfo(null);
         onInvitesSent();
       }
     } catch {
@@ -122,6 +128,9 @@ export function BulkInvitePanel({ assessmentId, onInvitesSent }: Props) {
             {emails.length} valid email{emails.length !== 1 ? 's' : ''} detected
           </Text>
         </View>
+        {csvInfo && (
+          <Text style={{ fontSize: fontSizes.xs, color: c.textMuted, marginBottom: spacing.sm }}>{csvInfo}</Text>
+        )}
 
         <Button
           onPress={handleSend}
@@ -142,9 +151,16 @@ export function BulkInvitePanel({ assessmentId, onInvitesSent }: Props) {
               {created} invite{created !== 1 ? 's' : ''} created, {emailed} email{emailed !== 1 ? 's' : ''} sent
             </Text>
             {results.filter((r) => r.status === 'failed').length > 0 && (
-              <Text style={{ color: c.destructive, fontSize: fontSizes.xs, marginTop: spacing.xs }}>
-                {results.filter((r) => r.status === 'failed').length} failed
-              </Text>
+              <View style={{ marginTop: spacing.xs }}>
+                <Text style={{ color: c.destructive, fontSize: fontSizes.xs, fontWeight: '600' }}>
+                  {results.filter((r) => r.status === 'failed').length} failed:
+                </Text>
+                {results.filter((r) => r.status === 'failed').map((r, i) => (
+                  <Text key={i} style={{ color: c.destructive, fontSize: fontSizes.xs }}>
+                    {r.email}{r.error ? ` — ${r.error}` : ''}
+                  </Text>
+                ))}
+              </View>
             )}
           </View>
         )}

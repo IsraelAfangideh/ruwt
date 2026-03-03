@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/Input';
 import { useColors } from '@/theme';
 import { spacing, fontSizes, fontFamily } from '@/theme/tokens';
 
-interface PassThreshold {
+export interface PassThreshold {
   enabled: boolean;
   mode: 'all_dimensions' | 'weighted_average';
   minOverall?: number;
@@ -77,6 +77,8 @@ export function PassThresholdEditor({ value, onChange }: Props) {
       {/* Toggle */}
       <Pressable
         onPress={toggleEnabled}
+        accessibilityRole="button"
+        accessibilityLabel={threshold.enabled ? 'Disable auto-grading' : 'Enable auto-grading'}
         style={[
           styles.toggle,
           {
@@ -85,15 +87,17 @@ export function PassThresholdEditor({ value, onChange }: Props) {
           },
         ]}
       >
-        <View
-          style={[
-            styles.toggleDot,
-            {
-              backgroundColor: threshold.enabled ? c.accent : c.textMuted,
-              alignSelf: threshold.enabled ? 'flex-end' : 'flex-start',
-            },
-          ]}
-        />
+        <View style={[styles.toggleTrack, { backgroundColor: threshold.enabled ? c.accent + '40' : c.border }]}>
+          <View
+            style={[
+              styles.toggleDot,
+              {
+                backgroundColor: threshold.enabled ? c.accent : c.textMuted,
+                marginLeft: threshold.enabled ? 14 : 0,
+              },
+            ]}
+          />
+        </View>
         <Text style={[styles.toggleLabel, { color: c.text }]}>
           {threshold.enabled ? 'Auto-grading enabled' : 'Auto-grading disabled'}
         </Text>
@@ -105,6 +109,8 @@ export function PassThresholdEditor({ value, onChange }: Props) {
           <View style={styles.modeRow}>
             <Pressable
               onPress={() => setMode('all_dimensions')}
+              accessibilityRole="button"
+              accessibilityLabel="Use all dimensions above threshold mode"
               style={[
                 styles.modeOption,
                 {
@@ -119,6 +125,8 @@ export function PassThresholdEditor({ value, onChange }: Props) {
             </Pressable>
             <Pressable
               onPress={() => setMode('weighted_average')}
+              accessibilityRole="button"
+              accessibilityLabel="Use weighted average above minimum mode"
               style={[
                 styles.modeOption,
                 {
@@ -164,12 +172,37 @@ export function PassThresholdEditor({ value, onChange }: Props) {
             ))}
           </View>
 
-          <Text style={[styles.explainer, { color: c.textMuted }]}>
-            Scores are percentile ranks (0–100) compared to the candidate pool.{' '}
-            {threshold.mode === 'all_dimensions'
-              ? 'PASS = all dimensions at or above threshold. FAIL = any dimension 20+ points below. Otherwise REVIEW.'
-              : `PASS = weighted average >= ${threshold.minOverall ?? 60}. FAIL = weighted average < ${Math.max(0, (threshold.minOverall ?? 60) - 20)}. Otherwise REVIEW.`}
-          </Text>
+          <View style={[styles.explainerBox, { backgroundColor: c.bgWarm, borderColor: c.border }]}>
+            <Text style={[styles.explainerTitle, { color: c.text }]}>How scoring works</Text>
+            <Text style={[styles.explainerText, { color: c.textMuted }]}>
+              Scores are percentile ranks (0–100) compared to your candidate pool.
+            </Text>
+            {threshold.mode === 'all_dimensions' ? (
+              <View style={{ gap: 4 }}>
+                <Text style={[styles.explainerText, { color: c.success }]}>
+                  {'\u2713'} PASS — every dimension meets or exceeds its threshold
+                </Text>
+                <Text style={[styles.explainerText, { color: c.destructive }]}>
+                  {'\u2717'} FAIL — any dimension is 20+ points below its threshold
+                </Text>
+                <Text style={[styles.explainerText, { color: c.accent }]}>
+                  {'~'} REVIEW — borderline; at least one dimension below threshold but within 20 points
+                </Text>
+              </View>
+            ) : (
+              <View style={{ gap: 4 }}>
+                <Text style={[styles.explainerText, { color: c.success }]}>
+                  {'\u2713'} PASS — weighted average {'\u2265'} {threshold.minOverall ?? 60}
+                </Text>
+                <Text style={[styles.explainerText, { color: c.destructive }]}>
+                  {'\u2717'} FAIL — weighted average {'<'} {Math.max(0, (threshold.minOverall ?? 60) - 20)}
+                </Text>
+                <Text style={[styles.explainerText, { color: c.accent }]}>
+                  {'~'} REVIEW — weighted average between {Math.max(0, (threshold.minOverall ?? 60) - 20)} and {(threshold.minOverall ?? 60) - 1}
+                </Text>
+              </View>
+            )}
+          </View>
         </>
       )}
     </View>
@@ -190,6 +223,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     marginBottom: spacing.md,
   },
+  toggleTrack: { width: 26, height: 14, borderRadius: 7, justifyContent: 'center', paddingHorizontal: 1 },
   toggleDot: { width: 12, height: 12, borderRadius: 6 },
   toggleLabel: { fontSize: fontSizes.sm, fontWeight: '500' },
   modeRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.md },
@@ -211,5 +245,12 @@ const styles = StyleSheet.create({
   dimensionGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md, marginBottom: spacing.md },
   dimensionItem: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, minWidth: 200 },
   weightLabel: { fontSize: fontSizes.sm, fontWeight: '500', width: 130 },
-  explainer: { fontSize: fontSizes.xs, fontStyle: 'italic' },
+  explainerBox: {
+    padding: spacing.md,
+    borderWidth: 1,
+    borderRadius: 8,
+    gap: spacing.xs,
+  },
+  explainerTitle: { fontSize: fontSizes.sm, fontWeight: '600', marginBottom: 2 },
+  explainerText: { fontSize: fontSizes.sm, lineHeight: 20 },
 });

@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { View, Text, ActivityIndicator, StyleSheet, Pressable } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { createClient } from '@/lib/supabase/client';
@@ -12,16 +12,10 @@ import { spacing, fontSizes, fontFamily } from '@/theme/tokens';
 import { ASSESSMENT_TEMPLATES, type AssessmentTemplate } from '@/lib/assessment-templates';
 import { DIFFICULTIES, getDifficultyStyle } from '@/lib/difficulty';
 import { AssessmentAgentChat } from '@/components/AssessmentAgentChat';
-import { PassThresholdEditor } from '@/components/PassThresholdEditor';
+import { PassThresholdEditor, type PassThreshold } from '@/components/PassThresholdEditor';
 import { BulkInvitePanel } from '@/components/BulkInvitePanel';
 import { InviteManagementTable } from '@/components/InviteManagementTable';
 import { CustomChallengeReview } from '@/components/CustomChallengeReview';
-interface PassThreshold {
-  enabled: boolean;
-  mode: 'all_dimensions' | 'weighted_average';
-  minOverall?: number;
-  dimensions: Record<string, number>;
-}
 
 interface Challenge {
   id: string;
@@ -73,7 +67,15 @@ export function AssessmentBuilderScreen() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [activating, setActivating] = useState(false);
   const [activateError, setActivateError] = useState<string | null>(null);
+  const [inviteError, setInviteError] = useState<string | null>(null);
+  const [generatingInvite, setGeneratingInvite] = useState(false);
+  const [confirmActivate, setConfirmActivate] = useState(false);
+  const [dirty, setDirty] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const initialLoadDone = useRef(false);
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -81,6 +83,9 @@ export function AssessmentBuilderScreen() {
   const [selectedChallengeIds, setSelectedChallengeIds] = useState<string[]>([]);
   const [allChallenges, setAllChallenges] = useState<Challenge[]>([]);
   const [assessmentId, setAssessmentId] = useState<string | undefined>(params.assessmentId);
+  const assessmentIdRef = useRef(assessmentId);
+  assessmentIdRef.current = assessmentId;
+  const timersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
   const [status, setStatus] = useState('draft');
   const [inviteLink, setInviteLink] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -100,6 +105,11 @@ export function AssessmentBuilderScreen() {
     speed: '20',
   });
 
+  const weightSum = useMemo(() => {
+    const vals = Object.values(weights).map((v) => parseInt(v, 10));
+    return vals.every(Number.isFinite) ? vals.reduce((a, b) => a + b, 0) : NaN;
+  }, [weights]);
+
   // Pass threshold
   const [passThreshold, setPassThreshold] = useState<PassThreshold | null>(null);
 
@@ -114,6 +124,25 @@ export function AssessmentBuilderScreen() {
   const [challengeSearch, setChallengeSearch] = useState('');
   const [difficultyFilter, setDifficultyFilter] = useState('all');
   const [categoryFilter, setCategoryFilter] = useState('all');
+
+  // Clear pending timers on unmount
+  useEffect(() => {
+    return () => { timersRef.current.forEach(clearTimeout); };
+  }, []);
+
+  // Warn before unloading with unsaved changes
+  useEffect(() => {
+    const handler = (e: BeforeUnloadEvent) => {
+      if (dirty) { e.preventDefault(); }
+    };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [dirty]);
+
+  // Mark dirty when form fields change (skip first render / initial load)
+  useEffect(() => {
+    if (initialLoadDone.current) setDirty(true);
+  }, [title, description, timeLimitMinutes, selectedChallengeIds, companyName, companyLogoUrl, welcomeMessage, weights, passThreshold]);
 
   useEffect(() => {
     const init = async () => {
@@ -130,7 +159,11 @@ export function AssessmentBuilderScreen() {
         fetch('/api/orgs').catch(() => null),
       ]);
 
-      if (challengesRes?.ok) setAllChallenges(await challengesRes.json());
+      if (challengesRes?.ok) {
+        setAllChallenges(await challengesRes.json());
+      } else {
+        setLoadError('Failed to load challenges. Try refreshing the page.');
+      }
 
       // Get org and its custom challenges
       if (orgsRes?.ok) {
@@ -182,6 +215,8 @@ export function AssessmentBuilderScreen() {
         } catch (_) {}
       }
       setLoading(false);
+      // Allow a tick for state setters to flush before tracking dirty
+      setTimeout(() => { initialLoadDone.current = true; }, 0);
     };
     init();
   }, [navigation, supabase.auth, params.assessmentId]);
@@ -204,26 +239,29 @@ export function AssessmentBuilderScreen() {
 
   const handleSave = useCallback(async () => {
     setSaving(true);
+    setSaveError(null);
     try {
-      const timeLimit = Math.max(300, parseInt(timeLimitMinutes, 10) * 60 || 3600);
+      const rawMinutes = parseInt(timeLimitMinutes, 10);
+      const timeLimit = Math.min(14400, Math.max(300, Number.isFinite(rawMinutes) ? rawMinutes * 60 : 3600));
       let currentId = assessmentId;
 
       const brandingFields: Record<string, unknown> = {};
       if (companyName) brandingFields.companyName = companyName;
       if (companyLogoUrl) brandingFields.companyLogoUrl = companyLogoUrl;
       if (welcomeMessage) brandingFields.welcomeMessage = welcomeMessage;
+      const parseWeight = (v: string) => { const n = parseInt(v, 10); return Number.isFinite(n) ? n : 20; };
       const categoryWeights = JSON.stringify({
-        modelSelection: parseInt(weights.modelSelection, 10) || 20,
-        promptEfficiency: parseInt(weights.promptEfficiency, 10) || 20,
-        debugging: parseInt(weights.debugging, 10) || 20,
-        strategy: parseInt(weights.strategy, 10) || 20,
-        speed: parseInt(weights.speed, 10) || 20,
+        modelSelection: parseWeight(weights.modelSelection),
+        promptEfficiency: parseWeight(weights.promptEfficiency),
+        debugging: parseWeight(weights.debugging),
+        strategy: parseWeight(weights.strategy),
+        speed: parseWeight(weights.speed),
       });
 
       const passThresholdStr = passThreshold ? JSON.stringify(passThreshold) : null;
 
       if (currentId) {
-        await fetch(`/api/assessments/${currentId}`, {
+        const res = await fetch(`/api/assessments/${currentId}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -235,81 +273,109 @@ export function AssessmentBuilderScreen() {
             passThreshold: passThresholdStr,
           }),
         });
+        if (!res.ok) throw new Error('Failed to save assessment');
       } else {
         const res = await fetch('/api/assessments', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ title, description: description || undefined, timeLimit }),
         });
-        if (res.ok) {
-          const data = await res.json();
-          currentId = data.id;
-          setAssessmentId(data.id);
-        }
+        if (!res.ok) throw new Error('Failed to create assessment');
+        const data = await res.json();
+        currentId = data.id;
+        setAssessmentId(data.id);
       }
 
       // Save branding + weights + threshold on newly created assessments
-      if (currentId && !assessmentId && (Object.keys(brandingFields).length > 0 || categoryWeights || passThresholdStr)) {
-        await fetch(`/api/assessments/${currentId}`, {
+      // (POST endpoint only accepts title/description/timeLimit, so a follow-up PUT is required)
+      if (currentId && !assessmentId) {
+        const res = await fetch(`/api/assessments/${currentId}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ ...brandingFields, categoryWeights, passThreshold: passThresholdStr }),
         });
+        if (!res.ok) throw new Error('Failed to save assessment details');
       }
 
-      if (currentId && selectedChallengeIds.length > 0) {
-        await fetch(`/api/assessments/${currentId}/challenges`, {
+      if (currentId) {
+        const res = await fetch(`/api/assessments/${currentId}/challenges`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ challengeIds: selectedChallengeIds }),
         });
+        if (!res.ok) throw new Error('Failed to save challenges');
       }
-    } catch (_) {}
+      setDirty(false);
+      setSaveSuccess(true);
+      timersRef.current.push(setTimeout(() => setSaveSuccess(false), 2500));
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : 'Save failed');
+      timersRef.current.push(setTimeout(() => setSaveError(null), 4000));
+    }
     setSaving(false);
-    setSaveSuccess(true);
-    setTimeout(() => setSaveSuccess(false), 2500);
   }, [assessmentId, title, description, timeLimitMinutes, selectedChallengeIds, companyName, companyLogoUrl, welcomeMessage, weights, passThreshold]);
 
   const handleActivate = useCallback(async () => {
     /* v8 ignore next */
     if (!assessmentId) return;
+    if (!title.trim()) {
+      setActivateError('Enter a title before activating.');
+      timersRef.current.push(setTimeout(() => setActivateError(null), 4000));
+      return;
+    }
     if (selectedChallengeIds.length === 0) {
       setActivateError('Select at least one challenge before activating.');
+      timersRef.current.push(setTimeout(() => setActivateError(null), 4000));
       return;
     }
     setActivateError(null);
-    await fetch(`/api/assessments/${assessmentId}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status: 'active' }),
-    });
-    setStatus('active');
-  }, [assessmentId, selectedChallengeIds.length]);
-
-  const [inviteError, setInviteError] = useState<string | null>(null);
+    setActivating(true);
+    try {
+      const res = await fetch(`/api/assessments/${assessmentId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'active' }),
+      });
+      if (!res.ok) throw new Error('Failed to activate');
+      setStatus('active');
+    } catch (err) {
+      setActivateError(err instanceof Error ? err.message : 'Activation failed');
+      timersRef.current.push(setTimeout(() => setActivateError(null), 4000));
+    }
+    setActivating(false);
+  }, [assessmentId, title, selectedChallengeIds.length]);
 
   const handleGenerateInvite = useCallback(async () => {
     /* v8 ignore next */
     if (!assessmentId) return;
     setInviteError(null);
-    const res = await fetch(`/api/assessments/${assessmentId}/invites`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({}),
-    });
-    const data = await res.json();
-    if (res.ok) {
-      setInviteLink(data.url);
-    } else {
-      setInviteError(data.error || 'Failed to generate invite link');
+    setGeneratingInvite(true);
+    try {
+      const res = await fetch(`/api/assessments/${assessmentId}/invites`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      });
+      const data = await res.json().catch(() => ({ error: 'Invalid response' }));
+      if (res.ok) {
+        setInviteLink(data.url);
+      } else {
+        setInviteError(data.error || 'Failed to generate invite link');
+        timersRef.current.push(setTimeout(() => setInviteError(null), 4000));
+      }
+    } catch {
+      setInviteError('Network error — please try again');
+      timersRef.current.push(setTimeout(() => setInviteError(null), 4000));
     }
+    setGeneratingInvite(false);
   }, [assessmentId]);
 
   // Agent callbacks
   const handleAgentChallengesChanged = useCallback(async () => {
-    if (!assessmentId) return;
+    const currentId = assessmentIdRef.current;
+    if (!currentId) return;
     try {
-      const res = await fetch(`/api/assessments/${assessmentId}`);
+      const res = await fetch(`/api/assessments/${currentId}`);
       if (res.ok) {
         const data = await res.json();
         setSelectedChallengeIds(
@@ -319,7 +385,7 @@ export function AssessmentBuilderScreen() {
         );
       }
     } catch {}
-  }, [assessmentId]);
+  }, []);
 
   const handleAgentWeightsChanged = useCallback((newWeights: Record<string, number>) => {
     setWeights({
@@ -332,6 +398,8 @@ export function AssessmentBuilderScreen() {
   }, []);
 
   const handleAgentBrandingChanged = useCallback((fields: Record<string, string>) => {
+    if (fields.title !== undefined) setTitle(fields.title);
+    if (fields.description !== undefined) setDescription(fields.description);
     if (fields.companyName !== undefined) setCompanyName(fields.companyName);
     if (fields.companyLogoUrl !== undefined) setCompanyLogoUrl(fields.companyLogoUrl);
     if (fields.welcomeMessage !== undefined) setWelcomeMessage(fields.welcomeMessage);
@@ -352,6 +420,10 @@ export function AssessmentBuilderScreen() {
       if (res.ok) setCustomChallenges(await res.json());
     } catch {}
   }, [orgId]);
+
+  const handleAgentAssessmentCreated = useCallback((newId: string) => {
+    setAssessmentId(newId);
+  }, []);
 
   const handleApproveCustomChallenge = useCallback((id: string) => {
     setCustomChallenges((prev) =>
@@ -416,30 +488,68 @@ export function AssessmentBuilderScreen() {
         <Button
           variant="ghost"
           size="sm"
-          onPress={() => navigation.navigate('Assessments' as never)}
+          onPress={() => {
+            if (dirty && !window.confirm('You have unsaved changes. Leave anyway?')) return;
+            navigation.navigate('Assessments' as never);
+          }}
         >
           {'\u2190'} Back to Assessments
         </Button>
         <View style={styles.titleRow}>
-          <Text style={[styles.title, { color: c.text }]}>
-            {params.assessmentId ? 'Edit Assessment' : 'Create Assessment'}
-          </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+            <Text style={[styles.title, { color: c.text }]}>
+              {params.assessmentId ? 'Edit Assessment' : 'Create Assessment'}
+            </Text>
+            {assessmentId && (
+              <Badge
+                variant="outline"
+                style={{
+                  borderColor: status === 'active' ? c.success + '60' : c.accent + '60',
+                  backgroundColor: status === 'active' ? c.success + '10' : c.accent + '10',
+                }}
+              >
+                <Text style={{ fontSize: 10, fontWeight: '600', color: status === 'active' ? c.success : c.accent }}>
+                  {status === 'active' ? 'ACTIVE' : 'DRAFT'}
+                </Text>
+              </Badge>
+            )}
+          </View>
           <View style={styles.actions}>
-            <Button onPress={handleSave} disabled={saving || !title}>
-              {saving ? 'Saving...' : saveSuccess ? '\u2713 Saved' : 'Save Assessment'}
-            </Button>
-            {assessmentId && status === 'draft' && (
-              <Button variant="outline" onPress={handleActivate}>
-                Activate
+            <View style={{ alignItems: 'flex-start' }}>
+              <Button onPress={handleSave} disabled={saving || !title || !Number.isFinite(weightSum) || weightSum !== 100}>
+                {saving ? 'Saving...' : saveError ? '\u2717 Error' : saveSuccess ? '\u2713 Saved' : 'Save Assessment'}
               </Button>
+              {!saving && !saveSuccess && !saveError && (!title || !Number.isFinite(weightSum) || weightSum !== 100) && (
+                <Text style={{ fontSize: 10, color: c.destructive, marginTop: 2 }}>
+                  {!title ? 'Title required' : 'Weights must = 100'}
+                </Text>
+              )}
+            </View>
+            {assessmentId && status === 'draft' && (
+              confirmActivate ? (
+                <View style={{ flexDirection: 'row', gap: spacing.sm, alignItems: 'center' }}>
+                  <Button variant="outline" onPress={() => { setConfirmActivate(false); handleActivate(); }} disabled={activating}>
+                    {activating ? 'Activating...' : 'Confirm Activate'}
+                  </Button>
+                  <Button variant="ghost" size="sm" onPress={() => setConfirmActivate(false)}>
+                    Cancel
+                  </Button>
+                </View>
+              ) : (
+                <Button variant="outline" onPress={() => setConfirmActivate(true)} disabled={activating}>
+                  Activate
+                </Button>
+              )
             )}
             {assessmentId && status === 'active' && (
-              <Button variant="secondary" onPress={handleGenerateInvite}>
-                Generate Invite Link
+              <Button variant="secondary" onPress={handleGenerateInvite} disabled={generatingInvite}>
+                {generatingInvite ? 'Generating...' : 'Generate Invite Link'}
               </Button>
             )}
             <Pressable
               onPress={() => setShowAgent(!showAgent)}
+              accessibilityRole="button"
+              accessibilityLabel={showAgent ? 'Hide AI assistant' : 'Show AI assistant'}
               style={[
                 styles.agentToggle,
                 {
@@ -466,7 +576,7 @@ export function AssessmentBuilderScreen() {
               <Text style={[styles.sectionLabel, { color: c.text }]}>Start from a Template</Text>
               <View style={styles.templateGrid}>
                 {ASSESSMENT_TEMPLATES.map((t) => (
-                  <Pressable key={t.id} onPress={() => applyTemplate(t)}>
+                  <Pressable key={t.id} onPress={() => applyTemplate(t)} accessibilityRole="button">
                     <Card style={[styles.templateCard, { borderColor: c.border }]}>
                       <CardHeader>
                         <CardTitle>{t.name}</CardTitle>
@@ -498,13 +608,24 @@ export function AssessmentBuilderScreen() {
               value={description}
               onChangeText={setDescription}
             />
-            <Input
-              label="Time Limit (minutes)"
-              placeholder="60"
-              value={timeLimitMinutes}
-              onChangeText={setTimeLimitMinutes}
-              keyboardType="numeric"
-            />
+            <View>
+              <Input
+                label="Time Limit (minutes)"
+                placeholder="60"
+                value={timeLimitMinutes}
+                onChangeText={setTimeLimitMinutes}
+                keyboardType="numeric"
+              />
+              {(() => {
+                const mins = parseInt(timeLimitMinutes, 10);
+                const invalid = timeLimitMinutes !== '' && (!Number.isFinite(mins) || mins < 5 || mins > 240);
+                return (
+                  <Text style={{ fontSize: fontSizes.xs, color: invalid ? c.destructive : c.textMuted, marginTop: 4 }}>
+                    {invalid ? `${!Number.isFinite(mins) ? 'Enter a number' : mins < 5 ? 'Minimum is 5 minutes' : 'Maximum is 240 minutes'}` : 'Minimum 5 min, maximum 240 min'}
+                  </Text>
+                );
+              })()}
+            </View>
           </View>
 
           {/* Company Branding */}
@@ -520,12 +641,25 @@ export function AssessmentBuilderScreen() {
                 value={companyName}
                 onChangeText={setCompanyName}
               />
-              <Input
-                label="Company Logo URL"
-                placeholder="https://example.com/logo.png"
-                value={companyLogoUrl}
-                onChangeText={setCompanyLogoUrl}
-              />
+              <View>
+                <Input
+                  label="Company Logo URL"
+                  placeholder="https://example.com/logo.png"
+                  value={companyLogoUrl}
+                  onChangeText={setCompanyLogoUrl}
+                />
+                {companyLogoUrl && /^https?:\/\//i.test(companyLogoUrl) && (
+                  <View style={{ marginTop: spacing.sm, flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+                    <img
+                      src={companyLogoUrl}
+                      alt="Logo preview"
+                      style={{ maxHeight: 40, maxWidth: 120, objectFit: 'contain', borderRadius: 4 }}
+                      onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                    />
+                    <Text style={{ fontSize: fontSizes.xs, color: c.textMuted }}>Preview</Text>
+                  </View>
+                )}
+              </View>
               <Input
                 label="Welcome Message"
                 placeholder="Welcome to our AI engineering assessment..."
@@ -563,6 +697,31 @@ export function AssessmentBuilderScreen() {
                 </View>
               ))}
             </View>
+            <View style={{ marginTop: spacing.sm }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: 4 }}>
+                <View style={{ flex: 1, height: 6, backgroundColor: c.border, borderRadius: 3, overflow: 'hidden' }}>
+                  <View style={{
+                    height: 6,
+                    borderRadius: 3,
+                    width: `${Math.min(100, Number.isFinite(weightSum) ? weightSum : 0)}%`,
+                    backgroundColor: weightSum === 100 ? c.success : weightSum > 100 ? c.destructive : c.accent,
+                  } as any} />
+                </View>
+                <Text style={{
+                  fontSize: fontSizes.xs,
+                  fontWeight: '600',
+                  color: weightSum === 100 ? c.success : Number.isFinite(weightSum) ? c.destructive : c.textMuted,
+                  minWidth: 50,
+                }}>
+                  {Number.isFinite(weightSum) ? `${weightSum}/100` : '—/100'}
+                </Text>
+              </View>
+              {Number.isFinite(weightSum) && weightSum !== 100 && (
+                <Text style={{ fontSize: fontSizes.xs, color: c.destructive }}>
+                  Weights must sum to 100
+                </Text>
+              )}
+            </View>
             <View style={[styles.divider, { borderBottomColor: c.border }]} />
           </View>
 
@@ -590,6 +749,7 @@ export function AssessmentBuilderScreen() {
                   <Pressable
                     key={d.key}
                     onPress={() => setDifficultyFilter(d.key)}
+                    accessibilityRole="button"
                     style={[
                       styles.filterPill,
                       {
@@ -609,6 +769,7 @@ export function AssessmentBuilderScreen() {
                   <Pressable
                     key={cat.key}
                     onPress={() => setCategoryFilter(cat.key)}
+                    accessibilityRole="button"
                     style={[
                       styles.filterPill,
                       {
@@ -623,47 +784,99 @@ export function AssessmentBuilderScreen() {
                   </Pressable>
                 ))}
               </View>
-              <Text style={{ fontSize: fontSizes.xs, color: c.textMuted, marginTop: spacing.xs }}>
-                {filteredChallenges.length + filteredCustomChallenges.length} challenges shown
-              </Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginTop: spacing.xs }}>
+                <Text style={{ fontSize: fontSizes.xs, color: c.textMuted }}>
+                  {filteredChallenges.length + filteredCustomChallenges.length} challenges shown
+                </Text>
+                {filteredChallenges.length + filteredCustomChallenges.length > 0 && (
+                  <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+                    <Pressable accessibilityRole="button" onPress={() => {
+                      const visibleIds = [...filteredChallenges, ...filteredCustomChallenges].map((ch) => ch.id);
+                      setSelectedChallengeIds((prev) => [...new Set([...prev, ...visibleIds])]);
+                    }}>
+                      <Text style={{ fontSize: fontSizes.xs, color: c.accent, fontWeight: '600' }}>Select All Visible</Text>
+                    </Pressable>
+                    {selectedChallengeIds.length > 0 && (
+                      <Pressable accessibilityRole="button" onPress={() => setSelectedChallengeIds([])}>
+                        <Text style={{ fontSize: fontSizes.xs, color: c.textMuted, fontWeight: '600' }}>Clear All</Text>
+                      </Pressable>
+                    )}
+                  </View>
+                )}
+              </View>
             </View>
+
+            {/* Load error */}
+            {loadError && (
+              <View style={[styles.inviteErrorBanner, { backgroundColor: c.destructive + '15', borderColor: c.destructive + '30' }]}>
+                <Text style={{ color: c.destructive, fontSize: fontSizes.sm }}>{loadError}</Text>
+              </View>
+            )}
+
+            {/* Empty state when no challenges match filters */}
+            {!loadError && filteredChallenges.length === 0 && filteredCustomChallenges.length === 0 && (
+              <View style={{ paddingVertical: spacing.xl, alignItems: 'center' }}>
+                <Text style={{ fontSize: fontSizes.md, color: c.textMuted, marginBottom: spacing.xs }}>
+                  No challenges match your filters
+                  {(difficultyFilter !== 'all' || categoryFilter !== 'all' || challengeSearch) && (
+                    <>
+                      {' ('}
+                      {[
+                        difficultyFilter !== 'all' && difficultyFilter,
+                        categoryFilter !== 'all' && PICKER_CATEGORIES.find((cat) => cat.key === categoryFilter)?.label,
+                        challengeSearch && `"${challengeSearch}"`,
+                      ].filter(Boolean).join(', ')}
+                      {')'}
+                    </>
+                  )}
+                </Text>
+                <Pressable accessibilityRole="button" onPress={() => { setChallengeSearch(''); setDifficultyFilter('all'); setCategoryFilter('all'); }}>
+                  <Text style={{ fontSize: fontSizes.sm, color: c.accent, fontWeight: '600' }}>Clear filters</Text>
+                </Pressable>
+              </View>
+            )}
 
             {/* Platform challenges */}
             <View style={styles.challengeGrid}>
               {filteredChallenges.map((ch) => {
                 const selected = selectedChallengeIds.includes(ch.id);
                 return (
-                  <Pressable key={ch.id} onPress={() => toggleChallenge(ch.id)}>
+                  <Pressable key={ch.id} onPress={() => toggleChallenge(ch.id)} accessibilityRole="button">
                     <Card
                       style={[
                         styles.challengeCard,
                         { borderColor: selected ? c.accent : c.border },
-                        selected && { borderWidth: 2 },
+                        selected && { borderWidth: 2, backgroundColor: c.accent + '08' },
                       ]}
                     >
                       <CardHeader>
-                        <View style={styles.challengeBadges}>
-                          <Badge
-                            variant="outline"
-                            style={{
-                              borderColor: getDifficultyStyle(ch.difficulty).color,
-                              backgroundColor: getDifficultyStyle(ch.difficulty).bg,
-                            }}
-                          >
-                            <Text
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                          <View style={styles.challengeBadges}>
+                            <Badge
+                              variant="outline"
                               style={{
-                                fontSize: fontSizes.xs,
-                                color: getDifficultyStyle(ch.difficulty).color,
+                                borderColor: getDifficultyStyle(ch.difficulty).color,
+                                backgroundColor: getDifficultyStyle(ch.difficulty).bg,
                               }}
                             >
-                              {getDifficultyStyle(ch.difficulty).label}
-                            </Text>
-                          </Badge>
-                          <Badge variant="outline" style={{ borderColor: categoryColor(ch.category) }}>
-                            <Text style={{ fontSize: fontSizes.xs, color: categoryColor(ch.category) }}>
-                              {categoryLabel(ch.category)}
-                            </Text>
-                          </Badge>
+                              <Text
+                                style={{
+                                  fontSize: fontSizes.xs,
+                                  color: getDifficultyStyle(ch.difficulty).color,
+                                }}
+                              >
+                                {getDifficultyStyle(ch.difficulty).label}
+                              </Text>
+                            </Badge>
+                            <Badge variant="outline" style={{ borderColor: categoryColor(ch.category) }}>
+                              <Text style={{ fontSize: fontSizes.xs, color: categoryColor(ch.category) }}>
+                                {categoryLabel(ch.category)}
+                              </Text>
+                            </Badge>
+                          </View>
+                          {selected && (
+                            <Text style={{ fontSize: fontSizes.md, color: c.accent, fontWeight: '700' }}>{'\u2713'}</Text>
+                          )}
                         </View>
                         <CardTitle>{ch.title}</CardTitle>
                         {ch.skillTested && (
@@ -676,40 +889,52 @@ export function AssessmentBuilderScreen() {
               })}
 
               {/* Active custom challenges */}
+              {filteredCustomChallenges.length > 0 && filteredChallenges.length > 0 && (
+                <View style={{ width: '100%', flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginVertical: spacing.sm }}>
+                  <View style={{ flex: 1, height: 1, backgroundColor: c.border }} />
+                  <Text style={{ fontSize: fontSizes.xs, color: c.textMuted, fontWeight: '600' }}>Custom Challenges</Text>
+                  <View style={{ flex: 1, height: 1, backgroundColor: c.border }} />
+                </View>
+              )}
               {filteredCustomChallenges.map((ch) => {
                 const selected = selectedChallengeIds.includes(ch.id);
                 return (
-                  <Pressable key={ch.id} onPress={() => toggleChallenge(ch.id)}>
+                  <Pressable key={ch.id} onPress={() => toggleChallenge(ch.id)} accessibilityRole="button">
                     <Card
                       style={[
                         styles.challengeCard,
                         { borderColor: selected ? c.accent : c.border },
-                        selected && { borderWidth: 2 },
+                        selected && { borderWidth: 2, backgroundColor: c.accent + '08' },
                       ]}
                     >
                       <CardHeader>
-                        <View style={styles.challengeBadges}>
-                          <Badge
-                            variant="outline"
-                            style={{
-                              borderColor: getDifficultyStyle(ch.difficulty).color,
-                              backgroundColor: getDifficultyStyle(ch.difficulty).bg,
-                            }}
-                          >
-                            <Text
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                          <View style={styles.challengeBadges}>
+                            <Badge
+                              variant="outline"
                               style={{
-                                fontSize: fontSizes.xs,
-                                color: getDifficultyStyle(ch.difficulty).color,
+                                borderColor: getDifficultyStyle(ch.difficulty).color,
+                                backgroundColor: getDifficultyStyle(ch.difficulty).bg,
                               }}
                             >
-                              {getDifficultyStyle(ch.difficulty).label}
-                            </Text>
-                          </Badge>
-                          <Badge variant="outline" style={{ borderColor: c.accent + '60', backgroundColor: c.accent + '10' }}>
-                            <Text style={{ fontSize: fontSizes.xs, color: c.accent }}>
-                              Custom
-                            </Text>
-                          </Badge>
+                              <Text
+                                style={{
+                                  fontSize: fontSizes.xs,
+                                  color: getDifficultyStyle(ch.difficulty).color,
+                                }}
+                              >
+                                {getDifficultyStyle(ch.difficulty).label}
+                              </Text>
+                            </Badge>
+                            <Badge variant="outline" style={{ borderColor: c.accent + '60', backgroundColor: c.accent + '10' }}>
+                              <Text style={{ fontSize: fontSizes.xs, color: c.accent }}>
+                                Custom
+                              </Text>
+                            </Badge>
+                          </View>
+                          {selected && (
+                            <Text style={{ fontSize: fontSizes.md, color: c.accent, fontWeight: '700' }}>{'\u2713'}</Text>
+                          )}
                         </View>
                         <CardTitle>{ch.title}</CardTitle>
                         {ch.skillTested && (
@@ -745,7 +970,12 @@ export function AssessmentBuilderScreen() {
             </View>
           )}
 
-          {/* Activation / Invite errors */}
+          {/* Save / Activation / Invite errors */}
+          {saveError && (
+            <View style={[styles.inviteErrorBanner, { backgroundColor: c.destructive + '15', borderColor: c.destructive + '30' }]}>
+              <Text style={{ color: c.destructive, fontSize: fontSizes.sm }}>{saveError}</Text>
+            </View>
+          )}
           {activateError && (
             <View style={[styles.inviteErrorBanner, { backgroundColor: c.destructive + '15', borderColor: c.destructive + '30' }]}>
               <Text style={{ color: c.destructive, fontSize: fontSizes.sm }}>{activateError}</Text>
@@ -815,6 +1045,7 @@ export function AssessmentBuilderScreen() {
                 onTimeLimitChanged={handleAgentTimeLimitChanged}
                 onThresholdChanged={handleAgentThresholdChanged}
                 onCustomChallengeCreated={handleCustomChallengeCreated}
+                onAssessmentCreated={handleAgentAssessmentCreated}
               />
             </View>
           </View>
@@ -827,10 +1058,10 @@ export function AssessmentBuilderScreen() {
 const styles = StyleSheet.create({
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   section: { marginBottom: spacing.lg, paddingBottom: spacing.md, borderBottomWidth: 1 },
-  titleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: spacing.sm },
+  titleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: spacing.sm, flexWrap: 'wrap', gap: spacing.sm },
   title: { fontSize: fontSizes['3xl'], fontWeight: '700', fontFamily: fontFamily.body },
   form: { gap: spacing.md, marginBottom: spacing.lg },
-  actions: { flexDirection: 'row', gap: spacing.md, alignItems: 'center' },
+  actions: { flexDirection: 'row', gap: spacing.md, alignItems: 'center', flexWrap: 'wrap' },
   agentToggle: {
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.xs,

@@ -2,11 +2,13 @@
  * Hook for streaming AI assessment agent communication.
  * Connects to POST /api/ai/assessment-agent via SSE.
  */
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 
-interface Message {
-  role: 'user' | 'assistant';
+export interface Message {
+  role: 'user' | 'assistant' | 'system';
   content: string;
+  /** For system messages: 'tool_result' | 'tool_error' | 'assessment_created' */
+  systemType?: string;
 }
 
 interface ToolResult {
@@ -19,19 +21,48 @@ interface ToolResult {
 interface UseAssessmentAgentParams {
   assessmentId?: string;
   onToolResult?: (tool: string, result: ToolResult) => void;
+  onAssessmentCreated?: (assessmentId: string) => void;
 }
 
-export function useAssessmentAgent({ assessmentId, onToolResult }: UseAssessmentAgentParams) {
+const TOOL_LABELS: Record<string, string> = {
+  search_challenges: 'Searching challenges...',
+  select_challenges: 'Adding challenges...',
+  remove_challenges: 'Removing challenges...',
+  set_weights: 'Setting score weights...',
+  set_time_limit: 'Setting time limit...',
+  set_branding: 'Updating branding...',
+  create_custom_challenge: 'Creating custom challenge...',
+  set_pass_threshold: 'Configuring thresholds...',
+};
+
+const TOOL_SUCCESS_LABELS: Record<string, (result: any) => string> = {
+  select_challenges: (r) => `Added ${r?.added ?? 0} challenge${r?.added === 1 ? '' : 's'}`,
+  remove_challenges: (r) => `Removed ${r?.removed ?? 0} challenge${r?.removed === 1 ? '' : 's'}`,
+  set_weights: () => 'Score weights updated',
+  set_time_limit: (r) => `Time limit set to ${r?.minutes ?? '?'} min`,
+  set_branding: () => 'Branding updated',
+  create_custom_challenge: (r) => `Custom challenge "${r?.title ?? 'Untitled'}" created (draft)`,
+  set_pass_threshold: () => 'Pass threshold configured',
+  search_challenges: (r) => `Found ${r?.count ?? 0} matching challenge${r?.count === 1 ? '' : 's'}`,
+};
+
+export function useAssessmentAgent({ assessmentId, onToolResult, onAssessmentCreated }: UseAssessmentAgentParams) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [streaming, setStreaming] = useState(false);
+  const [streamingStatus, setStreamingStatus] = useState<string>('Thinking...');
   const [conversationId, setConversationId] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const messagesRef = useRef<Message[]>(messages);
+  messagesRef.current = messages;
+  const conversationIdRef = useRef<string | null>(conversationId);
+  conversationIdRef.current = conversationId;
 
   const sendMessage = useCallback(async (text: string) => {
     const userMsg: Message = { role: 'user', content: text };
-    const newMessages = [...messages, userMsg];
+    const newMessages = [...messagesRef.current, userMsg];
     setMessages(newMessages);
     setStreaming(true);
+    setStreamingStatus('Thinking...');
 
     abortRef.current = new AbortController();
 
@@ -40,9 +71,9 @@ export function useAssessmentAgent({ assessmentId, onToolResult }: UseAssessment
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          messages: newMessages,
+          messages: newMessages.filter((m) => m.role !== 'system'),
           assessmentId,
-          conversationId,
+          conversationId: conversationIdRef.current,
         }),
         signal: abortRef.current.signal,
       });
@@ -97,17 +128,43 @@ export function useAssessmentAgent({ assessmentId, onToolResult }: UseAssessment
                 break;
 
               case 'thinking':
-                // We could display thinking separately, but for now append to content
                 break;
 
               case 'tool_call':
-                // Tool call detected — will be followed by tool_result
+                setStreamingStatus(TOOL_LABELS[event.tool] || `Running ${event.tool}...`);
                 break;
 
-              case 'tool_result':
+              case 'tool_result': {
                 if (onToolResult) {
                   onToolResult(event.tool, event);
                 }
+                // Add inline feedback as a system message
+                const label = event.success
+                  ? (TOOL_SUCCESS_LABELS[event.tool]?.(event.result) ?? `${event.tool} completed`)
+                  : `Failed: ${event.error || event.tool}`;
+                setMessages((prev) => [
+                  ...prev,
+                  {
+                    role: 'system',
+                    content: label,
+                    systemType: event.success ? 'tool_result' : 'tool_error',
+                  },
+                ]);
+                break;
+              }
+
+              case 'assessment_created':
+                if (event.assessmentId && onAssessmentCreated) {
+                  onAssessmentCreated(event.assessmentId);
+                }
+                setMessages((prev) => [
+                  ...prev,
+                  {
+                    role: 'system',
+                    content: 'New assessment draft created',
+                    systemType: 'assessment_created',
+                  },
+                ]);
                 break;
 
               case 'done':
@@ -145,9 +202,16 @@ export function useAssessmentAgent({ assessmentId, onToolResult }: UseAssessment
     }
 
     setStreaming(false);
-  }, [messages, assessmentId, conversationId, onToolResult]);
+  }, [assessmentId, onToolResult, onAssessmentCreated]);
 
   const clearHistory = useCallback(() => {
+    // Clean up server-side conversation if one exists
+    const convId = conversationIdRef.current;
+    if (convId) {
+      fetch(`/api/ai/assessment-agent?conversationId=${encodeURIComponent(convId)}`, {
+        method: 'DELETE',
+      }).catch(() => {});
+    }
     setMessages([]);
     setConversationId(null);
   }, []);
@@ -157,5 +221,10 @@ export function useAssessmentAgent({ assessmentId, onToolResult }: UseAssessment
     setStreaming(false);
   }, []);
 
-  return { messages, sendMessage, streaming, clearHistory, abort, conversationId };
+  // Abort any in-flight stream on unmount
+  useEffect(() => {
+    return () => { abortRef.current?.abort(); };
+  }, []);
+
+  return { messages, sendMessage, streaming, streamingStatus, clearHistory, abort, conversationId };
 }

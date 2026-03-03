@@ -203,7 +203,10 @@ export function buildAssessmentAgentPrompt(params: {
 
   // Build challenge catalog summary
   const catalogLines = challengeCatalog.map((ch) => {
-    const tags = ch.tags ? JSON.parse(ch.tags).join(', ') : '';
+    let tags = '';
+    if (ch.tags) {
+      try { tags = JSON.parse(ch.tags).join(', '); } catch { /* malformed tags — skip */ }
+    }
     return `- [${ch.id}] "${ch.title}" | ${ch.difficulty} | ${ch.category} | ${ch.language} | skill: ${ch.skillTested || 'general'} | tags: ${tags}`;
   });
 

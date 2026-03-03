@@ -36,9 +36,12 @@ export function CustomChallengeReview({ challenge, orgId, onApprove, onDelete, c
   const [expanded, setExpanded] = useState(!compact);
   const [approving, setApproving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const handleApprove = useCallback(async () => {
     setApproving(true);
+    setActionError(null);
     try {
       const res = await fetch(`/api/orgs/${orgId}/challenges/${challenge.id}`, {
         method: 'PUT',
@@ -46,19 +49,27 @@ export function CustomChallengeReview({ challenge, orgId, onApprove, onDelete, c
         body: JSON.stringify({ status: 'active' }),
       });
       if (res.ok) onApprove(challenge.id);
-    } catch {}
+      else setActionError('Failed to approve challenge');
+    } catch {
+      setActionError('Network error — could not approve');
+    }
     setApproving(false);
   }, [challenge.id, orgId, onApprove]);
 
   const handleDelete = useCallback(async () => {
     setDeleting(true);
+    setActionError(null);
     try {
       const res = await fetch(`/api/orgs/${orgId}/challenges/${challenge.id}`, {
         method: 'DELETE',
       });
       if (res.ok) onDelete(challenge.id);
-    } catch {}
+      else setActionError('Failed to delete challenge');
+    } catch {
+      setActionError('Network error — could not delete');
+    }
     setDeleting(false);
+    setConfirmDelete(false);
   }, [challenge.id, orgId, onDelete]);
 
   let testCases: { input: string; expectedOutput: string }[] = [];
@@ -95,9 +106,9 @@ export function CustomChallengeReview({ challenge, orgId, onApprove, onDelete, c
             </Badge>
           </View>
           {compact && (
-            <Pressable onPress={() => setExpanded(!expanded)}>
+            <Pressable onPress={() => setExpanded(!expanded)} accessibilityRole="button" accessibilityLabel={expanded ? 'Collapse details' : 'Expand details'}>
               <Text style={{ fontSize: fontSizes.xs, color: c.accent }}>
-                {expanded ? 'Collapse' : 'Expand'}
+                {expanded ? '\u25B2 Collapse' : '\u25BC Expand'}
               </Text>
             </Pressable>
           )}
@@ -146,6 +157,11 @@ export function CustomChallengeReview({ challenge, orgId, onApprove, onDelete, c
               </View>
             </View>
           ))}
+          {testCases.length > 5 && (
+            <Text style={{ fontSize: fontSizes.xs, color: c.textMuted, fontStyle: 'italic', marginBottom: spacing.xs }}>
+              +{testCases.length - 5} more test case{testCases.length - 5 !== 1 ? 's' : ''} not shown
+            </Text>
+          )}
 
           {/* Test Harness */}
           {challenge.testHarness && (
@@ -160,14 +176,30 @@ export function CustomChallengeReview({ challenge, orgId, onApprove, onDelete, c
           )}
 
           {/* Actions */}
+          {actionError && (
+            <Text style={{ color: c.destructive, fontSize: fontSizes.xs, marginTop: spacing.sm }}>
+              {actionError}
+            </Text>
+          )}
           {challenge.status === 'draft' && (
             <View style={styles.actions}>
               <Button onPress={handleApprove} disabled={approving}>
                 {approving ? 'Approving...' : 'Approve Challenge'}
               </Button>
-              <Button variant="outline" onPress={handleDelete} disabled={deleting}>
-                {deleting ? 'Deleting...' : 'Delete Draft'}
-              </Button>
+              {confirmDelete ? (
+                <View style={{ flexDirection: 'row', gap: spacing.sm, alignItems: 'center' }}>
+                  <Button variant="outline" onPress={handleDelete} disabled={deleting}>
+                    {deleting ? 'Deleting...' : 'Confirm Delete'}
+                  </Button>
+                  <Pressable onPress={() => setConfirmDelete(false)} accessibilityRole="button" accessibilityLabel="Cancel delete">
+                    <Text style={{ fontSize: fontSizes.xs, color: c.textMuted }}>Cancel</Text>
+                  </Pressable>
+                </View>
+              ) : (
+                <Button variant="outline" onPress={() => setConfirmDelete(true)} disabled={deleting}>
+                  Delete Draft
+                </Button>
+              )}
             </View>
           )}
         </CardContent>
