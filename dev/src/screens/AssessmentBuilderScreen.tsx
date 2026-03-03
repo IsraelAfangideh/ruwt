@@ -242,7 +242,7 @@ export function AssessmentBuilderScreen() {
     setSaveError(null);
     try {
       const rawMinutes = parseInt(timeLimitMinutes, 10);
-      const timeLimit = Math.max(300, Number.isFinite(rawMinutes) ? rawMinutes * 60 : 3600);
+      const timeLimit = Math.min(14400, Math.max(300, Number.isFinite(rawMinutes) ? rawMinutes * 60 : 3600));
       let currentId = assessmentId;
 
       const brandingFields: Record<string, unknown> = {};
@@ -320,10 +320,12 @@ export function AssessmentBuilderScreen() {
     if (!assessmentId) return;
     if (!title.trim()) {
       setActivateError('Enter a title before activating.');
+      timersRef.current.push(setTimeout(() => setActivateError(null), 4000));
       return;
     }
     if (selectedChallengeIds.length === 0) {
       setActivateError('Select at least one challenge before activating.');
+      timersRef.current.push(setTimeout(() => setActivateError(null), 4000));
       return;
     }
     setActivateError(null);
@@ -338,6 +340,7 @@ export function AssessmentBuilderScreen() {
       setStatus('active');
     } catch (err) {
       setActivateError(err instanceof Error ? err.message : 'Activation failed');
+      timersRef.current.push(setTimeout(() => setActivateError(null), 4000));
     }
     setActivating(false);
   }, [assessmentId, title, selectedChallengeIds.length]);
@@ -358,9 +361,11 @@ export function AssessmentBuilderScreen() {
         setInviteLink(data.url);
       } else {
         setInviteError(data.error || 'Failed to generate invite link');
+        timersRef.current.push(setTimeout(() => setInviteError(null), 4000));
       }
     } catch {
       setInviteError('Network error — please try again');
+      timersRef.current.push(setTimeout(() => setInviteError(null), 4000));
     }
     setGeneratingInvite(false);
   }, [assessmentId]);

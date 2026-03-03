@@ -77,6 +77,8 @@ export function PassThresholdEditor({ value, onChange }: Props) {
       {/* Toggle */}
       <Pressable
         onPress={toggleEnabled}
+        accessibilityRole="button"
+        accessibilityLabel={threshold.enabled ? 'Disable auto-grading' : 'Enable auto-grading'}
         style={[
           styles.toggle,
           {
@@ -85,15 +87,17 @@ export function PassThresholdEditor({ value, onChange }: Props) {
           },
         ]}
       >
-        <View
-          style={[
-            styles.toggleDot,
-            {
-              backgroundColor: threshold.enabled ? c.accent : c.textMuted,
-              alignSelf: threshold.enabled ? 'flex-end' : 'flex-start',
-            },
-          ]}
-        />
+        <View style={[styles.toggleTrack, { backgroundColor: threshold.enabled ? c.accent + '40' : c.border }]}>
+          <View
+            style={[
+              styles.toggleDot,
+              {
+                backgroundColor: threshold.enabled ? c.accent : c.textMuted,
+                marginLeft: threshold.enabled ? 14 : 0,
+              },
+            ]}
+          />
+        </View>
         <Text style={[styles.toggleLabel, { color: c.text }]}>
           {threshold.enabled ? 'Auto-grading enabled' : 'Auto-grading disabled'}
         </Text>
@@ -105,6 +109,8 @@ export function PassThresholdEditor({ value, onChange }: Props) {
           <View style={styles.modeRow}>
             <Pressable
               onPress={() => setMode('all_dimensions')}
+              accessibilityRole="button"
+              accessibilityLabel="Use all dimensions above threshold mode"
               style={[
                 styles.modeOption,
                 {
@@ -119,6 +125,8 @@ export function PassThresholdEditor({ value, onChange }: Props) {
             </Pressable>
             <Pressable
               onPress={() => setMode('weighted_average')}
+              accessibilityRole="button"
+              accessibilityLabel="Use weighted average above minimum mode"
               style={[
                 styles.modeOption,
                 {
@@ -215,6 +223,8 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     marginBottom: spacing.md,
   },
+  toggleTrack: { width: 26, height: 14, borderRadius: 7, justifyContent: 'center', paddingHorizontal: 1 },
+  toggleTrack: { width: 26, height: 14, borderRadius: 7, justifyContent: 'center', paddingHorizontal: 1 },
   toggleDot: { width: 12, height: 12, borderRadius: 6 },
   toggleLabel: { fontSize: fontSizes.sm, fontWeight: '500' },
   modeRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.md },

@@ -191,7 +191,7 @@ export function CustomChallengeReview({ challenge, orgId, onApprove, onDelete, c
                   <Button variant="outline" onPress={handleDelete} disabled={deleting}>
                     {deleting ? 'Deleting...' : 'Confirm Delete'}
                   </Button>
-                  <Pressable onPress={() => setConfirmDelete(false)}>
+                  <Pressable onPress={() => setConfirmDelete(false)} accessibilityRole="button" accessibilityLabel="Cancel delete">
                     <Text style={{ fontSize: fontSizes.xs, color: c.textMuted }}>Cancel</Text>
                   </Pressable>
                 </View>

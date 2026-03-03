@@ -119,7 +119,7 @@ export function InviteManagementTable({ assessmentId, refreshKey }: Props) {
         <Text style={{ color: c.destructive, fontSize: fontSizes.sm, marginBottom: spacing.xs }}>
           Failed to load invites.
         </Text>
-        <Pressable onPress={fetchInvites}>
+        <Pressable onPress={fetchInvites} accessibilityRole="button" accessibilityLabel="Retry loading invites">
           <Text style={{ fontSize: fontSizes.xs, color: c.accent, fontWeight: '600' }}>Retry</Text>
         </Pressable>
       </View>
@@ -213,6 +213,8 @@ export function InviteManagementTable({ assessmentId, refreshKey }: Props) {
             <View style={[styles.cellActions, { flexDirection: 'row', gap: spacing.xs }]}>
               <Pressable
                 onPress={() => handleCopyLink(inv.token)}
+                accessibilityRole="button"
+                accessibilityLabel="Copy invite link"
                 style={[styles.actionBtn, { borderColor: c.border }]}
               >
                 <Text style={{ fontSize: 11, color: c.textMuted }}>
@@ -222,6 +224,8 @@ export function InviteManagementTable({ assessmentId, refreshKey }: Props) {
               {canRemind && (
                 <Pressable
                   onPress={() => handleRemind(inv.id)}
+                  accessibilityRole="button"
+                  accessibilityLabel="Send reminder email"
                   style={[styles.actionBtn, { borderColor: c.accent + '40' }]}
                   disabled={reminding === inv.id}
                 >
