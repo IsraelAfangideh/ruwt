@@ -5,12 +5,8 @@ import { Badge } from '@/components/ui/Badge';
 import { useColors } from '@/theme';
 import { spacing, fontSizes, fontFamily } from '@/theme/tokens';
 import { useAssessmentAgent } from '@/hooks/useAssessmentAgent';
-interface PassThreshold {
-  enabled: boolean;
-  mode: 'all_dimensions' | 'weighted_average';
-  minOverall?: number;
-  dimensions: Record<string, number>;
-}
+import { renderMarkdown } from '@/components/arena/ChatMarkdown';
+import type { PassThreshold } from '@/components/PassThresholdEditor';
 
 interface Props {
   assessmentId?: string;
@@ -20,13 +16,14 @@ interface Props {
   onTimeLimitChanged?: (minutes: number) => void;
   onThresholdChanged?: (threshold: PassThreshold) => void;
   onCustomChallengeCreated?: (challenge: { id: string; title: string }) => void;
+  onAssessmentCreated?: (assessmentId: string) => void;
 }
 
 const QUICK_ACTIONS = [
-  { label: 'Analyze a job description', prompt: 'I\'d like to create an assessment. Let me paste the job description:' },
-  { label: 'Suggest challenges for a role', prompt: 'Suggest challenges for a ' },
-  { label: 'Create a custom challenge', prompt: 'Create a custom challenge for our team. Our domain is ' },
-  { label: 'Optimize score weights', prompt: 'Based on the current assessment, what score weights do you recommend and why?' },
+  { label: 'Analyze a job description', prompt: 'I\'d like to create an assessment. Here\'s the job description:\n\n', requiresAssessment: false },
+  { label: 'Suggest challenges for a role', prompt: 'Suggest challenges for a senior full-stack engineer role', requiresAssessment: false },
+  { label: 'Create a custom challenge', prompt: 'Create a custom coding challenge that tests real-world skills for our team', requiresAssessment: false },
+  { label: 'Optimize score weights', prompt: 'Based on the current assessment, what score weights do you recommend and why?', requiresAssessment: true },
 ];
 
 export function AssessmentAgentChat({
@@ -37,10 +34,14 @@ export function AssessmentAgentChat({
   onTimeLimitChanged,
   onThresholdChanged,
   onCustomChallengeCreated,
+  onAssessmentCreated,
 }: Props) {
   const c = useColors();
   const [input, setInput] = useState('');
+  const [confirmClear, setConfirmClear] = useState(false);
   const scrollRef = useRef<any>(null);
+  const inputRef = useRef<any>(null);
+  const msgIdRef = useRef(0);
 
   const handleToolResult = useCallback((tool: string, result: any) => {
     if (!result.success) return;
@@ -68,10 +69,20 @@ export function AssessmentAgentChat({
     }
   }, [onChallengesChanged, onWeightsChanged, onBrandingChanged, onTimeLimitChanged, onThresholdChanged, onCustomChallengeCreated]);
 
-  const { messages, sendMessage, streaming, clearHistory } = useAssessmentAgent({
+  const { messages, sendMessage, streaming, streamingStatus, clearHistory, abort } = useAssessmentAgent({
     assessmentId,
     onToolResult: handleToolResult,
+    onAssessmentCreated,
   });
+
+  // Assign stable IDs to messages
+  const msgKeyMap = useRef(new WeakMap<object, number>());
+  const getMsgKey = useCallback((msg: object) => {
+    if (!msgKeyMap.current.has(msg)) {
+      msgKeyMap.current.set(msg, ++msgIdRef.current);
+    }
+    return msgKeyMap.current.get(msg)!;
+  }, []);
 
   useEffect(() => {
     setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
@@ -86,6 +97,7 @@ export function AssessmentAgentChat({
 
   const handleQuickAction = useCallback((prompt: string) => {
     setInput(prompt);
+    setTimeout(() => inputRef.current?.focus(), 50);
   }, []);
 
   const handleKeyPress = useCallback((e: any) => {
@@ -106,9 +118,20 @@ export function AssessmentAgentChat({
           </Badge>
         </View>
         {messages.length > 0 && (
-          <Pressable onPress={clearHistory}>
-            <Text style={{ fontSize: fontSizes.xs, color: c.textMuted }}>Clear</Text>
-          </Pressable>
+          confirmClear ? (
+            <View style={{ flexDirection: 'row', gap: spacing.xs }}>
+              <Pressable onPress={() => { clearHistory(); setConfirmClear(false); }} accessibilityRole="button" accessibilityLabel="Confirm clear chat history">
+                <Text style={{ fontSize: fontSizes.xs, color: c.destructive, fontWeight: '600' }}>Confirm</Text>
+              </Pressable>
+              <Pressable onPress={() => setConfirmClear(false)} accessibilityRole="button" accessibilityLabel="Cancel clear">
+                <Text style={{ fontSize: fontSizes.xs, color: c.textMuted }}>Cancel</Text>
+              </Pressable>
+            </View>
+          ) : (
+            <Pressable onPress={() => setConfirmClear(true)} accessibilityRole="button" accessibilityLabel="Clear chat history">
+              <Text style={{ fontSize: fontSizes.xs, color: c.textMuted }}>Clear</Text>
+            </Pressable>
+          )
         )}
       </View>
 
@@ -123,10 +146,13 @@ export function AssessmentAgentChat({
               Paste a job description, describe your ideal candidate, or ask me to create custom challenges for your domain.
             </Text>
             <View style={styles.quickActions}>
-              {QUICK_ACTIONS.map((action, i) => (
+              {QUICK_ACTIONS
+                .filter((action) => !action.requiresAssessment || assessmentId)
+                .map((action, i) => (
                 <Pressable
                   key={i}
                   onPress={() => handleQuickAction(action.prompt)}
+                  accessibilityRole="button"
                   style={[styles.quickActionBtn, { borderColor: c.border, backgroundColor: c.bg }]}
                 >
                   <Text style={[styles.quickActionText, { color: c.accent }]}>
@@ -137,33 +163,62 @@ export function AssessmentAgentChat({
             </View>
           </View>
         ) : (
-          messages.map((msg, i) => (
-            <View
-              key={i}
-              style={[
-                styles.messageBubble,
-                msg.role === 'user'
-                  ? [styles.userBubble, { backgroundColor: c.accent + '15' }]
-                  : [styles.assistantBubble, { backgroundColor: c.bg }],
-              ]}
-            >
-              <Text
+          messages.map((msg) => {
+            const msgKey = getMsgKey(msg);
+            // System messages render as compact chips
+            if (msg.role === 'system') {
+              const isError = msg.systemType === 'tool_error';
+              const isCreated = msg.systemType === 'assessment_created';
+              const chipColor = isError ? c.destructive : isCreated ? c.accent : c.success;
+              return (
+                <View
+                  key={msgKey}
+                  style={[
+                    styles.systemChip,
+                    { backgroundColor: chipColor + '12', borderColor: chipColor + '30' },
+                  ]}
+                >
+                  <Text style={{ fontSize: fontSizes.xs, color: chipColor }}>
+                    {isError ? '\u2717 ' : '\u2713 '}{msg.content}
+                  </Text>
+                </View>
+              );
+            }
+
+            return (
+              <View
+                key={msgKey}
                 style={[
-                  styles.roleLabel,
-                  { color: msg.role === 'user' ? c.accent : c.textMuted },
+                  styles.messageBubble,
+                  msg.role === 'user'
+                    ? [styles.userBubble, { backgroundColor: c.accent + '15' }]
+                    : [styles.assistantBubble, { backgroundColor: c.bg }],
                 ]}
               >
-                {msg.role === 'user' ? 'You' : 'AI'}
-              </Text>
-              <Text style={[styles.messageText, { color: c.text }]} selectable>
-                {cleanToolCallsFromDisplay(msg.content)}
-              </Text>
-            </View>
-          ))
+                <Text
+                  style={[
+                    styles.roleLabel,
+                    { color: msg.role === 'user' ? c.accent : c.textMuted },
+                  ]}
+                >
+                  {msg.role === 'user' ? 'You' : 'AI'}
+                </Text>
+                {msg.role === 'assistant' ? (
+                  <div style={{ color: c.text, fontSize: fontSizes.sm, lineHeight: '20px', fontFamily: fontFamily.body }}>
+                    {renderMarkdown(msg.content)}
+                  </div>
+                ) : (
+                  <Text style={[styles.messageText, { color: c.text }]} selectable>
+                    {msg.content}
+                  </Text>
+                )}
+              </View>
+            );
+          })
         )}
         {streaming && (
           <View style={styles.streamingIndicator}>
-            <Text style={{ color: c.accent, fontSize: fontSizes.xs }}>Thinking...</Text>
+            <Text style={{ color: c.accent, fontSize: fontSizes.xs }}>{streamingStatus}</Text>
           </View>
         )}
       </ScrollView>
@@ -171,6 +226,7 @@ export function AssessmentAgentChat({
       {/* Input */}
       <View style={[styles.inputArea, { borderTopColor: c.border }]}>
         <TextInput
+          ref={inputRef}
           style={[
             styles.input,
             { color: c.text, backgroundColor: c.bg, borderColor: c.border },
@@ -184,21 +240,18 @@ export function AssessmentAgentChat({
           numberOfLines={2}
           editable={!streaming}
         />
-        <Button
-          size="sm"
-          onPress={handleSend}
-          disabled={streaming || !input.trim()}
-        >
-          {streaming ? '...' : 'Send'}
-        </Button>
+        {streaming ? (
+          <Button size="sm" variant="outline" onPress={abort}>
+            Stop
+          </Button>
+        ) : (
+          <Button size="sm" onPress={handleSend} disabled={!input.trim()}>
+            Send
+          </Button>
+        )}
       </View>
     </View>
   );
-}
-
-/** Strip <tool_call> blocks from displayed text for cleaner UX. */
-function cleanToolCallsFromDisplay(text: string): string {
-  return text.replace(/<tool_call>[\s\S]*?<\/tool_call>/g, '').trim();
 }
 
 const styles = StyleSheet.create({
@@ -207,7 +260,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: 12,
     overflow: 'hidden',
-    minHeight: 400,
+    minHeight: 300,
+    maxHeight: 'calc(100vh - 140px)' as any,
   },
   header: {
     flexDirection: 'row',
@@ -245,6 +299,13 @@ const styles = StyleSheet.create({
   },
   userBubble: { alignSelf: 'flex-end' },
   assistantBubble: { alignSelf: 'flex-start' },
+  systemChip: {
+    alignSelf: 'center',
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 3,
+    borderRadius: 999,
+    borderWidth: 1,
+  },
   roleLabel: { fontSize: 10, fontWeight: '600', marginBottom: 2, textTransform: 'uppercase' as any },
   messageText: { fontSize: fontSizes.sm, lineHeight: 20, fontFamily: fontFamily.body },
   streamingIndicator: { alignSelf: 'flex-start', padding: spacing.xs },

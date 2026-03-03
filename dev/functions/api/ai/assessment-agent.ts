@@ -4,7 +4,7 @@
  * Makes non-streaming calls with tools, executes tool calls in a loop (max 3 iterations),
  * then emits results via SSE.
  */
-import { eq } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 import { z } from 'zod';
 import { getDb } from '../../_shared/db';
 import { getUser } from '../../_shared/auth';
@@ -31,6 +31,14 @@ const requestSchema = z.object({
 // Primary model for the agent — must support native function calling
 const AGENT_MODEL = '@cf/meta/llama-3.3-70b-instruct-fp8-fast';
 const MAX_TOOL_ITERATIONS = 3;
+const AI_CALL_TIMEOUT_MS = 25_000; // 25s timeout per AI call (within 30s CF Pages limit)
+const MAX_CONVERSATION_MESSAGES = 20; // Keep last N messages to avoid blowing context window
+
+// Tools that require an assessmentId — auto-create draft if needed
+const ASSESSMENT_TOOLS = new Set([
+  'select_challenges', 'remove_challenges', 'set_weights',
+  'set_time_limit', 'set_branding', 'set_pass_threshold',
+]);
 
 interface AIMessage {
   role: 'system' | 'user' | 'assistant' | 'tool';
@@ -61,22 +69,34 @@ async function callWithTools(
   const models = [modelId, ...fallbacks.filter((m) => m !== modelId)];
 
   for (const model of models) {
-    const res = await fetch(
-      `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/run/${model}`,
-      {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${apiToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          messages,
-          tools,
-          max_tokens: 4096,
-          temperature: 0.7,
-        }),
-      }
-    );
+    const timeoutController = new AbortController();
+    const timeoutId = setTimeout(() => timeoutController.abort(), AI_CALL_TIMEOUT_MS);
+    let res: Response;
+    try {
+      res = await fetch(
+        `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/run/${model}`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${apiToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            messages,
+            tools,
+            max_tokens: 4096,
+            temperature: 0.7,
+          }),
+          signal: timeoutController.signal,
+        }
+      );
+    } catch (fetchErr) {
+      clearTimeout(timeoutId);
+      // Timeout or network error — try next model
+      if (model !== models[models.length - 1]) continue;
+      throw new Error(`AI call failed: ${fetchErr instanceof Error ? fetchErr.message : String(fetchErr)}`);
+    }
+    clearTimeout(timeoutId);
 
     if (!res.ok) {
       const err = await res.text();
@@ -151,7 +171,8 @@ export async function onRequestPost(context: {
       );
     }
 
-    const { messages, assessmentId, conversationId } = parsed.data;
+    const { messages, conversationId } = parsed.data;
+    let assessmentId = parsed.data.assessmentId;
     const db = getDb(context.env);
 
     // Load challenge catalog
@@ -167,7 +188,7 @@ export async function onRequestPost(context: {
       })
       .from(challenges);
 
-    // Load assessment state if editing
+    // Load assessment state if editing (verify ownership)
     let assessmentState = null;
     if (assessmentId) {
       const [assessment] = await db
@@ -175,6 +196,9 @@ export async function onRequestPost(context: {
         .from(assessments)
         .where(eq(assessments.id, assessmentId))
         .limit(1);
+      if (assessment && assessment.createdBy !== user.id) {
+        return Response.json({ error: 'Forbidden' }, { status: 403 });
+      }
       if (assessment) {
         const asmtChallenges = await db
           .select({ challengeId: assessmentChallenges.challengeId })
@@ -223,10 +247,13 @@ export async function onRequestPost(context: {
     });
     const tools = getAssessmentAgentTools();
 
-    // Build messages for the model
+    // Build messages for the model (truncate to prevent blowing context window)
+    const truncated = messages.length > MAX_CONVERSATION_MESSAGES
+      ? messages.slice(-MAX_CONVERSATION_MESSAGES)
+      : messages;
     const aiMessages: AIMessage[] = [
       { role: 'system', content: systemPrompt },
-      ...messages.map((m) => ({
+      ...truncated.map((m) => ({
         role: m.role as 'user' | 'assistant',
         content: m.content,
       })),
@@ -246,6 +273,7 @@ export async function onRequestPost(context: {
           let totalToolCalls = 0;
           let usedModel = AGENT_MODEL;
           const workingMessages = [...aiMessages];
+          const toolCallLog: Array<{ tool: string; params: Record<string, unknown>; result: unknown }> = [];
 
           // Tool call loop (max iterations to prevent runaway)
           for (let iteration = 0; iteration < MAX_TOOL_ITERATIONS; iteration++) {
@@ -269,6 +297,26 @@ export async function onRequestPost(context: {
               // Execute each tool call
               for (const call of result.toolCalls) {
                 totalToolCalls++;
+
+                // Auto-create draft assessment when a tool needs one
+                if (!assessmentId && ASSESSMENT_TOOLS.has(call.name)) {
+                  const newId = crypto.randomUUID();
+                  const inferredTitle = typeof call.arguments.title === 'string'
+                    ? call.arguments.title : 'Untitled Assessment';
+                  await db.insert(assessments).values({
+                    id: newId,
+                    orgId: orgId || null,
+                    createdBy: user.id,
+                    title: inferredTitle,
+                    timeLimit: 3600,
+                    status: 'draft',
+                  });
+                  assessmentId = newId;
+                  controller.enqueue(
+                    encoder.encode(`data: ${JSON.stringify({ type: 'assessment_created', assessmentId: newId })}\n\n`)
+                  );
+                }
+
                 controller.enqueue(
                   encoder.encode(`data: ${JSON.stringify({ type: 'tool_call', tool: call.name, params: call.arguments })}\n\n`)
                 );
@@ -279,6 +327,7 @@ export async function onRequestPost(context: {
                   userId: user.id,
                 });
 
+                toolCallLog.push({ tool: call.name, params: call.arguments, result: toolResult });
                 controller.enqueue(
                   encoder.encode(`data: ${JSON.stringify({ type: 'tool_result', ...toolResult })}\n\n`)
                 );
@@ -301,11 +350,15 @@ export async function onRequestPost(context: {
             break;
           }
 
-          // Save conversation
+          // Save conversation (include tool calls so resumed conversations have context)
           const convId = conversationId || crypto.randomUUID();
+          const assistantMsg: Record<string, unknown> = { role: 'assistant', content: fullContent };
+          if (toolCallLog.length > 0) {
+            assistantMsg.toolCalls = toolCallLog;
+          }
           const allMessages = [
             ...messages,
-            { role: 'assistant' as const, content: fullContent },
+            assistantMsg,
           ];
 
           if (conversationId) {
@@ -315,7 +368,7 @@ export async function onRequestPost(context: {
                 messages: JSON.stringify(allMessages),
                 updatedAt: new Date().toISOString(),
               })
-              .where(eq(agentConversations.id, conversationId));
+              .where(and(eq(agentConversations.id, conversationId), eq(agentConversations.userId, user.id)));
           } else {
             await db.insert(agentConversations).values({
               id: convId,
@@ -359,6 +412,31 @@ export async function onRequestPost(context: {
       { error: 'Internal server error', details: error instanceof Error ? error.message : String(error) },
       { status: 500 }
     );
+  }
+}
+
+/** DELETE /api/ai/assessment-agent?conversationId=... — clean up a conversation */
+export async function onRequestDelete(context: {
+  request: Request;
+  env: Env;
+}): Promise<Response> {
+  try {
+    const user = await getUser(context.request, context.env);
+    if (!user) {
+      return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    const url = new URL(context.request.url);
+    const convId = url.searchParams.get('conversationId');
+    if (!convId) {
+      return Response.json({ error: 'Missing conversationId' }, { status: 400 });
+    }
+    const db = getDb(context.env);
+    await db
+      .delete(agentConversations)
+      .where(and(eq(agentConversations.id, convId), eq(agentConversations.userId, user.id)));
+    return Response.json({ ok: true });
+  } catch (err) {
+    return Response.json({ error: 'Internal error' }, { status: 500 });
   }
 }
 
