@@ -241,6 +241,25 @@ describe('POST /api/ai/assessment-agent', () => {
     expect(json.error).toBe('Invalid request');
   });
 
+  it('accepts null conversationId and assessmentId (initial message from client)', async () => {
+    (getUser as Mock).mockResolvedValue(TEST_USER);
+    mockDb.selectResults.push([]); // catalog
+
+    mockCFAI([
+      { ok: true, body: { result: { response: 'Hello!' } } },
+    ]);
+
+    // Client sends null (not undefined) for these fields on first message
+    const res = await onRequestPost(
+      makeContext(validBody({ conversationId: null, assessmentId: null }))
+    );
+
+    expect(res.status).toBe(200);
+    const events = await readSSEEvents(res);
+    const doneEvent = events.find((e: any) => e.type === 'done');
+    expect(doneEvent).toBeDefined();
+  });
+
   it('returns 400 for messages with invalid role', async () => {
     (getUser as Mock).mockResolvedValue(TEST_USER);
 

@@ -24,8 +24,8 @@ const requestSchema = z.object({
       content: z.string(),
     })
   ),
-  assessmentId: z.string().optional(),
-  conversationId: z.string().optional(),
+  assessmentId: z.string().nullish(),
+  conversationId: z.string().nullish(),
 });
 
 // Primary model for the agent — must support native function calling
