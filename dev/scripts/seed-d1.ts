@@ -948,13 +948,10 @@ throttle(fn, ms): Returns a function that invokes fn at most once per ms millise
 
 Both returned functions should pass through arguments to the original fn.
 
-Input format: test name string that describes the scenario.
-Output format: the expected call count as a number.
-
-Test scenarios are evaluated by a test harness that simulates timing.
+Export both functions via module.exports = { debounce, throttle }.
 
 Moderate token limit — describe both functions clearly and concisely in a single prompt exchange.`,
-    difficulty: 'medium',
+    difficulty: 'easy',
     starterCode: `function debounce(fn, ms) {
   // Your code here
 }
@@ -964,6 +961,78 @@ function throttle(fn, ms) {
 }
 
 module.exports = { debounce, throttle };`,
+    testHarness: `function solve(testName, count, ms) {
+  // Install fake timers so we can control time synchronously
+  const _origSetTimeout = global.setTimeout;
+  const _origClearTimeout = global.clearTimeout;
+  const _origDateNow = Date.now;
+  const timers = [];
+  let now = 0;
+  Date.now = () => now;
+  global.setTimeout = (cb, delay) => {
+    const id = timers.length;
+    timers.push({ cb, fireAt: now + delay, cleared: false });
+    return id;
+  };
+  global.clearTimeout = (id) => {
+    if (timers[id]) timers[id].cleared = true;
+  };
+  function advanceTime(ms) {
+    now += ms;
+    for (const t of timers) {
+      if (!t.cleared && t.fireAt <= now) {
+        t.cleared = true;
+        t.cb();
+      }
+    }
+  }
+
+  try {
+    const calls = [];
+    const fn = (...a) => calls.push(a);
+
+    if (testName === 'debounce-basic') {
+      const d = debounce(fn, ms);
+      for (let i = 0; i < count; i++) d();
+      advanceTime(ms + 1);
+      return String(calls.length);
+    }
+    if (testName === 'debounce-reset') {
+      const d = debounce(fn, ms);
+      for (let i = 0; i < count; i++) {
+        d();
+        if (i < count - 1) advanceTime(ms - 1);
+      }
+      advanceTime(ms + 1);
+      return String(calls.length);
+    }
+    if (testName === 'debounce-args') {
+      const d = debounce(fn, ms);
+      d(count);
+      advanceTime(ms + 1);
+      return String(calls[0][0]);
+    }
+    if (testName === 'throttle-basic') {
+      const t = throttle(fn, ms);
+      for (let i = 0; i < count; i++) t();
+      return String(calls.length);
+    }
+    if (testName === 'throttle-spaced') {
+      const t = throttle(fn, ms);
+      for (let i = 0; i < count; i++) {
+        t();
+        advanceTime(ms + 1);
+      }
+      return String(calls.length);
+    }
+    return 'UNKNOWN_TEST';
+  } finally {
+    global.setTimeout = _origSetTimeout;
+    global.clearTimeout = _origClearTimeout;
+    Date.now = _origDateNow;
+  }
+}
+module.exports = { solve };`,
     testCases: [
       { input: 'debounce-basic\n3\n100', expectedOutput: '1' },
       { input: 'debounce-reset\n5\n50', expectedOutput: '1' },
