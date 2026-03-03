@@ -830,7 +830,7 @@ export function AssessmentBuilderScreen() {
                     </>
                   )}
                 </Text>
-                <Pressable onPress={() => { setChallengeSearch(''); setDifficultyFilter('all'); setCategoryFilter('all'); }}>
+                <Pressable accessibilityRole="button" onPress={() => { setChallengeSearch(''); setDifficultyFilter('all'); setCategoryFilter('all'); }}>
                   <Text style={{ fontSize: fontSizes.sm, color: c.accent, fontWeight: '600' }}>Clear filters</Text>
                 </Pressable>
               </View>

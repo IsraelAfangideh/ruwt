@@ -224,7 +224,6 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   toggleTrack: { width: 26, height: 14, borderRadius: 7, justifyContent: 'center', paddingHorizontal: 1 },
-  toggleTrack: { width: 26, height: 14, borderRadius: 7, justifyContent: 'center', paddingHorizontal: 1 },
   toggleDot: { width: 12, height: 12, borderRadius: 6 },
   toggleLabel: { fontSize: fontSizes.sm, fontWeight: '500' },
   modeRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.md },

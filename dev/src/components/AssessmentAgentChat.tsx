@@ -152,6 +152,7 @@ export function AssessmentAgentChat({
                 <Pressable
                   key={i}
                   onPress={() => handleQuickAction(action.prompt)}
+                  accessibilityRole="button"
                   style={[styles.quickActionBtn, { borderColor: c.border, backgroundColor: c.bg }]}
                 >
                   <Text style={[styles.quickActionText, { color: c.accent }]}>
