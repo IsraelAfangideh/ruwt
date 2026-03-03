@@ -512,7 +512,250 @@ export function resultsReadyEmail(params: ResultsReadyParams): EmailTemplate {
 }
 
 // ---------------------------------------------------------------------------
-// 4. Team Invite
+// 4. New Signup Notification (sent to admin)
+// ---------------------------------------------------------------------------
+
+export interface NewSignupNotificationParams {
+  userName?: string | null;
+  userEmail: string;
+  provider: string; // 'github' | 'email' | etc.
+}
+
+export function newSignupNotificationEmail(params: NewSignupNotificationParams): EmailTemplate {
+  const { userName, userEmail, provider } = params;
+
+  const displayName = userName ? escapeHtml(userName) : 'Someone new';
+  const displayProvider = provider === 'github' ? 'GitHub OAuth' : provider === 'email' ? 'Email signup' : escapeHtml(provider);
+  const subject = `New signup: ${userName || userEmail} just joined ruwt.dev`;
+
+  const content = `
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin: 0 0 24px 0;">
+              <tr>
+                <td align="center" style="padding: 20px 0 8px 0;">
+                  <p style="margin: 0; font-size: 48px; line-height: 1;">&#127881;</p>
+                </td>
+              </tr>
+              <tr>
+                <td align="center">
+                  <p style="margin: 0; font-size: 22px; font-weight: bold; color: #1a1816;">New user just signed up!</p>
+                </td>
+              </tr>
+            </table>
+            <!-- User details -->
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin: 0 0 28px 0; background-color: #f5f3f0; border-radius: 8px;">
+              <tr>
+                <td style="padding: 20px 24px;">
+                  <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+                    <tr>
+                      <td style="padding-bottom: 12px;">
+                        <p style="margin: 0; font-size: 13px; color: #8a847a; text-transform: uppercase; letter-spacing: 0.5px;">Name</p>
+                        <p style="margin: 4px 0 0 0; font-size: 16px; font-weight: bold; color: #1a1816;">${displayName}</p>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td style="padding-bottom: 12px;">
+                        <p style="margin: 0; font-size: 13px; color: #8a847a; text-transform: uppercase; letter-spacing: 0.5px;">Email</p>
+                        <p style="margin: 4px 0 0 0; font-size: 16px; color: #1a1816;">${escapeHtml(userEmail)}</p>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td>
+                        <p style="margin: 0; font-size: 13px; color: #8a847a; text-transform: uppercase; letter-spacing: 0.5px;">Signed Up Via</p>
+                        <p style="margin: 4px 0 0 0; font-size: 16px; color: #1a1816;">${displayProvider}</p>
+                      </td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+            </table>
+            <!-- Action checklist -->
+            <p style="margin: 0 0 12px 0; font-size: 15px; font-weight: bold; color: #1a1816;">Your move:</p>
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin: 0 0 28px 0;">
+              <tr>
+                <td style="padding: 8px 0; font-size: 15px; color: #1a1816; line-height: 1.5;">&#9744; Send them a personal welcome (reply to this email for their address)</td>
+              </tr>
+              <tr>
+                <td style="padding: 8px 0; font-size: 15px; color: #1a1816; line-height: 1.5;">&#9744; Add them to the CRM</td>
+              </tr>
+              <tr>
+                <td style="padding: 8px 0; font-size: 15px; color: #1a1816; line-height: 1.5;">&#9744; Check if they complete onboarding today</td>
+              </tr>
+              <tr>
+                <td style="padding: 8px 0; font-size: 15px; color: #1a1816; line-height: 1.5;">&#9744; See which challenge they try first</td>
+              </tr>
+              <tr>
+                <td style="padding: 8px 0; font-size: 15px; color: #1a1816; line-height: 1.5;">&#9744; If they came from GitHub, check out their profile</td>
+              </tr>
+            </table>
+            <!-- CTA -->
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+              <tr>
+                <td align="center" style="padding-bottom: 16px;">
+                  ${ctaButton('View Leaderboard', 'https://ruwt.dev/leaderboard')}
+                </td>
+              </tr>
+            </table>
+            <p style="margin: 0; font-size: 13px; color: #8a847a; text-align: center; line-height: 1.5;">Every signup is a step closer. Keep building.</p>`;
+
+  const html = wrapInLayout(content, `New signup: ${userName || userEmail} just joined ruwt.dev`);
+
+  const text = [
+    'New user just signed up!',
+    '',
+    `Name: ${userName || 'Not provided'}`,
+    `Email: ${userEmail}`,
+    `Signed up via: ${displayProvider}`,
+    '',
+    'Your move:',
+    '[ ] Send them a personal welcome',
+    '[ ] Add them to the CRM',
+    '[ ] Check if they complete onboarding today',
+    '[ ] See which challenge they try first',
+    '[ ] If they came from GitHub, check out their profile',
+    '',
+    'View leaderboard: https://ruwt.dev/leaderboard',
+    '',
+    'Every signup is a step closer. Keep building.',
+    '',
+    '---',
+    'Sent by ruwt.dev -- AI-efficiency assessment platform',
+  ].join('\n');
+
+  return { subject, html, text };
+}
+
+// ---------------------------------------------------------------------------
+// 5. Challenge Attempt Notification (sent to admin)
+// ---------------------------------------------------------------------------
+
+export interface ChallengeAttemptNotificationParams {
+  userName?: string | null;
+  userEmail: string;
+  challengeTitle: string;
+  challengeDifficulty: string; // 'easy' | 'medium' | 'hard'
+  passed: boolean;
+  passedTests: number;
+  totalTests: number;
+  totalCost: number; // credits spent on AI
+}
+
+export function challengeAttemptNotificationEmail(params: ChallengeAttemptNotificationParams): EmailTemplate {
+  const {
+    userName,
+    userEmail,
+    challengeTitle,
+    challengeDifficulty,
+    passed,
+    passedTests,
+    totalTests,
+    totalCost,
+  } = params;
+
+  const displayName = userName ? escapeHtml(userName) : escapeHtml(userEmail);
+  const resultEmoji = passed ? '&#9989;' : '&#10060;';
+  const resultLabel = passed ? 'PASSED' : 'FAILED';
+  const resultColor = passed ? '#5a8a5a' : '#b06060';
+  const difficultyColor = challengeDifficulty === 'easy' ? '#5a8a5a' : challengeDifficulty === 'medium' ? '#c9a962' : '#b06060';
+
+  const costDisplay = totalCost === 0 ? 'Free (no AI used)' : `${totalCost.toLocaleString()} credits`;
+
+  const subject = passed
+    ? `${userName || userEmail} solved ${challengeTitle}!`
+    : `${userName || userEmail} attempted ${challengeTitle}`;
+
+  const content = `
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin: 0 0 20px 0;">
+              <tr>
+                <td align="center" style="padding: 16px 0 8px 0;">
+                  <p style="margin: 0; font-size: 40px; line-height: 1;">${resultEmoji}</p>
+                </td>
+              </tr>
+              <tr>
+                <td align="center">
+                  <p style="margin: 0 0 4px 0; font-size: 20px; font-weight: bold; color: ${resultColor};">${resultLabel}</p>
+                  <p style="margin: 0; font-size: 14px; color: #8a847a;">${displayName} &mdash; ${escapeHtml(challengeTitle)}</p>
+                </td>
+              </tr>
+            </table>
+            <!-- Attempt details -->
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin: 0 0 24px 0; background-color: #f5f3f0; border-radius: 8px;">
+              <tr>
+                <td style="padding: 20px 24px;">
+                  <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+                    <tr>
+                      <td style="padding-bottom: 14px; width: 50%;">
+                        <p style="margin: 0; font-size: 12px; color: #8a847a; text-transform: uppercase; letter-spacing: 0.5px;">Challenge</p>
+                        <p style="margin: 4px 0 0 0; font-size: 15px; font-weight: bold; color: #1a1816;">${escapeHtml(challengeTitle)}</p>
+                      </td>
+                      <td style="padding-bottom: 14px; width: 50%;">
+                        <p style="margin: 0; font-size: 12px; color: #8a847a; text-transform: uppercase; letter-spacing: 0.5px;">Difficulty</p>
+                        <p style="margin: 4px 0 0 0; font-size: 15px; font-weight: bold; color: ${difficultyColor};">${escapeHtml(challengeDifficulty.charAt(0).toUpperCase() + challengeDifficulty.slice(1))}</p>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td style="padding-bottom: 14px; width: 50%;">
+                        <p style="margin: 0; font-size: 12px; color: #8a847a; text-transform: uppercase; letter-spacing: 0.5px;">Tests</p>
+                        <p style="margin: 4px 0 0 0; font-size: 15px; font-weight: bold; color: ${resultColor};">${passedTests} / ${totalTests}</p>
+                      </td>
+                      <td style="padding-bottom: 14px; width: 50%;">
+                        <p style="margin: 0; font-size: 12px; color: #8a847a; text-transform: uppercase; letter-spacing: 0.5px;">AI Cost</p>
+                        <p style="margin: 4px 0 0 0; font-size: 15px; font-weight: bold; color: #1a1816;">${escapeHtml(costDisplay)}</p>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td colspan="2">
+                        <p style="margin: 0; font-size: 12px; color: #8a847a; text-transform: uppercase; letter-spacing: 0.5px;">User</p>
+                        <p style="margin: 4px 0 0 0; font-size: 15px; color: #1a1816;">${displayName} (${escapeHtml(userEmail)})</p>
+                      </td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+            </table>${passed ? `
+            <!-- Dopamine hit for solves -->
+            <p style="margin: 0 0 20px 0; font-size: 14px; color: #1a1816; text-align: center; line-height: 1.6;">Another one in the bag. The leaderboard just moved.</p>` : `
+            <!-- Encouragement for fails -->
+            <p style="margin: 0 0 20px 0; font-size: 14px; color: #1a1816; text-align: center; line-height: 1.6;">They&rsquo;re grinding. A retry is likely incoming.</p>`}
+            <!-- CTA -->
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+              <tr>
+                <td align="center" style="padding-bottom: 16px;">
+                  ${ctaButton('View Activity Feed', 'https://ruwt.dev/activity')}
+                </td>
+              </tr>
+            </table>`;
+
+  const html = wrapInLayout(
+    content,
+    passed
+      ? `${userName || userEmail} solved ${challengeTitle} on ruwt.dev`
+      : `${userName || userEmail} attempted ${challengeTitle} on ruwt.dev`,
+  );
+
+  const text = [
+    `${resultLabel}: ${userName || userEmail} — ${challengeTitle}`,
+    '',
+    `Challenge: ${challengeTitle}`,
+    `Difficulty: ${challengeDifficulty.charAt(0).toUpperCase() + challengeDifficulty.slice(1)}`,
+    `Tests: ${passedTests} / ${totalTests}`,
+    `AI Cost: ${costDisplay}`,
+    `User: ${userName || 'N/A'} (${userEmail})`,
+    '',
+    passed
+      ? 'Another one in the bag. The leaderboard just moved.'
+      : "They're grinding. A retry is likely incoming.",
+    '',
+    'View activity feed: https://ruwt.dev/activity',
+    '',
+    '---',
+    'Sent by ruwt.dev -- AI-efficiency assessment platform',
+  ].join('\n');
+
+  return { subject, html, text };
+}
+
+// ---------------------------------------------------------------------------
+// 6. Team Invite
 // ---------------------------------------------------------------------------
 
 export interface TeamInviteParams {

@@ -12,7 +12,11 @@ import { updateStreak } from '../_shared/streaks';
 import { createCompetitiveNudges } from '../_shared/competitive-nudges';
 import { createNewUserNearRankNotifications } from '../_shared/new-user-alerts';
 import { invalidateCache } from '../_shared/cache';
-import { attempts, challenges } from '../../drizzle/schema.d1';
+import { sendEmail } from '../_shared/newsletter/resend';
+import { challengeAttemptNotificationEmail } from '../_shared/email/templates';
+import { attempts, challenges, profiles } from '../../drizzle/schema.d1';
+
+const ADMIN_EMAIL = 'israel@ruwt.dev';
 
 const submissionSchema = z.object({
   attemptId: z.string().uuid(),
@@ -267,6 +271,26 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
         ]);
       } catch (e) {
         console.error('Cache invalidation error (non-blocking):', e);
+      }
+    }
+
+    // Admin notification for every submission (fire-and-forget)
+    if (context.env.RESEND_API_KEY) {
+      try {
+        const [profile] = await db.select({ name: profiles.name }).from(profiles).where(eq(profiles.id, user.id)).limit(1);
+        const notif = challengeAttemptNotificationEmail({
+          userName: profile?.name ?? null,
+          userEmail: user.email ?? '',
+          challengeTitle: challenge.title,
+          challengeDifficulty: challenge.difficulty,
+          passed: testResult.passed,
+          passedTests: testResult.passedTests,
+          totalTests: testResult.totalTests,
+          totalCost: attempt.totalCost ?? 0,
+        });
+        sendEmail(context.env, { to: ADMIN_EMAIL, subject: notif.subject, html: notif.html, text: notif.text }).catch(() => {});
+      } catch {
+        // Non-blocking — never fail the submission response
       }
     }
 

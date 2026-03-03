@@ -9,6 +9,8 @@ const {
   mockUpdateStreak,
   mockCreateCompetitiveNudges,
   mockCreateNewUserNearRankNotifications,
+  mockSendEmail,
+  mockChallengeAttemptNotificationEmail,
 } = vi.hoisted(() => ({
   mockGetUser: vi.fn(),
   mockGetDb: vi.fn(),
@@ -17,6 +19,8 @@ const {
   mockUpdateStreak: vi.fn(),
   mockCreateCompetitiveNudges: vi.fn(),
   mockCreateNewUserNearRankNotifications: vi.fn(),
+  mockSendEmail: vi.fn(),
+  mockChallengeAttemptNotificationEmail: vi.fn(),
 }));
 
 vi.mock('../_shared/auth', () => ({ getUser: mockGetUser }));
@@ -26,6 +30,8 @@ vi.mock('../_shared/badges', () => ({ checkAndAwardBadges: mockCheckAndAwardBadg
 vi.mock('../_shared/streaks', () => ({ updateStreak: mockUpdateStreak }));
 vi.mock('../_shared/competitive-nudges', () => ({ createCompetitiveNudges: mockCreateCompetitiveNudges }));
 vi.mock('../_shared/new-user-alerts', () => ({ createNewUserNearRankNotifications: mockCreateNewUserNearRankNotifications }));
+vi.mock('../_shared/newsletter/resend', () => ({ sendEmail: mockSendEmail }));
+vi.mock('../_shared/email/templates', () => ({ challengeAttemptNotificationEmail: mockChallengeAttemptNotificationEmail }));
 
 vi.mock('drizzle-orm', () => ({
   eq: vi.fn((_col: any, val: any) => ({ op: 'eq', val })),
@@ -34,6 +40,7 @@ vi.mock('drizzle-orm', () => ({
 vi.mock('../../drizzle/schema.d1', () => ({
   attempts: { id: 'id', userId: 'userId', challengeId: 'challengeId', status: 'status' },
   challenges: { id: 'id' },
+  profiles: { id: 'id', name: 'name' },
 }));
 
 import { onRequestPost, onRequestGet } from './submissions';
@@ -209,6 +216,12 @@ describe('POST /api/submissions', () => {
     mockUpdateStreak.mockReset().mockResolvedValue({ currentStreak: 1, longestStreak: 1, newBadges: [], streakFreezeUsed: false });
     mockCreateCompetitiveNudges.mockReset().mockResolvedValue(undefined);
     mockCreateNewUserNearRankNotifications.mockReset().mockResolvedValue(undefined);
+    mockSendEmail.mockReset().mockResolvedValue({ success: true, id: 'email-123' });
+    mockChallengeAttemptNotificationEmail.mockReset().mockReturnValue({
+      subject: 'Test solved FizzBuzz!',
+      html: '<h1>Solved</h1>',
+      text: 'Solved notification',
+    });
   });
 
   it('returns 401 when user is not authenticated', async () => {
@@ -914,6 +927,183 @@ describe('POST /api/submissions', () => {
     }));
 
     expect(res.status).toBe(200);
+  });
+
+  // ── Admin notification ──────────────────────────────────────────
+
+  it('submit mode: sends admin notification email when RESEND_API_KEY is set', async () => {
+    mockGetUser.mockResolvedValue(FAKE_USER);
+
+    const attempt = fakeAttempt({ totalCost: 500 });
+    const challenge = fakeChallenge();
+    mockRunTestCases.mockResolvedValue(passingTestResult(2));
+
+    const updateSet = vi.fn().mockReturnValue({
+      where: vi.fn().mockResolvedValue(undefined),
+    });
+    const { db } = makeDb({
+      selectResults: [
+        [attempt],     // attempt lookup
+        [challenge],   // challenge lookup
+        [{ name: 'Test User' }],  // profile lookup for admin notification
+      ],
+      updateSet,
+    });
+    mockGetDb.mockReturnValue(db);
+
+    const envWithResend = { ...makeEnv(), RESEND_API_KEY: 'test-key' };
+    const ctx = {
+      request: new Request('https://ruwt.dev/api/submissions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          attemptId: VALID_ATTEMPT_ID,
+          sourceCode: 'code',
+        }),
+      }),
+      env: envWithResend,
+    };
+
+    const res = await onRequestPost(ctx);
+    const json = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(json.success).toBe(true);
+
+    await vi.waitFor(() => {
+      expect(mockChallengeAttemptNotificationEmail).toHaveBeenCalledWith({
+        userName: 'Test User',
+        userEmail: 'test@ruwt.dev',
+        challengeTitle: 'FizzBuzz Budget',
+        challengeDifficulty: 'easy',
+        passed: true,
+        passedTests: 2,
+        totalTests: 2,
+        totalCost: 500,
+      });
+      expect(mockSendEmail).toHaveBeenCalledWith(
+        envWithResend,
+        expect.objectContaining({
+          to: 'israel@ruwt.dev',
+          subject: 'Test solved FizzBuzz!',
+        }),
+      );
+    });
+  });
+
+  it('submit mode: sends admin notification on failed attempt too', async () => {
+    mockGetUser.mockResolvedValue(FAKE_USER);
+
+    const attempt = fakeAttempt();
+    const challenge = fakeChallenge();
+    mockRunTestCases.mockResolvedValue(failingTestResult());
+
+    const updateSet = vi.fn().mockReturnValue({
+      where: vi.fn().mockResolvedValue(undefined),
+    });
+    const { db } = makeDb({
+      selectResults: [
+        [attempt],
+        [challenge],
+        [{ name: null }],  // profile without name
+      ],
+      updateSet,
+    });
+    mockGetDb.mockReturnValue(db);
+
+    const envWithResend = { ...makeEnv(), RESEND_API_KEY: 'test-key' };
+    const ctx = {
+      request: new Request('https://ruwt.dev/api/submissions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          attemptId: VALID_ATTEMPT_ID,
+          sourceCode: 'code',
+        }),
+      }),
+      env: envWithResend,
+    };
+
+    const res = await onRequestPost(ctx);
+    const json = await res.json();
+
+    expect(json.success).toBe(false);
+    await vi.waitFor(() => {
+      expect(mockChallengeAttemptNotificationEmail).toHaveBeenCalledWith(
+        expect.objectContaining({
+          passed: false,
+          passedTests: 1,
+          totalTests: 2,
+        }),
+      );
+    });
+  });
+
+  it('submit mode: skips admin notification when RESEND_API_KEY is not set', async () => {
+    mockGetUser.mockResolvedValue(FAKE_USER);
+
+    const attempt = fakeAttempt();
+    const challenge = fakeChallenge();
+    mockRunTestCases.mockResolvedValue(passingTestResult(2));
+
+    const updateSet = vi.fn().mockReturnValue({
+      where: vi.fn().mockResolvedValue(undefined),
+    });
+    const { db } = makeDb({
+      selectResults: [[attempt], [challenge]],
+      updateSet,
+    });
+    mockGetDb.mockReturnValue(db);
+
+    const res = await onRequestPost(makePostContext({
+      attemptId: VALID_ATTEMPT_ID,
+      sourceCode: 'code',
+    }));
+
+    expect(res.status).toBe(200);
+    expect(mockSendEmail).not.toHaveBeenCalled();
+  });
+
+  it('submit mode: admin notification error does not fail the response', async () => {
+    mockGetUser.mockResolvedValue(FAKE_USER);
+    mockSendEmail.mockRejectedValue(new Error('email API down'));
+
+    const attempt = fakeAttempt();
+    const challenge = fakeChallenge();
+    mockRunTestCases.mockResolvedValue(passingTestResult(2));
+
+    const updateSet = vi.fn().mockReturnValue({
+      where: vi.fn().mockResolvedValue(undefined),
+    });
+    const { db } = makeDb({
+      selectResults: [
+        [attempt],
+        [challenge],
+        [{ name: 'User' }],
+      ],
+      updateSet,
+    });
+    mockGetDb.mockReturnValue(db);
+
+    const envWithResend = { ...makeEnv(), RESEND_API_KEY: 'test-key' };
+    const ctx = {
+      request: new Request('https://ruwt.dev/api/submissions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          attemptId: VALID_ATTEMPT_ID,
+          sourceCode: 'code',
+        }),
+      }),
+      env: envWithResend,
+    };
+
+    const res = await onRequestPost(ctx);
+    const json = await res.json();
+
+    // Should still return success despite email error
+    expect(res.status).toBe(200);
+    expect(json.success).toBe(true);
   });
 
   // ── Idempotency ──────────────────────────────────────────────────

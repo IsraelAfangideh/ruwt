@@ -4,6 +4,8 @@ import {
   candidateInviteEmail,
   reminderEmail,
   resultsReadyEmail,
+  newSignupNotificationEmail,
+  challengeAttemptNotificationEmail,
   teamInviteEmail,
 } from './templates';
 
@@ -888,7 +890,297 @@ describe('resultsReadyEmail', () => {
 });
 
 // ---------------------------------------------------------------------------
-// 5. Team Invite Email
+// 5. New Signup Notification Email (admin)
+// ---------------------------------------------------------------------------
+
+describe('newSignupNotificationEmail', () => {
+  const baseParams = {
+    userName: 'Jane Doe',
+    userEmail: 'jane@example.com',
+    provider: 'github',
+  };
+
+  it('returns subject, html, and text properties', () => {
+    const result = newSignupNotificationEmail(baseParams);
+    expect(result).toHaveProperty('subject');
+    expect(result).toHaveProperty('html');
+    expect(result).toHaveProperty('text');
+  });
+
+  it('includes user name in the subject when provided', () => {
+    const { subject } = newSignupNotificationEmail(baseParams);
+    expect(subject).toContain('Jane Doe');
+    expect(subject).toContain('just joined');
+  });
+
+  it('falls back to email in subject when name is null', () => {
+    const { subject } = newSignupNotificationEmail({ ...baseParams, userName: null });
+    expect(subject).toContain('jane@example.com');
+  });
+
+  it('falls back to email in subject when name is undefined', () => {
+    const { subject } = newSignupNotificationEmail({ userEmail: 'bob@test.com', provider: 'email' });
+    expect(subject).toContain('bob@test.com');
+  });
+
+  it('displays user details in HTML', () => {
+    const { html } = newSignupNotificationEmail(baseParams);
+    expect(html).toContain('Jane Doe');
+    expect(html).toContain('jane@example.com');
+  });
+
+  it('shows "GitHub OAuth" for github provider', () => {
+    const { html, text } = newSignupNotificationEmail(baseParams);
+    expect(html).toContain('GitHub OAuth');
+    expect(text).toContain('GitHub OAuth');
+  });
+
+  it('shows "Email signup" for email provider', () => {
+    const { html, text } = newSignupNotificationEmail({ ...baseParams, provider: 'email' });
+    expect(html).toContain('Email signup');
+    expect(text).toContain('Email signup');
+  });
+
+  it('shows raw provider for unknown providers', () => {
+    const { html, text } = newSignupNotificationEmail({ ...baseParams, provider: 'google' });
+    expect(html).toContain('google');
+    expect(text).toContain('google');
+  });
+
+  it('shows "Someone new" when name is null', () => {
+    const { html } = newSignupNotificationEmail({ ...baseParams, userName: null });
+    expect(html).toContain('Someone new');
+  });
+
+  it('includes the action checklist in HTML', () => {
+    const { html } = newSignupNotificationEmail(baseParams);
+    expect(html).toContain('Send them a personal welcome');
+    expect(html).toContain('Add them to the CRM');
+    expect(html).toContain('complete onboarding');
+    expect(html).toContain('which challenge they try first');
+    expect(html).toContain('GitHub, check out their profile');
+  });
+
+  it('includes the action checklist in plain text', () => {
+    const { text } = newSignupNotificationEmail(baseParams);
+    expect(text).toContain('[ ] Send them a personal welcome');
+    expect(text).toContain('[ ] Add them to the CRM');
+    expect(text).toContain('[ ] Check if they complete onboarding');
+    expect(text).toContain('[ ] See which challenge they try first');
+  });
+
+  it('includes CTA linking to leaderboard', () => {
+    const { html } = newSignupNotificationEmail(baseParams);
+    expect(html).toContain('View Leaderboard');
+    expect(html).toContain('https://ruwt.dev/leaderboard');
+  });
+
+  it('includes motivational footer', () => {
+    const { html, text } = newSignupNotificationEmail(baseParams);
+    expect(html).toContain('Every signup is a step closer');
+    expect(text).toContain('Every signup is a step closer');
+  });
+
+  it('escapes HTML in user name', () => {
+    const { html } = newSignupNotificationEmail({ ...baseParams, userName: '<script>alert(1)</script>' });
+    expect(html).toContain('&lt;script&gt;');
+    expect(html).not.toContain('<script>alert');
+  });
+
+  it('escapes HTML in user email', () => {
+    const { html } = newSignupNotificationEmail({ ...baseParams, userEmail: 'a&b@test.com' });
+    expect(html).toContain('a&amp;b@test.com');
+  });
+
+  it('escapes HTML in provider', () => {
+    const { html } = newSignupNotificationEmail({ ...baseParams, provider: '<bad>' });
+    expect(html).toContain('&lt;bad&gt;');
+  });
+
+  it('plain text includes all key information', () => {
+    const { text } = newSignupNotificationEmail(baseParams);
+    expect(text).toContain('New user just signed up!');
+    expect(text).toContain('Name: Jane Doe');
+    expect(text).toContain('Email: jane@example.com');
+    expect(text).toContain('Signed up via: GitHub OAuth');
+    expect(text).toContain('https://ruwt.dev/leaderboard');
+  });
+
+  it('plain text shows "Not provided" when name is null', () => {
+    const { text } = newSignupNotificationEmail({ ...baseParams, userName: null });
+    expect(text).toContain('Name: Not provided');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 6. Challenge Attempt Notification Email (admin)
+// ---------------------------------------------------------------------------
+
+describe('challengeAttemptNotificationEmail', () => {
+  const passParams = {
+    userName: 'Alice',
+    userEmail: 'alice@example.com',
+    challengeTitle: 'FizzBuzz Budget',
+    challengeDifficulty: 'easy',
+    passed: true,
+    passedTests: 5,
+    totalTests: 5,
+    totalCost: 1200,
+  };
+
+  const failParams = {
+    ...passParams,
+    passed: false,
+    passedTests: 3,
+    totalTests: 5,
+  };
+
+  it('returns subject, html, and text properties', () => {
+    const result = challengeAttemptNotificationEmail(passParams);
+    expect(result).toHaveProperty('subject');
+    expect(result).toHaveProperty('html');
+    expect(result).toHaveProperty('text');
+  });
+
+  describe('subject line', () => {
+    it('says "solved" for passed attempts', () => {
+      const { subject } = challengeAttemptNotificationEmail(passParams);
+      expect(subject).toContain('solved');
+      expect(subject).toContain('FizzBuzz Budget');
+      expect(subject).toContain('Alice');
+    });
+
+    it('says "attempted" for failed attempts', () => {
+      const { subject } = challengeAttemptNotificationEmail(failParams);
+      expect(subject).toContain('attempted');
+      expect(subject).toContain('FizzBuzz Budget');
+    });
+
+    it('uses email when name is null', () => {
+      const { subject } = challengeAttemptNotificationEmail({ ...passParams, userName: null });
+      expect(subject).toContain('alice@example.com');
+    });
+  });
+
+  describe('result display', () => {
+    it('shows PASSED label with green color for passed', () => {
+      const { html, text } = challengeAttemptNotificationEmail(passParams);
+      expect(html).toContain('PASSED');
+      expect(html).toContain('#5a8a5a');
+      expect(text).toContain('PASSED');
+    });
+
+    it('shows FAILED label with red color for failed', () => {
+      const { html, text } = challengeAttemptNotificationEmail(failParams);
+      expect(html).toContain('FAILED');
+      expect(html).toContain('#b06060');
+      expect(text).toContain('FAILED');
+    });
+  });
+
+  describe('attempt details', () => {
+    it('shows challenge title and difficulty', () => {
+      const { html, text } = challengeAttemptNotificationEmail(passParams);
+      expect(html).toContain('FizzBuzz Budget');
+      expect(html).toContain('Easy');
+      expect(text).toContain('Challenge: FizzBuzz Budget');
+      expect(text).toContain('Difficulty: Easy');
+    });
+
+    it('shows test results', () => {
+      const { html, text } = challengeAttemptNotificationEmail(passParams);
+      expect(html).toContain('5 / 5');
+      expect(text).toContain('Tests: 5 / 5');
+    });
+
+    it('shows AI cost in credits', () => {
+      const { html, text } = challengeAttemptNotificationEmail(passParams);
+      expect(html).toContain('1,200 credits');
+      expect(text).toContain('1,200 credits');
+    });
+
+    it('shows "Free (no AI used)" for zero cost', () => {
+      const { html, text } = challengeAttemptNotificationEmail({ ...passParams, totalCost: 0 });
+      expect(html).toContain('Free (no AI used)');
+      expect(text).toContain('Free (no AI used)');
+    });
+
+    it('shows user name and email', () => {
+      const { html, text } = challengeAttemptNotificationEmail(passParams);
+      expect(html).toContain('Alice');
+      expect(html).toContain('alice@example.com');
+      expect(text).toContain('Alice');
+      expect(text).toContain('alice@example.com');
+    });
+
+    it('shows email as display name when name is null', () => {
+      const { html } = challengeAttemptNotificationEmail({ ...passParams, userName: null });
+      expect(html).toContain('alice@example.com');
+    });
+  });
+
+  describe('difficulty color coding', () => {
+    it('uses green for easy', () => {
+      const { html } = challengeAttemptNotificationEmail({ ...passParams, challengeDifficulty: 'easy' });
+      expect(html).toContain('color: #5a8a5a;">Easy');
+    });
+
+    it('uses gold for medium', () => {
+      const { html } = challengeAttemptNotificationEmail({ ...passParams, challengeDifficulty: 'medium' });
+      expect(html).toContain('color: #c9a962;">Medium');
+    });
+
+    it('uses red for hard', () => {
+      const { html } = challengeAttemptNotificationEmail({ ...passParams, challengeDifficulty: 'hard' });
+      expect(html).toContain('color: #b06060;">Hard');
+    });
+  });
+
+  describe('contextual messaging', () => {
+    it('shows positive message for passed attempts', () => {
+      const { html, text } = challengeAttemptNotificationEmail(passParams);
+      expect(html).toContain('Another one in the bag');
+      expect(text).toContain('Another one in the bag');
+    });
+
+    it('shows encouragement message for failed attempts', () => {
+      const { html, text } = challengeAttemptNotificationEmail(failParams);
+      expect(html).toContain('grinding');
+      expect(text).toContain('grinding');
+    });
+  });
+
+  it('includes CTA linking to activity feed', () => {
+    const { html } = challengeAttemptNotificationEmail(passParams);
+    expect(html).toContain('View Activity Feed');
+    expect(html).toContain('https://ruwt.dev/activity');
+  });
+
+  it('escapes HTML in all user-supplied fields', () => {
+    const { html } = challengeAttemptNotificationEmail({
+      ...passParams,
+      userName: '<b>Evil</b>',
+      userEmail: 'a&b@test.com',
+      challengeTitle: 'Test & Eval <v2>',
+    });
+    expect(html).toContain('&lt;b&gt;Evil&lt;/b&gt;');
+    expect(html).toContain('a&amp;b@test.com');
+    expect(html).toContain('Test &amp; Eval &lt;v2&gt;');
+  });
+
+  it('plain text includes all key information', () => {
+    const { text } = challengeAttemptNotificationEmail(passParams);
+    expect(text).toContain('PASSED: Alice');
+    expect(text).toContain('FizzBuzz Budget');
+    expect(text).toContain('Difficulty: Easy');
+    expect(text).toContain('Tests: 5 / 5');
+    expect(text).toContain('https://ruwt.dev/activity');
+    expect(text).toContain('Sent by ruwt.dev');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 7. Team Invite Email
 // ---------------------------------------------------------------------------
 
 describe('teamInviteEmail', () => {
@@ -1048,6 +1340,29 @@ describe('all templates produce structurally valid output', () => {
           challengesPassed: 2,
           totalChallenges: 3,
           resultsUrl: 'https://ruwt.dev/results/x',
+        }),
+    },
+    {
+      name: 'newSignupNotificationEmail',
+      fn: () =>
+        newSignupNotificationEmail({
+          userName: 'Test User',
+          userEmail: 'test@example.com',
+          provider: 'github',
+        }),
+    },
+    {
+      name: 'challengeAttemptNotificationEmail',
+      fn: () =>
+        challengeAttemptNotificationEmail({
+          userName: 'Test User',
+          userEmail: 'test@example.com',
+          challengeTitle: 'Test Challenge',
+          challengeDifficulty: 'easy',
+          passed: true,
+          passedTests: 3,
+          totalTests: 3,
+          totalCost: 500,
         }),
     },
     {

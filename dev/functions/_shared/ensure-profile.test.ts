@@ -4,9 +4,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // Use vi.hoisted so these are available when vi.mock factories are hoisted
-const { mockSendEmail, mockWelcomeEmail } = vi.hoisted(() => ({
+const { mockSendEmail, mockWelcomeEmail, mockNewSignupNotificationEmail } = vi.hoisted(() => ({
   mockSendEmail: vi.fn(),
   mockWelcomeEmail: vi.fn(),
+  mockNewSignupNotificationEmail: vi.fn(),
 }));
 
 vi.mock('./newsletter/resend', () => ({
@@ -15,6 +16,7 @@ vi.mock('./newsletter/resend', () => ({
 
 vi.mock('./email/templates', () => ({
   welcomeEmail: mockWelcomeEmail,
+  newSignupNotificationEmail: mockNewSignupNotificationEmail,
 }));
 
 import { ensureProfile } from './ensure-profile';
@@ -83,11 +85,17 @@ describe('ensureProfile', () => {
   beforeEach(() => {
     mockSendEmail.mockReset();
     mockWelcomeEmail.mockReset();
+    mockNewSignupNotificationEmail.mockReset();
     mockSendEmail.mockResolvedValue({ success: true, id: 'email-123' });
     mockWelcomeEmail.mockReturnValue({
       subject: 'Welcome to ruwt.dev!',
       html: '<h1>Welcome</h1>',
       text: 'Welcome to ruwt.dev',
+    });
+    mockNewSignupNotificationEmail.mockReturnValue({
+      subject: 'New signup: Jane Doe just joined ruwt.dev',
+      html: '<h1>New signup</h1>',
+      text: 'New signup notification',
     });
   });
 
@@ -163,6 +171,63 @@ describe('ensureProfile', () => {
     expect(db.insert).toHaveBeenCalledTimes(1);
     expect(mockSendEmail).not.toHaveBeenCalled();
     expect(mockWelcomeEmail).not.toHaveBeenCalled();
+    expect(mockNewSignupNotificationEmail).not.toHaveBeenCalled();
+  });
+
+  it('sends admin notification email for new signup', async () => {
+    const db = createMockDb([1, 1, 1]);
+    const user = createMockUser();
+
+    await ensureProfile(db, user, env);
+
+    await vi.waitFor(() => {
+      expect(mockNewSignupNotificationEmail).toHaveBeenCalledWith({
+        userName: 'Jane Doe',
+        userEmail: 'newuser@example.com',
+        provider: 'email',
+      });
+      expect(mockSendEmail).toHaveBeenCalledWith(
+        env,
+        expect.objectContaining({
+          to: 'israel@ruwt.dev',
+          subject: 'New signup: Jane Doe just joined ruwt.dev',
+        }),
+      );
+    });
+  });
+
+  it('sends admin notification with github provider from app_metadata', async () => {
+    const db = createMockDb([1, 1, 1]);
+    const user = createMockUser({
+      app_metadata: { provider: 'github' },
+    });
+
+    await ensureProfile(db, user, env);
+
+    await vi.waitFor(() => {
+      expect(mockNewSignupNotificationEmail).toHaveBeenCalledWith(
+        expect.objectContaining({ provider: 'github' }),
+      );
+    });
+  });
+
+  it('sends admin notification even when user has no email (still notifies admin)', async () => {
+    const db = createMockDb([1, 1, 1]);
+    const user = createMockUser({ email: undefined });
+
+    await ensureProfile(db, user, env);
+
+    // Welcome email should NOT be sent (no user email)
+    // But admin notification should still be sent
+    await vi.waitFor(() => {
+      expect(mockNewSignupNotificationEmail).toHaveBeenCalled();
+      expect(mockSendEmail).toHaveBeenCalledWith(
+        env,
+        expect.objectContaining({
+          to: 'israel@ruwt.dev',
+        }),
+      );
+    });
   });
 
   it('handles missing email in user metadata gracefully', async () => {
@@ -174,8 +239,11 @@ describe('ensureProfile', () => {
     // Profile should be created with empty string email
     const profileInsert = db._tracked[0];
     expect(profileInsert.values.email).toBe('');
-    // Email should NOT be sent (no email address)
-    expect(mockSendEmail).not.toHaveBeenCalled();
+    // Welcome email should NOT be sent (no email address), but admin notif is
+    expect(mockSendEmail).not.toHaveBeenCalledWith(
+      env,
+      expect.objectContaining({ to: '' }),
+    );
   });
 
   it('handles missing name in user metadata', async () => {

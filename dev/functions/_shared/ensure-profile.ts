@@ -8,7 +8,9 @@ import type { User } from '@supabase/supabase-js';
 import type { Db } from './db';
 import { profiles, transactions, notifications } from '../../drizzle/schema.d1';
 import { sendEmail } from './newsletter/resend';
-import { welcomeEmail } from './email/templates';
+import { welcomeEmail, newSignupNotificationEmail } from './email/templates';
+
+const ADMIN_EMAIL = 'israel@ruwt.dev';
 
 const SIGNUP_BONUS = 50000;
 
@@ -54,6 +56,18 @@ export async function ensureProfile(db: Db, user: User, env?: { RESEND_API_KEY?:
       const firstName = ((user.user_metadata?.full_name ?? user.user_metadata?.name) as string)?.split(' ')[0] || null;
       const email = welcomeEmail({ name: firstName });
       sendEmail(env, { to: user.email, subject: email.subject, html: email.html, text: email.text }).catch(() => {});
+    }
+
+    // Admin notification (fire-and-forget)
+    if (env?.RESEND_API_KEY) {
+      const fullName = (user.user_metadata?.full_name ?? user.user_metadata?.name) as string | null ?? null;
+      const provider = (user.app_metadata?.provider as string) ?? 'email';
+      const notif = newSignupNotificationEmail({
+        userName: fullName,
+        userEmail: user.email ?? '',
+        provider,
+      });
+      sendEmail(env, { to: ADMIN_EMAIL, subject: notif.subject, html: notif.html, text: notif.text }).catch(() => {});
     }
   }
 }
