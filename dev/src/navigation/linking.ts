@@ -30,6 +30,8 @@ export const linking: LinkingOptions<ReactNavigation.RootParamList> = {
       Certificate: 'cert/:shareToken',
       OrgManagement: 'org/:orgId?',
       OrgJoin: 'org/join/:token',
+      Models: 'models',
+      ModelDetail: 'models/:modelId',
       NotFound: '*',
     },
   },

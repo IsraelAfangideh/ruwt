@@ -290,6 +290,29 @@ export const replayComments = sqliteTable('replay_comments', {
   createdAt: text('created_at').default(sql`(datetime('now'))`),
 });
 
+// --- Challenge Comments ---
+
+export const challengeComments = sqliteTable('challenge_comments', {
+  id: text('id').primaryKey(),
+  challengeId: text('challenge_id').notNull().references(() => challenges.id),
+  userId: text('user_id').notNull().references(() => profiles.id),
+  content: text('content').notNull(),
+  solveCost: integer('solve_cost'),
+  parentId: text('parent_id'),
+  createdAt: text('created_at').default(sql`(datetime('now'))`).notNull(),
+});
+
+// --- Reactions ---
+
+export const reactions = sqliteTable('reactions', {
+  id: text('id').primaryKey(),
+  userId: text('user_id').notNull().references(() => profiles.id),
+  targetType: text('target_type').notNull(), // 'challenge_comment' | 'replay_comment'
+  targetId: text('target_id').notNull(),
+  emoji: text('emoji').notNull(),
+  createdAt: text('created_at').default(sql`(datetime('now'))`).notNull(),
+});
+
 // --- Certificates ---
 
 export const certificates = sqliteTable('certificates', {
@@ -395,7 +418,7 @@ export type ChallengeCategory = 'practice' | 'model_selection' | 'prompt_efficie
 export type ChallengeLanguage = 'javascript' | 'typescript' | 'python';
 export type CertificateType = 'track_completion' | 'daily_streak' | 'efficiency_master';
 export type BadgeType = 'first_solve' | 'streak_3' | 'streak_7' | 'streak_30' | 'streak_100' | 'penny_pincher' | 'speed_demon' | 'model_master' | 'polyglot' | 'clean_sweep_easy' | 'clean_sweep_medium' | 'ten_solves' | 'twenty_five_solves' | 'fifty_solves' | 'daily_warrior';
-export type NotificationType = 'badge_earned' | 'streak_reminder' | 'leaderboard_change' | 'new_challenge' | 'competitive_nudge';
+export type NotificationType = 'badge_earned' | 'streak_reminder' | 'leaderboard_change' | 'new_challenge' | 'competitive_nudge' | 'comment_reply' | 'comment_on_solved' | 'replay_comment' | 'reaction_received';
 export type AssessmentStatus = 'draft' | 'active' | 'archived';
 export type InviteStatus = 'pending' | 'started' | 'completed' | 'expired';
 export type SessionStatus = 'in_progress' | 'completed' | 'expired' | 'abandoned';
@@ -417,6 +440,12 @@ export type Notification = typeof notifications.$inferSelect;
 export type NewNotification = typeof notifications.$inferInsert;
 export type NewsletterLog = typeof newsletterLogs.$inferSelect;
 export type NewNewsletterLog = typeof newsletterLogs.$inferInsert;
+export type ChallengeComment = typeof challengeComments.$inferSelect;
+export type NewChallengeComment = typeof challengeComments.$inferInsert;
+export type Reaction = typeof reactions.$inferSelect;
+export type NewReaction = typeof reactions.$inferInsert;
+export type ReactionEmoji = 'thumbs_up' | 'fire' | 'brain' | 'heart' | 'eyes' | 'rocket';
+export type ReactionTargetType = 'challenge_comment' | 'replay_comment';
 export type NewsletterStatus = 'sent' | 'failed';
 export type ErrorLog = typeof errorLogs.$inferSelect;
 export type NewErrorLog = typeof errorLogs.$inferInsert;

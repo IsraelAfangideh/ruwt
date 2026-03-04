@@ -104,6 +104,10 @@ export function NotificationBell() {
     if (type === 'leaderboard_change') return '📊';
     if (type === 'competitive_nudge') return '⚔️';
     if (type === 'new_challenge') return '🆕';
+    if (type === 'comment_reply') return '💬';
+    if (type === 'comment_on_solved') return '💬';
+    if (type === 'replay_comment') return '💬';
+    if (type === 'reaction_received') return '❤️';
     return '🔔';
   };
 

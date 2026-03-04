@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/Badge';
 import { FeaturedReplay } from '@/components/FeaturedReplay';
 import { ActivityFeed } from '@/components/ActivityFeed';
 import { PlatformStats } from '@/components/PlatformStats';
-import { DISCORD_INVITE_URL } from '@/lib/constants';
+/* Discord link removed — social features are built in-site */
 import { useColors } from '@/theme';
 import { spacing, fontSizes, fontFamily } from '@/theme/tokens';
 import { useWindowWidth } from '@/hooks/useWindowWidth';
@@ -277,19 +277,19 @@ export function LandingScreen() {
 
       {/* ─── Community ─── */}
       <View style={[styles.section, { backgroundColor: c.bg, paddingTop: 0 }]}>
-        <Card style={[styles.card, { borderColor: '#5865F2', borderWidth: 1 }]}>
+        <Card style={[styles.card, { borderColor: c.accent, borderWidth: 1 }]}>
           <CardHeader>
-            <CardTitle>Join the Community</CardTitle>
-            <CardDescription>Discuss strategies, share solves, and compete with other engineers on Discord.</CardDescription>
+            <CardTitle>Join the Discussion</CardTitle>
+            <CardDescription>Every challenge has its own discussion. Share strategies, compare approaches, and learn from other solvers.</CardDescription>
           </CardHeader>
           <CardContent>
             <Button
               variant="outline"
-              onPress={() => { if (typeof window !== 'undefined') window.open(DISCORD_INVITE_URL, '_blank'); }}
-              style={{ borderColor: '#5865F2' }}
-              textStyle={{ color: '#5865F2' }}
+              onPress={() => navigation.navigate('Challenges' as never)}
+              style={{ borderColor: c.accent }}
+              textStyle={{ color: c.accent }}
             >
-              Join Discord
+              Browse Challenges
             </Button>
           </CardContent>
         </Card>

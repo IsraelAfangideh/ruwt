@@ -10,6 +10,7 @@ import { useColors } from '@/theme';
 import { spacing, fontSizes, fontFamily } from '@/theme/tokens';
 import { getModelById, tierColor, formatCostFromHundredths } from '@/lib/ai/pricing';
 import { useDocumentMeta } from '@/hooks/useDocumentMeta';
+import { CommentSection } from '@/components/CommentSection';
 
 interface ReplayMessage {
   role: string;
@@ -268,6 +269,17 @@ export function ReplayScreen() {
         )}
       </View>
 
+      {/* Comments */}
+      <View style={[styles.commentsSection, { borderTopColor: c.border }]}>
+        <Text style={[styles.commentsTitle, { color: c.text }]}>Comments</Text>
+        <CommentSection
+          targetType="replay"
+          targetId={attemptId}
+          apiPath={`/api/attempts/${attemptId}/comments`}
+          promptText="Share your thoughts on this replay..."
+        />
+      </View>
+
       {/* Try this challenge CTA */}
       <View style={styles.ctaSection}>
         <Pressable
@@ -322,6 +334,8 @@ const styles = StyleSheet.create({
   msgHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.xs },
   roleBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 4 },
   msgContent: { fontSize: fontSizes.sm, lineHeight: 20, fontFamily: 'monospace' },
+  commentsSection: { padding: spacing.lg, borderTopWidth: 1, maxWidth: 800, alignSelf: 'center', width: '100%' },
+  commentsTitle: { fontSize: fontSizes.lg, fontWeight: '700', fontFamily: fontFamily.body, marginBottom: spacing.sm },
   ctaSection: { alignItems: 'center', paddingVertical: spacing.xl },
   ctaButton: { paddingHorizontal: spacing.xl, paddingVertical: spacing.md, borderRadius: 8 },
   ctaText: { fontSize: fontSizes.md, fontWeight: '600' },

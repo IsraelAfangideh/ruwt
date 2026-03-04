@@ -12,6 +12,7 @@ import { TerminalPanel, type TerminalPanelHandle } from './arena/TerminalPanel';
 import { TIER_MODELS, getModelById, getModelsForTier, tierColor, tierLabel, estimateTypicalMessageCost, formatCostFromHundredths, type ModelTier } from '@/lib/ai/pricing';
 import { estimateChatCost, formatEstimatedCost } from '@/lib/cost-estimate';
 import { useIsMobile } from '@/lib/useIsMobile';
+import { CommentSection } from '@/components/CommentSection';
 import { buildSystemPrompt, formatTestResultsForMessage, type AIMode, type TestResults as AITestResults } from '@/lib/ai/system-prompts';
 import { stripToolCalls, hasToolCalls } from '@/lib/ai/tool-parser';
 import { applyCodeFromResponse as sharedApplyCode, extractFileEdits } from '@/lib/ai/code-apply';
@@ -463,7 +464,7 @@ export function ArenaIDE({
   const [tierDropdownOpen, setTierDropdownOpen] = useState(false);
   const [showExpiryOverlay, setShowExpiryOverlay] = useState(false);
   const [aiLimitReached, setAiLimitReached] = useState(false);
-  const [activeTab, setActiveTab] = useState<'description' | 'chat'>('description');
+  const [activeTab, setActiveTab] = useState<'description' | 'chat' | 'discussion'>('description');
   const [hasUnreadChat, setHasUnreadChat] = useState(false);
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
@@ -496,7 +497,7 @@ export function ArenaIDE({
   const isSidebarDragging = useRef(false);
 
   const isMobile = useIsMobile();
-  const activeTabRef = useRef<'description' | 'chat'>('description');
+  const activeTabRef = useRef<'description' | 'chat' | 'discussion'>('description');
   activeTabRef.current = activeTab;
   const chatScrollRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<unknown>(null);
@@ -1177,12 +1178,30 @@ export function ArenaIDE({
               AI Chat
               {hasUnreadChat && <span style={s.unreadDot} aria-label="unread messages" />}
             </button>
+            <button
+              style={activeTab === 'discussion' ? s.tabActive : s.tab}
+              onClick={() => setActiveTab('discussion')}
+              role="tab"
+              aria-selected={activeTab === 'discussion'}
+              aria-controls="panel-discussion"
+            >
+              Discussion
+            </button>
           </div>
 
           {/* Tab content */}
           {activeTab === 'description' ? (
             <div id="panel-description" role="tabpanel" aria-label="Challenge description" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
             <DescriptionPanel challenge={challenge} pastAttempts={pastAttempts} notepadContent={notepadContent} onNotepadChange={setNotepadContent} />
+            </div>
+          ) : activeTab === 'discussion' ? (
+            <div id="panel-discussion" role="tabpanel" aria-label="Challenge discussion" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, overflow: 'auto', padding: 12 }}>
+              <CommentSection
+                targetType="challenge"
+                targetId={challenge.id}
+                apiPath={`/api/challenges/${challenge.id}/comments`}
+                promptText="Share your approach or discuss this challenge..."
+              />
             </div>
           ) : (
             <div id="panel-chat" role="tabpanel" aria-label="AI Chat" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
@@ -1780,7 +1799,7 @@ export function ArenaIDE({
             style={mobilePanel === 'sidebar' ? s.mobileFloatingTabActive : s.mobileFloatingTab}
             onClick={() => { setMobilePanel('sidebar'); }}
           >
-            <span>{activeTab === 'chat' ? 'AI Chat' : 'Description'}</span>
+            <span>{activeTab === 'chat' ? 'AI Chat' : activeTab === 'discussion' ? 'Discussion' : 'Description'}</span>
             {hasUnreadChat && mobilePanel === 'editor' && <span style={s.mobileUnreadDot} />}
           </button>
           <button

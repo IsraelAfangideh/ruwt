@@ -10,7 +10,7 @@ import { useToast } from '@/components/ui/Toast';
 import { ArenaErrorBoundary } from '@/components/arena/ArenaErrorBoundary';
 import { estimateMessagesForBudget } from '@/lib/ai/pricing';
 import { BADGE_DEFS, type BadgeDef } from '@/lib/badge-defs';
-import { DISCORD_INVITE_URL } from '@/lib/constants';
+import { CommentSection } from '@/components/CommentSection';
 
 /* ─── Budget Progress Bar ──────────────────────────────────────────── */
 
@@ -106,6 +106,9 @@ export function ArenaScreen() {
   const [nextChallenge, setNextChallenge] = useState<{ id: string; title: string; difficulty: string } | null>(null);
   const [earnedBadges, setEarnedBadges] = useState<BadgeDef[]>([]);
   const [streakInfo, setStreakInfo] = useState<{ currentStreak: number } | null>(null);
+  const [commentText, setCommentText] = useState('');
+  const [commentSubmitted, setCommentSubmitted] = useState(false);
+  const [commentSubmitting, setCommentSubmitting] = useState(false);
   const navigatingRef = useRef(false);
   const isMobile = useIsMobile();
   const { showToast } = useToast();
@@ -154,6 +157,8 @@ export function ArenaScreen() {
     setNextChallenge(null);
     setEarnedBadges([]);
     setStreakInfo(null);
+    setCommentText('');
+    setCommentSubmitted(false);
     navigatingRef.current = false;
   }, [challengeId]);
 
@@ -267,6 +272,8 @@ export function ArenaScreen() {
     setSuccessStats(null);
     setEarnedBadges([]);
     setStreakInfo(null);
+    setCommentText('');
+    setCommentSubmitted(false);
     setIsExpired(false);
     isExpiredRef.current = false;
   }, []);
@@ -1276,23 +1283,77 @@ export function ArenaScreen() {
                 >
                   Back to Challenges
                 </button>
-                <a
-                  href={DISCORD_INVITE_URL}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{
-                    fontSize: 12,
-                    color: '#5865F2',
-                    textDecoration: 'none',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 4,
-                    justifyContent: 'center',
-                    marginTop: 4,
-                  }}
-                >
-                  Discuss this challenge on Discord
-                </a>
+                {/* Post-solve comment prompt */}
+                {successOverlay.passed && !commentSubmitted && (
+                  <div style={{
+                    width: '100%',
+                    marginTop: 8,
+                    background: `${arena.accent}10`,
+                    border: `1px solid ${arena.accent}30`,
+                    borderRadius: 8,
+                    padding: 12,
+                  }}>
+                    <div style={{ fontSize: 12, color: arena.accent, fontWeight: 600, marginBottom: 6 }}>
+                      How did you approach this?
+                    </div>
+                    <textarea
+                      value={commentText}
+                      onChange={(e) => setCommentText(e.target.value)}
+                      placeholder="Share your strategy with others..."
+                      style={{
+                        width: '100%',
+                        minHeight: 48,
+                        maxHeight: 100,
+                        background: arena.surface,
+                        border: `1px solid ${arena.border}`,
+                        borderRadius: 6,
+                        color: arena.text,
+                        fontSize: 13,
+                        padding: 8,
+                        resize: 'vertical',
+                        fontFamily: '"Libre Franklin", sans-serif',
+                      }}
+                    />
+                    <button
+                      disabled={commentSubmitting || !commentText.trim()}
+                      style={{
+                        marginTop: 6,
+                        background: arena.accent,
+                        border: 'none',
+                        borderRadius: 6,
+                        color: '#0d1117',
+                        padding: '6px 14px',
+                        fontSize: 12,
+                        fontWeight: 600,
+                        cursor: commentSubmitting || !commentText.trim() ? 'default' : 'pointer',
+                        opacity: commentSubmitting || !commentText.trim() ? 0.5 : 1,
+                      }}
+                      onClick={async () => {
+                        if (commentSubmitting || !commentText.trim()) return;
+                        setCommentSubmitting(true);
+                        try {
+                          const res = await fetch(`/api/challenges/${challengeId}/comments`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ content: commentText.trim() }),
+                          });
+                          if (res.ok) {
+                            setCommentSubmitted(true);
+                            setCommentText('');
+                          }
+                        } catch { /* ignore */ }
+                        setCommentSubmitting(false);
+                      }}
+                    >
+                      {commentSubmitting ? 'Posting...' : 'Share'}
+                    </button>
+                  </div>
+                )}
+                {commentSubmitted && (
+                  <span style={{ fontSize: 12, color: arena.success, marginTop: 4 }}>
+                    Comment posted! Others can see it in the Discussion tab.
+                  </span>
+                )}
               </div>
             </div>
           </div>
