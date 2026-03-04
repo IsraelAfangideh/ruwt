@@ -55,7 +55,7 @@ const mockCommentsWithReply = [
 ];
 
 function setupFetch(comments: any[] = mockComments) {
-  vi.stubGlobal('fetch', vi.fn().mockImplementation((url: string, opts?: any) => {
+  vi.stubGlobal('fetch', vi.fn().mockImplementation((_url: string, opts?: any) => {
     if (opts?.method === 'POST') {
       const body = JSON.parse(opts.body);
       return Promise.resolve({

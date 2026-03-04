@@ -5,7 +5,7 @@
 import { useState, useCallback } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { useColors } from '@/theme';
-import { spacing, fontSizes } from '@/theme/tokens';
+import { fontSizes } from '@/theme/tokens';
 
 const EMOJI_MAP: Record<string, string> = {
   thumbs_up: '\u{1F44D}',

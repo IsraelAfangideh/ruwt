@@ -10,7 +10,6 @@ import { useToast } from '@/components/ui/Toast';
 import { ArenaErrorBoundary } from '@/components/arena/ArenaErrorBoundary';
 import { estimateMessagesForBudget } from '@/lib/ai/pricing';
 import { BADGE_DEFS, type BadgeDef } from '@/lib/badge-defs';
-import { CommentSection } from '@/components/CommentSection';
 
 /* ─── Budget Progress Bar ──────────────────────────────────────────── */
 

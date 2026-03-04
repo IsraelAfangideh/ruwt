@@ -49,7 +49,8 @@ function formatCost(hundredths: number): string {
   return dollars < 0.01 ? `$${dollars.toFixed(4)}` : `$${dollars.toFixed(2)}`;
 }
 
-export function CommentSection({ targetType, targetId, apiPath, promptText }: CommentSectionProps) {
+export function CommentSection({ targetType, targetId: _targetId, apiPath, promptText }: CommentSectionProps) {
+  void _targetId; // reserved for future use
   const c = useColors();
   const [comments, setComments] = useState<Comment[]>([]);
   const [loading, setLoading] = useState(true);
@@ -291,7 +292,7 @@ const styles = StyleSheet.create({
   },
   comment: {
     paddingVertical: spacing.sm,
-    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomWidth: 1,
     gap: 4,
   },
   reply: {

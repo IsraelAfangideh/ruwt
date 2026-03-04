@@ -115,7 +115,7 @@ describe('ReactionBar', () => {
   });
 
   it('highlights active user reaction', () => {
-    const { container } = render(
+    render(
       <ReactionBar
         targetType="challenge_comment"
         targetId="c1"
