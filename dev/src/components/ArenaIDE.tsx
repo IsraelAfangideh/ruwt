@@ -764,8 +764,6 @@ export function ArenaIDE({
       { role: 'user' as const, content: text },
     ];
 
-    let toolLoopCount = 0;
-    const MAX_TOOL_LOOPS = 5;
     let conversationMessages = allMessages;
     let constraintHit = false;
     let lastRoundAppliedCode = false;
@@ -887,21 +885,16 @@ export function ArenaIDE({
     // First round
     let aiResponse = await runOneRound(conversationMessages, false);
 
-    // Agent loop: auto-run tests when AI writes code OR explicitly requests tests.
-    // This makes ALL models work with the loop — no need for <ruwt:run_tests/> markers.
-    while (
+    // Auto-run tests once after AI writes code, but don't auto-iterate.
+    // The user decides what feedback to give — keeps humans in the loop.
+    if (
       aiResponse &&
       (hasToolCalls(aiResponse) || lastRoundAppliedCode) &&
       (mode === 'agent' || mode === 'debug') &&
-      toolLoopCount < MAX_TOOL_LOOPS &&
       !constraintHit &&
       onRunTests
     ) {
-      toolLoopCount++;
-      lastRoundAppliedCode = false;
       setIsToolLooping(true);
-
-      // Run tests with current code
       const currentCode = fs.getSolutionCode();
       try {
         const testResult = await onRunTests(currentCode, language);
@@ -911,42 +904,12 @@ export function ArenaIDE({
           totalTests: testResult.totalTests,
           results: (testResult.results || []) as AITestResults['results'],
         };
-
-        // If all tests pass, stop looping
-        if (testResult.passed) {
-          const resultMsg = formatTestResultsForMessage(asAITestResults);
-          setMessages((m) => [...m, { role: 'user', content: resultMsg }]);
-          break;
-        }
-
-        const failNote = lastApplyFailedRef.current > 0
-          ? `\n[Note: ${lastApplyFailedRef.current} edit block(s) failed to apply — SEARCH text not found in current code. Re-read the current file above before writing SEARCH blocks.]`
-          : '';
-        lastApplyFailedRef.current = 0;
-        const resultMsg = formatTestResultsForMessage(asAITestResults) + failNote;
+        const resultMsg = formatTestResultsForMessage(asAITestResults);
         setMessages((m) => [...m, { role: 'user', content: resultMsg }]);
-
-        // Add to conversation and re-prompt
-        conversationMessages = [
-          ...conversationMessages,
-          { role: 'assistant' as const, content: stripToolCalls(aiResponse!) },
-          { role: 'user' as const, content: resultMsg },
-        ];
-        aiResponse = await runOneRound(conversationMessages, true);
       } catch (err) {
         const errMsg = err instanceof Error ? err.message : 'Test execution failed';
-        setMessages((m) => [...m, { role: 'assistant', content: `[Agent loop error: ${errMsg}]` }]);
-        break;
+        setMessages((m) => [...m, { role: 'assistant', content: `[Test run error: ${errMsg}]` }]);
       }
-    }
-
-    // Notify user if max tool loops reached
-    if (toolLoopCount >= MAX_TOOL_LOOPS && !constraintHit) {
-      setMessages((m) => [...m, {
-        role: 'assistant',
-        content: 'Reached maximum auto-fix attempts (5). Review the code and try asking again.',
-        isConstraint: true,
-      }]);
     }
 
     setIsToolLooping(false);
@@ -1401,7 +1364,7 @@ export function ArenaIDE({
                       <span style={s.aiLabel}>AI</span>
                       <span style={s.streamingDot}>{'\u25CF'}</span>
                       <span style={{ fontSize: 10, color: arena.textSubtle }}>
-                        {getModelById(model)?.displayName || 'AI'} {isToolLooping ? 'fixing...' : 'responding...'}
+                        {getModelById(model)?.displayName || 'AI'} responding...
                       </span>
                     </div>
                     {streamingThinking && <ThinkingBlock text={streamingThinking} />}

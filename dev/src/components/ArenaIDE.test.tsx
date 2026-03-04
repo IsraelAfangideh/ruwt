@@ -1949,25 +1949,21 @@ describe('ArenaIDE', () => {
     mockApplyCodeFromResponse.mockReturnValue({ applied: false, needsApplyModel: false, newCode: '', message: '' });
   });
 
-  /* ─── Agent loop with failing tests — continues ────────────────── */
+  /* ─── Agent auto-test runs once, does not iterate ────────────────── */
 
-  it('agent loop re-prompts AI when tests fail', async () => {
+  it('agent runs tests once after code but does not re-prompt AI', async () => {
     let callCount = 0;
     mockStreamChat.mockImplementation((_msgs: any, callbacks: any) => {
       callCount++;
       callbacks.onDone?.(`Response ${callCount}`, { model: 'mock-model', cost: 100, tokens: 50 });
     });
 
-    // Make the first response trigger the loop
+    // Make the first response trigger test run
     mockApplyCodeFromResponse.mockReturnValue({ applied: true, needsApplyModel: false, newCode: 'code', message: 'Updated' });
 
-    let testCallCount = 0;
-    const onRunTests = vi.fn().mockImplementation(() => {
-      testCallCount++;
-      if (testCallCount === 1) {
-        return Promise.resolve({ passed: false, passedTests: 0, totalTests: 1, results: [{ passed: false, input: '1', expectedOutput: '1', actualOutput: '0' }] });
-      }
-      return Promise.resolve({ passed: true, passedTests: 1, totalTests: 1, results: [] });
+    const onRunTests = vi.fn().mockResolvedValue({
+      passed: false, passedTests: 0, totalTests: 1,
+      results: [{ passed: false, input: '1', expectedOutput: '1', actualOutput: '0' }],
     });
 
     renderIDE({ onRunTests });
@@ -1979,10 +1975,12 @@ describe('ArenaIDE', () => {
       fireEvent.keyDown(textarea, { key: 'Enter', shiftKey: false });
     });
 
-    // Should have called tests, failed, re-prompted, and passed
+    // Should run tests exactly once — no auto-iteration
     await waitFor(() => {
-      expect(onRunTests).toHaveBeenCalledTimes(2);
+      expect(onRunTests).toHaveBeenCalledTimes(1);
     });
+    // AI should only have been called once (no re-prompt)
+    expect(callCount).toBe(1);
 
     mockApplyCodeFromResponse.mockReturnValue({ applied: false, needsApplyModel: false, newCode: '', message: '' });
   });
@@ -2008,7 +2006,7 @@ describe('ArenaIDE', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText(/Agent loop error: Execution timeout/)).toBeTruthy();
+      expect(screen.getByText(/Test run error: Execution timeout/)).toBeTruthy();
     });
 
     mockApplyCodeFromResponse.mockReturnValue({ applied: false, needsApplyModel: false, newCode: '', message: '' });
@@ -2247,39 +2245,7 @@ describe('ArenaIDE', () => {
     // The textarea is disabled so we test that the sendMessage early-returns
   });
 
-  /* ─── Max tool loops reached ────────────────────────────────────── */
-
-  it('shows max tool loops message when agent loop hits 5 iterations', async () => {
-    let callCount = 0;
-    mockStreamChat.mockImplementation((_msgs: any, callbacks: any) => {
-      callCount++;
-      callbacks.onDone?.(`Attempt ${callCount}`, { model: 'mock-model', cost: 100, tokens: 50 });
-    });
-
-    // Every round: apply code returns true, tests fail — triggering another loop
-    mockApplyCodeFromResponse.mockReturnValue({ applied: true, needsApplyModel: false, newCode: 'code', message: 'Updated' });
-
-    const onRunTests = vi.fn().mockResolvedValue({
-      passed: false, passedTests: 0, totalTests: 1,
-      results: [{ passed: false, input: '1', expectedOutput: '1', actualOutput: '0' }],
-    });
-
-    renderIDE({ onRunTests });
-    fireEvent.click(screen.getByText('AI Chat'));
-    const textarea = screen.getByPlaceholderText(/Ask about this problem/) as HTMLTextAreaElement;
-    fireEvent.change(textarea, { target: { value: 'Fix all bugs' } });
-
-    await act(async () => {
-      fireEvent.keyDown(textarea, { key: 'Enter', shiftKey: false });
-    });
-
-    // Should eventually hit the max loops and show the message
-    await waitFor(() => {
-      expect(screen.getByText(/maximum auto-fix attempts/)).toBeTruthy();
-    }, { timeout: 5000 });
-
-    mockApplyCodeFromResponse.mockReturnValue({ applied: false, needsApplyModel: false, newCode: '', message: '' });
-  });
+  /* ─── No auto-iteration — max tool loops concept removed ────────── */
 
   /* ─── onConstraint with 'time' violation triggers expiry ────────── */
 
