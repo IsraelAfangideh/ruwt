@@ -18,6 +18,7 @@ import { spacing, fontSizes, fontFamily } from '@/theme/tokens';
 import { getModelById, tierColor, formatCostFromHundredths } from '@/lib/ai/pricing';
 import { useDocumentMeta } from '@/hooks/useDocumentMeta';
 import { CommentSection } from '@/components/CommentSection';
+import '@/lib/monaco-init';
 
 const MonacoEditor = React.lazy(() => import('@monaco-editor/react'));
 
