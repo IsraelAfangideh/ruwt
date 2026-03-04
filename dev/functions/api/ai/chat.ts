@@ -22,6 +22,7 @@ const requestSchema = z.object({
   ),
   attemptId: z.string().uuid().nullable().optional(),
   userMessage: z.string().optional(),
+  codeSnapshot: z.string().optional(),
   maxTokens: z.number().optional(),
   temperature: z.number().optional(),
 });
@@ -45,7 +46,7 @@ export async function onRequestPost(context: {
       );
     }
 
-    const { model, messages, attemptId, userMessage, maxTokens, temperature } = parsed.data;
+    const { model, messages, attemptId, userMessage, codeSnapshot, maxTokens, temperature } = parsed.data;
 
     const pricing = getModelPricing(model);
     if (!pricing) {
@@ -132,6 +133,7 @@ export async function onRequestPost(context: {
               attemptId,
               role: 'user',
               content: userMessage,
+              codeSnapshot: codeSnapshot || null,
               sequence: nextSequence,
             });
             nextSequence++;

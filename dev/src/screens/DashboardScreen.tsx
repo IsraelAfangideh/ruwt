@@ -381,8 +381,6 @@ function StatsRow({ data }: { data: DashboardData }) {
   const c = useColors();
   const { progress, rank, profile } = data;
 
-  const creditsUsed = 50000 - profile.credits; // signup bonus minus remaining
-
   const stats = [
     {
       label: 'Solved',
@@ -400,9 +398,9 @@ function StatsRow({ data }: { data: DashboardData }) {
       icon: '\uD83D\uDD25', // fire emoji
     },
     {
-      label: 'AI Spend',
-      value: formatCost(creditsUsed),
-      icon: '\uD83D\uDCB0', // money bag emoji
+      label: 'Best Streak',
+      value: `${profile.longestStreak}`,
+      icon: '\uD83C\uDFC6', // trophy emoji
     },
   ];
 

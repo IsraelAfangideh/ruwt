@@ -626,3 +626,87 @@ Config.set(value)
     expect(blocks[0].replace).toContain('Config.set(value)');
   });
 });
+
+// ---------------------------------------------------------------------------
+// Colon-style SEARCH/REPLACE blocks
+// ---------------------------------------------------------------------------
+
+describe('colon-style SEARCH/REPLACE blocks', () => {
+  it('detects colon-style blocks via hasEditBlocks', () => {
+    expect(hasEditBlocks('SEARCH: old code\nREPLACE: new code')).toBe(true);
+    expect(hasEditBlocks('search: old\nreplace: new')).toBe(true);
+    expect(hasEditBlocks('no markers here')).toBe(false);
+  });
+
+  it('parses inline colon format (single line each)', () => {
+    const text = `SEARCH: right = arr.length;
+REPLACE: right = arr.length - 1;`;
+    const blocks = parseEditBlocks(text);
+    expect(blocks).toHaveLength(1);
+    expect(blocks[0].search).toBe('right = arr.length;');
+    expect(blocks[0].replace).toBe('right = arr.length - 1;');
+  });
+
+  it('parses multi-line colon format', () => {
+    const text = `SEARCH:
+function foo() {
+  return 1;
+}
+REPLACE:
+function foo() {
+  return 2;
+}`;
+    const blocks = parseEditBlocks(text);
+    expect(blocks).toHaveLength(1);
+    expect(blocks[0].search).toBe('function foo() {\n  return 1;\n}');
+    expect(blocks[0].replace).toBe('function foo() {\n  return 2;\n}');
+  });
+
+  it('parses multiple colon-style blocks', () => {
+    const text = `SEARCH: const a = 1;
+REPLACE: const a = 2;
+
+SEARCH: const b = 3;
+REPLACE: const b = 4;`;
+    const blocks = parseEditBlocks(text);
+    expect(blocks).toHaveLength(2);
+    expect(blocks[0].search).toBe('const a = 1;');
+    expect(blocks[0].replace).toBe('const a = 2;');
+    expect(blocks[1].search).toBe('const b = 3;');
+    expect(blocks[1].replace).toBe('const b = 4;');
+  });
+
+  it('handles colon format with surrounding prose', () => {
+    const text = `Here is the fix:
+
+SEARCH: right = arr.length;
+REPLACE: right = arr.length - 1;
+
+This fixes the off-by-one error.`;
+    const blocks = parseEditBlocks(text);
+    expect(blocks).toHaveLength(1);
+    expect(blocks[0].search).toBe('right = arr.length;');
+    expect(blocks[0].replace).toBe('right = arr.length - 1;');
+  });
+
+  it('prefers angle-bracket format over colon format', () => {
+    const text = `<<<<<<< SEARCH
+old code
+=======
+new code
+>>>>>>> REPLACE`;
+    const blocks = parseEditBlocks(text);
+    expect(blocks).toHaveLength(1);
+    expect(blocks[0].search).toBe('old code');
+    expect(blocks[0].replace).toBe('new code');
+  });
+
+  it('handles case-insensitive colon markers', () => {
+    const text = `Search: old value
+Replace: new value`;
+    const blocks = parseEditBlocks(text);
+    expect(blocks).toHaveLength(1);
+    expect(blocks[0].search).toBe('old value');
+    expect(blocks[0].replace).toBe('new value');
+  });
+});

@@ -520,3 +520,51 @@ function completelyDifferent() {
     expect(result.newCode).toBe('const x = 2;');
   });
 });
+
+// ---------------------------------------------------------------------------
+// Colon-style SEARCH/REPLACE via applyCodeFromResponse
+// ---------------------------------------------------------------------------
+
+describe('applyCodeFromResponse — colon-style SEARCH/REPLACE', () => {
+  it('applies inline colon-style SEARCH/REPLACE', () => {
+    const code = 'right = arr.length;';
+    const response = `Here is the fix:
+
+SEARCH: right = arr.length;
+REPLACE: right = arr.length - 1;`;
+
+    const result = applyCodeFromResponse(response, code, 'javascript', 'code');
+    expect(result.applied).toBe(true);
+    expect(result.method).toBe('search_replace');
+    expect(result.newCode).toBe('right = arr.length - 1;');
+  });
+
+  it('applies multi-line colon-style SEARCH/REPLACE', () => {
+    const code = 'function solve() {\n  return 1;\n}';
+    const response = `SEARCH:
+function solve() {
+  return 1;
+}
+REPLACE:
+function solve() {
+  return 2;
+}`;
+
+    const result = applyCodeFromResponse(response, code, 'javascript', 'code');
+    expect(result.applied).toBe(true);
+    expect(result.method).toBe('search_replace');
+    expect(result.newCode).toBe('function solve() {\n  return 2;\n}');
+  });
+
+  it('falls back to needsApplyModel when colon-style block cannot match', () => {
+    const code = 'const x = 1;';
+    const response = `SEARCH: nonexistent code
+REPLACE: new code`;
+
+    const result = applyCodeFromResponse(response, code, 'javascript', 'code');
+    // Block parsed but search doesn't match → falls through
+    // hasCode detects the colon markers → needsApplyModel
+    expect(result.applied).toBe(false);
+    expect(result.needsApplyModel).toBe(true);
+  });
+});

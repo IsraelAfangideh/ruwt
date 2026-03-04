@@ -255,6 +255,7 @@ export const attemptMessages = sqliteTable('attempt_messages', {
   inputTokens: integer('input_tokens'),
   outputTokens: integer('output_tokens'),
   cost: integer('cost'),
+  codeSnapshot: text('code_snapshot'),
   sequence: integer('sequence').notNull(),
   createdAt: text('created_at').default(sql`(datetime('now'))`).notNull(),
 });

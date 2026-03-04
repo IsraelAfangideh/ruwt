@@ -4,7 +4,7 @@ import { spacing, fontSizes, fontFamily } from '@/theme/tokens';
 const FEATURES = [
   '60+ real-world challenges',
   '15 AI models across 5 tiers',
-  '50,000 free credits to start',
+  'Free to practice — unlimited AI',
 ];
 
 export function BrandPanel() {

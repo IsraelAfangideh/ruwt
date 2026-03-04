@@ -91,21 +91,6 @@ describe('DashboardLayout', () => {
     expect(screen.getByText('Challenges')).toBeTruthy();
   });
 
-  it('shows BalanceTicker for team accounts', async () => {
-    vi.spyOn(global, 'fetch').mockResolvedValue({
-      ok: true,
-      json: async () => ({ accountType: 'team' }),
-    } as Response);
-
-    render(
-      <DashboardLayout user={mockUser}>
-        <span>Content</span>
-      </DashboardLayout>
-    );
-
-    await waitFor(() => expect(screen.getByText('Credits')).toBeTruthy());
-  });
-
   it('navigates to Dashboard when logo is clicked', async () => {
     vi.spyOn(global, 'fetch').mockResolvedValue({
       ok: true,
@@ -152,12 +137,8 @@ describe('DashboardLayout', () => {
         <span>Content</span>
       </DashboardLayout>
     );
-    // Should render with default 'individual' — no BalanceTicker
+    // Should render with default 'individual'
     expect(screen.getByText('Content')).toBeTruthy();
-    // BalanceTicker (Credits) should NOT appear for individual
-    await waitFor(() => {
-      expect(screen.queryByText('Credits')).toBeNull();
-    });
   });
 
   /* ── Team gating tests ───────────────────────────────────────── */

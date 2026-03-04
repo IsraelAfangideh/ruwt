@@ -188,7 +188,7 @@ describe('DashboardScreen', () => {
     });
   });
 
-  it('renders stats row with Solved, Global Rank, Streak, AI Spend', async () => {
+  it('renders stats row with Solved, Global Rank, Streak, Best Streak', async () => {
     setupHappyPath();
     vi.useRealTimers();
     render(<DashboardScreen />);
@@ -197,7 +197,7 @@ describe('DashboardScreen', () => {
     });
     expect(screen.getByText('Global Rank')).toBeTruthy();
     expect(screen.getByText('Streak')).toBeTruthy();
-    expect(screen.getByText('AI Spend')).toBeTruthy();
+    expect(screen.getByText('Best Streak')).toBeTruthy();
   });
 
   it('renders rank as #12 when position is set', async () => {
@@ -452,13 +452,14 @@ describe('DashboardScreen', () => {
     });
   });
 
-  it('formats AI spend as $0.00 when credits are unchanged', async () => {
+  it('shows best streak stat', async () => {
     setupHappyPath();
     vi.useRealTimers();
     render(<DashboardScreen />);
     await waitFor(() => {
-      expect(screen.getByText('$0.00')).toBeTruthy();
+      expect(screen.getByText('Best Streak')).toBeTruthy();
     });
+    expect(screen.getByText('7')).toBeTruthy(); // longestStreak from mock data
   });
 
   it('renders category difficulty badge for daily challenge', async () => {
@@ -502,14 +503,14 @@ describe('DashboardScreen', () => {
     });
   });
 
-  it('formats AI spend with small cost correctly (less than 1 cent)', async () => {
+  it('shows best streak value from profile', async () => {
     setupHappyPath({
-      profile: { ...baseDashboardData.profile, credits: 49950 }, // spent 50 hundredths = $0.005
+      profile: { ...baseDashboardData.profile, longestStreak: 15 },
     });
     vi.useRealTimers();
     render(<DashboardScreen />);
     await waitFor(() => {
-      expect(screen.getByText('$0.0050')).toBeTruthy();
+      expect(screen.getByText('15')).toBeTruthy();
     });
   });
 
@@ -680,15 +681,14 @@ describe('DashboardScreen', () => {
   });
 
   /* ── NEW: formatCost with larger spend (>= 1 cent) ─────────────── */
-  it('formats AI spend >= 1 cent with 2 decimal places', async () => {
-    // credits: 40000 → spent 10000 hundredths = $1.00
+  it('shows zero best streak', async () => {
     setupHappyPath({
-      profile: { ...baseDashboardData.profile, credits: 40000 },
+      profile: { ...baseDashboardData.profile, longestStreak: 0 },
     });
     vi.useRealTimers();
     render(<DashboardScreen />);
     await waitFor(() => {
-      expect(screen.getByText('$1.00')).toBeTruthy();
+      expect(screen.getByText('Best Streak')).toBeTruthy();
     });
   });
 });

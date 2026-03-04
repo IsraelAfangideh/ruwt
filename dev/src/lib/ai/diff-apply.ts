@@ -38,6 +38,31 @@ function isReplaceMarker(line: string): boolean {
   return /^>{2,}\s*REPLACE\b/i.test(line.trim());
 }
 
+/**
+ * Matches colon-style SEARCH markers: "SEARCH: code" or "SEARCH:" on its own line.
+ * Must be at start of line (after optional whitespace).
+ */
+function isColonSearchMarker(line: string): boolean {
+  return /^SEARCH\s*:/i.test(line.trim());
+}
+
+/**
+ * Matches colon-style REPLACE markers: "REPLACE: code" or "REPLACE:" on its own line.
+ */
+function isColonReplaceMarker(line: string): boolean {
+  return /^REPLACE\s*:/i.test(line.trim());
+}
+
+/**
+ * Extract the inline content after a colon marker.
+ * "SEARCH: right = arr.length;" → "right = arr.length;"
+ * "SEARCH:" → "" (empty, content on next lines)
+ */
+function colonMarkerContent(line: string): string {
+  const match = line.trim().match(/^(?:SEARCH|REPLACE)\s*:\s?(.*)/i);
+  return match ? match[1] : '';
+}
+
 /** Matches separator lines: =======, ===, --------, or "becomes" (some models use this). */
 function isSeparator(line: string): boolean {
   const t = line.trim();
@@ -98,6 +123,103 @@ function isLikelyProse(line: string): boolean {
  * (minimum 2), with or without a space before the keyword.
  */
 export function parseEditBlocks(text: string): EditBlock[] {
+  // Try angle-bracket format first, fall back to colon format
+  const angleBracketBlocks = parseAngleBracketEditBlocks(text);
+  if (angleBracketBlocks.length > 0) return angleBracketBlocks;
+
+  // Try colon format: SEARCH: ... REPLACE: ...
+  if (hasColonEditBlocks(text)) {
+    return parseColonEditBlocks(text);
+  }
+
+  return [];
+}
+
+/**
+ * Parse colon-style SEARCH/REPLACE blocks.
+ * Handles formats like:
+ *   SEARCH: right = arr.length;
+ *   REPLACE: right = arr.length - 1;
+ *
+ * And multi-line:
+ *   SEARCH:
+ *   old code line 1
+ *   old code line 2
+ *   REPLACE:
+ *   new code line 1
+ *   new code line 2
+ */
+export function parseColonEditBlocks(text: string): EditBlock[] {
+  const lines = text.split('\n');
+  const blocks: EditBlock[] = [];
+
+  type State = 'outside' | 'in_search' | 'in_replace';
+  let state: State = 'outside';
+  let searchLines: string[] = [];
+  let replaceLines: string[] = [];
+
+  function emitBlock() {
+    // Trim trailing blank lines
+    while (searchLines.length > 0 && searchLines[searchLines.length - 1] === '') searchLines.pop();
+    while (replaceLines.length > 0 && replaceLines[replaceLines.length - 1] === '') replaceLines.pop();
+
+    if (searchLines.length > 0 || replaceLines.length > 0) {
+      blocks.push({
+        search: searchLines.join('\n'),
+        replace: replaceLines.join('\n'),
+      });
+    }
+    searchLines = [];
+    replaceLines = [];
+  }
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+
+    if (isColonSearchMarker(line)) {
+      // If we were in a replace block, emit it
+      if (state === 'in_replace') emitBlock();
+      state = 'in_search';
+      searchLines = [];
+      replaceLines = [];
+      // Check for inline content: "SEARCH: code here"
+      const inline = colonMarkerContent(line);
+      if (inline) searchLines.push(inline);
+      continue;
+    }
+
+    if (isColonReplaceMarker(line) && state === 'in_search') {
+      state = 'in_replace';
+      // Check for inline content: "REPLACE: code here"
+      const inline = colonMarkerContent(line);
+      if (inline) replaceLines.push(inline);
+      continue;
+    }
+
+    if (state === 'in_search') {
+      searchLines.push(line);
+    } else if (state === 'in_replace') {
+      // Detect end of block: blank line followed by prose or another SEARCH
+      if (
+        line.trim() === '' &&
+        i + 1 < lines.length &&
+        (isColonSearchMarker(lines[i + 1]) || isLikelyProse(lines[i + 1]))
+      ) {
+        emitBlock();
+        state = 'outside';
+        continue;
+      }
+      replaceLines.push(line);
+    }
+  }
+
+  // Emit final block
+  if (state === 'in_replace') emitBlock();
+
+  return blocks;
+}
+
+function parseAngleBracketEditBlocks(text: string): EditBlock[] {
   const lines = text.split('\n');
   const blocks: EditBlock[] = [];
 
@@ -458,7 +580,17 @@ function spliceLines(code: string, startLine: number, count: number, replacement
 
 /** Check if a response contains SEARCH/REPLACE blocks (flexible detection). */
 export function hasEditBlocks(text: string): boolean {
-  return /<{2,}\s*SEARCH\b/i.test(text);
+  return /<{2,}\s*SEARCH\b/i.test(text) || hasColonEditBlocks(text);
+}
+
+/**
+ * Check if text contains colon-style SEARCH/REPLACE blocks.
+ * Some models (Granite Micro, Qwen2.5 Coder) output:
+ *   SEARCH: old code
+ *   REPLACE: new code
+ */
+export function hasColonEditBlocks(text: string): boolean {
+  return /^SEARCH\s*:/im.test(text) && /^REPLACE\s*:/im.test(text);
 }
 
 /**

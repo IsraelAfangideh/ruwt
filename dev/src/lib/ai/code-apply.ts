@@ -176,6 +176,7 @@ export function applyCodeFromResponse(
   const hasCode =
     /```/.test(responseText) ||
     /<{2,}\s*SEARCH\b/i.test(responseText) ||
+    (/^SEARCH\s*:/im.test(responseText) && /^REPLACE\s*:/im.test(responseText)) ||
     /^@@\s*-\d/m.test(responseText) ||
     (/^<{3,}\s*$/m.test(responseText) && /^>{3,}\s*$/m.test(responseText));
 

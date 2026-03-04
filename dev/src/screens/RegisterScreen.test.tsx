@@ -74,9 +74,9 @@ describe('RegisterScreen', () => {
     expect(screen.getByText('Password')).toBeTruthy();
   });
 
-  it('renders free credits badge', () => {
+  it('renders free practice badge', () => {
     render(<RegisterScreen />);
-    expect(screen.getAllByText(/50,000 free credits/).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText(/Free to practice/).length).toBeGreaterThanOrEqual(1);
   });
 
   it('renders GitHub OAuth button', () => {

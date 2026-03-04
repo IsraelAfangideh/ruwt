@@ -3,7 +3,6 @@ import { View, Text, Pressable, ActivityIndicator, StyleSheet } from 'react-nati
 import { useNavigation } from '@react-navigation/native';
 import { DashboardNav } from './DashboardNav';
 import { UserNav } from './UserNav';
-import { BalanceTicker } from './BalanceTicker';
 import { ThemeToggle } from './ThemeToggle';
 import { NotificationBell } from './NotificationBell';
 import { Button } from './ui/Button';
@@ -78,7 +77,6 @@ export function DashboardLayout({ user, children, requireTeam }: DashboardLayout
           <DashboardNav accountType={accountType} />
         </View>
         <View style={styles.headerRight}>
-          {accountType === 'team' && <BalanceTicker />}
           <NotificationBell />
           <ThemeToggle />
           <UserNav user={user} />

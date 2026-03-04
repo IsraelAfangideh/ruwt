@@ -12,7 +12,7 @@ Sentry.init({
     Sentry.replayIntegration({ maskAllText: false, blockAllMedia: false }),
   ],
   tracesSampleRate: 0.1,
-  replaysSessionSampleRate: 0,
+  replaysSessionSampleRate: 1.0,
   replaysOnErrorSampleRate: 0.5,
 });
 

@@ -806,6 +806,7 @@ export function ArenaIDE({
       return new Promise((resolve) => {
         streamChat(chatMessages, {
           userMessage: isFollowUp ? undefined : text,
+          codeSnapshot: isFollowUp ? undefined : fs.getSolutionCode(),
           onThinking: (thinkingContent) => {
             setStreamingThinking(thinkingContent);
             streamingThinkingRef.current = thinkingContent;

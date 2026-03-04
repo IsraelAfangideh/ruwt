@@ -93,6 +93,7 @@ export async function onRequestGet(context: { request: Request; env: Env; params
         inputTokens: m.inputTokens,
         outputTokens: m.outputTokens,
         cost: m.cost,
+        codeSnapshot: m.codeSnapshot || null,
         createdAt: m.createdAt,
       })),
       stats: {
