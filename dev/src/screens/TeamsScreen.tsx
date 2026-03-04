@@ -75,26 +75,54 @@ export function TeamsScreen() {
   const isMobile = width < 768;
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [expandedFaq, setExpandedFaq] = useState<number | null>(null);
+  const [trialEligible, setTrialEligible] = useState(false);
+  const [trialLoading, setTrialLoading] = useState(false);
+  const [trialError, setTrialError] = useState<string | null>(null);
 
   useEffect(() => {
     createClient().auth.getUser().then(({ data: { user } }) => {
-      if (user) setIsLoggedIn(true);
+      if (user) {
+        setIsLoggedIn(true);
+        // Check trial eligibility
+        fetch('/api/trial/status')
+          .then((r) => r.ok ? r.json() : null)
+          .then((data) => {
+            if (data?.canStartTrial) setTrialEligible(true);
+          })
+          .catch(() => {});
+      }
     });
   }, []);
 
+  const handleStartTrial = async () => {
+    setTrialLoading(true);
+    setTrialError(null);
+    try {
+      const res = await fetch('/api/trial/start', { method: 'POST' });
+      if (res.ok) {
+        navigation.navigate('AssessmentBuilder' as never);
+        return;
+      }
+      const data = await res.json().catch(() => ({}));
+      setTrialError(data.error || 'Failed to start trial. Please try again.');
+    } catch {
+      setTrialError('Network error. Please try again.');
+    }
+    setTrialLoading(false);
+  };
+
   const handleStartAssessment = async () => {
     if (isLoggedIn) {
-      try {
-        await fetch('/api/profile', {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ accountType: 'team' }),
-        });
-      } catch {}
+      if (trialEligible) {
+        await handleStartTrial();
+        return;
+      }
+      // Not trial-eligible — navigate to assessment builder (requires existing team account)
       navigation.navigate('AssessmentBuilder' as never);
     } else {
       if (typeof window !== 'undefined') {
         localStorage.setItem('ruwt_team_intent', '1');
+        localStorage.setItem('ruwt_trial_intent', '1');
       }
       navigation.navigate('Register' as never);
     }
@@ -281,13 +309,17 @@ export function TeamsScreen() {
             <Button
               size="lg"
               onPress={handleStartAssessment}
+              disabled={trialLoading}
               style={{ backgroundColor: '#c9a962' }}
               textStyle={{ color: '#1a1816', fontWeight: '700' }}
             >
-              Create Your First Assessment
+              {trialLoading ? 'Starting Trial...' : 'Start Free Trial'}
             </Button>
             <DemoFormSection />
           </View>
+          {trialError && (
+            <Text style={{ color: '#b06060', textAlign: 'center', marginTop: 8 }}>{trialError}</Text>
+          )}
           <Text style={styles.heroNote}>
             Free to try. No credit card required.
           </Text>
@@ -578,7 +610,7 @@ export function TeamsScreen() {
                     style={{ marginTop: spacing.md }}
                     fullWidth
                   >
-                    {checkoutLoading === plan.id ? 'Loading...' : 'Start Free Trial'}
+                    {checkoutLoading === plan.id ? 'Loading...' : 'Subscribe'}
                   </Button>
                 </CardContent>
               </Card>
@@ -647,10 +679,11 @@ export function TeamsScreen() {
           <Button
             size="lg"
             onPress={handleStartAssessment}
+            disabled={trialLoading}
             style={{ backgroundColor: '#c9a962' }}
             textStyle={{ color: '#1a1816', fontWeight: '700' }}
           >
-            Create Your First Assessment
+            {trialLoading ? 'Starting Trial...' : 'Start Free Trial'}
           </Button>
           {!demoSubmitted && !showDemoForm && (
             <Button size="lg" variant="outline" onPress={() => setShowDemoForm(true)}
@@ -667,7 +700,7 @@ export function TeamsScreen() {
           )}
         </View>
         <Text style={{ color: '#6b6560', fontSize: fontSizes.sm, marginTop: spacing.md, fontFamily: fontFamily.body }}>
-          Free to try. $200/month when you're ready. Cancel anytime.
+          30-day free trial. 1 assessment, 3 invites. $200/month when you're ready.
         </Text>
       </View>
 

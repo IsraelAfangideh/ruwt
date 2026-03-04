@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { useColors } from '@/theme';
 import { spacing, fontSizes, fontFamily } from '@/theme/tokens';
+import type { TrialInfo } from '@/components/TrialBanner';
 
 interface OrgMember {
   id: string;
@@ -38,6 +39,8 @@ interface Org {
   subscriptionStatus: string;
   subscriptionPlan: string | null;
   subscriptionEndsAt: string | null;
+  trialStartedAt: string | null;
+  trialEndsAt: string | null;
 }
 
 const ROLE_COLORS: Record<string, string> = {
@@ -71,6 +74,9 @@ export function OrgManagementScreen() {
   const [inviteError, setInviteError] = useState<string | null>(null);
   const [inviteSuccess, setInviteSuccess] = useState(false);
 
+  // Trial status
+  const [trial, setTrial] = useState<TrialInfo | null>(null);
+
   // Create org form
   const [createName, setCreateName] = useState('');
   const [creating, setCreating] = useState(false);
@@ -92,6 +98,12 @@ export function OrgManagementScreen() {
         // Fetch invitations
         const invRes = await fetch(`/api/orgs/${o.id}/invitations`);
         if (invRes.ok) setInvitations(await invRes.json());
+        // Fetch trial status
+        const trialRes = await fetch('/api/trial/status');
+        if (trialRes.ok) {
+          const trialData = await trialRes.json();
+          if (trialData.trial) setTrial(trialData.trial);
+        }
       }
     } catch {}
   }, []);
@@ -312,6 +324,37 @@ export function OrgManagementScreen() {
                   }}
                 >
                   Update Payment
+                </Button>
+              </>
+            ) : trial && trial.isActive ? (
+              <>
+                <Badge variant="default" style={{ backgroundColor: '#c9a962' }}>
+                  <Text style={{ fontSize: 11, color: '#1a1816', fontWeight: '600' }}>
+                    Free Trial — {trial.daysRemaining} day{trial.daysRemaining !== 1 ? 's' : ''} left
+                  </Text>
+                </Badge>
+                <Text style={[styles.creditsLabel, { color: c.textMuted }]}>
+                  {trial.assessmentsUsed}/{trial.assessmentsLimit} assessments | {trial.invitesUsed}/{trial.invitesLimit} invites
+                </Text>
+                <Button
+                  size="sm"
+                  onPress={() => navigation.navigate('Teams' as never)}
+                >
+                  Subscribe
+                </Button>
+              </>
+            ) : trial && !trial.isActive ? (
+              <>
+                <Badge variant="outline" style={{ borderColor: c.destructive }}>
+                  <Text style={{ fontSize: 11, color: c.destructive, fontWeight: '600' }}>
+                    Trial Expired
+                  </Text>
+                </Badge>
+                <Button
+                  size="sm"
+                  onPress={() => navigation.navigate('Teams' as never)}
+                >
+                  Subscribe
                 </Button>
               </>
             ) : (
