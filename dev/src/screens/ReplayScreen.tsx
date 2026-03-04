@@ -249,16 +249,26 @@ export function ReplayScreen() {
 
   // Header (shared between video and text modes)
   const headerEl = (
-    <View style={[styles.header, !isDesktop && styles.headerMobile, { borderBottomColor: c.border }]}>
-      <View style={[{ flex: 1 }, !isDesktop && { flex: 0, marginBottom: spacing.sm }]}>
+    <div style={{
+      display: 'flex',
+      flexDirection: isDesktop ? 'row' : 'column',
+      alignItems: isDesktop ? 'center' : 'flex-start',
+      padding: isDesktop ? spacing.lg : spacing.md,
+      borderBottom: `1px solid ${c.border}`,
+      maxWidth: 1200,
+      margin: '0 auto',
+      width: '100%',
+      boxSizing: 'border-box' as const,
+    }}>
+      <div style={{ marginBottom: isDesktop ? 0 : spacing.sm }}>
         <Text style={[styles.title, !isDesktop && { fontSize: fontSizes.lg }, { color: c.text }]}>
           {data.solver.name}'s Replay
         </Text>
         <Text style={[styles.subtitle, { color: c.textMuted }]}>
           {data.challenge.title} ({data.challenge.difficulty})
         </Text>
-      </View>
-      <View style={styles.headerActions}>
+      </div>
+      <div style={{ marginLeft: isDesktop ? 'auto' : 0, display: 'flex', flexDirection: 'row', alignItems: 'center', gap: spacing.xs, flexWrap: 'wrap' as const }}>
         <Pressable onPress={handleCopyLink} style={[styles.shareBtn, { borderColor: c.border }]}>
           <Text style={{ color: c.text, fontSize: fontSizes.xs }}>
             {copiedLink ? 'Copied!' : 'Copy Link'}
@@ -280,8 +290,8 @@ export function ReplayScreen() {
         <Pressable onPress={() => navigation.goBack()} style={styles.closeBtn}>
           <Text style={{ color: c.textMuted, fontSize: 20 }}>{'\u00D7'}</Text>
         </Pressable>
-      </View>
-    </View>
+      </div>
+    </div>
   );
 
   // Summary bar (shared)
@@ -507,20 +517,6 @@ const styles = StyleSheet.create({
   page: { flex: 1 },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   errorText: { fontSize: fontSizes.md, marginBottom: spacing.md },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: spacing.lg,
-    borderBottomWidth: 1,
-    maxWidth: 1200,
-    alignSelf: 'center',
-    width: '100%',
-  },
-  headerMobile: {
-    flexDirection: 'column',
-    alignItems: 'flex-start',
-    padding: spacing.md,
-  },
   headerActions: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, flexWrap: 'wrap' },
   title: { fontSize: fontSizes.xl, fontWeight: '700', fontFamily: fontFamily.body },
   subtitle: { fontSize: fontSizes.sm, marginTop: 2 },
