@@ -4,10 +4,12 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 // Mocks
 // ---------------------------------------------------------------------------
 
-const { mockGetUser, mockEnsureProfile, mockGetUserOrg } = vi.hoisted(() => ({
+const { mockGetUser, mockEnsureProfile, mockGetUserOrg, mockGetTrialStatus, mockCanStartTrial } = vi.hoisted(() => ({
   mockGetUser: vi.fn(),
   mockEnsureProfile: vi.fn(),
   mockGetUserOrg: vi.fn(),
+  mockGetTrialStatus: vi.fn(),
+  mockCanStartTrial: vi.fn(),
 }));
 
 vi.mock('../_shared/auth', () => ({
@@ -20,6 +22,8 @@ vi.mock('../_shared/ensure-profile', () => ({
 
 vi.mock('../_shared/org', () => ({
   getUserOrg: mockGetUserOrg,
+  getTrialStatus: mockGetTrialStatus,
+  canStartTrial: mockCanStartTrial,
 }));
 
 // DB mock: supports sequential calls (select→from→where→limit for GET,
@@ -139,6 +143,8 @@ describe('GET /api/profile', () => {
     mockGetUser.mockReset();
     mockEnsureProfile.mockReset().mockResolvedValue(undefined);
     mockGetUserOrg.mockReset().mockResolvedValue(null);
+    mockGetTrialStatus.mockReset().mockResolvedValue(null);
+    mockCanStartTrial.mockReset().mockResolvedValue({ eligible: false, reason: 'Trial already used' });
   });
 
   // -----------------------------------------------------------------------
@@ -182,6 +188,8 @@ describe('GET /api/profile', () => {
       subscriptionStatus: 'none',
       subscriptionPlan: null,
       subscriptionEndsAt: null,
+      trial: null,
+      canStartTrial: false,
     });
     // Security: internal ID and unused fields should not be exposed
     expect(json.id).toBeUndefined();

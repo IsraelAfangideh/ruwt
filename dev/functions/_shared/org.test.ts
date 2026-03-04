@@ -42,6 +42,12 @@ import {
   getUserOrgIds,
   hasActiveSubscription,
   requireTeamAccount,
+  getTrialStatus,
+  isOnActiveTrial,
+  canStartTrial,
+  TRIAL_DURATION_DAYS,
+  TRIAL_MAX_ASSESSMENTS,
+  TRIAL_MAX_INVITES,
 } from './org';
 
 // ---------------------------------------------------------------------------
@@ -318,7 +324,7 @@ describe('getUserOrgIds', () => {
 describe('hasActiveSubscription', () => {
   it('returns true when subscription status is active', async () => {
     const { db } = createDb([
-      { subscriptionStatus: 'active', subscriptionEndsAt: null },
+      { subscriptionStatus: 'active', subscriptionEndsAt: null, trialEndsAt: null },
     ]);
 
     const result = await hasActiveSubscription(db, 'org-1');
@@ -329,7 +335,7 @@ describe('hasActiveSubscription', () => {
   it('returns true when canceled but end date is in the future', async () => {
     const futureDate = new Date(Date.now() + 86400000).toISOString(); // tomorrow
     const { db } = createDb([
-      { subscriptionStatus: 'canceled', subscriptionEndsAt: futureDate },
+      { subscriptionStatus: 'canceled', subscriptionEndsAt: futureDate, trialEndsAt: null },
     ]);
 
     const result = await hasActiveSubscription(db, 'org-1');
@@ -340,7 +346,7 @@ describe('hasActiveSubscription', () => {
   it('returns false when canceled and end date has passed', async () => {
     const pastDate = new Date(Date.now() - 86400000).toISOString(); // yesterday
     const { db } = createDb([
-      { subscriptionStatus: 'canceled', subscriptionEndsAt: pastDate },
+      { subscriptionStatus: 'canceled', subscriptionEndsAt: pastDate, trialEndsAt: null },
     ]);
 
     const result = await hasActiveSubscription(db, 'org-1');
@@ -350,7 +356,7 @@ describe('hasActiveSubscription', () => {
 
   it('returns false when canceled with no end date', async () => {
     const { db } = createDb([
-      { subscriptionStatus: 'canceled', subscriptionEndsAt: null },
+      { subscriptionStatus: 'canceled', subscriptionEndsAt: null, trialEndsAt: null },
     ]);
 
     const result = await hasActiveSubscription(db, 'org-1');
@@ -360,7 +366,7 @@ describe('hasActiveSubscription', () => {
 
   it('returns false when subscription status is none', async () => {
     const { db } = createDb([
-      { subscriptionStatus: 'none', subscriptionEndsAt: null },
+      { subscriptionStatus: 'none', subscriptionEndsAt: null, trialEndsAt: null },
     ]);
 
     const result = await hasActiveSubscription(db, 'org-1');
@@ -370,7 +376,7 @@ describe('hasActiveSubscription', () => {
 
   it('returns false when subscription status is past_due', async () => {
     const { db } = createDb([
-      { subscriptionStatus: 'past_due', subscriptionEndsAt: null },
+      { subscriptionStatus: 'past_due', subscriptionEndsAt: null, trialEndsAt: null },
     ]);
 
     const result = await hasActiveSubscription(db, 'org-1');
@@ -382,6 +388,28 @@ describe('hasActiveSubscription', () => {
     const { db } = createDb([]);
 
     const result = await hasActiveSubscription(db, 'org-missing');
+
+    expect(result).toBe(false);
+  });
+
+  it('returns true when on active trial (no paid subscription)', async () => {
+    const futureDate = new Date(Date.now() + 86400000 * 15).toISOString();
+    const { db } = createDb([
+      { subscriptionStatus: 'none', subscriptionEndsAt: null, trialEndsAt: futureDate },
+    ]);
+
+    const result = await hasActiveSubscription(db, 'org-1');
+
+    expect(result).toBe(true);
+  });
+
+  it('returns false when trial has expired (no paid subscription)', async () => {
+    const pastDate = new Date(Date.now() - 86400000).toISOString();
+    const { db } = createDb([
+      { subscriptionStatus: 'none', subscriptionEndsAt: null, trialEndsAt: pastDate },
+    ]);
+
+    const result = await hasActiveSubscription(db, 'org-1');
 
     expect(result).toBe(false);
   });
@@ -414,5 +442,175 @@ describe('requireTeamAccount', () => {
 
     expect(result).not.toBeNull();
     expect(result!.status).toBe(403);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Trial helpers
+// ---------------------------------------------------------------------------
+
+describe('getTrialStatus', () => {
+  it('returns null when org has no trial', async () => {
+    const { db } = createDb([
+      { trialStartedAt: null, trialEndsAt: null, trialAssessmentsUsed: 0, trialInvitesUsed: 0 },
+    ]);
+
+    const result = await getTrialStatus(db, 'org-1');
+
+    expect(result).toBeNull();
+  });
+
+  it('returns active trial status with correct fields', async () => {
+    const futureDate = new Date(Date.now() + 86400000 * 15).toISOString(); // 15 days from now
+    const { db } = createDb([
+      { trialStartedAt: new Date().toISOString(), trialEndsAt: futureDate, trialAssessmentsUsed: 1, trialInvitesUsed: 2 },
+    ]);
+
+    const result = await getTrialStatus(db, 'org-1');
+
+    expect(result).not.toBeNull();
+    expect(result!.isActive).toBe(true);
+    expect(result!.daysRemaining).toBeGreaterThan(0);
+    expect(result!.assessmentsUsed).toBe(1);
+    expect(result!.assessmentsLimit).toBe(TRIAL_MAX_ASSESSMENTS);
+    expect(result!.invitesUsed).toBe(2);
+    expect(result!.invitesLimit).toBe(TRIAL_MAX_INVITES);
+  });
+
+  it('returns expired trial status when trial end date has passed', async () => {
+    const pastDate = new Date(Date.now() - 86400000).toISOString(); // yesterday
+    const { db } = createDb([
+      { trialStartedAt: new Date(Date.now() - 86400000 * 31).toISOString(), trialEndsAt: pastDate, trialAssessmentsUsed: 1, trialInvitesUsed: 3 },
+    ]);
+
+    const result = await getTrialStatus(db, 'org-1');
+
+    expect(result).not.toBeNull();
+    expect(result!.isActive).toBe(false);
+    expect(result!.daysRemaining).toBe(0);
+  });
+
+  it('returns null when org does not exist', async () => {
+    const { db } = createDb([]);
+
+    const result = await getTrialStatus(db, 'org-missing');
+
+    expect(result).toBeNull();
+  });
+});
+
+describe('isOnActiveTrial', () => {
+  it('returns true when trial is active', async () => {
+    const futureDate = new Date(Date.now() + 86400000 * 15).toISOString();
+    const { db } = createDb([{ trialEndsAt: futureDate }]);
+
+    const result = await isOnActiveTrial(db, 'org-1');
+
+    expect(result).toBe(true);
+  });
+
+  it('returns false when trial has expired', async () => {
+    const pastDate = new Date(Date.now() - 86400000).toISOString();
+    const { db } = createDb([{ trialEndsAt: pastDate }]);
+
+    const result = await isOnActiveTrial(db, 'org-1');
+
+    expect(result).toBe(false);
+  });
+
+  it('returns false when no trial exists', async () => {
+    const { db } = createDb([{ trialEndsAt: null }]);
+
+    const result = await isOnActiveTrial(db, 'org-1');
+
+    expect(result).toBe(false);
+  });
+
+  it('returns false when org does not exist', async () => {
+    const { db } = createDb([]);
+
+    const result = await isOnActiveTrial(db, 'org-missing');
+
+    expect(result).toBe(false);
+  });
+});
+
+describe('canStartTrial', () => {
+  // canStartTrial does multiple DB queries sequentially:
+  // 1) select from profiles (trialUsed, accountType)
+  // 2) getUserOrg → select from orgMembers join organizations (org+role)
+
+  function createSequentialDb(...callResults: unknown[][]) {
+    let callIndex = 0;
+    const chain: Record<string, ReturnType<typeof vi.fn>> = {};
+    chain.select = vi.fn().mockReturnValue(chain);
+    chain.from = vi.fn().mockReturnValue(chain);
+    chain.innerJoin = vi.fn().mockReturnValue(chain);
+    chain.where = vi.fn().mockReturnValue(chain);
+    chain.limit = vi.fn().mockImplementation(() => {
+      const result = callResults[callIndex] ?? [];
+      callIndex++;
+      return Promise.resolve(result);
+    });
+    return chain as any;
+  }
+
+  it('returns eligible when user has not used trial and has no subscription', async () => {
+    const db = createSequentialDb(
+      [{ trialUsed: 0, accountType: 'individual' }], // profile query
+      [], // getUserOrg returns no org
+    );
+
+    const result = await canStartTrial(db, 'user-1');
+
+    expect(result).toEqual({ eligible: true });
+  });
+
+  it('returns not eligible when trial already used', async () => {
+    const db = createSequentialDb(
+      [{ trialUsed: 1, accountType: 'team' }],
+    );
+
+    const result = await canStartTrial(db, 'user-1');
+
+    expect(result).toEqual({ eligible: false, reason: 'Trial already used' });
+  });
+
+  it('returns not eligible when profile not found', async () => {
+    const db = createSequentialDb([]);
+
+    const result = await canStartTrial(db, 'user-missing');
+
+    expect(result).toEqual({ eligible: false, reason: 'Profile not found' });
+  });
+
+  it('returns not eligible when user has active subscription', async () => {
+    const db = createSequentialDb(
+      [{ trialUsed: 0, accountType: 'team' }], // profile
+      [{ org: { id: 'org-1', subscriptionStatus: 'active' }, role: 'owner' }], // getUserOrg
+    );
+
+    const result = await canStartTrial(db, 'user-1');
+
+    expect(result).toEqual({ eligible: false, reason: 'Already subscribed' });
+  });
+
+  it('returns eligible when user has org but no active subscription', async () => {
+    const db = createSequentialDb(
+      [{ trialUsed: 0, accountType: 'team' }], // profile
+      [{ org: { id: 'org-1', subscriptionStatus: 'none' }, role: 'owner' }], // getUserOrg
+    );
+
+    const result = await canStartTrial(db, 'user-1');
+
+    expect(result).toEqual({ eligible: true });
+  });
+});
+
+describe('trial constants', () => {
+  it('exports expected trial constants', () => {
+    expect(TRIAL_DURATION_DAYS).toBe(30);
+    expect(TRIAL_MAX_ASSESSMENTS).toBe(1);
+    expect(TRIAL_MAX_INVITES).toBe(3);
   });
 });

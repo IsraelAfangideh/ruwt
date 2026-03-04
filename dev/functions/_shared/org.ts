@@ -9,6 +9,87 @@ import {
   type OrgRole,
 } from '../../drizzle/schema.d1';
 
+// ─── Trial Constants ───────────────────────────────────────────────────────
+
+export const TRIAL_DURATION_DAYS = 30;
+export const TRIAL_MAX_ASSESSMENTS = 1;
+export const TRIAL_MAX_INVITES = 3;
+
+export interface TrialStatus {
+  isActive: boolean;
+  daysRemaining: number;
+  assessmentsUsed: number;
+  assessmentsLimit: number;
+  invitesUsed: number;
+  invitesLimit: number;
+}
+
+/** Get trial status for an org. Returns null if org has no trial. */
+export async function getTrialStatus(db: Db, orgId: string): Promise<TrialStatus | null> {
+  const [org] = await db
+    .select({
+      trialStartedAt: organizations.trialStartedAt,
+      trialEndsAt: organizations.trialEndsAt,
+      trialAssessmentsUsed: organizations.trialAssessmentsUsed,
+      trialInvitesUsed: organizations.trialInvitesUsed,
+    })
+    .from(organizations)
+    .where(eq(organizations.id, orgId))
+    .limit(1);
+
+  if (!org || !org.trialEndsAt) return null;
+
+  const now = new Date();
+  const endsAt = new Date(org.trialEndsAt);
+  const daysRemaining = Math.max(0, Math.ceil((endsAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
+  const isActive = endsAt > now;
+
+  return {
+    isActive,
+    daysRemaining,
+    assessmentsUsed: org.trialAssessmentsUsed,
+    assessmentsLimit: TRIAL_MAX_ASSESSMENTS,
+    invitesUsed: org.trialInvitesUsed,
+    invitesLimit: TRIAL_MAX_INVITES,
+  };
+}
+
+/** Lightweight check: is this org on an active trial? */
+export async function isOnActiveTrial(db: Db, orgId: string): Promise<boolean> {
+  const [org] = await db
+    .select({ trialEndsAt: organizations.trialEndsAt })
+    .from(organizations)
+    .where(eq(organizations.id, orgId))
+    .limit(1);
+  if (!org || !org.trialEndsAt) return false;
+  return new Date(org.trialEndsAt) > new Date();
+}
+
+/** Check if a user can start a free trial. */
+export async function canStartTrial(
+  db: Db,
+  userId: string,
+): Promise<{ eligible: boolean; reason?: string }> {
+  const [profile] = await db
+    .select({ trialUsed: profiles.trialUsed, accountType: profiles.accountType })
+    .from(profiles)
+    .where(eq(profiles.id, userId))
+    .limit(1);
+
+  if (!profile) return { eligible: false, reason: 'Profile not found' };
+  if (profile.trialUsed) return { eligible: false, reason: 'Trial already used' };
+
+  // Check if user already has an active subscription
+  const userOrg = await getUserOrg(db, userId);
+  if (userOrg && (userOrg.org.subscriptionStatus === 'active' || userOrg.org.subscriptionStatus === 'past_due')) {
+    return { eligible: false, reason: 'Already subscribed' };
+  }
+
+  return { eligible: true };
+}
+
+// ─── Role Hierarchy ────────────────────────────────────────────────────────
+
 const ROLE_HIERARCHY: Record<OrgRole, number> = {
   owner: 4,
   admin: 3,
@@ -97,12 +178,13 @@ export async function getUserOrgIds(db: Db, userId: string): Promise<string[]> {
   return rows.map((r) => r.orgId);
 }
 
-/** Check if an org has an active subscription (or is within a canceled subscription's paid period). */
+/** Check if an org has an active subscription, canceled-but-still-paid period, or active trial. */
 export async function hasActiveSubscription(db: Db, orgId: string): Promise<boolean> {
   const [org] = await db
     .select({
       subscriptionStatus: organizations.subscriptionStatus,
       subscriptionEndsAt: organizations.subscriptionEndsAt,
+      trialEndsAt: organizations.trialEndsAt,
     })
     .from(organizations)
     .where(eq(organizations.id, orgId))
@@ -114,8 +196,11 @@ export async function hasActiveSubscription(db: Db, orgId: string): Promise<bool
 
   // Canceled but still within paid period
   if (org.subscriptionStatus === 'canceled' && org.subscriptionEndsAt) {
-    return new Date(org.subscriptionEndsAt) > new Date();
+    if (new Date(org.subscriptionEndsAt) > new Date()) return true;
   }
+
+  // Active trial
+  if (org.trialEndsAt && new Date(org.trialEndsAt) > new Date()) return true;
 
   return false;
 }

@@ -5,6 +5,7 @@ import { DashboardNav } from './DashboardNav';
 import { UserNav } from './UserNav';
 import { ThemeToggle } from './ThemeToggle';
 import { NotificationBell } from './NotificationBell';
+import { TrialBanner, type TrialInfo } from './TrialBanner';
 import { Button } from './ui/Button';
 import { useColors } from '@/theme';
 import { spacing, fontSizes, fontFamily } from '@/theme/tokens';
@@ -21,14 +22,18 @@ export function DashboardLayout({ user, children, requireTeam }: DashboardLayout
   const c = useColors();
   const [accountType, setAccountType] = useState<string>('individual');
   const [profileLoading, setProfileLoading] = useState(true);
+  const [trial, setTrial] = useState<TrialInfo | null>(null);
+  const [subscriptionStatus, setSubscriptionStatus] = useState<string>('none');
 
   useEffect(() => {
     const fetchProfile = async () => {
       try {
         const r = await fetch('/api/profile');
         if (r.ok) {
-          const data = await r.json() as { accountType?: string };
+          const data = await r.json() as { accountType?: string; trial?: TrialInfo | null; subscriptionStatus?: string };
           if (data.accountType) setAccountType(data.accountType);
+          if (data.trial) setTrial(data.trial);
+          if (data.subscriptionStatus) setSubscriptionStatus(data.subscriptionStatus);
         }
       } catch {}
       setProfileLoading(false);
@@ -82,7 +87,10 @@ export function DashboardLayout({ user, children, requireTeam }: DashboardLayout
           <UserNav user={user} />
         </View>
       </View>
-      <View style={styles.main} accessibilityRole="main" nativeID="main-content" tabIndex={-1}>{renderContent()}</View>
+      <View style={styles.main} accessibilityRole="main" nativeID="main-content" tabIndex={-1}>
+        {trial && accountType === 'team' && <TrialBanner trial={trial} subscriptionStatus={subscriptionStatus} />}
+        {renderContent()}
+      </View>
     </View>
   );
 }

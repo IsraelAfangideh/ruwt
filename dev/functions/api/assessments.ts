@@ -6,8 +6,8 @@ import { eq, desc, and, sql, or, inArray } from 'drizzle-orm';
 import { z } from 'zod';
 import { getDb } from '../_shared/db';
 import { getUser } from '../_shared/auth';
-import { getUserOrgIds, requireOrgAccess, requireTeamAccount } from '../_shared/org';
-import { assessments, assessmentChallenges, assessmentInvites, assessmentSessions } from '../../drizzle/schema.d1';
+import { getUserOrgIds, requireOrgAccess, requireTeamAccount, getUserOrg, isOnActiveTrial, getTrialStatus, TRIAL_MAX_ASSESSMENTS } from '../_shared/org';
+import { assessments, assessmentChallenges, assessmentInvites, assessmentSessions, organizations } from '../../drizzle/schema.d1';
 
 const createAssessmentSchema = z.object({
   title: z.string().min(1).max(200),
@@ -42,6 +42,31 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
       }
     }
 
+    // Determine the target org for trial checks (explicit orgId or user's default org)
+    const userOrg = await getUserOrg(db, user.id);
+    const targetOrgId = parsed.data.orgId ?? userOrg?.org.id;
+
+    // Check trial limits if on active trial (not paid subscription)
+    if (targetOrgId) {
+      const onTrial = await isOnActiveTrial(db, targetOrgId);
+      if (onTrial) {
+        const [orgRow] = await db
+          .select({ subscriptionStatus: organizations.subscriptionStatus })
+          .from(organizations)
+          .where(eq(organizations.id, targetOrgId))
+          .limit(1);
+        if (orgRow && orgRow.subscriptionStatus !== 'active') {
+          const trial = await getTrialStatus(db, targetOrgId);
+          if (trial && trial.assessmentsUsed >= TRIAL_MAX_ASSESSMENTS) {
+            return Response.json(
+              { error: 'Trial assessment limit reached. Subscribe to create more assessments.', code: 'TRIAL_LIMIT_REACHED' },
+              { status: 403 },
+            );
+          }
+        }
+      }
+    }
+
     const assessmentId = crypto.randomUUID();
 
     await db.insert(assessments).values({
@@ -53,6 +78,24 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
       createdBy: user.id,
       orgId: parsed.data.orgId ?? null,
     });
+
+    // Increment trial assessment counter on the target org
+    if (targetOrgId) {
+      const onTrial = await isOnActiveTrial(db, targetOrgId);
+      if (onTrial) {
+        const [orgRow] = await db
+          .select({ subscriptionStatus: organizations.subscriptionStatus })
+          .from(organizations)
+          .where(eq(organizations.id, targetOrgId))
+          .limit(1);
+        if (orgRow && orgRow.subscriptionStatus !== 'active') {
+          await db
+            .update(organizations)
+            .set({ trialAssessmentsUsed: sql`trial_assessments_used + 1` })
+            .where(eq(organizations.id, targetOrgId));
+        }
+      }
+    }
 
     const [created] = await db
       .select()
