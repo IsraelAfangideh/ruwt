@@ -42,16 +42,45 @@ describe('POST /api/streak-nudge (cron-secured)', () => {
     expect(res.status).toBe(401);
   });
 
-  it('returns success when no daily challenge exists', async () => {
-    mockGetDb.mockReturnValue({
-      all: vi.fn().mockResolvedValueOnce([]),
+  it('auto-seeds daily challenge when none exists and sends nudges', async () => {
+    const db = {
+      all: vi.fn()
+        // 1st call: no daily challenge for today
+        .mockResolvedValueOnce([])
+        // 2nd call: recent dailies (for anti-repeat)
+        .mockResolvedValueOnce([])
+        // 3rd call: all challenges
+        .mockResolvedValueOnce([{ id: 'ch-1', title: 'FizzBuzz', difficulty: 'easy' }])
+        // 4th call: active season
+        .mockResolvedValueOnce([{ id: 'season-1' }])
+        // 5th call: eligible users (none with active streaks)
+        .mockResolvedValueOnce([]),
       run: vi.fn().mockResolvedValue({}),
-    });
+    };
+    mockGetDb.mockReturnValue(db);
 
     const res = await onRequestPost(makeCtx('secret-123'));
     const json = await res.json();
     expect(json.success).toBe(true);
-    expect(json.message).toBe('No daily challenge today');
+    expect(json.message).toBe('No users need nudging');
+    // Verify the daily challenge was inserted
+    expect(db.run).toHaveBeenCalled();
+  });
+
+  it('returns success when no eligible challenges exist for auto-seed', async () => {
+    const db = {
+      all: vi.fn()
+        .mockResolvedValueOnce([])  // no daily challenge
+        .mockResolvedValueOnce([])  // no recent dailies
+        .mockResolvedValueOnce([]), // no challenges at all
+      run: vi.fn().mockResolvedValue({}),
+    };
+    mockGetDb.mockReturnValue(db);
+
+    const res = await onRequestPost(makeCtx('secret-123'));
+    const json = await res.json();
+    expect(json.success).toBe(true);
+    expect(json.message).toBe('No eligible challenges for daily');
     expect(json.sent).toBe(0);
   });
 
