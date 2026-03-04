@@ -104,8 +104,8 @@ export function ReplayScreen() {
     load();
   }, [attemptId]);
 
-  // Check if any message has a code snapshot
-  const hasSnapshots = data?.messages.some((m) => m.codeSnapshot) ?? false;
+  // Check if any message has a code snapshot (guard against empty strings from DB)
+  const hasSnapshots = data?.messages.some((m) => m.codeSnapshot && m.codeSnapshot.trim().length > 0) ?? false;
 
   // Get code snapshot at current index (walk backward to find most recent snapshot)
   const getCodeAtIndex = useCallback((idx: number): string => {
@@ -376,7 +376,7 @@ export function ReplayScreen() {
           </div>
 
           {/* Right: Monaco editor */}
-          <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ flex: 1, minWidth: 0, minHeight: 400, position: 'relative' }}>
             <React.Suspense fallback={<ActivityIndicator style={{ margin: 40 }} />}>
               <MonacoEditor
                 height="100%"
