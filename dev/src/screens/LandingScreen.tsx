@@ -7,6 +7,8 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/com
 import { Badge } from '@/components/ui/Badge';
 import { FeaturedReplay } from '@/components/FeaturedReplay';
 import { ActivityFeed } from '@/components/ActivityFeed';
+import { PlatformStats } from '@/components/PlatformStats';
+import { DISCORD_INVITE_URL } from '@/lib/constants';
 import { useColors } from '@/theme';
 import { spacing, fontSizes, fontFamily } from '@/theme/tokens';
 import { useWindowWidth } from '@/hooks/useWindowWidth';
@@ -262,38 +264,35 @@ export function LandingScreen() {
         </View>
       </View>
 
-      {/* ─── Social proof / developer quotes ─── */}
+      {/* ─── Live platform stats ─── */}
       <View style={[styles.section, { backgroundColor: c.bg }]}>
         <Text style={[styles.sectionTitle, { color: c.text }]} accessibilityRole="heading">
-          Why Developers Practice Here
+          Built by Engineers, for Engineers
         </Text>
-        <View style={styles.cards}>
-          {[
-            {
-              quote: 'I used GPT-4 for everything. Ruwt showed me that a 7B model handles 80% of tasks for 1/50th the cost.',
-              author: 'Frontend Engineer',
-            },
-            {
-              quote: 'The leaderboard made me competitive about prompt efficiency. I now write better prompts at work too.',
-              author: 'Full-Stack Developer',
-            },
-            {
-              quote: 'Debugging challenges taught me when to switch models instead of burning tokens on retries.',
-              author: 'Backend Engineer',
-            },
-          ].map((item) => (
-            <Card key={item.author} style={styles.card}>
-              <CardContent>
-                <Text style={{ fontSize: fontSizes.sm, color: c.textMuted, fontStyle: 'italic', lineHeight: 22, fontFamily: fontFamily.body }}>
-                  "{item.quote}"
-                </Text>
-                <Text style={{ fontSize: fontSizes.xs, color: c.accent, marginTop: spacing.sm, fontWeight: '600' }}>
-                  — {item.author}
-                </Text>
-              </CardContent>
-            </Card>
-          ))}
-        </View>
+        <Text style={[styles.sectionSub, { color: c.textMuted }]}>
+          Real challenges. Real AI models. Real costs. Every solve is tracked and ranked.
+        </Text>
+        <PlatformStats />
+      </View>
+
+      {/* ─── Community ─── */}
+      <View style={[styles.section, { backgroundColor: c.bg, paddingTop: 0 }]}>
+        <Card style={[styles.card, { borderColor: '#5865F2', borderWidth: 1 }]}>
+          <CardHeader>
+            <CardTitle>Join the Community</CardTitle>
+            <CardDescription>Discuss strategies, share solves, and compete with other engineers on Discord.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button
+              variant="outline"
+              onPress={() => { if (typeof window !== 'undefined') window.open(DISCORD_INVITE_URL, '_blank'); }}
+              style={{ borderColor: '#5865F2' }}
+              textStyle={{ color: '#5865F2' }}
+            >
+              Join Discord
+            </Button>
+          </CardContent>
+        </Card>
       </View>
 
       {/* ─── For Hiring Teams ─── */}

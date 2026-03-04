@@ -9,6 +9,8 @@ import { useAuthGuard } from '@/hooks/useAuthGuard';
 import { useToast } from '@/components/ui/Toast';
 import { ArenaErrorBoundary } from '@/components/arena/ArenaErrorBoundary';
 import { estimateMessagesForBudget } from '@/lib/ai/pricing';
+import { BADGE_DEFS, type BadgeDef } from '@/lib/badge-defs';
+import { DISCORD_INVITE_URL } from '@/lib/constants';
 
 /* ─── Budget Progress Bar ──────────────────────────────────────────── */
 
@@ -101,7 +103,9 @@ export function ArenaScreen() {
   const [successOverlay, setSuccessOverlay] = useState<{ attemptId: string; passed: boolean } | null>(null);
   const [successStats, setSuccessStats] = useState<{ rank: number; total: number; topCost: number | null } | null>(null);
   const [copiedShareLink, setCopiedShareLink] = useState(false);
-  const [nextChallengeId, setNextChallengeId] = useState<string | null>(null);
+  const [nextChallenge, setNextChallenge] = useState<{ id: string; title: string; difficulty: string } | null>(null);
+  const [earnedBadges, setEarnedBadges] = useState<BadgeDef[]>([]);
+  const [streakInfo, setStreakInfo] = useState<{ currentStreak: number } | null>(null);
   const navigatingRef = useRef(false);
   const isMobile = useIsMobile();
   const { showToast } = useToast();
@@ -147,7 +151,9 @@ export function ArenaScreen() {
     setError(null);
     setIsRunning(false);
     setLoading(true);
-    setNextChallengeId(null);
+    setNextChallenge(null);
+    setEarnedBadges([]);
+    setStreakInfo(null);
     navigatingRef.current = false;
   }, [challengeId]);
 
@@ -259,6 +265,8 @@ export function ArenaScreen() {
     setTestResults(null);
     setSuccessOverlay(null);
     setSuccessStats(null);
+    setEarnedBadges([]);
+    setStreakInfo(null);
     setIsExpired(false);
     isExpiredRef.current = false;
   }, []);
@@ -310,6 +318,16 @@ export function ArenaScreen() {
       // Show success overlay for passed submissions
       if (result.passed) {
         setSuccessOverlay({ attemptId: finalAttemptId, passed: true });
+        // Capture earned badges and streak from response
+        if (data.newBadges && data.newBadges.length > 0) {
+          const resolved = (data.newBadges as string[])
+            .map((type) => BADGE_DEFS[type])
+            .filter((b): b is BadgeDef => Boolean(b));
+          setEarnedBadges(resolved);
+        }
+        if (data.streak) {
+          setStreakInfo(data.streak);
+        }
         // Fire leaderboard + next challenge fetches in parallel (don't block each other)
         const leaderboardPromise = fetch(`/api/leaderboard?challengeId=${challengeId}`)
           .then(async (lbRes) => {
@@ -339,7 +357,7 @@ export function ArenaScreen() {
                 const bDist = Math.abs(bIdx - currentDiffIdx) + (bIdx >= currentDiffIdx ? 0 : 5);
                 return aDist - bDist;
               });
-              if (sameCat.length > 0) setNextChallengeId(sameCat[0].id);
+              if (sameCat.length > 0) setNextChallenge({ id: sameCat[0].id, title: sameCat[0].title, difficulty: sameCat[0].difficulty });
             }
           })
           .catch(() => { /* next challenge fetch failed */ });
@@ -927,11 +945,16 @@ export function ArenaScreen() {
             zIndex: 200,
             overflow: 'hidden',
           }}>
-            {/* CSS confetti */}
+            {/* CSS confetti + badge animation */}
             <style>{`
               @keyframes confetti-fall {
                 0% { transform: translateY(-100%) rotate(0deg); opacity: 1; }
                 100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+              }
+              @keyframes badge-pop {
+                0% { transform: scale(0); opacity: 0; }
+                50% { transform: scale(1.3); }
+                100% { transform: scale(1); opacity: 1; }
               }
               .confetti-piece {
                 position: absolute;
@@ -981,6 +1004,45 @@ export function ArenaScreen() {
               }}>
                 Challenge Passed!
               </h2>
+
+              {/* Earned badges celebration */}
+              {earnedBadges.length > 0 && (
+                <div style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: 8,
+                  padding: '12px 16px',
+                  background: 'rgba(201,169,98,0.08)',
+                  borderRadius: 8,
+                  border: '1px solid rgba(201,169,98,0.2)',
+                  width: '100%',
+                  boxSizing: 'border-box',
+                }}>
+                  <span style={{ fontSize: 11, color: arena.textMuted, textTransform: 'uppercase', letterSpacing: 1, fontWeight: 600 }}>
+                    {earnedBadges.length === 1 ? 'Badge Earned!' : `${earnedBadges.length} Badges Earned!`}
+                  </span>
+                  <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'center' }}>
+                    {earnedBadges.map((badge) => (
+                      <div key={badge.type} style={{ textAlign: 'center', minWidth: 70 }}>
+                        <span style={{ fontSize: 28, display: 'block', animation: 'badge-pop 0.5s ease-out' }}>
+                          {badge.icon}
+                        </span>
+                        <span style={{ fontSize: 11, color: arena.accent, fontWeight: 600, display: 'block' }}>
+                          {badge.title}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Streak info */}
+              {streakInfo && streakInfo.currentStreak > 1 && (
+                <span style={{ fontSize: 13, color: arena.accent }}>
+                  {'\u{1F525}'} {streakInfo.currentStreak}-day streak!
+                </span>
+              )}
 
               {/* Rank comparison stats */}
               <div style={{
@@ -1145,10 +1207,10 @@ export function ArenaScreen() {
                   See How #1 Solved This
                 </button>
                 <a
-                  href={nextChallengeId ? `/arena/${nextChallengeId}` : '/challenges'}
+                  href={nextChallenge ? `/arena/${nextChallenge.id}` : '/challenges'}
                   onClick={(e) => {
                     // If next challenge isn't preloaded yet, fetch it on the spot
-                    if (!nextChallengeId) {
+                    if (!nextChallenge) {
                       e.preventDefault();
                       fetch('/api/challenges')
                         .then(r => r.json())
@@ -1165,25 +1227,36 @@ export function ArenaScreen() {
                         })
                         .catch(() => { window.location.href = '/challenges'; });
                     }
-                    // If nextChallengeId exists, the <a href> handles it natively
                   }}
                   style={{
                     display: 'block',
-                    background: 'transparent',
-                    border: `1px solid ${arena.border}`,
+                    background: 'rgba(201,169,98,0.06)',
+                    border: `1px solid ${arena.accent}`,
                     borderRadius: 8,
-                    color: arena.text,
-                    padding: '10px 20px',
-                    fontSize: 14,
-                    fontWeight: 500,
-                    cursor: 'pointer',
-                    width: '100%',
-                    textAlign: 'center',
+                    padding: '12px 20px',
                     textDecoration: 'none',
+                    textAlign: 'center',
                     boxSizing: 'border-box',
+                    width: '100%',
                   }}
                 >
-                  Try Next Challenge
+                  <span style={{ fontSize: 11, color: arena.textMuted, textTransform: 'uppercase', letterSpacing: 1 }}>
+                    Up Next
+                  </span>
+                  {nextChallenge ? (
+                    <>
+                      <span style={{ display: 'block', fontSize: 14, fontWeight: 600, color: arena.text, marginTop: 4 }}>
+                        {nextChallenge.title}
+                      </span>
+                      <span style={{ fontSize: 12, color: arena.accent }}>
+                        {nextChallenge.difficulty}
+                      </span>
+                    </>
+                  ) : (
+                    <span style={{ display: 'block', fontSize: 14, fontWeight: 500, color: arena.text, marginTop: 4 }}>
+                      Browse Challenges
+                    </span>
+                  )}
                 </a>
                 <button
                   style={{
@@ -1203,6 +1276,23 @@ export function ArenaScreen() {
                 >
                   Back to Challenges
                 </button>
+                <a
+                  href={DISCORD_INVITE_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    fontSize: 12,
+                    color: '#5865F2',
+                    textDecoration: 'none',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 4,
+                    justifyContent: 'center',
+                    marginTop: 4,
+                  }}
+                >
+                  Discuss this challenge on Discord
+                </a>
               </div>
             </div>
           </div>

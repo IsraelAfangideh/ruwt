@@ -1166,16 +1166,16 @@ describe('ArenaScreen', () => {
     });
   });
 
-  /* ─── "Try Next Challenge" ─────────────────────────────────────── */
+  /* ─── "Up Next" ─────────────────────────────────────── */
 
-  it('Try Next Challenge link appears after successful submission', async () => {
+  it('Up Next link appears after successful submission', async () => {
     render(<ArenaScreen />);
     await waitFor(() => expect(screen.getByText('Start Challenge')).toBeTruthy());
     await act(async () => { fireEvent.click(screen.getByText('Start Challenge')); });
     await waitFor(() => expect(screen.getByText('Submit')).toBeTruthy());
     await act(async () => { fireEvent.click(screen.getByText('Submit')); });
     await waitFor(() => {
-      expect(screen.getByText('Try Next Challenge')).toBeTruthy();
+      expect(screen.getByText('Up Next')).toBeTruthy();
     });
   });
 
@@ -1373,16 +1373,16 @@ describe('ArenaScreen', () => {
     await waitFor(() => expect(screen.getByText('Submit')).toBeTruthy());
     await act(async () => { fireEvent.click(screen.getByText('Submit')); });
     await waitFor(() => expect(screen.getByText('Challenge Passed!')).toBeTruthy());
-    // The "Try Next Challenge" link should point to the closest difficulty in same category
+    // The "Up Next" link should point to the closest difficulty in same category
     // hard (idx 3) has dist 1, easy (idx 1) has dist 1+5=6, so hard-one wins
-    const tryNextLink = screen.getByText('Try Next Challenge');
+    const tryNextLink = screen.getByText('Up Next');
     expect(tryNextLink.closest('a')?.getAttribute('href')).toBe('/arena/hard-one');
   });
 
-  /* ─── "Try Next Challenge" fallback fetch when nextChallengeId is null ── */
+  /* ─── "Up Next" fallback fetch when nextChallenge is null ── */
 
-  it('Try Next Challenge falls back to fetching challenges when nextChallengeId is not set', async () => {
-    // Mock where the initial /api/challenges call fails so nextChallengeId stays null
+  it('Up Next falls back to fetching challenges when nextChallenge is not set', async () => {
+    // Mock where the initial /api/challenges call fails so nextChallenge stays null
     let challengesFetchCount = 0;
     globalThis.fetch = vi.fn().mockImplementation((url: string, opts?: any) => {
       if (url.includes('/api/challenges/')) return Promise.resolve({ ok: true, json: () => Promise.resolve(challengeData) });
@@ -1413,10 +1413,10 @@ describe('ArenaScreen', () => {
       if (url === '/api/challenges') {
         challengesFetchCount++;
         if (challengesFetchCount === 1) {
-          // First call (from submit) — return error so nextChallengeId stays null
+          // First call (from submit) — return error so nextChallenge stays null
           return Promise.reject(new Error('fail'));
         }
-        // Fallback fetch from clicking "Try Next Challenge" — multiple challenges for sort coverage (lines 1158-1160)
+        // Fallback fetch from clicking "Up Next" — multiple challenges for sort coverage (lines 1158-1160)
         return Promise.resolve({
           ok: true,
           json: () => Promise.resolve([
@@ -1436,8 +1436,8 @@ describe('ArenaScreen', () => {
     await act(async () => { fireEvent.click(screen.getByText('Submit')); });
     await waitFor(() => expect(screen.getByText('Challenge Passed!')).toBeTruthy());
 
-    // nextChallengeId should be null, so link href falls back to /challenges
-    const tryNextLink = screen.getByText('Try Next Challenge');
+    // nextChallenge should be null, so link href falls back to /challenges
+    const tryNextLink = screen.getByText('Up Next');
     expect(tryNextLink.closest('a')?.getAttribute('href')).toBe('/challenges');
 
     // Click it — should trigger fallback fetch
@@ -1449,7 +1449,7 @@ describe('ArenaScreen', () => {
     });
   });
 
-  it('Try Next Challenge catch block redirects to /challenges when fallback fetch fails (line 1164)', async () => {
+  it('Up Next catch block redirects to /challenges when fallback fetch fails (line 1164)', async () => {
     let challengesFetchCount = 0;
     globalThis.fetch = vi.fn().mockImplementation((url: string, opts?: any) => {
       if (url.includes('/api/challenges/')) return Promise.resolve({ ok: true, json: () => Promise.resolve(challengeData) });
@@ -1476,7 +1476,7 @@ describe('ArenaScreen', () => {
       }
       if (url === '/api/challenges') {
         challengesFetchCount++;
-        // ALL calls to /api/challenges fail so nextChallengeId stays null AND fallback catch fires
+        // ALL calls to /api/challenges fail so nextChallenge stays null AND fallback catch fires
         return Promise.reject(new Error('network error'));
       }
       return Promise.resolve({ ok: false, json: () => Promise.resolve({}) });
@@ -1494,7 +1494,7 @@ describe('ArenaScreen', () => {
     await act(async () => { fireEvent.click(screen.getByText('Submit')); });
     await waitFor(() => expect(screen.getByText('Challenge Passed!')).toBeTruthy());
 
-    const tryNextLink = screen.getByText('Try Next Challenge');
+    const tryNextLink = screen.getByText('Up Next');
     await act(async () => { fireEvent.click(tryNextLink); });
     await waitFor(() => {
       expect(challengesFetchCount).toBeGreaterThanOrEqual(2);
@@ -1962,7 +1962,7 @@ describe('ArenaScreen', () => {
     });
   });
 
-  /* ─── Branch coverage: "Try Next Challenge" with no nextChallengeId (line 1151) ─ */
+  /* ─── Branch coverage: "Up Next" with no nextChallenge (line 1151) ─ */
 
   it('navigates to /challenges when no same-category challenges exist (line 1164)', async () => {
     // Need to mock window.location.href since jsdom doesn't support full navigation
@@ -2011,10 +2011,10 @@ describe('ArenaScreen', () => {
     await act(async () => { fireEvent.click(screen.getByText('Submit')); });
     await waitFor(() => expect(screen.getByText('Challenge Passed!')).toBeTruthy());
 
-    // "Try Next Challenge" link should go to /challenges since no same-category
-    const link = screen.getByText('Try Next Challenge');
+    // "Up Next" link should go to /challenges since no same-category
+    const link = screen.getByText('Up Next');
     expect(link).toBeTruthy();
-    // The href should be /challenges since nextChallengeId would be null
+    // The href should be /challenges since nextChallenge would be null
     // (no same-category challenges returned from /api/challenges)
     locationSpy.mockRestore();
   });
