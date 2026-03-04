@@ -7,8 +7,20 @@ binding = "DB"
 database_name = "ruwt-dev"
 database_id = "27b64c12-c858-473d-8a40-d202d01d32aa"
 migrations_dir = "drizzle/migrations-d1"
-# After creating: wrangler d1 create ruwt-dev
-# Then: wrangler d1 execute ruwt-dev --remote --file=./drizzle/migrations-d1/0000_initial.sql
+
+# Preview environment — separate D1 for preview deploys
+[[env.preview.d1_databases]]
+binding = "DB"
+database_name = "ruwt-dev-preview"
+database_id = "07ba4ea1-673d-4d67-a414-8b338f87147b"
+migrations_dir = "drizzle/migrations-d1"
+
+# Production environment — existing D1
+[[env.production.d1_databases]]
+binding = "DB"
+database_name = "ruwt-dev"
+database_id = "27b64c12-c858-473d-8a40-d202d01d32aa"
+migrations_dir = "drizzle/migrations-d1"
 
 # Runtime vars for Pages Functions.
 # Non-secrets go here; secrets are set via wrangler pages secret put in the deploy workflow.

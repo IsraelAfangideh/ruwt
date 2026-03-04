@@ -55,15 +55,30 @@ export function CallbackScreen() {
 
       // Hiring manager intent: skip dev onboarding, go straight to assessment builder
       const teamIntent = typeof window !== 'undefined' ? localStorage.getItem('ruwt_team_intent') : null;
+      const trialIntent = typeof window !== 'undefined' ? localStorage.getItem('ruwt_trial_intent') : null;
       if (teamIntent) {
         localStorage.removeItem('ruwt_team_intent');
-        try {
-          await fetch('/api/profile', {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ accountType: 'team', onboardingCompleted: 1 }),
-          });
-        } catch {}
+        localStorage.removeItem('ruwt_trial_intent');
+
+        // Auto-start trial if they came from the trial CTA
+        if (trialIntent) {
+          try {
+            const trialRes = await fetch('/api/trial/start', { method: 'POST' });
+            if (!trialRes.ok) {
+              console.warn('Trial start failed:', await trialRes.text().catch(() => ''));
+            }
+          } catch (e) {
+            console.warn('Trial start error:', e);
+          }
+        } else {
+          try {
+            await fetch('/api/profile', {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ accountType: 'team', onboardingCompleted: 1 }),
+            });
+          } catch {}
+        }
         navigation.reset({ index: 0, routes: [{ name: 'AssessmentBuilder' as never }] });
         return;
       }

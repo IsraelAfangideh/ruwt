@@ -25,6 +25,7 @@ export const profiles = sqliteTable('profiles', {
   newsletterSubscribed: integer('newsletter_subscribed').default(1).notNull(),
   timezone: text('timezone'), // IANA timezone (e.g., 'America/New_York'), captured from Cloudflare request.cf
   leaderboardExcluded: integer('leaderboard_excluded').default(0).notNull(), // 1 = hidden from leaderboard (QA/system accounts)
+  trialUsed: integer('trial_used').default(0).notNull(), // 1 = user has used their free trial (prevents re-trial after org deletion)
   createdAt: text('created_at').default(sql`(datetime('now'))`).notNull(),
 });
 
@@ -115,6 +116,10 @@ export const organizations = sqliteTable('organizations', {
   subscriptionStatus: text('subscription_status').default('none').notNull(), // 'none' | 'active' | 'past_due' | 'canceled'
   subscriptionPlan: text('subscription_plan'), // 'monthly' | 'annual'
   subscriptionEndsAt: text('subscription_ends_at'),
+  trialStartedAt: text('trial_started_at'),
+  trialEndsAt: text('trial_ends_at'),
+  trialAssessmentsUsed: integer('trial_assessments_used').default(0).notNull(),
+  trialInvitesUsed: integer('trial_invites_used').default(0).notNull(),
   createdAt: text('created_at').default(sql`(datetime('now'))`).notNull(),
 });
 

@@ -6,7 +6,7 @@ import { eq } from 'drizzle-orm';
 import { z } from 'zod';
 import { getDb } from '../_shared/db';
 import { getUser } from '../_shared/auth';
-import { getUserOrg } from '../_shared/org';
+import { getUserOrg, getTrialStatus, canStartTrial } from '../_shared/org';
 import { ensureProfile } from '../_shared/ensure-profile';
 import { profiles } from '../../drizzle/schema.d1';
 
@@ -36,7 +36,7 @@ export async function onRequestGet(context: { request: Request; env: Env }) {
       db.update(profiles).set({ timezone: cfTimezone }).where(eq(profiles.id, user.id)).run().catch(() => {});
     }
 
-    // Look up org subscription status
+    // Look up org subscription status + trial
     let subscriptionStatus = 'none';
     let subscriptionPlan: string | null = null;
     let subscriptionEndsAt: string | null = null;
@@ -47,6 +47,9 @@ export async function onRequestGet(context: { request: Request; env: Env }) {
       subscriptionPlan = userOrg.org.subscriptionPlan ?? null;
       subscriptionEndsAt = userOrg.org.subscriptionEndsAt ?? null;
     }
+
+    const trial = userOrg ? await getTrialStatus(db, userOrg.org.id) : null;
+    const trialEligibility = await canStartTrial(db, user.id);
 
     return Response.json({
       email: profile.email,
@@ -64,6 +67,8 @@ export async function onRequestGet(context: { request: Request; env: Env }) {
       subscriptionStatus,
       subscriptionPlan,
       subscriptionEndsAt,
+      trial,
+      canStartTrial: trialEligibility.eligible,
     });
   } catch (error) {
     console.error('Profile error:', error);

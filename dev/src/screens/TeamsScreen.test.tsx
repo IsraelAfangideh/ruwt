@@ -217,17 +217,17 @@ describe('TeamsScreen', () => {
     expect(mockNavigate).toHaveBeenCalledWith('Register');
   });
 
-  it('navigates to Register when Create Your First Assessment is clicked (not logged in)', () => {
+  it('navigates to Register when Start Free Trial is clicked (not logged in)', () => {
     render(<TeamsScreen />);
-    fireEvent.click(screen.getAllByText('Create Your First Assessment')[0]);
+    fireEvent.click(screen.getAllByText('Start Free Trial')[0]);
     expect(mockNavigate).toHaveBeenCalledWith('Register');
   });
 
-  it('navigates to AssessmentBuilder when Create Your First Assessment is clicked (logged in)', async () => {
+  it('navigates to AssessmentBuilder when Start Free Trial is clicked (logged in)', async () => {
     mockUser = { id: 'u1' };
     render(<TeamsScreen />);
     await waitFor(() => expect(screen.getByText('Dashboard')).toBeTruthy());
-    fireEvent.click(screen.getAllByText('Create Your First Assessment')[0]);
+    fireEvent.click(screen.getAllByText('Start Free Trial')[0]);
     await waitFor(() => {
       expect(mockNavigate).toHaveBeenCalledWith('AssessmentBuilder');
     });
@@ -321,7 +321,7 @@ describe('TeamsScreen', () => {
     delete (window as any).location;
     (window as any).location = { href: '' };
     render(<TeamsScreen />);
-    const subscribeButtons = screen.getAllByText('Start Free Trial');
+    const subscribeButtons = screen.getAllByText('Subscribe');
     fireEvent.click(subscribeButtons[0]);
     await waitFor(() => {
       expect(window.location.href).toBe('https://stripe.com/checkout');
@@ -334,7 +334,7 @@ describe('TeamsScreen', () => {
       Promise.resolve(ok({ error: 'Unauthorized' }))
     ));
     render(<TeamsScreen />);
-    const subscribeButtons = screen.getAllByText('Start Free Trial');
+    const subscribeButtons = screen.getAllByText('Subscribe');
     fireEvent.click(subscribeButtons[0]);
     await waitFor(() => {
       expect(mockNavigate).toHaveBeenCalledWith('Register');
@@ -360,7 +360,7 @@ describe('TeamsScreen', () => {
   it('renders final CTA section', () => {
     render(<TeamsScreen />);
     expect(screen.getByText('Stop Guessing. Start Measuring.')).toBeTruthy();
-    expect(screen.getAllByText('Create Your First Assessment').length).toBeGreaterThanOrEqual(2);
+    expect(screen.getAllByText('Start Free Trial').length).toBeGreaterThanOrEqual(2);
   });
 
   it('renders guarantee text', () => {
@@ -387,7 +387,7 @@ describe('TeamsScreen', () => {
 
   it('navigates to Register when final CTA button is clicked (not logged in)', () => {
     render(<TeamsScreen />);
-    const ctaButtons = screen.getAllByText('Create Your First Assessment');
+    const ctaButtons = screen.getAllByText('Start Free Trial');
     fireEvent.click(ctaButtons[ctaButtons.length - 1]);
     expect(mockNavigate).toHaveBeenCalledWith('Register');
   });
@@ -440,7 +440,7 @@ describe('TeamsScreen', () => {
     );
     vi.stubGlobal('fetch', mockFetch);
     render(<TeamsScreen />);
-    const subscribeButtons = screen.getAllByText('Start Free Trial');
+    const subscribeButtons = screen.getAllByText('Subscribe');
     await act(async () => {
       fireEvent.click(subscribeButtons[0]);
     });
@@ -448,7 +448,7 @@ describe('TeamsScreen', () => {
     expect(mockFetch).toHaveBeenCalledWith('/api/checkout', expect.anything());
     // Button resets (not stuck on Loading)
     await waitFor(() => {
-      expect(screen.getAllByText('Start Free Trial').length).toBeGreaterThan(0);
+      expect(screen.getAllByText('Subscribe').length).toBeGreaterThan(0);
     });
   });
 
