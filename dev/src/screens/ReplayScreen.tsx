@@ -104,8 +104,8 @@ export function ReplayScreen() {
     load();
   }, [attemptId]);
 
-  // Check if any message has a code snapshot (guard against empty strings from DB)
-  const hasSnapshots = data?.messages.some((m) => m.codeSnapshot && m.codeSnapshot.trim().length > 0) ?? false;
+  // Check if any message has a non-empty code snapshot
+  const hasSnapshots = data?.messages.some((m) => !!m.codeSnapshot) ?? false;
 
   // Get code snapshot at current index (walk backward to find most recent snapshot)
   const getCodeAtIndex = useCallback((idx: number): string => {
@@ -336,7 +336,7 @@ export function ReplayScreen() {
         {summaryEl}
 
         {/* Split pane — chat left, editor right (matches arena layout) */}
-        <div style={{ display: 'flex', flex: 1, minHeight: 400, maxWidth: 1200, alignSelf: 'center', width: '100%' }}>
+        <div style={{ display: 'flex', height: 400, maxWidth: 1200, alignSelf: 'center', width: '100%' }}>
           {/* Left: Chat messages */}
           <div style={{ width: 380, display: 'flex', flexDirection: 'column', minWidth: 300, borderRight: `1px solid ${c.border}` }}>
             <ScrollView ref={chatScrollRef} style={{ flex: 1 }} testID="replay-chat">
@@ -376,10 +376,10 @@ export function ReplayScreen() {
           </div>
 
           {/* Right: Monaco editor */}
-          <div style={{ flex: 1, minWidth: 0, minHeight: 400, position: 'relative' }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
             <React.Suspense fallback={<ActivityIndicator style={{ margin: 40 }} />}>
               <MonacoEditor
-                height="100%"
+                height="400px"
                 language="javascript"
                 value={currentCode}
                 theme="vs-dark"
@@ -549,8 +549,8 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: spacing.sm,
   },
   scrubberDot: {
     borderRadius: 6,
