@@ -1,0 +1,47 @@
+name: Daily Retention Emails
+
+on:
+  schedule:
+    - cron: '0 10 * * *' # 10 AM UTC daily
+  workflow_dispatch:
+
+jobs:
+  send:
+    name: Send Retention Emails
+    runs-on: ubuntu-latest
+    steps:
+      - name: Drip emails (day 1/2 onboarding)
+        run: |
+          response=$(curl -s -w "\n%{http_code}" -X POST \
+            "https://ruwt.dev/api/retention?action=drip" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json")
+
+          http_code=$(echo "$response" | tail -1)
+          body=$(echo "$response" | head -n -1)
+
+          echo "Status: $http_code"
+          echo "Response: $body"
+
+          if [ "$http_code" != "200" ]; then
+            echo "::error::Drip failed with status $http_code"
+            exit 1
+          fi
+
+      - name: Daily challenge email
+        run: |
+          response=$(curl -s -w "\n%{http_code}" -X POST \
+            "https://ruwt.dev/api/retention?action=daily" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json")
+
+          http_code=$(echo "$response" | tail -1)
+          body=$(echo "$response" | head -n -1)
+
+          echo "Status: $http_code"
+          echo "Response: $body"
+
+          if [ "$http_code" != "200" ]; then
+            echo "::error::Daily challenge email failed with status $http_code"
+            exit 1
+          fi

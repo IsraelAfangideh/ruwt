@@ -1,6 +1,7 @@
 /**
  * POST /api/dormant-alert
  * Send a founder alert email listing users who became dormant (last activity 7+ days ago).
+ * With ?send_user=true, also sends re-engagement emails directly to dormant users.
  * Secured with CRON_SECRET. Called by GitHub Actions daily at 9 AM UTC.
  */
 import { sql } from 'drizzle-orm';
@@ -83,11 +84,68 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
       from: 'ruwt alerts <alerts@ruwt.dev>',
     });
 
+    // Send re-engagement emails directly to dormant users
+    const url = new URL(request.url);
+    const sendUser = url.searchParams.get('send_user') === 'true';
+    const userResults: Array<{ email: string; success: boolean; error?: string }> = [];
+
+    if (sendUser) {
+      for (const u of dormantUsers) {
+        // Skip if user unsubscribed or already re-engaged in last 14 days
+        const [subscribed] = await db.all<{ newsletter_subscribed: number }>(
+          sql`SELECT newsletter_subscribed FROM profiles WHERE id = ${u.id}`
+        );
+        if (!subscribed || subscribed.newsletter_subscribed !== 1) continue;
+
+        const [recentSend] = await db.all<{ cnt: number }>(
+          sql`SELECT COUNT(*) as cnt FROM newsletter_logs
+              WHERE user_id = ${u.id} AND digest_type = 're_engagement'
+              AND status = 'sent' AND sent_at >= datetime('now', '-14 days')`
+        );
+        if (recentSend && recentSend.cnt > 0) continue;
+
+        const firstName = u.name?.split(' ')[0] || '';
+        const daysInactive = u.last_activity
+          ? Math.floor((Date.now() - new Date(u.last_activity).getTime()) / (1000 * 60 * 60 * 24))
+          : 7;
+
+        const reSubject = `it's been ${daysInactive} days`;
+        let body: string;
+        if (u.solve_count > 0) {
+          body = `${firstName ? firstName + ' — ' : ''}it's been ${daysInactive} days since you were last on ruwt.dev.\n\nyou've solved ${u.solve_count} challenge${u.solve_count > 1 ? 's' : ''}. pick up where you left off.`;
+        } else {
+          body = `${firstName ? firstName + ' — ' : ''}it's been ${daysInactive} days since you were last on ruwt.dev.\n\nyou signed up but never solved a challenge. the arena is still there — it's not going anywhere.`;
+        }
+
+        const link = 'https://ruwt.dev/challenges';
+        const reText = `${body}\n\n${link}\n\n---\nreply stop to unsubscribe`;
+        const reHtml = `<div dir="ltr">${body.split('\n\n').map(p => `<p>${escapeHtml(p)}</p>`).join('')}<p><a href="${link}">${link}</a></p><p><font color="#b0aaa0" size="1">reply stop to unsubscribe</font></p></div>`;
+
+        const userResult = await sendEmail(env, { to: u.email, subject: reSubject, html: reHtml, text: reText });
+
+        // Log to newsletter_logs for dedup
+        const logId = crypto.randomUUID();
+        await db.run(sql`INSERT INTO newsletter_logs (id, recipient_email, subject, status, error_message, resend_id, user_id, digest_type)
+          VALUES (${logId}, ${u.email}, ${reSubject}, ${userResult.success ? 'sent' : 'failed'}, ${userResult.error ?? null}, ${userResult.id ?? null}, ${u.id}, 're_engagement')`);
+
+        userResults.push({ email: u.email, success: userResult.success, error: userResult.error });
+
+        if (dormantUsers.indexOf(u) < dormantUsers.length - 1) {
+          await new Promise(r => setTimeout(r, 600));
+        }
+      }
+    }
+
     return Response.json({
       success: true,
       dormantUsers: dormantUsers.length,
       sent: result.success ? 1 : 0,
       error: result.error,
+      reEngagement: sendUser ? {
+        sent: userResults.filter(r => r.success).length,
+        failed: userResults.filter(r => !r.success).length,
+        results: userResults,
+      } : undefined,
     });
   } catch (err: any) {
     return Response.json({ error: err.message ?? 'Unknown error' }, { status: 500 });

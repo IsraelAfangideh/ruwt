@@ -13,6 +13,7 @@ import { createCompetitiveNudges } from '../_shared/competitive-nudges';
 import { createNewUserNearRankNotifications } from '../_shared/new-user-alerts';
 import { invalidateCache } from '../_shared/cache';
 import { sendEmail } from '../_shared/newsletter/resend';
+import { sendMilestoneEmail } from '../_shared/milestone-email';
 import { challengeAttemptNotificationEmail } from '../_shared/email/templates';
 import { attempts, challenges, profiles } from '../../drizzle/schema.d1';
 
@@ -278,6 +279,11 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
     if (context.env.RESEND_API_KEY) {
       try {
         const [profile] = await db.select({ name: profiles.name }).from(profiles).where(eq(profiles.id, user.id)).limit(1);
+
+        // Milestone celebration email on badge award (fire-and-forget)
+        if (testResult.passed && newBadges.length > 0 && user.email) {
+          sendMilestoneEmail(db, context.env, { id: user.id, email: user.email, name: profile?.name ?? null }, newBadges, {}).catch(() => {});
+        }
         const notif = challengeAttemptNotificationEmail({
           userName: profile?.name ?? null,
           userEmail: user.email ?? '',

@@ -1,12 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-const { mockGetDb, mockSendEmail } = vi.hoisted(() => ({
+const { mockGetDb, mockSendEmail, mockGetOrSeedDailyChallenge } = vi.hoisted(() => ({
   mockGetDb: vi.fn(),
   mockSendEmail: vi.fn().mockResolvedValue({ success: true }),
+  mockGetOrSeedDailyChallenge: vi.fn(),
 }));
 
 vi.mock('../_shared/db', () => ({ getDb: mockGetDb }));
 vi.mock('../_shared/newsletter/resend', () => ({ sendEmail: mockSendEmail }));
+vi.mock('../_shared/daily-seed', () => ({ getOrSeedDailyChallenge: mockGetOrSeedDailyChallenge }));
 
 import { onRequestPost } from './streak-nudge';
 
@@ -42,40 +44,10 @@ describe('POST /api/streak-nudge (cron-secured)', () => {
     expect(res.status).toBe(401);
   });
 
-  it('auto-seeds daily challenge when none exists and sends nudges', async () => {
-    const db = {
-      all: vi.fn()
-        // 1st call: no daily challenge for today
-        .mockResolvedValueOnce([])
-        // 2nd call: recent dailies (for anti-repeat)
-        .mockResolvedValueOnce([])
-        // 3rd call: all challenges
-        .mockResolvedValueOnce([{ id: 'ch-1', title: 'FizzBuzz', difficulty: 'easy' }])
-        // 4th call: active season
-        .mockResolvedValueOnce([{ id: 'season-1' }])
-        // 5th call: eligible users (none with active streaks)
-        .mockResolvedValueOnce([]),
-      run: vi.fn().mockResolvedValue({}),
-    };
+  it('returns success when no eligible challenges for daily', async () => {
+    const db = { all: vi.fn(), run: vi.fn() };
     mockGetDb.mockReturnValue(db);
-
-    const res = await onRequestPost(makeCtx('secret-123'));
-    const json = await res.json();
-    expect(json.success).toBe(true);
-    expect(json.message).toBe('No users need nudging');
-    // Verify the daily challenge was inserted
-    expect(db.run).toHaveBeenCalled();
-  });
-
-  it('returns success when no eligible challenges exist for auto-seed', async () => {
-    const db = {
-      all: vi.fn()
-        .mockResolvedValueOnce([])  // no daily challenge
-        .mockResolvedValueOnce([])  // no recent dailies
-        .mockResolvedValueOnce([]), // no challenges at all
-      run: vi.fn().mockResolvedValue({}),
-    };
-    mockGetDb.mockReturnValue(db);
+    mockGetOrSeedDailyChallenge.mockResolvedValue(null);
 
     const res = await onRequestPost(makeCtx('secret-123'));
     const json = await res.json();
@@ -86,12 +58,11 @@ describe('POST /api/streak-nudge (cron-secured)', () => {
 
   it('returns success when no eligible users exist', async () => {
     const db = {
-      all: vi.fn()
-        .mockResolvedValueOnce([{ challenge_id: 'ch-1', title: 'Test', difficulty: 'easy' }])
-        .mockResolvedValueOnce([]),
-      run: vi.fn().mockResolvedValue({}),
+      all: vi.fn().mockResolvedValueOnce([]),
+      run: vi.fn(),
     };
     mockGetDb.mockReturnValue(db);
+    mockGetOrSeedDailyChallenge.mockResolvedValue({ challenge_id: 'ch-1', title: 'Test', difficulty: 'easy' });
 
     const res = await onRequestPost(makeCtx('secret-123'));
     const json = await res.json();
@@ -100,18 +71,16 @@ describe('POST /api/streak-nudge (cron-secured)', () => {
   });
 
   it('sends emails and creates notifications for eligible users', async () => {
-    const daily = { challenge_id: 'ch-1', title: 'FizzBuzz', difficulty: 'easy' };
     const users = [
       { id: 'u-1', email: 'alice@a.com', name: 'Alice Smith', current_streak: 5 },
     ];
 
     const db = {
-      all: vi.fn()
-        .mockResolvedValueOnce([daily])
-        .mockResolvedValueOnce(users),
+      all: vi.fn().mockResolvedValueOnce(users),
       run: vi.fn().mockResolvedValue({}),
     };
     mockGetDb.mockReturnValue(db);
+    mockGetOrSeedDailyChallenge.mockResolvedValue({ challenge_id: 'ch-1', title: 'FizzBuzz', difficulty: 'easy' });
     mockSendEmail.mockResolvedValue({ success: true });
 
     const res = await onRequestPost(makeCtx('secret-123'));
@@ -121,46 +90,41 @@ describe('POST /api/streak-nudge (cron-secured)', () => {
     expect(json.failed).toBe(0);
     expect(json.results).toHaveLength(1);
 
-    // Verify email content
     expect(mockSendEmail).toHaveBeenCalledOnce();
     const emailArgs = mockSendEmail.mock.calls[0][1];
     expect(emailArgs.to).toBe('alice@a.com');
     expect(emailArgs.subject).toContain('day 5');
     expect(emailArgs.text).toContain('FizzBuzz');
 
-    // Verify in-app notification was created
     expect(db.run).toHaveBeenCalled();
   });
 
   it('handles users with null name gracefully', async () => {
     const db = {
-      all: vi.fn()
-        .mockResolvedValueOnce([{ challenge_id: 'ch-1', title: 'T', difficulty: 'easy' }])
-        .mockResolvedValueOnce([{ id: 'u-1', email: 'a@a.com', name: null, current_streak: 3 }]),
+      all: vi.fn().mockResolvedValueOnce([{ id: 'u-1', email: 'a@a.com', name: null, current_streak: 3 }]),
       run: vi.fn().mockResolvedValue({}),
     };
     mockGetDb.mockReturnValue(db);
+    mockGetOrSeedDailyChallenge.mockResolvedValue({ challenge_id: 'ch-1', title: 'T', difficulty: 'easy' });
     mockSendEmail.mockResolvedValue({ success: true });
 
     const res = await onRequestPost(makeCtx('secret-123'));
     const json = await res.json();
     expect(json.sent).toBe(1);
-    // Subject should not include name prefix
     const subject = mockSendEmail.mock.calls[0][1].subject;
     expect(subject).toBe('day 3. don\'t break the streak.');
   });
 
   it('tracks failed email sends', async () => {
     const db = {
-      all: vi.fn()
-        .mockResolvedValueOnce([{ challenge_id: 'ch-1', title: 'T', difficulty: 'easy' }])
-        .mockResolvedValueOnce([
-          { id: 'u-1', email: 'a@a.com', name: null, current_streak: 3 },
-          { id: 'u-2', email: 'b@b.com', name: 'Bob', current_streak: 7 },
-        ]),
+      all: vi.fn().mockResolvedValueOnce([
+        { id: 'u-1', email: 'a@a.com', name: null, current_streak: 3 },
+        { id: 'u-2', email: 'b@b.com', name: 'Bob', current_streak: 7 },
+      ]),
       run: vi.fn().mockResolvedValue({}),
     };
     mockGetDb.mockReturnValue(db);
+    mockGetOrSeedDailyChallenge.mockResolvedValue({ challenge_id: 'ch-1', title: 'T', difficulty: 'easy' });
     mockSendEmail
       .mockResolvedValueOnce({ success: false, error: 'Rate limit' })
       .mockResolvedValueOnce({ success: true });
@@ -175,21 +139,20 @@ describe('POST /api/streak-nudge (cron-secured)', () => {
 
   it('skips in-app notification when streak is 0 or null', async () => {
     const db = {
-      all: vi.fn()
-        .mockResolvedValueOnce([{ challenge_id: 'ch-1', title: 'T', difficulty: 'easy' }])
-        .mockResolvedValueOnce([{ id: 'u-1', email: 'a@a.com', name: null, current_streak: 0 }]),
+      all: vi.fn().mockResolvedValueOnce([{ id: 'u-1', email: 'a@a.com', name: null, current_streak: 0 }]),
       run: vi.fn().mockResolvedValue({}),
     };
     mockGetDb.mockReturnValue(db);
+    mockGetOrSeedDailyChallenge.mockResolvedValue({ challenge_id: 'ch-1', title: 'T', difficulty: 'easy' });
     mockSendEmail.mockResolvedValue({ success: true });
 
     await onRequestPost(makeCtx('secret-123'));
-    // db.run should NOT be called because streak is 0
     expect(db.run).not.toHaveBeenCalled();
   });
 
   it('returns 500 on unexpected error', async () => {
     mockGetDb.mockImplementation(() => { throw new Error('boom'); });
+    mockGetOrSeedDailyChallenge.mockResolvedValue(null);
     const res = await onRequestPost(makeCtx('secret-123'));
     expect(res.status).toBe(500);
     expect((await res.json()).error).toBe('boom');

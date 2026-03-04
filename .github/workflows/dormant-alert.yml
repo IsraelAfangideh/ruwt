@@ -13,7 +13,7 @@ jobs:
       - name: Trigger dormant alert
         run: |
           response=$(curl -s -w "\n%{http_code}" -X POST \
-            "https://ruwt.dev/api/dormant-alert" \
+            "https://ruwt.dev/api/dormant-alert?send_user=true" \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
             -H "Content-Type: application/json")
 
