@@ -335,32 +335,10 @@ export function ReplayScreen() {
         {headerEl}
         {summaryEl}
 
-        {/* Split pane */}
+        {/* Split pane — chat left, editor right (matches arena layout) */}
         <div style={{ display: 'flex', flex: 1, minHeight: 400, maxWidth: 1200, alignSelf: 'center', width: '100%' }}>
-          {/* Left: Monaco editor */}
-          <div style={{ flex: 1, minWidth: 0, borderRight: `1px solid ${c.border}` }}>
-            <React.Suspense fallback={<ActivityIndicator style={{ margin: 40 }} />}>
-              <MonacoEditor
-                height="100%"
-                language="javascript"
-                value={currentCode}
-                theme="vs-dark"
-                options={{
-                  readOnly: true,
-                  minimap: { enabled: false },
-                  fontSize: 13,
-                  fontFamily: 'Menlo, Monaco, "Courier New", monospace',
-                  lineNumbers: 'on',
-                  scrollBeyondLastLine: false,
-                  wordWrap: 'on',
-                  renderLineHighlight: 'none',
-                }}
-              />
-            </React.Suspense>
-          </div>
-
-          {/* Right: Chat messages */}
-          <div style={{ width: 380, display: 'flex', flexDirection: 'column', minWidth: 300 }}>
+          {/* Left: Chat messages */}
+          <div style={{ width: 380, display: 'flex', flexDirection: 'column', minWidth: 300, borderRight: `1px solid ${c.border}` }}>
             <ScrollView ref={chatScrollRef} style={{ flex: 1 }} testID="replay-chat">
               {visibleMessages.map((msg, i) => {
                 const mi = msg.model ? getModelById(msg.model) : undefined;
@@ -396,15 +374,32 @@ export function ReplayScreen() {
               )}
             </ScrollView>
           </div>
+
+          {/* Right: Monaco editor */}
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <React.Suspense fallback={<ActivityIndicator style={{ margin: 40 }} />}>
+              <MonacoEditor
+                height="100%"
+                language="javascript"
+                value={currentCode}
+                theme="vs-dark"
+                options={{
+                  readOnly: true,
+                  minimap: { enabled: false },
+                  fontSize: 13,
+                  fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+                  lineNumbers: 'on',
+                  scrollBeyondLastLine: false,
+                  wordWrap: 'on',
+                  renderLineHighlight: 'none',
+                }}
+              />
+            </React.Suspense>
+          </div>
         </div>
 
         {/* Timeline scrubber */}
         <View style={[styles.scrubber, { borderTopColor: c.border, backgroundColor: c.bg }]} testID="replay-scrubber">
-          <Pressable onPress={togglePlay} style={[styles.playBtn, { backgroundColor: c.accent }]} testID="replay-play-btn">
-            <Text style={{ color: '#0d1117', fontSize: 14, fontWeight: '700' }}>
-              {isPlaying ? '\u23F8' : '\u25B6'}
-            </Text>
-          </Pressable>
           <View style={styles.scrubberTrack}>
             {data.messages.map((_msg, i) => (
               <Pressable
@@ -425,6 +420,11 @@ export function ReplayScreen() {
           <Text style={{ color: c.textMuted, fontSize: fontSizes.xs, minWidth: 50, textAlign: 'right' }}>
             {currentIndex + 1} / {data.messages.length}
           </Text>
+          <Pressable onPress={togglePlay} style={[styles.playBtn, { backgroundColor: c.accent }]} testID="replay-play-btn">
+            <Text style={{ color: '#0d1117', fontSize: 14, fontWeight: '700' }}>
+              {isPlaying ? '\u23F8' : '\u25B6'}
+            </Text>
+          </Pressable>
         </View>
 
         <ScrollView>
