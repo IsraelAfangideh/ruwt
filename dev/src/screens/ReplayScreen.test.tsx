@@ -10,6 +10,8 @@ vi.mock('@react-navigation/native', () => ({
   useRoute: () => ({ params: mockRouteParams }),
 }));
 vi.mock('@/hooks/useDocumentMeta', () => ({ useDocumentMeta: () => {} }));
+vi.mock('@/hooks/useWindowWidth', () => ({ useIsDesktop: () => true, useWindowWidth: () => 1024 }));
+vi.mock('@/lib/monaco-init', () => ({}));
 vi.mock('@/lib/ai/pricing', () => ({
   getModelById: (id: string) => id ? ({ name: 'Test Model', displayName: 'Test Model', tier: 'free' }) : undefined,
   tierColor: () => '#ccc',

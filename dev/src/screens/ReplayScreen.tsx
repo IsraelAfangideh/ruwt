@@ -17,6 +17,7 @@ import { useColors } from '@/theme';
 import { spacing, fontSizes, fontFamily } from '@/theme/tokens';
 import { getModelById, tierColor, formatCostFromHundredths } from '@/lib/ai/pricing';
 import { useDocumentMeta } from '@/hooks/useDocumentMeta';
+import { useIsDesktop } from '@/hooks/useWindowWidth';
 import { CommentSection } from '@/components/CommentSection';
 import '@/lib/monaco-init';
 
@@ -56,6 +57,7 @@ export function ReplayScreen() {
   const attemptId = params.attemptId ?? '';
 
   const c = useColors();
+  const isDesktop = useIsDesktop();
   const [data, setData] = useState<ReplayData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -247,9 +249,9 @@ export function ReplayScreen() {
 
   // Header (shared between video and text modes)
   const headerEl = (
-    <View style={[styles.header, { borderBottomColor: c.border }]}>
-      <View style={{ flex: 1 }}>
-        <Text style={[styles.title, { color: c.text }]}>
+    <View style={[styles.header, !isDesktop && styles.headerMobile, { borderBottomColor: c.border }]}>
+      <View style={[{ flex: 1 }, !isDesktop && { flex: 0, marginBottom: spacing.sm }]}>
+        <Text style={[styles.title, !isDesktop && { fontSize: fontSizes.lg }, { color: c.text }]}>
           {data.solver.name}'s Replay
         </Text>
         <Text style={[styles.subtitle, { color: c.textMuted }]}>
@@ -258,21 +260,23 @@ export function ReplayScreen() {
       </View>
       <View style={styles.headerActions}>
         <Pressable onPress={handleCopyLink} style={[styles.shareBtn, { borderColor: c.border }]}>
-          <Text style={{ color: c.text, fontSize: fontSizes.sm }}>
+          <Text style={{ color: c.text, fontSize: fontSizes.xs }}>
             {copiedLink ? 'Copied!' : 'Copy Link'}
           </Text>
         </Pressable>
         <Pressable onPress={handleShareTwitter} style={[styles.shareBtn, { borderColor: c.border }]}>
-          <Text style={{ color: c.text, fontSize: fontSizes.sm }}>Twitter</Text>
+          <Text style={{ color: c.text, fontSize: fontSizes.xs }}>Twitter</Text>
         </Pressable>
         <Pressable onPress={handleShareLinkedIn} style={[styles.shareBtn, { borderColor: c.border }]}>
-          <Text style={{ color: c.text, fontSize: fontSizes.sm }}>LinkedIn</Text>
+          <Text style={{ color: c.text, fontSize: fontSizes.xs }}>LinkedIn</Text>
         </Pressable>
-        <Pressable onPress={handleCopyEmbed} style={[styles.shareBtn, { borderColor: c.border }]}>
-          <Text style={{ color: c.text, fontSize: fontSizes.sm }}>
-            {copiedEmbed ? 'Copied!' : 'Embed'}
-          </Text>
-        </Pressable>
+        {isDesktop && (
+          <Pressable onPress={handleCopyEmbed} style={[styles.shareBtn, { borderColor: c.border }]}>
+            <Text style={{ color: c.text, fontSize: fontSizes.xs }}>
+              {copiedEmbed ? 'Copied!' : 'Embed'}
+            </Text>
+          </Pressable>
+        )}
         <Pressable onPress={() => navigation.goBack()} style={styles.closeBtn}>
           <Text style={{ color: c.textMuted, fontSize: 20 }}>{'\u00D7'}</Text>
         </Pressable>
@@ -282,7 +286,7 @@ export function ReplayScreen() {
 
   // Summary bar (shared)
   const summaryEl = (
-    <View style={[styles.summary, { backgroundColor: c.muted + '20', borderBottomColor: c.border }]}>
+    <View style={[styles.summary, !isDesktop && { padding: spacing.md }, { backgroundColor: c.muted + '20', borderBottomColor: c.border }]}>
       <Text style={[styles.summaryText, { color: c.text }]}>
         Solved in {data.stats.messageCount} messages using {data.stats.modelsUsed.length} model{data.stats.modelsUsed.length !== 1 ? 's' : ''} for {formatCostFromHundredths(data.stats.totalCost)}
       </Text>
@@ -336,11 +340,28 @@ export function ReplayScreen() {
         {headerEl}
         {summaryEl}
 
-        {/* Split pane — chat left, editor right (matches arena layout) */}
-        <div style={{ display: 'flex', height: 400, maxWidth: 1200, alignSelf: 'center', width: '100%' }}>
-          {/* Left: Chat messages */}
-          <div style={{ width: 380, display: 'flex', flexDirection: 'column', minWidth: 300, borderRight: `1px solid ${c.border}` }}>
-            <ScrollView ref={chatScrollRef} style={{ flex: 1 }} testID="replay-chat">
+        {/* Split pane — chat left, editor right on desktop; stacked on mobile */}
+        <div style={{
+          display: 'flex',
+          flexDirection: isDesktop ? 'row' : 'column',
+          height: isDesktop ? 400 : 'auto',
+          maxWidth: 1200,
+          alignSelf: 'center',
+          width: '100%',
+        }}>
+          {/* Chat messages */}
+          <div style={{
+            ...(isDesktop
+              ? { width: 380, minWidth: 300, borderRight: `1px solid ${c.border}` }
+              : { borderBottom: `1px solid ${c.border}` }),
+            display: 'flex',
+            flexDirection: 'column',
+          }}>
+            <ScrollView
+              ref={chatScrollRef}
+              style={[{ flex: 1 }, !isDesktop && { maxHeight: 300 }]}
+              testID="replay-chat"
+            >
               {visibleMessages.map((msg, i) => {
                 const mi = msg.model ? getModelById(msg.model) : undefined;
                 return (
@@ -376,18 +397,18 @@ export function ReplayScreen() {
             </ScrollView>
           </div>
 
-          {/* Right: Monaco editor */}
+          {/* Monaco editor */}
           <div style={{ flex: 1, minWidth: 0 }}>
             <React.Suspense fallback={<ActivityIndicator style={{ margin: 40 }} />}>
               <MonacoEditor
-                height="400px"
+                height={isDesktop ? '400px' : '250px'}
                 language="javascript"
                 value={currentCode}
                 theme="vs-dark"
                 options={{
                   readOnly: true,
                   minimap: { enabled: false },
-                  fontSize: 13,
+                  fontSize: isDesktop ? 13 : 11,
                   fontFamily: 'Menlo, Monaco, "Courier New", monospace',
                   lineNumbers: 'on',
                   scrollBeyondLastLine: false,
@@ -495,7 +516,12 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     width: '100%',
   },
-  headerActions: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, flexWrap: 'wrap' },
+  headerMobile: {
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+    padding: spacing.md,
+  },
+  headerActions: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, flexWrap: 'wrap' },
   title: { fontSize: fontSizes.xl, fontWeight: '700', fontFamily: fontFamily.body },
   subtitle: { fontSize: fontSizes.sm, marginTop: 2 },
   shareBtn: {
@@ -516,7 +542,7 @@ const styles = StyleSheet.create({
   summaryModels: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
   modelBadge: { borderWidth: 1, borderRadius: 9999, paddingHorizontal: 8, paddingVertical: 2 },
   timeline: { maxWidth: 1200, alignSelf: 'center', width: '100%' },
-  msgRow: { padding: spacing.lg, borderBottomWidth: 1 },
+  msgRow: { padding: spacing.md, borderBottomWidth: 1 },
   msgHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.xs },
   roleBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 4 },
   msgContent: { fontSize: fontSizes.sm, lineHeight: 20, fontFamily: 'monospace' },
