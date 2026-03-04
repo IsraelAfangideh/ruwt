@@ -2,7 +2,7 @@
  * GET /api/activity
  * Public activity feed of recent passed attempts.
  */
-import { eq, desc, sql } from 'drizzle-orm';
+import { eq, and, desc, sql } from 'drizzle-orm';
 import { getDb } from '../_shared/db';
 import { attempts, profiles, challenges } from '../../drizzle/schema.d1';
 import { withCache } from '../_shared/cache';
@@ -26,7 +26,7 @@ export async function onRequestGet(context: { request: Request; env: Env }) {
       .from(attempts)
       .innerJoin(profiles, eq(attempts.userId, profiles.id))
       .innerJoin(challenges, eq(attempts.challengeId, challenges.id))
-      .where(eq(attempts.status, 'passed'))
+      .where(and(eq(attempts.status, 'passed'), eq(profiles.leaderboardExcluded, 0)))
       .orderBy(desc(attempts.submittedAt))
       .limit(limit);
 
