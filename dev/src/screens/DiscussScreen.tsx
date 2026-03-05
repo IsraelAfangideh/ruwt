@@ -15,7 +15,6 @@ import { useNavigation } from '@react-navigation/native';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/Card';
 import { Avatar } from '@/components/ui/Avatar';
-import { Badge } from '@/components/ui/Badge';
 import { useColors } from '@/theme';
 import { spacing, fontSizes, fontFamily, radii } from '@/theme/tokens';
 import { useAuthGuard } from '@/hooks/useAuthGuard';
