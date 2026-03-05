@@ -4,16 +4,16 @@ import { useColors } from '@/theme';
 import { spacing, fontSizes, fontFamily } from '@/theme/tokens';
 
 type NavItem = {
-  name: 'Dashboard' | 'Challenges' | 'DailyChallenge' | 'Leaderboard' | 'Assessments' | 'Teams';
+  name: 'Problems' | 'Discuss' | 'Leaderboard' | 'Profile' | 'Assessments' | 'Hiring';
   label: string;
   accent?: boolean;
 };
 
 const baseNavItems: NavItem[] = [
-  { name: 'Dashboard', label: 'Home' },
-  { name: 'Challenges', label: 'Challenges' },
-  { name: 'DailyChallenge', label: 'Daily' },
+  { name: 'Problems', label: 'Problems' },
+  { name: 'Discuss', label: 'Discuss' },
   { name: 'Leaderboard', label: 'Leaderboard' },
+  { name: 'Profile', label: 'My Profile' },
 ];
 
 interface DashboardNavProps {
@@ -27,7 +27,7 @@ export function DashboardNav({ accountType }: DashboardNavProps) {
 
   const navItems: NavItem[] = accountType === 'team'
     ? [...baseNavItems, { name: 'Assessments', label: 'Assessments' }]
-    : [...baseNavItems, { name: 'Teams', label: 'For Teams', accent: true }];
+    : [...baseNavItems, { name: 'Hiring', label: 'Hiring', accent: true }];
 
   return (
     <View style={styles.container} accessibilityRole="navigation" accessibilityLabel="Main navigation">

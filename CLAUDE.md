@@ -20,7 +20,7 @@ ruwt/
   - Triggers on push to `main` with changes in `dev/**`, or manual `workflow_dispatch`
   - Build-time env vars: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` (from GitHub Secrets, baked into JS bundle)
   - Runtime env vars for Functions: Set in Cloudflare Dashboard (not wrangler.toml, to avoid binding conflicts)
-  - Cloudflare Pages also has its own auto-deploy (currently misconfigured, should be disabled)
+  - Cloudflare's built-in Workers Builds git integration was disconnected (was misconfigured, causing failing checks on PRs). Deploys are handled exclusively by GitHub Actions.
 - **Supabase project ref**: `fzncpdelyfuvdeqmwznx`
 - **Auth callback URL**: `https://ruwt.dev/callback` (must be in Supabase → Authentication → Redirect URLs)
 - **Key architecture decisions**:
@@ -255,7 +255,7 @@ Cleanup: `docker stop ruwt-exec-test && docker rm ruwt-exec-test`
 - `develop` branch is heavily diverged from `main` — use feature branches off `main` for new work
 - Docker Desktop must be running for local executor tests (`open -a Docker` on macOS)
 - `--privileged` flag required for iptables inside Docker on macOS
-- CF Pages preview deploys only trigger for `main` branch pushes with `dev/**` changes — feature branches won't auto-deploy previews via the GitHub Actions workflow
+- Preview deploys: PRs with `dev/**` changes get preview URLs via `deploy-dev-preview.yml` workflow. Production deploys only on push to `main`.
 
 ## Knowledge Sharing
 

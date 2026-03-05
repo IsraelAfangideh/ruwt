@@ -87,8 +87,8 @@ describe('DashboardLayout', () => {
         <span>Content</span>
       </DashboardLayout>
     );
-    expect(screen.getByText('Home')).toBeTruthy();
-    expect(screen.getByText('Challenges')).toBeTruthy();
+    expect(screen.getByText('Problems')).toBeTruthy();
+    expect(screen.getByText('Discuss')).toBeTruthy();
   });
 
   it('navigates to Dashboard when logo is clicked', async () => {
@@ -104,11 +104,11 @@ describe('DashboardLayout', () => {
     );
     // Click the logo link (contains 'R' and '.dev')
     // react-native-web renders accessibilityLabel as aria-label or lowercased attribute
-    const logoLink = container.querySelector('[accessibilitylabel="Ruwt – go to dashboard"]') ||
-                     container.querySelector('[aria-label="Ruwt – go to dashboard"]');
+    const logoLink = container.querySelector('[accessibilitylabel="Ruwt – go to problems"]') ||
+                     container.querySelector('[aria-label="Ruwt – go to problems"]');
     expect(logoLink).not.toBeNull();
     fireEvent.click(logoLink!);
-    expect(mockNavigate).toHaveBeenCalledWith('Dashboard');
+    expect(mockNavigate).toHaveBeenCalledWith('Problems');
   });
 
   it('handles profile fetch returning non-ok (line 27 false branch)', async () => {
@@ -196,7 +196,7 @@ describe('DashboardLayout', () => {
       expect(screen.getByText('Upgrade to Teams')).toBeTruthy();
     });
     fireEvent.click(screen.getByText('Upgrade to Teams'));
-    expect(mockNavigate).toHaveBeenCalledWith('Teams');
+    expect(mockNavigate).toHaveBeenCalledWith('Hiring');
   });
 
   it('renders children without gating when requireTeam is false', async () => {

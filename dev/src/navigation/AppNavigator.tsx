@@ -40,7 +40,8 @@ const RegisterScreen = lazyWithRetry('Register', () => import('@/screens/Registe
 const CallbackScreen = lazyWithRetry('Callback', () => import('@/screens/CallbackScreen'), m => m.CallbackScreen);
 const OnboardingScreen = lazyWithRetry('Onboarding', () => import('@/screens/OnboardingScreen'), m => m.OnboardingScreen);
 const DashboardScreen = lazyWithRetry('Dashboard', () => import('@/screens/DashboardScreen'), m => m.DashboardScreen);
-const ChallengesScreen = lazyWithRetry('Challenges', () => import('@/screens/ChallengesScreen'), m => m.ChallengesScreen);
+const ProblemsScreen = lazyWithRetry('Problems', () => import('@/screens/ChallengesScreen'), m => m.ChallengesScreen);
+const DiscussScreen = lazyWithRetry('Discuss', () => import('@/screens/DiscussScreen'), m => m.DiscussScreen);
 const LeaderboardScreen = lazyWithRetry('Leaderboard', () => import('@/screens/LeaderboardScreen'), m => m.LeaderboardScreen);
 const ProfileScreen = lazyWithRetry('Profile', () => import('@/screens/ProfileScreen'), m => m.ProfileScreen);
 const SettingsScreen = lazyWithRetry('Settings', () => import('@/screens/SettingsScreen'), m => m.SettingsScreen);
@@ -53,7 +54,7 @@ const AssessmentResultsDashboardScreen = lazyWithRetry('AssessmentResultsDashboa
 const AssessmentLandingScreen = lazyWithRetry('AssessmentLanding', () => import('@/screens/AssessmentLandingScreen'), m => m.AssessmentLandingScreen);
 const AssessmentFlowScreen = lazyWithRetry('AssessmentFlow', () => import('@/screens/AssessmentFlowScreen'), m => m.AssessmentFlowScreen);
 const AssessmentResultsScreen = lazyWithRetry('AssessmentResults', () => import('@/screens/AssessmentResultsScreen'), m => m.AssessmentResultsScreen);
-const TeamsScreen = lazyWithRetry('Teams', () => import('@/screens/TeamsScreen'), m => m.TeamsScreen);
+const HiringScreen = lazyWithRetry('Hiring', () => import('@/screens/TeamsScreen'), m => m.TeamsScreen);
 const GuestArenaScreen = lazyWithRetry('GuestArena', () => import('@/screens/GuestArenaScreen'), m => m.GuestArenaScreen);
 const PublicProfileScreen = lazyWithRetry('PublicProfile', () => import('@/screens/PublicProfileScreen'), m => m.PublicProfileScreen);
 const ShareScreen = lazyWithRetry('Share', () => import('@/screens/ShareScreen'), m => m.ShareScreen);
@@ -172,7 +173,8 @@ export function AppNavigator() {
           <Stack.Screen name="Callback" component={CallbackScreen} />
           <Stack.Screen name="Onboarding" component={OnboardingScreen} />
           <Stack.Screen name="Dashboard" component={DashboardScreen} />
-          <Stack.Screen name="Challenges" component={ChallengesScreen} />
+          <Stack.Screen name="Problems" component={ProblemsScreen} />
+          <Stack.Screen name="Discuss" component={DiscussScreen} />
           <Stack.Screen name="Leaderboard" component={LeaderboardScreen} />
           <Stack.Screen name="Profile" component={ProfileScreen} />
           <Stack.Screen name="Settings" component={SettingsScreen} />
@@ -185,7 +187,7 @@ export function AppNavigator() {
           <Stack.Screen name="AssessmentLanding" component={AssessmentLandingScreen} />
           <Stack.Screen name="AssessmentFlow" component={AssessmentFlowScreen} />
           <Stack.Screen name="AssessmentResults" component={AssessmentResultsScreen} />
-          <Stack.Screen name="Teams" component={TeamsScreen} />
+          <Stack.Screen name="Hiring" component={HiringScreen} />
           <Stack.Screen name="GuestArena" component={GuestArenaScreen} />
           <Stack.Screen name="PublicProfile" component={PublicProfileScreen} />
           <Stack.Screen name="Share" component={ShareScreen} />

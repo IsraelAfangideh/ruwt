@@ -156,7 +156,7 @@ export function ShareScreen() {
             if (data.challenge?.id) {
               (navigation.navigate as any)('Arena', { challengeId: data.challenge.id });
             } else {
-              (navigation.navigate as any)('Challenges');
+              (navigation.navigate as any)('Problems');
             }
           }}
         >

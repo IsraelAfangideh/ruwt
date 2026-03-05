@@ -544,7 +544,7 @@ describe('OrgManagementScreen', () => {
     render(<OrgManagementScreen />);
     await waitFor(() => expect(screen.getByText('Subscribe')).toBeTruthy());
     fireEvent.click(screen.getByText('Subscribe'));
-    expect(mockNavigate).toHaveBeenCalledWith('Teams');
+    expect(mockNavigate).toHaveBeenCalledWith('Hiring');
   });
 
   it('navigates to Teams when Resubscribe is clicked for canceled subscription', async () => {
@@ -557,7 +557,7 @@ describe('OrgManagementScreen', () => {
     render(<OrgManagementScreen />);
     await waitFor(() => expect(screen.getByText('Resubscribe')).toBeTruthy());
     fireEvent.click(screen.getByText('Resubscribe'));
-    expect(mockNavigate).toHaveBeenCalledWith('Teams');
+    expect(mockNavigate).toHaveBeenCalledWith('Hiring');
   });
 
   it('handleSaveSettings catches fetch exception gracefully (line 133/140)', async () => {

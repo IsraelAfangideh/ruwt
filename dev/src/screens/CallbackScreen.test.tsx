@@ -102,8 +102,8 @@ describe('CallbackScreen', () => {
     expect(container.querySelector('svg') || container.textContent).toBeTruthy();
   });
 
-  /* ── Auth state change: SIGNED_IN → navigate to Dashboard ─────── */
-  it('navigates to Dashboard on SIGNED_IN event when no pending challenge', async () => {
+  /* ── Auth state change: SIGNED_IN → navigate to Problems ─────── */
+  it('navigates to Problems on SIGNED_IN event when no pending challenge', async () => {
     render(<CallbackScreen />);
     expect(onAuthStateChangeCb).not.toBeNull();
 
@@ -114,7 +114,7 @@ describe('CallbackScreen', () => {
     await waitFor(() => {
       expect(mockReset).toHaveBeenCalledWith({
         index: 0,
-        routes: [{ name: 'Dashboard' }],
+        routes: [{ name: 'Problems' }],
       });
     });
   });
@@ -172,7 +172,7 @@ describe('CallbackScreen', () => {
 
   /* ── OAuth redirect from localStorage ──────────────────────────── */
   it('reads oauth_redirect from localStorage and navigates there', async () => {
-    localStorage.setItem('oauth_redirect', 'Challenges');
+    localStorage.setItem('oauth_redirect', 'Problems');
 
     render(<CallbackScreen />);
 
@@ -183,7 +183,7 @@ describe('CallbackScreen', () => {
     await waitFor(() => {
       expect(mockReset).toHaveBeenCalledWith({
         index: 0,
-        routes: [{ name: 'Challenges' }],
+        routes: [{ name: 'Problems' }],
       });
     });
     expect(localStorage.getItem('oauth_redirect')).toBeNull();
@@ -223,7 +223,7 @@ describe('CallbackScreen', () => {
     await waitFor(() => {
       expect(mockReset).toHaveBeenCalledWith({
         index: 0,
-        routes: [{ name: 'Dashboard' }],
+        routes: [{ name: 'Problems' }],
       });
     });
   });
@@ -537,7 +537,7 @@ describe('CallbackScreen', () => {
 
     expect(mockReset).toHaveBeenCalledWith({
       index: 0,
-      routes: [{ name: 'Dashboard' }],
+      routes: [{ name: 'Problems' }],
     });
 
     vi.useRealTimers();

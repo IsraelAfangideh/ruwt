@@ -56,7 +56,7 @@ export function DashboardLayout({ user, children, requireTeam }: DashboardLayout
           <Text style={[styles.gateSub, { color: c.textMuted }]}>
             Create assessments, manage your team, and evaluate candidates with a team account.
           </Text>
-          <Button onPress={() => navigation.navigate('Teams' as never)}>
+          <Button onPress={() => navigation.navigate('Hiring' as never)}>
             Upgrade to Teams
           </Button>
         </View>
@@ -71,7 +71,7 @@ export function DashboardLayout({ user, children, requireTeam }: DashboardLayout
       <a className="skip-link" href="#main-content">Skip to main content</a>
       <View style={[styles.header, { backgroundColor: c.bg, borderBottomColor: c.border }]} accessibilityRole="banner">
         <View style={styles.headerLeft}>
-          <Pressable onPress={() => navigation.navigate('Dashboard' as never)} style={styles.logo} accessibilityRole="link" accessibilityLabel="Ruwt – go to dashboard">
+          <Pressable onPress={() => navigation.navigate('Problems' as never)} style={styles.logo} accessibilityRole="link" accessibilityLabel="Ruwt – go to problems">
             <View style={[styles.logoBox, { backgroundColor: c.primary + '20', borderColor: c.accent }]}>
               <Text style={[styles.logoLetter, { color: c.primary }]}>R</Text>
             </View>

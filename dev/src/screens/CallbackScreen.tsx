@@ -27,15 +27,15 @@ export function CallbackScreen() {
 
     const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
     const ALLOWED_ROUTES = new Set([
-      'Dashboard', 'Challenges', 'Leaderboard', 'Profile', 'Settings',
+      'Dashboard', 'Problems', 'Leaderboard', 'Profile', 'Settings',
       'Arena', 'DailyChallenge', 'Assessments', 'AssessmentBuilder',
-      'Teams', 'OrgManagement', 'Replay', 'Share', 'Certificate',
+      'Hiring', 'OrgManagement', 'Replay', 'Share', 'Certificate',
     ]);
     const rawRedirect =
       (typeof window !== 'undefined' && localStorage.getItem('oauth_redirect')) ||
       urlParams?.get('redirectTo') ||
-      'Dashboard';
-    const redirectTo = ALLOWED_ROUTES.has(rawRedirect) ? rawRedirect : 'Dashboard';
+      'Problems';
+    const redirectTo = ALLOWED_ROUTES.has(rawRedirect) ? rawRedirect : 'Problems';
 
     if (typeof window !== 'undefined') {
       localStorage.removeItem('oauth_redirect');
@@ -150,9 +150,9 @@ export function CallbackScreen() {
     }
     setResetSuccess(true);
     setResetLoading(false);
-    // Redirect to dashboard after a brief pause
+    // Redirect to problems after a brief pause
     setTimeout(() => {
-      navigation.reset({ index: 0, routes: [{ name: 'Dashboard' as never }] });
+      navigation.reset({ index: 0, routes: [{ name: 'Problems' as never }] });
     }, 2000);
   };
 

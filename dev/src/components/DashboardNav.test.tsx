@@ -14,7 +14,7 @@ vi.mock('react-native', () => ({
 
 vi.mock('@react-navigation/native', () => ({
   useNavigation: () => ({ navigate: mockNavigate }),
-  useRoute: () => ({ name: 'Dashboard' }),
+  useRoute: () => ({ name: 'Problems' }),
 }));
 
 vi.mock('@/theme', () => ({
@@ -30,10 +30,10 @@ vi.mock('@/theme/tokens', () => ({
 describe('DashboardNav', () => {
   it('renders base nav items for individual accounts', () => {
     render(<DashboardNav />);
-    expect(screen.getByText('Home')).toBeTruthy();
-    expect(screen.getByText('Challenges')).toBeTruthy();
-    expect(screen.getByText('Daily')).toBeTruthy();
+    expect(screen.getByText('Problems')).toBeTruthy();
+    expect(screen.getByText('Discuss')).toBeTruthy();
     expect(screen.getByText('Leaderboard')).toBeTruthy();
+    expect(screen.getByText('My Profile')).toBeTruthy();
     expect(screen.queryByText('Assessments')).toBeNull();
   });
 
@@ -44,7 +44,7 @@ describe('DashboardNav', () => {
 
   it('navigates when a nav item is clicked', () => {
     render(<DashboardNav />);
-    fireEvent.click(screen.getByText('Challenges'));
-    expect(mockNavigate).toHaveBeenCalledWith('Challenges');
+    fireEvent.click(screen.getByText('Problems'));
+    expect(mockNavigate).toHaveBeenCalledWith('Problems');
   });
 });

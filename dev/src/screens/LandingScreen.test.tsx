@@ -199,18 +199,18 @@ describe('LandingScreen', () => {
   it('navigates to Teams when Book a Demo is clicked', () => {
     render(<LandingScreen />);
     fireEvent.click(screen.getAllByText('Book a Demo')[0]);
-    expect(mockNavigate).toHaveBeenCalledWith('Teams');
+    expect(mockNavigate).toHaveBeenCalledWith('Hiring');
   });
 
   it('navigates to Teams from For Hiring Managers card', () => {
     render(<LandingScreen />);
     const learnMoreButtons = screen.getAllByText(/Learn More/);
     fireEvent.click(learnMoreButtons[0]);
-    expect(mockNavigate).toHaveBeenCalledWith('Teams');
+    expect(mockNavigate).toHaveBeenCalledWith('Hiring');
   });
 
   /* ── Redirect logged-in user ───────────────────────────────────── */
-  it('redirects logged-in users to Dashboard', async () => {
+  it('redirects logged-in users to Problems', async () => {
     mockGetUser.mockResolvedValueOnce({ data: { user: { id: 'u1' } } });
 
     render(<LandingScreen />);
@@ -218,7 +218,7 @@ describe('LandingScreen', () => {
     await waitFor(() => {
       expect(mockReset).toHaveBeenCalledWith({
         index: 0,
-        routes: [{ name: 'Dashboard' }],
+        routes: [{ name: 'Problems' }],
       });
     });
   });

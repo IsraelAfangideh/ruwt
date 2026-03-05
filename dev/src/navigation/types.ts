@@ -5,7 +5,8 @@ export type RootStackParamList = {
   Callback: undefined;
   Onboarding: undefined;
   Dashboard: undefined;
-  Challenges: undefined;
+  Problems: undefined;
+  Discuss: undefined;
   Leaderboard: undefined;
   Profile: undefined;
   Settings: undefined;
@@ -18,7 +19,7 @@ export type RootStackParamList = {
   AssessmentLanding: { token: string };
   AssessmentFlow: { sessionId: string };
   AssessmentResults: { shareToken: string };
-  Teams: undefined;
+  Hiring: undefined;
   GuestArena: { challengeId: string };
   PublicProfile: { username: string };
   Share: { attemptId: string };

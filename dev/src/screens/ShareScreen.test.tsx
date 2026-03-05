@@ -139,7 +139,7 @@ describe('ShareScreen', () => {
     });
     const btn = screen.getAllByText('Try This Challenge')[0].closest('button')!;
     fireEvent.click(btn);
-    expect(mockNavigate).toHaveBeenCalledWith('Challenges');
+    expect(mockNavigate).toHaveBeenCalledWith('Problems');
   });
 
   it('navigates to Replay when "Watch Replay" is clicked', async () => {

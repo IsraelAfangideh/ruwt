@@ -935,7 +935,7 @@ export function DashboardScreen() {
           <View style={styles.section}>
             <GetStartedBanner
               onTryFizzBuzz={() => (navigation.navigate as any)('Arena', { challengeId: 'fizzbuzz-budget' })}
-              onBrowse={() => (navigation.navigate as any)('Challenges')}
+              onBrowse={() => (navigation.navigate as any)('Problems')}
             />
           </View>
         )}
@@ -962,7 +962,7 @@ export function DashboardScreen() {
         {/* 4b. Teams upgrade hint (for individual accounts after solving >=3 challenges) */}
         {data.progress.solvedCount >= 3 && (
           <View style={styles.section}>
-            <TeamsHint onLearnMore={() => (navigation.navigate as any)('Teams')} />
+            <TeamsHint onLearnMore={() => (navigation.navigate as any)('Hiring')} />
           </View>
         )}
 

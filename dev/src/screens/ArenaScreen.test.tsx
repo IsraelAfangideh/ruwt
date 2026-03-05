@@ -264,14 +264,14 @@ describe('ArenaScreen', () => {
     });
   });
 
-  it('error screen has "Back to Challenges" button that navigates', async () => {
+  it('error screen has "Back to Problems" button that navigates', async () => {
     globalThis.fetch = vi.fn().mockRejectedValue(new Error('Oops'));
     render(<ArenaScreen />);
     await waitFor(() => {
       expect(screen.getByText('Oops')).toBeTruthy();
     });
-    fireEvent.click(screen.getByText('Back to Challenges'));
-    expect(mockNavigate).toHaveBeenCalledWith('Challenges');
+    fireEvent.click(screen.getByText('Back to Problems'));
+    expect(mockNavigate).toHaveBeenCalledWith('Problems');
   });
 
   /* ─── Pre-attempt screen ───────────────────────────────────────── */
@@ -363,10 +363,10 @@ describe('ArenaScreen', () => {
     await waitFor(() => {
       expect(screen.getByText('FizzBuzz Budget')).toBeTruthy();
     });
-    // The back link has "&larr; Back to Challenges" which renders as ← Back to Challenges
-    const backButton = screen.getByText(/Back to Challenges/);
+    // The back link has "&larr; Back to Problems" which renders as ← Back to Problems
+    const backButton = screen.getByText(/Back to Problems/);
     fireEvent.click(backButton);
-    expect(mockNavigate).toHaveBeenCalledWith('Challenges');
+    expect(mockNavigate).toHaveBeenCalledWith('Problems');
   });
 
   /* ─── Starting an attempt ──────────────────────────────────────── */
@@ -722,16 +722,16 @@ describe('ArenaScreen', () => {
     expect(mockNavigate).toHaveBeenCalledWith('Replay', expect.objectContaining({ attemptId: expect.any(String) }));
   });
 
-  it('success overlay "Back to Challenges" navigates', async () => {
+  it('success overlay "Back to Problems" navigates', async () => {
     render(<ArenaScreen />);
     await waitFor(() => expect(screen.getByText('Start Challenge')).toBeTruthy());
     await act(async () => { fireEvent.click(screen.getByText('Start Challenge')); });
     await waitFor(() => expect(screen.getByText('Submit')).toBeTruthy());
     await act(async () => { fireEvent.click(screen.getByText('Submit')); });
     await waitFor(() => expect(screen.getByText('Challenge Passed!')).toBeTruthy());
-    const backBtns = screen.getAllByText(/Back to Challenges/);
+    const backBtns = screen.getAllByText(/Back to Problems/);
     fireEvent.click(backBtns[backBtns.length - 1]);
-    expect(mockNavigate).toHaveBeenCalledWith('Challenges');
+    expect(mockNavigate).toHaveBeenCalledWith('Problems');
   });
 
   it('success overlay "Copy Link" copies to clipboard', async () => {
@@ -1221,7 +1221,7 @@ describe('ArenaScreen', () => {
 
   /* ─── Desktop Back button in header ────────────────────────────── */
 
-  it('desktop header back button navigates to Challenges', async () => {
+  it('desktop header back button navigates to Problems', async () => {
     render(<ArenaScreen />);
     await waitFor(() => expect(screen.getByText('Start Challenge')).toBeTruthy());
     await act(async () => { fireEvent.click(screen.getByText('Start Challenge')); });
@@ -1229,7 +1229,7 @@ describe('ArenaScreen', () => {
     // Find the "← Back" button in the desktop header
     const backBtn = screen.getByText(/Back$/);
     fireEvent.click(backBtn);
-    expect(mockNavigate).toHaveBeenCalledWith('Challenges');
+    expect(mockNavigate).toHaveBeenCalledWith('Problems');
   });
 
   /* ─── onSubmit — early return and error paths ────────────────── */
@@ -1521,20 +1521,20 @@ describe('ArenaScreen', () => {
     expect(mockNavigate).toHaveBeenCalledWith('Replay', expect.objectContaining({ attemptId: 'att-1' }));
   });
 
-  /* ─── "Back to Challenges" in success overlay ───────────────── */
+  /* ─── "Back to Problems" in success overlay ───────────────── */
 
-  it('Back to Challenges in success overlay navigates away', async () => {
+  it('Back to Problems in success overlay navigates away', async () => {
     render(<ArenaScreen />);
     await waitFor(() => expect(screen.getByText('Start Challenge')).toBeTruthy());
     await act(async () => { fireEvent.click(screen.getByText('Start Challenge')); });
     await waitFor(() => expect(screen.getByText('Submit')).toBeTruthy());
     await act(async () => { fireEvent.click(screen.getByText('Submit')); });
     await waitFor(() => expect(screen.getByText('Challenge Passed!')).toBeTruthy());
-    // There are multiple "Back to Challenges" buttons, find the one in the overlay
-    const btcButtons = screen.getAllByText('Back to Challenges');
+    // There are multiple "Back to Problems" buttons, find the one in the overlay
+    const btcButtons = screen.getAllByText('Back to Problems');
     const overlayBtn = btcButtons[btcButtons.length - 1]; // last one is in overlay
     await act(async () => { fireEvent.click(overlayBtn); });
-    expect(mockNavigate).toHaveBeenCalledWith('Challenges');
+    expect(mockNavigate).toHaveBeenCalledWith('Problems');
   });
 
   /* ─── Copy Link button in success overlay ───────────────────── */
@@ -1560,7 +1560,7 @@ describe('ArenaScreen', () => {
 
   /* ─── Mobile header back arrow ──────────────────────────────── */
 
-  it('mobile header back arrow navigates to Challenges', async () => {
+  it('mobile header back arrow navigates to Problems', async () => {
     isMobileReturn = true;
     render(<ArenaScreen />);
     await waitFor(() => expect(screen.getByText('Start Challenge')).toBeTruthy());
@@ -1569,7 +1569,7 @@ describe('ArenaScreen', () => {
     // Find the left-arrow button (←) in mobile header
     const arrowButton = screen.getByText('←');
     fireEvent.click(arrowButton);
-    expect(mockNavigate).toHaveBeenCalledWith('Challenges');
+    expect(mockNavigate).toHaveBeenCalledWith('Problems');
   });
 
   /* ─── Submit JSON parse error on Run Tests button label ──────── */

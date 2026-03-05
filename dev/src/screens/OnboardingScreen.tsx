@@ -46,7 +46,7 @@ export function OnboardingScreen() {
         if (res.ok) {
           const profile = await res.json();
           if (profile.onboardingCompleted === 1) {
-            navigation.reset({ index: 0, routes: [{ name: 'Dashboard' as never }] });
+            navigation.reset({ index: 0, routes: [{ name: 'Problems' as never }] });
             return;
           }
         }
@@ -95,7 +95,7 @@ export function OnboardingScreen() {
       // Non-blocking — mark completed even if API fails
     }
     setSubmitting(false);
-    navigation.reset({ index: 0, routes: [{ name: 'Dashboard' as never }] });
+    navigation.reset({ index: 0, routes: [{ name: 'Problems' as never }] });
   };
 
   if (loading) {
@@ -390,7 +390,7 @@ function StepComplete({
 
       <View style={styles.buttonRow}>
         <Button size="lg" onPress={onFinish} disabled={submitting} fullWidth>
-          {submitting ? 'Loading...' : 'Go to Dashboard'}
+          {submitting ? 'Loading...' : 'Browse Problems'}
         </Button>
       </View>
 
