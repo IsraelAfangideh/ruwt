@@ -27,7 +27,7 @@ export function CallbackScreen() {
 
     const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
     const ALLOWED_ROUTES = new Set([
-      'Dashboard', 'Problems', 'Leaderboard', 'Profile', 'Settings',
+      'Problems', 'Leaderboard', 'Profile', 'Settings',
       'Arena', 'DailyChallenge', 'Assessments', 'AssessmentBuilder',
       'Hiring', 'OrgManagement', 'Replay', 'Share', 'Certificate',
     ]);

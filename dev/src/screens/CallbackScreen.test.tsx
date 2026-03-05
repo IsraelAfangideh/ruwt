@@ -503,8 +503,8 @@ describe('CallbackScreen', () => {
     expect(screen.getAllByText(/Completing sign in/).length).toBeGreaterThanOrEqual(1);
   });
 
-  /* ── Password reset success auto-redirects to Dashboard after timeout ── */
-  it('redirects to Dashboard after successful password update via setTimeout', async () => {
+  /* ── Password reset success auto-redirects to Problems after timeout ── */
+  it('redirects to Problems after successful password update via setTimeout', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     mockUpdateUser.mockResolvedValueOnce({ error: null });
 
