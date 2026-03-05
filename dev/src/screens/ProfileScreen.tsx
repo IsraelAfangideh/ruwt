@@ -236,10 +236,30 @@ export function ProfileScreen() {
     ? (user.user_metadata.name as string).split(' ').map((n: string) => n[0]).join('').toUpperCase()
     : (user.email?.[0] ?? '?').toUpperCase();
 
-  if (loading || !data) {
+  if (loading) {
     return (
       <DashboardLayout user={user}>
         <ProfileSkeleton />
+      </DashboardLayout>
+    );
+  }
+
+  if (!data) {
+    return (
+      <DashboardLayout user={user}>
+        <View style={[styles.center, { backgroundColor: c.bg, padding: spacing.xl }]}>
+          <Card style={styles.wideCard}>
+            <CardContent style={{ alignItems: 'center', padding: spacing.xl }}>
+              <Text style={{ fontSize: fontSizes.lg, fontWeight: '600', color: c.text, marginBottom: spacing.sm }}>
+                Profile data unavailable
+              </Text>
+              <Text style={{ fontSize: fontSizes.sm, color: c.textMuted, textAlign: 'center', marginBottom: spacing.md }}>
+                Could not load your profile. Try refreshing the page.
+              </Text>
+              <Button onPress={() => { setLoading(true); fetchData(); }}>Refresh</Button>
+            </CardContent>
+          </Card>
+        </View>
       </DashboardLayout>
     );
   }
