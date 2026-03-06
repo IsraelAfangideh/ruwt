@@ -50,6 +50,7 @@ jobs:
 
       - name: Set runtime secrets
         run: |
+          echo "32f5999dbd09eae38c1de8c15de98d48" | npx wrangler pages secret put CLOUDFLARE_ACCOUNT_ID --project-name=ruwt-dev
           echo "${{ secrets.CLOUDFLARE_WORKERS_AI_TOKEN }}" | npx wrangler pages secret put CLOUDFLARE_API_TOKEN --project-name=ruwt-dev
           echo "${{ secrets.VITE_SUPABASE_URL }}" | npx wrangler pages secret put VITE_SUPABASE_URL --project-name=ruwt-dev
           echo "${{ secrets.VITE_SUPABASE_ANON_KEY }}" | npx wrangler pages secret put VITE_SUPABASE_ANON_KEY --project-name=ruwt-dev
