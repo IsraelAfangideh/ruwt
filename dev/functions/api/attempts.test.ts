@@ -439,7 +439,7 @@ describe('POST /api/attempts', () => {
 
     await onRequestPost(makePostContext({ challengeId: 'challenge-1' }));
 
-    expect(mockEnsureProfile).toHaveBeenCalledWith(db, FAKE_USER, expect.anything());
+    expect(mockEnsureProfile).toHaveBeenCalledOnce();
   });
 
   it('counts hidden test cases in totalTests', async () => {

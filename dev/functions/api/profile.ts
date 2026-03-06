@@ -10,7 +10,7 @@ import { getUserOrg, getTrialStatus, canStartTrial } from '../_shared/org';
 import { ensureProfile } from '../_shared/ensure-profile';
 import { profiles } from '../../drizzle/schema.d1';
 
-export async function onRequestGet(context: { request: Request; env: Env }) {
+export async function onRequestGet(context: { request: Request; env: Env; waitUntil?: (p: Promise<unknown>) => void }) {
   try {
     const user = await getUser(context.request, context.env);
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
@@ -18,7 +18,7 @@ export async function onRequestGet(context: { request: Request; env: Env }) {
     const db = getDb(context.env);
 
     // Ensure profile exists (creates with signup bonus on first call)
-    await ensureProfile(db, user, context.env);
+    await ensureProfile(db, user, context.env, context.waitUntil);
 
     const [profile] = await db
       .select()

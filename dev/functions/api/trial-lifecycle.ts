@@ -18,12 +18,13 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
   if (!env.CRON_SECRET || token !== env.CRON_SECRET) {
     return Response.json({ error: 'Unauthorized' }, { status: 401 });
   }
-  // Reject requests with stale timestamps (>5 min) to prevent replay attacks
-  if (cronTimestamp) {
-    const ts = parseInt(cronTimestamp, 10);
-    if (Number.isFinite(ts) && Math.abs(Date.now() / 1000 - ts) > 300) {
-      return Response.json({ error: 'Request expired' }, { status: 401 });
-    }
+  // Require timestamp header to prevent replay attacks
+  if (!cronTimestamp) {
+    return Response.json({ error: 'Missing X-Cron-Timestamp header' }, { status: 401 });
+  }
+  const ts = parseInt(cronTimestamp, 10);
+  if (!Number.isFinite(ts) || Math.abs(Date.now() / 1000 - ts) > 300) {
+    return Response.json({ error: 'Request expired' }, { status: 401 });
   }
 
   try {
@@ -91,7 +92,8 @@ async function handleExpiring(
       AND o.trial_ends_at BETWEEN datetime('now', '+6 days') AND datetime('now', '+8 days')
   `);
 
-  for (const org of orgs) {
+  for (let i = 0; i < orgs.length; i++) {
+    const org = orgs[i];
     // Dedup: skip if already sent trial_expiring for this user
     const [existing] = await db.all<{ cnt: number }>(sql`
       SELECT COUNT(*) AS cnt FROM newsletter_logs
@@ -137,7 +139,7 @@ async function handleExpiring(
       });
     }
 
-    if (orgs.indexOf(org) < orgs.length - 1) {
+    if (i < orgs.length - 1) {
       await new Promise((r) => setTimeout(r, 600));
     }
   }
@@ -182,7 +184,8 @@ async function handleExpired(
       AND o.trial_ends_at BETWEEN datetime('now', '-24 hours') AND datetime('now')
   `);
 
-  for (const org of orgs) {
+  for (let i = 0; i < orgs.length; i++) {
+    const org = orgs[i];
     // Dedup: skip if already sent trial_expired for this user
     const [existing] = await db.all<{ cnt: number }>(sql`
       SELECT COUNT(*) AS cnt FROM newsletter_logs
@@ -220,7 +223,7 @@ async function handleExpired(
       });
     }
 
-    if (orgs.indexOf(org) < orgs.length - 1) {
+    if (i < orgs.length - 1) {
       await new Promise((r) => setTimeout(r, 600));
     }
   }

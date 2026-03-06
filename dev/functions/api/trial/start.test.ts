@@ -61,6 +61,7 @@ function makeContext(envOverrides: Partial<Env> = {}) {
   return {
     request: new Request('https://ruwt.dev/api/trial/start', { method: 'POST' }),
     env: makeEnv(envOverrides),
+    waitUntil: vi.fn(),
   };
 }
 

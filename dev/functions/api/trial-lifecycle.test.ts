@@ -37,7 +37,12 @@ function makeEnv(overrides: Partial<Env> = {}): Env {
 }
 
 function makeCtx(token?: string, env?: Env, headers?: Record<string, string>) {
-  const h: Record<string, string> = { ...headers };
+  const h: Record<string, string> = {
+    'X-Cron-Timestamp': String(Math.floor(Date.now() / 1000)),
+    ...headers,
+  };
+  // Allow tests to remove the timestamp header by passing empty string
+  if (!h['X-Cron-Timestamp']) delete h['X-Cron-Timestamp'];
   if (token) h['Authorization'] = `Bearer ${token}`;
   return {
     request: new Request('https://ruwt.dev/api/trial-lifecycle', { method: 'POST', headers: h }),
@@ -190,12 +195,12 @@ describe('POST /api/trial-lifecycle', () => {
       expect(res.status).toBe(200);
     });
 
-    it('allows request without X-Cron-Timestamp (timestamp check is optional)', async () => {
-      const db = buildMockDb();
-      mockGetDb.mockReturnValue(db);
-
-      const res = await onRequestPost(makeCtx('test-secret'));
-      expect(res.status).toBe(200);
+    it('returns 401 when X-Cron-Timestamp header is missing', async () => {
+      const res = await onRequestPost(
+        makeCtx('test-secret', undefined, { 'X-Cron-Timestamp': '' }),
+      );
+      expect(res.status).toBe(401);
+      expect((await res.json()).error).toBe('Missing X-Cron-Timestamp header');
     });
   });
 

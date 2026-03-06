@@ -7,7 +7,7 @@ import { eq, and, desc, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import { getDb } from '../../../_shared/db';
 import { getUser } from '../../../_shared/auth';
-import { canManageAssessment, getUserOrg, hasActiveSubscription, requireTeamAccount, isOnActiveTrial, getTrialStatus, TRIAL_MAX_INVITES } from '../../../_shared/org';
+import { canManageAssessment, getUserOrg, hasActiveSubscription, requireTeamAccount, isOnActiveTrial, TRIAL_MAX_INVITES } from '../../../_shared/org';
 import { assessments, assessmentInvites, assessmentChallenges, profiles, organizations, emailLogs } from '../../../../drizzle/schema.d1';
 import { sendEmail } from '../../../_shared/newsletter/resend';
 import { candidateInviteEmail } from '../../../_shared/email/templates';
@@ -80,7 +80,7 @@ export async function onRequestPost(context: { request: Request; env: Env; param
       );
     }
 
-    // Check trial invite limits (only if on trial, not a paid subscription)
+    // Atomic trial invite limit check + increment (prevents race conditions)
     const onTrial = await isOnActiveTrial(db, orgId);
     let isTrialNotPaid = false;
     if (onTrial) {
@@ -91,8 +91,13 @@ export async function onRequestPost(context: { request: Request; env: Env; param
         .limit(1);
       isTrialNotPaid = !!(orgRow && orgRow.subscriptionStatus !== 'active');
       if (isTrialNotPaid) {
-        const trial = await getTrialStatus(db, orgId);
-        if (trial && trial.invitesUsed >= TRIAL_MAX_INVITES) {
+        const claimResult = await db.run(sql`
+          UPDATE organizations
+          SET trial_invites_used = trial_invites_used + 1
+          WHERE id = ${orgId}
+            AND trial_invites_used < ${TRIAL_MAX_INVITES}
+        `);
+        if (!claimResult.meta?.changes) {
           return Response.json(
             { error: 'Trial invite limit reached. Subscribe to send more invites.', code: 'TRIAL_LIMIT_REACHED' },
             { status: 403 },
@@ -120,14 +125,6 @@ export async function onRequestPost(context: { request: Request; env: Env; param
       .from(assessmentInvites)
       .where(eq(assessmentInvites.id, inviteId))
       .limit(1);
-
-    // Increment trial invite counter if on active trial (not paid)
-    if (isTrialNotPaid) {
-      await db
-        .update(organizations)
-        .set({ trialInvitesUsed: sql`trial_invites_used + 1` })
-        .where(eq(organizations.id, orgId));
-    }
 
     const inviteUrl = `${new URL(context.request.url).origin}/assess/${token}`;
     let emailSent = false;

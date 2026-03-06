@@ -13,7 +13,7 @@ const createAttemptSchema = z.object({
   challengeId: z.string().min(1),
 });
 
-export async function onRequestPost(context: { request: Request; env: Env }) {
+export async function onRequestPost(context: { request: Request; env: Env; waitUntil?: (p: Promise<unknown>) => void }) {
   try {
     const user = await getUser(context.request, context.env);
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
@@ -31,7 +31,7 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
     const db = getDb(context.env);
 
     // Ensure profile exists (creates with signup bonus on first call)
-    await ensureProfile(db, user, context.env);
+    await ensureProfile(db, user, context.env, context.waitUntil);
 
     const [challenge] = await db
       .select()

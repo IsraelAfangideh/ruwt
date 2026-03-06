@@ -10,13 +10,13 @@ import { getUser } from '../_shared/auth';
 import { ensureProfile } from '../_shared/ensure-profile';
 import { notifications } from '../../drizzle/schema.d1';
 
-export async function onRequestGet(context: { request: Request; env: Env }) {
+export async function onRequestGet(context: { request: Request; env: Env; waitUntil?: (p: Promise<unknown>) => void }) {
   try {
     const user = await getUser(context.request, context.env);
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
     const db = getDb(context.env);
-    await ensureProfile(db, user, context.env);
+    await ensureProfile(db, user, context.env, context.waitUntil);
 
     const url = new URL(context.request.url);
     const unreadOnly = url.searchParams.get('unread') === '1';

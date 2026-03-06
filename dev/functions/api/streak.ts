@@ -10,13 +10,13 @@ import { ensureProfile } from '../_shared/ensure-profile';
 import { profiles } from '../../drizzle/schema.d1';
 import { buyStreakFreeze, STREAK_FREEZE_COST } from '../_shared/streaks';
 
-export async function onRequestGet(context: { request: Request; env: Env }) {
+export async function onRequestGet(context: { request: Request; env: Env; waitUntil?: (p: Promise<unknown>) => void }) {
   try {
     const user = await getUser(context.request, context.env);
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
     const db = getDb(context.env);
-    await ensureProfile(db, user, context.env);
+    await ensureProfile(db, user, context.env, context.waitUntil);
 
     const [profile] = await db
       .select({
@@ -46,13 +46,13 @@ export async function onRequestGet(context: { request: Request; env: Env }) {
   }
 }
 
-export async function onRequestPost(context: { request: Request; env: Env }) {
+export async function onRequestPost(context: { request: Request; env: Env; waitUntil?: (p: Promise<unknown>) => void }) {
   try {
     const user = await getUser(context.request, context.env);
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
     const db = getDb(context.env);
-    await ensureProfile(db, user, context.env);
+    await ensureProfile(db, user, context.env, context.waitUntil);
 
     const body = await context.request.json().catch(() => ({})) as {
       action?: string;
