@@ -307,7 +307,7 @@ describe('SettingsScreen', () => {
       expect(screen.getByText(/Subscribe — \$200\/mo/)).toBeTruthy();
     });
     fireEvent.click(screen.getByText(/Subscribe — \$200\/mo/));
-    expect(hrefSetter).toHaveBeenCalledWith('/teams');
+    expect(hrefSetter).toHaveBeenCalledWith('/hiring');
 
     Object.defineProperty(window, 'location', { value: originalLocation, writable: true });
   });

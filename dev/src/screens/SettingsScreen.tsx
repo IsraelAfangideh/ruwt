@@ -18,6 +18,7 @@ export function SettingsScreen() {
   const [togglingNewsletter, setTogglingNewsletter] = useState(false);
   const [billingLoading, setBillingLoading] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [profileLoading, setProfileLoading] = useState(true);
   const c = useColors();
   const { showToast } = useToast();
 
@@ -38,6 +39,7 @@ export function SettingsScreen() {
       } catch {
         showToast('Failed to load profile', 'error');
       }
+      setProfileLoading(false);
 
       // Check for purchase success
       if (typeof window !== 'undefined') {
@@ -110,6 +112,29 @@ export function SettingsScreen() {
       )}
 
       <ScrollView style={styles.scroll}>
+        {profileLoading ? (
+          <>
+            <Card style={styles.card}>
+              <CardContent>
+                <Skeleton width={160} height={18} borderRadius={radii.sm} />
+                <SkeletonLines lines={2} />
+              </CardContent>
+            </Card>
+            <Card style={styles.card}>
+              <CardContent>
+                <Skeleton width={140} height={18} borderRadius={radii.sm} />
+                <Skeleton width={260} height={14} borderRadius={radii.sm} />
+              </CardContent>
+            </Card>
+            <Card style={styles.card}>
+              <CardContent>
+                <Skeleton width={80} height={18} borderRadius={radii.sm} />
+                <Skeleton width={200} height={14} borderRadius={radii.sm} />
+              </CardContent>
+            </Card>
+          </>
+        ) : (
+          <>
         {accountType === 'team' ? (
           <Card style={styles.card}>
             <CardHeader>
@@ -150,7 +175,7 @@ export function SettingsScreen() {
               ) : (
                 <Button
                   onPress={() => {
-                    if (typeof window !== 'undefined') window.location.href = '/teams';
+                    if (typeof window !== 'undefined') window.location.href = '/hiring';
                   }}
                 >
                   {subscriptionStatus === 'canceled' ? 'Resubscribe' : 'Subscribe — $200/mo'}
@@ -211,6 +236,8 @@ export function SettingsScreen() {
             <CardDescription>Signed in as {user.email}</CardDescription>
           </CardHeader>
         </Card>
+          </>
+        )}
       </ScrollView>
     </DashboardLayout>
   );
