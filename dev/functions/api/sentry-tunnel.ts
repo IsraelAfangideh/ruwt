@@ -12,19 +12,16 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
   }
 
   try {
-    const envelope = await context.request.text();
-    if (!envelope) {
-      return new Response('', { status: 200 });
-    }
-
     // Parse server-side DSN to construct ingest URL
     const parsed = new URL(dsn);
     const projectId = parsed.pathname.replace(/\//g, '');
     const ingestUrl = `${parsed.protocol}//${parsed.host}/api/${projectId}/envelope/?sentry_key=${parsed.username}&sentry_version=7`;
 
+    // Stream body directly — replay envelopes contain compressed binary data
+    // that gets corrupted if read as .text()
     const res = await fetch(ingestUrl, {
       method: 'POST',
-      body: envelope,
+      body: context.request.body,
       headers: { 'Content-Type': 'application/x-sentry-envelope' },
     });
 

@@ -47,7 +47,9 @@ describe('POST /api/sentry-tunnel', () => {
     const [url, opts] = mockFetch.mock.calls[0];
     expect(url).toBe('https://o456.ingest.sentry.io/api/789/envelope/?sentry_key=pubkey123&sentry_version=7');
     expect(opts.method).toBe('POST');
-    expect(opts.body).toBe(envelope);
+    // Body is streamed directly from request (preserves binary replay data)
+    const forwardedBody = await new Response(opts.body).text();
+    expect(forwardedBody).toBe(envelope);
     expect(opts.headers['Content-Type']).toBe('application/x-sentry-envelope');
   });
 
@@ -73,13 +75,16 @@ describe('POST /api/sentry-tunnel', () => {
     expect(res.status).toBe(200);
   });
 
-  it('returns 200 when body is empty', async () => {
+  it('forwards empty body to Sentry (lets Sentry decide)', async () => {
+    mockFetch.mockResolvedValue({ ok: false, status: 400 });
+
     const res = await onRequestPost(makeContext(
       { SENTRY_DSN: 'https://key@o1.ingest.sentry.io/2' },
       '',
     ));
 
-    expect(res.status).toBe(200);
-    expect(mockFetch).not.toHaveBeenCalled();
+    // Empty envelope forwarded, Sentry rejects → 502
+    expect(res.status).toBe(502);
+    expect(mockFetch).toHaveBeenCalledOnce();
   });
 });
