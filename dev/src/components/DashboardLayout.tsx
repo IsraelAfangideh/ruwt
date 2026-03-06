@@ -79,7 +79,7 @@ export function DashboardLayout({ user, children, requireTeam }: DashboardLayout
               Ruwt<Text style={[styles.logoDot, { color: c.primary }]}>.dev</Text>
             </Text>
           </Pressable>
-          <DashboardNav accountType={accountType} />
+          <DashboardNav accountType={accountType} loading={profileLoading} />
         </View>
         <View style={styles.headerRight}>
           <NotificationBell />
@@ -88,7 +88,7 @@ export function DashboardLayout({ user, children, requireTeam }: DashboardLayout
         </View>
       </View>
       <View style={styles.main} accessibilityRole="main" nativeID="main-content" tabIndex={-1}>
-        {trial && accountType === 'team' && <TrialBanner trial={trial} subscriptionStatus={subscriptionStatus} />}
+        {!profileLoading && trial && accountType === 'team' && <TrialBanner trial={trial} subscriptionStatus={subscriptionStatus} />}
         {renderContent()}
       </View>
     </View>
