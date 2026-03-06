@@ -223,14 +223,49 @@ describe('TeamsScreen', () => {
     expect(mockNavigate).toHaveBeenCalledWith('Register');
   });
 
-  it('navigates to AssessmentBuilder when Start Free Trial is clicked (logged in)', async () => {
+  it('starts trial and navigates to AssessmentBuilder when Start Free Trial is clicked (logged in)', async () => {
     mockUser = { id: 'u1' };
+    const mockFetch = vi.fn()
+      .mockImplementationOnce(() => Promise.resolve(ok({ canStartTrial: true }))) // trial/status
+      .mockImplementationOnce(() => Promise.resolve(ok({ trial: {}, orgId: 'org1' }))); // trial/start
+    vi.stubGlobal('fetch', mockFetch);
     render(<TeamsScreen />);
     await waitFor(() => expect(screen.getByText('Dashboard')).toBeTruthy());
     fireEvent.click(screen.getAllByText('Start Free Trial')[0]);
     await waitFor(() => {
       expect(mockNavigate).toHaveBeenCalledWith('AssessmentBuilder');
     });
+    expect(mockFetch).toHaveBeenCalledWith('/api/trial/start', { method: 'POST' });
+  });
+
+  it('navigates to AssessmentBuilder when trial already used (logged in)', async () => {
+    mockUser = { id: 'u1' };
+    const mockFetch = vi.fn()
+      .mockImplementationOnce(() => Promise.resolve(ok({ canStartTrial: false }))) // trial/status
+      .mockImplementationOnce(() => Promise.resolve(fail({ error: 'Trial already used', code: 'TRIAL_NOT_ELIGIBLE' }))); // trial/start
+    vi.stubGlobal('fetch', mockFetch);
+    render(<TeamsScreen />);
+    await waitFor(() => expect(screen.getByText('Dashboard')).toBeTruthy());
+    fireEvent.click(screen.getAllByText('Start Free Trial')[0]);
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith('AssessmentBuilder');
+    });
+  });
+
+  it('shows error when trial start fails with non-eligible reason (logged in)', async () => {
+    mockUser = { id: 'u1' };
+    const mockFetch = vi.fn()
+      .mockImplementationOnce(() => Promise.resolve(ok({ canStartTrial: false }))) // trial/status
+      .mockImplementationOnce(() => Promise.resolve(fail({ error: 'Profile not found', code: 'TRIAL_NOT_ELIGIBLE' }))); // trial/start
+    vi.stubGlobal('fetch', mockFetch);
+    render(<TeamsScreen />);
+    await waitFor(() => expect(screen.getByText('Dashboard')).toBeTruthy());
+    fireEvent.click(screen.getAllByText('Start Free Trial')[0]);
+    await waitFor(() => {
+      expect(screen.getByText('Profile not found')).toBeTruthy();
+    });
+    // Should NOT navigate to AssessmentBuilder
+    expect(mockNavigate).not.toHaveBeenCalledWith('AssessmentBuilder');
   });
 
   it('renders Book a Demo button', () => {

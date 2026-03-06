@@ -103,7 +103,12 @@ export function TeamsScreen() {
         navigation.navigate('AssessmentBuilder' as never);
         return;
       }
-      const data = await res.json().catch(() => ({}));
+      const data = await res.json().catch(() => ({} as Record<string, string>));
+      // User already has team access (used trial or has subscription) — navigate directly
+      if (data.error === 'Trial already used' || data.error === 'Already subscribed') {
+        navigation.navigate('AssessmentBuilder' as never);
+        return;
+      }
       setTrialError(data.error || 'Failed to start trial. Please try again.');
     } catch {
       setTrialError('Network error. Please try again.');
@@ -113,12 +118,7 @@ export function TeamsScreen() {
 
   const handleStartAssessment = async () => {
     if (isLoggedIn) {
-      if (trialEligible) {
-        await handleStartTrial();
-        return;
-      }
-      // Not trial-eligible — navigate to assessment builder (requires existing team account)
-      navigation.navigate('AssessmentBuilder' as never);
+      await handleStartTrial();
     } else {
       if (typeof window !== 'undefined') {
         localStorage.setItem('ruwt_team_intent', '1');
