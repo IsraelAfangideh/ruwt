@@ -75,22 +75,12 @@ export function TeamsScreen() {
   const isMobile = width < 768;
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [expandedFaq, setExpandedFaq] = useState<number | null>(null);
-  const [trialEligible, setTrialEligible] = useState(false);
   const [trialLoading, setTrialLoading] = useState(false);
   const [trialError, setTrialError] = useState<string | null>(null);
 
   useEffect(() => {
     createClient().auth.getUser().then(({ data: { user } }) => {
-      if (user) {
-        setIsLoggedIn(true);
-        // Check trial eligibility
-        fetch('/api/trial/status')
-          .then((r) => r.ok ? r.json() : null)
-          .then((data) => {
-            if (data?.canStartTrial) setTrialEligible(true);
-          })
-          .catch(() => {});
-      }
+      if (user) setIsLoggedIn(true);
     });
   }, []);
 
