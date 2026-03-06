@@ -1250,6 +1250,21 @@ describe('CSRF protection', () => {
     expect(body.error).toContain('invalid origin');
   });
 
+  it('allows POST from preview deploy subdomain', async () => {
+    mockCheckRateLimit.mockResolvedValue({ allowed: true });
+    mockBuildKey.mockReturnValue('ip:1.2.3.4');
+    mockGetUser.mockResolvedValue(null);
+
+    const req = makeRequest('https://ruwt.dev/api/trial/start', {
+      method: 'POST',
+      headers: { Origin: 'https://worktree-fix-billing.ruwt-dev.pages.dev' },
+    });
+    const ctx = makeContext(req);
+    const response = await onRequest(ctx);
+
+    expect(response.status).toBe(200);
+  });
+
   it('rejects DELETE with invalid Origin', async () => {
     const req = makeRequest('https://ruwt.dev/api/profile', {
       method: 'DELETE',
