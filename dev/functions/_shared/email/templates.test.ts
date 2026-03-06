@@ -7,6 +7,10 @@ import {
   newSignupNotificationEmail,
   challengeAttemptNotificationEmail,
   teamInviteEmail,
+  trialStartNotificationEmail,
+  trialWelcomeEmail,
+  trialExpiringEmail,
+  trialExpiredEmail,
 } from './templates';
 
 // ---------------------------------------------------------------------------
@@ -1374,6 +1378,50 @@ describe('all templates produce structurally valid output', () => {
           role: 'admin',
           joinUrl: 'https://ruwt.dev/join/x',
           expiresAt: '2026-06-01T00:00:00Z',
+        }),
+    },
+    {
+      name: 'trialStartNotificationEmail',
+      fn: () =>
+        trialStartNotificationEmail({
+          userName: 'Test',
+          userEmail: 'test@co.com',
+          orgName: 'Acme',
+          provider: 'github',
+          trialEndsAt: '2026-04-06T00:00:00Z',
+        }),
+    },
+    {
+      name: 'trialWelcomeEmail',
+      fn: () =>
+        trialWelcomeEmail({
+          name: 'Test',
+          orgName: 'Acme',
+          trialEndsAt: '2026-04-06T00:00:00Z',
+          assessmentLimit: 1,
+          inviteLimit: 3,
+        }),
+    },
+    {
+      name: 'trialExpiringEmail',
+      fn: () =>
+        trialExpiringEmail({
+          name: 'Test',
+          orgName: 'Acme',
+          daysLeft: 7,
+          assessmentsUsed: 0,
+          assessmentsLimit: 1,
+          invitesLimit: 3,
+        }),
+    },
+    {
+      name: 'trialExpiredEmail',
+      fn: () =>
+        trialExpiredEmail({
+          name: 'Test',
+          orgName: 'Acme',
+          assessmentsUsed: 1,
+          assessmentsLimit: 1,
         }),
     },
   ];

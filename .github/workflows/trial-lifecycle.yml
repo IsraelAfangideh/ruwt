@@ -1,0 +1,30 @@
+name: Daily Trial Lifecycle Emails
+
+on:
+  schedule:
+    - cron: '0 10 * * *' # 10 AM UTC daily
+  workflow_dispatch:
+
+jobs:
+  send:
+    name: Send Trial Lifecycle Emails
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trial lifecycle emails
+        run: |
+          response=$(curl -s -w "\n%{http_code}" -X POST \
+            "https://ruwt.dev/api/trial-lifecycle" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "X-Cron-Timestamp: $(date +%s)" \
+            -H "Content-Type: application/json")
+
+          http_code=$(echo "$response" | tail -1)
+          body=$(echo "$response" | head -n -1)
+
+          echo "Status: $http_code"
+          echo "Response: $body"
+
+          if [ "$http_code" != "200" ]; then
+            echo "::error::Trial lifecycle emails failed with status $http_code"
+            exit 1
+          fi

@@ -2,17 +2,38 @@
  * POST /api/trial/start
  * Start a 30-day free trial for the authenticated user.
  * Creates an org if the user doesn't have one, sets trial dates + zero counters.
+ * Sends admin notification + user welcome email.
  */
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { getDb } from '../../_shared/db';
 import { getUser } from '../../_shared/auth';
 import {
   canStartTrial,
   getUserOrg,
   TRIAL_DURATION_DAYS,
+  TRIAL_MAX_ASSESSMENTS,
+  TRIAL_MAX_INVITES,
   getTrialStatus,
 } from '../../_shared/org';
 import { profiles, organizations, orgMembers } from '../../../drizzle/schema.d1';
+import { sendEmail } from '../../_shared/newsletter/resend';
+import { trialStartNotificationEmail, trialWelcomeEmail } from '../../_shared/email/templates';
+
+const ADMIN_EMAIL = 'israel@ruwt.dev';
+
+// Personal email domains where we should NOT derive org name from domain
+const PERSONAL_DOMAINS = new Set([
+  'gmail', 'yahoo', 'hotmail', 'outlook', 'aol', 'icloud', 'protonmail',
+  'mail', 'live', 'msn', 'pm', 'hey', 'fastmail', 'zoho', 'yandex',
+  'gmx', 'tutanota', 'proton',
+]);
+
+function deriveOrgName(email: string): string {
+  if (!email.includes('@')) return 'My Team';
+  const domain = email.split('@')[1].split('.')[0].toLowerCase();
+  if (PERSONAL_DOMAINS.has(domain)) return 'My Team';
+  return `${domain.charAt(0).toUpperCase() + domain.slice(1)} Team`;
+}
 
 export async function onRequestPost(context: { request: Request; env: Env }) {
   try {
@@ -57,9 +78,7 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
       // Create a new org
       const orgId = crypto.randomUUID();
       const userEmail = user.email || '';
-      const orgName = userEmail.includes('@')
-        ? `${userEmail.split('@')[1].split('.')[0]} Team`
-        : 'My Team';
+      const orgName = deriveOrgName(userEmail);
 
       await db.insert(organizations).values({
         id: orgId,
@@ -88,6 +107,44 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
       .where(eq(profiles.id, user.id));
 
     const trial = userOrg ? await getTrialStatus(db, userOrg.org.id) : null;
+    const orgName = userOrg?.org.name ?? 'My Team';
+    const userName = (user.user_metadata?.full_name ?? user.user_metadata?.name) as string | null ?? null;
+    const provider = (user.app_metadata?.provider as string) ?? 'email';
+
+    // Send admin notification + user welcome email (fire-and-forget, but logged)
+    if (context.env.RESEND_API_KEY) {
+      // Admin: "someone started a teams trial"
+      const adminEmail = trialStartNotificationEmail({
+        userName,
+        userEmail: user.email ?? '',
+        orgName,
+        provider,
+        trialEndsAt: trialEnds.toISOString(),
+      });
+      sendEmail(context.env, { to: ADMIN_EMAIL, subject: adminEmail.subject, html: adminEmail.html, text: adminEmail.text })
+        .then(async (result) => {
+          await db.run(sql`INSERT INTO newsletter_logs (id, recipient_email, subject, status, error_message, resend_id, user_id, digest_type)
+            VALUES (${crypto.randomUUID()}, ${ADMIN_EMAIL}, ${adminEmail.subject}, ${result.success ? 'sent' : 'failed'}, ${result.error ?? null}, ${result.id ?? null}, ${user.id}, 'admin_trial_start')`);
+        })
+        .catch(() => {});
+
+      // User: "welcome to your trial, here's what to do"
+      if (user.email) {
+        const welcomeEmail = trialWelcomeEmail({
+          name: userName?.split(' ')[0] ?? null,
+          orgName,
+          trialEndsAt: trialEnds.toISOString(),
+          assessmentLimit: TRIAL_MAX_ASSESSMENTS,
+          inviteLimit: TRIAL_MAX_INVITES,
+        });
+        sendEmail(context.env, { to: user.email, subject: welcomeEmail.subject, html: welcomeEmail.html, text: welcomeEmail.text })
+          .then(async (result) => {
+            await db.run(sql`INSERT INTO newsletter_logs (id, recipient_email, subject, status, error_message, resend_id, user_id, digest_type)
+              VALUES (${crypto.randomUUID()}, ${user.email}, ${welcomeEmail.subject}, ${result.success ? 'sent' : 'failed'}, ${result.error ?? null}, ${result.id ?? null}, ${user.id}, 'trial_welcome')`);
+          })
+          .catch(() => {});
+      }
+    }
 
     return Response.json({ trial, orgId: userOrg?.org.id }, { status: 201 });
   } catch (error) {

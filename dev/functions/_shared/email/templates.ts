@@ -833,3 +833,397 @@ export function teamInviteEmail(params: TeamInviteParams): EmailTemplate {
 
   return { subject, html, text };
 }
+
+// ---------------------------------------------------------------------------
+// 7. Trial Start Notification (sent to admin)
+// ---------------------------------------------------------------------------
+
+export interface TrialStartNotificationParams {
+  userName?: string | null;
+  userEmail: string;
+  orgName: string;
+  provider: string;
+  trialEndsAt: string; // ISO date
+}
+
+export function trialStartNotificationEmail(params: TrialStartNotificationParams): EmailTemplate {
+  const { userName, userEmail, orgName, provider, trialEndsAt } = params;
+
+  const displayName = userName ? escapeHtml(userName) : 'Someone new';
+  const displayProvider = provider === 'github' ? 'GitHub OAuth' : provider === 'email' ? 'Email signup' : escapeHtml(provider);
+  const formattedExpiry = formatDate(trialEndsAt);
+  const subject = `New teams trial: ${userName || userEmail} started a trial`;
+
+  const content = `
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin: 0 0 24px 0;">
+              <tr>
+                <td align="center" style="padding: 20px 0 8px 0;">
+                  <p style="margin: 0; font-size: 48px; line-height: 1;">&#128640;</p>
+                </td>
+              </tr>
+              <tr>
+                <td align="center">
+                  <p style="margin: 0; font-size: 22px; font-weight: bold; color: #1a1816;">New teams trial started!</p>
+                </td>
+              </tr>
+            </table>
+            <!-- Trial badge -->
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin: 0 0 24px 0;">
+              <tr>
+                <td align="center">
+                  <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                    <tr>
+                      <td style="background-color: #c9a962; border-radius: 16px; padding: 6px 16px;">
+                        <p style="margin: 0; font-size: 13px; font-weight: bold; color: #1a1816; text-transform: uppercase; letter-spacing: 0.5px;">30-Day Trial</p>
+                      </td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+            </table>
+            <!-- User details -->
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin: 0 0 28px 0; background-color: #f5f3f0; border-radius: 8px;">
+              <tr>
+                <td style="padding: 20px 24px;">
+                  <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+                    <tr>
+                      <td style="padding-bottom: 12px;">
+                        <p style="margin: 0; font-size: 13px; color: #8a847a; text-transform: uppercase; letter-spacing: 0.5px;">Name</p>
+                        <p style="margin: 4px 0 0 0; font-size: 16px; font-weight: bold; color: #1a1816;">${displayName}</p>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td style="padding-bottom: 12px;">
+                        <p style="margin: 0; font-size: 13px; color: #8a847a; text-transform: uppercase; letter-spacing: 0.5px;">Email</p>
+                        <p style="margin: 4px 0 0 0; font-size: 16px; color: #1a1816;">${escapeHtml(userEmail)}</p>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td style="padding-bottom: 12px;">
+                        <p style="margin: 0; font-size: 13px; color: #8a847a; text-transform: uppercase; letter-spacing: 0.5px;">Organization</p>
+                        <p style="margin: 4px 0 0 0; font-size: 16px; font-weight: bold; color: #1a1816;">${escapeHtml(orgName)}</p>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td style="padding-bottom: 12px;">
+                        <p style="margin: 0; font-size: 13px; color: #8a847a; text-transform: uppercase; letter-spacing: 0.5px;">Signed Up Via</p>
+                        <p style="margin: 4px 0 0 0; font-size: 16px; color: #1a1816;">${displayProvider}</p>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td>
+                        <p style="margin: 0; font-size: 13px; color: #8a847a; text-transform: uppercase; letter-spacing: 0.5px;">Trial Expires</p>
+                        <p style="margin: 4px 0 0 0; font-size: 16px; font-weight: bold; color: #c9a962;">${escapeHtml(formattedExpiry)}</p>
+                      </td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+            </table>
+            <!-- Action checklist -->
+            <p style="margin: 0 0 12px 0; font-size: 15px; font-weight: bold; color: #1a1816;">Your move:</p>
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin: 0 0 28px 0;">
+              <tr>
+                <td style="padding: 8px 0; font-size: 15px; color: #1a1816; line-height: 1.5;">&#9744; Send personal welcome</td>
+              </tr>
+              <tr>
+                <td style="padding: 8px 0; font-size: 15px; color: #1a1816; line-height: 1.5;">&#9744; Check if they create an assessment today</td>
+              </tr>
+              <tr>
+                <td style="padding: 8px 0; font-size: 15px; color: #1a1816; line-height: 1.5;">&#9744; Add to CRM</td>
+              </tr>
+            </table>
+            <!-- CTA -->
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+              <tr>
+                <td align="center" style="padding-bottom: 16px;">
+                  ${ctaButton('View Dashboard', 'https://ruwt.dev/admin')}
+                </td>
+              </tr>
+            </table>
+            <p style="margin: 0; font-size: 13px; color: #8a847a; text-align: center; line-height: 1.5;">Another org in the pipeline. Keep building.</p>`;
+
+  const html = wrapInLayout(content, `New teams trial: ${userName || userEmail} \u2014 ${orgName}`);
+
+  const text = [
+    'New teams trial started!',
+    '',
+    `Name: ${userName || 'Not provided'}`,
+    `Email: ${userEmail}`,
+    `Organization: ${orgName}`,
+    `Signed up via: ${displayProvider}`,
+    `Trial expires: ${formattedExpiry}`,
+    '',
+    'Your move:',
+    '[ ] Send personal welcome',
+    '[ ] Check if they create an assessment today',
+    '[ ] Add to CRM',
+    '',
+    'View dashboard: https://ruwt.dev/admin',
+    '',
+    'Another org in the pipeline. Keep building.',
+    '',
+    '---',
+    'Sent by ruwt.dev -- AI-efficiency assessment platform',
+  ].join('\n');
+
+  return { subject, html, text };
+}
+
+// ---------------------------------------------------------------------------
+// 8. Trial Welcome (sent to the new trial user)
+// ---------------------------------------------------------------------------
+
+export interface TrialWelcomeParams {
+  name?: string | null;
+  orgName: string;
+  trialEndsAt: string; // ISO date
+  assessmentLimit: number;
+  inviteLimit: number;
+}
+
+export function trialWelcomeEmail(params: TrialWelcomeParams): EmailTemplate {
+  const { name, orgName, trialEndsAt, assessmentLimit, inviteLimit } = params;
+
+  const greeting = name ? `Hi ${escapeHtml(name)},` : 'Hi there,';
+  const formattedExpiry = formatDate(trialEndsAt);
+  const subject = 'Your 30-day trial is active';
+
+  const content = `
+            <p style="margin: 0 0 16px 0; font-size: 16px; color: #1a1816;">${greeting}</p>
+            <p style="margin: 0 0 20px 0; color: #1a1816; line-height: 1.6;">Your organization <strong>${escapeHtml(orgName)}</strong> is set up with a 30-day free trial.</p>
+            <!-- What's included -->
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin: 0 0 28px 0; background-color: #f5f3f0; border-radius: 8px;">
+              <tr>
+                <td style="padding: 20px 24px;">
+                  <p style="margin: 0 0 16px 0; font-size: 15px; font-weight: bold; color: #1a1816;">What&rsquo;s included</p>
+                  <p style="margin: 0 0 10px 0; font-size: 14px; color: #1a1816; line-height: 1.5;"><strong>${assessmentLimit} assessment${assessmentLimit === 1 ? '' : 's'}</strong></p>
+                  <p style="margin: 0 0 10px 0; font-size: 14px; color: #1a1816; line-height: 1.5;"><strong>${inviteLimit} candidate invite${inviteLimit === 1 ? '' : 's'}</strong></p>
+                  <p style="margin: 0 0 10px 0; font-size: 14px; color: #1a1816; line-height: 1.5;"><strong>Full session replays</strong></p>
+                  <p style="margin: 0; font-size: 14px; color: #1a1816; line-height: 1.5;"><strong>AI profile insights</strong></p>
+                </td>
+              </tr>
+            </table>
+            <p style="margin: 0 0 24px 0; color: #1a1816; line-height: 1.6;"><strong>Next step:</strong> Create your first assessment &mdash; it takes about 5 minutes.</p>
+            <!-- CTA -->
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+              <tr>
+                <td align="center" style="padding-bottom: 24px;">
+                  ${ctaButton('Create Assessment', 'https://ruwt.dev/assessment/new')}
+                </td>
+              </tr>
+            </table>
+            <p style="margin: 0; font-size: 13px; color: #8a847a; text-align: center; line-height: 1.5;">Trial expires <strong>${escapeHtml(formattedExpiry)}</strong>. Questions? Reply to this email.</p>`;
+
+  const html = wrapInLayout(content, 'Your 30-day trial is active \u2014 create your first assessment');
+
+  const text = [
+    greeting,
+    '',
+    `Your organization ${orgName} is set up with a 30-day free trial.`,
+    '',
+    "What's included:",
+    `- ${assessmentLimit} assessment${assessmentLimit === 1 ? '' : 's'}`,
+    `- ${inviteLimit} candidate invite${inviteLimit === 1 ? '' : 's'}`,
+    '- Full session replays',
+    '- AI profile insights',
+    '',
+    'Next step: Create your first assessment — it takes about 5 minutes.',
+    '',
+    'Create assessment: https://ruwt.dev/assessment/new',
+    '',
+    `Trial expires ${formattedExpiry}. Questions? Reply to this email.`,
+    '',
+    '---',
+    'Sent by ruwt.dev -- AI-efficiency assessment platform',
+    'Unsubscribe: https://ruwt.dev/settings',
+  ].join('\n');
+
+  return { subject, html, text };
+}
+
+// ---------------------------------------------------------------------------
+// 9. Trial Expiring (sent to user 7 days before expiry)
+// ---------------------------------------------------------------------------
+
+export interface TrialExpiringParams {
+  name?: string | null;
+  orgName: string;
+  daysRemaining: number;
+  assessmentsUsed: number;
+  assessmentLimit: number;
+  invitesUsed: number;
+  inviteLimit: number;
+  trialEndsAt: string;
+}
+
+export function trialExpiringEmail(params: TrialExpiringParams): EmailTemplate {
+  const {
+    name,
+    orgName,
+    daysRemaining,
+    assessmentsUsed,
+    assessmentLimit,
+    invitesUsed,
+    inviteLimit,
+    trialEndsAt,
+  } = params;
+
+  const greeting = name ? `Hi ${escapeHtml(name)},` : 'Hi there,';
+  const formattedExpiry = formatDate(trialEndsAt);
+  const subject = `Your trial expires in ${daysRemaining} day${daysRemaining === 1 ? '' : 's'}`;
+  const noAssessments = assessmentsUsed === 0;
+  const ctaText = noAssessments ? 'Create Assessment' : 'Subscribe';
+  const ctaUrl = noAssessments ? 'https://ruwt.dev/assessment/new' : 'https://ruwt.dev/teams';
+
+  const content = `
+            <p style="margin: 0 0 16px 0; font-size: 16px; color: #1a1816;">${greeting}</p>
+            <p style="margin: 0 0 20px 0; color: #1a1816; line-height: 1.6;">Your trial for <strong>${escapeHtml(orgName)}</strong> expires in <strong>${daysRemaining} day${daysRemaining === 1 ? '' : 's'}</strong> (${escapeHtml(formattedExpiry)}).</p>
+            <!-- Usage summary -->
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin: 0 0 28px 0; background-color: #f5f3f0; border-radius: 8px;">
+              <tr>
+                <td style="padding: 20px 24px;">
+                  <p style="margin: 0 0 16px 0; font-size: 15px; font-weight: bold; color: #1a1816;">Your usage so far</p>
+                  <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+                    <tr>
+                      <td style="padding-bottom: 12px; width: 50%;">
+                        <p style="margin: 0; font-size: 13px; color: #8a847a; text-transform: uppercase; letter-spacing: 0.5px;">Assessments</p>
+                        <p style="margin: 4px 0 0 0; font-size: 18px; font-weight: bold; color: #1a1816;">${assessmentsUsed} / ${assessmentLimit}</p>
+                      </td>
+                      <td style="padding-bottom: 12px; width: 50%;">
+                        <p style="margin: 0; font-size: 13px; color: #8a847a; text-transform: uppercase; letter-spacing: 0.5px;">Invites</p>
+                        <p style="margin: 4px 0 0 0; font-size: 18px; font-weight: bold; color: #1a1816;">${invitesUsed} / ${inviteLimit}</p>
+                      </td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+            </table>${noAssessments ? `
+            <p style="margin: 0 0 24px 0; color: #1a1816; line-height: 1.6;">You haven&rsquo;t created an assessment yet &mdash; there&rsquo;s still time.</p>` : ''}
+            <!-- Pricing -->
+            <p style="margin: 0 0 24px 0; color: #5c564e; font-size: 14px; line-height: 1.6;">Subscribe for <strong>$200/month</strong> &mdash; unlimited assessments, unlimited candidates, full analytics.</p>
+            <!-- CTA -->
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+              <tr>
+                <td align="center" style="padding-bottom: 24px;">
+                  ${ctaButton(ctaText, ctaUrl)}
+                </td>
+              </tr>
+            </table>
+            <p style="margin: 0; font-size: 13px; color: #8a847a; text-align: center; line-height: 1.5;">Questions? Reply to this email &mdash; we&rsquo;re here to help.</p>`;
+
+  const html = wrapInLayout(
+    content,
+    `Your trial expires in ${daysRemaining} day${daysRemaining === 1 ? '' : 's'} \u2014 ${noAssessments ? 'create your first assessment' : 'subscribe to continue'}`,
+  );
+
+  const text = [
+    greeting,
+    '',
+    `Your trial for ${orgName} expires in ${daysRemaining} day${daysRemaining === 1 ? '' : 's'} (${formattedExpiry}).`,
+    '',
+    'Your usage so far:',
+    `- Assessments: ${assessmentsUsed} / ${assessmentLimit}`,
+    `- Invites: ${invitesUsed} / ${inviteLimit}`,
+    '',
+    ...(noAssessments ? ["You haven't created an assessment yet — there's still time.", ''] : []),
+    'Subscribe for $200/month — unlimited assessments, unlimited candidates, full analytics.',
+    '',
+    `${ctaText}: ${ctaUrl}`,
+    '',
+    'Questions? Reply to this email — we are here to help.',
+    '',
+    '---',
+    'Sent by ruwt.dev -- AI-efficiency assessment platform',
+    'Unsubscribe: https://ruwt.dev/settings',
+  ].join('\n');
+
+  return { subject, html, text };
+}
+
+// ---------------------------------------------------------------------------
+// 10. Trial Expired (sent when trial expires)
+// ---------------------------------------------------------------------------
+
+export interface TrialExpiredParams {
+  name?: string | null;
+  orgName: string;
+  assessmentsUsed: number;
+  invitesUsed: number;
+}
+
+export function trialExpiredEmail(params: TrialExpiredParams): EmailTemplate {
+  const { name, orgName, assessmentsUsed, invitesUsed } = params;
+
+  const greeting = name ? `Hi ${escapeHtml(name)},` : 'Hi there,';
+  const subject = 'Your trial has ended';
+  const usedAssessments = assessmentsUsed > 0;
+
+  const content = `
+            <p style="margin: 0 0 16px 0; font-size: 16px; color: #1a1816;">${greeting}</p>
+            <p style="margin: 0 0 20px 0; color: #1a1816; line-height: 1.6;">Your 30-day trial for <strong>${escapeHtml(orgName)}</strong> has ended.</p>${usedAssessments ? `
+            <!-- Usage recap -->
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin: 0 0 28px 0; background-color: #f5f3f0; border-radius: 8px;">
+              <tr>
+                <td style="padding: 20px 24px;">
+                  <p style="margin: 0 0 16px 0; font-size: 15px; font-weight: bold; color: #1a1816;">During your trial</p>
+                  <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+                    <tr>
+                      <td style="width: 50%;">
+                        <p style="margin: 0; font-size: 13px; color: #8a847a; text-transform: uppercase; letter-spacing: 0.5px;">Assessments</p>
+                        <p style="margin: 4px 0 0 0; font-size: 18px; font-weight: bold; color: #1a1816;">${assessmentsUsed}</p>
+                      </td>
+                      <td style="width: 50%;">
+                        <p style="margin: 0; font-size: 13px; color: #8a847a; text-transform: uppercase; letter-spacing: 0.5px;">Invites Sent</p>
+                        <p style="margin: 4px 0 0 0; font-size: 18px; font-weight: bold; color: #1a1816;">${invitesUsed}</p>
+                      </td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+            </table>
+            <p style="margin: 0 0 24px 0; color: #1a1816; line-height: 1.6;">You ran <strong>${assessmentsUsed} assessment${assessmentsUsed === 1 ? '' : 's'}</strong> during your trial. Subscribe to keep going.</p>` : `
+            <p style="margin: 0 0 24px 0; color: #1a1816; line-height: 1.6;">Your trial ended before you created an assessment. We&rsquo;d love to help &mdash; reply to this email.</p>`}
+            <p style="margin: 0 0 24px 0; color: #5c564e; font-size: 14px; line-height: 1.6;">All your data is saved. Subscribe anytime to pick up where you left off.</p>
+            <!-- CTA -->
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+              <tr>
+                <td align="center" style="padding-bottom: 24px;">
+                  ${ctaButton('Subscribe Now', 'https://ruwt.dev/teams')}
+                </td>
+              </tr>
+            </table>
+            <p style="margin: 0; font-size: 13px; color: #8a847a; text-align: center; line-height: 1.5;">Questions? Reply to this email &mdash; we&rsquo;re here to help.</p>`;
+
+  const html = wrapInLayout(content, 'Your trial has ended \u2014 subscribe to continue');
+
+  const text = [
+    greeting,
+    '',
+    `Your 30-day trial for ${orgName} has ended.`,
+    '',
+    ...(usedAssessments
+      ? [
+          `During your trial:`,
+          `- Assessments: ${assessmentsUsed}`,
+          `- Invites sent: ${invitesUsed}`,
+          '',
+          `You ran ${assessmentsUsed} assessment${assessmentsUsed === 1 ? '' : 's'} during your trial. Subscribe to keep going.`,
+        ]
+      : [
+          "Your trial ended before you created an assessment. We'd love to help — reply to this email.",
+        ]),
+    '',
+    'All your data is saved. Subscribe anytime to pick up where you left off.',
+    '',
+    'Subscribe now: https://ruwt.dev/teams',
+    '',
+    'Questions? Reply to this email — we are here to help.',
+    '',
+    '---',
+    'Sent by ruwt.dev -- AI-efficiency assessment platform',
+    'Unsubscribe: https://ruwt.dev/settings',
+  ].join('\n');
+
+  return { subject, html, text };
+}

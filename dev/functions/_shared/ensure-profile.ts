@@ -6,7 +6,7 @@
  */
 import type { User } from '@supabase/supabase-js';
 import type { Db } from './db';
-import { profiles, transactions, notifications } from '../../drizzle/schema.d1';
+import { profiles, transactions, notifications, newsletterLogs } from '../../drizzle/schema.d1';
 import { sendEmail } from './newsletter/resend';
 import { welcomeEmail, newSignupNotificationEmail } from './email/templates';
 
@@ -51,14 +51,27 @@ export async function ensureProfile(db: Db, user: User, env?: { RESEND_API_KEY?:
       metadata: JSON.stringify({ challengeId: 'fizzbuzz-budget' }),
     }).onConflictDoNothing();
 
-    // Welcome email (fire-and-forget)
+    // Welcome email (logged for visibility)
     if (env?.RESEND_API_KEY && user.email) {
       const firstName = ((user.user_metadata?.full_name ?? user.user_metadata?.name) as string)?.split(' ')[0] || null;
       const email = welcomeEmail({ name: firstName });
-      sendEmail(env, { to: user.email, subject: email.subject, html: email.html, text: email.text }).catch(() => {});
+      sendEmail(env, { to: user.email, subject: email.subject, html: email.html, text: email.text })
+        .then(async (result) => {
+          await db.insert(newsletterLogs).values({
+            id: crypto.randomUUID(),
+            recipientEmail: user.email!,
+            subject: email.subject,
+            status: result.success ? 'sent' : 'failed',
+            errorMessage: result.error ?? null,
+            resendId: result.id ?? null,
+            userId: user.id,
+            digestType: 'welcome',
+          }).onConflictDoNothing();
+        })
+        .catch(() => {});
     }
 
-    // Admin notification (fire-and-forget)
+    // Admin notification (logged for visibility)
     if (env?.RESEND_API_KEY) {
       const fullName = (user.user_metadata?.full_name ?? user.user_metadata?.name) as string | null ?? null;
       const provider = (user.app_metadata?.provider as string) ?? 'email';
@@ -67,7 +80,20 @@ export async function ensureProfile(db: Db, user: User, env?: { RESEND_API_KEY?:
         userEmail: user.email ?? '',
         provider,
       });
-      sendEmail(env, { to: ADMIN_EMAIL, subject: notif.subject, html: notif.html, text: notif.text }).catch(() => {});
+      sendEmail(env, { to: ADMIN_EMAIL, subject: notif.subject, html: notif.html, text: notif.text })
+        .then(async (result) => {
+          await db.insert(newsletterLogs).values({
+            id: crypto.randomUUID(),
+            recipientEmail: ADMIN_EMAIL,
+            subject: notif.subject,
+            status: result.success ? 'sent' : 'failed',
+            errorMessage: result.error ?? null,
+            resendId: result.id ?? null,
+            userId: user.id,
+            digestType: 'admin_signup',
+          }).onConflictDoNothing();
+        })
+        .catch(() => {});
     }
   }
 }
