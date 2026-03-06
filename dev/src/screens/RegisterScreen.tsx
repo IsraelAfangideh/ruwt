@@ -169,7 +169,6 @@ export function RegisterScreen() {
               value={name}
               onChangeText={setName}
               editable={!loading}
-              label="Name"
               testID="name-input"
             />
           </View>
@@ -184,7 +183,6 @@ export function RegisterScreen() {
               keyboardType="email-address"
               autoCapitalize="none"
               editable={!loading}
-              label="Email"
             />
           </View>
 
@@ -198,7 +196,6 @@ export function RegisterScreen() {
               secureTextEntry
               editable={!loading}
               onSubmitEditing={handleRegister}
-              label="Password"
               aria-describedby="register-password-hint"
             />
             <Text nativeID="register-password-hint" style={[styles.hint, { color: c.textMuted }]}>Must be at least 8 characters</Text>

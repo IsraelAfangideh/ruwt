@@ -152,7 +152,6 @@ export function LoginScreen() {
               keyboardType="email-address"
               autoCapitalize="none"
               editable={!loading}
-              label="Email"
               testID="email-input"
             />
           </View>
@@ -172,7 +171,6 @@ export function LoginScreen() {
               secureTextEntry
               editable={!loading}
               onSubmitEditing={handleEmailLogin}
-              label="Password"
               testID="password-input"
             />
           </View>
