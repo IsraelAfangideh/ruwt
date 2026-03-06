@@ -7,8 +7,8 @@ import { eq, and, desc, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import { getDb } from '../../../_shared/db';
 import { getUser } from '../../../_shared/auth';
-import { canManageAssessment, getUserOrg, hasActiveSubscription, requireTeamAccount, isOnActiveTrial, TRIAL_MAX_INVITES } from '../../../_shared/org';
-import { assessments, assessmentInvites, assessmentChallenges, profiles, organizations, emailLogs } from '../../../../drizzle/schema.d1';
+import { canManageAssessment, getUserOrg, hasActiveSubscription, requireTeamAccount, claimTrialSlot } from '../../../_shared/org';
+import { assessments, assessmentInvites, assessmentChallenges, profiles, emailLogs } from '../../../../drizzle/schema.d1';
 import { sendEmail } from '../../../_shared/newsletter/resend';
 import { candidateInviteEmail } from '../../../_shared/email/templates';
 
@@ -80,30 +80,13 @@ export async function onRequestPost(context: { request: Request; env: Env; param
       );
     }
 
-    // Atomic trial invite limit check + increment (prevents race conditions)
-    const onTrial = await isOnActiveTrial(db, orgId);
-    let isTrialNotPaid = false;
-    if (onTrial) {
-      const [orgRow] = await db
-        .select({ subscriptionStatus: organizations.subscriptionStatus })
-        .from(organizations)
-        .where(eq(organizations.id, orgId))
-        .limit(1);
-      isTrialNotPaid = !!(orgRow && orgRow.subscriptionStatus !== 'active');
-      if (isTrialNotPaid) {
-        const claimResult = await db.run(sql`
-          UPDATE organizations
-          SET trial_invites_used = trial_invites_used + 1
-          WHERE id = ${orgId}
-            AND trial_invites_used < ${TRIAL_MAX_INVITES}
-        `);
-        if (!claimResult.meta?.changes) {
-          return Response.json(
-            { error: 'Trial invite limit reached. Subscribe to send more invites.', code: 'TRIAL_LIMIT_REACHED' },
-            { status: 403 },
-          );
-        }
-      }
+    // Atomic trial invite limit check + increment (single query, prevents race conditions)
+    const trialResult = await claimTrialSlot(db, orgId, 'invites');
+    if (trialResult === 'limit_reached') {
+      return Response.json(
+        { error: 'Trial invite limit reached. Subscribe to send more invites.', code: 'TRIAL_LIMIT_REACHED' },
+        { status: 403 },
+      );
     }
 
     const token = crypto.randomUUID().replace(/-/g, '').slice(0, 16);

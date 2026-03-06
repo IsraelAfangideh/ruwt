@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // ── Mocks ────────────────────────────────────────────────────────────
-const { mockGetUser, mockGetDb, mockGetUserOrgIds, mockRequireOrgAccess, mockRequireTeamAccount, mockGetUserOrg, mockIsOnActiveTrial, mockGetTrialStatus } = vi.hoisted(() => ({
+const { mockGetUser, mockGetDb, mockGetUserOrgIds, mockRequireOrgAccess, mockRequireTeamAccount, mockGetUserOrg, mockIsOnActiveTrial, mockGetTrialStatus, mockClaimTrialSlot } = vi.hoisted(() => ({
   mockGetUser: vi.fn(),
   mockGetDb: vi.fn(),
   mockGetUserOrgIds: vi.fn(),
@@ -10,6 +10,7 @@ const { mockGetUser, mockGetDb, mockGetUserOrgIds, mockRequireOrgAccess, mockReq
   mockGetUserOrg: vi.fn(),
   mockIsOnActiveTrial: vi.fn(),
   mockGetTrialStatus: vi.fn(),
+  mockClaimTrialSlot: vi.fn(),
 }));
 
 vi.mock('../_shared/auth', () => ({ getUser: mockGetUser }));
@@ -21,6 +22,7 @@ vi.mock('../_shared/org', () => ({
   getUserOrg: mockGetUserOrg,
   isOnActiveTrial: mockIsOnActiveTrial,
   getTrialStatus: mockGetTrialStatus,
+  claimTrialSlot: mockClaimTrialSlot,
   TRIAL_MAX_ASSESSMENTS: 1,
 }));
 
@@ -70,6 +72,8 @@ describe('POST /api/assessments', () => {
     mockIsOnActiveTrial.mockReset();
     mockIsOnActiveTrial.mockResolvedValue(false);
     mockGetTrialStatus.mockReset();
+    mockClaimTrialSlot.mockReset();
+    mockClaimTrialSlot.mockResolvedValue('not_trial');
   });
 
   it('returns 401 when not authenticated', async () => {

@@ -12,6 +12,7 @@ const {
   mockCandidateInviteEmail,
   mockIsOnActiveTrial,
   mockGetTrialStatus,
+  mockClaimTrialSlot,
 } = vi.hoisted(() => ({
   mockGetUser: vi.fn(),
   mockGetDb: vi.fn(),
@@ -23,6 +24,7 @@ const {
   mockCandidateInviteEmail: vi.fn(),
   mockIsOnActiveTrial: vi.fn(),
   mockGetTrialStatus: vi.fn(),
+  mockClaimTrialSlot: vi.fn(),
 }));
 
 vi.mock('../../../_shared/auth', () => ({ getUser: mockGetUser }));
@@ -34,6 +36,7 @@ vi.mock('../../../_shared/org', () => ({
   requireTeamAccount: mockRequireTeamAccount,
   isOnActiveTrial: mockIsOnActiveTrial,
   getTrialStatus: mockGetTrialStatus,
+  claimTrialSlot: mockClaimTrialSlot,
   TRIAL_MAX_INVITES: 3,
 }));
 vi.mock('../../../_shared/newsletter/resend', () => ({ sendEmail: mockSendEmail }));
@@ -90,6 +93,8 @@ describe('POST /api/assessments/:id/invites', () => {
     mockIsOnActiveTrial.mockReset();
     mockIsOnActiveTrial.mockResolvedValue(false); // Default: not on trial
     mockGetTrialStatus.mockReset();
+    mockClaimTrialSlot.mockReset();
+    mockClaimTrialSlot.mockResolvedValue('not_trial');
     mockSendEmail.mockReset();
     mockCandidateInviteEmail.mockReset();
     mockCandidateInviteEmail.mockReturnValue({

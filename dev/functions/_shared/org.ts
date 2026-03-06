@@ -65,6 +65,39 @@ export async function isOnActiveTrial(db: Db, orgId: string): Promise<boolean> {
   return new Date(org.trialEndsAt) > new Date();
 }
 
+/**
+ * Atomically claim a trial slot (assessment or invite).
+ * Checks trial active + not paid + counter < limit in a single UPDATE.
+ * Returns 'claimed' if slot acquired, 'limit_reached' if at limit, 'not_trial' if not on trial or paid.
+ */
+export async function claimTrialSlot(
+  db: Db,
+  orgId: string,
+  kind: 'assessments' | 'invites',
+): Promise<'claimed' | 'limit_reached' | 'not_trial'> {
+  const [org] = await db
+    .select({
+      trialEndsAt: organizations.trialEndsAt,
+      subscriptionStatus: organizations.subscriptionStatus,
+    })
+    .from(organizations)
+    .where(eq(organizations.id, orgId))
+    .limit(1);
+
+  if (!org?.trialEndsAt || new Date(org.trialEndsAt) <= new Date()) return 'not_trial';
+  if (org.subscriptionStatus === 'active') return 'not_trial';
+
+  const limit = kind === 'assessments' ? TRIAL_MAX_ASSESSMENTS : TRIAL_MAX_INVITES;
+
+  // Column name is from a fixed union type, safe to interpolate.
+  // orgId and limit are parameterized via sql template.
+  const result = kind === 'assessments'
+    ? await db.run(sql`UPDATE organizations SET trial_assessments_used = trial_assessments_used + 1 WHERE id = ${orgId} AND trial_assessments_used < ${limit}`)
+    : await db.run(sql`UPDATE organizations SET trial_invites_used = trial_invites_used + 1 WHERE id = ${orgId} AND trial_invites_used < ${limit}`);
+
+  return result.meta?.changes ? 'claimed' : 'limit_reached';
+}
+
 /** Check if a user can start a free trial. */
 export async function canStartTrial(
   db: Db,
