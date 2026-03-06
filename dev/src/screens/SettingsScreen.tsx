@@ -16,6 +16,7 @@ export function SettingsScreen() {
   const [subscriptionPlan, setSubscriptionPlan] = useState<string | null>(null);
   const [newsletterSubscribed, setNewsletterSubscribed] = useState<boolean>(true);
   const [togglingNewsletter, setTogglingNewsletter] = useState(false);
+  const [billingLoading, setBillingLoading] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const c = useColors();
   const { showToast } = useToast();
@@ -127,15 +128,24 @@ export function SettingsScreen() {
               {subscriptionStatus === 'active' || subscriptionStatus === 'past_due' ? (
                 <Button
                   variant="outline"
+                  disabled={billingLoading}
                   onPress={async () => {
+                    setBillingLoading(true);
                     try {
                       const res = await fetch('/api/billing/portal', { method: 'POST' });
-                      const data = await res.json();
-                      if (data.url) window.location.href = data.url;
-                    } catch {}
+                      const data = await res.json() as { url?: string; error?: string };
+                      if (data.url) {
+                        window.location.href = data.url;
+                        return;
+                      }
+                      showToast(data.error ?? 'Failed to open billing portal', 'error');
+                    } catch {
+                      showToast('Failed to open billing portal', 'error');
+                    }
+                    setBillingLoading(false);
                   }}
                 >
-                  Manage Billing
+                  {billingLoading ? 'Loading…' : 'Manage Billing'}
                 </Button>
               ) : (
                 <Button

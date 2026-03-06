@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { useColors } from '@/theme';
 import { spacing, fontSizes, fontFamily } from '@/theme/tokens';
+import { useToast } from '@/components/ui/Toast';
 import type { TrialInfo } from '@/components/TrialBanner';
 
 interface OrgMember {
@@ -53,6 +54,7 @@ const ROLE_COLORS: Record<string, string> = {
 export function OrgManagementScreen() {
   const navigation = useNavigation();
   const c = useColors();
+  const { showToast } = useToast();
   const supabase = createClient();
 
   const [user, setUser] = useState<any>(null);
@@ -73,6 +75,9 @@ export function OrgManagementScreen() {
   const [inviting, setInviting] = useState(false);
   const [inviteError, setInviteError] = useState<string | null>(null);
   const [inviteSuccess, setInviteSuccess] = useState(false);
+
+  // Billing
+  const [billingLoading, setBillingLoading] = useState(false);
 
   // Trial status
   const [trial, setTrial] = useState<TrialInfo | null>(null);
@@ -274,15 +279,24 @@ export function OrgManagementScreen() {
                 <Button
                   variant="outline"
                   size="sm"
+                  disabled={billingLoading}
                   onPress={async () => {
+                    setBillingLoading(true);
                     try {
                       const res = await fetch('/api/billing/portal', { method: 'POST' });
-                      const data = await res.json();
-                      if (data.url) window.location.href = data.url;
-                    } catch {}
+                      const data = await res.json() as { url?: string; error?: string };
+                      if (data.url) {
+                        window.location.href = data.url;
+                        return;
+                      }
+                      showToast(data.error ?? 'Failed to open billing portal', 'error');
+                    } catch {
+                      showToast('Failed to open billing portal', 'error');
+                    }
+                    setBillingLoading(false);
                   }}
                 >
-                  Manage Billing
+                  {billingLoading ? 'Loading…' : 'Manage Billing'}
                 </Button>
               </>
             ) : org.subscriptionStatus === 'canceled' ? (
@@ -315,15 +329,24 @@ export function OrgManagementScreen() {
                 <Button
                   variant="outline"
                   size="sm"
+                  disabled={billingLoading}
                   onPress={async () => {
+                    setBillingLoading(true);
                     try {
                       const res = await fetch('/api/billing/portal', { method: 'POST' });
-                      const data = await res.json();
-                      if (data.url) window.location.href = data.url;
-                    } catch {}
+                      const data = await res.json() as { url?: string; error?: string };
+                      if (data.url) {
+                        window.location.href = data.url;
+                        return;
+                      }
+                      showToast(data.error ?? 'Failed to open billing portal', 'error');
+                    } catch {
+                      showToast('Failed to open billing portal', 'error');
+                    }
+                    setBillingLoading(false);
                   }}
                 >
-                  Update Payment
+                  {billingLoading ? 'Loading…' : 'Update Payment'}
                 </Button>
               </>
             ) : trial && trial.isActive ? (
