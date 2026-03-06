@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { View, Text, ActivityIndicator, ScrollView, StyleSheet, Pressable } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { createClient } from '@/lib/supabase/client';
 import { DashboardLayout } from '@/components/DashboardLayout';
 
 import { Avatar } from '@/components/ui/Avatar';
@@ -11,6 +10,7 @@ import { ReplayViewer } from '@/components/ReplayViewer';
 import { useColors } from '@/theme';
 import { spacing, fontSizes, fontFamily } from '@/theme/tokens';
 import { useDocumentMeta } from '@/hooks/useDocumentMeta';
+import { useAuthGuard } from '@/hooks/useAuthGuard';
 import { formatCostFromHundredths } from '@/lib/ai/pricing';
 
 type GlobalEntry = {
@@ -49,8 +49,8 @@ interface SeasonInfo {
 
 export function LeaderboardScreen() {
   useDocumentMeta({ title: 'Leaderboard', description: 'See who uses AI most efficiently. Global rankings by challenges solved and average cost.', canonicalPath: '/leaderboard' });
+  const { user, loading: authLoading } = useAuthGuard();
   const navigation = useNavigation();
-  const [user, setUser] = useState<any>(null);
   const [tab, setTab] = useState<Tab>('global');
   const [period, setPeriod] = useState<Period>('week');
   const [globalEntries, setGlobalEntries] = useState<GlobalEntry[]>([]);
@@ -79,14 +79,8 @@ export function LeaderboardScreen() {
   };
 
   useEffect(() => {
+    if (!user) return;
     const init = async () => {
-      const supabase = createClient();
-      const { data: { user: u } } = await supabase.auth.getUser();
-      if (!u) {
-        navigation.reset({ index: 0, routes: [{ name: 'Login' as never }] });
-        return;
-      }
-      setUser(u);
       const base = typeof window !== 'undefined' ? window.location.origin : '';
       try {
         const [, chRes, seasonsRes] = await Promise.all([
@@ -106,7 +100,7 @@ export function LeaderboardScreen() {
       setLoading(false);
     };
     init();
-  }, [navigation]);
+  }, [user]);
 
   const handlePeriodChange = (p: Period) => {
     setPeriod(p);
@@ -147,15 +141,13 @@ export function LeaderboardScreen() {
     fetchChallengeLeaderboard(id);
   };
 
-  if (loading) {
+  if (authLoading || loading || !user) {
     return (
       <View style={[styles.center, { backgroundColor: c.bg }]}>
         <ActivityIndicator size="large" color={c.accent} />
       </View>
     );
   }
-  /* v8 ignore next */
-  if (!user) return null;
 
   return (
     <DashboardLayout user={user}>

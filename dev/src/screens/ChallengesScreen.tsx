@@ -1,7 +1,6 @@
 import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { View, Text, ActivityIndicator, StyleSheet, Pressable, TextInput, ScrollView } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { createClient } from '@/lib/supabase/client';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { Card, CardContent } from '@/components/ui/Card';
 import { ChallengeCard, type Challenge } from '@/components/ChallengeCard';
@@ -11,10 +10,9 @@ import { useToast } from '@/components/ui/Toast';
 import { useIsMobile } from '@/lib/useIsMobile';
 import { DIFFICULTIES, getDifficultyStyle } from '@/lib/difficulty';
 import { useDocumentMeta } from '@/hooks/useDocumentMeta';
+import { useAuthGuard } from '@/hooks/useAuthGuard';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
-
-const supabase = createClient();
 
 const CATEGORIES = [
   { key: 'all', label: 'All' },
@@ -80,8 +78,8 @@ function getInitialDifficulty(): string {
 
 export function ChallengesScreen() {
   useDocumentMeta({ title: 'AI Coding Challenges', description: 'Browse 60+ coding challenges across 11 categories. Test your AI efficiency in model selection, prompt engineering, debugging, and more.', canonicalPath: '/problems' });
+  const { user, loading: authLoading } = useAuthGuard();
   const navigation = useNavigation();
-  const [user, setUser] = useState<any>(null);
   const [challenges, setChallenges] = useState<Challenge[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeCategory, setActiveCategory] = useState(getInitialTab);
@@ -103,14 +101,8 @@ export function ChallengesScreen() {
   const isMobile = useIsMobile();
 
   useEffect(() => {
+    if (!user) return;
     const init = async () => {
-      const { data: { user: u } } = await supabase.auth.getUser();
-      /* istanbul ignore if -- @preserve auth guard redirect; getUser mock always returns user in tests */
-      if (!u) {
-        navigation.reset({ index: 0, routes: [{ name: 'Login' as never }] });
-        return;
-      }
-      setUser(u);
       try {
         const [challengeRes, dailyRes] = await Promise.all([
           fetch('/api/challenges'),
@@ -136,7 +128,7 @@ export function ChallengesScreen() {
       setLoading(false);
     };
     init();
-  }, [navigation]);
+  }, [user]);
 
   // Daily challenge countdown
   useEffect(() => {
@@ -279,16 +271,13 @@ export function ChallengesScreen() {
       .slice(0, 4);
   }, [filtered, progressStats.solved]);
 
-  if (loading) {
+  if (authLoading || loading || !user) {
     return (
       <View style={[styles.center, { backgroundColor: c.bg }]}>
         <ActivityIndicator size="large" color={c.accent} />
       </View>
     );
   }
-
-  /* istanbul ignore next -- @preserve user is always set after loading completes in tests */
-  if (!user) return null;
 
   const hasActiveFilters = activeLang !== 'all' || activeCategory !== 'all' || activeDifficulty !== 'all' || searchQuery.trim() !== '' || statusFilter !== 'all';
   const hasNonStatusFilters = activeLang !== 'all' || activeCategory !== 'all' || activeDifficulty !== 'all' || searchQuery.trim() !== '';

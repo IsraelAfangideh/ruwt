@@ -181,16 +181,15 @@ describe('checkAndAwardBadges', () => {
     db._enqueue([
       { challengeId: 'ch-1', totalCost: 500, createdAt: '2026-01-01T00:00:00Z', submittedAt: '2026-01-01T00:10:00Z', expiresAt: null },
     ]);
-    // Query 1: hasBadge('first_solve') -> no existing badge
+    // Query 1: getUserBadgeSet -> no existing badges
     db._enqueue([]);
-    // Query 2: hasBadge('penny_pincher') — totalCost=500 > 0 and < 100? No, 500 >= 100 so condition is false, skip
-    // Query 3: distinctModels
+    // Query 2: distinctModels
     db._enqueue([]);
-    // Query 4: solvedChallengeRows (languages)
+    // Query 3: solvedChallengeRows (languages)
     db._enqueue([{ language: 'javascript' }]);
-    // Query 5: allOfDiff easy
+    // Query 4: allOfDiff easy
     db._enqueue([{ id: 'ch-1' }, { id: 'ch-2' }]); // not all solved
-    // Query 6: allOfDiff medium
+    // Query 5: allOfDiff medium
     db._enqueue([{ id: 'ch-3' }]);
 
     const awarded = await checkAndAwardBadges(db, userId);
@@ -213,17 +212,15 @@ describe('checkAndAwardBadges', () => {
 
     // Query 0: passedAttempts
     db._enqueue(tenChallenges);
-    // Query 1: hasBadge('first_solve') -> already has it
-    db._enqueue([{ id: 'existing-badge' }]);
-    // Query 2: hasBadge('ten_solves') -> not yet
+    // Query 1: getUserBadgeSet -> already has first_solve
+    db._enqueue([{ badgeType: 'first_solve' }]);
+    // Query 2: distinctModels
     db._enqueue([]);
-    // Query 3: distinctModels
-    db._enqueue([]);
-    // Query 4: languages
+    // Query 3: languages
     db._enqueue(tenChallenges.map(() => ({ language: 'javascript' })));
-    // Query 5: easy challenges
+    // Query 4: easy challenges
     db._enqueue(Array.from({ length: 20 }, (_, i) => ({ id: `ch-${i}` })));
-    // Query 6: medium challenges
+    // Query 5: medium challenges
     db._enqueue([{ id: 'ch-medium-1' }]);
 
     const awarded = await checkAndAwardBadges(db, userId);
@@ -239,10 +236,8 @@ describe('checkAndAwardBadges', () => {
     db._enqueue([
       { challengeId: 'ch-1', totalCost: 50, createdAt: '2026-01-01T00:00:00Z', submittedAt: '2026-01-01T00:10:00Z', expiresAt: null },
     ]);
-    // hasBadge('first_solve') -> already has
-    db._enqueue([{ id: 'badge-1' }]);
-    // hasBadge('penny_pincher') -> not yet
-    db._enqueue([]);
+    // Query 1: getUserBadgeSet -> already has first_solve
+    db._enqueue([{ badgeType: 'first_solve' }]);
     // distinctModels
     db._enqueue([]);
     // languages
@@ -264,8 +259,8 @@ describe('checkAndAwardBadges', () => {
     db._enqueue([
       { challengeId: 'ch-1', totalCost: 0, createdAt: '2026-01-01T00:00:00Z', submittedAt: '2026-01-01T00:10:00Z', expiresAt: null },
     ]);
-    // hasBadge('first_solve') -> already has
-    db._enqueue([{ id: 'badge-1' }]);
+    // getUserBadgeSet -> already has first_solve
+    db._enqueue([{ badgeType: 'first_solve' }]);
     // distinctModels
     db._enqueue([]);
     // languages
@@ -290,10 +285,8 @@ describe('checkAndAwardBadges', () => {
     db._enqueue([
       { challengeId: 'ch-1', totalCost: 500, createdAt: created, submittedAt: submitted, expiresAt: expires },
     ]);
-    // hasBadge first_solve -> has it
-    db._enqueue([{ id: 'b1' }]);
-    // hasBadge speed_demon -> nope
-    db._enqueue([]);
+    // getUserBadgeSet -> already has first_solve
+    db._enqueue([{ badgeType: 'first_solve' }]);
     // distinctModels
     db._enqueue([]);
     // languages
@@ -314,8 +307,8 @@ describe('checkAndAwardBadges', () => {
     db._enqueue([
       { challengeId: 'ch-1', totalCost: 500, createdAt: '2026-01-01T00:00:00Z', submittedAt: '2026-01-01T00:01:00Z', expiresAt: null },
     ]);
-    // hasBadge first_solve -> has it
-    db._enqueue([{ id: 'b1' }]);
+    // getUserBadgeSet -> already has first_solve
+    db._enqueue([{ badgeType: 'first_solve' }]);
     // distinctModels
     db._enqueue([]);
     // languages
@@ -336,15 +329,13 @@ describe('checkAndAwardBadges', () => {
     db._enqueue([
       { challengeId: 'ch-1', totalCost: 500, createdAt: '2026-01-01T00:00:00Z', submittedAt: '2026-01-01T00:10:00Z', expiresAt: null },
     ]);
-    // hasBadge first_solve -> has it
-    db._enqueue([{ id: 'b1' }]);
+    // getUserBadgeSet -> already has first_solve
+    db._enqueue([{ badgeType: 'first_solve' }]);
     // distinctModels -> 5 models
     db._enqueue([
       { model: 'gpt-4o' }, { model: 'claude-3.5-sonnet' }, { model: 'llama-3.1-70b' },
       { model: 'gemini-pro' }, { model: 'mistral-large' },
     ]);
-    // hasBadge model_master -> nope
-    db._enqueue([]);
     // languages
     db._enqueue([{ language: 'javascript' }]);
     // easy
@@ -364,14 +355,12 @@ describe('checkAndAwardBadges', () => {
       { challengeId: 'ch-js', totalCost: 500, createdAt: '2026-01-01T00:00:00Z', submittedAt: '2026-01-01T00:10:00Z', expiresAt: null },
       { challengeId: 'ch-py', totalCost: 500, createdAt: '2026-01-01T00:00:00Z', submittedAt: '2026-01-01T00:10:00Z', expiresAt: null },
     ]);
-    // hasBadge first_solve -> has it
-    db._enqueue([{ id: 'b1' }]);
+    // getUserBadgeSet -> already has first_solve
+    db._enqueue([{ badgeType: 'first_solve' }]);
     // distinctModels
     db._enqueue([]);
     // languages -> js and python
     db._enqueue([{ language: 'javascript' }, { language: 'python' }]);
-    // hasBadge polyglot -> nope
-    db._enqueue([]);
     // easy challenges (not all solved)
     db._enqueue([{ id: 'ch-js' }, { id: 'ch-py' }, { id: 'ch-extra' }]);
     // medium
@@ -389,16 +378,14 @@ describe('checkAndAwardBadges', () => {
       { challengeId: 'e1', totalCost: 500, createdAt: '2026-01-01T00:00:00Z', submittedAt: '2026-01-01T00:10:00Z', expiresAt: null },
       { challengeId: 'e2', totalCost: 500, createdAt: '2026-01-01T00:00:00Z', submittedAt: '2026-01-01T00:10:00Z', expiresAt: null },
     ]);
-    // hasBadge first_solve -> has it
-    db._enqueue([{ id: 'b1' }]);
+    // getUserBadgeSet -> already has first_solve
+    db._enqueue([{ badgeType: 'first_solve' }]);
     // distinctModels
     db._enqueue([]);
     // languages
     db._enqueue([{ language: 'javascript' }]);
     // easy challenges -> exactly the 2 the user solved
     db._enqueue([{ id: 'e1' }, { id: 'e2' }]);
-    // hasBadge clean_sweep_easy -> nope
-    db._enqueue([]);
     // medium challenges (not all solved)
     db._enqueue([{ id: 'm1' }]);
 
@@ -413,8 +400,8 @@ describe('checkAndAwardBadges', () => {
     db._enqueue([
       { challengeId: 'e1', totalCost: 500, createdAt: '2026-01-01T00:00:00Z', submittedAt: '2026-01-01T00:10:00Z', expiresAt: null },
     ]);
-    // hasBadge first_solve -> has it
-    db._enqueue([{ id: 'b1' }]);
+    // getUserBadgeSet -> already has first_solve
+    db._enqueue([{ badgeType: 'first_solve' }]);
     // distinctModels
     db._enqueue([]);
     // languages
@@ -435,10 +422,8 @@ describe('checkAndAwardBadges', () => {
     db._enqueue([
       { challengeId: 'ch-1', totalCost: 50, createdAt: '2026-01-01T00:00:00Z', submittedAt: '2026-01-01T00:10:00Z', expiresAt: null },
     ]);
-    // hasBadge first_solve -> ALREADY HAS IT
-    db._enqueue([{ id: 'existing-first-solve' }]);
-    // hasBadge penny_pincher -> ALREADY HAS IT
-    db._enqueue([{ id: 'existing-penny' }]);
+    // getUserBadgeSet -> already has first_solve AND penny_pincher
+    db._enqueue([{ badgeType: 'first_solve' }, { badgeType: 'penny_pincher' }]);
     // distinctModels
     db._enqueue([]);
     // languages
@@ -462,7 +447,7 @@ describe('checkAndAwardBadges', () => {
     db._enqueue([
       { challengeId: 'ch-1', totalCost: 500, createdAt: '2026-01-01T00:00:00Z', submittedAt: '2026-01-01T00:10:00Z', expiresAt: null },
     ]);
-    // hasBadge first_solve -> nope
+    // getUserBadgeSet -> no existing badges
     db._enqueue([]);
     // distinctModels
     db._enqueue([]);
@@ -499,13 +484,7 @@ describe('checkAndAwardBadges', () => {
 
     // passedAttempts
     db._enqueue(attempts);
-    // hasBadge first_solve -> nope (fresh user)
-    db._enqueue([]);
-    // hasBadge ten_solves -> nope
-    db._enqueue([]);
-    // hasBadge penny_pincher -> nope
-    db._enqueue([]);
-    // hasBadge speed_demon -> nope
+    // getUserBadgeSet -> no existing badges (fresh user)
     db._enqueue([]);
     // distinctModels (< 5)
     db._enqueue([{ model: 'gpt-4o' }]);
@@ -537,12 +516,8 @@ describe('checkAndAwardBadges', () => {
 
     // Query 0: passedAttempts
     db._enqueue(twentyFiveChallenges);
-    // hasBadge('first_solve') -> already has it
-    db._enqueue([{ id: 'existing-badge' }]);
-    // hasBadge('ten_solves') -> already has it
-    db._enqueue([{ id: 'existing-badge' }]);
-    // hasBadge('twenty_five_solves') -> not yet
-    db._enqueue([]);
+    // Query 1: getUserBadgeSet -> already has first_solve and ten_solves
+    db._enqueue([{ badgeType: 'first_solve' }, { badgeType: 'ten_solves' }]);
     // distinctModels
     db._enqueue([]);
     // languages
@@ -572,14 +547,8 @@ describe('checkAndAwardBadges', () => {
 
     // Query 0: passedAttempts
     db._enqueue(fiftyChallenges);
-    // hasBadge('first_solve') -> already has it
-    db._enqueue([{ id: 'existing-badge' }]);
-    // hasBadge('ten_solves') -> already has it
-    db._enqueue([{ id: 'existing-badge' }]);
-    // hasBadge('twenty_five_solves') -> already has it
-    db._enqueue([{ id: 'existing-badge' }]);
-    // hasBadge('fifty_solves') -> not yet
-    db._enqueue([]);
+    // Query 1: getUserBadgeSet -> already has first_solve, ten_solves, twenty_five_solves
+    db._enqueue([{ badgeType: 'first_solve' }, { badgeType: 'ten_solves' }, { badgeType: 'twenty_five_solves' }]);
     // distinctModels
     db._enqueue([]);
     // languages
@@ -599,6 +568,8 @@ describe('checkAndAwardBadges', () => {
     const db = createSequentialDb();
 
     // passedAttempts -> empty
+    db._enqueue([]);
+    // getUserBadgeSet -> no existing badges
     db._enqueue([]);
 
     const awarded = await checkAndAwardBadges(db, userId);
@@ -621,9 +592,8 @@ describe('checkStreakBadges', () => {
   it('awards streak_3 badge at 3-day streak', async () => {
     const db = createSequentialDb();
 
-    // hasBadge streak_3 -> nope
+    // getUserBadgeSet -> no existing badges
     db._enqueue([]);
-    // remaining streak milestones (7, 30, 100) are below threshold so hasBadge not called
 
     const awarded = await checkStreakBadges(db, userId, 3, 0);
 
@@ -633,10 +603,8 @@ describe('checkStreakBadges', () => {
   it('awards streak_7 badge at 7-day streak (plus streak_3 if not already awarded)', async () => {
     const db = createSequentialDb();
 
-    // hasBadge streak_3 -> already has it
-    db._enqueue([{ id: 'b-s3' }]);
-    // hasBadge streak_7 -> nope
-    db._enqueue([]);
+    // getUserBadgeSet -> already has streak_3
+    db._enqueue([{ badgeType: 'streak_3' }]);
 
     const awarded = await checkStreakBadges(db, userId, 7, 0);
 
@@ -647,12 +615,8 @@ describe('checkStreakBadges', () => {
   it('awards streak_30 badge at 30-day streak', async () => {
     const db = createSequentialDb();
 
-    // hasBadge streak_3 -> has it
-    db._enqueue([{ id: 'b-s3' }]);
-    // hasBadge streak_7 -> has it
-    db._enqueue([{ id: 'b-s7' }]);
-    // hasBadge streak_30 -> nope
-    db._enqueue([]);
+    // getUserBadgeSet -> already has streak_3 and streak_7
+    db._enqueue([{ badgeType: 'streak_3' }, { badgeType: 'streak_7' }]);
 
     const awarded = await checkStreakBadges(db, userId, 30, 0);
 
@@ -664,14 +628,8 @@ describe('checkStreakBadges', () => {
   it('awards streak_100 badge at 100-day streak', async () => {
     const db = createSequentialDb();
 
-    // hasBadge streak_3 -> has
-    db._enqueue([{ id: 'b-s3' }]);
-    // hasBadge streak_7 -> has
-    db._enqueue([{ id: 'b-s7' }]);
-    // hasBadge streak_30 -> has
-    db._enqueue([{ id: 'b-s30' }]);
-    // hasBadge streak_100 -> nope
-    db._enqueue([]);
+    // getUserBadgeSet -> already has streak_3, streak_7, streak_30
+    db._enqueue([{ badgeType: 'streak_3' }, { badgeType: 'streak_7' }, { badgeType: 'streak_30' }]);
 
     const awarded = await checkStreakBadges(db, userId, 100, 0);
 
@@ -681,9 +639,8 @@ describe('checkStreakBadges', () => {
   it('awards daily_warrior badge at 10 daily challenge solves', async () => {
     const db = createSequentialDb();
 
-    // hasBadge daily_warrior -> nope
-    // But streak is 1, so no streak badges. Only daily_warrior check.
-    db._enqueue([]); // hasBadge daily_warrior -> nope
+    // getUserBadgeSet -> no existing badges
+    db._enqueue([]);
 
     const awarded = await checkStreakBadges(db, userId, 1, 10);
 
@@ -693,6 +650,9 @@ describe('checkStreakBadges', () => {
   it('does not award daily_warrior if daily solve count is below 10', async () => {
     const db = createSequentialDb();
 
+    // getUserBadgeSet -> no existing badges
+    db._enqueue([]);
+
     const awarded = await checkStreakBadges(db, userId, 1, 9);
 
     expect(awarded).not.toContain('daily_warrior');
@@ -701,16 +661,12 @@ describe('checkStreakBadges', () => {
   it('does not re-award streak badges the user already has', async () => {
     const db = createSequentialDb();
 
-    // hasBadge streak_3 -> already has
-    db._enqueue([{ id: 'b' }]);
-    // hasBadge streak_7 -> already has
-    db._enqueue([{ id: 'b' }]);
-    // hasBadge streak_30 -> already has
-    db._enqueue([{ id: 'b' }]);
-    // hasBadge streak_100 -> already has
-    db._enqueue([{ id: 'b' }]);
-    // hasBadge daily_warrior -> already has
-    db._enqueue([{ id: 'b' }]);
+    // getUserBadgeSet -> already has all streak badges and daily_warrior
+    db._enqueue([
+      { badgeType: 'streak_3' }, { badgeType: 'streak_7' },
+      { badgeType: 'streak_30' }, { badgeType: 'streak_100' },
+      { badgeType: 'daily_warrior' },
+    ]);
 
     const awarded = await checkStreakBadges(db, userId, 100, 10);
 
@@ -721,13 +677,7 @@ describe('checkStreakBadges', () => {
   it('awards all streak badges at once for a brand new 100-day streak user', async () => {
     const db = createSequentialDb();
 
-    // hasBadge streak_3 -> nope
-    db._enqueue([]);
-    // hasBadge streak_7 -> nope
-    db._enqueue([]);
-    // hasBadge streak_30 -> nope
-    db._enqueue([]);
-    // hasBadge streak_100 -> nope
+    // getUserBadgeSet -> no existing badges (fresh user)
     db._enqueue([]);
 
     const awarded = await checkStreakBadges(db, userId, 100, 0);
