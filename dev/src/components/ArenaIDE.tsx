@@ -5,6 +5,7 @@
  */
 import React, { useState, useRef, useEffect, useCallback, useMemo, Suspense } from 'react';
 import { arena } from '@/theme/colors';
+import { fontFamily } from '@/theme/tokens';
 import { VirtualFileSystem } from './arena/VirtualFileSystem';
 import { useCodeSync } from './arena/useCodeSync';
 import { useAIChat, type MessageMeta } from './arena/useAIChat';
@@ -23,20 +24,10 @@ import { ModeSelector } from './arena/ModeSelector';
 import { renderMarkdown, ThinkingBlock } from './arena/ChatMarkdown';
 import { ResultsBar, type TestResults } from './arena/ResultsBar';
 import ExpiryOverlay from './arena/ExpiryOverlay';
+import { formatTime } from '@/lib/utils';
 import '@/lib/monaco-init';
 
 const MonacoEditor = React.lazy(() => import('@monaco-editor/react'));
-
-function formatCost(cents: number): string {
-  const d = cents / 10000;
-  return d < 0.01 ? `$${d.toFixed(4)}` : `$${d.toFixed(2)}`;
-}
-
-function formatTime(seconds: number): string {
-  const m = Math.floor(seconds / 60);
-  const s = seconds % 60;
-  return `${m}:${s.toString().padStart(2, '0')}`;
-}
 
 /* ─── Constraint violation messages ──────────────────────────────── */
 
@@ -102,14 +93,12 @@ interface ArenaIDEProps {
   challenge: ArenaChallenge;
   attempt?: ArenaAttempt | null;
   guestMode?: boolean;
-  userCredits: number;
   code: string;
   onCodeChange: (code: string) => void;
   language: string;
   isExpired?: boolean;
   onExpire?: () => void;
   onRunTests: (sourceCode: string, language: string) => Promise<{ passed: boolean; passedTests: number; totalTests: number; results?: unknown[] }>;
-  onSubmit?: (sourceCode: string, language: string) => Promise<{ passed: boolean; passedTests: number; totalTests: number }>;
   onAttemptUpdate?: (attempt: ArenaAttempt) => void;
   onRestart?: () => void;
   onRunCode: (sourceCode: string, language: string) => Promise<{ stdout: string; stderr: string; exitCode: number }>;
@@ -244,7 +233,7 @@ function PastAttemptsSection({ attempts: pastAttempts }: { attempts: PastAttempt
           fontSize: 12,
           lineHeight: '1.6',
           color: arena.textMuted,
-          fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+          fontFamily: fontFamily.mono,
           textAlign: 'center' as const,
         }}>
           No past attempts yet. Run tests or submit your solution to see history here.
@@ -252,7 +241,7 @@ function PastAttemptsSection({ attempts: pastAttempts }: { attempts: PastAttempt
       )}
       {pastAttempts.map((a) => {
         const statusColor = a.status === 'passed' ? arena.success : a.status === 'failed' ? arena.error : arena.accent;
-        const costStr = formatCost(a.totalCost);
+        const costStr = formatCostFromHundredths(a.totalCost);
         const tokens = a.inputTokens + a.outputTokens;
         const timeAgo = getTimeAgo(a.createdAt);
         return (
@@ -260,7 +249,7 @@ function PastAttemptsSection({ attempts: pastAttempts }: { attempts: PastAttempt
             marginBottom: 8, background: arena.surface,
             border: `1px solid ${arena.border}`, borderRadius: 6,
             padding: '8px 12px', fontSize: 12,
-            fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+            fontFamily: fontFamily.mono,
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
               <span style={{
@@ -315,7 +304,7 @@ function MessageCopyButton({ content }: { content: string }) {
         fontSize: 10,
         padding: '1px 6px',
         cursor: 'pointer',
-        fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+        fontFamily: fontFamily.mono,
         marginLeft: 'auto',
         transition: 'color 0.15s',
       }}
@@ -360,7 +349,7 @@ function DescriptionPanel({ challenge, pastAttempts, notepadContent, onNotepadCh
               borderRadius: 6,
               fontSize: 11,
               color: arena.textMuted,
-              fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+              fontFamily: fontFamily.mono,
               lineHeight: '1.5',
             }}>
               <span style={{ color: arena.accent }}>{'\u{1F512}'}</span>{' '}
@@ -375,7 +364,7 @@ function DescriptionPanel({ challenge, pastAttempts, notepadContent, onNotepadCh
           <div style={s.sectionLabel}>Constraints</div>
           <div style={s.constraintsList}>
             {challenge.wallClockLimit != null && <div>Time limit: {formatTime(challenge.wallClockLimit)}</div>}
-            {challenge.maxCost != null && <div>Max cost: ${(challenge.maxCost / 10000).toFixed(2)}</div>}
+            {challenge.maxCost != null && <div>Max cost: {formatCostFromHundredths(challenge.maxCost)}</div>}
           </div>
         </div>
       )}
@@ -417,7 +406,7 @@ function DescriptionPanel({ challenge, pastAttempts, notepadContent, onNotepadCh
                 borderRadius: 6,
                 color: arena.text,
                 fontSize: 12,
-                fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+                fontFamily: fontFamily.mono,
                 padding: 10,
                 resize: 'vertical' as const,
                 lineHeight: '1.5',
@@ -508,6 +497,14 @@ export function ArenaIDE({
   isExpiredRef.current = isExpired;
   const isDragging = useRef(false);
   const rightPaneRef = useRef<HTMLDivElement>(null);
+
+  /** Reset all streaming-related state back to idle. */
+  const resetStreamingState = useCallback(() => {
+    setStreamingContent('');
+    setStreamingThinking('');
+    streamingThinkingRef.current = '';
+    setIsThinkingPhase(false);
+  }, []);
 
   const attemptId = attempt?.id ?? '';
 
@@ -756,7 +753,7 @@ export function ArenaIDE({
     const userMsg = { role: 'user' as const, content: text };
     setMessages((m) => [...m, userMsg]);
     setIsLoadingChat(true);
-    setStreamingContent('');
+    resetStreamingState();
 
     // Build the conversation with mode-aware system prompt
     const allMessages = [
@@ -823,39 +820,27 @@ export function ArenaIDE({
             // If user clicked Stop, handleStopChat already saved the message
             if (abortedByUserRef.current) {
               abortedByUserRef.current = false;
-              setStreamingContent('');
-              setStreamingThinking('');
-              streamingThinkingRef.current = '';
-              setIsThinkingPhase(false);
+              resetStreamingState();
               resolve(null);
               return;
             }
             const cleanContent = stripToolCalls(fullContent);
             const thinking = streamingThinkingRef.current || undefined;
             setMessages((m) => [...m, { role: 'assistant', content: cleanContent, meta, thinking }]);
-            setStreamingContent('');
-            setStreamingThinking('');
-            streamingThinkingRef.current = '';
-            setIsThinkingPhase(false);
+            resetStreamingState();
             lastRoundAppliedCode = await applyCodeFromResponse(fullContent);
             resolve(fullContent);
           },
           onError: (error) => {
             setMessages((m) => [...m, { role: 'assistant', content: `Request failed: ${error}` }]);
-            setStreamingContent('');
-            setStreamingThinking('');
-            streamingThinkingRef.current = '';
-            setIsThinkingPhase(false);
+            resetStreamingState();
             setIsLoadingChat(false);
             resolve(null);
           },
           onConstraint: (violation, message) => {
             const friendlyMsg = constraintMessages[violation] || message;
             setMessages((m) => [...m, { role: 'assistant', content: friendlyMsg, isConstraint: true }]);
-            setStreamingContent('');
-            setStreamingThinking('');
-            streamingThinkingRef.current = '';
-            setIsThinkingPhase(false);
+            resetStreamingState();
             constraintHit = true;
             if (violation === 'time') {
               onExpire?.();
@@ -871,10 +856,7 @@ export function ArenaIDE({
             setDisabledModels((prev) => new Set(prev).add(_modelId));
             setModelUnavailableMsg(message);
             setShowModelUnavailable(true);
-            setStreamingContent('');
-            setStreamingThinking('');
-            streamingThinkingRef.current = '';
-            setIsThinkingPhase(false);
+            resetStreamingState();
             setIsLoadingChat(false);
             setTimeout(() => setShowModelUnavailable(false), 5000);
             resolve(null);
@@ -952,12 +934,10 @@ export function ArenaIDE({
         content: partial + '\n\n*[stopped]*',
       }]);
     }
-    setStreamingContent('');
-    setStreamingThinking('');
-    streamingThinkingRef.current = '';
+    resetStreamingState();
     messageQueueRef.current = [];
     setQueueLength(0);
-  }, [abortChat, streamingContent, streamingThinking]);
+  }, [abortChat, streamingContent, streamingThinking, resetStreamingState]);
 
   // Retry: after messages are truncated by handleRetry, this effect fires
   // the retry with the latest sendMessage (which sees the truncated messages).
@@ -1008,10 +988,7 @@ export function ArenaIDE({
   const handleClearChat = useCallback(() => {
     if (isLoadingChat) handleStopChat();
     setMessages([]);
-    setStreamingContent('');
-    setStreamingThinking('');
-    streamingThinkingRef.current = '';
-    setIsThinkingPhase(false);
+    resetStreamingState();
     setChatInput('');
     setExpandedMessages(new Set());
     messageQueueRef.current = [];
@@ -1112,7 +1089,7 @@ export function ArenaIDE({
         @keyframes ruwt-pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
       `}</style>
       {/* Main content area */}
-      <div style={isMobile ? s.mainRowMobile : s.mainRow}>
+      <div style={isMobile ? s.mainRow : s.mainRow}>
         {/* LEFT SIDEBAR: Description/Chat tabs */}
         <div
           role="complementary"
@@ -1224,7 +1201,7 @@ export function ArenaIDE({
                       ))}
                       <span style={{ color: arena.textSubtle, fontSize: 11, textAlign: 'center', lineHeight: '1.5', marginTop: 4 }}>
                         {challenge.maxCost
-                          ? `Budget: ${formatCost(challenge.maxCost)} \u2014 choose your tier wisely.`
+                          ? `Budget: ${formatCostFromHundredths(challenge.maxCost)} \u2014 choose your tier wisely.`
                           : 'Costs tracked for leaderboard ranking.'}
                       </span>
                     </div>
@@ -1317,7 +1294,7 @@ export function ArenaIDE({
                       )}
                       {msg.meta && (
                         <div style={s.msgCostLine}>
-                          {modelInfo?.displayName || 'AI'} {'\u00B7'} {msg.meta.tokens.toLocaleString()} {msg.meta.tokens === 1 ? 'token' : 'tokens'} {'\u00B7'} {formatCost(msg.meta.cost)}
+                          {modelInfo?.displayName || 'AI'} {'\u00B7'} {msg.meta.tokens.toLocaleString()} {msg.meta.tokens === 1 ? 'token' : 'tokens'} {'\u00B7'} {formatCostFromHundredths(msg.meta.cost)}
                         </div>
                       )}
                       {msg.role === 'assistant' && isLastAssistant && !isLoadingChat && (
@@ -1514,19 +1491,19 @@ export function ArenaIDE({
                   />
                   {/* Pre-call cost estimate + running total */}
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingLeft: 2, paddingRight: 2 }}>
-                    <span id="chat-cost-estimate" style={{ fontSize: 10, color: arena.textSubtle, fontFamily: 'Menlo, Monaco, "Courier New", monospace' }}>
+                    <span id="chat-cost-estimate" style={{ fontSize: 10, color: arena.textSubtle, fontFamily: fontFamily.mono }}>
                       {chatInput.trim() && !chatDisabled && !guestMode
                         ? `${formatEstimatedCost(estimateChatCost(chatInput, model))} est`
                         : '\u00A0'}
                     </span>
                     {(inputTokens + outputTokens > 0) && (
-                      <span style={{ fontSize: 10, color: arena.textSubtle, fontFamily: 'Menlo, Monaco, "Courier New", monospace' }}>
-                        {(inputTokens + outputTokens).toLocaleString()} tok {'\u00B7'} {formatCost(totalCost)}
+                      <span style={{ fontSize: 10, color: arena.textSubtle, fontFamily: fontFamily.mono }}>
+                        {(inputTokens + outputTokens).toLocaleString()} tok {'\u00B7'} {formatCostFromHundredths(totalCost)}
                       </span>
                     )}
                   </div>
                   {queueLength > 0 && isLoadingChat && (
-                    <span style={{ fontSize: 10, color: arena.accent, fontFamily: 'Menlo, Monaco, "Courier New", monospace', paddingLeft: 2 }}>
+                    <span style={{ fontSize: 10, color: arena.accent, fontFamily: fontFamily.mono, paddingLeft: 2 }}>
                       {queueLength} message{queueLength > 1 ? 's' : ''} queued
                     </span>
                   )}
@@ -1605,7 +1582,7 @@ export function ArenaIDE({
                 options={{
                   minimap: { enabled: false },
                   fontSize: isMobile ? 13 : 14,
-                  fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+                  fontFamily: fontFamily.mono,
                   lineNumbers: isMobile ? ('off' as const) : ('on' as const),
                   renderLineHighlight: 'line' as const,
                   scrollBeyondLastLine: false,
@@ -1812,12 +1789,6 @@ const s: Record<string, React.CSSProperties> = {
     minHeight: 0,
     overflow: 'hidden',
   },
-  mainRowMobile: {
-    display: 'flex',
-    flex: 1,
-    minHeight: 0,
-    overflow: 'hidden',
-  },
 
   // Left sidebar
   sidebar: {
@@ -1869,7 +1840,7 @@ const s: Record<string, React.CSSProperties> = {
     borderRadius: 6,
     padding: '6px 14px',
     fontSize: 12,
-    fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+    fontFamily: fontFamily.mono,
     color: arena.text,
     display: 'flex',
     alignItems: 'center',
@@ -1907,7 +1878,7 @@ const s: Record<string, React.CSSProperties> = {
     fontSize: 11,
     fontWeight: 600,
     color: arena.textMuted,
-    fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+    fontFamily: fontFamily.mono,
     textTransform: 'uppercase' as const,
     letterSpacing: '0.5px',
   },
@@ -1919,7 +1890,7 @@ const s: Record<string, React.CSSProperties> = {
     fontSize: 10,
     padding: '2px 8px',
     cursor: 'pointer',
-    fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+    fontFamily: fontFamily.mono,
   },
 
   // Tab bar
@@ -1984,7 +1955,7 @@ const s: Record<string, React.CSSProperties> = {
     textTransform: 'uppercase' as const,
     letterSpacing: '0.5px',
     marginBottom: 10,
-    fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+    fontFamily: fontFamily.mono,
   },
   exampleBlock: {
     marginBottom: 12,
@@ -1992,7 +1963,7 @@ const s: Record<string, React.CSSProperties> = {
     border: `1px solid ${arena.border}`,
     borderRadius: 6,
     padding: '10px 12px',
-    fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+    fontFamily: fontFamily.mono,
     fontSize: 12,
   },
   exampleLabel: {
@@ -2009,7 +1980,7 @@ const s: Record<string, React.CSSProperties> = {
     fontSize: 12,
     color: arena.textMuted,
     lineHeight: '1.8',
-    fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+    fontFamily: fontFamily.mono,
   },
 
   // Chat panel
@@ -2076,7 +2047,7 @@ const s: Record<string, React.CSSProperties> = {
     fontSize: 11,
     fontWeight: 700,
     color: arena.accent,
-    fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+    fontFamily: fontFamily.mono,
     textTransform: 'uppercase' as const,
     letterSpacing: '0.5px',
   },
@@ -2084,7 +2055,7 @@ const s: Record<string, React.CSSProperties> = {
     fontSize: 11,
     fontWeight: 700,
     color: arena.textMuted,
-    fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+    fontFamily: fontFamily.mono,
     textTransform: 'uppercase' as const,
     letterSpacing: '0.5px',
   },
@@ -2101,7 +2072,7 @@ const s: Record<string, React.CSSProperties> = {
     fontSize: 13,
     lineHeight: '1.5',
     color: arena.text,
-    fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+    fontFamily: fontFamily.mono,
   },
 
   // Tier selector
@@ -2131,7 +2102,7 @@ const s: Record<string, React.CSSProperties> = {
     border: `1px solid ${arena.border}`,
     background: 'transparent',
     cursor: 'pointer',
-    fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+    fontFamily: fontFamily.mono,
     textAlign: 'center' as const,
     transition: 'all 0.15s',
     display: 'flex',
@@ -2163,7 +2134,7 @@ const s: Record<string, React.CSSProperties> = {
     border: 'none',
     borderBottom: `1px solid ${arena.border}`,
     cursor: 'pointer',
-    fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+    fontFamily: fontFamily.mono,
     textAlign: 'left' as const,
     width: '100%',
   },
@@ -2173,7 +2144,7 @@ const s: Record<string, React.CSSProperties> = {
     fontSize: 10,
     color: arena.textSubtle,
     marginTop: 4,
-    fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+    fontFamily: fontFamily.mono,
   },
   msgTierBadge: {
     display: 'inline-flex',
@@ -2181,7 +2152,7 @@ const s: Record<string, React.CSSProperties> = {
     gap: 4,
     fontSize: 10,
     color: arena.textMuted,
-    fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+    fontFamily: fontFamily.mono,
   },
   tierDot: {
     display: 'inline-block',
@@ -2197,7 +2168,7 @@ const s: Record<string, React.CSSProperties> = {
     fontSize: 11,
     padding: '2px 8px',
     cursor: 'pointer',
-    fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+    fontFamily: fontFamily.mono,
     marginTop: 4,
     display: 'inline-flex',
     alignItems: 'center',
@@ -2264,7 +2235,7 @@ const s: Record<string, React.CSSProperties> = {
     border: `1px solid ${arena.border}`,
     borderRadius: 8,
     cursor: 'pointer',
-    fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+    fontFamily: fontFamily.mono,
     position: 'relative' as const,
   },
   mobileFloatingTabActive: {
@@ -2282,7 +2253,7 @@ const s: Record<string, React.CSSProperties> = {
     border: `1px solid ${arena.accent}`,
     borderRadius: 8,
     cursor: 'pointer',
-    fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+    fontFamily: fontFamily.mono,
     position: 'relative' as const,
   },
   mobileUnreadDot: {
@@ -2305,7 +2276,7 @@ const s: Record<string, React.CSSProperties> = {
     fontSize: 10,
     padding: '3px 8px',
     cursor: 'pointer',
-    fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+    fontFamily: fontFamily.mono,
     marginRight: 10,
     flexShrink: 0,
     transition: 'color 0.15s, border-color 0.15s',
@@ -2334,7 +2305,7 @@ const s: Record<string, React.CSSProperties> = {
     fontSize: 10,
     padding: '2px 8px',
     cursor: 'pointer',
-    fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+    fontFamily: fontFamily.mono,
     marginTop: 4,
     transition: 'color 0.15s, border-color 0.15s',
   },

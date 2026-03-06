@@ -100,5 +100,10 @@ describe('tokens', () => {
       expect(fontFamily.body).toContain('Libre Franklin');
       expect(fontFamily.body).toContain('sans-serif');
     });
+
+    it('mono uses Menlo', () => {
+      expect(fontFamily.mono).toContain('Menlo');
+      expect(fontFamily.mono).toContain('monospace');
+    });
   });
 });

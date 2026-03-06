@@ -33,6 +33,7 @@ vi.mock('@/components/ui/Button', () => ({
 vi.mock('@/lib/ai/pricing', () => ({
   getModelById: (id: string) => id ? ({ name: 'Test Model', displayName: 'Llama 70B', tier: 'free' }) : null,
   tierColor: () => '#ccc',
+  formatCostFromHundredths: (h: number) => { const d = h / 10000; return d < 0.01 ? `$${d.toFixed(4)}` : `$${d.toFixed(2)}`; },
 }));
 vi.mock('@/components/AIProfileRadar', () => ({
   AIProfileRadar: () => <div data-testid="ai-radar" />,

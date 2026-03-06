@@ -13,21 +13,15 @@ export async function onRequestGet(context: { env: Env; request: Request }) {
     try {
       const db = getDb(context.env);
 
-      const [userCount] = await db
-        .select({ count: sql<number>`COUNT(*)` })
-        .from(profiles);
-
-      const [challengeCount] = await db
-        .select({ count: sql<number>`COUNT(*)` })
-        .from(challenges);
-
-      const [solveStats] = await db
-        .select({
+      const [[userCount], [challengeCount], [solveStats]] = await Promise.all([
+        db.select({ count: sql<number>`COUNT(*)` }).from(profiles),
+        db.select({ count: sql<number>`COUNT(*)` }).from(challenges),
+        db.select({
           solves: sql<number>`COUNT(CASE WHEN status = 'passed' THEN 1 END)`,
           totalSpend: sql<number>`COALESCE(SUM(total_cost), 0)`,
           avgSolveCost: sql<number>`COALESCE(AVG(CASE WHEN status = 'passed' THEN total_cost END), 0)`,
-        })
-        .from(attempts);
+        }).from(attempts),
+      ]);
 
       return Response.json({
         users: Number(userCount?.count ?? 0),

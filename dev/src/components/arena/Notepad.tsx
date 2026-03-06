@@ -1,5 +1,6 @@
 import React from 'react';
 import { arena } from '../../theme/colors';
+import { fontFamily } from '@/theme/tokens';
 
 interface NotepadProps {
   value: string;
@@ -37,7 +38,7 @@ const styles: Record<string, React.CSSProperties> = {
     resize: 'none',
     padding: '16px 18px',
     fontSize: 13,
-    fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+    fontFamily: fontFamily.mono,
     lineHeight: '1.6',
     boxSizing: 'border-box' as const,
   },

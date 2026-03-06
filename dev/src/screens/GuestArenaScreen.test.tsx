@@ -13,7 +13,7 @@ vi.mock('@/components/ArenaIDE', () => ({
     <div data-testid="arena-ide">
       {props.challenge?.title || 'IDE'}
       <button data-testid="run-tests-cb" onClick={() => props.onRunTests?.('code', 'javascript')}>RunTests</button>
-      <button data-testid="submit-cb" onClick={() => props.onSubmit?.('code', 'javascript')}>SubmitCb</button>
+      <button data-testid="submit-cb">SubmitCb</button>
       <button data-testid="run-code-cb" onClick={() => props.onRunCode?.('console.log(1)', 'javascript').catch(() => {})}>RunCode</button>
       <button data-testid="code-change-cb" onClick={() => props.onCodeChange?.('new code')}>ChangeCode</button>
       <span data-testid="guest-flag">{props.guestMode ? 'guest' : 'auth'}</span>
@@ -43,7 +43,7 @@ vi.mock('@/theme', () => ({
 vi.mock('@/theme/tokens', () => ({
   spacing: { xs: 4, sm: 8, md: 16, lg: 24, xl: 32, '2xl': 48 },
   fontSizes: { xs: 12, sm: 14, md: 16, lg: 18, xl: 20, '2xl': 24, '3xl': 30, '4xl': 36 },
-  fontFamily: { display: 'serif', body: 'sans-serif' },
+  fontFamily: { display: 'serif', body: 'sans-serif', mono: 'monospace' },
   radii: { sm: 4, md: 8, lg: 12, xl: 16, full: 9999 },
 }));
 
@@ -232,15 +232,6 @@ describe('GuestArenaScreen', () => {
     render(<GuestArenaScreen />);
     await waitFor(() => expect(screen.getByTestId('run-tests-cb')).toBeTruthy());
     fireEvent.click(screen.getByTestId('run-tests-cb'));
-    await waitFor(() => {
-      expect(screen.getByText('Sign Up to Continue')).toBeTruthy();
-    });
-  });
-
-  it('onSubmit callback shows signup overlay and returns failed result', async () => {
-    render(<GuestArenaScreen />);
-    await waitFor(() => expect(screen.getByTestId('submit-cb')).toBeTruthy());
-    fireEvent.click(screen.getByTestId('submit-cb'));
     await waitFor(() => {
       expect(screen.getByText('Sign Up to Continue')).toBeTruthy();
     });

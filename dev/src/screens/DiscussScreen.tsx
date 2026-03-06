@@ -20,6 +20,7 @@ import { spacing, fontSizes, fontFamily, radii } from '@/theme/tokens';
 import { useAuthGuard } from '@/hooks/useAuthGuard';
 import { useDocumentMeta } from '@/hooks/useDocumentMeta';
 import { formatCostFromHundredths } from '@/lib/ai/pricing';
+import { timeAgo } from '@/lib/utils';
 
 interface ActivityEntry {
   user: string;
@@ -28,21 +29,6 @@ interface ActivityEntry {
   challengeId?: string;
   cost: number;
   timestamp: string;
-}
-
-function relativeTime(timestamp: string): string {
-  const now = Date.now();
-  const then = new Date(timestamp).getTime();
-  const diffSec = Math.floor((now - then) / 1000);
-  if (diffSec < 60) return 'just now';
-  const diffMin = Math.floor(diffSec / 60);
-  if (diffMin < 60) return `${diffMin}m ago`;
-  const diffHr = Math.floor(diffMin / 60);
-  if (diffHr < 24) return `${diffHr}h ago`;
-  const diffDay = Math.floor(diffHr / 24);
-  if (diffDay === 1) return 'yesterday';
-  if (diffDay < 30) return `${diffDay}d ago`;
-  return `${Math.floor(diffDay / 30)}mo ago`;
 }
 
 export function DiscussScreen() {
@@ -125,7 +111,7 @@ export function DiscussScreen() {
                         <Text style={{ fontWeight: '600' }}>{entry.challenge}</Text>
                       </Text>
                       <Text style={[styles.activityTime, { color: c.textSubtle }]}>
-                        {relativeTime(entry.timestamp)}
+                        {timeAgo(entry.timestamp)}
                       </Text>
                     </View>
                     <View style={[styles.costBadge, { backgroundColor: c.accentBg, borderColor: c.accent + '30' }]}>

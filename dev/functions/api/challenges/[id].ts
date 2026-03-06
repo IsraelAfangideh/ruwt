@@ -21,24 +21,19 @@ export async function onRequestGet(context: {
       return Response.json({ error: 'Missing challenge id' }, { status: 400 });
     }
     const db = getDb(context.env);
-    const [challenge] = await db
-      .select()
-      .from(challenges)
-      .where(eq(challenges.id, id))
-      .limit(1);
-    if (!challenge) {
-      return Response.json({ error: 'Challenge not found' }, { status: 404 });
-    }
-
-    // Compute solver stats from attempts
-    const [statsRow] = await db
-      .select({
+    const [challengeResult, statsResult] = await Promise.all([
+      db.select().from(challenges).where(eq(challenges.id, id)).limit(1),
+      db.select({
         solvers: sql<number>`COUNT(DISTINCT CASE WHEN ${attempts.status} = 'passed' THEN ${attempts.userId} END)`,
         avgCost: sql<number>`AVG(CASE WHEN ${attempts.status} = 'passed' THEN ${attempts.totalCost} END)`,
         bestCost: sql<number>`MIN(CASE WHEN ${attempts.status} = 'passed' THEN ${attempts.totalCost} END)`,
-      })
-      .from(attempts)
-      .where(eq(attempts.challengeId, id));
+      }).from(attempts).where(eq(attempts.challengeId, id)),
+    ]);
+    const [challenge] = challengeResult;
+    const [statsRow] = statsResult;
+    if (!challenge) {
+      return Response.json({ error: 'Challenge not found' }, { status: 404 });
+    }
 
     let hiddenTestCount = 0;
     if (challenge.hiddenTestCases) {

@@ -71,7 +71,7 @@ vi.mock('@/lib/ai/pricing', () => ({
   estimateMessagesForBudget: (_cost: number, tier: string) => tier === 'premium' ? 2 : 10,
   getModelById: () => ({ name: 'Test Model' }),
   tierColor: () => '#ccc',
-  formatCostFromHundredths: (c: number) => `$${(c / 10000).toFixed(4)}`,
+  formatCostFromHundredths: (c: number) => { const d = c / 10000; return d < 0.01 ? `$${d.toFixed(4)}` : `$${d.toFixed(2)}`; },
 }));
 vi.mock('@/theme', () => ({
   useColors: () => ({
@@ -85,7 +85,7 @@ vi.mock('@/theme', () => ({
 vi.mock('@/theme/tokens', () => ({
   spacing: { xs: 4, sm: 8, md: 16, lg: 24, xl: 32, '2xl': 48 },
   fontSizes: { xs: 12, sm: 14, md: 16, lg: 18, xl: 20, '2xl': 24, '3xl': 30, '4xl': 36 },
-  fontFamily: { display: 'serif', body: 'sans-serif' },
+  fontFamily: { display: 'serif', body: 'sans-serif', mono: 'monospace' },
   radii: { sm: 4, md: 8, lg: 12, xl: 16, full: 9999 },
 }));
 

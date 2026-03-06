@@ -3,7 +3,7 @@
  * A rich, engaging dashboard with streak tracking, daily challenge,
  * stats, progress, activity heatmap, badges, and activity feed.
  */
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -29,6 +29,8 @@ import { Progress } from '@/components/ui/Progress';
 import { useColors } from '@/theme';
 import { spacing, fontSizes, fontFamily, radii } from '@/theme/tokens';
 import { getDifficultyStyle } from '@/lib/difficulty';
+import { formatCostFromHundredths } from '@/lib/ai/pricing';
+import { timeAgo, formatCategory, generateHeatmapDays } from '@/lib/utils';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -91,12 +93,6 @@ function getGreeting(): string {
   return 'Good evening';
 }
 
-function formatCost(hundredths: number): string {
-  const d = hundredths / 10000;
-  if (d === 0) return '$0.00';
-  return d < 0.01 ? `$${d.toFixed(4)}` : `$${d.toFixed(2)}`;
-}
-
 function formatCountdown(totalSeconds: number): string {
   const h = Math.floor(totalSeconds / 3600);
   const m = Math.floor((totalSeconds % 3600) / 60);
@@ -104,38 +100,6 @@ function formatCountdown(totalSeconds: number): string {
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 }
 
-function relativeTime(timestamp: string): string {
-  const now = Date.now();
-  const then = new Date(timestamp).getTime();
-  const diffSec = Math.floor((now - then) / 1000);
-  if (diffSec < 60) return 'just now';
-  const diffMin = Math.floor(diffSec / 60);
-  if (diffMin < 60) return `${diffMin}m ago`;
-  const diffHr = Math.floor(diffMin / 60);
-  if (diffHr < 24) return `${diffHr}h ago`;
-  const diffDay = Math.floor(diffHr / 24);
-  if (diffDay === 1) return 'yesterday';
-  if (diffDay < 30) return `${diffDay}d ago`;
-  return `${Math.floor(diffDay / 30)}mo ago`;
-}
-
-function formatCategory(key: string): string {
-  return key
-    .replace(/_/g, ' ')
-    .replace(/\b\w/g, (c) => c.toUpperCase());
-}
-
-/** Generate the last 91 days (13 full weeks). */
-function generateHeatmapDays(): string[] {
-  const days: string[] = [];
-  const today = new Date();
-  for (let i = 90; i >= 0; i--) {
-    const d = new Date(today);
-    d.setDate(today.getDate() - i);
-    days.push(d.toISOString().split('T')[0]);
-  }
-  return days;
-}
 
 // ---------------------------------------------------------------------------
 // Skeleton Loader Components
@@ -496,7 +460,7 @@ function ProgressSection({ data }: { data: DashboardData }) {
 
 function ActivityHeatmap({ data }: { data: DashboardData }) {
   const c = useColors();
-  const days = generateHeatmapDays();
+  const days = useMemo(() => generateHeatmapDays(), []);
   const heatmap = data.heatmap;
 
   // Determine max count for intensity scaling
@@ -716,7 +680,7 @@ function ActivityFeedSection({ data }: { data: DashboardData }) {
             <View
               key={`${entry.user}-${entry.timestamp}-${i}`}
               accessibilityRole="listitem"
-              accessibilityLabel={`${entry.user} solved ${entry.challenge}, ${relativeTime(entry.timestamp)}, ${formatCost(entry.cost)}`}
+              accessibilityLabel={`${entry.user} solved ${entry.challenge}, ${timeAgo(entry.timestamp)}, ${formatCostFromHundredths(entry.cost)}`}
               style={[
                 styles.activityRow,
                 i < activity.length - 1 && {
@@ -736,7 +700,7 @@ function ActivityFeedSection({ data }: { data: DashboardData }) {
                   <Text style={{ fontWeight: '600' }}>{entry.challenge}</Text>
                 </Text>
                 <Text style={[styles.activityTime, { color: c.textSubtle }]}>
-                  {relativeTime(entry.timestamp)}
+                  {timeAgo(entry.timestamp)}
                 </Text>
               </View>
               <View
@@ -746,7 +710,7 @@ function ActivityFeedSection({ data }: { data: DashboardData }) {
                 ]}
               >
                 <Text style={[styles.activityCostText, { color: c.accent }]}>
-                  {formatCost(entry.cost)}
+                  {formatCostFromHundredths(entry.cost)}
                 </Text>
               </View>
             </View>

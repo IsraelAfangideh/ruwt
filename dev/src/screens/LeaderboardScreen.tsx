@@ -11,6 +11,7 @@ import { ReplayViewer } from '@/components/ReplayViewer';
 import { useColors } from '@/theme';
 import { spacing, fontSizes, fontFamily } from '@/theme/tokens';
 import { useDocumentMeta } from '@/hooks/useDocumentMeta';
+import { formatCostFromHundredths } from '@/lib/ai/pricing';
 
 type GlobalEntry = {
   rank: number;
@@ -155,11 +156,6 @@ export function LeaderboardScreen() {
   }
   /* v8 ignore next */
   if (!user) return null;
-
-  const formatCost = (hundredths: number) => {
-    const d = hundredths / 10000;
-    return d < 0.01 ? `$${d.toFixed(4)}` : `$${d.toFixed(2)}`;
-  };
 
   return (
     <DashboardLayout user={user}>
@@ -306,8 +302,8 @@ export function LeaderboardScreen() {
                     {e.stats ? (
                       <>
                         <td style={{ width: 80, fontSize: fontSizes.xs, color: c.text as string, textAlign: 'right', padding: `${spacing.sm}px 0` }}>{e.stats.solved}</td>
-                        <td style={{ width: 80, fontSize: fontSizes.xs, color: c.textMuted as string, textAlign: 'right', padding: `${spacing.sm}px 0` }}>{formatCost(e.stats.avgCost)}</td>
-                        <td style={{ width: 80, fontSize: fontSizes.xs, color: c.textMuted as string, textAlign: 'right', padding: `${spacing.sm}px 0` }}>{formatCost(e.stats.totalCost)}</td>
+                        <td style={{ width: 80, fontSize: fontSizes.xs, color: c.textMuted as string, textAlign: 'right', padding: `${spacing.sm}px 0` }}>{formatCostFromHundredths(e.stats.avgCost)}</td>
+                        <td style={{ width: 80, fontSize: fontSizes.xs, color: c.textMuted as string, textAlign: 'right', padding: `${spacing.sm}px 0` }}>{formatCostFromHundredths(e.stats.totalCost)}</td>
                       </>
                     ) : (
                       <>
@@ -383,7 +379,7 @@ export function LeaderboardScreen() {
                     <Avatar src={e.user.avatarUrl} fallback={e.user.name?.[0] ?? '?'} size={28} />
                     <Text style={[styles.name, { color: e.user.username ? c.accent : c.text }]} numberOfLines={1}>{e.user.name}</Text>
                   </Pressable>
-                  <Text style={[styles.stat, { color: c.accent }]}>{formatCost(e.cost)}</Text>
+                  <Text style={[styles.stat, { color: c.accent }]}>{formatCostFromHundredths(e.cost)}</Text>
                   <Text style={[styles.stat, { color: c.textMuted }]}>{e.tokens.toLocaleString()} {e.tokens === 1 ? 'token' : 'tokens'}</Text>
                   <Pressable
                     onPress={() => setReplayAttemptId(e.attemptId)}

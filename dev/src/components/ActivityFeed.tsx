@@ -7,6 +7,7 @@ import { View, Text, StyleSheet } from 'react-native';
 import { useColors } from '@/theme';
 import { spacing, fontSizes, fontFamily } from '@/theme/tokens';
 import { formatCostFromHundredths } from '@/lib/ai/pricing';
+import { timeAgo } from '@/lib/utils';
 
 interface Activity {
   user: string;
@@ -14,18 +15,6 @@ interface Activity {
   challenge: string;
   cost: number;
   timestamp: string | null;
-}
-
-function timeAgo(ts: string | null): string {
-  if (!ts) return '';
-  const diff = Date.now() - new Date(ts).getTime();
-  const mins = Math.floor(diff / 60000);
-  if (mins < 1) return 'just now';
-  if (mins < 60) return `${mins}m ago`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h ago`;
-  const days = Math.floor(hrs / 24);
-  return `${days}d ago`;
 }
 
 export function ActivityFeed({ limit = 10, heading }: { limit?: number; heading?: string }) {

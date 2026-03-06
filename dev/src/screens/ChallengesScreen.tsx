@@ -14,6 +14,8 @@ import { useDocumentMeta } from '@/hooks/useDocumentMeta';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 
+const supabase = createClient();
+
 const CATEGORIES = [
   { key: 'all', label: 'All' },
   { key: 'real_world', label: 'Real-World' },
@@ -94,7 +96,6 @@ export function ChallengesScreen() {
   const [statusFilter, setStatusFilter] = useState<'all' | 'solved' | 'in_progress' | 'not_started'>('all');
   const [dailyChallenge, setDailyChallenge] = useState<{ challengeId: string; title: string; difficulty: string; category: string | null; solvedToday: boolean } | null>(null);
   const [dailyCountdown, setDailyCountdown] = useState(0);
-  const supabase = createClient();
   const c = useColors();
   const { isDark } = useTheme();
   const activePillText = isDark ? '#0f0e0d' : '#ffffff';
@@ -135,7 +136,7 @@ export function ChallengesScreen() {
       setLoading(false);
     };
     init();
-  }, [navigation, supabase.auth]);
+  }, [navigation]);
 
   // Daily challenge countdown
   useEffect(() => {

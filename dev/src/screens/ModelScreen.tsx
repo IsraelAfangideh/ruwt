@@ -8,7 +8,7 @@ import { useRoute } from '@react-navigation/native';
 import { useColors } from '@/theme';
 import { spacing, fontSizes, fontFamily } from '@/theme/tokens';
 import { useDocumentMeta } from '@/hooks/useDocumentMeta';
-import { tierColor, tierLabel } from '@/lib/ai/pricing';
+import { tierColor, tierLabel, formatCostFromHundredths } from '@/lib/ai/pricing';
 import type { ModelTier } from '@/lib/ai/pricing';
 
 interface ModelDetail {
@@ -58,11 +58,6 @@ export function ModelScreen() {
       .finally(() => setLoading(false));
   }, [modelId]);
 
-  const formatCost = (hundredths: number): string => {
-    const dollars = hundredths / 10000;
-    return dollars < 0.01 ? `$${dollars.toFixed(4)}` : `$${dollars.toFixed(2)}`;
-  };
-
   if (loading) {
     return (
       <View style={[styles.center, { backgroundColor: c.bg }]}>
@@ -82,7 +77,7 @@ export function ModelScreen() {
   const statCards: Array<{ label: string; value: string }> = [
     { label: 'Times Used', value: String(stats.timesUsed) },
     { label: 'Total Messages', value: String(stats.totalMessages) },
-    { label: 'Avg Cost / Msg', value: formatCost(stats.avgCostPerMessage) },
+    { label: 'Avg Cost / Msg', value: formatCostFromHundredths(stats.avgCostPerMessage) },
     { label: 'Win Rate', value: `${stats.winRate}%` },
   ];
 

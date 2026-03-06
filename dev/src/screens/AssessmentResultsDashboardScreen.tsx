@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { useColors } from '@/theme';
 import { spacing, fontSizes, fontFamily } from '@/theme/tokens';
-import { getModelById, tierColor } from '@/lib/ai/pricing';
+import { getModelById, tierColor, formatCostFromHundredths } from '@/lib/ai/pricing';
 import { AIProfileRadar, type AIProfile } from '@/components/AIProfileRadar';
 import { CandidateInsightsPanel } from '@/components/CandidateInsightsPanel';
 import { CandidateComparisonView } from '@/components/CandidateComparisonView';
@@ -152,11 +152,6 @@ export function AssessmentResultsDashboardScreen() {
     };
     init();
   }, [navigation, supabase.auth, params.assessmentId]);
-
-  const formatCost = (cost: number) => {
-    const dollars = cost / 10000;
-    return dollars < 0.01 ? `$${dollars.toFixed(4)}` : `$${dollars.toFixed(2)}`;
-  };
 
   const getDuration = (r: CandidateResult): number => {
     if (!r.session.completedAt) return 0;
@@ -356,7 +351,7 @@ export function AssessmentResultsDashboardScreen() {
             <Text style={[styles.summaryLabel, { color: c.textMuted }]}>{passThreshold?.enabled ? 'Fail' : 'None Passed'}</Text>
           </View>
           <View style={styles.summaryItem}>
-            <Text style={[styles.summaryValue, { color: c.accent }]}>{formatCost(avgCost)}</Text>
+            <Text style={[styles.summaryValue, { color: c.accent }]}>{formatCostFromHundredths(avgCost)}</Text>
             <Text style={[styles.summaryLabel, { color: c.textMuted }]}>Avg Cost</Text>
           </View>
         </View>
@@ -426,7 +421,7 @@ export function AssessmentResultsDashboardScreen() {
           candidates={comparisonCandidates}
           profiles={aiProfiles}
           insightsData={allInsights}
-          formatCost={formatCost}
+          formatCost={formatCostFromHundredths}
         />
       )}
 
@@ -496,7 +491,7 @@ export function AssessmentResultsDashboardScreen() {
                       {r.challengesPassed}/{r.totalChallenges}
                     </Text>
                     <Text style={[styles.td, styles.thCost, { color: c.accent }]}>
-                      {formatCost(r.session.totalCost)}
+                      {formatCostFromHundredths(r.session.totalCost)}
                     </Text>
                     <Text style={[styles.td, styles.thTokens, { color: c.textMuted }]}>
                       {r.session.totalTokens.toLocaleString()}
@@ -553,7 +548,7 @@ export function AssessmentResultsDashboardScreen() {
                         comparatives={sessionInsights.comparatives}
                         flags={sessionInsights.flags}
                         highlights={sessionInsights.highlights}
-                        formatCost={formatCost}
+                        formatCost={formatCostFromHundredths}
                       />
                     ) : (
                       // Fallback: show radar + basic attempt info if insights not available
@@ -586,7 +581,7 @@ export function AssessmentResultsDashboardScreen() {
                                 </Text>
                               </Badge>
                               <Text style={{ fontSize: fontSizes.xs, color: c.accent, marginLeft: 'auto' }}>
-                                {formatCost(a.totalCost)}
+                                {formatCostFromHundredths(a.totalCost)}
                               </Text>
                             </View>
                             {Object.keys(a.modelUsage).length > 0 && (
@@ -596,7 +591,7 @@ export function AssessmentResultsDashboardScreen() {
                                   return (
                                     <View key={modelId} style={[styles.modelUsageBadge, { borderColor: mi ? tierColor(mi.tier) : c.border }]}>
                                       <Text style={{ fontSize: 10, color: mi ? tierColor(mi.tier) : c.textMuted }}>
-                                        {mi?.displayName || modelId.split('/').pop()} {'\u00B7'} {usage.calls}x {'\u00B7'} {formatCost(usage.cost)}
+                                        {mi?.displayName || modelId.split('/').pop()} {'\u00B7'} {usage.calls}x {'\u00B7'} {formatCostFromHundredths(usage.cost)}
                                       </Text>
                                     </View>
                                   );

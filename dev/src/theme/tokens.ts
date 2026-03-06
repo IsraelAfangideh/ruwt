@@ -33,4 +33,5 @@ export const radii = {
 export const fontFamily = {
   display: '"Cormorant Garamond", serif',
   body: '"Libre Franklin", sans-serif',
+  mono: 'Menlo, Monaco, "Courier New", monospace',
 };

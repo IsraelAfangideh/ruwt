@@ -11,6 +11,7 @@ import { RadarChart } from '@/components/RadarChart';
 import { useColors } from '@/theme';
 import { spacing, fontSizes, fontFamily } from '@/theme/tokens';
 import { useDocumentMeta } from '@/hooks/useDocumentMeta';
+import { formatCostFromHundredths } from '@/lib/ai/pricing';
 
 interface ProfileData {
   user: {
@@ -43,11 +44,6 @@ interface ProfileData {
   }>;
 }
 
-function formatCost(hundredths: number): string {
-  const d = hundredths / 10000;
-  return d < 0.01 ? `$${d.toFixed(4)}` : `$${d.toFixed(2)}`;
-}
-
 export function PublicProfileScreen() {
   const navigation = useNavigation();
   const route = useRoute();
@@ -61,7 +57,7 @@ export function PublicProfileScreen() {
 
   useDocumentMeta({
     title: data ? `${data.user.name || data.user.username}'s Profile` : undefined,
-    description: data ? `${data.user.name || data.user.username} has solved ${data.stats.solved} challenges with an average cost of ${formatCost(data.stats.avgCost)}. View their AI efficiency stats on ruwt.dev.` : undefined,
+    description: data ? `${data.user.name || data.user.username} has solved ${data.stats.solved} challenges with an average cost of ${formatCostFromHundredths(data.stats.avgCost)}. View their AI efficiency stats on ruwt.dev.` : undefined,
     canonicalPath: username ? `/u/${username}` : undefined,
   });
 
@@ -135,7 +131,7 @@ export function PublicProfileScreen() {
         </View>
         <View style={[styles.statDivider, { backgroundColor: c.border }]} />
         <View style={styles.statItem}>
-          <Text style={[styles.statValue, { color: c.accent }]}>{formatCost(data.stats.avgCost)}</Text>
+          <Text style={[styles.statValue, { color: c.accent }]}>{formatCostFromHundredths(data.stats.avgCost)}</Text>
           <Text style={[styles.statLabel, { color: c.textMuted }]}>Avg Cost</Text>
         </View>
         <View style={[styles.statDivider, { backgroundColor: c.border }]} />
@@ -169,7 +165,7 @@ export function PublicProfileScreen() {
                   <View style={{ flex: 1 }}>
                     <Text style={[styles.replayTitle, { color: c.text }]}>{replay.challengeTitle}</Text>
                     <Text style={[styles.replayMeta, { color: c.textMuted }]}>
-                      {replay.challengeDifficulty} {'\u00B7'} {formatCost(replay.totalCost)} {'\u00B7'} {(replay.inputTokens + replay.outputTokens).toLocaleString()} tokens
+                      {replay.challengeDifficulty} {'\u00B7'} {formatCostFromHundredths(replay.totalCost)} {'\u00B7'} {(replay.inputTokens + replay.outputTokens).toLocaleString()} tokens
                     </Text>
                   </View>
                   <Text style={{ color: c.textMuted, fontSize: fontSizes.sm }}>{'\u2192'}</Text>

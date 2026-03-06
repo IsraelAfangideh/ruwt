@@ -18,8 +18,7 @@ import {
 import { profiles, organizations, orgMembers } from '../../../drizzle/schema.d1';
 import { sendEmail } from '../../_shared/newsletter/resend';
 import { trialStartNotificationEmail, trialWelcomeEmail } from '../../_shared/email/templates';
-
-const ADMIN_EMAIL = 'israel@ruwt.dev';
+import { ADMIN_EMAIL } from '../../_shared/ensure-profile';
 
 // Personal email domains where we should NOT derive org name from domain
 const PERSONAL_DOMAINS = new Set([

@@ -49,21 +49,24 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
     // Generate a share token
     const shareToken = crypto.randomUUID().replace(/-/g, '').slice(0, 16);
 
-    // Get challenge info for the share metadata
-    const [challenge] = await db
-      .select({ title: challenges.title, difficulty: challenges.difficulty, category: challenges.category })
-      .from(challenges)
-      .where(eq(challenges.id, attempt.challengeId))
-      .limit(1);
-
-    // Get rank for this attempt (by cost among passed attempts for same challenge)
-    const rankResult = await db
-      .select({
-        rank: sql<number>`(SELECT COUNT(*) + 1 FROM attempts a2 WHERE a2.challenge_id = ${attempt.challengeId} AND a2.status = 'passed' AND a2.total_cost < ${attempt.totalCost})`,
-      })
-      .from(attempts)
-      .where(eq(attempts.id, attempt.id))
-      .limit(1);
+    // Get challenge info and rank concurrently (both only depend on attempt)
+    const [challengeResult, rankResult] = await Promise.all([
+      // Challenge metadata for share card
+      db
+        .select({ title: challenges.title, difficulty: challenges.difficulty, category: challenges.category })
+        .from(challenges)
+        .where(eq(challenges.id, attempt.challengeId))
+        .limit(1),
+      // Rank for this attempt (by cost among passed attempts for same challenge)
+      db
+        .select({
+          rank: sql<number>`(SELECT COUNT(*) + 1 FROM attempts a2 WHERE a2.challenge_id = ${attempt.challengeId} AND a2.status = 'passed' AND a2.total_cost < ${attempt.totalCost})`,
+        })
+        .from(attempts)
+        .where(eq(attempts.id, attempt.id))
+        .limit(1),
+    ]);
+    const [challenge] = challengeResult;
     const rank = rankResult[0]?.rank ?? 0;
 
     // Store the share token on the attempt (reuse replay_public column pattern)

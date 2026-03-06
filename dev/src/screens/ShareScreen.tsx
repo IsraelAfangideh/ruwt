@@ -9,6 +9,7 @@ import { useColors } from '@/theme';
 import { spacing, fontSizes, fontFamily } from '@/theme/tokens';
 import { getDifficultyStyle } from '@/lib/difficulty';
 import { useDocumentMeta } from '@/hooks/useDocumentMeta';
+import { formatCostFromHundredths } from '@/lib/ai/pricing';
 
 interface ShareData {
   attemptId: string;
@@ -31,11 +32,6 @@ interface ShareData {
   } | null;
 }
 
-function formatCost(cents: number): string {
-  const d = cents / 10000;
-  return d < 0.01 ? `$${d.toFixed(4)}` : `$${d.toFixed(2)}`;
-}
-
 export function ShareScreen() {
   const route = useRoute();
   const navigation = useNavigation();
@@ -48,8 +44,8 @@ export function ShareScreen() {
   const [error, setError] = useState<string | null>(null);
 
   useDocumentMeta({
-    title: data ? `${data.solver?.name || 'A developer'} solved "${data.challenge?.title || 'Challenge'}" for ${formatCost(data.cost)}` : undefined,
-    description: data ? `Solved with ${formatCost(data.cost)} AI cost on ruwt.dev. Ranked by efficiency.` : undefined,
+    title: data ? `${data.solver?.name || 'A developer'} solved "${data.challenge?.title || 'Challenge'}" for ${formatCostFromHundredths(data.cost)}` : undefined,
+    description: data ? `Solved with ${formatCostFromHundredths(data.cost)} AI cost on ruwt.dev. Ranked by efficiency.` : undefined,
     canonicalPath: attemptId ? `/share/${attemptId}` : undefined,
   });
 
@@ -126,7 +122,7 @@ export function ShareScreen() {
 
         <View style={styles.statsRow}>
           <View style={styles.stat}>
-            <Text style={[styles.statValue, { color: c.accent }]}>{formatCost(data.cost)}</Text>
+            <Text style={[styles.statValue, { color: c.accent }]}>{formatCostFromHundredths(data.cost)}</Text>
             <Text style={[styles.statLabel, { color: c.textMuted }]}>AI Cost</Text>
           </View>
           <View style={styles.stat}>

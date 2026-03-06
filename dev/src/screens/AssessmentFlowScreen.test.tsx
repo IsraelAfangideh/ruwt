@@ -13,7 +13,7 @@ vi.mock('@/components/ArenaIDE', () => ({
     <div data-testid="arena-ide">
       {props.challenge?.title || 'IDE'}
       <button data-testid="run-tests-btn" onClick={() => props.onRunTests?.('code', 'javascript').catch(() => {})}>Run Tests</button>
-      <button data-testid="submit-btn" onClick={() => props.onSubmit?.('code', 'javascript').catch(() => {})}>Submit</button>
+      <button data-testid="submit-btn">Submit</button>
       <button data-testid="dismiss-btn" onClick={() => props.onDismissResults?.()}>Dismiss</button>
       <button data-testid="update-attempt-btn" onClick={() => props.onAttemptUpdate?.({ id: 'att-updated' })}>Update Attempt</button>
       <button data-testid="run-code-btn" onClick={() => props.onRunCode?.('console.log(1)', 'javascript').catch(() => {})}>Run Code</button>
@@ -41,7 +41,7 @@ vi.mock('@/theme', () => ({
 vi.mock('@/theme/tokens', () => ({
   spacing: { xs: 4, sm: 8, md: 16, lg: 24, xl: 32, '2xl': 48 },
   fontSizes: { xs: 12, sm: 14, md: 16, lg: 18, xl: 20, '2xl': 24, '3xl': 30, '4xl': 36 },
-  fontFamily: { display: 'serif', body: 'sans-serif' },
+  fontFamily: { display: 'serif', body: 'sans-serif', mono: 'monospace' },
   radii: { sm: 4, md: 8, lg: 12, xl: 16, full: 9999 },
 }));
 
@@ -270,20 +270,6 @@ describe('AssessmentFlowScreen', () => {
     expect(screen.queryByText('View Results')).toBeNull();
   });
 
-  it('fetches user credits from dashboard endpoint', async () => {
-    const fetchFn = setupFetch({
-      '/api/assess/test-session-123': ok(mockSessionData),
-      '/api/dashboard': ok(mockDashboardData),
-    });
-    render(<AssessmentFlowScreen />);
-    await waitFor(() => {
-      expect(screen.getAllByText('FizzBuzz').length).toBeGreaterThanOrEqual(1);
-    });
-    // Verify fetch was called with /api/dashboard
-    const calls = fetchFn.mock.calls.map((c: any) => c[0]);
-    expect(calls.some((url: string) => url.includes('/api/dashboard'))).toBeTruthy();
-  });
-
   it('sets attempt from currentAttempt data (line 64)', async () => {
     // Ensures line 64: setAttempt(data.currentAttempt) is covered
     render(<AssessmentFlowScreen />);
@@ -383,41 +369,6 @@ describe('AssessmentFlowScreen', () => {
     window.removeEventListener('unhandledrejection', handler);
   });
 
-  it('onSubmit calls /api/submissions with submit mode', async () => {
-    const fetchFn = setupFetch({
-      '/api/assess/test-session-123': ok(mockSessionData),
-      '/api/dashboard': ok(mockDashboardData),
-      '/api/submissions': ok({ success: true, passedTests: 5, totalTests: 5, results: [] }),
-    });
-    render(<AssessmentFlowScreen />);
-    await waitFor(() => expect(screen.getByTestId('submit-btn')).toBeTruthy());
-    fireEvent.click(screen.getByTestId('submit-btn'));
-    await waitFor(() => {
-      const calls = fetchFn.mock.calls;
-      const submissionCall = calls.find((c: any) => {
-        if (!c[1]?.body) return false;
-        try { return JSON.parse(c[1].body).mode === 'submit'; } catch { return false; }
-      });
-      expect(submissionCall).toBeTruthy();
-    });
-  });
-
-  it('onSubmit throws on non-ok response', async () => {
-    const handler = (e: PromiseRejectionEvent) => { e.preventDefault(); };
-    window.addEventListener('unhandledrejection', handler);
-    setupFetch({
-      '/api/assess/test-session-123': ok(mockSessionData),
-      '/api/dashboard': ok(mockDashboardData),
-      '/api/submissions': fail({ error: 'Submit failed' }),
-    });
-    render(<AssessmentFlowScreen />);
-    await waitFor(() => expect(screen.getByTestId('submit-btn')).toBeTruthy());
-    fireEvent.click(screen.getByTestId('submit-btn'));
-    // Give time for the rejection to fire
-    await new Promise(r => setTimeout(r, 100));
-    window.removeEventListener('unhandledrejection', handler);
-  });
-
   it('handleNext advances to next challenge on success', async () => {
     // First render with passed test results - need to trigger tests first
     const nextChallenge = { id: 'c2', title: 'Challenge2', difficulty: 'medium', category: 'debug', description: 'Next', starterCode: '// next', testCases: '[]', language: 'javascript' };
@@ -428,9 +379,9 @@ describe('AssessmentFlowScreen', () => {
       '/api/assess/test-session-123/next': ok({ challenge: nextChallenge, attempt: { id: 'att2', status: 'in_progress' }, challengeIndex: 1 }),
     });
     render(<AssessmentFlowScreen />);
-    await waitFor(() => expect(screen.getByTestId('submit-btn')).toBeTruthy());
-    // Submit to pass the challenge
-    fireEvent.click(screen.getByTestId('submit-btn'));
+    await waitFor(() => expect(screen.getByTestId('run-tests-btn')).toBeTruthy());
+    // Run tests to pass the challenge
+    fireEvent.click(screen.getByTestId('run-tests-btn'));
     await waitFor(() => {
       // After successful submit, "Next Challenge" button should appear (not last challenge)
       expect(screen.queryByText(/Next Challenge/)).toBeTruthy();
@@ -455,9 +406,9 @@ describe('AssessmentFlowScreen', () => {
       '/api/assess/test-session-123/complete': ok({ session: { shareToken: 'final-share' } }),
     });
     render(<AssessmentFlowScreen />);
-    await waitFor(() => expect(screen.getByTestId('submit-btn')).toBeTruthy());
-    // Submit to pass the last challenge
-    fireEvent.click(screen.getByTestId('submit-btn'));
+    await waitFor(() => expect(screen.getByTestId('run-tests-btn')).toBeTruthy());
+    // Run tests to pass the last challenge
+    fireEvent.click(screen.getByTestId('run-tests-btn'));
     await waitFor(() => {
       expect(screen.getByText('Complete Assessment')).toBeTruthy();
     });
@@ -538,8 +489,8 @@ describe('AssessmentFlowScreen', () => {
       '/api/assess/test-session-123/next': fail({}),
     });
     render(<AssessmentFlowScreen />);
-    await waitFor(() => expect(screen.getByTestId('submit-btn')).toBeTruthy());
-    fireEvent.click(screen.getByTestId('submit-btn'));
+    await waitFor(() => expect(screen.getByTestId('run-tests-btn')).toBeTruthy());
+    fireEvent.click(screen.getByTestId('run-tests-btn'));
     await waitFor(() => expect(screen.queryByText(/Next Challenge/)).toBeTruthy());
     fireEvent.click(screen.getByText(/Next Challenge/));
     // Should not crash - still shows original challenge
@@ -555,8 +506,8 @@ describe('AssessmentFlowScreen', () => {
       '/api/submissions': ok({ success: true, passedTests: 3, totalTests: 3, results: [] }),
     });
     render(<AssessmentFlowScreen />);
-    await waitFor(() => expect(screen.getByTestId('submit-btn')).toBeTruthy());
-    fireEvent.click(screen.getByTestId('submit-btn'));
+    await waitFor(() => expect(screen.getByTestId('run-tests-btn')).toBeTruthy());
+    fireEvent.click(screen.getByTestId('run-tests-btn'));
     await waitFor(() => expect(screen.queryByText(/Next Challenge/)).toBeTruthy());
     // Now make fetch throw for the /next call
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('network')));
@@ -606,8 +557,8 @@ describe('AssessmentFlowScreen', () => {
       '/api/assess/test-session-123/complete': ok({ session: {} }),
     });
     render(<AssessmentFlowScreen />);
-    await waitFor(() => expect(screen.getByTestId('submit-btn')).toBeTruthy());
-    fireEvent.click(screen.getByTestId('submit-btn'));
+    await waitFor(() => expect(screen.getByTestId('run-tests-btn')).toBeTruthy());
+    fireEvent.click(screen.getByTestId('run-tests-btn'));
     await waitFor(() => {
       expect(screen.getByText('Complete Assessment')).toBeTruthy();
     });

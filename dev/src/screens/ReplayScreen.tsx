@@ -419,7 +419,7 @@ export function ReplayScreen() {
                   readOnly: true,
                   minimap: { enabled: false },
                   fontSize: isDesktop ? 13 : 11,
-                  fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+                  fontFamily: fontFamily.mono,
                   lineNumbers: 'on',
                   scrollBeyondLastLine: false,
                   wordWrap: 'on',

@@ -27,18 +27,19 @@ export async function onRequestGet(context: { request: Request; env: Env; waitUn
       conditions.push(eq(notifications.read, 0));
     }
 
-    const rows = await db
-      .select()
-      .from(notifications)
-      .where(and(...conditions))
-      .orderBy(desc(notifications.createdAt))
-      .limit(limit);
-
-    // Always compute unread count regardless of filter
-    const [{ count: unreadCount }] = await db
-      .select({ count: sql<number>`COUNT(*)` })
-      .from(notifications)
-      .where(and(eq(notifications.userId, user.id), eq(notifications.read, 0)));
+    const [rows, [{ count: unreadCount }]] = await Promise.all([
+      db
+        .select()
+        .from(notifications)
+        .where(and(...conditions))
+        .orderBy(desc(notifications.createdAt))
+        .limit(limit),
+      // Always compute unread count regardless of filter
+      db
+        .select({ count: sql<number>`COUNT(*)` })
+        .from(notifications)
+        .where(and(eq(notifications.userId, user.id), eq(notifications.read, 0))),
+    ]);
 
     return Response.json({
       notifications: rows,

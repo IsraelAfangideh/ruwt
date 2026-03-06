@@ -10,6 +10,7 @@ import { VirtualShell, type ShellCallbacks } from './VirtualShell';
 import { RuwtTUI } from './RuwtTUI';
 import type { VirtualFileSystem } from './VirtualFileSystem';
 import { arena } from '@/theme/colors';
+import { fontFamily } from '@/theme/tokens';
 
 export interface TerminalPanelHandle {
   focus: () => void;
@@ -129,7 +130,7 @@ export const TerminalPanel = React.forwardRef<TerminalPanelHandle, TerminalPanel
           cyan: '#39d2e0',
           white: '#e6edf3',
         },
-        fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+        fontFamily: fontFamily.mono,
         fontSize: 13,
         lineHeight: 1.3,
         cursorBlink: true,

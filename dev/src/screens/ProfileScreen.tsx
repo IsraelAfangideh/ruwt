@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -19,6 +19,7 @@ import { useColors } from '@/theme';
 import { spacing, fontSizes, fontFamily, radii } from '@/theme/tokens';
 import { useAuthGuard } from '@/hooks/useAuthGuard';
 import { useDocumentMeta } from '@/hooks/useDocumentMeta';
+import { formatCategory, generateHeatmapDays } from '@/lib/utils';
 
 interface ProfileData {
   profile: {
@@ -55,24 +56,9 @@ interface BadgeCatalogEntry {
   icon: string;
 }
 
-function formatCategory(key: string): string {
-  return key.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
-}
-
-function generateHeatmapDays(): string[] {
-  const days: string[] = [];
-  const today = new Date();
-  for (let i = 90; i >= 0; i--) {
-    const d = new Date(today);
-    d.setDate(today.getDate() - i);
-    days.push(d.toISOString().split('T')[0]);
-  }
-  return days;
-}
-
 function ActivityHeatmap({ heatmap }: { heatmap: Record<string, number> }) {
   const c = useColors();
-  const days = generateHeatmapDays();
+  const days = useMemo(() => generateHeatmapDays(), []);
   const maxCount = Math.max(1, ...Object.values(heatmap));
   const totalActivity = Object.values(heatmap).reduce((s, v) => s + v, 0);
   const activeDays = Object.values(heatmap).filter((v) => v > 0).length;
