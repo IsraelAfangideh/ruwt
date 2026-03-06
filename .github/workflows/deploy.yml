@@ -42,7 +42,7 @@ jobs:
       web: ${{ steps.override.outputs.web }}
       api: ${{ steps.override.outputs.api }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           # CRITICAL: We need full history to compare commits/tags
           fetch-depth: 0
@@ -159,7 +159,7 @@ jobs:
     defaults:
       run: { working-directory: ./social/code/mobile }
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: oven-sh/setup-bun@v1
       
       # Install dependencies (from root because monorepo)
@@ -193,7 +193,7 @@ jobs:
     name: 🌐 Deploy Web
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       
       # Setup Node.js (required for Expo)
       - uses: actions/setup-node@v4
@@ -238,7 +238,7 @@ jobs:
     defaults:
       run: { working-directory: ./social/code }
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: superfly/flyctl-actions/setup-flyctl@master
       - name: Deploy to Fly
         run: flyctl deploy --config api/fly.toml --dockerfile api/Dockerfile .
@@ -258,7 +258,7 @@ jobs:
     defaults:
       run: { working-directory: ./social/code/mobile }
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: oven-sh/setup-bun@v1
       - uses: expo/expo-github-action@v8
         with:
@@ -281,7 +281,7 @@ jobs:
     defaults:
       run: { working-directory: ./social/code/mobile }
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: oven-sh/setup-bun@v1
       - uses: ruby/setup-ruby@v1
         with:

@@ -35,7 +35,7 @@ jobs:
       SEED_DRY_RUN: ${{ inputs.dry_run }}
       SEED_MEMORY: ${{ inputs.seed_memory }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: oven-sh/setup-bun@v1
 
       - name: Validate confirmation
