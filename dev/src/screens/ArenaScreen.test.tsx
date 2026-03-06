@@ -1499,9 +1499,9 @@ describe('ArenaScreen', () => {
     await waitFor(() => {
       expect(challengesFetchCount).toBeGreaterThanOrEqual(2);
     });
-    // The catch block sets window.location.href = '/challenges'
+    // The catch block sets window.location.href = '/problems'
     await waitFor(() => {
-      expect(window.location.href).toContain('/challenges');
+      expect(window.location.href).toContain('/problems');
     });
     Object.defineProperty(window, 'location', { value: originalLocation, writable: true });
   });
