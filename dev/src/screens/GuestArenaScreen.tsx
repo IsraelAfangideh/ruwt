@@ -11,6 +11,7 @@ import { View, Text, ActivityIndicator } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { ArenaIDE, type ArenaChallenge } from '@/components/ArenaIDE';
 import { arena } from '@/theme/colors';
+import { fontFamily } from '@/theme/tokens';
 import { getDifficultyStyle } from '@/lib/difficulty';
 import { useDocumentMeta } from '@/hooks/useDocumentMeta';
 
@@ -101,11 +102,6 @@ export function GuestArenaScreen() {
     return { passed: false, passedTests: 0, totalTests: 0, results: [] };
   }, [handleGuestAction]);
 
-  const onSubmit = useCallback(async () => {
-    handleGuestAction();
-    return { passed: false, passedTests: 0, totalTests: 0, results: [] };
-  }, [handleGuestAction]);
-
   if (loading) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: arena.bg }}>
@@ -169,7 +165,7 @@ export function GuestArenaScreen() {
               fontSize: 13,
               cursor: 'pointer',
               padding: '4px 8px',
-              fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+              fontFamily: fontFamily.mono,
             }}
             onClick={() => navigation.navigate('Landing' as never)}
           >
@@ -194,7 +190,7 @@ export function GuestArenaScreen() {
             borderRadius: 9999,
             border: `1px solid ${difficultyColor}40`,
             background: diffStyle.bg,
-            fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+            fontFamily: fontFamily.mono,
             textTransform: 'lowercase',
           }}>
             {diffStyle.label}
@@ -207,7 +203,7 @@ export function GuestArenaScreen() {
             borderRadius: 9999,
             border: `1px solid ${arena.accent}40`,
             background: `${arena.accent}15`,
-            fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+            fontFamily: fontFamily.mono,
           }}>
             GUEST MODE
           </span>
@@ -256,9 +252,7 @@ export function GuestArenaScreen() {
           onCodeChange={setCode}
           language={language}
           onRunTests={onRunTests}
-          onSubmit={onSubmit}
           onRunCode={onRunCode}
-          userCredits={0}
         />
 
         {/* Signup overlay */}

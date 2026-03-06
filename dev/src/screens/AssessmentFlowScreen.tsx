@@ -38,7 +38,6 @@ export function AssessmentFlowScreen() {
   const [testResults, setTestResults] = useState<TestResults | null>(null);
   const [advancing, setAdvancing] = useState(false);
   const [shareToken, setShareToken] = useState<string | null>(null);
-  const [userCredits, setUserCredits] = useState(100);
 
   const loadSession = useCallback(async () => {
     try {
@@ -66,13 +65,7 @@ export function AssessmentFlowScreen() {
 
       // Fetch actual user credits
       try {
-        const dashRes = await fetch('/api/dashboard');
-        if (dashRes.ok) {
-          const dashData = await dashRes.json();
-          if (typeof dashData.profile?.credits === 'number') {
-            setUserCredits(dashData.profile.credits);
-          }
-        }
+        // Dashboard fetch removed — credits no longer needed here
       } catch {}
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Something went wrong');
@@ -117,28 +110,6 @@ export function AssessmentFlowScreen() {
         results: data.results ?? [],
       };
       setTestResults({ ...result, isSubmission: false });
-      return result;
-    },
-    [attempt?.id]
-  );
-
-  const onSubmit = useCallback(
-    async (sourceCode: string, lang: string) => {
-      if (!attempt?.id) return { passed: false, passedTests: 0, totalTests: 0, results: [] };
-      const res = await fetch('/api/submissions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ attemptId: attempt.id, sourceCode, language: lang, mode: 'submit' }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Submit failed');
-      const result = {
-        passed: data.success ?? false,
-        passedTests: data.passedTests ?? 0,
-        totalTests: data.totalTests ?? 0,
-        results: data.results ?? [],
-      };
-      setTestResults({ ...result, isSubmission: true });
       return result;
     },
     [attempt?.id]
@@ -274,12 +245,10 @@ export function AssessmentFlowScreen() {
         <ArenaIDE
           challenge={challenge}
           attempt={attempt}
-          userCredits={userCredits}
           code={code}
           onCodeChange={setCode}
           language={language}
           onRunTests={onRunTests}
-          onSubmit={onSubmit}
           onAttemptUpdate={(next) => setAttempt(next)}
           testResults={testResults}
           onDismissResults={() => setTestResults(null)}

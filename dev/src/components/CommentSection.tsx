@@ -7,6 +7,8 @@ import { View, Text, TextInput, Pressable, StyleSheet, ActivityIndicator } from 
 import { useColors } from '@/theme';
 import { spacing, fontSizes, fontFamily } from '@/theme/tokens';
 import { ReactionBar } from './ReactionBar';
+import { timeAgo } from '@/lib/utils';
+import { formatCostFromHundredths } from '@/lib/ai/pricing';
 
 interface CommentUser {
   id: string;
@@ -31,22 +33,6 @@ interface CommentSectionProps {
   targetId: string;
   apiPath: string;
   promptText?: string;
-}
-
-function timeAgo(ts: string): string {
-  const diff = Date.now() - new Date(ts).getTime();
-  const mins = Math.floor(diff / 60000);
-  if (mins < 1) return 'just now';
-  if (mins < 60) return `${mins}m ago`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h ago`;
-  const days = Math.floor(hrs / 24);
-  return `${days}d ago`;
-}
-
-function formatCost(hundredths: number): string {
-  const dollars = hundredths / 10000;
-  return dollars < 0.01 ? `$${dollars.toFixed(4)}` : `$${dollars.toFixed(2)}`;
 }
 
 export function CommentSection({ targetType, targetId: _targetId, apiPath, promptText }: CommentSectionProps) {
@@ -143,7 +129,7 @@ export function CommentSection({ targetType, targetId: _targetId, apiPath, promp
         </Text>
         {comment.solveCost != null && comment.solveCost > 0 && (
           <Text style={[styles.costBadge, { color: c.accent }]}>
-            {formatCost(comment.solveCost)}
+            {formatCostFromHundredths(comment.solveCost)}
           </Text>
         )}
         <Text style={[styles.time, { color: c.textMuted }]}>

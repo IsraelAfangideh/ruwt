@@ -7,10 +7,8 @@ const mockReset = vi.fn();
 vi.mock('@react-navigation/native', () => ({
   useNavigation: () => ({ navigate: mockNavigate, reset: mockReset }),
 }));
-vi.mock('@/lib/supabase/client', () => ({
-  createClient: () => ({
-    auth: { getUser: vi.fn().mockResolvedValue({ data: { user: { id: 'u1' } } }) },
-  }),
+vi.mock('@/hooks/useAuthGuard', () => ({
+  useAuthGuard: () => ({ user: { id: 'u1' }, loading: false }),
 }));
 vi.mock('@/components/DashboardLayout', () => ({
   DashboardLayout: ({ children }: any) => <div data-testid="dashboard-layout">{children}</div>,

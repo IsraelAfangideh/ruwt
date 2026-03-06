@@ -6,6 +6,7 @@ import { View, Text, StyleSheet } from 'react-native';
 import { Card, CardContent } from '@/components/ui/Card';
 import { useColors } from '@/theme';
 import { spacing, fontSizes, fontFamily } from '@/theme/tokens';
+import { formatCostFromHundredths } from '@/lib/ai/pricing';
 
 export interface HighlightMoment {
   timestamp: string;
@@ -35,11 +36,6 @@ function formatTime(timestamp: string): string {
     /* istanbul ignore next -- @preserve defensive: Date constructor never throws in modern JS */
     return '';
   }
-}
-
-function formatCost(cents: number): string {
-  const dollars = cents / 10000;
-  return dollars < 0.01 ? `$${dollars.toFixed(4)}` : `$${dollars.toFixed(2)}`;
 }
 
 export function HighlightReel({ highlights }: HighlightReelProps) {
@@ -72,7 +68,7 @@ export function HighlightReel({ highlights }: HighlightReelProps) {
                     </Text>
                     {h.cost != null && h.cost > 0 && (
                       <Text style={[styles.cost, { color: c.accent }]}>
-                        {formatCost(h.cost)}
+                        {formatCostFromHundredths(h.cost)}
                       </Text>
                     )}
                   </View>

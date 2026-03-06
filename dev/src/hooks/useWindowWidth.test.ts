@@ -3,6 +3,8 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useWindowWidth, useIsDesktop } from './useWindowWidth';
 
+const DEBOUNCE_MS = 150;
+
 describe('useWindowWidth', () => {
   let originalInnerWidth: number;
 
@@ -31,6 +33,7 @@ describe('useWindowWidth', () => {
   });
 
   it('updates when window is resized', () => {
+    vi.useFakeTimers();
     Object.defineProperty(window, 'innerWidth', {
       value: 1024,
       writable: true,
@@ -49,9 +52,11 @@ describe('useWindowWidth', () => {
 
     act(() => {
       window.dispatchEvent(new Event('resize'));
+      vi.advanceTimersByTime(DEBOUNCE_MS);
     });
 
     expect(result.current).toBe(500);
+    vi.useRealTimers();
   });
 
   it('cleans up event listener on unmount', () => {
@@ -107,6 +112,7 @@ describe('useIsDesktop', () => {
   });
 
   it('updates reactively when window crosses breakpoint', () => {
+    vi.useFakeTimers();
     Object.defineProperty(window, 'innerWidth', {
       value: 900,
       writable: true,
@@ -125,8 +131,10 @@ describe('useIsDesktop', () => {
 
     act(() => {
       window.dispatchEvent(new Event('resize'));
+      vi.advanceTimersByTime(DEBOUNCE_MS);
     });
 
     expect(result.current).toBe(false);
+    vi.useRealTimers();
   });
 });

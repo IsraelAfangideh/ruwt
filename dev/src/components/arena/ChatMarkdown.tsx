@@ -4,6 +4,7 @@
  */
 import React from 'react';
 import { arena } from '@/theme/colors';
+import { fontFamily } from '@/theme/tokens';
 
 /* ─── Simple Markdown Renderer ────────────────────────────────────── */
 
@@ -229,7 +230,7 @@ export const mdStyles: Record<string, React.CSSProperties> = {
   codeLang: {
     fontSize: 11,
     color: arena.textMuted,
-    fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+    fontFamily: fontFamily.mono,
   },
   copyBtn: {
     background: 'transparent',
@@ -239,7 +240,7 @@ export const mdStyles: Record<string, React.CSSProperties> = {
     fontSize: 10,
     padding: '2px 8px',
     cursor: 'pointer',
-    fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+    fontFamily: fontFamily.mono,
   },
   collapseBtn: {
     background: 'transparent',
@@ -249,7 +250,7 @@ export const mdStyles: Record<string, React.CSSProperties> = {
     fontSize: 10,
     padding: '2px 8px',
     cursor: 'pointer',
-    fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+    fontFamily: fontFamily.mono,
   },
   hr: {
     border: 'none',
@@ -262,7 +263,7 @@ export const mdStyles: Record<string, React.CSSProperties> = {
     fontSize: 13,
     lineHeight: '1.45',
     color: arena.text,
-    fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+    fontFamily: fontFamily.mono,
     overflowX: 'auto',
     whiteSpace: 'pre',
   },
@@ -271,7 +272,7 @@ export const mdStyles: Record<string, React.CSSProperties> = {
     padding: '2px 5px',
     borderRadius: 3,
     fontSize: '0.9em',
-    fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+    fontFamily: fontFamily.mono,
   },
   link: {
     color: arena.accent,
@@ -329,7 +330,7 @@ export const ThinkingBlock = React.memo(function ThinkingBlock({ text, isStreami
           cursor: 'pointer',
           fontSize: 11,
           color: '#a78bfa',
-          fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+          fontFamily: fontFamily.mono,
           width: '100%',
           textAlign: 'left',
         }}
@@ -348,7 +349,7 @@ export const ThinkingBlock = React.memo(function ThinkingBlock({ text, isStreami
           fontSize: 11,
           lineHeight: '1.4',
           color: arena.textSubtle,
-          fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+          fontFamily: fontFamily.mono,
           whiteSpace: 'pre-wrap',
           wordBreak: 'break-word',
           background: 'rgba(167,139,250,0.04)',

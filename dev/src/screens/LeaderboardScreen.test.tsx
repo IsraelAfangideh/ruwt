@@ -2,19 +2,17 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 
-const { mockNavigate, mockReset, mockGetUser } = vi.hoisted(() => ({
+const { mockNavigate, mockReset } = vi.hoisted(() => ({
   mockNavigate: vi.fn(),
   mockReset: vi.fn(),
-  mockGetUser: vi.fn().mockResolvedValue({ data: { user: { id: 'u1' } } }),
 }));
 
+let mockAuthReturn: any = { user: { id: 'u1' }, loading: false };
 vi.mock('@react-navigation/native', () => ({
   useNavigation: () => ({ navigate: mockNavigate, reset: mockReset }),
 }));
-vi.mock('@/lib/supabase/client', () => ({
-  createClient: () => ({
-    auth: { getUser: mockGetUser },
-  }),
+vi.mock('@/hooks/useAuthGuard', () => ({
+  useAuthGuard: () => mockAuthReturn,
 }));
 vi.mock('@/components/DashboardLayout', () => ({
   DashboardLayout: ({ children }: any) => <div data-testid="dashboard-layout">{children}</div>,
@@ -100,7 +98,7 @@ function setupFetch(overrides: { leaderboardEntries?: any[]; challenges?: any[];
 describe('LeaderboardScreen', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockGetUser.mockResolvedValue({ data: { user: { id: 'u1' } } });
+    mockAuthReturn = { user: { id: 'u1' }, loading: false };
   });
 
   it('renders loading state initially', () => {
@@ -109,13 +107,12 @@ describe('LeaderboardScreen', () => {
     expect(container.querySelector('svg') || container.textContent).toBeTruthy();
   });
 
-  it('redirects to Login when user is not authenticated', async () => {
-    mockGetUser.mockResolvedValue({ data: { user: null } });
+  it('shows loading state when auth is loading (redirect handled by useAuthGuard)', async () => {
+    mockAuthReturn = { user: null, loading: true };
     setupFetch();
-    render(<LeaderboardScreen />);
-    await waitFor(() => {
-      expect(mockReset).toHaveBeenCalledWith({ index: 0, routes: [{ name: 'Login' }] });
-    });
+    const { container } = render(<LeaderboardScreen />);
+    // Should show loading spinner since authLoading is true
+    expect(container.querySelector('svg') || container.textContent).toBeTruthy();
   });
 
   it('renders leaderboard title after loading', async () => {

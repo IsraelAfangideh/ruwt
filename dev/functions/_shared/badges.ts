@@ -143,6 +143,50 @@ async function awardBadge(db: Db, userId: string, badgeType: string): Promise<bo
   return true;
 }
 
+/** Fetch all existing badge types for a user in a single query. */
+async function getUserBadgeSet(db: Db, userId: string): Promise<Set<string>> {
+  const rows = await db
+    .select({ badgeType: badges.badgeType })
+    .from(badges)
+    .where(eq(badges.userId, userId));
+  return new Set(rows.map((r: { badgeType: string }) => r.badgeType));
+}
+
+/** Award a badge if the user doesn't already have it, using a pre-fetched set. */
+async function awardBadgeIfNew(
+  db: Db,
+  userId: string,
+  badgeType: string,
+  existingBadges: Set<string>,
+): Promise<boolean> {
+  const def = BADGE_DEFS[badgeType];
+  if (!def) return false;
+  if (existingBadges.has(badgeType)) return false;
+
+  const id = crypto.randomUUID();
+  await db.insert(badges).values({
+    id,
+    userId,
+    badgeType: def.type,
+    title: def.title,
+    description: def.description,
+    icon: def.icon,
+  });
+
+  // Create notification
+  await db.insert(notifications).values({
+    id: crypto.randomUUID(),
+    userId,
+    type: 'badge_earned',
+    title: `Badge Earned: ${def.title}`,
+    body: def.description,
+    metadata: JSON.stringify({ badgeType, badgeId: id, icon: def.icon }),
+  });
+
+  existingBadges.add(badgeType); // Update set so subsequent checks are accurate
+  return true;
+}
+
 /**
  * Check all badge conditions for a user after a solve.
  * Returns list of newly awarded badge types.
@@ -165,25 +209,28 @@ export async function checkAndAwardBadges(db: Db, userId: string): Promise<strin
   const uniqueSolvedIds = new Set(passedAttempts.map((a) => a.challengeId));
   const solveCount = uniqueSolvedIds.size;
 
+  // Batch-fetch all existing badges for this user (eliminates N+1 hasBadge queries)
+  const existingBadges = await getUserBadgeSet(db, userId);
+
   // First solve
-  if (solveCount >= 1 && (await awardBadge(db, userId, 'first_solve'))) {
+  if (solveCount >= 1 && (await awardBadgeIfNew(db, userId, 'first_solve', existingBadges))) {
     awarded.push('first_solve');
   }
 
   // Solve count milestones
-  if (solveCount >= 10 && (await awardBadge(db, userId, 'ten_solves'))) {
+  if (solveCount >= 10 && (await awardBadgeIfNew(db, userId, 'ten_solves', existingBadges))) {
     awarded.push('ten_solves');
   }
-  if (solveCount >= 25 && (await awardBadge(db, userId, 'twenty_five_solves'))) {
+  if (solveCount >= 25 && (await awardBadgeIfNew(db, userId, 'twenty_five_solves', existingBadges))) {
     awarded.push('twenty_five_solves');
   }
-  if (solveCount >= 50 && (await awardBadge(db, userId, 'fifty_solves'))) {
+  if (solveCount >= 50 && (await awardBadgeIfNew(db, userId, 'fifty_solves', existingBadges))) {
     awarded.push('fifty_solves');
   }
 
   // Penny pincher — any solve under $0.01 (100 hundredths = $0.01)
   const cheapSolve = passedAttempts.some((a) => a.totalCost > 0 && a.totalCost < 100);
-  if (cheapSolve && (await awardBadge(db, userId, 'penny_pincher'))) {
+  if (cheapSolve && (await awardBadgeIfNew(db, userId, 'penny_pincher', existingBadges))) {
     awarded.push('penny_pincher');
   }
 
@@ -193,7 +240,7 @@ export async function checkAndAwardBadges(db: Db, userId: string): Promise<strin
     const elapsed = new Date(a.submittedAt).getTime() - new Date(a.createdAt).getTime();
     return elapsed < 5 * 60 * 1000; // under 5 min
   });
-  if (fastSolve && (await awardBadge(db, userId, 'speed_demon'))) {
+  if (fastSolve && (await awardBadgeIfNew(db, userId, 'speed_demon', existingBadges))) {
     awarded.push('speed_demon');
   }
 
@@ -206,7 +253,7 @@ export async function checkAndAwardBadges(db: Db, userId: string): Promise<strin
       sql`ai_calls.attempt_id = ${attempts.id}`
     )
     .where(and(eq(attempts.userId, userId), eq(attempts.status, 'passed')));
-  if (distinctModels.length >= 5 && (await awardBadge(db, userId, 'model_master'))) {
+  if (distinctModels.length >= 5 && (await awardBadgeIfNew(db, userId, 'model_master', existingBadges))) {
     awarded.push('model_master');
   }
 
@@ -219,7 +266,7 @@ export async function checkAndAwardBadges(db: Db, userId: string): Promise<strin
       sql`, `
     )})`);
   const languages = new Set(solvedChallengeRows.map((r) => r.language || 'javascript'));
-  if (languages.has('javascript') && languages.has('python') && (await awardBadge(db, userId, 'polyglot'))) {
+  if (languages.has('javascript') && languages.has('python') && (await awardBadgeIfNew(db, userId, 'polyglot', existingBadges))) {
     awarded.push('polyglot');
   }
 
@@ -232,7 +279,7 @@ export async function checkAndAwardBadges(db: Db, userId: string): Promise<strin
     const allSolved = allOfDiff.every((ch) => uniqueSolvedIds.has(ch.id));
     if (allOfDiff.length > 0 && allSolved) {
       const badgeType = diff === 'easy' ? 'clean_sweep_easy' : 'clean_sweep_medium';
-      if (await awardBadge(db, userId, badgeType)) {
+      if (await awardBadgeIfNew(db, userId, badgeType, existingBadges)) {
         awarded.push(badgeType);
       }
     }
@@ -247,6 +294,10 @@ export async function checkAndAwardBadges(db: Db, userId: string): Promise<strin
 /** Check streak-related badges. Called from streak update. */
 export async function checkStreakBadges(db: Db, userId: string, currentStreak: number, dailySolveCount: number): Promise<string[]> {
   const awarded: string[] = [];
+
+  // Batch-fetch all existing badges for this user (eliminates N+1 hasBadge queries)
+  const existingBadges = await getUserBadgeSet(db, userId);
+
   const streakMilestones = [
     { threshold: 3, badge: 'streak_3' },
     { threshold: 7, badge: 'streak_7' },
@@ -254,11 +305,11 @@ export async function checkStreakBadges(db: Db, userId: string, currentStreak: n
     { threshold: 100, badge: 'streak_100' },
   ];
   for (const m of streakMilestones) {
-    if (currentStreak >= m.threshold && (await awardBadge(db, userId, m.badge))) {
+    if (currentStreak >= m.threshold && (await awardBadgeIfNew(db, userId, m.badge, existingBadges))) {
       awarded.push(m.badge);
     }
   }
-  if (dailySolveCount >= 10 && (await awardBadge(db, userId, 'daily_warrior'))) {
+  if (dailySolveCount >= 10 && (await awardBadgeIfNew(db, userId, 'daily_warrior', existingBadges))) {
     awarded.push('daily_warrior');
   }
   return awarded;

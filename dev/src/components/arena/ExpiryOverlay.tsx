@@ -1,5 +1,7 @@
 import React from 'react';
 import { arena } from '@/theme/colors';
+import { fontFamily } from '@/theme/tokens';
+import { formatCostFromHundredths } from '@/lib/ai/pricing';
 
 interface ExpiryOverlayProps {
   totalTokens: number;
@@ -7,11 +9,6 @@ interface ExpiryOverlayProps {
   isMobile: boolean;
   onReview: () => void;
   onRestart?: () => void;
-}
-
-function formatCost(cents: number): string {
-  const d = cents / 10000;
-  return d < 0.01 ? `$${d.toFixed(4)}` : `$${d.toFixed(2)}`;
 }
 
 function ExpiryOverlay({ totalTokens, totalCost, isMobile, onReview, onRestart }: ExpiryOverlayProps) {
@@ -25,7 +22,7 @@ function ExpiryOverlay({ totalTokens, totalCost, isMobile, onReview, onRestart }
             <span style={s.expiryStatLabel}>tokens used</span>
           </div>
           <div style={s.expiryStat}>
-            <span style={s.expiryStatValue}>{formatCost(totalCost)}</span>
+            <span style={s.expiryStatValue}>{formatCostFromHundredths(totalCost)}</span>
             <span style={s.expiryStatLabel}>cost</span>
           </div>
         </div>
@@ -97,7 +94,7 @@ const s: Record<string, React.CSSProperties> = {
     fontSize: 16,
     fontWeight: 600,
     color: arena.accent,
-    fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+    fontFamily: fontFamily.mono,
   },
   expiryStatLabel: {
     fontSize: 11,

@@ -10,7 +10,7 @@ import { profiles, transactions, notifications, newsletterLogs } from '../../dri
 import { sendEmail } from './newsletter/resend';
 import { welcomeEmail, newSignupNotificationEmail } from './email/templates';
 
-const ADMIN_EMAIL = 'israel@ruwt.dev';
+export const ADMIN_EMAIL = 'israel@ruwt.dev';
 
 const SIGNUP_BONUS = 50000;
 

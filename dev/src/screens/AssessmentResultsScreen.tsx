@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/Badge';
 import { useColors } from '@/theme';
 import { spacing, fontSizes, fontFamily } from '@/theme/tokens';
 import { AIProfileRadar, type AIProfile } from '@/components/AIProfileRadar';
+import { formatCostFromHundredths } from '@/lib/ai/pricing';
 
 interface ChallengeResult {
   challenge: {
@@ -90,11 +91,6 @@ export function AssessmentResultsScreen() {
       </View>
     );
   }
-
-  const formatCost = (cost: number) => {
-    const dollars = cost / 10000;
-    return dollars < 0.01 ? `$${dollars.toFixed(4)}` : `$${dollars.toFixed(2)}`;
-  };
 
   const statusColor = (status: string) => {
     if (status === 'passed') return c.success;
@@ -188,7 +184,7 @@ export function AssessmentResultsScreen() {
           <Card style={styles.summaryCard}>
             <CardContent style={styles.summaryContent}>
               <Text style={[styles.summaryValue, { color: c.accent }]}>
-                {formatCost(data.summary.totalCost)}
+                {formatCostFromHundredths(data.summary.totalCost)}
               </Text>
               <Text style={[styles.summaryLabel, { color: c.textMuted }]}>Total AI Cost</Text>
             </CardContent>
@@ -296,7 +292,7 @@ export function AssessmentResultsScreen() {
             <CardContent>
               <View style={styles.statsRow}>
                 <View style={styles.stat}>
-                  <Text style={[styles.statValue, { color: c.accent }]}>{formatCost(cr.cost)}</Text>
+                  <Text style={[styles.statValue, { color: c.accent }]}>{formatCostFromHundredths(cr.cost)}</Text>
                   <Text style={[styles.statLabel, { color: c.textMuted }]}>Cost</Text>
                 </View>
                 <View style={styles.stat}>
@@ -315,7 +311,7 @@ export function AssessmentResultsScreen() {
                   <Text style={[styles.modelTitle, { color: c.textMuted }]}>Models Used:</Text>
                   {Object.entries(cr.modelUsage).map(([model, usage]) => (
                     <Text key={model} style={[styles.modelRow, { color: c.text }]}>
-                      {friendlyModelName(model)} — {usage.calls} call{usage.calls !== 1 ? 's' : ''} · {formatCost(usage.cost)}
+                      {friendlyModelName(model)} — {usage.calls} call{usage.calls !== 1 ? 's' : ''} · {formatCostFromHundredths(usage.cost)}
                     </Text>
                   ))}
                 </View>

@@ -5,6 +5,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/com
 import { useColors, useTheme } from '@/theme';
 import { spacing, fontSizes, fontFamily, radii } from '@/theme/tokens';
 import { getDifficultyStyle } from '@/lib/difficulty';
+import { formatCostFromHundredths } from '@/lib/ai/pricing';
 
 const IS_WEB = typeof document !== 'undefined';
 
@@ -39,11 +40,6 @@ function categoryLabel(cat: string | null | undefined) {
   if (cat === 'data_engineering') return 'Data';
   if (cat === 'devops') return 'DevOps';
   return null;
-}
-
-function formatCost(raw: number): string {
-  const dollars = raw / 10000;
-  return dollars < 0.01 ? `$${dollars.toFixed(4)}` : `$${dollars.toFixed(2)}`;
 }
 
 export function ChallengeCard({ challenge }: { challenge: Challenge }) {
@@ -160,7 +156,7 @@ export function ChallengeCard({ challenge }: { challenge: Challenge }) {
           )}
           {hasEfficiencyGoal && (
             <Text style={[styles.meta, { color: c.textSubtle }]}>
-              Efficiency goal: {formatCost(challenge.maxCost!)}
+              Efficiency goal: {formatCostFromHundredths(challenge.maxCost!)}
             </Text>
           )}
         </CardContent>
@@ -172,12 +168,12 @@ export function ChallengeCard({ challenge }: { challenge: Challenge }) {
           {hasSolvers && (
             <Text style={[styles.statsLine, { color: c.textSubtle }]}>
               {challenge.stats!.solvers} solver{challenge.stats!.solvers !== 1 ? 's' : ''}
-              {challenge.stats!.avgCost != null && ` \u00b7 avg ${formatCost(challenge.stats!.avgCost)}`}
+              {challenge.stats!.avgCost != null && ` \u00b7 avg ${formatCostFromHundredths(challenge.stats!.avgCost)}`}
             </Text>
           )}
           {isSolved && challenge.userBestCost != null && (
             <Text style={[styles.statsLine, { color: c.success }]}>
-              Your best: {formatCost(challenge.userBestCost)}
+              Your best: {formatCostFromHundredths(challenge.userBestCost)}
             </Text>
           )}
 

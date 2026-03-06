@@ -14,6 +14,7 @@ import { Avatar } from '@/components/ui/Avatar';
 import { useColors } from '@/theme';
 import { spacing, fontSizes, fontFamily } from '@/theme/tokens';
 import { useDocumentMeta } from '@/hooks/useDocumentMeta';
+import { formatCostFromHundredths } from '@/lib/ai/pricing';
 
 interface DailyData {
   date: string;
@@ -80,11 +81,6 @@ export function DailyChallengeScreen() {
     const m = Math.floor((s % 3600) / 60);
     const sec = s % 60;
     return `${h}h ${m}m ${sec}s`;
-  };
-
-  const formatCost = (hundredths: number) => {
-    const d = hundredths / 10000;
-    return d < 0.01 ? `$${d.toFixed(4)}` : `$${d.toFixed(2)}`;
   };
 
   if (loading) {
@@ -155,7 +151,7 @@ export function DailyChallengeScreen() {
                       <Avatar src={entry.user.avatarUrl} fallback={entry.user.name?.[0] ?? '?'} size={28} />
                       <Text style={[styles.name, { color: c.text }]} numberOfLines={1}>{entry.user.name}</Text>
                     </View>
-                    <Text style={[styles.cost, { color: c.accent }]}>{formatCost(entry.cost)}</Text>
+                    <Text style={[styles.cost, { color: c.accent }]}>{formatCostFromHundredths(entry.cost)}</Text>
                     <Text style={[styles.tokens, { color: c.textMuted }]}>{entry.tokens.toLocaleString()} tokens</Text>
                   </View>
                 ))}

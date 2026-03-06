@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { arena } from '@/theme/colors';
+import { fontFamily } from '@/theme/tokens';
 
 export interface TestResults {
   passed: boolean;
@@ -9,7 +10,7 @@ export interface TestResults {
   isSubmission: boolean;
 }
 
-const mono = 'Menlo, Monaco, "Courier New", monospace';
+const mono = fontFamily.mono;
 const codeBg = 'rgba(0,0,0,0.3)';
 const codeBorder = 'rgba(255,255,255,0.06)';
 

@@ -15,9 +15,8 @@ import { invalidateCache } from '../_shared/cache';
 import { sendEmail } from '../_shared/newsletter/resend';
 import { sendMilestoneEmail } from '../_shared/milestone-email';
 import { challengeAttemptNotificationEmail } from '../_shared/email/templates';
+import { ADMIN_EMAIL } from '../_shared/ensure-profile';
 import { attempts, challenges, profiles } from '../../drizzle/schema.d1';
-
-const ADMIN_EMAIL = 'israel@ruwt.dev';
 
 const submissionSchema = z.object({
   attemptId: z.string().uuid(),
@@ -233,32 +232,33 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
       })
       .where(eq(attempts.id, attempt.id));
 
-    // On successful solve, check badges and update streaks (non-blocking)
+    // On successful solve, run post-solve tasks concurrently (non-blocking)
     let newBadges: string[] = [];
     let streakResult: { currentStreak: number; newBadges: string[] } | null = null;
     if (testResult.passed) {
-      try {
-        newBadges = await checkAndAwardBadges(db, user.id);
+      const baseUrl = new URL(context.request.url).origin;
 
+      const [badgeResult, streakRes, , , ] = await Promise.all([
+        // Check and award badges
+        checkAndAwardBadges(db, user.id).catch((e) => {
+          console.error('Badge check error (non-blocking):', e);
+          return [] as string[];
+        }),
         // Update streak on any successful solve
-        streakResult = await updateStreak(db, user.id);
-        newBadges = [...newBadges, ...streakResult.newBadges];
-      } catch (e) {
-        console.error('Badge/streak check error (non-blocking):', e);
-      }
-
-      // Competitive notifications (non-blocking)
-      try {
-        await createCompetitiveNudges(db, user.id, attempt.challengeId, attempt.totalCost ?? 0);
-        await createNewUserNearRankNotifications(db, user.id);
-      } catch (e) {
-        console.error('Competitive notification error (non-blocking):', e);
-      }
-
-      // Invalidate edge caches affected by a new solve (non-blocking)
-      try {
-        const baseUrl = new URL(context.request.url).origin;
-        await invalidateCache(baseUrl, [
+        updateStreak(db, user.id).catch((e) => {
+          console.error('Streak update error (non-blocking):', e);
+          return null;
+        }),
+        // Competitive nudge notifications
+        createCompetitiveNudges(db, user.id, attempt.challengeId, attempt.totalCost ?? 0).catch((e) => {
+          console.error('Competitive nudge error (non-blocking):', e);
+        }),
+        // Near-rank notifications
+        createNewUserNearRankNotifications(db, user.id).catch((e) => {
+          console.error('Near-rank notification error (non-blocking):', e);
+        }),
+        // Invalidate edge caches affected by a new solve
+        invalidateCache(baseUrl, [
           '/api/stats',
           '/api/activity',
           '/api/activity?limit=20',
@@ -269,9 +269,15 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
           `/api/leaderboard?challengeId=${attempt.challengeId}&limit=50&period=all&division=open`,
           '/api/challenges',
           `/api/challenges/${attempt.challengeId}`,
-        ]);
-      } catch (e) {
-        console.error('Cache invalidation error (non-blocking):', e);
+        ]).catch((e) => {
+          console.error('Cache invalidation error (non-blocking):', e);
+        }),
+      ]);
+
+      newBadges = badgeResult;
+      if (streakRes) {
+        streakResult = streakRes;
+        newBadges = [...newBadges, ...streakRes.newBadges];
       }
     }
 

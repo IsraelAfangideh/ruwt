@@ -74,27 +74,27 @@ export async function onRequestGet(context: { request: Request; env: Env; params
     const categories = ['model_selection', 'prompt_efficiency', 'iterative_debugging', 'multi_model_strategy', 'real_world'];
     const radarKeys = ['modelSelection', 'promptEfficiency', 'debugging', 'multiModel', 'realWorld'];
 
-    // Global avg cost per category
-    const globalAvgs = await db
-      .select({
-        category: challenges.category,
-        avgCost: sql<number>`AVG(${attempts.totalCost})`,
-      })
-      .from(attempts)
-      .innerJoin(challenges, eq(attempts.challengeId, challenges.id))
-      .where(eq(attempts.status, 'passed'))
-      .groupBy(challenges.category);
-
-    // User avg cost per category
-    const userAvgs = await db
-      .select({
-        category: challenges.category,
-        avgCost: sql<number>`AVG(${attempts.totalCost})`,
-      })
-      .from(attempts)
-      .innerJoin(challenges, eq(attempts.challengeId, challenges.id))
-      .where(and(eq(attempts.userId, profile.id), eq(attempts.status, 'passed')))
-      .groupBy(challenges.category);
+    // Global and user avg cost per category (independent queries)
+    const [globalAvgs, userAvgs] = await Promise.all([
+      db
+        .select({
+          category: challenges.category,
+          avgCost: sql<number>`AVG(${attempts.totalCost})`,
+        })
+        .from(attempts)
+        .innerJoin(challenges, eq(attempts.challengeId, challenges.id))
+        .where(eq(attempts.status, 'passed'))
+        .groupBy(challenges.category),
+      db
+        .select({
+          category: challenges.category,
+          avgCost: sql<number>`AVG(${attempts.totalCost})`,
+        })
+        .from(attempts)
+        .innerJoin(challenges, eq(attempts.challengeId, challenges.id))
+        .where(and(eq(attempts.userId, profile.id), eq(attempts.status, 'passed')))
+        .groupBy(challenges.category),
+    ]);
 
     const globalMap = Object.fromEntries(globalAvgs.map((g) => [g.category, Number(g.avgCost)]));
     const userMap = Object.fromEntries(userAvgs.map((u) => [u.category, Number(u.avgCost)]));

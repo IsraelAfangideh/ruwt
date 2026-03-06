@@ -227,7 +227,6 @@ const attempt: ArenaAttempt = {
 const defaultProps = {
   challenge,
   attempt,
-  userCredits: 50000,
   code: 'function solve() {}',
   onCodeChange: vi.fn(),
   language: 'typescript',
@@ -452,13 +451,13 @@ describe('ArenaIDE', () => {
   /* ─── Guest mode ───────────────────────────────────────────────── */
 
   it('renders guest mode placeholder in chat textarea', () => {
-    renderIDE({ guestMode: true, userCredits: 0 });
+    renderIDE({ guestMode: true });
     fireEvent.click(screen.getByText('AI Chat'));
     expect(screen.getByPlaceholderText('Sign up to chat with AI')).toBeTruthy();
   });
 
   it('disables send button in guest mode', () => {
-    renderIDE({ guestMode: true, userCredits: 0 });
+    renderIDE({ guestMode: true });
     fireEvent.click(screen.getByText('AI Chat'));
     // The send button should be disabled
     const sendBtns = screen.getAllByRole('button');

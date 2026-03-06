@@ -3,18 +3,20 @@ import { View, Text, ActivityIndicator } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { ArenaIDE, type ArenaChallenge, type ArenaAttempt, type TestResults, type PastAttempt } from '@/components/ArenaIDE';
 import { arena } from '@/theme/colors';
+import { fontFamily } from '@/theme/tokens';
 import { useIsMobile } from '@/lib/useIsMobile';
 import { getDifficultyStyle } from '@/lib/difficulty';
 import { useAuthGuard } from '@/hooks/useAuthGuard';
 import { useToast } from '@/components/ui/Toast';
 import { ArenaErrorBoundary } from '@/components/arena/ArenaErrorBoundary';
-import { estimateMessagesForBudget } from '@/lib/ai/pricing';
+import { estimateMessagesForBudget, formatCostFromHundredths } from '@/lib/ai/pricing';
 import { BADGE_DEFS, type BadgeDef } from '@/lib/badge-defs';
+import { formatTime } from '@/lib/utils';
 
 /* ─── Budget Progress Bar ──────────────────────────────────────────── */
 
 function BudgetProgressBar({ spent, budget }: { spent: number; budget: number | null; isOverBudget?: boolean }) {
-  const mono = 'Menlo, Monaco, "Courier New", monospace';
+  const mono = fontFamily.mono;
   if (budget == null) {
     // No budget limit — show running cost with a subtle open-ended bar
     return (
@@ -22,7 +24,7 @@ function BudgetProgressBar({ spent, budget }: { spent: number; budget: number | 
         title="No budget limit — costs tracked for ranking"
       >
         <span style={{ fontSize: 12, fontWeight: 700, color: arena.accent, fontFamily: mono }}>
-          {formatCost(spent)}
+          {formatCostFromHundredths(spent)}
         </span>
         <div style={{ flex: 1, height: 6, background: arena.border, borderRadius: 3, overflow: 'hidden', maxWidth: 80 }}>
           <div style={{
@@ -43,16 +45,16 @@ function BudgetProgressBar({ spent, budget }: { spent: number; budget: number | 
   const barColor = pct > 90 ? arena.error : pct > 70 ? arena.accent : '#3fb950';
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 180 }}
-      title={`${formatCost(spent)} of ${formatCost(budget)} budget used`}
+      title={`${formatCostFromHundredths(spent)} of ${formatCostFromHundredths(budget)} budget used`}
     >
       <span style={{ fontSize: 11, color: arena.textMuted, fontFamily: mono }}>
-        {formatCost(spent)}
+        {formatCostFromHundredths(spent)}
       </span>
       <div style={{ flex: 1, height: 6, background: arena.border, borderRadius: 3, overflow: 'hidden' }}>
         <div style={{ width: `${pct}%`, height: '100%', background: barColor, borderRadius: 3, transition: 'width 0.3s ease' }} />
       </div>
       <span style={{ fontSize: 11, color: arena.textMuted, fontFamily: mono }}>
-        {formatCost(budget)}
+        {formatCostFromHundredths(budget)}
       </span>
     </div>
   );
@@ -66,17 +68,6 @@ function formatWallClock(seconds: number): string {
   return `${s}s`;
 }
 
-function formatCost(cents: number): string {
-  const d = cents / 10000;
-  return d < 0.01 ? `$${d.toFixed(4)}` : `$${d.toFixed(2)}`;
-}
-
-function formatTime(seconds: number): string {
-  const m = Math.floor(seconds / 60);
-  const s = seconds % 60;
-  return `${m}:${s.toString().padStart(2, '0')}`;
-}
-
 
 export function ArenaScreen() {
   const navigation = useNavigation();
@@ -87,7 +78,6 @@ export function ArenaScreen() {
 
   const [challenge, setChallenge] = useState<ArenaChallenge | null>(null);
   const [attempt, setAttempt] = useState<ArenaAttempt | null>(null);
-  const [userCredits, setUserCredits] = useState(0);
   const [code, setCode] = useState('');
   const language = challenge?.language || 'javascript';
   const [loading, setLoading] = useState(true);
@@ -171,10 +161,7 @@ export function ArenaScreen() {
     let cancelled = false;
     (async () => {
       try {
-        const [chRes, profRes] = await Promise.all([
-          fetch(`/api/challenges/${challengeId}`),
-          fetch('/api/profile'),
-        ]);
+        const chRes = await fetch(`/api/challenges/${challengeId}`);
         if (cancelled) return;
         if (!chRes.ok) {
           setError(chRes.status === 404 ? 'Challenge not found' : 'Failed to load challenge');
@@ -183,10 +170,6 @@ export function ArenaScreen() {
         }
         const chData = await chRes.json();
         setChallenge(chData);
-        if (profRes.ok) {
-          const prof = await profRes.json();
-          setUserCredits(prof.credits ?? 0);
-        }
       } catch (e) {
         if (!cancelled) {
           setError(e instanceof Error ? e.message : 'Something went wrong');
@@ -518,7 +501,7 @@ export function ArenaScreen() {
             borderRadius: 9999,
             border: `1px solid ${difficultyColor}40`,
             background: diffStyle.bg,
-            fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+            fontFamily: fontFamily.mono,
             textTransform: 'lowercase',
             marginBottom: 12,
           }}>
@@ -565,7 +548,7 @@ export function ArenaScreen() {
             {challenge.maxCost != null ? (
               <>
                 <div style={{ fontSize: 13, fontWeight: 600, color: arena.accent, marginBottom: 8 }}>
-                  Your AI Budget: {formatCost(challenge.maxCost)}
+                  Your AI Budget: {formatCostFromHundredths(challenge.maxCost)}
                 </div>
                 <div style={{ fontSize: 12, color: arena.textMuted, lineHeight: '1.6' }}>
                   {'\u2248'} {estimateMessagesForBudget(challenge.maxCost, 'budget')} messages with Budget tier,
@@ -584,7 +567,7 @@ export function ArenaScreen() {
             )}
             {challenge.stats?.bestCost != null && (challenge.stats?.solvers ?? 0) > 0 && (
               <div style={{ fontSize: 12, color: arena.text, marginTop: 8, fontWeight: 500 }}>
-                Best solver spent {formatCost(challenge.stats.bestCost)} — can you beat them?
+                Best solver spent {formatCostFromHundredths(challenge.stats.bestCost)} — can you beat them?
               </div>
             )}
           </div>
@@ -594,7 +577,7 @@ export function ArenaScreen() {
             display: 'flex',
             gap: 16,
             marginBottom: 32,
-            fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+            fontFamily: fontFamily.mono,
             fontSize: 12,
             color: arena.textMuted,
           }}>
@@ -637,7 +620,7 @@ export function ArenaScreen() {
               fontSize: 12,
               cursor: 'pointer',
               marginTop: 24,
-              fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+              fontFamily: fontFamily.mono,
             }}
             onClick={() => navigation.navigate('Problems' as never)}
           >
@@ -688,7 +671,7 @@ export function ArenaScreen() {
                 fontSize: 13,
                 cursor: 'pointer',
                 padding: '4px 6px',
-                fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+                fontFamily: fontFamily.mono,
                 flexShrink: 0,
               }}
               onClick={() => navigation.navigate('Problems' as never)}
@@ -711,7 +694,7 @@ export function ArenaScreen() {
             {timeLeft != null && (
               <span style={{
                 fontSize: 12,
-                fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+                fontFamily: fontFamily.mono,
                 flexShrink: 0,
                 ...(timerUrgency === 'critical' ? {
                   fontWeight: 700, background: arena.error, color: '#fff', padding: '2px 8px', borderRadius: 9999,
@@ -796,7 +779,7 @@ export function ArenaScreen() {
                 fontSize: 13,
                 cursor: 'pointer',
                 padding: '4px 8px',
-                fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+                fontFamily: fontFamily.mono,
               }}
               onClick={() => navigation.navigate('Problems' as never)}
             >
@@ -826,7 +809,7 @@ export function ArenaScreen() {
               borderRadius: 9999,
               border: `1px solid ${difficultyColor}40`,
               background: diffStyle.bg,
-              fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+              fontFamily: fontFamily.mono,
               textTransform: 'lowercase',
             }}>
               {diffStyle.label}
@@ -842,7 +825,7 @@ export function ArenaScreen() {
             {timeLeft != null && (
               <span style={{
                 fontSize: 12,
-                fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+                fontFamily: fontFamily.mono,
                 ...(timerUrgency === 'critical' ? {
                   fontWeight: 700, background: arena.error, color: '#fff', padding: '2px 10px', borderRadius: 9999,
                 } : timerUrgency === 'warning' ? {
@@ -922,14 +905,12 @@ export function ArenaScreen() {
             key={challengeId}
             challenge={challenge}
             attempt={attempt}
-            userCredits={userCredits}
             code={code}
             onCodeChange={setCode}
             language={language}
             isExpired={isExpired}
             onExpire={() => { setIsExpired(true); isExpiredRef.current = true; }}
             onRunTests={onRunTests}
-            onSubmit={onSubmit}
             onAttemptUpdate={(next) => setAttempt(next)}
             onRestart={onRestart}
             onRunCode={onRunCode}
@@ -1056,20 +1037,20 @@ export function ArenaScreen() {
                 gap: 16,
                 justifyContent: 'center',
                 flexWrap: 'wrap',
-                fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+                fontFamily: fontFamily.mono,
                 fontSize: 12,
               }}>
                 <div style={{ textAlign: 'center' }}>
                   <div style={{ color: arena.textMuted, marginBottom: 4 }}>Your Cost</div>
                   <div style={{ color: arena.accent, fontWeight: 700, fontSize: 16 }}>
-                    {formatCost(attempt?.totalCost ?? 0)}
+                    {formatCostFromHundredths(attempt?.totalCost ?? 0)}
                   </div>
                 </div>
                 {successStats && successStats.topCost != null && (
                   <div style={{ textAlign: 'center' }}>
                     <div style={{ color: arena.textMuted, marginBottom: 4 }}>Top Solver</div>
                     <div style={{ color: arena.text, fontWeight: 700, fontSize: 16 }}>
-                      {formatCost(successStats.topCost)}
+                      {formatCostFromHundredths(successStats.topCost)}
                     </div>
                   </div>
                 )}
@@ -1121,7 +1102,7 @@ export function ArenaScreen() {
                   onClick={() => {
                     const shareUrl = `${window.location.origin}/share/${successOverlay.attemptId}`;
                     const rankStr = successStats?.rank ? ` Ranked #${successStats.rank}.` : '';
-                    const text = `I solved "${challenge.title}" for ${formatCost(attempt?.totalCost ?? 0)} on ruwt.dev.${rankStr} Can you beat that?`;
+                    const text = `I solved "${challenge.title}" for ${formatCostFromHundredths(attempt?.totalCost ?? 0)} on ruwt.dev.${rankStr} Can you beat that?`;
                     const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(shareUrl)}`;
                     window.open(twitterUrl, '_blank', 'width=600,height=500');
                   }}
