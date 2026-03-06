@@ -18,16 +18,19 @@ const baseNavItems: NavItem[] = [
 
 interface DashboardNavProps {
   accountType?: string;
+  loading?: boolean;
 }
 
-export function DashboardNav({ accountType }: DashboardNavProps) {
+export function DashboardNav({ accountType, loading }: DashboardNavProps) {
   const navigation = useNavigation();
   const route = useRoute();
   const c = useColors();
 
-  const navItems: NavItem[] = accountType === 'team'
-    ? [...baseNavItems, { name: 'Assessments', label: 'Assessments' }]
-    : [...baseNavItems, { name: 'Hiring', label: 'Hiring', accent: true }];
+  const navItems: NavItem[] = loading
+    ? baseNavItems
+    : accountType === 'team'
+      ? [...baseNavItems, { name: 'Assessments', label: 'Assessments' }]
+      : [...baseNavItems, { name: 'Hiring', label: 'Hiring', accent: true }];
 
   return (
     <View style={styles.container} accessibilityRole="navigation" accessibilityLabel="Main navigation">

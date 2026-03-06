@@ -1212,7 +1212,7 @@ export function ArenaScreen() {
                           });
                           window.location.href = sameCat.length > 0 ? `/arena/${sameCat[0].id}` : '/challenges';
                         })
-                        .catch(() => { window.location.href = '/challenges'; });
+                        .catch(() => { window.location.href = '/problems'; });
                     }
                   }}
                   style={{

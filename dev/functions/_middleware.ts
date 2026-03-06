@@ -55,7 +55,9 @@ export async function onRequest(context: { request: Request; env: Env; next: () 
     const method = context.request.method;
     if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(method)) {
       const origin = context.request.headers.get('Origin');
-      if (origin && !ALLOWED_ORIGINS.has(origin)) {
+      // Allow preview deploy subdomains (e.g. worktree-fix-billing.ruwt-dev.pages.dev)
+      const isAllowedPreview = origin ? /^https:\/\/[a-z0-9-]+\.ruwt-dev\.pages\.dev$/.test(origin) : false;
+      if (origin && !ALLOWED_ORIGINS.has(origin) && !isAllowedPreview) {
         const ip = context.request.headers.get('CF-Connecting-IP') || '0.0.0.0';
         logSecurityEvent(context.env.DB, {
           type: 'csrf_reject',

@@ -223,14 +223,46 @@ describe('TeamsScreen', () => {
     expect(mockNavigate).toHaveBeenCalledWith('Register');
   });
 
-  it('navigates to AssessmentBuilder when Start Free Trial is clicked (logged in)', async () => {
+  it('starts trial and navigates to AssessmentBuilder when Start Free Trial is clicked (logged in)', async () => {
     mockUser = { id: 'u1' };
+    vi.stubGlobal('fetch', vi.fn().mockImplementation(() =>
+      Promise.resolve(ok({ trial: {}, orgId: 'org1' }))
+    ));
     render(<TeamsScreen />);
     await waitFor(() => expect(screen.getByText('Dashboard')).toBeTruthy());
     fireEvent.click(screen.getAllByText('Start Free Trial')[0]);
     await waitFor(() => {
       expect(mockNavigate).toHaveBeenCalledWith('AssessmentBuilder');
     });
+    expect(fetch).toHaveBeenCalledWith('/api/trial/start', { method: 'POST' });
+  });
+
+  it('navigates to AssessmentBuilder when trial already used (logged in)', async () => {
+    mockUser = { id: 'u1' };
+    vi.stubGlobal('fetch', vi.fn().mockImplementation(() =>
+      Promise.resolve(fail({ error: 'Trial already used', code: 'TRIAL_NOT_ELIGIBLE' }))
+    ));
+    render(<TeamsScreen />);
+    await waitFor(() => expect(screen.getByText('Dashboard')).toBeTruthy());
+    fireEvent.click(screen.getAllByText('Start Free Trial')[0]);
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith('AssessmentBuilder');
+    });
+  });
+
+  it('shows error when trial start fails with non-eligible reason (logged in)', async () => {
+    mockUser = { id: 'u1' };
+    vi.stubGlobal('fetch', vi.fn().mockImplementation(() =>
+      Promise.resolve(fail({ error: 'Profile not found', code: 'TRIAL_NOT_ELIGIBLE' }))
+    ));
+    render(<TeamsScreen />);
+    await waitFor(() => expect(screen.getByText('Dashboard')).toBeTruthy());
+    fireEvent.click(screen.getAllByText('Start Free Trial')[0]);
+    await waitFor(() => {
+      expect(screen.getByText('Profile not found')).toBeTruthy();
+    });
+    // Should NOT navigate to AssessmentBuilder
+    expect(mockNavigate).not.toHaveBeenCalledWith('AssessmentBuilder');
   });
 
   it('renders Book a Demo button', () => {

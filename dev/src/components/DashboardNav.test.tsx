@@ -42,6 +42,13 @@ describe('DashboardNav', () => {
     expect(screen.getByText('Assessments')).toBeTruthy();
   });
 
+  it('hides account-type nav item while loading', () => {
+    render(<DashboardNav accountType="team" loading />);
+    expect(screen.queryByText('Assessments')).toBeNull();
+    expect(screen.queryByText('Hiring')).toBeNull();
+    expect(screen.getByText('Problems')).toBeTruthy();
+  });
+
   it('navigates when a nav item is clicked', () => {
     render(<DashboardNav />);
     fireEvent.click(screen.getByText('Problems'));

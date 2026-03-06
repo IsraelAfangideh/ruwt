@@ -307,7 +307,7 @@ describe('SettingsScreen', () => {
       expect(screen.getByText(/Subscribe — \$200\/mo/)).toBeTruthy();
     });
     fireEvent.click(screen.getByText(/Subscribe — \$200\/mo/));
-    expect(hrefSetter).toHaveBeenCalledWith('/teams');
+    expect(hrefSetter).toHaveBeenCalledWith('/hiring');
 
     Object.defineProperty(window, 'location', { value: originalLocation, writable: true });
   });
@@ -338,10 +338,10 @@ describe('SettingsScreen', () => {
     });
   });
 
-  it('does not redirect when billing portal returns no url (line 134)', async () => {
+  it('shows toast when billing portal returns no url (line 134)', async () => {
     vi.stubGlobal('fetch', vi.fn().mockImplementation(async (url: string) => {
       if (url.includes('/api/billing/portal')) {
-        return { ok: true, json: async () => ({}) } as Response;
+        return { ok: true, json: async () => ({ error: 'No billing account found' }) } as Response;
       }
       return {
         ok: true,
@@ -365,8 +365,7 @@ describe('SettingsScreen', () => {
     });
     fireEvent.click(screen.getByText('Manage Billing'));
     await waitFor(() => {
-      const calls = (global.fetch as any).mock.calls;
-      expect(calls.some((c: any[]) => c[0]?.includes('/api/billing/portal'))).toBeTruthy();
+      expect(mockShowToast).toHaveBeenCalledWith('No billing account found', 'error');
     });
     // Should NOT redirect since data.url is falsy
     expect(hrefSetter).not.toHaveBeenCalled();
@@ -374,7 +373,7 @@ describe('SettingsScreen', () => {
     Object.defineProperty(window, 'location', { value: originalLocation, writable: true });
   });
 
-  it('handles billing portal fetch exception (line 135 catch)', async () => {
+  it('shows toast when billing portal fetch throws (line 135 catch)', async () => {
     vi.stubGlobal('fetch', vi.fn().mockImplementation(async (url: string) => {
       if (url.includes('/api/billing/portal')) {
         throw new Error('Portal unavailable');
@@ -389,9 +388,11 @@ describe('SettingsScreen', () => {
     await waitFor(() => {
       expect(screen.getByText('Manage Billing')).toBeTruthy();
     });
-    // Clicking should not throw — catch block handles exception silently
     await act(async () => {
       fireEvent.click(screen.getByText('Manage Billing'));
+    });
+    await waitFor(() => {
+      expect(mockShowToast).toHaveBeenCalledWith('Failed to open billing portal', 'error');
     });
   });
 
