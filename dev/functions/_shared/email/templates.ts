@@ -976,14 +976,13 @@ export function trialStartNotificationEmail(params: TrialStartNotificationParams
 
 export interface TrialWelcomeParams {
   name?: string | null;
-  orgName: string;
   trialEndsAt: string; // ISO date
   assessmentLimit: number;
   inviteLimit: number;
 }
 
 export function trialWelcomeEmail(params: TrialWelcomeParams): EmailTemplate {
-  const { name, orgName, trialEndsAt, assessmentLimit, inviteLimit } = params;
+  const { name, trialEndsAt, assessmentLimit, inviteLimit } = params;
 
   const greeting = name ? `Hi ${escapeHtml(name)},` : 'Hi there,';
   const formattedExpiry = formatDate(trialEndsAt);
@@ -991,7 +990,7 @@ export function trialWelcomeEmail(params: TrialWelcomeParams): EmailTemplate {
 
   const content = `
             <p style="margin: 0 0 16px 0; font-size: 16px; color: #1a1816;">${greeting}</p>
-            <p style="margin: 0 0 20px 0; color: #1a1816; line-height: 1.6;">Your organization <strong>${escapeHtml(orgName)}</strong> is set up with a 30-day free trial.</p>
+            <p style="margin: 0 0 20px 0; color: #1a1816; line-height: 1.6;">Your organization is set up with a 30-day free trial.</p>
             <!-- What's included -->
             <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin: 0 0 28px 0; background-color: #f5f3f0; border-radius: 8px;">
               <tr>
@@ -1020,7 +1019,7 @@ export function trialWelcomeEmail(params: TrialWelcomeParams): EmailTemplate {
   const text = [
     greeting,
     '',
-    `Your organization ${orgName} is set up with a 30-day free trial.`,
+    'Your organization is set up with a 30-day free trial.',
     '',
     "What's included:",
     `- ${assessmentLimit} assessment${assessmentLimit === 1 ? '' : 's'}`,

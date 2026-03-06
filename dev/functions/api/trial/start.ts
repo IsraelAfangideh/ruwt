@@ -35,7 +35,7 @@ function deriveOrgName(email: string): string {
   return `${domain.charAt(0).toUpperCase() + domain.slice(1)} Team`;
 }
 
-export async function onRequestPost(context: { request: Request; env: Env }) {
+export async function onRequestPost(context: { request: Request; env: Env; waitUntil?: (p: Promise<unknown>) => void }) {
   try {
     const user = await getUser(context.request, context.env);
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
@@ -111,7 +111,7 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
     const userName = (user.user_metadata?.full_name ?? user.user_metadata?.name) as string | null ?? null;
     const provider = (user.app_metadata?.provider as string) ?? 'email';
 
-    // Send admin notification + user welcome email (fire-and-forget, but logged)
+    // Send admin notification + user welcome email (kept alive via waitUntil)
     if (context.env.RESEND_API_KEY) {
       // Admin: "someone started a teams trial"
       const adminEmail = trialStartNotificationEmail({
@@ -121,12 +121,13 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
         provider,
         trialEndsAt: trialEnds.toISOString(),
       });
-      sendEmail(context.env, { to: ADMIN_EMAIL, subject: adminEmail.subject, html: adminEmail.html, text: adminEmail.text })
+      const adminPromise = sendEmail(context.env, { to: ADMIN_EMAIL, subject: adminEmail.subject, html: adminEmail.html, text: adminEmail.text })
         .then(async (result) => {
           await db.run(sql`INSERT INTO newsletter_logs (id, recipient_email, subject, status, error_message, resend_id, user_id, digest_type)
             VALUES (${crypto.randomUUID()}, ${ADMIN_EMAIL}, ${adminEmail.subject}, ${result.success ? 'sent' : 'failed'}, ${result.error ?? null}, ${result.id ?? null}, ${user.id}, 'admin_trial_start')`);
         })
         .catch(() => {});
+      context.waitUntil?.(adminPromise);
 
       // User: "welcome to your trial, here's what to do"
       if (user.email) {
@@ -137,12 +138,13 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
           assessmentLimit: TRIAL_MAX_ASSESSMENTS,
           inviteLimit: TRIAL_MAX_INVITES,
         });
-        sendEmail(context.env, { to: user.email, subject: welcomeEmail.subject, html: welcomeEmail.html, text: welcomeEmail.text })
+        const welcomePromise = sendEmail(context.env, { to: user.email, subject: welcomeEmail.subject, html: welcomeEmail.html, text: welcomeEmail.text })
           .then(async (result) => {
             await db.run(sql`INSERT INTO newsletter_logs (id, recipient_email, subject, status, error_message, resend_id, user_id, digest_type)
               VALUES (${crypto.randomUUID()}, ${user.email}, ${welcomeEmail.subject}, ${result.success ? 'sent' : 'failed'}, ${result.error ?? null}, ${result.id ?? null}, ${user.id}, 'trial_welcome')`);
           })
           .catch(() => {});
+        context.waitUntil?.(welcomePromise);
       }
     }
 

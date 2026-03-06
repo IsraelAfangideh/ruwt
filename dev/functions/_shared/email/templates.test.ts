@@ -1303,6 +1303,27 @@ describe('teamInviteEmail', () => {
 });
 
 // ---------------------------------------------------------------------------
+// trialWelcomeEmail — no org/team name
+// ---------------------------------------------------------------------------
+
+describe('trialWelcomeEmail', () => {
+  it('does not include any specific org or team name in the email', () => {
+    const { html, text } = trialWelcomeEmail({
+      name: 'Sam',
+      trialEndsAt: '2026-04-05T00:00:00Z',
+      assessmentLimit: 1,
+      inviteLimit: 3,
+    });
+
+    // Should say "Your organization is set up..." without a specific name
+    expect(html).toContain('Your organization is set up with a 30-day free trial');
+    expect(text).toContain('Your organization is set up with a 30-day free trial');
+    expect(html).not.toContain('My Team');
+    expect(text).not.toContain('My Team');
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Cross-cutting: all templates produce well-formed output
 // ---------------------------------------------------------------------------
 
@@ -1396,7 +1417,6 @@ describe('all templates produce structurally valid output', () => {
       fn: () =>
         trialWelcomeEmail({
           name: 'Test',
-          orgName: 'Acme',
           trialEndsAt: '2026-04-06T00:00:00Z',
           assessmentLimit: 1,
           inviteLimit: 3,
