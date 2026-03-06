@@ -11,6 +11,8 @@ import { useToast } from '@/components/ui/Toast';
 import { useIsMobile } from '@/lib/useIsMobile';
 import { DIFFICULTIES, getDifficultyStyle } from '@/lib/difficulty';
 import { useDocumentMeta } from '@/hooks/useDocumentMeta';
+import { Badge } from '@/components/ui/Badge';
+import { Button } from '@/components/ui/Button';
 
 const CATEGORIES = [
   { key: 'all', label: 'All' },
@@ -75,7 +77,7 @@ function getInitialDifficulty(): string {
 }
 
 export function ChallengesScreen() {
-  useDocumentMeta({ title: 'AI Coding Challenges', description: 'Browse 60+ coding challenges across 11 categories. Test your AI efficiency in model selection, prompt engineering, debugging, and more.', canonicalPath: '/challenges' });
+  useDocumentMeta({ title: 'AI Coding Challenges', description: 'Browse 60+ coding challenges across 11 categories. Test your AI efficiency in model selection, prompt engineering, debugging, and more.', canonicalPath: '/problems' });
   const navigation = useNavigation();
   const [user, setUser] = useState<any>(null);
   const [challenges, setChallenges] = useState<Challenge[]>([]);
@@ -90,6 +92,8 @@ export function ChallengesScreen() {
   const [sortMenuPos, setSortMenuPos] = useState<{ top: number; right: number } | null>(null);
   const sortBtnRef = useRef<any>(null);
   const [statusFilter, setStatusFilter] = useState<'all' | 'solved' | 'in_progress' | 'not_started'>('all');
+  const [dailyChallenge, setDailyChallenge] = useState<{ challengeId: string; title: string; difficulty: string; category: string | null; solvedToday: boolean } | null>(null);
+  const [dailyCountdown, setDailyCountdown] = useState(0);
   const supabase = createClient();
   const c = useColors();
   const { isDark } = useTheme();
@@ -107,10 +111,22 @@ export function ChallengesScreen() {
       }
       setUser(u);
       try {
-        const res = await fetch('/api/challenges');
-        if (res.ok) {
-          const data = await res.json();
+        const [challengeRes, dailyRes] = await Promise.all([
+          fetch('/api/challenges'),
+          fetch('/api/daily-challenge').catch(() => null),
+        ]);
+        if (challengeRes.ok) {
+          const data = await challengeRes.json();
           setChallenges((data as Challenge[]) ?? []);
+        }
+        if (dailyRes && dailyRes.ok) {
+          const d = await dailyRes.json();
+          if (d.challengeId) {
+            setDailyChallenge(d);
+            const now = new Date();
+            const tomorrow = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1));
+            setDailyCountdown(Math.floor((tomorrow.getTime() - now.getTime()) / 1000));
+          }
         }
       } catch (_) {
         setChallenges([]);
@@ -120,6 +136,15 @@ export function ChallengesScreen() {
     };
     init();
   }, [navigation, supabase.auth]);
+
+  // Daily challenge countdown
+  useEffect(() => {
+    if (dailyCountdown <= 0) return;
+    const id = setInterval(() => {
+      setDailyCountdown((prev) => (prev <= 1 ? 0 : prev - 1));
+    }, 1000);
+    return () => clearInterval(id);
+  }, [dailyCountdown > 0]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const syncUrlParams = useCallback((cat: string, lang: string, diff: string) => {
     /* istanbul ignore next -- @preserve SSR guard; jsdom always provides window */
@@ -343,6 +368,48 @@ export function ChallengesScreen() {
           </View>
         </View>
       </View>
+
+      {/* Daily Challenge Featured Card */}
+      {dailyChallenge && (
+        <Card style={[styles.dailyCard, { borderColor: c.accent, borderWidth: 2 }]}>
+          <CardContent style={styles.dailyContent}>
+            <View style={styles.dailyLeft}>
+              <View style={styles.dailyBadgeRow}>
+                <Badge variant="default">Daily Challenge</Badge>
+                <Badge
+                  variant="outline"
+                  style={{ borderColor: getDifficultyStyle(dailyChallenge.difficulty).color, backgroundColor: getDifficultyStyle(dailyChallenge.difficulty).bg }}
+                  textStyle={{ color: getDifficultyStyle(dailyChallenge.difficulty).color }}
+                >
+                  {getDifficultyStyle(dailyChallenge.difficulty).label}
+                </Badge>
+              </View>
+              <Text style={[styles.dailyTitle, { color: c.text }]}>{dailyChallenge.title}</Text>
+              {dailyCountdown > 0 && (
+                <Text style={[styles.dailyCountdown, { color: c.textSubtle }]}>
+                  Next in {String(Math.floor(dailyCountdown / 3600)).padStart(2, '0')}:{String(Math.floor((dailyCountdown % 3600) / 60)).padStart(2, '0')}:{String(dailyCountdown % 60).padStart(2, '0')}
+                </Text>
+              )}
+            </View>
+            <View style={styles.dailyRight}>
+              {dailyChallenge.solvedToday ? (
+                <View style={[styles.dailySolved, { backgroundColor: c.successBg }]}>
+                  <Text style={[styles.dailySolvedText, { color: c.success }]}>{'\u2705'} Completed!</Text>
+                </View>
+              ) : (
+                <Button
+                  size="lg"
+                  onPress={() => (navigation.navigate as any)('Arena', { challengeId: dailyChallenge.challengeId })}
+                  style={{ backgroundColor: c.accent }}
+                  textStyle={{ color: c.primaryForeground, fontWeight: '700' }}
+                >
+                  Start
+                </Button>
+              )}
+            </View>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Sticky filter bar */}
       {/* @ts-ignore position: sticky is web-only */}
@@ -641,6 +708,17 @@ export function ChallengesScreen() {
 
 const styles = StyleSheet.create({
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+
+  // Daily challenge card
+  dailyCard: { marginBottom: spacing.lg },
+  dailyContent: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md, flexWrap: 'wrap' },
+  dailyLeft: { flex: 1, minWidth: 200, gap: spacing.xs },
+  dailyBadgeRow: { flexDirection: 'row', gap: spacing.sm },
+  dailyTitle: { fontSize: fontSizes.xl, fontWeight: '700', fontFamily: fontFamily.display },
+  dailyCountdown: { fontSize: fontSizes.xs, fontFamily: fontFamily.body, fontVariant: ['tabular-nums'] },
+  dailyRight: { alignItems: 'center' },
+  dailySolved: { paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderRadius: radii.lg },
+  dailySolvedText: { fontSize: fontSizes.sm, fontWeight: '700', fontFamily: fontFamily.body },
 
   // Header
   headerSection: {

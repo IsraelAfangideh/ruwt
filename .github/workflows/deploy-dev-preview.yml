@@ -6,8 +6,6 @@ name: Deploy Dev Preview
 on:
   pull_request:
     types: [opened, synchronize, reopened]
-    paths:
-      - 'dev/**'
 
 permissions:
   contents: read

@@ -476,9 +476,9 @@ export function ArenaScreen() {
             fontSize: 13,
             cursor: 'pointer',
           }}
-          onClick={() => navigation.navigate('Challenges' as never)}
+          onClick={() => navigation.navigate('Problems' as never)}
         >
-          Back to Challenges
+          Back to Problems
         </button>
       </View>
     );
@@ -639,9 +639,9 @@ export function ArenaScreen() {
               marginTop: 24,
               fontFamily: 'Menlo, Monaco, "Courier New", monospace',
             }}
-            onClick={() => navigation.navigate('Challenges' as never)}
+            onClick={() => navigation.navigate('Problems' as never)}
           >
-            &larr; Back to Challenges
+            &larr; Back to Problems
           </button>
         </div>
       </main>
@@ -691,7 +691,7 @@ export function ArenaScreen() {
                 fontFamily: 'Menlo, Monaco, "Courier New", monospace',
                 flexShrink: 0,
               }}
-              onClick={() => navigation.navigate('Challenges' as never)}
+              onClick={() => navigation.navigate('Problems' as never)}
             >
               &larr;
             </button>
@@ -798,7 +798,7 @@ export function ArenaScreen() {
                 padding: '4px 8px',
                 fontFamily: 'Menlo, Monaco, "Courier New", monospace',
               }}
-              onClick={() => navigation.navigate('Challenges' as never)}
+              onClick={() => navigation.navigate('Problems' as never)}
             >
               &larr; Back
             </button>
@@ -1277,10 +1277,10 @@ export function ArenaScreen() {
                     if (navigatingRef.current) return;
                     navigatingRef.current = true;
                     setSuccessOverlay(null);
-                    navigation.navigate('Challenges' as never);
+                    navigation.navigate('Problems' as never);
                   }}
                 >
-                  Back to Challenges
+                  Back to Problems
                 </button>
                 {/* Post-solve comment prompt */}
                 {successOverlay.passed && !commentSubmitted && (

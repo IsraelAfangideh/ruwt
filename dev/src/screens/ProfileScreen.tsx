@@ -45,6 +45,7 @@ interface ProfileData {
     description?: string;
     earnedAt: string;
   }>;
+  heatmap?: Record<string, number>;
 }
 
 interface BadgeCatalogEntry {
@@ -56,6 +57,99 @@ interface BadgeCatalogEntry {
 
 function formatCategory(key: string): string {
   return key.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function generateHeatmapDays(): string[] {
+  const days: string[] = [];
+  const today = new Date();
+  for (let i = 90; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(today.getDate() - i);
+    days.push(d.toISOString().split('T')[0]);
+  }
+  return days;
+}
+
+function ActivityHeatmap({ heatmap }: { heatmap: Record<string, number> }) {
+  const c = useColors();
+  const days = generateHeatmapDays();
+  const maxCount = Math.max(1, ...Object.values(heatmap));
+  const totalActivity = Object.values(heatmap).reduce((s, v) => s + v, 0);
+  const activeDays = Object.values(heatmap).filter((v) => v > 0).length;
+
+  function getCellColor(count: number): string {
+    if (count === 0) return c.border;
+    const intensity = Math.min(count / maxCount, 1);
+    if (intensity <= 0.33) return c.accent + '40';
+    /* istanbul ignore next -- @preserve */
+    if (intensity <= 0.66) return c.accent + '80';
+    return c.accent + 'CC';
+  }
+
+  const grid: string[][] = Array.from({ length: 7 }, () => []);
+  days.forEach((day) => {
+    const d = new Date(day + 'T00:00:00');
+    const dow = d.getDay();
+    grid[dow].push(day);
+  });
+
+  const dayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+  return (
+    <Card style={styles.section} accessibilityRole="region" accessibilityLabel="Activity heatmap">
+      <CardHeader>
+        <View style={styles.heatmapHeaderRow}>
+          <CardTitle>Activity</CardTitle>
+          <Text style={[styles.heatmapSubtitle, { color: c.textSubtle }]}>Last 90 days</Text>
+        </View>
+      </CardHeader>
+      <CardContent>
+        <Text style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden' }} accessibilityRole="summary">
+          {totalActivity} activities across {activeDays} active days in the last 90 days
+        </Text>
+        <View style={styles.heatmapContainer} accessibilityRole="img" accessibilityLabel={`Activity heatmap: ${totalActivity} activities across ${activeDays} days in the last 90 days`}>
+          <View style={styles.heatmapDayLabels}>
+            {dayLabels.map((label, i) => (
+              <View key={label} style={styles.heatmapDayLabel}>
+                {i % 2 === 1 ? (
+                  <Text style={[styles.heatmapDayText, { color: c.textSubtle }]}>{label}</Text>
+                ) : null}
+              </View>
+            ))}
+          </View>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            <View style={styles.heatmapGrid}>
+              {grid.map((row, rowIdx) => (
+                <View key={rowIdx} style={styles.heatmapRow}>
+                  {row.map((day) => (
+                    <View key={day} style={[styles.heatmapCell, { backgroundColor: getCellColor(heatmap[day] || 0) }]} />
+                  ))}
+                </View>
+              ))}
+            </View>
+          </ScrollView>
+        </View>
+        <View style={styles.heatmapLegend}>
+          <Text style={[styles.heatmapLegendText, { color: c.textSubtle }]}>Less</Text>
+          {[0, 0.33, 0.66, 1].map((intensity, i) => (
+            <View
+              key={i}
+              style={[
+                styles.heatmapCell,
+                {
+                  backgroundColor: intensity === 0 ? c.border
+                    : intensity <= 0.33 ? c.accent + '40'
+                    : intensity <= 0.66 ? c.accent + '80'
+                    : c.accent + 'CC',
+                },
+              ]}
+            />
+          ))}
+          <Text style={[styles.heatmapLegendText, { color: c.textSubtle }]}>More</Text>
+        </View>
+      </CardContent>
+    </Card>
+  );
 }
 
 function ProfileSkeleton() {
@@ -142,10 +236,30 @@ export function ProfileScreen() {
     ? (user.user_metadata.name as string).split(' ').map((n: string) => n[0]).join('').toUpperCase()
     : (user.email?.[0] ?? '?').toUpperCase();
 
-  if (loading || !data) {
+  if (loading) {
     return (
       <DashboardLayout user={user}>
         <ProfileSkeleton />
+      </DashboardLayout>
+    );
+  }
+
+  if (!data) {
+    return (
+      <DashboardLayout user={user}>
+        <View style={[styles.center, { backgroundColor: c.bg, padding: spacing.xl }]}>
+          <Card style={styles.wideCard}>
+            <CardContent style={{ alignItems: 'center', padding: spacing.xl }}>
+              <Text style={{ fontSize: fontSizes.lg, fontWeight: '600', color: c.text, marginBottom: spacing.sm }}>
+                Profile data unavailable
+              </Text>
+              <Text style={{ fontSize: fontSizes.sm, color: c.textMuted, textAlign: 'center', marginBottom: spacing.md }}>
+                Could not load your profile. Try refreshing the page.
+              </Text>
+              <Button onPress={() => { setLoading(true); fetchData(); }}>Refresh</Button>
+            </CardContent>
+          </Card>
+        </View>
       </DashboardLayout>
     );
   }
@@ -239,6 +353,9 @@ export function ProfileScreen() {
             </Card>
           ))}
         </View>
+
+        {/* Heatmap */}
+        {data.heatmap && <ActivityHeatmap heatmap={data.heatmap} />}
 
         {/* Progress */}
         <Card style={styles.section}>
@@ -427,6 +544,19 @@ const styles = StyleSheet.create({
   },
   categoryDot: { width: 6, height: 6, borderRadius: 3 },
   categoryText: { fontSize: fontSizes.xs, fontFamily: fontFamily.body, fontWeight: '500' },
+
+  // Heatmap
+  heatmapHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  heatmapSubtitle: { fontSize: fontSizes.xs, fontFamily: fontFamily.body },
+  heatmapContainer: { flexDirection: 'row', gap: spacing.xs },
+  heatmapDayLabels: { gap: 3, paddingTop: 0 },
+  heatmapDayLabel: { height: 12, justifyContent: 'center' },
+  heatmapDayText: { fontSize: 9, fontFamily: fontFamily.body },
+  heatmapGrid: { gap: 3 },
+  heatmapRow: { flexDirection: 'row', gap: 3 },
+  heatmapCell: { width: 12, height: 12, borderRadius: 2 },
+  heatmapLegend: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 4, marginTop: spacing.sm },
+  heatmapLegendText: { fontSize: 10, fontFamily: fontFamily.body },
 
   // Badges
   badgeGrid: {

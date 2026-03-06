@@ -22,11 +22,11 @@ describe('linking', () => {
   // ---------------------------------------------------------------------------
   const expectedScreens = [
     'Landing', 'Login', 'Register', 'Callback', 'Onboarding',
-    'Dashboard', 'Challenges', 'Leaderboard', 'Profile', 'Settings',
+    'Dashboard', 'Problems', 'Discuss', 'Leaderboard', 'Profile', 'Settings',
     'Arena', 'Replay', 'DailyChallenge',
     'Assessments', 'AssessmentBuilder', 'AssessmentResultsDashboard',
     'AssessmentLanding', 'AssessmentFlow', 'AssessmentResults',
-    'Teams', 'GuestArena', 'PublicProfile', 'Share', 'Certificate',
+    'Hiring', 'GuestArena', 'PublicProfile', 'Share', 'Certificate',
     'OrgManagement', 'OrgJoin', 'NotFound',
   ];
 

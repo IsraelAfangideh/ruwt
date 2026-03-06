@@ -242,7 +242,7 @@ describe('OnboardingScreen', () => {
     await waitFor(() => {
       expect(mockReset).toHaveBeenCalledWith({
         index: 0,
-        routes: [{ name: 'Dashboard' }],
+        routes: [{ name: 'Problems' }],
       });
     });
   });
@@ -279,7 +279,7 @@ describe('OnboardingScreen', () => {
     });
   });
 
-  it('redirects to Dashboard if onboarding already completed', async () => {
+  it('redirects to Problems if onboarding already completed', async () => {
     mockFetch.mockResolvedValueOnce({
       ok: true,
       json: () => Promise.resolve({ onboardingCompleted: 1 }),
@@ -291,7 +291,7 @@ describe('OnboardingScreen', () => {
     await waitFor(() => {
       expect(mockReset).toHaveBeenCalledWith({
         index: 0,
-        routes: [{ name: 'Dashboard' }],
+        routes: [{ name: 'Problems' }],
       });
     });
   });

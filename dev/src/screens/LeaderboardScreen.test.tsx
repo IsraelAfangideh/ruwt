@@ -164,22 +164,22 @@ describe('LeaderboardScreen', () => {
     expect(screen.getByText(/Be the first to claim/)).toBeTruthy();
   });
 
-  it('shows Browse Challenges button in empty state', async () => {
+  it('shows Browse Problems button in empty state', async () => {
     setupFetch();
     render(<LeaderboardScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Browse Challenges')).toBeTruthy();
+      expect(screen.getByText('Browse Problems')).toBeTruthy();
     });
   });
 
-  it('navigates to Challenges when Browse Challenges is clicked in empty state', async () => {
+  it('navigates to Challenges when Browse Problems is clicked in empty state', async () => {
     setupFetch();
     render(<LeaderboardScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Browse Challenges')).toBeTruthy();
+      expect(screen.getByText('Browse Problems')).toBeTruthy();
     });
-    fireEvent.click(screen.getByText('Browse Challenges'));
-    expect(mockNavigate).toHaveBeenCalledWith('Challenges');
+    fireEvent.click(screen.getByText('Browse Problems'));
+    expect(mockNavigate).toHaveBeenCalledWith('Problems');
   });
 
   it('shows ActivityFeed in empty state', async () => {

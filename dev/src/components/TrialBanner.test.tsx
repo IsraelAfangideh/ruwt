@@ -66,7 +66,7 @@ describe('TrialBanner', () => {
 
     fireEvent.click(screen.getByText('Subscribe'));
 
-    expect(mockNavigate).toHaveBeenCalledWith('Teams');
+    expect(mockNavigate).toHaveBeenCalledWith('Hiring');
   });
 
   it('shows warning styling when 7 or fewer days remain', () => {

@@ -378,7 +378,7 @@ describe('ReplayScreen', () => {
     expect(mockNavigate).toHaveBeenCalledWith('Arena', { challengeId: 'FizzBuzz Budget' });
   });
 
-  it('navigates to Challenges when "Back to Challenges" is clicked from main view', async () => {
+  it('navigates to Problems when "Back to Challenges" is clicked from main view', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
       ok: true,
       json: () => Promise.resolve(mockReplayData),
@@ -389,7 +389,7 @@ describe('ReplayScreen', () => {
       expect(screen.getByText('Back to Challenges')).toBeTruthy();
     });
     fireEvent.click(screen.getByText('Back to Challenges'));
-    expect(mockNavigate).toHaveBeenCalledWith('Challenges');
+    expect(mockNavigate).toHaveBeenCalledWith('Problems');
   });
 
   it('calls goBack when close button is clicked', async () => {
@@ -462,7 +462,7 @@ describe('ReplayScreen', () => {
     window.history.replaceState({}, '', '/replay/test-attempt-123');
   });
 
-  it('navigates to Challenges when "Back to Challenges" is clicked in error state', async () => {
+  it('navigates to Problems when "Back to Challenges" is clicked in error state', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
       ok: false,
       json: () => Promise.resolve({ error: 'Not found' }),
@@ -473,7 +473,7 @@ describe('ReplayScreen', () => {
       expect(screen.getByText('Not found')).toBeTruthy();
     });
     fireEvent.click(screen.getByText('Back to Challenges'));
-    expect(mockNavigate).toHaveBeenCalledWith('Challenges');
+    expect(mockNavigate).toHaveBeenCalledWith('Problems');
   });
 
   it('shows error when attemptId is empty string (line 65)', async () => {

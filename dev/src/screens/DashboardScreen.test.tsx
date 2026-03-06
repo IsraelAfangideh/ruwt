@@ -375,7 +375,7 @@ describe('DashboardScreen', () => {
       expect(screen.getByText('Browse all challenges')).toBeTruthy();
     });
     fireEvent.click(screen.getByText('Browse all challenges'));
-    expect(mockNavigate).toHaveBeenCalledWith('Challenges');
+    expect(mockNavigate).toHaveBeenCalledWith('Problems');
   });
 
   it('shows fallback UI when API fetch fails', async () => {

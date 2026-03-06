@@ -262,7 +262,7 @@ export function LeaderboardScreen() {
             <Text style={{ fontSize: fontSizes.sm, color: c.textMuted, textAlign: 'center' }}>
               Be the first to claim the #1 spot. Solve a challenge and your rank appears here.
             </Text>
-            <Button onPress={() => navigation.navigate('Challenges' as never)}>Browse Challenges</Button>
+            <Button onPress={() => navigation.navigate('Problems' as never)}>Browse Problems</Button>
             <View style={{ marginTop: spacing.lg, width: '100%' }}>
               <ActivityFeed limit={10} />
             </View>
@@ -404,7 +404,7 @@ export function LeaderboardScreen() {
           These rankings measure real AI efficiency. Use the same system to{' '}
           <Text
             style={{ color: c.accent, textDecorationLine: 'underline' }}
-            onPress={() => navigation.navigate('Teams' as never)}
+            onPress={() => navigation.navigate('Hiring' as never)}
           >
             assess engineering candidates
           </Text>

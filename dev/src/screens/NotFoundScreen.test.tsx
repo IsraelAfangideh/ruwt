@@ -59,7 +59,7 @@ describe('NotFoundScreen', () => {
   it('renders all navigation link text', () => {
     render(<NotFoundScreen />);
     expect(screen.getAllByText('Go Home').length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText('Browse Challenges').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('Browse Problems').length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText('Sign In').length).toBeGreaterThanOrEqual(1);
   });
 
@@ -82,10 +82,10 @@ describe('NotFoundScreen', () => {
     expect(mockNavigate).toHaveBeenCalledWith('Landing');
   });
 
-  it('navigates to Challenges when "Browse Challenges" is clicked', () => {
+  it('navigates to Challenges when "Browse Problems" is clicked', () => {
     render(<NotFoundScreen />);
-    fireEvent.click(screen.getByText('Browse Challenges'));
-    expect(mockNavigate).toHaveBeenCalledWith('Challenges');
+    fireEvent.click(screen.getByText('Browse Problems'));
+    expect(mockNavigate).toHaveBeenCalledWith('Problems');
   });
 
   it('navigates to Login when "Sign In" is clicked', () => {

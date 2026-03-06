@@ -58,6 +58,7 @@ vi.mock('@/screens/CallbackScreen', () => ({ CallbackScreen: () => <div>Callback
 vi.mock('@/screens/OnboardingScreen', () => ({ OnboardingScreen: () => <div>OnboardingScreen</div> }));
 vi.mock('@/screens/DashboardScreen', () => ({ DashboardScreen: () => <div>DashboardScreen</div> }));
 vi.mock('@/screens/ChallengesScreen', () => ({ ChallengesScreen: () => <div>ChallengesScreen</div> }));
+vi.mock('@/screens/DiscussScreen', () => ({ DiscussScreen: () => <div>DiscussScreen</div> }));
 vi.mock('@/screens/LeaderboardScreen', () => ({ LeaderboardScreen: () => <div>LeaderboardScreen</div> }));
 vi.mock('@/screens/ProfileScreen', () => ({ ProfileScreen: () => <div>ProfileScreen</div> }));
 vi.mock('@/screens/SettingsScreen', () => ({ SettingsScreen: () => <div>SettingsScreen</div> }));
@@ -70,7 +71,7 @@ vi.mock('@/screens/AssessmentResultsDashboardScreen', () => ({ AssessmentResults
 vi.mock('@/screens/AssessmentLandingScreen', () => ({ AssessmentLandingScreen: () => <div>AssessmentLandingScreen</div> }));
 vi.mock('@/screens/AssessmentFlowScreen', () => ({ AssessmentFlowScreen: () => <div>AssessmentFlowScreen</div> }));
 vi.mock('@/screens/AssessmentResultsScreen', () => ({ AssessmentResultsScreen: () => <div>AssessmentResultsScreen</div> }));
-vi.mock('@/screens/TeamsScreen', () => ({ TeamsScreen: () => <div>TeamsScreen</div> }));
+vi.mock('@/screens/TeamsScreen', () => ({ TeamsScreen: () => <div>HiringScreen</div> }));
 vi.mock('@/screens/GuestArenaScreen', () => ({ GuestArenaScreen: () => <div>GuestArenaScreen</div> }));
 vi.mock('@/screens/PublicProfileScreen', () => ({ PublicProfileScreen: () => <div>PublicProfileScreen</div> }));
 vi.mock('@/screens/ShareScreen', () => ({ ShareScreen: () => <div>ShareScreen</div> }));
@@ -176,10 +177,10 @@ describe('AppNavigator', () => {
     const { container } = render(<AppNavigator />);
     const expectedScreenNames = [
       'Landing', 'Login', 'Register', 'Callback', 'Onboarding',
-      'Dashboard', 'Challenges', 'Leaderboard', 'Profile', 'Settings',
+      'Dashboard', 'Problems', 'Discuss', 'Leaderboard', 'Profile', 'Settings',
       'Arena', 'Replay', 'DailyChallenge', 'Assessments', 'AssessmentBuilder',
       'AssessmentResultsDashboard', 'AssessmentLanding', 'AssessmentFlow',
-      'AssessmentResults', 'Teams', 'GuestArena', 'PublicProfile', 'Share',
+      'AssessmentResults', 'Hiring', 'GuestArena', 'PublicProfile', 'Share',
       'Certificate', 'OrgManagement', 'OrgJoin', 'NotFound',
     ];
     for (const name of expectedScreenNames) {

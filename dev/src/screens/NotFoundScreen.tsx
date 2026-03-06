@@ -39,10 +39,10 @@ export function NotFoundScreen() {
             </Button>
             <Button
               variant="outline"
-              onPress={() => navigation.navigate('Challenges' as never)}
+              onPress={() => navigation.navigate('Problems' as never)}
               fullWidth
             >
-              Browse Challenges
+              Browse Problems
             </Button>
             <Button
               variant="ghost"

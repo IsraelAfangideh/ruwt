@@ -86,7 +86,7 @@ export function TrialBanner({ trial, subscriptionStatus }: TrialBannerProps) {
       </View>
       <Button
         size="sm"
-        onPress={() => navigation.navigate('Teams' as never)}
+        onPress={() => navigation.navigate('Hiring' as never)}
         style={{ backgroundColor: '#c9a962' }}
         textStyle={{ color: '#1a1816', fontWeight: '600' }}
       >
