@@ -1961,11 +1961,12 @@ export function ArenaIDE({
                   </div>
                 )}
 
-                {/* Bottom tab content — terminal is the fallback when selected tab is not docked here */}
-                {layout.activeBottomTab === 'chat' && layout.chatDock === 'bottom' ? (
-                  <ChatPanel {...chatPanelCommonProps} isMobile={false} dockAction={() => layout.setChatDock('sidebar')} dockDirection="sidebar" />
-                ) : (
+                {/* Bottom tab content */}
+                {layout.activeBottomTab === 'terminal' && (
                   <TerminalPanel ref={terminalRef} {...terminalPanelCommonProps} />
+                )}
+                {layout.activeBottomTab === 'chat' && (
+                  <ChatPanel {...chatPanelCommonProps} isMobile={false} dockAction={() => layout.setChatDock('sidebar')} dockDirection="sidebar" />
                 )}
               </div>
             </Panel>

@@ -114,7 +114,36 @@ describe('useArenaLayout', () => {
 
   it('setActiveBottomTab updates state', () => {
     const { result } = renderHook(() => useArenaLayout());
+    act(() => result.current.setChatDock('bottom'));
     act(() => result.current.setActiveBottomTab('chat'));
     expect(result.current.activeBottomTab).toBe('chat');
+  });
+
+  it('effectiveBottomTab falls back to terminal when chat is not docked in bottom', () => {
+    const { result } = renderHook(() => useArenaLayout());
+    // Set chat to bottom, select it, then move chat back to sidebar
+    act(() => result.current.setChatDock('bottom'));
+    expect(result.current.activeBottomTab).toBe('chat');
+    act(() => result.current.setChatDock('sidebar'));
+    // Raw activeBottomTab is still 'chat' but derived value falls back to terminal
+    expect(result.current.activeBottomTab).toBe('terminal');
+  });
+
+  it('effectiveBottomTab falls back to terminal when results is not docked in bottom', () => {
+    const { result } = renderHook(() => useArenaLayout());
+    act(() => result.current.setResultsDock('bottom'));
+    act(() => result.current.setActiveBottomTab('results'));
+    expect(result.current.activeBottomTab).toBe('results');
+    act(() => result.current.setResultsDock('sidebar'));
+    expect(result.current.activeBottomTab).toBe('terminal');
+  });
+
+  it('effectiveBottomTab falls back to terminal for stale localStorage', () => {
+    // Simulate stale state: activeBottomTab=chat but chatDock=sidebar
+    vi.spyOn(Storage.prototype, 'getItem').mockReturnValue(
+      JSON.stringify({ activeBottomTab: 'chat', chatDock: 'sidebar' })
+    );
+    const { result } = renderHook(() => useArenaLayout());
+    expect(result.current.activeBottomTab).toBe('terminal');
   });
 });

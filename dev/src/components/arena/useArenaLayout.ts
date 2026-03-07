@@ -64,25 +64,29 @@ export function useArenaLayout() {
   }, []);
 
   const setChatDock = useCallback((v: 'sidebar' | 'bottom') => {
-    setPrefs((p) => ({
-      ...p, chatDock: v,
-      activeBottomTab: v === 'bottom' ? 'chat' : (p.activeBottomTab === 'chat' ? 'terminal' : p.activeBottomTab),
-    }));
+    setPrefs((p) => ({ ...p, chatDock: v, activeBottomTab: v === 'bottom' ? 'chat' : p.activeBottomTab }));
   }, []);
 
   const setResultsDock = useCallback((v: 'sidebar' | 'bottom') => {
-    setPrefs((p) => ({
-      ...p, resultsDock: v,
-      activeBottomTab: v === 'bottom' ? 'results' : (p.activeBottomTab === 'results' ? 'terminal' : p.activeBottomTab),
-    }));
+    setPrefs((p) => ({ ...p, resultsDock: v, activeBottomTab: v === 'bottom' ? 'results' : p.activeBottomTab }));
   }, []);
 
   const setActiveBottomTab = useCallback((v: 'terminal' | 'chat' | 'results') => {
     setPrefs((p) => ({ ...p, activeBottomTab: v }));
   }, []);
 
+  // Derive effective bottom tab — if the selected tab isn't actually docked
+  // in the bottom panel, fall back to terminal. This prevents blank renders
+  // regardless of how the user rearranges docking.
+  const effectiveBottomTab = (
+    (prefs.activeBottomTab === 'chat' && prefs.chatDock === 'bottom') ||
+    (prefs.activeBottomTab === 'results' && prefs.resultsDock === 'bottom') ||
+    prefs.activeBottomTab === 'terminal'
+  ) ? prefs.activeBottomTab : 'terminal';
+
   return {
     ...prefs,
+    activeBottomTab: effectiveBottomTab,
     setSidebarCollapsed,
     setBottomCollapsed,
     toggleSidebarPosition,
