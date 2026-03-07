@@ -117,12 +117,12 @@ WHERE id = 'qr-deep-equal';
 -- Test inputs are "2\n[1,2,3,4,5]" — judge parses each line,
 -- so solve() receives (2, [1,2,3,4,5]). Harness routes to chunk_array.
 UPDATE challenges SET
-  test_harness = 'import json as _json
+  test_harness = 'import json as __json
 
 def solve(*args):
     n = int(args[0])
-    arr = args[1] if isinstance(args[1], list) else _json.loads(str(args[1]))
-    return _json.dumps(chunk_array(arr, n))',
+    arr = args[1] if isinstance(args[1], list) else __json.loads(str(args[1]))
+    return __json.dumps(chunk_array(arr, n))',
   starter_code = 'def chunk_array(arr, n):
     # Your code here
     # Split arr into chunks of size n
@@ -138,11 +138,11 @@ WHERE id = 'qr-chunk-array';
 -- Test inputs are "6", "1", "0", etc. — judge parses to int,
 -- so solve() receives (6,). Harness routes to fibonacci.
 UPDATE challenges SET
-  test_harness = 'import json as _json
+  test_harness = 'import json as __json
 
 def solve(*args):
     n = int(args[0])
-    return _json.dumps(fibonacci(n))',
+    return __json.dumps(fibonacci(n))',
   starter_code = 'def fibonacci(n):
     # Your code here — return list of first n Fibonacci numbers
     # fibonacci(0) -> [], fibonacci(1) -> [0], fibonacci(6) -> [0,1,1,2,3,5]
