@@ -200,10 +200,10 @@ const HARNESS_RULES_FUNCTION = `
 const HARNESS_RULES_STDIN = `
 ## How the Test Harness Works
 - The platform passes test input via stdin and compares your stdout to expected output.
-- The starter code already handles reading stdin and printing the result — just implement the function body.
-- Do NOT remove or rewrite the stdin/stdout boilerplate at the bottom of the starter code.
+- A hidden harness reads stdin, calls your function, and prints the result — just implement the function body.
+- Do NOT add stdin reading (\`sys.stdin.read()\`, \`input()\`, \`process.stdin\`), entry-point guards (\`if __name__ == "__main__"\`), or extra output (\`print()\`/\`console.log()\`) outside the function — any extra stdout breaks test comparison.
 - Do NOT add \`module.exports\` or extra exports — the code is run as a script, not imported.
-- Only print the final answer. Any extra \`print()\`/\`console.log()\` output will break test comparison.`;
+- Only implement the function(s). Return the correct value — the platform handles I/O.`;
 
 function getEnvironmentRules(useStdin?: boolean): string {
   return ENVIRONMENT_RULES_BASE + (useStdin ? HARNESS_RULES_STDIN : HARNESS_RULES_FUNCTION);

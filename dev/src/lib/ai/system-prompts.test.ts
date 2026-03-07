@@ -424,9 +424,8 @@ describe('buildSystemPrompt', () => {
       const prompt = buildSystemPrompt(baseOpts({ mode: 'agent', useStdin: true }));
       expect(prompt).toContain('## How the Test Harness Works');
       expect(prompt).toContain('passes test input via stdin');
-      expect(prompt).toContain('starter code already handles reading stdin');
+      expect(prompt).toContain('hidden harness reads stdin');
       expect(prompt).not.toContain('does NOT use stdin');
-      expect(prompt).not.toContain('__main__');
     });
 
     it('includes stdin rules in debug first-round prompt when useStdin is true', () => {
