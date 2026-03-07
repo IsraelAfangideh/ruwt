@@ -64,11 +64,17 @@ export function useArenaLayout() {
   }, []);
 
   const setChatDock = useCallback((v: 'sidebar' | 'bottom') => {
-    setPrefs((p) => ({ ...p, chatDock: v, activeBottomTab: v === 'bottom' ? 'chat' : p.activeBottomTab }));
+    setPrefs((p) => ({
+      ...p, chatDock: v,
+      activeBottomTab: v === 'bottom' ? 'chat' : (p.activeBottomTab === 'chat' ? 'terminal' : p.activeBottomTab),
+    }));
   }, []);
 
   const setResultsDock = useCallback((v: 'sidebar' | 'bottom') => {
-    setPrefs((p) => ({ ...p, resultsDock: v, activeBottomTab: v === 'bottom' ? 'results' : p.activeBottomTab }));
+    setPrefs((p) => ({
+      ...p, resultsDock: v,
+      activeBottomTab: v === 'bottom' ? 'results' : (p.activeBottomTab === 'results' ? 'terminal' : p.activeBottomTab),
+    }));
   }, []);
 
   const setActiveBottomTab = useCallback((v: 'terminal' | 'chat' | 'results') => {
