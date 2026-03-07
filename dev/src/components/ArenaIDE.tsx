@@ -1628,6 +1628,10 @@ export function ArenaIDE({
     onResize: handleSidebarResize,
   }), [handleSidebarResize]);
 
+  const handleBottomResize = useCallback(() => {
+    layout.setBottomCollapsed(bottomPanelRef.current?.isCollapsed() ?? false);
+  }, [layout.setBottomCollapsed]);
+
   const toggleBottomPanel = useCallback(() => {
     if (bottomPanelRef.current?.isCollapsed()) bottomPanelRef.current?.expand();
     else bottomPanelRef.current?.collapse();
@@ -1917,9 +1921,7 @@ export function ArenaIDE({
               minSize="8%"
               collapsible
               collapsedSize="3%"
-              onResize={() => {
-                layout.setBottomCollapsed(bottomPanelRef.current?.isCollapsed() ?? false);
-              }}
+              onResize={handleBottomResize}
             >
               <div style={s.terminalWrap}>
                 {/* Bottom zone tab bar — only visible when 2+ tabs */}
