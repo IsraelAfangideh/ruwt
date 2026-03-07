@@ -1,16 +1,17 @@
 /**
- * Arena IDE: Left sidebar (Description/Chat), right pane (Monaco + Terminal).
+ * Arena IDE: Resizable panels (sidebar, editor, bottom zone).
  * AI auto-apply: code blocks from chat responses are applied to the editor.
  * Terminal: virtual shell with `ruwt` TUI mode for AI assistance.
  */
 import React, { useState, useRef, useEffect, useCallback, useMemo, Suspense } from 'react';
+import { Group, Panel, usePanelRef } from 'react-resizable-panels';
 import { arena } from '@/theme/colors';
 import { fontFamily } from '@/theme/tokens';
 import { VirtualFileSystem } from './arena/VirtualFileSystem';
 import { useCodeSync } from './arena/useCodeSync';
 import { useAIChat, type MessageMeta } from './arena/useAIChat';
 import { TerminalPanel, type TerminalPanelHandle } from './arena/TerminalPanel';
-import { TIER_MODELS, getModelById, getModelsForTier, tierColor, tierLabel, estimateTypicalMessageCost, formatCostFromHundredths, type ModelTier } from '@/lib/ai/pricing';
+import { TIER_MODELS, TIER_ORDER, getModelById, getModelsForTier, tierColor, tierLabel, estimateTypicalMessageCost, formatCostFromHundredths, type ModelTier } from '@/lib/ai/pricing';
 import { estimateChatCost, formatEstimatedCost } from '@/lib/cost-estimate';
 import { useIsMobile } from '@/lib/useIsMobile';
 import { CommentSection } from '@/components/CommentSection';
@@ -20,11 +21,13 @@ import { applyCodeFromResponse as sharedApplyCode, extractFileEdits } from '@/li
 import { callApplyModel } from '@/lib/ai/apply-model';
 import { useEditorDecorations } from './arena/useEditorDecorations';
 import { ModeSelector } from './arena/ModeSelector';
-// Notepad is now embedded in DescriptionPanel
 import { renderMarkdown, ThinkingBlock } from './arena/ChatMarkdown';
 import { ResultsBar, type TestResults } from './arena/ResultsBar';
 import ExpiryOverlay from './arena/ExpiryOverlay';
 import { formatTime } from '@/lib/utils';
+import { useArenaLayout } from './arena/useArenaLayout';
+import { PanelResizeBar } from './arena/PanelResizeBar';
+import { CollapsedSidebar, type SidebarTab } from './arena/CollapsedSidebar';
 import '@/lib/monaco-init';
 
 const MonacoEditor = React.lazy(() => import('@monaco-editor/react'));
@@ -34,6 +37,10 @@ const MonacoEditor = React.lazy(() => import('@monaco-editor/react'));
 const constraintMessages: Record<string, string> = {
   time: 'Time limit reached \u2014 you can review your code but can\'t make more AI requests.',
   cost: 'Cost limit reached for this attempt.',
+};
+
+const DIFFICULTY_TO_TIER: Record<string, ModelTier> = {
+  sprint: 'micro', easy: 'budget', medium: 'mid', hard: 'premium', impossible: 'reasoning',
 };
 
 /* ─── Types ───────────────────────────────────────────────────────── */
@@ -422,6 +429,478 @@ function DescriptionPanel({ challenge, pastAttempts, notepadContent, onNotepadCh
   );
 }
 
+/* ─── ChatPanel (extracted to avoid duplication between sidebar/bottom) ──── */
+
+interface ChatPanelProps {
+  chatScrollRef: React.RefObject<HTMLDivElement>;
+  chatTextareaRef: React.RefObject<HTMLTextAreaElement>;
+  messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string; isConstraint?: boolean; meta?: MessageMeta; thinking?: string }>;
+  streamingContent: string;
+  streamingThinking: string;
+  isThinkingPhase: boolean;
+  isLoadingChat: boolean;
+  isToolLooping: boolean;
+  chatInput: string;
+  setChatInput: (v: string) => void;
+  chatDisabled: boolean;
+  chatDisabledReason?: 'expired' | 'cost' | null;
+  guestMode?: boolean;
+  model: string;
+  setModel: (v: string) => void;
+  selectedTier: ModelTier;
+  setSelectedTier: (v: ModelTier) => void;
+  tierDropdownOpen: boolean;
+  setTierDropdownOpen: (v: boolean) => void;
+  disabledModels: Set<string>;
+  mode: AIMode;
+  setMode: (v: AIMode) => void;
+  showScrollBtn: boolean;
+  setShowScrollBtn: (v: boolean) => void;
+  expandedMessages: Set<number>;
+  setExpandedMessages: React.Dispatch<React.SetStateAction<Set<number>>>;
+  handleInputKeyDown: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void;
+  handleStopChat: () => void;
+  handleClearChat: () => void;
+  handleRetry: () => void;
+  handleLineClick: (line: number) => void;
+  handleEditMessage: (idx: number, content: string) => void;
+  sendMessage: (overrideText?: string) => void;
+  challenge: ArenaChallenge;
+  inputTokens: number;
+  outputTokens: number;
+  totalCost: number;
+  queueLength: number;
+  isMobile: boolean;
+  dockAction?: () => void;
+  dockDirection?: 'sidebar' | 'bottom';
+}
+
+function ChatPanel({
+  chatScrollRef,
+  chatTextareaRef,
+  messages,
+  streamingContent,
+  streamingThinking,
+  isThinkingPhase,
+  isLoadingChat,
+  isToolLooping,
+  chatInput,
+  setChatInput,
+  chatDisabled,
+  chatDisabledReason,
+  guestMode,
+  model,
+  setModel,
+  selectedTier,
+  setSelectedTier,
+  tierDropdownOpen,
+  setTierDropdownOpen,
+  disabledModels,
+  mode,
+  setMode,
+  showScrollBtn,
+  setShowScrollBtn,
+  expandedMessages,
+  setExpandedMessages,
+  handleInputKeyDown,
+  handleStopChat,
+  handleClearChat,
+  handleRetry,
+  handleLineClick,
+  handleEditMessage,
+  sendMessage,
+  challenge,
+  inputTokens,
+  outputTokens,
+  totalCost,
+  queueLength,
+  isMobile,
+  dockAction,
+  dockDirection,
+}: ChatPanelProps) {
+  return (
+    <div id="panel-chat" role="tabpanel" aria-label="AI Chat" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
+      {/* Mode selector + Clear + optional dock */}
+      <div style={{ borderBottom: `1px solid ${arena.border}`, display: 'flex', alignItems: 'center' }}>
+        <div style={{ flex: 1 }}><ModeSelector mode={mode} onModeChange={setMode} disabled={isLoadingChat} /></div>
+        {dockAction && (
+          <button onClick={dockAction} style={s.clearButton} title={dockDirection === 'sidebar' ? 'Move to sidebar' : 'Move to bottom panel'}>{dockDirection === 'sidebar' ? '\u2190' : '\u2193'}</button>
+        )}
+        {messages.filter(m => m.role !== 'system').length > 0 && (
+          <button onClick={handleClearChat} style={s.clearButton} title="Clear chat">Clear</button>
+        )}
+      </div>
+      {/* Chat messages */}
+      <div style={{ position: 'relative', flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+      <div
+        ref={chatScrollRef}
+        style={s.chatScroll}
+        role="log"
+        aria-label="Chat messages"
+        aria-live="polite"
+        aria-atomic={false}
+        onScroll={(e) => {
+          const el = e.currentTarget;
+          setShowScrollBtn(el.scrollHeight - el.scrollTop - el.clientHeight > 100);
+        }}
+      >
+        {messages.filter((m) => m.role !== 'system').length === 0 && !streamingContent && (
+          <div style={s.chatEmpty}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: '0 12px', width: '100%', maxWidth: 360 }}>
+              <span style={{ color: arena.textSubtle, fontSize: 12, textAlign: 'center', lineHeight: '1.5' }}>
+                Every message costs from your budget. Choose your tier wisely.
+              </span>
+              {[
+                'Write the solution',
+                'What\'s the most efficient approach?',
+                'Fix the failing tests',
+              ].map((prompt) => (
+                <button
+                  key={prompt}
+                  style={{
+                    background: arena.surface,
+                    border: `1px solid ${arena.border}`,
+                    borderRadius: 8,
+                    padding: '10px 14px',
+                    fontSize: 13,
+                    color: arena.text,
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    fontFamily: 'inherit',
+                    transition: 'border-color 0.15s',
+                  }}
+                  onClick={() => setChatInput(prompt)}
+                  onMouseEnter={(e) => (e.currentTarget.style.borderColor = arena.accent)}
+                  onMouseLeave={(e) => (e.currentTarget.style.borderColor = arena.border)}
+                >
+                  {prompt}
+                </button>
+              ))}
+              <span style={{ color: arena.textSubtle, fontSize: 11, textAlign: 'center', lineHeight: '1.5', marginTop: 4 }}>
+                {challenge.maxCost
+                  ? `Budget: ${formatCostFromHundredths(challenge.maxCost)} \u2014 choose your tier wisely.`
+                  : 'Costs tracked for leaderboard ranking.'}
+              </span>
+            </div>
+          </div>
+        )}
+        {(() => {
+          const visible: Array<{ msg: typeof messages[0]; origIdx: number }> = [];
+          messages.forEach((m, idx) => { if (m.role !== 'system') visible.push({ msg: m, origIdx: idx }); });
+          let lastAsstVisIdx = -1;
+          for (let j = visible.length - 1; j >= 0; j--) {
+            if (visible[j].msg.role === 'assistant' && !visible[j].msg.isConstraint) { lastAsstVisIdx = j; break; }
+          }
+          return visible.map(({ msg, origIdx }, i) => {
+            if (msg.isConstraint) {
+              return (
+                <div key={origIdx} style={s.constraintMessage}>
+                  <span style={s.constraintIcon}>!</span>
+                  <span style={s.constraintText}>{msg.content}</span>
+                </div>
+              );
+            }
+            const modelInfo = msg.meta ? getModelById(msg.meta.model) : undefined;
+            const isLastAssistant = i === lastAsstVisIdx;
+            const lineCount = msg.content.split('\n').length;
+            const isLongMsg = msg.role === 'assistant' && lineCount > 12;
+            const isExpanded = isLastAssistant || expandedMessages.has(origIdx);
+            return (
+              <div key={origIdx} style={msg.role === 'user' ? s.userMessage : s.aiMessage}>
+                <div style={s.messageLabel}>
+                  <span style={msg.role === 'user' ? s.userLabel : s.aiLabel}>
+                    {msg.role === 'user' ? 'You' : 'AI'}
+                  </span>
+                  {msg.role === 'assistant' && modelInfo && (
+                    <span style={s.msgTierBadge}>
+                      <span style={{ ...s.tierDot, background: msg.meta!.cost > 0 ? tierColor(modelInfo.tier) : arena.textSubtle }} />
+                      {modelInfo.displayName}
+                    </span>
+                  )}
+                  {msg.role === 'assistant' && !msg.isConstraint && (
+                    <MessageCopyButton content={msg.content} />
+                  )}
+                  {msg.role === 'user' && !isLoadingChat && (
+                    <button
+                      onClick={() => handleEditMessage(origIdx, msg.content)}
+                      style={s.editButton}
+                      title="Edit and resend"
+                    >
+                      &#9998;
+                    </button>
+                  )}
+                </div>
+                {msg.role === 'assistant' && msg.thinking && (
+                  <ThinkingBlock text={msg.thinking} />
+                )}
+                {msg.role === 'assistant' ? (
+                  <>
+                    <div style={{
+                      ...s.aiContent,
+                      ...(isLongMsg && !isExpanded ? { maxHeight: '10em', overflow: 'hidden', position: 'relative' as const } : {}),
+                    }}>
+                      {renderMarkdown(msg.content, handleLineClick)}
+                    </div>
+                    {isLongMsg && !isExpanded && (
+                      <button
+                        onClick={() => setExpandedMessages(prev => new Set(prev).add(origIdx))}
+                        style={s.showMoreButton}
+                      >
+                        Show more ({lineCount} lines)
+                      </button>
+                    )}
+                    {isLongMsg && isExpanded && !isLastAssistant && (
+                      <button
+                        onClick={() => setExpandedMessages(prev => { const n = new Set(prev); n.delete(origIdx); return n; })}
+                        style={s.showMoreButton}
+                      >
+                        Show less
+                      </button>
+                    )}
+                  </>
+                ) : (
+                  <div style={s.userContent}>{renderMarkdown(msg.content)}</div>
+                )}
+                {msg.meta && (
+                  <div style={s.msgCostLine}>
+                    {modelInfo?.displayName || 'AI'} {'\u00B7'} {msg.meta.tokens.toLocaleString()} {msg.meta.tokens === 1 ? 'token' : 'tokens'} {'\u00B7'} {formatCostFromHundredths(msg.meta.cost)}
+                  </div>
+                )}
+                {msg.role === 'assistant' && isLastAssistant && !isLoadingChat && (
+                  <button
+                    onClick={handleRetry}
+                    style={s.retryButton}
+                    title="Retry this response"
+                  >
+                    &#8635; Retry
+                  </button>
+                )}
+              </div>
+            );
+          });
+        })()}
+        {isToolLooping && !streamingContent && !isThinkingPhase && (
+          <div style={{ ...s.aiMessage, opacity: 0.7 }}>
+            <div style={s.messageLabel}>
+              <span style={s.aiLabel}>AI</span>
+              <span style={s.streamingDot}>{'\u25CF'}</span>
+              <span style={{ fontSize: 10, color: arena.accent }}>Running tests...</span>
+            </div>
+          </div>
+        )}
+        {isThinkingPhase && streamingThinking && (
+          <div style={s.aiMessage}>
+            <div style={s.messageLabel}>
+              <span style={s.aiLabel}>AI</span>
+              <span style={{ animation: 'ruwt-pulse 1.2s ease-in-out infinite', fontSize: 8, color: '#a78bfa' }}>{'\u25CF'}</span>
+              <span style={{ fontSize: 10, color: '#a78bfa' }}>
+                {getModelById(model)?.displayName || 'AI'} reasoning...
+              </span>
+            </div>
+            <ThinkingBlock text={streamingThinking} isStreaming />
+          </div>
+        )}
+        {streamingContent && (
+          <div style={s.aiMessage}>
+            <div style={s.messageLabel}>
+              <span style={s.aiLabel}>AI</span>
+              <span style={s.streamingDot}>{'\u25CF'}</span>
+              <span style={{ fontSize: 10, color: arena.textSubtle }}>
+                {getModelById(model)?.displayName || 'AI'} responding...
+              </span>
+            </div>
+            {streamingThinking && <ThinkingBlock text={streamingThinking} />}
+            <div style={s.aiContent}>{renderMarkdown(streamingContent, handleLineClick)}</div>
+          </div>
+        )}
+        {isLoadingChat && !streamingContent && !streamingThinking && !isThinkingPhase && !isToolLooping && (
+          <div style={{ ...s.aiMessage, opacity: 0.7 }}>
+            <div style={s.messageLabel}>
+              <span style={s.aiLabel}>AI</span>
+              <span style={{ animation: 'ruwt-pulse 1.2s ease-in-out infinite', fontSize: 8, color: arena.textSubtle }}>{'\u25CF'}</span>
+              <span style={{ fontSize: 10, color: arena.textSubtle }}>
+                {getModelById(model)?.displayName || 'AI'} processing...
+              </span>
+            </div>
+          </div>
+        )}
+      </div>
+      {showScrollBtn && (
+        <button
+          onClick={() => {
+            chatScrollRef.current?.scrollTo({ top: chatScrollRef.current.scrollHeight, behavior: 'smooth' });
+            setShowScrollBtn(false);
+          }}
+          style={s.scrollToBottomBtn}
+          title="Scroll to bottom"
+          data-testid="scroll-to-bottom"
+        >
+          {'\u2193'}
+        </button>
+      )}
+      </div>
+
+      {/* Model selector */}
+      <div style={isMobile ? s.tierBarMobile : s.tierBar} role="radiogroup" aria-label="Model tier selector">
+        {TIER_ORDER.map((tier) => {
+          const m = TIER_MODELS[tier];
+          const isActive = selectedTier === tier;
+          const tc = tierColor(tier);
+          const modelsInTier = getModelsForTier(tier);
+          const hasMultiple = modelsInTier.length > 1;
+          const isRecommended = tier === (DIFFICULTY_TO_TIER[challenge.difficulty] || 'budget');
+          return (
+            <div key={tier} style={isMobile
+              ? { position: 'relative', minWidth: 80, flexShrink: 0 }
+              : { position: 'relative', flex: 1 }
+            }>
+              <button
+                style={{
+                  ...s.tierPill,
+                  width: '100%',
+                  background: isActive ? `${tc}20` : 'transparent',
+                  borderColor: isActive ? tc : isRecommended ? `${arena.accent}60` : arena.border,
+                  color: isActive ? tc : arena.textMuted,
+                  opacity: isLoadingChat ? 0.5 : 1,
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                }}
+                role="radio"
+                aria-checked={isActive}
+                aria-expanded={isActive && hasMultiple ? tierDropdownOpen : undefined}
+                aria-label={`${tierLabel(tier)} tier — ${m.displayName}${isRecommended ? ` (recommended for ${challenge.difficulty})` : ''}`}
+                title={`${tierLabel(tier)} tier — ${m.displayName}${isRecommended ? ` (recommended for ${challenge.difficulty})` : ''}`}
+                disabled={isLoadingChat}
+                onClick={() => {
+                  if (isActive && hasMultiple) {
+                    setTierDropdownOpen(!tierDropdownOpen);
+                  } else {
+                    setSelectedTier(tier);
+                    setModel(m.id);
+                    setTierDropdownOpen(false);
+                  }
+                }}
+              >
+                <span style={{ fontWeight: 600, fontSize: 11, whiteSpace: 'nowrap' }}>
+                  {tierLabel(tier)}
+                  {isRecommended && <span style={{ fontSize: 8, marginLeft: 2, color: arena.accent }}>{'\u2605'}</span>}
+                  {hasMultiple && isActive && <span style={{ fontSize: 7, marginLeft: 2 }}>{'\u25BC'}</span>}
+                </span>
+                <span style={{ fontSize: 8, color: arena.textSubtle, fontWeight: 400, whiteSpace: 'nowrap' }}>
+                  ~{formatCostFromHundredths(estimateTypicalMessageCost(tier))}/msg
+                </span>
+              </button>
+              {isActive && tierDropdownOpen && hasMultiple && (
+                <div style={s.tierDropdown} role="listbox" aria-label={`${tierLabel(tier)} tier models`}>
+                  {modelsInTier.map((mi) => (
+                    <button
+                      key={mi.id}
+                      role="option"
+                      aria-selected={model === mi.id}
+                      aria-disabled={disabledModels.has(mi.id)}
+                      style={{
+                        ...s.tierDropdownItem,
+                        background: model === mi.id ? `${tc}15` : 'transparent',
+                        color: disabledModels.has(mi.id) ? arena.textSubtle : model === mi.id ? tc : arena.text,
+                        opacity: disabledModels.has(mi.id) ? 0.5 : 1,
+                        cursor: disabledModels.has(mi.id) ? 'not-allowed' : 'pointer',
+                      }}
+                      onClick={() => {
+                        if (disabledModels.has(mi.id)) return;
+                        setModel(mi.id);
+                        setTierDropdownOpen(false);
+                      }}
+                    >
+                      <span style={{ fontWeight: 500 }}>{mi.displayName}</span>
+                      <span style={{ fontSize: 10, color: arena.textSubtle }}>{mi.description}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Chat input */}
+      <div style={{ ...s.chatInputWrap, alignItems: 'flex-end' }}>
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <textarea
+            ref={chatTextareaRef}
+            style={{
+              ...(isMobile ? { ...s.chatInput, padding: '10px 14px', fontSize: 16 } : s.chatInput),
+              resize: 'none' as const,
+              minHeight: 34,
+              maxHeight: 120,
+              overflow: 'auto',
+              lineHeight: '1.4',
+            }}
+            rows={1}
+            placeholder={guestMode ? 'Sign up to chat with AI' : chatDisabled ? (chatDisabledReason === 'expired' ? 'Chat disabled \u2014 time expired' : chatDisabledReason === 'cost' ? 'Chat disabled \u2014 AI limit reached' : 'Chat disabled') : 'Ask about this problem... (Shift+Enter for newline)'}
+            aria-label="Chat message"
+            aria-describedby="chat-cost-estimate"
+            data-testid="chat-input"
+            value={chatInput}
+            onChange={(e) => {
+              setChatInput(e.target.value);
+              e.target.style.height = 'auto';
+              e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px';
+            }}
+            onKeyDown={handleInputKeyDown}
+            disabled={chatDisabled || !!guestMode}
+          />
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingLeft: 2, paddingRight: 2 }}>
+            <span id="chat-cost-estimate" style={{ fontSize: 10, color: arena.textSubtle, fontFamily: fontFamily.mono }}>
+              {chatInput.trim() && !chatDisabled && !guestMode
+                ? `${formatEstimatedCost(estimateChatCost(chatInput, model))} est`
+                : '\u00A0'}
+            </span>
+            {(inputTokens + outputTokens > 0) && (
+              <span style={{ fontSize: 10, color: arena.textSubtle, fontFamily: fontFamily.mono }}>
+                {(inputTokens + outputTokens).toLocaleString()} tok {'\u00B7'} {formatCostFromHundredths(totalCost)}
+              </span>
+            )}
+          </div>
+          {queueLength > 0 && isLoadingChat && (
+            <span style={{ fontSize: 10, color: arena.accent, fontFamily: fontFamily.mono, paddingLeft: 2 }}>
+              {queueLength} message{queueLength > 1 ? 's' : ''} queued
+            </span>
+          )}
+        </div>
+        {isLoadingChat ? (
+          <button
+            style={{
+              ...s.sendButton,
+              background: 'rgba(248,81,73,0.12)',
+              borderColor: 'rgba(248,81,73,0.3)',
+              color: arena.error,
+              alignSelf: 'flex-start',
+            }}
+            onClick={handleStopChat}
+            title="Stop generating"
+            aria-label="Stop generating"
+          >
+            &#9632;
+          </button>
+        ) : (
+          <button
+            style={{
+              ...s.sendButton,
+              opacity: !chatInput.trim() || chatDisabled || guestMode ? 0.4 : 1,
+              alignSelf: 'flex-start',
+            }}
+            onClick={() => sendMessage()}
+            disabled={!chatInput.trim() || chatDisabled || !!guestMode}
+            aria-label="Send message"
+          >
+            &#9658;
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 /* ─── Component ───────────────────────────────────────────────────── */
 
 export function ArenaIDE({
@@ -471,17 +950,14 @@ export function ArenaIDE({
   const [showModelUnavailable, setShowModelUnavailable] = useState(false);
   const [modelUnavailableMsg, setModelUnavailableMsg] = useState('');
   const [disabledModels, setDisabledModels] = useState<Set<string>>(new Set());
-  const [terminalHeight, setTerminalHeight] = useState(250);
   const [mobilePanel, setMobilePanel] = useState<'sidebar' | 'editor'>('editor');
   const [terminalExpanded, setTerminalExpanded] = useState(false);
-  const [terminalCollapsed, setTerminalCollapsed] = useState(false);
   const [nudgeDismissed, setNudgeDismissed] = useState(false);
   const [mode, setMode] = useState<AIMode>('agent');
   const [notepadContent, setNotepadContent] = useState('');
   const [isToolLooping, setIsToolLooping] = useState(false);
   const [showScrollBtn, setShowScrollBtn] = useState(false);
   const [expandedMessages, setExpandedMessages] = useState<Set<number>>(new Set());
-  const [sidebarWidth, setSidebarWidth] = useState(420);
   const [queueLength, setQueueLength] = useState(0);
   const pendingTestContextRef = useRef<AITestResults | null>(null);
   const pendingRetryRef = useRef<string | null>(null);
@@ -492,7 +968,13 @@ export function ArenaIDE({
   messagesRef.current = messages;
   const chatTextareaRef = useRef<HTMLTextAreaElement>(null);
   const messageQueueRef = useRef<string[]>([]);
-  const isSidebarDragging = useRef(false);
+
+  // Panel refs for imperative collapse/expand
+  const sidebarPanelRef = usePanelRef();
+  const bottomPanelRef = usePanelRef();
+
+  // Layout prefs (persisted)
+  const layout = useArenaLayout();
 
   const isMobile = useIsMobile();
   const activeTabRef = useRef<'description' | 'chat' | 'discussion'>('description');
@@ -504,8 +986,6 @@ export function ArenaIDE({
   const isExpired = isExpiredProp ?? false;
   const isExpiredRef = useRef(false);
   isExpiredRef.current = isExpired;
-  const isDragging = useRef(false);
-  const rightPaneRef = useRef<HTMLDivElement>(null);
 
   /** Reset all streaming-related state back to idle. */
   const resetStreamingState = useCallback(() => {
@@ -642,6 +1122,12 @@ export function ArenaIDE({
   const handleTerminalCodeApplied = useCallback(() => {
     flashToast();
   }, [flashToast]);
+
+  /* istanbul ignore next -- @preserve callback invoked by TerminalPanel which is fully mocked */
+  const handleModelChange = useCallback((tier: ModelTier, modelId: string) => {
+    setSelectedTier(tier);
+    setModel(modelId);
+  }, []);
 
   // pendingTestContextRef is read inside runOneRound's buildSystemPrompt call
 
@@ -1000,6 +1486,15 @@ export function ArenaIDE({
     setMessages((prev) => prev.slice(0, userMsgIdx));
   }, [isLoadingChat, attemptId]);
 
+  // Edit and resend a previous user message
+  const handleEditMessage = useCallback((idx: number, content: string) => {
+    setChatInput(content);
+    setMessages(prev => prev.slice(0, idx));
+    messageQueueRef.current = [];
+    setQueueLength(0);
+    setTimeout(() => chatTextareaRef.current?.focus(), 0);
+  }, []);
+
   // Clear chat
   const handleClearChat = useCallback(() => {
     if (isLoadingChat) handleStopChat();
@@ -1012,63 +1507,29 @@ export function ArenaIDE({
     setQueueLength(0);
   }, [isLoadingChat, handleStopChat, attemptId]);
 
-  // Drag-to-resize sidebar (horizontal)
-  const handleSidebarDragStart = useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
-    isSidebarDragging.current = true;
-    const startX = e.clientX;
-    const startWidth = sidebarWidth;
-
-    /* istanbul ignore next -- @preserve mousemove closure; drag events not simulated in unit tests */
-    const onMouseMove = (ev: MouseEvent) => {
-      if (!isSidebarDragging.current) return;
-      const delta = ev.clientX - startX;
-      setSidebarWidth(Math.max(240, Math.min(640, startWidth + delta)));
+  // Keyboard shortcuts: Cmd+B toggle sidebar, Cmd+J toggle bottom
+  useEffect(() => {
+    const handleLayoutShortcut = (e: KeyboardEvent) => {
+      if (!(e.metaKey || e.ctrlKey)) return;
+      if (e.key === 'b') {
+        e.preventDefault();
+        const panel = sidebarPanelRef.current;
+        if (panel) {
+          if (panel.isCollapsed()) panel.expand();
+          else panel.collapse();
+        }
+      } else if (e.key === 'j') {
+        e.preventDefault();
+        const panel = bottomPanelRef.current;
+        if (panel) {
+          if (panel.isCollapsed()) panel.expand();
+          else panel.collapse();
+        }
+      }
     };
-
-    const onMouseUp = () => {
-      isSidebarDragging.current = false;
-      document.removeEventListener('mousemove', onMouseMove);
-      document.removeEventListener('mouseup', onMouseUp);
-      document.body.style.cursor = '';
-      document.body.style.userSelect = '';
-    };
-
-    document.body.style.cursor = 'col-resize';
-    document.body.style.userSelect = 'none';
-    document.addEventListener('mousemove', onMouseMove);
-    document.addEventListener('mouseup', onMouseUp);
-  }, [sidebarWidth]);
-
-  // Drag-to-resize between editor and terminal
-  const handleDragStart = useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
-    isDragging.current = true;
-    const startY = e.clientY;
-    const startHeight = terminalHeight;
-
-    /* istanbul ignore next -- @preserve mousemove closure; drag events not simulated in unit tests */
-    const onMouseMove = (ev: MouseEvent) => {
-      if (!isDragging.current) return;
-      const delta = startY - ev.clientY;
-      const paneHeight = rightPaneRef.current?.clientHeight ?? 600;
-      const newHeight = Math.max(150, Math.min(paneHeight - 200, startHeight + delta));
-      setTerminalHeight(newHeight);
-    };
-
-    const onMouseUp = () => {
-      isDragging.current = false;
-      document.removeEventListener('mousemove', onMouseMove);
-      document.removeEventListener('mouseup', onMouseUp);
-      document.body.style.cursor = '';
-      document.body.style.userSelect = '';
-    };
-
-    document.body.style.cursor = 'row-resize';
-    document.body.style.userSelect = 'none';
-    document.addEventListener('mousemove', onMouseMove);
-    document.addEventListener('mouseup', onMouseUp);
-  }, [terminalHeight]);
+    window.addEventListener('keydown', handleLayoutShortcut);
+    return () => window.removeEventListener('keydown', handleLayoutShortcut);
+  }, []);
 
   // Shell callbacks for terminal
   const shellCallbacks = useMemo(() => ({
@@ -1094,6 +1555,164 @@ export function ArenaIDE({
 
   const totalTokens = inputTokens + outputTokens;
   const chatDisabled = (isExpired && !showExpiryOverlay) || aiLimitReached;
+  const chatDisabledReason: 'expired' | 'cost' | null = (isExpired && !showExpiryOverlay) ? 'expired' : aiLimitReached ? 'cost' : null;
+
+  const sidebarTabs = useMemo((): SidebarTab[] => {
+    const tabs: SidebarTab[] = ['description', 'chat', 'discussion'];
+    if (layout.resultsDock === 'sidebar') tabs.push('results');
+    return tabs;
+  }, [layout.resultsDock]);
+
+  const chatPanelCommonProps = useMemo(() => ({
+    chatScrollRef,
+    chatTextareaRef,
+    messages,
+    streamingContent,
+    streamingThinking,
+    isThinkingPhase,
+    isLoadingChat,
+    isToolLooping,
+    chatInput,
+    setChatInput,
+    chatDisabled,
+    chatDisabledReason,
+    guestMode,
+    model,
+    setModel,
+    selectedTier,
+    setSelectedTier,
+    tierDropdownOpen,
+    setTierDropdownOpen,
+    disabledModels,
+    mode,
+    setMode,
+    showScrollBtn,
+    setShowScrollBtn,
+    expandedMessages,
+    setExpandedMessages,
+    handleInputKeyDown,
+    handleStopChat,
+    handleClearChat,
+    handleRetry,
+    handleLineClick,
+    handleEditMessage,
+    sendMessage,
+    challenge,
+    inputTokens,
+    outputTokens,
+    totalCost,
+    queueLength,
+  }), [messages, streamingContent, streamingThinking, isThinkingPhase, isLoadingChat, isToolLooping,
+    chatInput, chatDisabled, chatDisabledReason, guestMode, model, selectedTier, tierDropdownOpen,
+    disabledModels, mode, showScrollBtn, expandedMessages, challenge, inputTokens, outputTokens,
+    totalCost, queueLength, handleInputKeyDown, handleStopChat, handleClearChat, handleRetry,
+    handleLineClick, handleEditMessage, sendMessage]);
+
+  const handleExpandTab = useCallback((tab: SidebarTab) => {
+    sidebarPanelRef.current?.expand();
+    if (tab !== 'results') setActiveTab(tab);
+    if (tab === 'chat') setHasUnreadChat(false);
+  }, []);
+
+  const handleSidebarResize = useCallback((size: { asPercentage: number }) => {
+    layout.setSidebarCollapsed(size.asPercentage <= 3);
+  }, [layout.setSidebarCollapsed]);
+
+  const sidebarPanelProps = useMemo(() => ({
+    panelRef: sidebarPanelRef,
+    defaultSize: 30,
+    minSize: 3,
+    maxSize: 45,
+    collapsible: true,
+    collapsedSize: 3,
+    onResize: handleSidebarResize,
+  }), [handleSidebarResize]);
+
+  const toggleBottomPanel = useCallback(() => {
+    if (bottomPanelRef.current?.isCollapsed()) bottomPanelRef.current?.expand();
+    else bottomPanelRef.current?.collapse();
+  }, []);
+
+  const terminalPanelCommonProps = useMemo(() => ({
+    fs,
+    language,
+    attemptId,
+    challengeTitle: challenge.title,
+    challengeDescription: challenge.description,
+    challengeDifficulty: challenge.difficulty,
+    challengeCategory: challenge.category || null,
+    challengeTestCases: challenge.testCases || '[]',
+    hiddenTestCount: challenge.hiddenTestCount,
+    readonlyPrefix: challenge.readonlyPrefix || null,
+    shellCallbacks,
+    streamChat,
+    abortChat,
+    onCodeApplied: handleTerminalCodeApplied,
+    onRunTests,
+    isExpired: () => isExpiredRef.current,
+    onModelChange: handleModelChange,
+    currentModelId: model,
+  }), [fs, language, attemptId, challenge, shellCallbacks, streamChat, abortChat,
+    handleTerminalCodeApplied, onRunTests, handleModelChange, model]);
+
+  const renderSidebarContent = (collapseChevron: string) => (
+    layout.sidebarCollapsed ? (
+      <CollapsedSidebar
+        tabs={sidebarTabs}
+        hasUnreadChat={hasUnreadChat}
+        onExpandTab={handleExpandTab}
+        onTogglePosition={layout.toggleSidebarPosition}
+        sidebarPosition={layout.sidebarPosition}
+      />
+    ) : (
+      <div role="complementary" aria-label="Challenge description and AI chat" style={s.sidebar}>
+        <div style={s.tabBar} role="tablist" aria-label="Sidebar panels">
+          <button style={activeTab === 'description' ? s.tabActive : s.tab} onClick={() => setActiveTab('description')} role="tab" aria-selected={activeTab === 'description'} aria-controls="panel-description">Description</button>
+          <button style={activeTab === 'chat' ? s.tabActive : s.tab} onClick={() => { setActiveTab('chat'); setHasUnreadChat(false); }} role="tab" aria-selected={activeTab === 'chat'} aria-controls="panel-chat">
+            AI Chat
+            {hasUnreadChat && <span style={s.unreadDot} aria-label="unread messages" />}
+            {layout.chatDock === 'sidebar' && (
+              <span
+                onClick={(e) => { e.stopPropagation(); layout.setChatDock('bottom'); }}
+                title="Move to bottom panel"
+                aria-label="Move AI Chat to bottom panel"
+                style={s.dockIcon}
+              >{'\u2193'}</span>
+            )}
+          </button>
+          <button style={activeTab === 'discussion' ? s.tabActive : s.tab} onClick={() => setActiveTab('discussion')} role="tab" aria-selected={activeTab === 'discussion'} aria-controls="panel-discussion">Discussion</button>
+          <button
+            onClick={() => sidebarPanelRef.current?.collapse()}
+            title="Collapse sidebar (Cmd+B)"
+            aria-label="Collapse sidebar"
+            style={s.collapseBtn}
+          >{collapseChevron}</button>
+        </div>
+
+        {activeTab === 'description' ? (
+          <div id="panel-description" role="tabpanel" aria-label="Challenge description" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
+            <DescriptionPanel challenge={challenge} pastAttempts={pastAttempts} notepadContent={notepadContent} onNotepadChange={setNotepadContent} />
+          </div>
+        ) : activeTab === 'discussion' ? (
+          <div id="panel-discussion" role="tabpanel" aria-label="Challenge discussion" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, overflow: 'auto', padding: 12 }}>
+            <CommentSection
+              targetType="challenge"
+              targetId={challenge.id}
+              apiPath={`/api/challenges/${challenge.id}/comments`}
+              promptText="Share your approach or discuss this challenge..."
+            />
+          </div>
+        ) : layout.chatDock === 'sidebar' ? (
+          <ChatPanel {...chatPanelCommonProps} isMobile={false} />
+        ) : (
+          <div style={s.chatMovedPlaceholder}>
+            AI Chat moved to bottom panel.
+            <button onClick={() => layout.setChatDock('sidebar')} style={{ ...s.clearButton, marginLeft: 8 }}>Move back</button>
+          </div>
+        )}
+      </div>
+    )
+  );
 
   return (
     <div style={s.container}>
@@ -1106,15 +1725,14 @@ export function ArenaIDE({
         @keyframes ruwt-pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
       `}</style>
       {/* Main content area */}
-      <div style={isMobile ? s.mainRow : s.mainRow}>
-        {/* LEFT SIDEBAR: Description/Chat tabs */}
+      {isMobile ? (
+      <div style={s.mainRow}>
+        {/* Mobile sidebar */}
         <div
           role="complementary"
           aria-label="Challenge description and AI chat"
-          style={isMobile
-          ? { ...s.sidebarMobile, display: mobilePanel === 'sidebar' ? 'flex' : 'none' }
-          : { ...s.sidebar, width: sidebarWidth }
-        }>
+          style={{ ...s.sidebarMobile, display: mobilePanel === 'sidebar' ? 'flex' : 'none' }}
+        >
           {/* Tab bar */}
           <div style={s.tabBar} role="tablist" aria-label="Sidebar panels">
             <button
@@ -1162,422 +1780,18 @@ export function ArenaIDE({
               />
             </div>
           ) : (
-            <div id="panel-chat" role="tabpanel" aria-label="AI Chat" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
-              {/* Mode selector + Clear */}
-              <div style={{ borderBottom: `1px solid ${arena.border}`, display: 'flex', alignItems: 'center' }}>
-                <div style={{ flex: 1 }}><ModeSelector mode={mode} onModeChange={setMode} disabled={isLoadingChat} /></div>
-                {messages.filter(m => m.role !== 'system').length > 0 && (
-                  <button onClick={handleClearChat} style={s.clearButton} title="Clear chat">Clear</button>
-                )}
-              </div>
-              {/* Chat messages */}
-              <div style={{ position: 'relative', flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-              <div
-                ref={chatScrollRef}
-                style={s.chatScroll}
-                role="log"
-                aria-label="Chat messages"
-                aria-live="polite"
-                aria-atomic={false}
-                onScroll={(e) => {
-                  const el = e.currentTarget;
-                  setShowScrollBtn(el.scrollHeight - el.scrollTop - el.clientHeight > 100);
-                }}
-              >
-                {messages.filter((m) => m.role !== 'system').length === 0 && !streamingContent && (
-                  <div style={s.chatEmpty}>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: '0 12px', width: '100%', maxWidth: 360 }}>
-                      <span style={{ color: arena.textSubtle, fontSize: 12, textAlign: 'center', lineHeight: '1.5' }}>
-                        Every message costs from your budget. Choose your tier wisely.
-                      </span>
-                      {[
-                        'Write the solution',
-                        'What\'s the most efficient approach?',
-                        'Fix the failing tests',
-                      ].map((prompt) => (
-                        <button
-                          key={prompt}
-                          style={{
-                            background: arena.surface,
-                            border: `1px solid ${arena.border}`,
-                            borderRadius: 8,
-                            padding: '10px 14px',
-                            fontSize: 13,
-                            color: arena.text,
-                            cursor: 'pointer',
-                            textAlign: 'left',
-                            fontFamily: 'inherit',
-                            transition: 'border-color 0.15s',
-                          }}
-                          onClick={() => setChatInput(prompt)}
-                          onMouseEnter={(e) => (e.currentTarget.style.borderColor = arena.accent)}
-                          onMouseLeave={(e) => (e.currentTarget.style.borderColor = arena.border)}
-                        >
-                          {prompt}
-                        </button>
-                      ))}
-                      <span style={{ color: arena.textSubtle, fontSize: 11, textAlign: 'center', lineHeight: '1.5', marginTop: 4 }}>
-                        {challenge.maxCost
-                          ? `Budget: ${formatCostFromHundredths(challenge.maxCost)} \u2014 choose your tier wisely.`
-                          : 'Costs tracked for leaderboard ranking.'}
-                      </span>
-                    </div>
-                  </div>
-                )}
-                {(() => {
-                  // Build visible messages with original indices
-                  const visible: Array<{ msg: typeof messages[0]; origIdx: number }> = [];
-                  messages.forEach((m, idx) => { if (m.role !== 'system') visible.push({ msg: m, origIdx: idx }); });
-                  // Find last non-constraint assistant message for retry button
-                  let lastAsstVisIdx = -1;
-                  for (let j = visible.length - 1; j >= 0; j--) {
-                    if (visible[j].msg.role === 'assistant' && !visible[j].msg.isConstraint) { lastAsstVisIdx = j; break; }
-                  }
-                  return visible.map(({ msg, origIdx }, i) => {
-                  if (msg.isConstraint) {
-                    return (
-                      <div key={origIdx} style={s.constraintMessage}>
-                        <span style={s.constraintIcon}>!</span>
-                        <span style={s.constraintText}>{msg.content}</span>
-                      </div>
-                    );
-                  }
-                  const modelInfo = msg.meta ? getModelById(msg.meta.model) : undefined;
-                  const isLastAssistant = i === lastAsstVisIdx;
-                  const lineCount = msg.content.split('\n').length;
-                  const isLongMsg = msg.role === 'assistant' && lineCount > 12;
-                  const isExpanded = isLastAssistant || expandedMessages.has(origIdx);
-                  return (
-                    <div key={origIdx} style={msg.role === 'user' ? s.userMessage : s.aiMessage}>
-                      <div style={s.messageLabel}>
-                        <span style={msg.role === 'user' ? s.userLabel : s.aiLabel}>
-                          {msg.role === 'user' ? 'You' : 'AI'}
-                        </span>
-                        {msg.role === 'assistant' && modelInfo && (
-                          <span style={s.msgTierBadge}>
-                            <span style={{ ...s.tierDot, background: msg.meta!.cost > 0 ? tierColor(modelInfo.tier) : arena.textSubtle }} />
-                            {modelInfo.displayName}
-                          </span>
-                        )}
-                        {msg.role === 'assistant' && !msg.isConstraint && (
-                          <MessageCopyButton content={msg.content} />
-                        )}
-                        {msg.role === 'user' && !isLoadingChat && (
-                          <button
-                            onClick={() => {
-                              setChatInput(msg.content);
-                              setMessages(prev => prev.slice(0, origIdx));
-                              messageQueueRef.current = [];
-                              setQueueLength(0);
-                              setTimeout(() => chatTextareaRef.current?.focus(), 0);
-                            }}
-                            style={s.editButton}
-                            title="Edit and resend"
-                          >
-                            &#9998;
-                          </button>
-                        )}
-                      </div>
-                      {msg.role === 'assistant' && msg.thinking && (
-                        <ThinkingBlock text={msg.thinking} />
-                      )}
-                      {msg.role === 'assistant' ? (
-                        <>
-                          <div style={{
-                            ...s.aiContent,
-                            ...(isLongMsg && !isExpanded ? { maxHeight: '10em', overflow: 'hidden', position: 'relative' as const } : {}),
-                          }}>
-                            {renderMarkdown(msg.content, handleLineClick)}
-                          </div>
-                          {isLongMsg && !isExpanded && (
-                            <button
-                              onClick={() => setExpandedMessages(prev => new Set(prev).add(origIdx))}
-                              style={s.showMoreButton}
-                            >
-                              Show more ({lineCount} lines)
-                            </button>
-                          )}
-                          {isLongMsg && isExpanded && !isLastAssistant && (
-                            <button
-                              onClick={() => setExpandedMessages(prev => { const n = new Set(prev); n.delete(origIdx); return n; })}
-                              style={s.showMoreButton}
-                            >
-                              Show less
-                            </button>
-                          )}
-                        </>
-                      ) : (
-                        <div style={s.userContent}>{renderMarkdown(msg.content)}</div>
-                      )}
-                      {msg.meta && (
-                        <div style={s.msgCostLine}>
-                          {modelInfo?.displayName || 'AI'} {'\u00B7'} {msg.meta.tokens.toLocaleString()} {msg.meta.tokens === 1 ? 'token' : 'tokens'} {'\u00B7'} {formatCostFromHundredths(msg.meta.cost)}
-                        </div>
-                      )}
-                      {msg.role === 'assistant' && isLastAssistant && !isLoadingChat && (
-                        <button
-                          onClick={handleRetry}
-                          style={s.retryButton}
-                          title="Retry this response"
-                        >
-                          &#8635; Retry
-                        </button>
-                      )}
-                    </div>
-                  );
-                });
-                })()}
-                {/* Tool loop indicator */}
-                {isToolLooping && !streamingContent && !isThinkingPhase && (
-                  <div style={{ ...s.aiMessage, opacity: 0.7 }}>
-                    <div style={s.messageLabel}>
-                      <span style={s.aiLabel}>AI</span>
-                      <span style={s.streamingDot}>{'\u25CF'}</span>
-                      <span style={{ fontSize: 10, color: arena.accent }}>
-                        Running tests...
-                      </span>
-                    </div>
-                  </div>
-                )}
-                {/* Thinking phase — reasoning model is producing chain-of-thought */}
-                {isThinkingPhase && streamingThinking && (
-                  <div style={s.aiMessage}>
-                    <div style={s.messageLabel}>
-                      <span style={s.aiLabel}>AI</span>
-                      <span style={{ animation: 'ruwt-pulse 1.2s ease-in-out infinite', fontSize: 8, color: '#a78bfa' }}>{'\u25CF'}</span>
-                      <span style={{ fontSize: 10, color: '#a78bfa' }}>
-                        {getModelById(model)?.displayName || 'AI'} reasoning...
-                      </span>
-                    </div>
-                    <ThinkingBlock text={streamingThinking} isStreaming />
-                  </div>
-                )}
-                {/* Content phase — answer is streaming */}
-                {streamingContent && (
-                  <div style={s.aiMessage}>
-                    <div style={s.messageLabel}>
-                      <span style={s.aiLabel}>AI</span>
-                      <span style={s.streamingDot}>{'\u25CF'}</span>
-                      <span style={{ fontSize: 10, color: arena.textSubtle }}>
-                        {getModelById(model)?.displayName || 'AI'} responding...
-                      </span>
-                    </div>
-                    {streamingThinking && <ThinkingBlock text={streamingThinking} />}
-                    <div style={s.aiContent}>{renderMarkdown(streamingContent, handleLineClick)}</div>
-                  </div>
-                )}
-                {/* Waiting — model is processing (e.g. non-streaming GPT-OSS) */}
-                {isLoadingChat && !streamingContent && !streamingThinking && !isThinkingPhase && !isToolLooping && (
-                  <div style={{ ...s.aiMessage, opacity: 0.7 }}>
-                    <div style={s.messageLabel}>
-                      <span style={s.aiLabel}>AI</span>
-                      <span style={{ animation: 'ruwt-pulse 1.2s ease-in-out infinite', fontSize: 8, color: arena.textSubtle }}>{'\u25CF'}</span>
-                      <span style={{ fontSize: 10, color: arena.textSubtle }}>
-                        {getModelById(model)?.displayName || 'AI'} processing...
-                      </span>
-                    </div>
-                  </div>
-                )}
-              </div>
-              {/* Scroll to bottom button */}
-              {showScrollBtn && (
-                <button
-                  onClick={() => {
-                    chatScrollRef.current?.scrollTo({ top: chatScrollRef.current.scrollHeight, behavior: 'smooth' });
-                    setShowScrollBtn(false);
-                  }}
-                  style={s.scrollToBottomBtn}
-                  title="Scroll to bottom"
-                >
-                  {'\u2193'}
-                </button>
-              )}
-              </div>
-
-              {/* Model selector — 5 tiers (star = recommended for this difficulty) */}
-              <div style={isMobile ? s.tierBarMobile : s.tierBar} role="radiogroup" aria-label="Model tier selector">
-                {(['micro', 'budget', 'mid', 'premium', 'reasoning'] as ModelTier[]).map((tier) => {
-                  const m = TIER_MODELS[tier];
-                  const isActive = selectedTier === tier;
-                  const tc = tierColor(tier);
-                  const modelsInTier = getModelsForTier(tier);
-                  const hasMultiple = modelsInTier.length > 1;
-                  const diffToTier: Record<string, ModelTier> = {
-                    sprint: 'micro', easy: 'budget', medium: 'mid', hard: 'premium', impossible: 'reasoning',
-                  };
-                  const isRecommended = tier === (diffToTier[challenge.difficulty] || 'budget');
-                  return (
-                    <div key={tier} style={isMobile
-                      ? { position: 'relative', minWidth: 80, flexShrink: 0 }
-                      : { position: 'relative', flex: 1 }
-                    }>
-                      <button
-                        style={{
-                          ...s.tierPill,
-                          width: '100%',
-                          background: isActive ? `${tc}20` : 'transparent',
-                          borderColor: isActive ? tc : isRecommended ? `${arena.accent}60` : arena.border,
-                          color: isActive ? tc : arena.textMuted,
-                          opacity: isLoadingChat ? 0.5 : 1,
-                          flexDirection: 'column',
-                          alignItems: 'center',
-                        }}
-                        role="radio"
-                        aria-checked={isActive}
-                        aria-expanded={isActive && hasMultiple ? tierDropdownOpen : undefined}
-                        aria-label={`${tierLabel(tier)} tier — ${m.displayName}${isRecommended ? ` (recommended for ${challenge.difficulty})` : ''}`}
-                        title={`${tierLabel(tier)} tier — ${m.displayName}${isRecommended ? ` (recommended for ${challenge.difficulty})` : ''}`}
-                        disabled={isLoadingChat}
-                        onClick={() => {
-                          if (isActive && hasMultiple) {
-                            setTierDropdownOpen(!tierDropdownOpen);
-                          } else {
-                            setSelectedTier(tier);
-                            setModel(m.id);
-                            setTierDropdownOpen(false);
-                          }
-                        }}
-                      >
-                        <span style={{ fontWeight: 600, fontSize: 11, whiteSpace: 'nowrap' }}>
-                          {tierLabel(tier)}
-                          {isRecommended && <span style={{ fontSize: 8, marginLeft: 2, color: arena.accent }}>{'\u2605'}</span>}
-                          {hasMultiple && isActive && <span style={{ fontSize: 7, marginLeft: 2 }}>{'\u25BC'}</span>}
-                        </span>
-                        <span style={{ fontSize: 8, color: arena.textSubtle, fontWeight: 400, whiteSpace: 'nowrap' }}>
-                          ~{formatCostFromHundredths(estimateTypicalMessageCost(tier))}/msg
-                        </span>
-                      </button>
-                      {isActive && tierDropdownOpen && hasMultiple && (
-                        <div style={s.tierDropdown} role="listbox" aria-label={`${tierLabel(tier)} tier models`}>
-                          {modelsInTier.map((mi) => (
-                            <button
-                              key={mi.id}
-                              role="option"
-                              aria-selected={model === mi.id}
-                              aria-disabled={disabledModels.has(mi.id)}
-                              style={{
-                                ...s.tierDropdownItem,
-                                background: model === mi.id ? `${tc}15` : 'transparent',
-                                color: disabledModels.has(mi.id) ? arena.textSubtle : model === mi.id ? tc : arena.text,
-                                opacity: disabledModels.has(mi.id) ? 0.5 : 1,
-                                cursor: disabledModels.has(mi.id) ? 'not-allowed' : 'pointer',
-                              }}
-                              onClick={() => {
-                                if (disabledModels.has(mi.id)) return;
-                                setModel(mi.id);
-                                setTierDropdownOpen(false);
-                              }}
-                            >
-                              <span style={{ fontWeight: 500 }}>{mi.displayName}</span>
-                              <span style={{ fontSize: 10, color: arena.textSubtle }}>{mi.description}</span>
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-
-              {/* Chat input */}
-              <div style={{ ...s.chatInputWrap, alignItems: 'flex-end' }}>
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
-                  <textarea
-                    ref={chatTextareaRef}
-                    style={{
-                      ...(isMobile ? { ...s.chatInput, padding: '10px 14px', fontSize: 16 } : s.chatInput),
-                      resize: 'none' as const,
-                      minHeight: 34,
-                      maxHeight: 120,
-                      overflow: 'auto',
-                      lineHeight: '1.4',
-                    }}
-                    rows={1}
-                    placeholder={guestMode ? 'Sign up to chat with AI' : chatDisabled ? (aiLimitReached ? 'AI limit reached \u2014 budget exhausted' : 'Chat disabled \u2014 time expired') : 'Ask about this problem... (Shift+Enter for newline)'}
-                    aria-label="Chat message"
-                    aria-describedby="chat-cost-estimate"
-                    data-testid="chat-input"
-                    value={chatInput}
-                    onChange={(e) => {
-                      setChatInput(e.target.value);
-                      e.target.style.height = 'auto';
-                      e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px';
-                    }}
-                    onKeyDown={handleInputKeyDown}
-                    disabled={chatDisabled || !!guestMode}
-                  />
-                  {/* Pre-call cost estimate + running total */}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingLeft: 2, paddingRight: 2 }}>
-                    <span id="chat-cost-estimate" style={{ fontSize: 10, color: arena.textSubtle, fontFamily: fontFamily.mono }}>
-                      {chatInput.trim() && !chatDisabled && !guestMode
-                        ? `${formatEstimatedCost(estimateChatCost(chatInput, model))} est`
-                        : '\u00A0'}
-                    </span>
-                    {(inputTokens + outputTokens > 0) && (
-                      <span style={{ fontSize: 10, color: arena.textSubtle, fontFamily: fontFamily.mono }}>
-                        {(inputTokens + outputTokens).toLocaleString()} tok {'\u00B7'} {formatCostFromHundredths(totalCost)}
-                      </span>
-                    )}
-                  </div>
-                  {queueLength > 0 && isLoadingChat && (
-                    <span style={{ fontSize: 10, color: arena.accent, fontFamily: fontFamily.mono, paddingLeft: 2 }}>
-                      {queueLength} message{queueLength > 1 ? 's' : ''} queued
-                    </span>
-                  )}
-                </div>
-                {isLoadingChat ? (
-                  <button
-                    style={{
-                      ...s.sendButton,
-                      background: 'rgba(248,81,73,0.12)',
-                      borderColor: 'rgba(248,81,73,0.3)',
-                      color: arena.error,
-                      alignSelf: 'flex-start',
-                    }}
-                    onClick={handleStopChat}
-                    title="Stop generating"
-                    aria-label="Stop generating"
-                  >
-                    &#9632;
-                  </button>
-                ) : (
-                  <button
-                    style={{
-                      ...s.sendButton,
-                      opacity: !chatInput.trim() || chatDisabled || guestMode ? 0.4 : 1,
-                      alignSelf: 'flex-start',
-                    }}
-                    onClick={() => sendMessage()}
-                    disabled={!chatInput.trim() || chatDisabled || !!guestMode}
-                    aria-label="Send message"
-                  >
-                    &#9658;
-                  </button>
-                )}
-              </div>
-            </div>
+            <ChatPanel {...chatPanelCommonProps} isMobile={true} />
           )}
         </div>
 
-        {/* Sidebar resize handle */}
-        {!isMobile && <div style={s.sidebarDragHandle} onMouseDown={handleSidebarDragStart} />}
-
-        {/* RIGHT PANE: Editor + Terminal */}
-        <div ref={rightPaneRef} role="region" aria-label="Code editor and terminal" style={isMobile
-          ? { ...s.rightPane, display: mobilePanel === 'editor' ? 'flex' : 'none' }
-          : s.rightPane
-        }>
-          {/* Editor */}
+        {/* Mobile right pane */}
+        <div role="region" aria-label="Code editor and terminal" style={{ ...s.rightPane, display: mobilePanel === 'editor' ? 'flex' : 'none' }}>
           <div style={s.editorWrap} role="region" aria-label="Code editor">
             <CodeUpdateToast visible={showToast} message={toastMessage} />
             <PasteBlockedToast visible={showPasteBlocked} />
             <ApplyFailureToast visible={showApplyFailure} onDismiss={() => setShowApplyFailure(false)} />
             <ModelUnavailableToast visible={showModelUnavailable} message={modelUnavailableMsg} onDismiss={() => setShowModelUnavailable(false)} />
-            <Suspense fallback={
-              <div style={s.editorLoading}>
-                <span style={{ color: arena.textMuted, fontSize: 13 }}>Loading editor...</span>
-              </div>
-            }>
+            <Suspense fallback={<div style={s.editorLoading}><span style={{ color: arena.textMuted, fontSize: 13 }}>Loading editor...</span></div>}>
               <MonacoEditor
                 height="100%"
                 language={language}
@@ -1585,7 +1799,6 @@ export function ArenaIDE({
                 onChange={handleEditorChange}
                 onMount={(editor: any) => {
                   editorRef.current = editor;
-                  // Paste prevention — capture phase blocks before Monaco handles it
                   const dom = editor.getDomNode?.();
                   if (dom) {
                     dom.addEventListener('paste', (e: ClipboardEvent) => {
@@ -1598,19 +1811,17 @@ export function ArenaIDE({
                 theme="vs-dark"
                 options={{
                   minimap: { enabled: false },
-                  fontSize: isMobile ? 13 : 14,
+                  fontSize: 13,
                   fontFamily: fontFamily.mono,
-                  lineNumbers: isMobile ? ('off' as const) : ('on' as const),
+                  lineNumbers: 'off' as const,
                   renderLineHighlight: 'line' as const,
                   scrollBeyondLastLine: false,
                   padding: { top: 8 },
                   automaticLayout: true,
-                  wordWrap: isMobile ? ('on' as const) : ('off' as const),
-                  folding: isMobile ? false : true,
-                  glyphMargin: isMobile ? false : true,
-                  lineDecorationsWidth: isMobile ? 0 : 10,
-                  // Disable aggressive autocomplete — it mangles .catch(), async patterns,
-                  // causing SyntaxErrors that confuse users writing Promise/async code.
+                  wordWrap: 'on' as const,
+                  folding: false,
+                  glyphMargin: false,
+                  lineDecorationsWidth: 0,
                   quickSuggestions: false,
                   suggestOnTriggerCharacters: false,
                   acceptSuggestionOnEnter: 'off' as const,
@@ -1620,67 +1831,155 @@ export function ArenaIDE({
               />
             </Suspense>
           </div>
-
-          {/* Drag handle — hidden on mobile */}
-          {!isMobile && (
-            <div
-              style={s.dragHandle}
-              onMouseDown={handleDragStart}
-            />
-          )}
-
-          {/* Terminal */}
-          <div style={{
-            ...s.terminalWrap,
-            height: terminalCollapsed
-              ? 28
-              : isMobile
-                ? (terminalExpanded ? '60vh' : 180)
-                : terminalHeight,
-            minHeight: terminalCollapsed ? 28 : 150,
-            overflow: terminalCollapsed ? 'hidden' : undefined,
-          }}>
+          <div style={{ ...s.terminalWrap, height: terminalExpanded ? '60vh' : 180, minHeight: 150 }}>
             <div style={s.terminalHeader}>
               <span style={s.terminalHeaderText}>Terminal</span>
               <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                {isMobile && !terminalCollapsed && (
-                  <button
-                    style={s.terminalToggleBtn}
-                    onClick={() => setTerminalExpanded(!terminalExpanded)}
-                  >
-                    {terminalExpanded ? '\u25BC Shrink' : '\u25B2 Expand'}
-                  </button>
-                )}
-                <button
-                  style={s.terminalToggleBtn}
-                  onClick={() => setTerminalCollapsed(!terminalCollapsed)}
-                >
-                  {terminalCollapsed ? '\u25B2' : '\u25BC'}
+                <button style={s.terminalToggleBtn} onClick={() => setTerminalExpanded(!terminalExpanded)}>
+                  {terminalExpanded ? '\u25BC Shrink' : '\u25B2 Expand'}
                 </button>
               </div>
             </div>
-            <TerminalPanel
-              ref={terminalRef}
-              fs={fs}
-              language={language}
-              attemptId={attemptId}
-              challengeTitle={challenge.title}
-              challengeDescription={challenge.description}
-              challengeDifficulty={challenge.difficulty}
-              challengeCategory={challenge.category || null}
-              challengeTestCases={challenge.testCases || '[]'}
-              hiddenTestCount={challenge.hiddenTestCount}
-              readonlyPrefix={challenge.readonlyPrefix || null}
-              shellCallbacks={shellCallbacks}
-              streamChat={streamChat}
-              abortChat={abortChat}
-              onCodeApplied={handleTerminalCodeApplied}
-              onRunTests={onRunTests}
-              isExpired={() => isExpiredRef.current}
-            />
+            <TerminalPanel ref={terminalRef} {...terminalPanelCommonProps} />
           </div>
         </div>
       </div>
+      ) : (
+      /* ── Desktop layout with react-resizable-panels ── */
+      <Group orientation="horizontal" id="arena-h" style={s.mainRow}>
+        {layout.sidebarPosition === 'left' && (
+          <Panel {...sidebarPanelProps} id="sidebar">
+            {renderSidebarContent('\u00AB')}
+          </Panel>
+        )}
+
+        {layout.sidebarPosition === 'left' && <PanelResizeBar direction="horizontal" />}
+
+        {/* Main panel: editor + bottom zone */}
+        <Panel defaultSize={70} minSize={40} id="main">
+          <Group orientation="vertical" id="arena-v">
+            {/* Editor */}
+            <Panel defaultSize={65} minSize={20} id="editor">
+              <div style={s.editorWrap} role="region" aria-label="Code editor">
+                <CodeUpdateToast visible={showToast} message={toastMessage} />
+                <PasteBlockedToast visible={showPasteBlocked} />
+                <ApplyFailureToast visible={showApplyFailure} onDismiss={() => setShowApplyFailure(false)} />
+                <ModelUnavailableToast visible={showModelUnavailable} message={modelUnavailableMsg} onDismiss={() => setShowModelUnavailable(false)} />
+                <Suspense fallback={<div style={s.editorLoading}><span style={{ color: arena.textMuted, fontSize: 13 }}>Loading editor...</span></div>}>
+                  <MonacoEditor
+                    height="100%"
+                    language={language}
+                    value={code}
+                    onChange={handleEditorChange}
+                    onMount={(editor: any) => {
+                      editorRef.current = editor;
+                      const dom = editor.getDomNode?.();
+                      if (dom) {
+                        dom.addEventListener('paste', (e: ClipboardEvent) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          showPasteBlockedToast();
+                        }, true);
+                      }
+                    }}
+                    theme="vs-dark"
+                    options={{
+                      minimap: { enabled: false },
+                      fontSize: 14,
+                      fontFamily: fontFamily.mono,
+                      lineNumbers: 'on' as const,
+                      renderLineHighlight: 'line' as const,
+                      scrollBeyondLastLine: false,
+                      padding: { top: 8 },
+                      automaticLayout: true,
+                      wordWrap: 'off' as const,
+                      folding: true,
+                      glyphMargin: true,
+                      lineDecorationsWidth: 10,
+                      quickSuggestions: false,
+                      suggestOnTriggerCharacters: false,
+                      acceptSuggestionOnEnter: 'off' as const,
+                      tabCompletion: 'off' as const,
+                      parameterHints: { enabled: false },
+                    }}
+                  />
+                </Suspense>
+              </div>
+            </Panel>
+
+            <PanelResizeBar direction="vertical" />
+
+            {/* Bottom zone: Terminal + optional tabs */}
+            <Panel
+              panelRef={bottomPanelRef}
+              id="bottom"
+              defaultSize={35}
+              minSize={8}
+              collapsible
+              collapsedSize={3}
+              onResize={(size) => {
+                layout.setBottomCollapsed(size.asPercentage <= 3);
+              }}
+            >
+              <div style={s.terminalWrap}>
+                {/* Bottom zone tab bar — only visible when 2+ tabs */}
+                {(layout.chatDock === 'bottom' || (layout.resultsDock === 'bottom' && testResults)) ? (
+                  <div style={s.terminalHeader}>
+                    <div style={{ display: 'flex', gap: 0 }}>
+                      <button
+                        style={layout.activeBottomTab === 'terminal' ? s.bottomTabActive : s.bottomTab}
+                        onClick={() => layout.setActiveBottomTab('terminal')}
+                      >Terminal</button>
+                      {layout.chatDock === 'bottom' && (
+                        <button
+                          style={layout.activeBottomTab === 'chat' ? s.bottomTabActive : s.bottomTab}
+                          onClick={() => layout.setActiveBottomTab('chat')}
+                        >
+                          AI Chat
+                          {hasUnreadChat && <span style={s.unreadDot} aria-label="unread messages" />}
+                        </button>
+                      )}
+                      {layout.resultsDock === 'bottom' && testResults && (
+                        <button
+                          style={layout.activeBottomTab === 'results' ? s.bottomTabActive : s.bottomTab}
+                          onClick={() => layout.setActiveBottomTab('results')}
+                        >Results</button>
+                      )}
+                    </div>
+                    <button style={s.terminalToggleBtn} onClick={toggleBottomPanel}>
+                      {layout.bottomCollapsed ? '\u25B2' : '\u25BC'}
+                    </button>
+                  </div>
+                ) : (
+                  <div style={s.terminalHeader}>
+                    <span style={s.terminalHeaderText}>Terminal</span>
+                    <button style={s.terminalToggleBtn} onClick={toggleBottomPanel}>
+                      {layout.bottomCollapsed ? '\u25B2' : '\u25BC'}
+                    </button>
+                  </div>
+                )}
+
+                {/* Bottom tab content */}
+                {layout.activeBottomTab === 'terminal' && (
+                  <TerminalPanel ref={terminalRef} {...terminalPanelCommonProps} />
+                )}
+                {layout.activeBottomTab === 'chat' && layout.chatDock === 'bottom' && (
+                  <ChatPanel {...chatPanelCommonProps} isMobile={false} dockAction={() => layout.setChatDock('sidebar')} dockDirection="sidebar" />
+                )}
+              </div>
+            </Panel>
+          </Group>
+        </Panel>
+
+        {layout.sidebarPosition === 'right' && <PanelResizeBar direction="horizontal" />}
+
+        {layout.sidebarPosition === 'right' && (
+          <Panel {...sidebarPanelProps} id="sidebar-right">
+            {renderSidebarContent('\u00BB')}
+          </Panel>
+        )}
+      </Group>
+      )}
 
       {/* First-attempt nudge — shown when no messages sent and no code written */}
       {!nudgeDismissed && messages.length === 0 && code === (challenge.starterCode || '// your code here') && (
@@ -1788,6 +2087,30 @@ export function ArenaIDE({
 
 /* ─── Styles ──────────────────────────────────────────────────────── */
 
+const tabBase: React.CSSProperties = {
+  fontWeight: 500,
+  color: arena.textMuted,
+  background: 'transparent',
+  border: 'none',
+  borderBottom: '2px solid transparent',
+  cursor: 'pointer',
+};
+
+const tabActiveOverrides: React.CSSProperties = {
+  fontWeight: 600,
+  color: arena.accent,
+  borderBottom: `2px solid ${arena.accent}`,
+};
+
+const bottomTabBase: React.CSSProperties = {
+  ...tabBase,
+  padding: '4px 12px',
+  fontSize: 11,
+  fontFamily: fontFamily.mono,
+  textTransform: 'uppercase' as const,
+  letterSpacing: '0.5px',
+};
+
 const s: Record<string, React.CSSProperties> = {
   container: {
     display: 'flex',
@@ -1808,14 +2131,11 @@ const s: Record<string, React.CSSProperties> = {
     overflow: 'hidden',
   },
 
-  // Left sidebar
+  // Left sidebar (inside Panel — width controlled by react-resizable-panels)
   sidebar: {
     display: 'flex',
     flexDirection: 'column',
-    width: 420,
-    minWidth: 300,
-    maxWidth: 640,
-    flexShrink: 0,
+    height: '100%',
   },
   sidebarMobile: {
     display: 'flex',
@@ -1866,22 +2186,43 @@ const s: Record<string, React.CSSProperties> = {
     boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
   },
 
-  // Drag handle between editor and terminal
-  dragHandle: {
-    height: 4,
-    background: arena.surface,
-    cursor: 'row-resize',
+  // Collapse sidebar button
+  collapseBtn: {
+    background: 'transparent',
+    border: 'none',
+    color: arena.textMuted,
+    fontSize: 14,
+    cursor: 'pointer',
+    padding: '4px 8px',
     flexShrink: 0,
-    borderTop: `1px solid ${arena.border}`,
-    borderBottom: `1px solid ${arena.border}`,
+    transition: 'color 0.15s',
+  },
+
+  // Dock icon on tab headers
+  dockIcon: {
+    fontSize: 10,
+    color: arena.textMuted,
+    cursor: 'pointer',
+    marginLeft: 4,
+    padding: '0 2px',
+    transition: 'color 0.15s',
+  },
+
+  // Bottom zone tabs (derived from tabBase)
+  bottomTab: {
+    ...bottomTabBase,
+  },
+  bottomTabActive: {
+    ...bottomTabBase,
+    ...tabActiveOverrides,
   },
 
   // Terminal
   terminalWrap: {
     display: 'flex',
     flexDirection: 'column',
-    minHeight: 150,
-    flexShrink: 0,
+    height: '100%',
+    minHeight: 0,
   },
   terminalHeader: {
     padding: '3px 12px',
@@ -1919,28 +2260,19 @@ const s: Record<string, React.CSSProperties> = {
     flexShrink: 0,
   },
   tab: {
+    ...tabBase,
     flex: 1,
     padding: '8px 14px',
     fontSize: 12,
-    fontWeight: 500,
-    color: arena.textMuted,
-    background: 'transparent',
-    border: 'none',
-    borderBottom: '2px solid transparent',
-    cursor: 'pointer',
     fontFamily: 'inherit',
     position: 'relative' as const,
   },
   tabActive: {
+    ...tabBase,
+    ...tabActiveOverrides,
     flex: 1,
     padding: '8px 14px',
     fontSize: 12,
-    fontWeight: 600,
-    color: arena.accent,
-    background: 'transparent',
-    border: 'none',
-    borderBottom: `2px solid ${arena.accent}`,
-    cursor: 'pointer',
     fontFamily: 'inherit',
     position: 'relative' as const,
   },
@@ -2285,6 +2617,18 @@ const s: Record<string, React.CSSProperties> = {
     border: `1.5px solid ${arena.surface}`,
   },
 
+  // Placeholder when chat is moved to bottom
+  chatMovedPlaceholder: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flex: 1,
+    color: arena.textMuted,
+    fontSize: 13,
+    fontFamily: fontFamily.mono,
+    padding: 16,
+  },
+
   // Clear chat button
   clearButton: {
     background: 'transparent',
@@ -2349,15 +2693,5 @@ const s: Record<string, React.CSSProperties> = {
     transition: 'background 0.15s',
   },
 
-  // Sidebar drag handle
-  sidebarDragHandle: {
-    width: 4,
-    cursor: 'col-resize',
-    flexShrink: 0,
-    background: arena.surface,
-    borderLeft: `1px solid ${arena.border}`,
-    borderRight: `1px solid ${arena.border}`,
-    transition: 'background 0.15s',
-  },
 
 };
