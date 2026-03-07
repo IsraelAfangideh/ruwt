@@ -1189,7 +1189,7 @@ export function ArenaIDE({
   }, [messages, streamingContent, streamingThinking]);
 
   // Cmd+L to focus chat input (ref assigned after focusPanel is defined below)
-  const focusPanelRef = useRef((_panel: string) => {});
+  const focusPanelRef = useRef((_panel: 'description' | 'chat' | 'discussion' | 'terminal' | 'results') => {});
   useEffect(() => {
     const handleGlobalKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'l') {
