@@ -433,6 +433,43 @@ module.exports = function handler(req, res) {
 });
 
 // ---------------------------------------------------------------------------
+// Tier 3b: Fenced diff blocks should NOT be treated as raw code
+// ---------------------------------------------------------------------------
+
+describe('applyCodeFromResponse — fenced diff block skipping', () => {
+  it('does not dump a fenced diff block as raw code into the editor', () => {
+    const code = `const readline = require("readline");
+const rl = readline.createInterface({ input: process.stdin });
+
+function deepEqual(a, b) {
+  // Your code here — handle primitives, arrays, and plain objects
+}
+
+rl.on("line", (line) => { rl.close(); });`;
+
+    const response = `FILE: solution.js
+\`\`\`diff
+@@
+ function deepEqual(a, b) {
+-  // Your code here — handle primitives, arrays, and plain objects
++  if (a === b) return true;
++  if (a === null || b === null) return false;
++  return false;
+ }
+\`\`\``;
+
+    const result = applyCodeFromResponse(response, code, 'javascript', 'code');
+    // Should either parse as unified diff or fall through to apply model — NOT dump raw diff as code
+    if (result.applied) {
+      expect(result.newCode).not.toContain('@@');
+      expect(result.newCode).not.toMatch(/^[-+]/m);
+    } else {
+      expect(result.needsApplyModel).toBe(true);
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Tier 5: Fallback — code-like content detected but unparseable
 // ---------------------------------------------------------------------------
 

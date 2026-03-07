@@ -185,8 +185,45 @@ describe('hasUnifiedDiff', () => {
     expect(hasUnifiedDiff('--- a/file.js\n+++ b/file.js\n@@ -1 +1 @@')).toBe(true);
   });
 
+  it('detects bare @@ without line numbers', () => {
+    const text = `@@\n function deepEqual(a, b) {\n-  // Your code here\n+  if (a === b) return true;\n }`;
+    expect(hasUnifiedDiff(text)).toBe(true);
+  });
+
   it('returns false for non-diff text', () => {
     expect(hasUnifiedDiff('just some text')).toBe(false);
+  });
+});
+
+describe('parseUnifiedDiff — bare @@ hunks', () => {
+  it('parses bare @@ hunk without line numbers', () => {
+    const text = `@@
+ function deepEqual(a, b) {
+-  // Your code here
++  if (a === b) return true;
+ }`;
+    const blocks = parseUnifiedDiff(text);
+    expect(blocks).toHaveLength(1);
+    expect(blocks[0].search).toContain('// Your code here');
+    expect(blocks[0].replace).toContain('if (a === b) return true;');
+  });
+
+  it('parses bare @@ inside a fenced diff block', () => {
+    const text = `FILE: solution.js
+\`\`\`diff
+@@
+ function deepEqual(a, b) {
+-  // Your code here — handle primitives, arrays, and plain objects
++  if (a === b) return true;
++  if (a === null || b === null) return false;
++  return false;
+ }
+\`\`\``;
+    const blocks = parseUnifiedDiff(text);
+    expect(blocks).toHaveLength(1);
+    expect(blocks[0].search).toContain('// Your code here');
+    expect(blocks[0].replace).toContain('if (a === b) return true;');
+    expect(blocks[0].replace).toContain('if (a === null || b === null) return false;');
   });
 });
 

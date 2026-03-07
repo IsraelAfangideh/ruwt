@@ -50,8 +50,20 @@ export function extractFileEdits(responseText: string): { fileEdits: FileEdit[];
 }
 
 /**
+ * Heuristic: does this code block content look like a diff rather than raw code?
+ * Checks for @@ hunk headers and +/- prefixed lines.
+ */
+function looksLikeDiff(content: string): boolean {
+  if (/^@@/m.test(content)) return true;
+  const lines = content.split('\n');
+  const diffLines = lines.filter(l => /^[-+][^-+]/.test(l) || /^[-+]$/.test(l));
+  return diffLines.length >= 3 && diffLines.length / lines.length >= 0.3;
+}
+
+/**
  * Extract the largest fenced code block from AI response.
  * Returns the code content or null if none found.
+ * Skips blocks that look like diffs — those should be parsed by the diff applier.
  */
 function extractFencedCode(responseText: string): string | null {
   const codeBlockPattern = /```(?:\w*)\n([\s\S]*?)```/g;
@@ -61,6 +73,7 @@ function extractFencedCode(responseText: string): string | null {
 
   while ((match = codeBlockPattern.exec(responseText)) !== null) {
     const content = match[1].trimEnd();
+    if (looksLikeDiff(content)) continue;
     if (content.length > bestLen) {
       best = content;
       bestLen = content.length;

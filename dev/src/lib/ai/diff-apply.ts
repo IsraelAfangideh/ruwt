@@ -373,11 +373,12 @@ export function parseUnifiedDiff(text: string): EditBlock[] {
 
   // Match unified diff hunks — look for @@ markers
   // The diff may be inside a code block or bare in the response
-  const hunkRegex = /@@\s*-(\d+)(?:,\d+)?\s*\+\d+(?:,\d+)?\s*@@[^\n]*\n([\s\S]*?)(?=\n@@|\n```|$)/g;
+  // Supports both standard (@@ -1,5 +1,8 @@) and bare (@@) hunk headers
+  const hunkRegex = /@@(?:\s*-\d+(?:,\d+)?\s*\+\d+(?:,\d+)?\s*@@)?[^\n]*\n([\s\S]*?)(?=\n@@|\n```|$)/g;
   let match: RegExpExecArray | null;
 
   while ((match = hunkRegex.exec(text)) !== null) {
-    const hunkBody = match[2];
+    const hunkBody = match[1];
     const lines = hunkBody.split('\n');
 
     const searchLines: string[] = [];
@@ -414,9 +415,11 @@ export function parseUnifiedDiff(text: string): EditBlock[] {
   return blocks;
 }
 
-/** Check if text contains unified diff markers. */
+/** Check if text contains unified diff markers (standard or bare @@ without line numbers). */
 export function hasUnifiedDiff(text: string): boolean {
-  return /^[-+]{3}\s+[ab]\//m.test(text) && /^@@\s*-\d/m.test(text);
+  const hasStandard = /^[-+]{3}\s+[ab]\//m.test(text) && /^@@\s*-\d/m.test(text);
+  const hasBareHunk = /^@@\s*$/m.test(text) && /^[-+]\s*/m.test(text);
+  return hasStandard || hasBareHunk;
 }
 
 // ---------------------------------------------------------------------------
