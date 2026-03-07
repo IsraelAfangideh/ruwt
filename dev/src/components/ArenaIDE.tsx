@@ -1614,8 +1614,8 @@ export function ArenaIDE({
     if (tab === 'chat') setHasUnreadChat(false);
   }, []);
 
-  const handleSidebarResize = useCallback((size: { asPercentage: number }) => {
-    layout.setSidebarCollapsed(size.asPercentage <= 3);
+  const handleSidebarResize = useCallback(() => {
+    layout.setSidebarCollapsed(sidebarPanelRef.current?.isCollapsed() ?? false);
   }, [layout.setSidebarCollapsed]);
 
   const sidebarPanelProps = useMemo(() => ({
@@ -1846,7 +1846,7 @@ export function ArenaIDE({
       </div>
       ) : (
       /* ── Desktop layout with react-resizable-panels ── */
-      <Group orientation="horizontal" id="arena-h" style={s.mainRow}>
+      <Group orientation="horizontal" id="arena-h2" style={s.mainRow}>
         {layout.sidebarPosition === 'left' && (
           <Panel {...sidebarPanelProps} id="sidebar">
             {renderSidebarContent('\u00AB')}
@@ -1857,7 +1857,7 @@ export function ArenaIDE({
 
         {/* Main panel: editor + bottom zone */}
         <Panel defaultSize={70} minSize={40} id="main">
-          <Group orientation="vertical" id="arena-v">
+          <Group orientation="vertical" id="arena-v2">
             {/* Editor */}
             <Panel defaultSize={65} minSize={20} id="editor">
               <div style={s.editorWrap} role="region" aria-label="Code editor">
@@ -1917,8 +1917,8 @@ export function ArenaIDE({
               minSize={8}
               collapsible
               collapsedSize={3}
-              onResize={(size) => {
-                layout.setBottomCollapsed(size.asPercentage <= 3);
+              onResize={() => {
+                layout.setBottomCollapsed(bottomPanelRef.current?.isCollapsed() ?? false);
               }}
             >
               <div style={s.terminalWrap}>
