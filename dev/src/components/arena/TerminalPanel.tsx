@@ -9,6 +9,7 @@ import '@xterm/xterm/css/xterm.css';
 import { VirtualShell, type ShellCallbacks } from './VirtualShell';
 import { RuwtTUI } from './RuwtTUI';
 import type { VirtualFileSystem } from './VirtualFileSystem';
+import type { ModelTier } from '../../lib/ai/pricing';
 import { arena } from '@/theme/colors';
 import { fontFamily } from '@/theme/tokens';
 
@@ -43,6 +44,8 @@ interface TerminalPanelProps {
   onCodeApplied: (code: string) => void;
   onRunTests?: (code: string, language: string) => Promise<{ passed: boolean; passedTests: number; totalTests: number; results?: unknown[] }>;
   isExpired: () => boolean;
+  onModelChange?: (tier: ModelTier, modelId: string) => void;
+  currentModelId?: string;
 }
 
 /** Max lines kept in the accessible transcript buffer */
@@ -54,6 +57,7 @@ export const TerminalPanel = React.forwardRef<TerminalPanelHandle, TerminalPanel
       fs, language, attemptId, challengeTitle, challengeDescription,
       challengeDifficulty, challengeCategory, challengeTestCases, hiddenTestCount, readonlyPrefix,
       shellCallbacks, streamChat, abortChat, onCodeApplied, onRunTests, isExpired,
+      onModelChange, currentModelId,
     } = props;
 
     const containerRef = useRef<HTMLDivElement>(null);
@@ -82,6 +86,10 @@ export const TerminalPanel = React.forwardRef<TerminalPanelHandle, TerminalPanel
     isExpiredRef.current = isExpired;
     const onRunTestsRef = useRef(onRunTests);
     onRunTestsRef.current = onRunTests;
+    const onModelChangeRef = useRef(onModelChange);
+    onModelChangeRef.current = onModelChange;
+    const currentModelIdRef = useRef(currentModelId);
+    currentModelIdRef.current = currentModelId;
 
     const enterRuwt = useCallback(() => {
       modeRef.current = 'ruwt';
@@ -108,6 +116,8 @@ export const TerminalPanel = React.forwardRef<TerminalPanelHandle, TerminalPanel
         onCodeApplied: (code) => onCodeAppliedRef.current(code),
         onRunTests: (...args) => onRunTestsRef.current?.(...args) as any,
         isExpired: () => isExpiredRef.current(),
+        onModelChange: (...args) => onModelChangeRef.current?.(...args),
+        getCurrentModelId: () => currentModelIdRef.current ?? '@cf/meta/llama-3.1-8b-instruct',
       });
       tuiRef.current.enter();
     }, [fs, language, attemptId, challengeTitle, challengeDescription, challengeDifficulty, challengeCategory, challengeTestCases, readonlyPrefix]);

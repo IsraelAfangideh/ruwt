@@ -973,6 +973,67 @@ describe('RuwtTUI', () => {
       });
     });
 
+    it('resets lastTestResults so stale pass does not block queue on next call', async () => {
+      const { tui, term, streamChat, onRunTests } = createTUI();
+      tui.enter();
+
+      // Round 1: AI applies code → tests pass
+      (extractFileEdits as Mock).mockReturnValue({ fileEdits: [], remaining: 'response' });
+      (hasToolCalls as Mock).mockReturnValueOnce(true);
+      (applyCodeFromResponse as Mock).mockReturnValueOnce({
+        applied: true, newCode: 'code', method: 'code_block',
+        message: 'Applied', needsApplyModel: false,
+      });
+
+      streamChat.mockImplementation(async (_msgs: unknown, cbs: any) => {
+        cbs.onChunk('fix');
+        await cbs.onDone('fix <ruwt:run_tests/>');
+      });
+
+      onRunTests.mockResolvedValue({
+        passed: true, passedTests: 5, totalTests: 5, results: [],
+      });
+
+      typeAndEnter(tui, 'solve it');
+      await vi.waitFor(() => expect(onRunTests).toHaveBeenCalledTimes(1));
+
+      // Round 2: text-only response, queue a message during streaming
+      let round2DoneCb: ((content: string) => Promise<void>) | null = null;
+      streamChat.mockImplementation(async (_msgs: unknown, cbs: any) => {
+        cbs.onChunk('looks good');
+        round2DoneCb = cbs.onDone;
+      });
+
+      typeAndEnter(tui, 'any issues?');
+      await vi.waitFor(() => expect(streamChat).toHaveBeenCalledTimes(2));
+
+      tui.handleInput('follow up\r');
+
+      // Complete round 2 — no code, no tests
+      (applyCodeFromResponse as Mock).mockReturnValueOnce({
+        applied: false, newCode: '', method: 'none',
+        message: '', needsApplyModel: false,
+      });
+      (hasToolCalls as Mock).mockReturnValueOnce(false);
+
+      // Set up round 3 to receive the queued message
+      streamChat.mockImplementation(async (_msgs: unknown, cbs: any) => {
+        cbs.onChunk('ok');
+        await cbs.onDone('ok');
+      });
+
+      await round2DoneCb!('looks good');
+
+      // The queued "follow up" should be SENT, not discarded,
+      // because lastTestResults was reset at the start of round 2
+      await vi.waitFor(() => {
+        expect(streamChat).toHaveBeenCalledTimes(3);
+        const out = termOutput(term);
+        expect(out).toContain('[sending queued message...]');
+        expect(out).not.toContain('tests already pass');
+      });
+    });
+
     it('handles test execution failure gracefully', async () => {
       const { tui, term, streamChat, onRunTests } = createTUI();
       tui.enter();
@@ -1422,6 +1483,203 @@ describe('RuwtTUI', () => {
         expect(streamChat).toHaveBeenCalledTimes(1);
       });
       expect(onRunTests).not.toHaveBeenCalled();
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // Queue size cap
+  // ---------------------------------------------------------------------------
+  describe('queue size cap', () => {
+    it('rejects 6th queued message with warning', async () => {
+      const { tui, term, streamChat } = createTUI();
+      tui.enter();
+
+      // Start streaming that never resolves
+      streamChat.mockImplementation(async (_msgs: unknown, cbs: any) => {
+        cbs.onChunk('thinking...');
+      });
+
+      typeAndEnter(tui, 'first');
+      await vi.waitFor(() => expect(streamChat).toHaveBeenCalledTimes(1));
+
+      // Queue 5 messages (the max)
+      for (let i = 1; i <= 5; i++) {
+        tui.handleInput(`msg${i}\r`);
+      }
+      clearOutput(term);
+
+      // 6th should be rejected
+      tui.handleInput('overflow\r');
+      const out = termOutput(term);
+      expect(out).toContain('queue full');
+    });
+
+    it('rejects pasted message when queue is full', async () => {
+      const { tui, term, streamChat } = createTUI();
+      tui.enter();
+
+      streamChat.mockImplementation(async (_msgs: unknown, cbs: any) => {
+        cbs.onChunk('thinking...');
+      });
+
+      typeAndEnter(tui, 'first');
+      await vi.waitFor(() => expect(streamChat).toHaveBeenCalledTimes(1));
+
+      // Fill queue
+      for (let i = 1; i <= 5; i++) {
+        tui.handleInput(`msg${i}\r`);
+      }
+      clearOutput(term);
+
+      // Paste while queue full
+      tui.handleInput('pasted line one\npasted line two');
+      const out = termOutput(term);
+      expect(out).toContain('queue full');
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // Interactive model picker
+  // ---------------------------------------------------------------------------
+  describe('/model picker', () => {
+    it('opens picker and renders tier bar and model names', () => {
+      const { tui, term } = createTUI();
+      tui.enter();
+      clearOutput(term);
+      typeAndEnter(tui, '/model');
+      const out = termOutput(term);
+      expect(out).toContain('Select Model');
+      expect(out).toContain('MICRO');
+      expect(out).toContain('BUDGET');
+      expect(out).toContain('MID');
+      expect(out).toContain('PREMIUM');
+      expect(out).toContain('REASONING');
+      expect(out).toContain('navigate');
+      expect(out).toContain('Esc cancel');
+    });
+
+    it('arrow down moves highlight to next model', () => {
+      const { tui, term } = createTUI();
+      tui.enter();
+      typeAndEnter(tui, '/model');
+      clearOutput(term);
+      tui.handleInput('\x1b[B'); // down
+      const out = termOutput(term);
+      // Picker should re-render (contains Select Model)
+      expect(out).toContain('Select Model');
+    });
+
+    it('arrow right switches to next tier', () => {
+      const { tui, term } = createTUI();
+      tui.enter();
+      typeAndEnter(tui, '/model');
+      clearOutput(term);
+      // Default model is budget tier (llama 3.1 8b), right arrow → mid
+      tui.handleInput('\x1b[C'); // right
+      const out = termOutput(term);
+      expect(out).toContain('[MID]');
+    });
+
+    it('arrow left switches to previous tier', () => {
+      const { tui, term } = createTUI();
+      tui.enter();
+      typeAndEnter(tui, '/model');
+      clearOutput(term);
+      // Default model is budget tier, left → micro
+      tui.handleInput('\x1b[D'); // left
+      const out = termOutput(term);
+      expect(out).toContain('[MICRO]');
+    });
+
+    it('Enter selects model and calls onModelChange', () => {
+      const onModelChange = vi.fn();
+      const { tui, term } = createTUI({ onModelChange, getCurrentModelId: () => '@cf/meta/llama-3.1-8b-instruct' });
+      tui.enter();
+      typeAndEnter(tui, '/model');
+      clearOutput(term);
+      tui.handleInput('\r'); // Enter to select
+      expect(onModelChange).toHaveBeenCalledTimes(1);
+      const [tier, modelId] = onModelChange.mock.calls[0];
+      expect(tier).toBe('budget');
+      expect(modelId).toBe('@cf/meta/llama-3.1-8b-instruct');
+      const out = termOutput(term);
+      expect(out).toContain('[model:');
+    });
+
+    it('Esc cancels picker without calling onModelChange', () => {
+      const onModelChange = vi.fn();
+      const { tui, term } = createTUI({ onModelChange });
+      tui.enter();
+      typeAndEnter(tui, '/model');
+      clearOutput(term);
+      tui.handleInput('\x1b'); // Esc (bare, not arrow sequence)
+      expect(onModelChange).not.toHaveBeenCalled();
+      // Should show prompt after close
+      const out = termOutput(term);
+      expect(out).toContain('ruwt[agent]>');
+    });
+
+    it('Ctrl+C cancels picker without exiting TUI', () => {
+      const onModelChange = vi.fn();
+      const { tui, onExit } = createTUI({ onModelChange });
+      tui.enter();
+      typeAndEnter(tui, '/model');
+      tui.handleInput('\x03'); // Ctrl+C
+      expect(onModelChange).not.toHaveBeenCalled();
+      expect(onExit).not.toHaveBeenCalled();
+    });
+
+    it('q cancels picker', () => {
+      const onModelChange = vi.fn();
+      const { tui, onExit } = createTUI({ onModelChange });
+      tui.enter();
+      typeAndEnter(tui, '/model');
+      tui.handleInput('q');
+      expect(onModelChange).not.toHaveBeenCalled();
+      expect(onExit).not.toHaveBeenCalled();
+    });
+
+    it('/help output includes /model', () => {
+      const { tui, term } = createTUI();
+      tui.enter();
+      clearOutput(term);
+      typeAndEnter(tui, '/help');
+      const out = termOutput(term);
+      expect(out).toContain('/model');
+    });
+
+    it('omits descriptions on narrow terminal', () => {
+      const term = createMockTerminal();
+      term.cols = 50; // narrow
+      const { tui } = createTUI({ term });
+      tui.enter();
+      typeAndEnter(tui, '/model');
+      const out = termOutput(term);
+      expect(out).toContain('Select Model');
+      // In narrow mode, descriptions like "Cheap and capable" should NOT appear
+      expect(out).not.toContain('Cheap and capable');
+    });
+
+    it('arrow up wraps to last model', () => {
+      const { tui, term } = createTUI();
+      tui.enter();
+      typeAndEnter(tui, '/model');
+      clearOutput(term);
+      tui.handleInput('\x1b[A'); // up from index 0 → wraps to last
+      const out = termOutput(term);
+      expect(out).toContain('Select Model');
+    });
+
+    it('tier wraps around from last to first', () => {
+      const { tui, term } = createTUI({
+        getCurrentModelId: () => '@cf/openai/gpt-oss-120b', // reasoning tier (last)
+      });
+      tui.enter();
+      typeAndEnter(tui, '/model');
+      clearOutput(term);
+      tui.handleInput('\x1b[C'); // right from reasoning → wraps to micro
+      const out = termOutput(term);
+      expect(out).toContain('[MICRO]');
     });
   });
 });

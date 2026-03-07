@@ -10,6 +10,7 @@ import { hasToolCalls, stripToolCalls } from '../../lib/ai/tool-parser';
 import { applyCodeFromResponse as sharedApplyCode, extractFileEdits } from '../../lib/ai/code-apply';
 import { callApplyModel } from '../../lib/ai/apply-model';
 import { computeLineDiff } from '../../lib/ai/line-diff';
+import { getModelsForTier, getModelById, tierLabel, TIER_ORDER, type ModelTier } from '../../lib/ai/pricing';
 
 interface RuwtTUIOptions {
   term: Terminal;
@@ -39,6 +40,8 @@ interface RuwtTUIOptions {
   onCodeApplied: (code: string) => void;
   onRunTests?: (code: string, language: string) => Promise<{ passed: boolean; passedTests: number; totalTests: number; results?: unknown[] }>;
   isExpired: () => boolean;
+  onModelChange?: (tier: ModelTier, modelId: string) => void;
+  getCurrentModelId?: () => string;
 }
 
 const MODE_COLORS: Record<AIMode, string> = {
@@ -74,8 +77,12 @@ export class RuwtTUI {
   private lastTestResults: TestResults | null = null;
   private lastApplyFailedCount = 0;
   private static readonly MAX_HISTORY = 50;
+  private static readonly MAX_QUEUE = 5;
   private history: Array<{ role: 'user' | 'assistant'; content: string }> = [];
   private messageQueue: string[] = [];
+  private onModelChange?: (tier: ModelTier, modelId: string) => void;
+  private getCurrentModelId: () => string;
+  private picker: { tierIdx: number; modelIdx: number; lineCount: number } | null = null;
 
   private pruneHistory(): void {
     if (this.history.length > RuwtTUI.MAX_HISTORY) {
@@ -101,6 +108,8 @@ export class RuwtTUI {
     this.onCodeApplied = options.onCodeApplied;
     this.onRunTests = options.onRunTests;
     this.isExpired = options.isExpired;
+    this.onModelChange = options.onModelChange;
+    this.getCurrentModelId = options.getCurrentModelId ?? (() => '@cf/meta/llama-3.1-8b-instruct');
   }
 
   enter(): void {
@@ -132,8 +141,12 @@ export class RuwtTUI {
         const label = `"${preview}" +${extra} line${extra > 1 ? 's' : ''}`;
 
         if (this.isStreaming) {
-          this.messageQueue.push(cleaned);
-          this.term.write(`\r\n\x1b[90m[pasted: ${label} \u2014 queued]\x1b[0m`);
+          if (this.messageQueue.length >= RuwtTUI.MAX_QUEUE) {
+            this.term.write(`\r\n\x1b[33m[queue full \u2014 wait for AI to finish]\x1b[0m`);
+          } else {
+            this.messageQueue.push(cleaned);
+            this.term.write(`\r\n\x1b[90m[pasted: ${label} \u2014 queued]\x1b[0m`);
+          }
         } else {
           this.term.write(`\x1b[90m[pasted: ${label}]\x1b[0m`);
           this.term.write('\r\n');
@@ -149,6 +162,37 @@ export class RuwtTUI {
     for (let i = 0; i < data.length; i++) {
       const ch = data[i];
       const code = ch.charCodeAt(0);
+
+      // Picker input interception — swallow all keys while picker is open
+      if (this.picker) {
+        if (ch === '\x1b' && data[i + 1] === '[') {
+          const arrow = data[i + 2];
+          const models = getModelsForTier(TIER_ORDER[this.picker.tierIdx]);
+          if (arrow === 'A') {
+            this.picker.modelIdx = (this.picker.modelIdx - 1 + models.length) % models.length;
+            this.renderPicker();
+          } else if (arrow === 'B') {
+            this.picker.modelIdx = (this.picker.modelIdx + 1) % models.length;
+            this.renderPicker();
+          } else if (arrow === 'C') {
+            this.picker.tierIdx = (this.picker.tierIdx + 1) % TIER_ORDER.length;
+            this.picker.modelIdx = 0;
+            this.renderPicker();
+          } else if (arrow === 'D') {
+            this.picker.tierIdx = (this.picker.tierIdx - 1 + TIER_ORDER.length) % TIER_ORDER.length;
+            this.picker.modelIdx = 0;
+            this.renderPicker();
+          }
+          i += 2;
+        } else if (ch === '\r' || ch === '\n') {
+          this.closeModelPicker(true);
+        } else if (code === 3 || ch === 'q') {
+          this.closeModelPicker(false);
+        } else if (ch === '\x1b') {
+          this.closeModelPicker(false);
+        }
+        continue;
+      }
 
       // ESC sequences — arrow keys
       if (ch === '\x1b' && data[i + 1] === '[') {
@@ -187,8 +231,12 @@ export class RuwtTUI {
         if (ch === '\r' || ch === '\n') {
           const queued = this.line.trim();
           if (queued) {
-            this.messageQueue.push(queued);
-            this.term.write(`\r\n\x1b[90m[queued: ${this.messageQueue.length} message${this.messageQueue.length > 1 ? 's' : ''}]\x1b[0m`);
+            if (this.messageQueue.length >= RuwtTUI.MAX_QUEUE) {
+              this.term.write(`\r\n\x1b[33m[queue full \u2014 wait for AI to finish]\x1b[0m`);
+            } else {
+              this.messageQueue.push(queued);
+              this.term.write(`\r\n\x1b[90m[queued: ${this.messageQueue.length} message${this.messageQueue.length > 1 ? 's' : ''}]\x1b[0m`);
+            }
           }
           this.line = '';
           this.cursorPos = 0;
@@ -255,9 +303,14 @@ export class RuwtTUI {
             this.printPrompt();
             continue;
           }
+          if (cmd === 'model') {
+            this.openModelPicker();
+            continue;
+          }
           if (cmd === 'help') {
             this.term.write('\x1b[90mCommands:\x1b[0m\r\n');
             this.term.write('  \x1b[33m/agent\x1b[90m /plan /debug /ask\x1b[0m — switch mode\r\n');
+            this.term.write('  \x1b[33m/model\x1b[0m — change AI model\r\n');
             this.term.write('  \x1b[33m/clear\x1b[0m — clear chat history\r\n');
             this.term.write('  \x1b[33m/shell\x1b[0m — return to terminal\r\n');
             this.term.write('  \x1b[33m/mode\x1b[0m  — show current mode\r\n');
@@ -422,6 +475,110 @@ export class RuwtTUI {
     return false;
   }
 
+  private openModelPicker(): void {
+    let tierIdx = 0;
+    let modelIdx = 0;
+    const current = getModelById(this.getCurrentModelId());
+    if (current) {
+      const tIdx = TIER_ORDER.indexOf(current.tier);
+      if (tIdx >= 0) {
+        tierIdx = tIdx;
+        const models = getModelsForTier(current.tier);
+        const mIdx = models.findIndex((m) => m.id === current.id);
+        if (mIdx >= 0) modelIdx = mIdx;
+      }
+    }
+    this.picker = { tierIdx, modelIdx, lineCount: 0 };
+    this.renderPicker();
+  }
+
+  private renderPicker(): void {
+    if (!this.picker) return;
+
+    // Erase previous render
+    if (this.picker.lineCount > 0) {
+      for (let j = 0; j < this.picker.lineCount; j++) {
+        this.term.write('\x1b[A\r\x1b[2K');
+      }
+    }
+
+    const tier = TIER_ORDER[this.picker.tierIdx];
+    const models = getModelsForTier(tier);
+    const currentId = this.getCurrentModelId();
+    const narrow = this.term.cols < 60;
+    const lines: string[] = [];
+
+    // Title
+    lines.push('  \x1b[1mSelect Model\x1b[0m');
+
+    // Tier bar
+    const tierParts = TIER_ORDER.map((t, idx) => {
+      const label = tierLabel(t).toUpperCase();
+      if (idx === this.picker!.tierIdx) return `\x1b[1;33m[${label}]\x1b[0m`;
+      return `\x1b[90m${label}\x1b[0m`;
+    });
+    lines.push('  ' + tierParts.join('  '));
+
+    // Separator
+    lines.push('  \x1b[90m' + '\u2500'.repeat(Math.min(50, this.term.cols - 4)) + '\x1b[0m');
+
+    // Model list
+    for (let m = 0; m < models.length; m++) {
+      const model = models[m];
+      const isHighlighted = m === this.picker.modelIdx;
+      const isCurrent = model.id === currentId;
+      const pointer = isHighlighted ? '>' : ' ';
+      const check = isCurrent ? ' \x1b[32m\u2713\x1b[0m' : '  ';
+      const name = model.displayName;
+      if (narrow) {
+        const line = isHighlighted
+          ? `  \x1b[1;33m${pointer} ${name}\x1b[0m${check}`
+          : `  ${pointer} ${name}${check}`;
+        lines.push(line);
+      } else {
+        const desc = model.description;
+        const padded = name.padEnd(22);
+        const line = isHighlighted
+          ? `  \x1b[1;33m${pointer} ${padded}\x1b[0m${check}  \x1b[90m${desc}\x1b[0m`
+          : `  ${pointer} ${padded}${check}  \x1b[90m${desc}\x1b[0m`;
+        lines.push(line);
+      }
+    }
+
+    // Separator
+    lines.push('  \x1b[90m' + '\u2500'.repeat(Math.min(50, this.term.cols - 4)) + '\x1b[0m');
+
+    // Footer
+    lines.push('  \x1b[90m\u2191\u2193 navigate  \u2190\u2192 tier  Enter select  Esc cancel\x1b[0m');
+
+    for (const line of lines) {
+      this.term.write(`\r\x1b[2K${line}\r\n`);
+    }
+    this.picker.lineCount = lines.length;
+  }
+
+  private closeModelPicker(selected: boolean): void {
+    if (!this.picker) return;
+
+    // Clear menu lines
+    for (let j = 0; j < this.picker.lineCount; j++) {
+      this.term.write('\x1b[A\r\x1b[2K');
+    }
+
+    if (selected) {
+      const tier = TIER_ORDER[this.picker.tierIdx];
+      const models = getModelsForTier(tier);
+      const model = models[this.picker.modelIdx];
+      if (model) {
+        this.onModelChange?.(tier, model.id);
+        this.term.write(`\x1b[32m[model: ${model.displayName} (${tierLabel(tier).toLowerCase()} ${model.costIndicator})]\x1b[0m`);
+      }
+    }
+
+    this.picker = null;
+    this.printPrompt();
+  }
+
   private async sendMessage(text: string): Promise<void> {
     if (this.isExpired()) {
       this.term.write('\x1b[31mTime expired \u2014 AI requests disabled.\x1b[0m');
@@ -430,6 +587,7 @@ export class RuwtTUI {
     }
 
     this.isStreaming = true;
+    this.lastTestResults = null;
     this.history.push({ role: 'user', content: text });
     this.pruneHistory();
 
@@ -572,8 +730,14 @@ export class RuwtTUI {
     }
 
     if (!this.isStreaming) {
-      // Drain message queue
-      if (this.messageQueue.length > 0) {
+      // If tests already passed, discard remaining queue to prevent regressions
+      if (this.lastTestResults?.passed && this.messageQueue.length > 0) {
+        const count = this.messageQueue.length;
+        this.messageQueue = [];
+        this.term.write(`\r\n\x1b[90m[${count} queued message${count > 1 ? 's' : ''} discarded \u2014 tests already pass]\x1b[0m`);
+        this.printPrompt();
+      } else if (this.messageQueue.length > 0) {
+        // Drain message queue
         const nextMsg = this.messageQueue.shift()!;
         this.term.write(`\r\n\x1b[90m[sending queued message...]\x1b[0m`);
         this.sendMessage(nextMsg);

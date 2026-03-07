@@ -180,6 +180,9 @@ export const TIER_MODELS: Record<ModelTier, ModelInfo> = {
   micro: MODELS.find((m) => m.tier === 'micro')!,
 };
 
+/** Canonical tier ordering (cheapest → most expensive). */
+export const TIER_ORDER: ModelTier[] = ['micro', 'budget', 'mid', 'premium', 'reasoning'];
+
 /** Models available for a given tier. */
 export function getModelsForTier(tier: ModelTier): ModelInfo[] {
   return MODELS.filter((m) => m.tier === tier);
