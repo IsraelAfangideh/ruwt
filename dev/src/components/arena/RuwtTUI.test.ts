@@ -449,7 +449,7 @@ describe('RuwtTUI', () => {
       expect(userMsg.content).toBe('line one line two line three');
     });
 
-    it('queues pasted text during streaming', async () => {
+    it('queues pasted text during streaming with compact summary', async () => {
       const { tui, term, streamChat } = createTUI();
       tui.enter();
 
@@ -465,13 +465,43 @@ describe('RuwtTUI', () => {
       await vi.waitFor(() => expect(streamChat).toHaveBeenCalledTimes(1));
 
       clearOutput(term);
-      // Paste while streaming
+      // Paste multi-line while streaming — shows compact summary, not per-line queue spam
       tui.handleInput('follow up\nquestion');
       const out = termOutput(term);
-      expect(out).toContain('[queued: 1 message');
+      expect(out).toContain('[pasted: "follow up" +1 line');
+      expect(out).toContain('queued]');
 
       // Resolve the stream
       resolveDone!();
+    });
+
+    it('handles \\r-separated paste from xterm.js', async () => {
+      const { tui, streamChat } = createTUI();
+      tui.enter();
+      mockStreamDone(streamChat, 'OK');
+      // xterm.js sends \r for newlines in paste data
+      tui.handleInput('line one\rline two\rline three');
+
+      await vi.waitFor(() => {
+        expect(streamChat).toHaveBeenCalledTimes(1);
+      });
+
+      const [msgs] = streamChat.mock.calls[0];
+      const userMsg = msgs.find((m: any) => m.role === 'user');
+      expect(userMsg.content).toBe('line one line two line three');
+    });
+
+    it('shows compact summary for large multi-line paste', async () => {
+      const { tui, term, streamChat } = createTUI();
+      tui.enter();
+      mockStreamDone(streamChat, 'OK');
+      clearOutput(term);
+
+      const lines = Array.from({ length: 50 }, (_, i) => `line ${i + 1}`);
+      tui.handleInput(lines.join('\n'));
+
+      const out = termOutput(term);
+      expect(out).toContain('[pasted: "line 1" +49 lines]');
     });
   });
 
@@ -893,6 +923,52 @@ describe('RuwtTUI', () => {
       await vi.waitFor(() => {
         expect(onRunTests).toHaveBeenCalledTimes(1);
         // Should NOT make another streamChat call since tests passed
+        expect(streamChat).toHaveBeenCalledTimes(1);
+      });
+    });
+
+    it('clears queued messages when all tests pass to prevent regressions', async () => {
+      const { tui, term, streamChat, onRunTests } = createTUI();
+      tui.enter();
+
+      (extractFileEdits as Mock).mockReturnValue({ fileEdits: [], remaining: 'response' });
+      (hasToolCalls as Mock).mockReturnValue(true);
+      (applyCodeFromResponse as Mock).mockReturnValue({
+        applied: true,
+        newCode: 'code',
+        method: 'code_block',
+        message: 'Code applied',
+        needsApplyModel: false,
+      });
+
+      let doneCb: ((content: string) => Promise<void>) | null = null;
+      streamChat.mockImplementation(async (_msgs: unknown, cbs: any) => {
+        cbs.onChunk('fix');
+        doneCb = cbs.onDone;
+      });
+
+      typeAndEnter(tui, 'solve it');
+      await vi.waitFor(() => expect(streamChat).toHaveBeenCalledTimes(1));
+
+      // Queue messages while streaming (simulating paste)
+      tui.handleInput('garbage 1\r');
+      tui.handleInput('garbage 2\r');
+
+      onRunTests.mockResolvedValue({
+        passed: true,
+        passedTests: 5,
+        totalTests: 5,
+        results: [],
+      });
+
+      // Complete the stream — triggers agent loop → tests pass → queue cleared
+      await doneCb!('fix <ruwt:run_tests/>');
+
+      await vi.waitFor(() => {
+        expect(onRunTests).toHaveBeenCalledTimes(1);
+        const out = termOutput(term);
+        expect(out).toContain('2 queued messages discarded');
+        // Should NOT send another AI request (queue was cleared)
         expect(streamChat).toHaveBeenCalledTimes(1);
       });
     });

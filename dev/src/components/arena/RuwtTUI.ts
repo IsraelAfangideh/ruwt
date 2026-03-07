@@ -118,25 +118,32 @@ export class RuwtTUI {
   }
 
   handleInput(data: string): void {
-    // Multiline paste: join with spaces to form a single message
-    if (data.length > 1 && data.includes('\n')) {
-      const cleaned = data.replace(/[\r\n]+/g, ' ').trim();
-      if (cleaned) {
+    // Multiline paste: detect by \r or \n in data with 2+ actual lines
+    // (xterm.js sends \r for newlines in paste data, not \n)
+    if (data.length > 1 && /[\r\n]/.test(data)) {
+      const lines = data.split(/[\r\n]+/).filter(l => l.length > 0);
+      if (lines.length > 1) {
+        const cleaned = lines.join(' ').trim();
+        if (!cleaned) return;
+
+        // Compact paste summary (Claude Code-style)
+        const preview = lines[0].length > 60 ? lines[0].slice(0, 57) + '...' : lines[0];
+        const extra = lines.length - 1;
+        const label = `"${preview}" +${extra} line${extra > 1 ? 's' : ''}`;
+
         if (this.isStreaming) {
           this.messageQueue.push(cleaned);
-          this.term.write(`\r\n\x1b[90m[queued: ${this.messageQueue.length} message${this.messageQueue.length > 1 ? 's' : ''}]\x1b[0m`);
+          this.term.write(`\r\n\x1b[90m[pasted: ${label} \u2014 queued]\x1b[0m`);
         } else {
-          this.line = cleaned;
-          this.cursorPos = cleaned.length;
-          this.term.write(cleaned);
-          // Auto-submit pasted text
+          this.term.write(`\x1b[90m[pasted: ${label}]\x1b[0m`);
           this.term.write('\r\n');
           this.line = '';
           this.cursorPos = 0;
           this.sendMessage(cleaned);
         }
+        return;
       }
-      return;
+      // Single line + Enter — fall through to per-character handler
     }
 
     for (let i = 0; i < data.length; i++) {
@@ -528,10 +535,16 @@ export class RuwtTUI {
         const resultMsg = formatTestResultsForMessage(this.lastTestResults) + failNote;
         this.term.write(`\x1b[90m${resultMsg.replace(/\n/g, '\r\n')}\x1b[0m\r\n`);
 
-        // If all tests pass, stop looping
+        // If all tests pass, stop looping and discard queued messages
+        // to prevent paste garbage from regressing the solution
         if (testResult.passed) {
           this.history.push({ role: 'user', content: resultMsg });
           this.pruneHistory();
+          if (this.messageQueue.length > 0) {
+            const count = this.messageQueue.length;
+            this.messageQueue = [];
+            this.term.write(`\r\n\x1b[90m[${count} queued message${count > 1 ? 's' : ''} discarded]\x1b[0m`);
+          }
           break;
         }
 
