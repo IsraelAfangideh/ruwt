@@ -198,7 +198,7 @@ async function handleBotRequest(
 ): Promise<Response> {
   const path = url.pathname;
 
-  // Static routes (/, /leaderboard, /daily, /login, /register)
+  // Static routes (/, /leaderboard, /daily, /login, /register, /teams, /models)
   const staticMeta = STATIC_ROUTE_META[path];
   if (staticMeta) {
     return seoResponse(generateSeoHtml(staticMeta));

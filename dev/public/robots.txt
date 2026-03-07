@@ -10,6 +10,5 @@ Disallow: /arena/
 Disallow: /assessments
 Disallow: /assess/
 Disallow: /results/
-Disallow: /teams
 
 Sitemap: https://ruwt.dev/sitemap.xml

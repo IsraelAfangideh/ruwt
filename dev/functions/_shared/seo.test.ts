@@ -199,7 +199,7 @@ describe('seoResponse', () => {
 // STATIC_ROUTE_META
 // ---------------------------------------------------------------------------
 describe('STATIC_ROUTE_META', () => {
-  const expectedRoutes = ['/', '/leaderboard', '/daily', '/login', '/register'];
+  const expectedRoutes = ['/', '/leaderboard', '/daily', '/login', '/register', '/teams', '/models'];
 
   it('has entries for all expected static routes', () => {
     for (const route of expectedRoutes) {

@@ -72,7 +72,7 @@ export function seoResponse(html: string): Response {
 export const STATIC_ROUTE_META: Record<string, SeoMeta> = {
   '/': {
     title: 'Ruwt - Get Better at AI Coding. Get Discovered.',
-    description: 'Practice AI-assisted coding with real models. 60+ challenges, community replays, and hints. Build your skills, get noticed by employers.',
+    description: 'Practice AI-assisted coding with real models. 100+ challenges, community replays, and hints. Build your skills, get noticed by employers.',
     canonicalUrl: 'https://ruwt.dev/',
     jsonLd: [
       {
@@ -88,7 +88,7 @@ export const STATIC_ROUTE_META: Record<string, SeoMeta> = {
         '@type': 'WebSite',
         name: 'Ruwt',
         url: 'https://ruwt.dev',
-        description: 'Practice AI-assisted coding with real models. Get better at AI coding, get discovered by employers. 60+ challenges, community replays, and hints.',
+        description: 'Practice AI-assisted coding with real models. Get better at AI coding, get discovered by employers. 100+ challenges, community replays, and hints.',
       },
     ],
   },
@@ -111,6 +111,30 @@ export const STATIC_ROUTE_META: Record<string, SeoMeta> = {
     title: 'Get Started | Ruwt',
     description: 'Create your free account on ruwt.dev. Get 50k credits to start solving AI coding challenges.',
     canonicalUrl: 'https://ruwt.dev/register',
+  },
+  '/teams': {
+    title: 'AI Coding Assessments for Hiring Teams | Ruwt',
+    description: 'Assess candidates on real AI skills — model selection, prompt efficiency, and debugging. Full session replays, AI Profile analytics, and candidate comparison. $200/mo flat rate.',
+    canonicalUrl: 'https://ruwt.dev/teams',
+    jsonLd: {
+      '@context': 'https://schema.org',
+      '@type': 'Product',
+      name: 'Ruwt for Teams',
+      description: 'AI coding assessment platform for hiring teams. Measure how efficiently candidates use AI to solve real engineering problems.',
+      url: 'https://ruwt.dev/teams',
+      brand: buildOrganizationLd(),
+      offers: {
+        '@type': 'Offer',
+        price: '200',
+        priceCurrency: 'USD',
+        availability: 'https://schema.org/InStock',
+      },
+    },
+  },
+  '/models': {
+    title: 'AI Models — 15 Models Across 5 Cost Tiers | Ruwt',
+    description: 'Choose from 15 AI models across 5 cost tiers — from Llama 3.2 1B at fractions of a cent to DeepSeek R1 32B reasoning. Part of the challenge is picking the right model.',
+    canonicalUrl: 'https://ruwt.dev/models',
   },
 };
 

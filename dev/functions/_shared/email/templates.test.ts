@@ -314,7 +314,7 @@ describe('welcomeEmail', () => {
 
   it('includes platform highlights (challenges, models, daily)', () => {
     const { html } = welcomeEmail({});
-    expect(html).toContain('60+ challenges');
+    expect(html).toContain('100+ challenges');
     expect(html).toContain('17 AI models');
     expect(html).toContain('Daily challenges');
   });

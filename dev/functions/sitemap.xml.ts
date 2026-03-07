@@ -12,6 +12,8 @@ const STATIC_URLS = [
   { loc: 'https://ruwt.dev/challenges', priority: '0.9', changefreq: 'daily' },
   { loc: 'https://ruwt.dev/leaderboard', priority: '0.8', changefreq: 'hourly' },
   { loc: 'https://ruwt.dev/daily', priority: '0.8', changefreq: 'daily' },
+  { loc: 'https://ruwt.dev/teams', priority: '0.9', changefreq: 'weekly' },
+  { loc: 'https://ruwt.dev/models', priority: '0.7', changefreq: 'weekly' },
   { loc: 'https://ruwt.dev/login', priority: '0.4', changefreq: 'monthly' },
   { loc: 'https://ruwt.dev/register', priority: '0.5', changefreq: 'monthly' },
 ];

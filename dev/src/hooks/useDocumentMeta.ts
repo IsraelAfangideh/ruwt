@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 
 const DEFAULT_TITLE = 'Ruwt - Get Better at AI Coding. Get Discovered.';
-const DEFAULT_DESC = 'Practice AI-assisted coding with real models. 60+ challenges, community replays, and hints. Build your skills, get noticed by employers.';
+const DEFAULT_DESC = 'Practice AI-assisted coding with real models. 100+ challenges, community replays, and hints. Build your skills, get noticed by employers.';
 const SITE = 'https://ruwt.dev';
 
 interface DocumentMetaOptions {

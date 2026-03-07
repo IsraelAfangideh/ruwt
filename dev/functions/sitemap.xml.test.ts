@@ -129,6 +129,8 @@ describe('static routes', () => {
     'https://ruwt.dev/challenges',
     'https://ruwt.dev/leaderboard',
     'https://ruwt.dev/daily',
+    'https://ruwt.dev/teams',
+    'https://ruwt.dev/models',
     'https://ruwt.dev/login',
     'https://ruwt.dev/register',
   ];
@@ -323,9 +325,9 @@ describe('profile URLs', () => {
     const xml = await response.text();
 
     expect(xml).toContain('<loc>https://ruwt.dev/u/valid</loc>');
-    // Only 6 static + 1 valid profile = 7 url entries
+    // Only 8 static + 1 valid profile = 9 url entries
     const urlCount = (xml.match(/<url>/g) || []).length;
-    expect(urlCount).toBe(7);
+    expect(urlCount).toBe(9);
   });
 
   it('URL-encodes usernames with special characters', async () => {
@@ -349,9 +351,9 @@ describe('empty database', () => {
     const response = await onRequestGet({ env: makeEnv() });
     const xml = await response.text();
 
-    // Exactly 6 static routes
+    // Exactly 8 static routes
     const urlCount = (xml.match(/<url>/g) || []).length;
-    expect(urlCount).toBe(6);
+    expect(urlCount).toBe(8);
   });
 
   it('still produces valid XML with urlset wrapper', async () => {
@@ -402,7 +404,7 @@ describe('combined output ordering', () => {
     const xml = await response.text();
 
     const urlCount = (xml.match(/<url>/g) || []).length;
-    expect(urlCount).toBe(6 + 2 + 2); // 6 static + 2 challenges + 2 valid profiles
+    expect(urlCount).toBe(8 + 2 + 2); // 8 static + 2 challenges + 2 valid profiles
   });
 });
 
