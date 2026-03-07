@@ -12,6 +12,10 @@ import { callApplyModel } from '../../lib/ai/apply-model';
 import { computeLineDiff } from '../../lib/ai/line-diff';
 import { getModelsForTier, getModelById, tierLabel, TIER_ORDER, type ModelTier } from '../../lib/ai/pricing';
 
+type TextSegment = { type: 'text'; content: string };
+type PasteSegment = { type: 'paste'; content: string; num: number; lines: number; preview: string; charCount: number };
+type InputSegment = TextSegment | PasteSegment;
+
 interface RuwtTUIOptions {
   term: Terminal;
   fs: VirtualFileSystem;
@@ -70,8 +74,9 @@ export class RuwtTUI {
   private onRunTests?: RuwtTUIOptions['onRunTests'];
   private isExpired: () => boolean;
 
-  private line = '';
+  private segments: InputSegment[] = [{ type: 'text', content: '' }];
   private cursorPos = 0;
+  private pasteCount = 0;
   private isStreaming = false;
   private mode: AIMode = 'agent';
   private lastTestResults: TestResults | null = null;
@@ -88,6 +93,25 @@ export class RuwtTUI {
     if (this.history.length > RuwtTUI.MAX_HISTORY) {
       this.history = this.history.slice(-RuwtTUI.MAX_HISTORY);
     }
+  }
+
+  private resetInput(): void {
+    this.segments = [{ type: 'text', content: '' }];
+    this.cursorPos = 0;
+    this.pasteCount = 0;
+  }
+
+  private getFullText(): string {
+    return this.segments.map((s) => s.content).join('');
+  }
+
+  private lastTextSeg(): TextSegment {
+    return this.segments[this.segments.length - 1] as TextSegment;
+  }
+
+  private static circledNum(n: number): string {
+    if (n >= 1 && n <= 9) return String.fromCharCode(0x245f + n);
+    return `(${n})`;
   }
 
   constructor(options: RuwtTUIOptions) {
@@ -116,7 +140,7 @@ export class RuwtTUI {
     this.term.write('\r\n');
     this.term.write('\x1b[1;33m  ruwt\x1b[0m \x1b[90m\u2014 AI coding assistant\x1b[0m\r\n');
     this.term.write('\x1b[90m  Type your question, or \x1b[33m/shell\x1b[90m for terminal commands.\x1b[0m\r\n');
-    this.term.write('\x1b[90m  Modes: \x1b[33m/agent\x1b[90m \x1b[34m/plan\x1b[90m \x1b[31m/debug\x1b[90m \x1b[32m/ask\x1b[90m  |  \x1b[33m/clear\x1b[90m \x1b[33m/help\x1b[0m\r\n');
+    this.term.write('\x1b[90m  Modes: \x1b[33m/agent\x1b[90m \x1b[34m/plan\x1b[90m \x1b[31m/debug\x1b[90m \x1b[32m/ask\x1b[90m  |  \x1b[33m/model\x1b[90m \x1b[33m/clear\x1b[90m \x1b[33m/help\x1b[0m\r\n');
     this.term.write('\x1b[90m  Ctrl+C to interrupt. Type while AI streams to queue.\x1b[0m\r\n');
     this.printPrompt();
   }
@@ -128,31 +152,29 @@ export class RuwtTUI {
 
   handleInput(data: string): void {
     // Multiline paste: detect by \r or \n in data with 2+ actual lines
-    // (xterm.js sends \r for newlines in paste data, not \n)
+    // Buffer into segments instead of auto-sending (Claude Code-style)
     if (data.length > 1 && /[\r\n]/.test(data)) {
       const lines = data.split(/[\r\n]+/).filter(l => l.length > 0);
       if (lines.length > 1) {
-        const cleaned = lines.join(' ').trim();
-        if (!cleaned) return;
+        const content = lines.join('\n');
+        if (!content.trim()) return;
 
-        // Compact paste summary (Claude Code-style)
-        const preview = lines[0].length > 60 ? lines[0].slice(0, 57) + '...' : lines[0];
-        const extra = lines.length - 1;
-        const label = `"${preview}" +${extra} line${extra > 1 ? 's' : ''}`;
+        this.pasteCount++;
+        const preview = lines[0].length > 30 ? lines[0].slice(0, 27) + '...' : lines[0];
+        const pasteSeg: PasteSegment = {
+          type: 'paste', content, num: this.pasteCount,
+          lines: lines.length, preview, charCount: content.length,
+        };
 
-        if (this.isStreaming) {
-          if (this.messageQueue.length >= RuwtTUI.MAX_QUEUE) {
-            this.term.write(`\r\n\x1b[33m[queue full \u2014 wait for AI to finish]\x1b[0m`);
-          } else {
-            this.messageQueue.push(cleaned);
-            this.term.write(`\r\n\x1b[90m[pasted: ${label} \u2014 queued]\x1b[0m`);
-          }
-        } else {
-          this.term.write(`\x1b[90m[pasted: ${label}]\x1b[0m`);
-          this.term.write('\r\n');
-          this.line = '';
-          this.cursorPos = 0;
-          this.sendMessage(cleaned);
+        // Split last text segment at cursor, insert paste between halves
+        const lastSeg = this.lastTextSeg();
+        const before = lastSeg.content.slice(0, this.cursorPos);
+        const after = lastSeg.content.slice(this.cursorPos);
+        this.segments.pop();
+        this.segments.push({ type: 'text', content: before }, pasteSeg, { type: 'text', content: after });
+        this.cursorPos = 0;
+        if (!this.isStreaming) {
+          this.redrawLine();
         }
         return;
       }
@@ -184,6 +206,11 @@ export class RuwtTUI {
             this.renderPicker();
           }
           i += 2;
+        } else if (code === 9) {
+          // Tab → next tier
+          this.picker.tierIdx = (this.picker.tierIdx + 1) % TIER_ORDER.length;
+          this.picker.modelIdx = 0;
+          this.renderPicker();
         } else if (ch === '\r' || ch === '\n') {
           this.closeModelPicker(true);
         } else if (code === 3 || ch === 'q') {
@@ -194,10 +221,11 @@ export class RuwtTUI {
         continue;
       }
 
-      // ESC sequences — arrow keys
+      // ESC sequences — arrow keys (within last text segment only)
       if (ch === '\x1b' && data[i + 1] === '[') {
         const arrow = data[i + 2];
-        if (arrow === 'C' && this.cursorPos < this.line.length) {
+        const lastSeg = this.lastTextSeg();
+        if (arrow === 'C' && this.cursorPos < lastSeg.content.length) {
           this.cursorPos++;
           this.term.write('\x1b[C');
         }
@@ -215,12 +243,12 @@ export class RuwtTUI {
           this.abortFn();
           this.isStreaming = false;
           this.messageQueue = [];
+          this.resetInput();
           this.term.write('\r\n\x1b[33m[interrupted]\x1b[0m');
           this.printPrompt();
         } else {
           this.term.write('^C');
-          this.line = '';
-          this.cursorPos = 0;
+          this.resetInput();
           this.onExit();
         }
         continue;
@@ -229,7 +257,7 @@ export class RuwtTUI {
       // Buffer input while streaming — queue on Enter
       if (this.isStreaming) {
         if (ch === '\r' || ch === '\n') {
-          const queued = this.line.trim();
+          const queued = this.getFullText().trim();
           if (queued) {
             if (this.messageQueue.length >= RuwtTUI.MAX_QUEUE) {
               this.term.write(`\r\n\x1b[33m[queue full \u2014 wait for AI to finish]\x1b[0m`);
@@ -238,10 +266,10 @@ export class RuwtTUI {
               this.term.write(`\r\n\x1b[90m[queued: ${this.messageQueue.length} message${this.messageQueue.length > 1 ? 's' : ''}]\x1b[0m`);
             }
           }
-          this.line = '';
-          this.cursorPos = 0;
+          this.resetInput();
         } else if (code >= 32) {
-          this.line += ch;
+          const lastSeg = this.lastTextSeg();
+          lastSeg.content = lastSeg.content.slice(0, this.cursorPos) + ch + lastSeg.content.slice(this.cursorPos);
           this.cursorPos++;
         }
         continue;
@@ -250,8 +278,18 @@ export class RuwtTUI {
       // Backspace
       if (code === 127 || code === 8) {
         if (this.cursorPos > 0) {
-          this.line = this.line.slice(0, this.cursorPos - 1) + this.line.slice(this.cursorPos);
+          const lastSeg = this.lastTextSeg();
+          lastSeg.content = lastSeg.content.slice(0, this.cursorPos - 1) + lastSeg.content.slice(this.cursorPos);
           this.cursorPos--;
+          this.redrawLine();
+        } else if (this.segments.length >= 3) {
+          // At start of trailing text — remove preceding paste block
+          const trailingText = this.segments.pop() as TextSegment;
+          this.segments.pop(); // remove paste segment
+          const prevText = this.lastTextSeg();
+          this.cursorPos = prevText.content.length;
+          prevText.content += trailingText.content;
+          this.pasteCount = this.segments.filter((s) => s.type === 'paste').length;
           this.redrawLine();
         }
         continue;
@@ -260,9 +298,8 @@ export class RuwtTUI {
       // Enter
       if (ch === '\r' || ch === '\n') {
         this.term.write('\r\n');
-        const text = this.line.trim();
-        this.line = '';
-        this.cursorPos = 0;
+        const text = this.getFullText().trim();
+        this.resetInput();
 
         if (!text) {
           this.printPrompt();
@@ -332,7 +369,8 @@ export class RuwtTUI {
 
       // Printable
       if (code >= 32) {
-        this.line = this.line.slice(0, this.cursorPos) + ch + this.line.slice(this.cursorPos);
+        const lastSeg = this.lastTextSeg();
+        lastSeg.content = lastSeg.content.slice(0, this.cursorPos) + ch + lastSeg.content.slice(this.cursorPos);
         this.cursorPos++;
         this.redrawLine();
       }
@@ -350,8 +388,19 @@ export class RuwtTUI {
 
   private redrawLine(): void {
     const c = MODE_COLORS[this.mode];
-    this.term.write(`\r\x1b[${c}mruwt[${this.mode}]>\x1b[0m ${this.line}\x1b[K`);
-    const moveBack = this.line.length - this.cursorPos;
+    let display = '';
+    for (const seg of this.segments) {
+      if (seg.type === 'text') {
+        display += seg.content;
+      } else {
+        const num = RuwtTUI.circledNum(seg.num);
+        const extra = seg.lines - 1;
+        display += `\x1b[36m[paste${num}: "${seg.preview}" +${extra} line${extra > 1 ? 's' : ''} ~${seg.charCount} chars]\x1b[0m`;
+      }
+    }
+    this.term.write(`\r\x1b[${c}mruwt[${this.mode}]>\x1b[0m ${display}\x1b[K`);
+    const lastSeg = this.lastTextSeg();
+    const moveBack = lastSeg.content.length - this.cursorPos;
     if (moveBack > 0) {
       this.term.write(`\x1b[${moveBack}D`);
     }
@@ -549,7 +598,7 @@ export class RuwtTUI {
     lines.push('  \x1b[90m' + '\u2500'.repeat(Math.min(50, this.term.cols - 4)) + '\x1b[0m');
 
     // Footer
-    lines.push('  \x1b[90m\u2191\u2193 navigate  \u2190\u2192 tier  Enter select  Esc cancel\x1b[0m');
+    lines.push('  \x1b[90m\u2191\u2193 navigate  \u2190\u2192/Tab tier  Enter select  Esc cancel\x1b[0m');
 
     for (const line of lines) {
       this.term.write(`\r\x1b[2K${line}\r\n`);

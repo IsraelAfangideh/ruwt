@@ -152,7 +152,7 @@ describe('RuwtTUI', () => {
   // enter()
   // ---------------------------------------------------------------------------
   describe('enter', () => {
-    it('prints welcome banner and prompt', () => {
+    it('prints welcome banner and prompt with /model hint', () => {
       const { tui, term } = createTUI();
       tui.enter();
       const out = termOutput(term);
@@ -162,6 +162,7 @@ describe('RuwtTUI', () => {
       expect(out).toContain('/plan');
       expect(out).toContain('/debug');
       expect(out).toContain('/ask');
+      expect(out).toContain('/model');
       expect(out).toContain('ruwt[agent]>');
     });
   });
@@ -434,26 +435,36 @@ describe('RuwtTUI', () => {
   // Multiline paste
   // ---------------------------------------------------------------------------
   describe('multiline paste', () => {
-    it('joins pasted lines with spaces and auto-submits', async () => {
-      const { tui, streamChat } = createTUI();
+    it('buffers pasted lines as inline indicator, sends on Enter', async () => {
+      const { tui, term, streamChat } = createTUI();
       tui.enter();
       mockStreamDone(streamChat, 'OK');
-      tui.handleInput('line one\nline two\nline three');
 
+      // Paste multiline — should buffer, NOT auto-send
+      tui.handleInput('line one\nline two\nline three');
+      expect(streamChat).not.toHaveBeenCalled();
+
+      // Paste indicator should be visible
+      const out = termOutput(term);
+      expect(out).toContain('[paste');
+      expect(out).toContain('line one');
+      expect(out).toContain('+2 lines');
+
+      // Press Enter to send
+      tui.handleInput('\r');
       await vi.waitFor(() => {
         expect(streamChat).toHaveBeenCalledTimes(1);
       });
 
       const [msgs] = streamChat.mock.calls[0];
       const userMsg = msgs.find((m: any) => m.role === 'user');
-      expect(userMsg.content).toBe('line one line two line three');
+      expect(userMsg.content).toBe('line one\nline two\nline three');
     });
 
-    it('queues pasted text during streaming with compact summary', async () => {
+    it('buffers paste during streaming, queues on Enter', async () => {
       const { tui, term, streamChat } = createTUI();
       tui.enter();
 
-      // Make streamChat hang to simulate streaming
       let resolveDone: (value?: unknown) => void;
       streamChat.mockImplementation(async (_msgs: unknown, cbs: any) => {
         cbs.onChunk('thinking...');
@@ -465,13 +476,16 @@ describe('RuwtTUI', () => {
       await vi.waitFor(() => expect(streamChat).toHaveBeenCalledTimes(1));
 
       clearOutput(term);
-      // Paste multi-line while streaming — shows compact summary, not per-line queue spam
+      // Paste while streaming — buffers silently, does NOT auto-queue
       tui.handleInput('follow up\nquestion');
-      const out = termOutput(term);
-      expect(out).toContain('[pasted: "follow up" +1 line');
-      expect(out).toContain('queued]');
+      const out1 = termOutput(term);
+      expect(out1).not.toContain('queued');
 
-      // Resolve the stream
+      // Enter to queue the composed message
+      tui.handleInput('\r');
+      const out2 = termOutput(term);
+      expect(out2).toContain('[queued: 1 message]');
+
       resolveDone!();
     });
 
@@ -482,26 +496,94 @@ describe('RuwtTUI', () => {
       // xterm.js sends \r for newlines in paste data
       tui.handleInput('line one\rline two\rline three');
 
+      // Not auto-sent — must press Enter
+      expect(streamChat).not.toHaveBeenCalled();
+
+      tui.handleInput('\r');
       await vi.waitFor(() => {
         expect(streamChat).toHaveBeenCalledTimes(1);
       });
 
       const [msgs] = streamChat.mock.calls[0];
       const userMsg = msgs.find((m: any) => m.role === 'user');
-      expect(userMsg.content).toBe('line one line two line three');
+      expect(userMsg.content).toBe('line one\nline two\nline three');
     });
 
-    it('shows compact summary for large multi-line paste', async () => {
-      const { tui, term, streamChat } = createTUI();
+    it('shows paste indicator with line count and char count', () => {
+      const { tui, term } = createTUI();
       tui.enter();
-      mockStreamDone(streamChat, 'OK');
       clearOutput(term);
 
       const lines = Array.from({ length: 50 }, (_, i) => `line ${i + 1}`);
       tui.handleInput(lines.join('\n'));
 
       const out = termOutput(term);
-      expect(out).toContain('[pasted: "line 1" +49 lines]');
+      expect(out).toContain('[paste');
+      expect(out).toContain('+49 lines');
+      expect(out).toContain('chars]');
+      expect(out).toContain('line 1');
+    });
+
+    it('allows typing before and after paste (composable)', async () => {
+      const { tui, streamChat } = createTUI();
+      tui.enter();
+      mockStreamDone(streamChat, 'OK');
+
+      tui.handleInput('fix this ');
+      tui.handleInput('class Foo {\n  bar() {}\n}');
+      tui.handleInput(' please');
+      tui.handleInput('\r');
+
+      await vi.waitFor(() => {
+        expect(streamChat).toHaveBeenCalledTimes(1);
+      });
+
+      const [msgs] = streamChat.mock.calls[0];
+      const userMsg = msgs.find((m: any) => m.role === 'user');
+      expect(userMsg.content).toBe('fix this class Foo {\n  bar() {}\n} please');
+    });
+
+    it('numbers multiple pastes sequentially', () => {
+      const { tui, term } = createTUI();
+      tui.enter();
+      clearOutput(term);
+
+      tui.handleInput('line1\nline2');
+      tui.handleInput(' and ');
+      tui.handleInput('line3\nline4');
+
+      const out = termOutput(term);
+      // Should contain both paste① and paste②
+      expect(out).toContain('\u2460'); // ①
+      expect(out).toContain('\u2461'); // ②
+    });
+
+    it('backspace at start of trailing text removes preceding paste', () => {
+      const { tui, term } = createTUI();
+      tui.enter();
+
+      tui.handleInput('foo\nbar');
+      clearOutput(term);
+      // cursorPos is 0 in trailing empty text, segments: [text:""], [paste], [text:""]
+      tui.handleInput('\x7f'); // backspace
+
+      const out = termOutput(term);
+      // Paste indicator should be gone
+      expect(out).not.toContain('[paste');
+    });
+
+    it('truncates long first line in paste preview', () => {
+      const { tui, term } = createTUI();
+      tui.enter();
+      clearOutput(term);
+
+      const longLine = 'x'.repeat(50);
+      tui.handleInput(`${longLine}\nsecond line`);
+
+      const out = termOutput(term);
+      // Preview should be truncated (30 char limit → 27 + ...)
+      expect(out).toContain('...');
+      expect(out).toContain('x'.repeat(27));
     });
   });
 
@@ -1514,7 +1596,7 @@ describe('RuwtTUI', () => {
       expect(out).toContain('queue full');
     });
 
-    it('rejects pasted message when queue is full', async () => {
+    it('rejects pasted content on Enter when queue is full', async () => {
       const { tui, term, streamChat } = createTUI();
       tui.enter();
 
@@ -1531,10 +1613,15 @@ describe('RuwtTUI', () => {
       }
       clearOutput(term);
 
-      // Paste while queue full
+      // Paste while queue full — buffers silently
       tui.handleInput('pasted line one\npasted line two');
-      const out = termOutput(term);
-      expect(out).toContain('queue full');
+      const out1 = termOutput(term);
+      expect(out1).not.toContain('queue full');
+
+      // Enter triggers queue attempt → rejected
+      tui.handleInput('\r');
+      const out2 = termOutput(term);
+      expect(out2).toContain('queue full');
     });
   });
 
@@ -1589,6 +1676,17 @@ describe('RuwtTUI', () => {
       tui.handleInput('\x1b[D'); // left
       const out = termOutput(term);
       expect(out).toContain('[MICRO]');
+    });
+
+    it('Tab switches to next tier', () => {
+      const { tui, term } = createTUI();
+      tui.enter();
+      typeAndEnter(tui, '/model');
+      clearOutput(term);
+      // Default model is budget tier, Tab → mid
+      tui.handleInput('\t');
+      const out = termOutput(term);
+      expect(out).toContain('[MID]');
     });
 
     it('Enter selects model and calls onModelChange', () => {
