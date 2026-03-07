@@ -72,6 +72,21 @@ function sortByDifficultyProximity(arr: any[], currentDifficulty: string) {
   });
 }
 
+function pickNextChallenge(
+  allChallenges: any[],
+  currentId: string,
+  currentCategory: string,
+  currentDifficulty: string,
+): { id: string; title: string; difficulty: string } | null {
+  const unsolved = allChallenges.filter((ch: any) => ch.id !== currentId && ch.userStatus !== 'passed');
+  const sameCat = unsolved.filter((ch: any) => ch.category === currentCategory);
+  sortByDifficultyProximity(sameCat, currentDifficulty);
+  if (sameCat.length > 0) return { id: sameCat[0].id, title: sameCat[0].title, difficulty: sameCat[0].difficulty };
+  sortByDifficultyProximity(unsolved, currentDifficulty);
+  if (unsolved.length > 0) return { id: unsolved[0].id, title: unsolved[0].title, difficulty: unsolved[0].difficulty };
+  return null;
+}
+
 function formatWallClock(seconds: number): string {
   const m = Math.floor(seconds / 60);
   const s = seconds % 60;
@@ -367,15 +382,8 @@ export function ArenaScreen() {
           .then(async (chRes) => {
             if (chRes.ok) {
               const allChallenges = await chRes.json();
-              const unsolved = allChallenges.filter((ch: any) => ch.id !== challengeId && ch.userStatus !== 'passed');
-              const sameCat = unsolved.filter((ch: any) => ch.category === challenge?.category);
-              sortByDifficultyProximity(sameCat, challenge?.difficulty || '');
-              if (sameCat.length > 0) {
-                setNextChallenge({ id: sameCat[0].id, title: sameCat[0].title, difficulty: sameCat[0].difficulty });
-              } else if (unsolved.length > 0) {
-                sortByDifficultyProximity(unsolved, challenge?.difficulty || '');
-                setNextChallenge({ id: unsolved[0].id, title: unsolved[0].title, difficulty: unsolved[0].difficulty });
-              }
+              const next = pickNextChallenge(allChallenges, challengeId, challenge?.category || '', challenge?.difficulty || '');
+              if (next) setNextChallenge(next);
             }
             setNextChallengeResolved(true);
           })
@@ -1264,17 +1272,8 @@ export function ArenaScreen() {
                       fetch('/api/challenges')
                         .then(r => r.json())
                         .then((all) => {
-                          const unsolved = all.filter((ch: any) => ch.id !== challengeId && ch.userStatus !== 'passed');
-                          const sameCat = unsolved.filter((ch: any) => ch.category === challenge?.category);
-                          sortByDifficultyProximity(sameCat, challenge?.difficulty || '');
-                          if (sameCat.length > 0) {
-                            window.location.href = `/arena/${sameCat[0].id}`;
-                          } else if (unsolved.length > 0) {
-                            sortByDifficultyProximity(unsolved, challenge?.difficulty || '');
-                            window.location.href = `/arena/${unsolved[0].id}`;
-                          } else {
-                            window.location.href = '/challenges';
-                          }
+                          const next = pickNextChallenge(all, challengeId, challenge?.category || '', challenge?.difficulty || '');
+                          window.location.href = next ? `/arena/${next.id}` : '/challenges';
                         })
                         .catch(() => { window.location.href = '/challenges'; });
                     }
@@ -1303,7 +1302,7 @@ export function ArenaScreen() {
                         {nextChallenge.difficulty}
                       </span>
                     </>
-                  ) : !nextChallenge && nextChallengeResolved ? (
+                  ) : nextChallengeResolved ? (
                     <>
                       <span style={{ fontSize: 11, color: arena.accent, textTransform: 'uppercase', letterSpacing: 1 }}>
                         Champion
