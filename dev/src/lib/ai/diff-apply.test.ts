@@ -746,4 +746,39 @@ Replace: new value`;
     expect(blocks[0].search).toBe('old value');
     expect(blocks[0].replace).toBe('new value');
   });
+
+  it('detects bare SEARCH/REPLACE keywords (no colons, no angle brackets)', () => {
+    expect(hasEditBlocks('SEARCH\nold code\nREPLACE\nnew code')).toBe(true);
+  });
+
+  it('parses bare SEARCH/REPLACE keyword format', () => {
+    const text = `SEARCH
+function countVowels(str) {
+  // Your code here
+}
+REPLACE
+function countVowels(str) {
+  const vowels = /[aeiou]/gi;
+  return (str.match(vowels) || []).length;
+}`;
+    const blocks = parseEditBlocks(text);
+    expect(blocks).toHaveLength(1);
+    expect(blocks[0].search).toBe('function countVowels(str) {\n  // Your code here\n}');
+    expect(blocks[0].replace).toBe('function countVowels(str) {\n  const vowels = /[aeiou]/gi;\n  return (str.match(vowels) || []).length;\n}');
+  });
+
+  it('parses bare keywords with surrounding prose', () => {
+    const text = `Here is the fix:
+
+SEARCH
+const x = 1;
+REPLACE
+const x = 2;
+
+This should fix it.`;
+    const blocks = parseEditBlocks(text);
+    expect(blocks).toHaveLength(1);
+    expect(blocks[0].search).toBe('const x = 1;');
+    expect(blocks[0].replace).toBe('const x = 2;');
+  });
 });

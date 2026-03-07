@@ -39,18 +39,22 @@ function isReplaceMarker(line: string): boolean {
 }
 
 /**
- * Matches colon-style SEARCH markers: "SEARCH: code" or "SEARCH:" on its own line.
+ * Matches colon-style or bare SEARCH markers:
+ *   "SEARCH: code", "SEARCH:" on its own line, or bare "SEARCH" on its own line.
  * Must be at start of line (after optional whitespace).
  */
 function isColonSearchMarker(line: string): boolean {
-  return /^SEARCH\s*:/i.test(line.trim());
+  const t = line.trim();
+  return /^SEARCH\s*:/i.test(t) || /^SEARCH$/i.test(t);
 }
 
 /**
- * Matches colon-style REPLACE markers: "REPLACE: code" or "REPLACE:" on its own line.
+ * Matches colon-style or bare REPLACE markers:
+ *   "REPLACE: code", "REPLACE:" on its own line, or bare "REPLACE" on its own line.
  */
 function isColonReplaceMarker(line: string): boolean {
-  return /^REPLACE\s*:/i.test(line.trim());
+  const t = line.trim();
+  return /^REPLACE\s*:/i.test(t) || /^REPLACE$/i.test(t);
 }
 
 /**
@@ -585,13 +589,20 @@ export function hasEditBlocks(text: string): boolean {
 }
 
 /**
- * Check if text contains colon-style SEARCH/REPLACE blocks.
+ * Check if text contains colon-style or bare SEARCH/REPLACE blocks.
  * Some models (Granite Micro, Qwen2.5 Coder) output:
- *   SEARCH: old code
+ *   SEARCH: old code    — colon format
  *   REPLACE: new code
+ * Or bare keywords:
+ *   SEARCH              — bare format
+ *   old code
+ *   REPLACE
+ *   new code
  */
 export function hasColonEditBlocks(text: string): boolean {
-  return /^SEARCH\s*:/im.test(text) && /^REPLACE\s*:/im.test(text);
+  const hasSearch = /^SEARCH\s*:/im.test(text) || /^SEARCH\s*$/im.test(text);
+  const hasReplace = /^REPLACE\s*:/im.test(text) || /^REPLACE\s*$/im.test(text);
+  return hasSearch && hasReplace;
 }
 
 /**
