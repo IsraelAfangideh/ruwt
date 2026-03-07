@@ -139,6 +139,7 @@ describe('GET /api/challenges/:id', () => {
         hiddenTestCases: JSON.stringify([{ input: '1', expectedOutput: '1' }, { input: '2', expectedOutput: '2' }]),
         tags: JSON.stringify(['cache', 'debugging']),
         starterCode: 'function solve() {}',
+        useStdin: 0,
       },
       stats: { solvers: 15, avgCost: 250.5, bestCost: 50 },
     });
@@ -158,6 +159,27 @@ describe('GET /api/challenges/:id', () => {
     expect(json.tags).toEqual(['cache', 'debugging']);
     // Stats should be included
     expect(json.stats).toEqual({ solvers: 15, avgCost: 250.5, bestCost: 50 });
+    // useStdin should be boolean
+    expect(json.useStdin).toBe(false);
+  });
+
+  it('returns useStdin true when challenge has use_stdin = 1', async () => {
+    createMockDb({
+      challenge: {
+        id: 'ch-stdin',
+        title: 'Stdin Challenge',
+        tags: null,
+        hiddenTestCases: null,
+        useStdin: 1,
+      },
+      stats: { solvers: 0, avgCost: null, bestCost: null },
+    });
+
+    const res = await onRequestGet(makeContext('ch-stdin'));
+
+    expect(res.status).toBe(200);
+    const json = await res.json() as any;
+    expect(json.useStdin).toBe(true);
   });
 
   it('returns empty tags array when tags is null', async () => {

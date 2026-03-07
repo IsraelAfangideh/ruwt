@@ -44,6 +44,7 @@ export async function onRequestGet(context: {
       ...rest,
       tags: challenge.tags ? (() => { try { return JSON.parse(challenge.tags); } catch { return []; } })() : [],
       hiddenTestCount,
+      useStdin: !!challenge.useStdin,
       stats: {
         solvers: statsRow?.solvers ?? 0,
         avgCost: statsRow?.avgCost ?? null,

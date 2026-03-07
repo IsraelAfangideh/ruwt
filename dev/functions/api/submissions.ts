@@ -96,6 +96,7 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
         console.error('Corrupted testCases JSON for challenge:', challenge.id);
         return Response.json({ error: 'Challenge data is corrupted' }, { status: 500 });
       }
+      const useStdin = !!challenge.useStdin;
       let codeToRun = sourceCode;
       if (challenge.testHarness) codeToRun += '\n' + challenge.testHarness;
       if (challenge.readonlyPrefix) codeToRun = challenge.readonlyPrefix + '\n' + codeToRun;
@@ -108,6 +109,7 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
           cpuTimeLimit: Math.ceil((challenge.execTimeLimit || 5000) / 1000),
           memoryLimit: (challenge.execMemoryLimit || 256) * 1024,
           mainFunction: challenge.testHarness ? 'solve' : undefined,
+          useStdin,
         }
       );
 
@@ -212,6 +214,7 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
     const allTests = [...publicTests, ...hiddenTests];
     const publicCount = publicTests.length;
 
+    const useStdin = !!challenge.useStdin;
     let submitCodeToRun = sourceCode;
     if (challenge.testHarness) submitCodeToRun += '\n' + challenge.testHarness;
     if (challenge.readonlyPrefix) submitCodeToRun = challenge.readonlyPrefix + '\n' + submitCodeToRun;
@@ -224,6 +227,7 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
         cpuTimeLimit: Math.ceil((challenge.execTimeLimit || 5000) / 1000),
         memoryLimit: (challenge.execMemoryLimit || 256) * 1024,
         mainFunction: challenge.testHarness ? 'solve' : undefined,
+        useStdin,
       }
     );
 

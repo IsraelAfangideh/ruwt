@@ -668,3 +668,124 @@ describe('buildTestCode — let/var function patterns', () => {
     expect(code).toContain('square(...__args)');
   });
 });
+
+// ---------------------------------------------------------------------------
+// Tests: runTestCases — stdin mode
+// ---------------------------------------------------------------------------
+
+describe('runTestCases — stdin mode', () => {
+  it('sends source code unmodified and passes input as stdin', async () => {
+    const source = 'let _i="";process.stdin.on("data",d=>_i+=d);process.stdin.on("end",()=>console.log(_i.trim()));';
+    setupFetchMock([
+      { ok: true, body: mockPistonResponse('hello\n') },
+    ]);
+
+    const result = await runTestCases(
+      PISTON_ENV,
+      source,
+      'javascript',
+      [{ input: 'hello', expectedOutput: 'hello' }],
+      { useStdin: true },
+    );
+
+    expect(result.passed).toBe(true);
+    expect(result.passedTests).toBe(1);
+    // Code sent to Piston should be the raw source (no buildTestCode wrapping)
+    const body = capturedBodies[0] as any;
+    expect(body.files[0].content).toBe(source);
+    // stdin should be the test input
+    expect(body.stdin).toBe('hello');
+  });
+
+  it('reports failure when stdout does not match expected', async () => {
+    setupFetchMock([
+      { ok: true, body: mockPistonResponse('wrong\n') },
+    ]);
+
+    const result = await runTestCases(
+      PISTON_ENV,
+      'console.log("wrong")',
+      'javascript',
+      [{ input: 'test', expectedOutput: 'correct' }],
+      { useStdin: true },
+    );
+
+    expect(result.passed).toBe(false);
+    expect(result.results[0].actualOutput).toBe('wrong');
+    expect(result.results[0].expectedOutput).toBe('correct');
+  });
+
+  it('captures errors in stdin mode', async () => {
+    setupFetchMock([
+      { ok: true, body: mockPistonResponse('', 'SyntaxError: bad', 1) },
+    ]);
+
+    const result = await runTestCases(
+      PISTON_ENV,
+      'invalid code !!!',
+      'javascript',
+      [{ input: 'x', expectedOutput: 'y' }],
+      { useStdin: true },
+    );
+
+    expect(result.passed).toBe(false);
+    expect(result.results[0].error).toContain('SyntaxError');
+  });
+
+  it('handles execution errors in stdin mode', async () => {
+    setupFetchMock([
+      { ok: false, status: 500, text: 'Internal Server Error' },
+    ]);
+
+    const result = await runTestCases(
+      PISTON_ENV,
+      'print("hi")',
+      'python',
+      [{ input: 'test', expectedOutput: 'hi' }],
+      { useStdin: true },
+    );
+
+    expect(result.passed).toBe(false);
+    expect(result.results[0].error).toContain('Execution error');
+  });
+
+  it('works with Python stdin mode', async () => {
+    const source = 'import sys\nprint(sys.stdin.read().strip())';
+    setupFetchMock([
+      { ok: true, body: mockPistonResponse('hello\n') },
+    ]);
+
+    const result = await runTestCases(
+      PISTON_ENV,
+      source,
+      'python',
+      [{ input: 'hello', expectedOutput: 'hello' }],
+      { useStdin: true },
+    );
+
+    expect(result.passed).toBe(true);
+    const body = capturedBodies[0] as any;
+    expect(body.files[0].content).toBe(source);
+    expect(body.stdin).toBe('hello');
+    expect(body.language).toBe('python');
+  });
+
+  it('does not use stdin when useStdin is false (default behavior)', async () => {
+    setupFetchMock([
+      { ok: true, body: mockPistonResponse('42\n') },
+    ]);
+
+    await runTestCases(
+      PISTON_ENV,
+      'function solve(n) { return n; }\nmodule.exports = { solve }',
+      'javascript',
+      [{ input: '42', expectedOutput: '42' }],
+      { useStdin: false },
+    );
+
+    const body = capturedBodies[0] as any;
+    // Should use buildTestCode (wraps code), not pass raw stdin
+    expect(body.files[0].content).toContain('solve(...__args)');
+    expect(body.stdin).toBe('');
+  });
+});

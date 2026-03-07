@@ -28,6 +28,7 @@ interface TerminalPanelProps {
   challengeTestCases: string;
   hiddenTestCount?: number;
   readonlyPrefix?: string | null;
+  useStdin?: boolean;
   shellCallbacks: Omit<ShellCallbacks, 'onEnterRuwt'>;
   streamChat: (
     messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }>,
@@ -56,7 +57,7 @@ export const TerminalPanel = React.forwardRef<TerminalPanelHandle, TerminalPanel
     const {
       fs, language, attemptId, challengeTitle, challengeDescription,
       challengeDifficulty, challengeCategory, challengeTestCases, hiddenTestCount, readonlyPrefix,
-      shellCallbacks, streamChat, abortChat, onCodeApplied, onRunTests, isExpired,
+      useStdin, shellCallbacks, streamChat, abortChat, onCodeApplied, onRunTests, isExpired,
       onModelChange, currentModelId,
     } = props;
 
@@ -105,6 +106,7 @@ export const TerminalPanel = React.forwardRef<TerminalPanelHandle, TerminalPanel
         challengeTestCases,
         hiddenTestCount,
         readonlyPrefix,
+        useStdin,
         streamChat: (...args) => streamChatRef.current(...args),
         abort: () => abortChatRef.current(),
         onExit: () => {
@@ -120,7 +122,7 @@ export const TerminalPanel = React.forwardRef<TerminalPanelHandle, TerminalPanel
         getCurrentModelId: () => currentModelIdRef.current ?? '@cf/meta/llama-3.1-8b-instruct',
       });
       tuiRef.current.enter();
-    }, [fs, language, attemptId, challengeTitle, challengeDescription, challengeDifficulty, challengeCategory, challengeTestCases, readonlyPrefix]);
+    }, [fs, language, attemptId, challengeTitle, challengeDescription, challengeDifficulty, challengeCategory, challengeTestCases, readonlyPrefix, useStdin]);
 
     useEffect(() => {
       if (!containerRef.current) return;

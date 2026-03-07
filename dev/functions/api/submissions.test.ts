@@ -89,6 +89,7 @@ function fakeChallenge(overrides: Record<string, unknown> = {}) {
       { input: '30', expectedOutput: 'FizzBuzz', hint: 'Multiple of 15' },
     ]),
     testHarness: null,
+    useStdin: 0,
     execTimeLimit: 5000,
     execMemoryLimit: 256,
     maxTokens: null,
@@ -403,7 +404,61 @@ describe('POST /api/submissions', () => {
       'class MyClass {}\nfunction solve(x) { return new MyClass(x); }',
       'javascript',
       expect.any(Array),
-      expect.objectContaining({ mainFunction: 'solve' }),
+      expect.objectContaining({ mainFunction: 'solve', useStdin: false }),
+    );
+  });
+
+  it('test mode: uses stdin mode when useStdin column is set', async () => {
+    mockGetUser.mockResolvedValue(FAKE_USER);
+
+    const attempt = fakeAttempt();
+    const challenge = fakeChallenge({ testHarness: null, useStdin: 1 });
+    mockRunTestCases.mockResolvedValue(passingTestResult(1));
+
+    const { db } = makeDb({
+      selectResults: [[attempt], [challenge]],
+    });
+    mockGetDb.mockReturnValue(db);
+
+    await onRequestPost(makePostContext({
+      attemptId: VALID_ATTEMPT_ID,
+      sourceCode: 'console.log("hello")',
+      mode: 'test',
+    }));
+
+    expect(mockRunTestCases).toHaveBeenCalledWith(
+      expect.anything(),
+      'console.log("hello")',
+      'javascript',
+      expect.any(Array),
+      expect.objectContaining({ useStdin: true }),
+    );
+  });
+
+  it('test mode: uses function-call mode when useStdin is 0 even without testHarness', async () => {
+    mockGetUser.mockResolvedValue(FAKE_USER);
+
+    const attempt = fakeAttempt();
+    const challenge = fakeChallenge({ testHarness: null, useStdin: 0 });
+    mockRunTestCases.mockResolvedValue(passingTestResult(1));
+
+    const { db } = makeDb({
+      selectResults: [[attempt], [challenge]],
+    });
+    mockGetDb.mockReturnValue(db);
+
+    await onRequestPost(makePostContext({
+      attemptId: VALID_ATTEMPT_ID,
+      sourceCode: 'function solve() {}\nmodule.exports = solve',
+      mode: 'test',
+    }));
+
+    expect(mockRunTestCases).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.any(String),
+      'javascript',
+      expect.any(Array),
+      expect.objectContaining({ useStdin: false }),
     );
   });
 
@@ -1153,7 +1208,7 @@ describe('POST /api/submissions', () => {
 
   // ── testHarness in submit mode ──────────────────────────────────
 
-  it('submit mode: appends testHarness and sets mainFunction to solve', async () => {
+  it('submit mode: appends testHarness and sets mainFunction to solve with useStdin false', async () => {
     mockGetUser.mockResolvedValue(FAKE_USER);
 
     const attempt = fakeAttempt();
@@ -1181,7 +1236,37 @@ describe('POST /api/submissions', () => {
       'class LRUCache {}\nfunction solve(input) { return new LRUCache(input); }',
       'javascript',
       expect.any(Array),
-      expect.objectContaining({ mainFunction: 'solve' }),
+      expect.objectContaining({ mainFunction: 'solve', useStdin: false }),
+    );
+  });
+
+  it('submit mode: uses stdin mode when useStdin column is set', async () => {
+    mockGetUser.mockResolvedValue(FAKE_USER);
+
+    const attempt = fakeAttempt();
+    const challenge = fakeChallenge({ testHarness: null, useStdin: 1 });
+    mockRunTestCases.mockResolvedValue(passingTestResult(2));
+
+    const updateSet = vi.fn().mockReturnValue({
+      where: vi.fn().mockResolvedValue(undefined),
+    });
+    const { db } = makeDb({
+      selectResults: [[attempt], [challenge]],
+      updateSet,
+    });
+    mockGetDb.mockReturnValue(db);
+
+    await onRequestPost(makePostContext({
+      attemptId: VALID_ATTEMPT_ID,
+      sourceCode: 'console.log("hello")',
+    }));
+
+    expect(mockRunTestCases).toHaveBeenCalledWith(
+      expect.anything(),
+      'console.log("hello")',
+      'javascript',
+      expect.any(Array),
+      expect.objectContaining({ useStdin: true }),
     );
   });
 

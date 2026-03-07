@@ -282,4 +282,5 @@ When you discover something non-obvious (gotchas, architecture decisions, debug 
 Don't wait to be asked — if you hit a wall and solve it, document the fix here before moving on.
 
 ## Always run /simplify after your changes and always tell your user whether you did this or not
+## When you push, always watch the deploy to make sure it succeeds. You can use /loop for this
 

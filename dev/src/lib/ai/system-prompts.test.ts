@@ -402,6 +402,50 @@ describe('buildSystemPrompt', () => {
   });
 
   // -------------------------------------------------------------------------
+  // Harness rules
+  // -------------------------------------------------------------------------
+
+  describe('harness rules', () => {
+    it('includes function-call harness rules by default (useStdin undefined)', () => {
+      const prompt = buildSystemPrompt(baseOpts({ mode: 'agent' }));
+      expect(prompt).toContain('## How the Test Harness Works');
+      expect(prompt).toContain('does NOT use stdin');
+      expect(prompt).toContain('__main__');
+      expect(prompt).toContain('solve()');
+    });
+
+    it('includes function-call harness rules when useStdin is false', () => {
+      const prompt = buildSystemPrompt(baseOpts({ mode: 'agent', useStdin: false }));
+      expect(prompt).toContain('does NOT use stdin');
+      expect(prompt).not.toContain('passes test input via stdin');
+    });
+
+    it('includes stdin harness rules when useStdin is true', () => {
+      const prompt = buildSystemPrompt(baseOpts({ mode: 'agent', useStdin: true }));
+      expect(prompt).toContain('## How the Test Harness Works');
+      expect(prompt).toContain('passes test input via stdin');
+      expect(prompt).toContain('starter code already handles reading stdin');
+      expect(prompt).not.toContain('does NOT use stdin');
+      expect(prompt).not.toContain('__main__');
+    });
+
+    it('includes stdin rules in debug first-round prompt when useStdin is true', () => {
+      const prompt = buildSystemPrompt(baseOpts({ mode: 'debug', useStdin: true }));
+      expect(prompt).toContain('passes test input via stdin');
+    });
+
+    it('includes stdin rules in ask mode when useStdin is true', () => {
+      const prompt = buildSystemPrompt(baseOpts({ mode: 'ask', useStdin: true }));
+      expect(prompt).toContain('passes test input via stdin');
+    });
+
+    it('omits harness rules on follow-up rounds', () => {
+      const prompt = buildSystemPrompt(baseOpts({ mode: 'agent', isFollowUp: true }));
+      expect(prompt).not.toContain('## How the Test Harness Works');
+    });
+  });
+
+  // -------------------------------------------------------------------------
   // Edge cases
   // -------------------------------------------------------------------------
 

@@ -235,7 +235,7 @@ export async function runTestCases(
   sourceCode: string,
   language: SupportedLanguage,
   testCases: Array<{ input: string; expectedOutput: string }>,
-  options?: { cpuTimeLimit?: number; memoryLimit?: number; mainFunction?: string }
+  options?: { cpuTimeLimit?: number; memoryLimit?: number; mainFunction?: string; useStdin?: boolean }
 ): Promise<TestResult> {
   // Convert cpuTimeLimit (seconds) to Piston's run_timeout (milliseconds)
   const runTimeout = options?.cpuTimeLimit ? options.cpuTimeLimit * 1000 : 5000;
@@ -267,12 +267,39 @@ export async function runTestCases(
     }
   }
 
+  async function runSingleTestStdin(testCase: { input: string; expectedOutput: string }): Promise<TestCaseResult> {
+    try {
+      const result = await executeCode(env, sourceCode, language, testCase.input, { runTimeout });
+
+      const compileError = result.compile?.stderr || '';
+      const runtimeError = result.run.stderr || '';
+      const errorText = compileError || runtimeError || undefined;
+
+      const actualOutput = (result.run.stdout || '').trim();
+      const expected = testCase.expectedOutput.trim();
+      const passed = actualOutput === expected && result.run.code === 0;
+
+      return { passed, input: testCase.input, expectedOutput: expected, actualOutput, error: errorText };
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : 'Unknown error';
+      console.error(`Test case failed (execution error): ${errorMsg}`);
+      return {
+        passed: false,
+        input: testCase.input,
+        expectedOutput: testCase.expectedOutput,
+        actualOutput: '',
+        error: `Execution error: ${errorMsg}`,
+      };
+    }
+  }
+
   // Run test cases in parallel batches to reduce latency while
   // avoiding overwhelming the Piston executor with too many concurrent requests.
+  const testRunner = options?.useStdin ? runSingleTestStdin : runSingleTest;
   const results: TestCaseResult[] = [];
   for (let i = 0; i < testCases.length; i += MAX_CONCURRENT_TESTS) {
     const batch = testCases.slice(i, i + MAX_CONCURRENT_TESTS);
-    const batchResults = await Promise.all(batch.map(runSingleTest));
+    const batchResults = await Promise.all(batch.map(testRunner));
     results.push(...batchResults);
   }
 

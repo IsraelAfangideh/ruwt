@@ -69,6 +69,7 @@ export interface ArenaChallenge {
   expiresAt?: string | null;
   hiddenTestCount?: number;
   readonlyPrefix?: string | null;
+  useStdin?: boolean;
   stats?: { solvers: number; avgCost: number | null; bestCost: number | null } | null;
 }
 
@@ -1296,6 +1297,7 @@ export function ArenaIDE({
         isFollowUp,
         workspaceFiles: workspaceFiles.length > 0 ? workspaceFiles : undefined,
         readonlyPrefix: challenge.readonlyPrefix || null,
+        useStdin: challenge.useStdin,
       });
       const chatMessages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [
         { role: 'system', content: systemPrompt },
@@ -1669,6 +1671,7 @@ export function ArenaIDE({
     challengeTestCases: challenge.testCases || '[]',
     hiddenTestCount: challenge.hiddenTestCount,
     readonlyPrefix: challenge.readonlyPrefix || null,
+    useStdin: challenge.useStdin,
     shellCallbacks,
     streamChat,
     abortChat,

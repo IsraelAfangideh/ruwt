@@ -36,6 +36,7 @@ interface BuildSystemPromptOptions {
   isFollowUp?: boolean; // true = agent loop round, skip static context
   workspaceFiles?: Array<{ path: string; content: string }>; // non-solution files in workspace
   readonlyPrefix?: string | null; // code pre-loaded in the sandbox (not editable)
+  useStdin?: boolean; // true = stdin/stdout mode (no test harness), false = function-call mode
 }
 
 function formatTestCaseSummary(testCasesJson: string, hiddenTestCount?: number): string {
@@ -178,7 +179,7 @@ const TOOL_USE_RULES = `
 To run tests, output: <ruwt:run_tests/>
 The system will run tests and show you results. You can then fix any failures.`;
 
-const ENVIRONMENT_RULES = `
+const ENVIRONMENT_RULES_BASE = `
 ## Execution Environment
 - Code runs in an isolated sandbox with NO internet access.
 - Available runtimes: Node.js 18 (JavaScript/TypeScript) or Python 3.10.
@@ -187,6 +188,26 @@ const ENVIRONMENT_RULES = `
 - Do NOT use test frameworks (jest, mocha, chai, pytest, unittest). The platform runs tests automatically via its own harness.
 - You are writing the SOLUTION, not tests. The challenge has pre-defined test cases that the platform evaluates.
 - Do NOT suggest installing packages or running npm/pip commands.`;
+
+const HARNESS_RULES_FUNCTION = `
+## How the Test Harness Works
+- The platform calls your exported function DIRECTLY with parsed arguments — it does NOT use stdin.
+- Your job is to implement the function body and return the correct value. The harness handles printing.
+- Do NOT add stdin reading (\`sys.stdin.read()\`, \`input()\`, \`process.stdin\`), entry-point guards (\`if __name__ == "__main__"\`), or extra output (\`print()\`/\`console.log()\`) outside the function — any extra stdout breaks test comparison.
+- Do NOT add a \`solve()\` wrapper — the harness already provides one if needed.
+- Preserve the existing file structure and exports. Only change the implementation within the provided function(s).`;
+
+const HARNESS_RULES_STDIN = `
+## How the Test Harness Works
+- The platform passes test input via stdin and compares your stdout to expected output.
+- The starter code already handles reading stdin and printing the result — just implement the function body.
+- Do NOT remove or rewrite the stdin/stdout boilerplate at the bottom of the starter code.
+- Do NOT add \`module.exports\` or extra exports — the code is run as a script, not imported.
+- Only print the final answer. Any extra \`print()\`/\`console.log()\` output will break test comparison.`;
+
+function getEnvironmentRules(useStdin?: boolean): string {
+  return ENVIRONMENT_RULES_BASE + (useStdin ? HARNESS_RULES_STDIN : HARNESS_RULES_FUNCTION);
+}
 
 const SEARCH_REPLACE_WARNING = `
 ## CRITICAL: SEARCH/REPLACE Rules
@@ -200,8 +221,8 @@ const SEARCH_REPLACE_WARNING = `
 const EDIT_FORMAT_COMPACT = `
 Use SEARCH/REPLACE blocks to edit. SEARCH must exactly match existing code. Only edit what needs changing.`;
 
-const MODE_PROMPTS: Record<AIMode, (base: string, isFollowUp: boolean) => string> = {
-  agent: (base, isFollowUp) => isFollowUp
+const MODE_PROMPTS: Record<AIMode, (base: string, isFollowUp: boolean, useStdin?: boolean) => string> = {
+  agent: (base, isFollowUp, useStdin) => isFollowUp
     ? `You are a coding agent. Fix the failing tests. Be concise.
 ${EDIT_FORMAT_COMPACT}
 
@@ -212,7 +233,7 @@ ${base}
 ${EDIT_FORMAT_RULES}
 ${SEARCH_REPLACE_WARNING}
 ${TOOL_USE_RULES}
-${ENVIRONMENT_RULES}
+${getEnvironmentRules(useStdin)}
 
 ## Behavior
 - Be extremely concise. 1-2 sentences max before/after edits.
@@ -221,7 +242,7 @@ ${ENVIRONMENT_RULES}
 - Do NOT explain the approach step-by-step unless asked.
 - Think of yourself as a pair programmer who writes code, not a tutor who explains.`,
 
-  plan: (base, isFollowUp) => isFollowUp
+  plan: (base, isFollowUp, useStdin) => isFollowUp
     ? `You are a planning assistant implementing an approved plan. Write the next step.
 ${EDIT_FORMAT_COMPACT}
 
@@ -250,9 +271,9 @@ The user will see Accept/Reject buttons. Wait for their decision.
 ${EDIT_FORMAT_RULES}
 ${SEARCH_REPLACE_WARNING}
 ${TOOL_USE_RULES}
-${ENVIRONMENT_RULES}`,
+${getEnvironmentRules(useStdin)}`,
 
-  debug: (base, isFollowUp) => isFollowUp
+  debug: (base, isFollowUp, useStdin) => isFollowUp
     ? `You are a debugging specialist. Analyze the new test results and fix the remaining bug.
 ${EDIT_FORMAT_COMPACT}
 
@@ -263,7 +284,7 @@ ${base}
 ${EDIT_FORMAT_RULES}
 ${SEARCH_REPLACE_WARNING}
 ${TOOL_USE_RULES}
-${ENVIRONMENT_RULES}
+${getEnvironmentRules(useStdin)}
 
 ## Behavior
 - The user has failing tests. Your job is to find and fix the bug.
@@ -278,10 +299,10 @@ ${ENVIRONMENT_RULES}
   5. **Fix**: [SEARCH/REPLACE block]
 - After fixing, run tests: <ruwt:run_tests/>`,
 
-  ask: (base) => `You are a knowledgeable coding tutor. You explain concepts clearly.
+  ask: (base, _isFollowUp, useStdin) => `You are a knowledgeable coding tutor. You explain concepts clearly.
 
 ${base}
-${ENVIRONMENT_RULES}
+${getEnvironmentRules(useStdin)}
 
 ## Behavior
 - Answer the user's question with clear explanations.
@@ -294,7 +315,7 @@ ${ENVIRONMENT_RULES}
 
 export function buildSystemPrompt(opts: BuildSystemPromptOptions): string {
   const base = buildBaseContext(opts);
-  return MODE_PROMPTS[opts.mode](base, !!opts.isFollowUp);
+  return MODE_PROMPTS[opts.mode](base, !!opts.isFollowUp, opts.useStdin);
 }
 
 /** Format test results for injection into a synthetic user message during tool-use loops. */

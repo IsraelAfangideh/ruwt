@@ -39,6 +39,7 @@ export const challenges = sqliteTable('challenges', {
   hiddenTestCases: text('hidden_test_cases'), // JSON string, same format as testCases
   testHarness: text('test_harness'), // JS/Python code appended server-side before execution
   readonlyPrefix: text('readonly_prefix'), // Code prepended server-side before execution (not editable by user/AI)
+  useStdin: integer('use_stdin').default(0).notNull(), // 1 = stdin/stdout mode, 0 = function-call mode
 
   execTimeLimit: integer('exec_time_limit').default(5000),
   execMemoryLimit: integer('exec_memory_limit').default(256),
