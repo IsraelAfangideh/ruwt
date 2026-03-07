@@ -417,9 +417,8 @@ export function parseUnifiedDiff(text: string): EditBlock[] {
 
 /** Check if text contains unified diff markers (standard or bare @@ without line numbers). */
 export function hasUnifiedDiff(text: string): boolean {
-  const hasStandard = /^[-+]{3}\s+[ab]\//m.test(text) && /^@@\s*-\d/m.test(text);
-  const hasBareHunk = /^@@\s*$/m.test(text) && /^[-+]\s*/m.test(text);
-  return hasStandard || hasBareHunk;
+  return (/^[-+]{3}\s+[ab]\//m.test(text) && /^@@\s*-\d/m.test(text))
+    || (/^@@\s*$/m.test(text) && /^[-+] /m.test(text));
 }
 
 // ---------------------------------------------------------------------------
