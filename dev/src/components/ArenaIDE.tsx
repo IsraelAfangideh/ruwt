@@ -1620,11 +1620,11 @@ export function ArenaIDE({
 
   const sidebarPanelProps = useMemo(() => ({
     panelRef: sidebarPanelRef,
-    defaultSize: 30,
-    minSize: 15,
-    maxSize: 45,
+    defaultSize: '30%',
+    minSize: '15%',
+    maxSize: '45%',
     collapsible: true,
-    collapsedSize: 3,
+    collapsedSize: '3%',
     onResize: handleSidebarResize,
   }), [handleSidebarResize]);
 
@@ -1856,10 +1856,10 @@ export function ArenaIDE({
         {layout.sidebarPosition === 'left' && <PanelResizeBar direction="horizontal" />}
 
         {/* Main panel: editor + bottom zone */}
-        <Panel defaultSize={70} minSize={40} id="main">
+        <Panel defaultSize="70%" minSize="40%" id="main">
           <Group orientation="vertical" id="arena-v2">
             {/* Editor */}
-            <Panel defaultSize={65} minSize={20} id="editor">
+            <Panel defaultSize="65%" minSize="20%" id="editor">
               <div style={s.editorWrap} role="region" aria-label="Code editor">
                 <CodeUpdateToast visible={showToast} message={toastMessage} />
                 <PasteBlockedToast visible={showPasteBlocked} />
@@ -1913,10 +1913,10 @@ export function ArenaIDE({
             <Panel
               panelRef={bottomPanelRef}
               id="bottom"
-              defaultSize={35}
-              minSize={8}
+              defaultSize="35%"
+              minSize="8%"
               collapsible
-              collapsedSize={3}
+              collapsedSize="3%"
               onResize={() => {
                 layout.setBottomCollapsed(bottomPanelRef.current?.isCollapsed() ?? false);
               }}
@@ -2154,9 +2154,9 @@ const s: Record<string, React.CSSProperties> = {
 
   // Editor
   editorWrap: {
-    flex: 1,
+    height: '100%',
     position: 'relative',
-    minHeight: 200,
+    overflow: 'hidden',
   },
   editorLoading: {
     position: 'absolute',
