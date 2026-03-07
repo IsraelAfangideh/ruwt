@@ -1188,20 +1188,20 @@ export function ArenaIDE({
     }
   }, [messages, streamingContent, streamingThinking]);
 
-  // Cmd+L to focus chat input
+  // Cmd+L to focus chat input (ref assigned after focusPanel is defined below)
+  const focusPanelRef = useRef((_panel: string) => {});
   useEffect(() => {
     const handleGlobalKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'l') {
         e.preventDefault();
-        setActiveTab('chat');
+        focusPanelRef.current('chat');
         setHasUnreadChat(false);
-        if (isMobile) setMobilePanel('sidebar');
         setTimeout(() => chatTextareaRef.current?.focus(), 0);
       }
     };
     window.addEventListener('keydown', handleGlobalKeyDown);
     return () => window.removeEventListener('keydown', handleGlobalKeyDown);
-  }, [isMobile]);
+  }, []);
 
   // Track unread chat messages & auto-dismiss nudge
   const prevMsgCountRef = useRef(0);
@@ -1637,6 +1637,27 @@ export function ArenaIDE({
     else bottomPanelRef.current?.collapse();
   }, []);
 
+  // Central routing: "I want to see panel X" → goes to wherever X lives.
+  // Expands collapsed panels and switches tabs automatically.
+  const focusPanel = useCallback((panel: 'description' | 'chat' | 'discussion' | 'terminal' | 'results') => {
+    if (panel === 'terminal') {
+      layout.setActiveBottomTab('terminal');
+      bottomPanelRef.current?.expand();
+    } else if (panel === 'chat' && layout.chatDock === 'bottom') {
+      layout.setActiveBottomTab('chat');
+      bottomPanelRef.current?.expand();
+    } else if (panel === 'results' && layout.resultsDock === 'bottom') {
+      layout.setActiveBottomTab('results');
+      bottomPanelRef.current?.expand();
+    } else {
+      // panel lives in sidebar (description, discussion, or chat/results when docked there)
+      if (panel !== 'results') setActiveTab(panel as 'description' | 'chat' | 'discussion');
+      sidebarPanelRef.current?.expand();
+      if (isMobile) setMobilePanel('sidebar');
+    }
+  }, [layout.chatDock, layout.resultsDock, layout.setActiveBottomTab, isMobile]);
+  focusPanelRef.current = focusPanel;
+
   const terminalPanelCommonProps = useMemo(() => ({
     fs,
     language,
@@ -2023,8 +2044,7 @@ export function ArenaIDE({
               whiteSpace: 'nowrap',
             }}
             onClick={() => {
-              setActiveTab('chat');
-              if (isMobile) setMobilePanel('sidebar');
+              focusPanel('chat');
               setNudgeDismissed(true);
             }}
           >
@@ -2046,8 +2066,7 @@ export function ArenaIDE({
         pendingTestContextRef.current = testResults as AITestResults;
         setMode('debug');
         setChatInput(prompt);
-        setActiveTab('chat');
-        if (isMobile) setMobilePanel('sidebar');
+        focusPanel('chat');
         setNudgeDismissed(true);
       }} />}
 
