@@ -1621,7 +1621,7 @@ export function ArenaIDE({
   const sidebarPanelProps = useMemo(() => ({
     panelRef: sidebarPanelRef,
     defaultSize: 30,
-    minSize: 3,
+    minSize: 15,
     maxSize: 45,
     collapsible: true,
     collapsedSize: 3,
