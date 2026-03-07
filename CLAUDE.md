@@ -194,6 +194,21 @@ This opens the browser once — user approves — token is saved and auto-refres
 - If `module.exports = { ..., solve }` includes `solve`, it's used as single dispatch (not multi-export table)
 - Challenge design guidelines in `dev/marketing/CONSTITUTION.md`
 
+## Arena AI Diff Applier
+
+Code: `dev/src/lib/ai/diff-apply.ts` (parser) + `dev/src/lib/ai/code-apply.ts` (orchestrator)
+
+**Parsing priority chain** (`applyCodeFromResponse`):
+1. SEARCH/REPLACE blocks (angle-bracket `<<<SEARCH`/`>>>REPLACE` or colon `SEARCH:`/`REPLACE:`)
+2. Bare conflict markers (`<<<<<<<` ... `>>>>>>>` without SEARCH/REPLACE labels)
+3. Unified diff (`@@ -1,5 +1,8 @@` or bare `@@` without line numbers)
+4. Fenced code block extraction (largest `` ``` `` block that looks like a complete file)
+5. Fallback: `needsApplyModel: true` → calls apply LLM to merge
+
+**Key gotcha**: Fenced code blocks containing diff content (with `@@`, `+`/`-` lines) are skipped at step 4 so they don't get dumped as raw code. Without this guard, a `` ```diff `` block passes the `looksComplete` check (because the code inside matches `/^function /`) and gets written verbatim into the editor — `@@` and all.
+
+**Why models produce weird diffs**: Small/medium models output wildly inconsistent formats — bare `@@` without line numbers, `FILE:` instead of `--- a/`, colon-style `SEARCH:`/`REPLACE:`, or mix unified diff `+`/`-` inside SEARCH/REPLACE blocks. The parser is deliberately lenient with many fallback strategies, and `cleanDiffContamination()` strips mixed-format `+`/`-` prefixes from SEARCH/REPLACE content.
+
 ## /executor — Code Execution Sandbox
 
 - **Runs on**: Fly.io (`ruwt-exec.fly.dev`), Docker container
@@ -265,3 +280,6 @@ When you discover something non-obvious (gotchas, architecture decisions, debug 
 - **Auto-memory (`~/.claude/projects/.../memory/MEMORY.md`)**: Add working patterns, user preferences, and recurring pitfalls you've confirmed across interactions.
 
 Don't wait to be asked — if you hit a wall and solve it, document the fix here before moving on.
+
+## Always run /simplify after your changes and always tell your user whether you did this or not
+

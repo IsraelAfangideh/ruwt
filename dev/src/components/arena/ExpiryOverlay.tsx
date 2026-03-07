@@ -8,14 +8,23 @@ interface ExpiryOverlayProps {
   totalCost: number;
   isMobile: boolean;
   onReview: () => void;
+  onSubmit?: () => void;
   onRestart?: () => void;
 }
 
-function ExpiryOverlay({ totalTokens, totalCost, isMobile, onReview, onRestart }: ExpiryOverlayProps) {
+function ExpiryOverlay({ totalTokens, totalCost, isMobile, onReview, onSubmit, onRestart }: ExpiryOverlayProps) {
+  const testsPassed = !!onSubmit;
   return (
     <div style={s.expiryOverlay}>
       <div style={isMobile ? { ...s.expiryCard, padding: '24px 20px' } : s.expiryCard}>
-        <h2 style={s.expiryTitle}>Time's Up!</h2>
+        <h2 style={testsPassed ? { ...s.expiryTitle, color: arena.accent, margin: '0 0 8px' } : s.expiryTitle}>
+          {testsPassed ? 'Time\'s Up — But You Solved It!' : 'Time\'s Up!'}
+        </h2>
+        {testsPassed && (
+          <p style={s.expiryPassedHint}>
+            All tests passed. Submit now to lock in your score.
+          </p>
+        )}
         <div style={s.expiryStats}>
           <div style={s.expiryStat}>
             <span style={s.expiryStatValue}>{totalTokens.toLocaleString()}</span>
@@ -27,6 +36,14 @@ function ExpiryOverlay({ totalTokens, totalCost, isMobile, onReview, onRestart }
           </div>
         </div>
         <div style={isMobile ? { ...s.expiryActions, flexDirection: 'column' } : s.expiryActions}>
+          {onSubmit && (
+            <button
+              style={s.expirySubmitBtn}
+              onClick={onSubmit}
+            >
+              Submit Solution
+            </button>
+          )}
           <button
             style={s.expiryReviewBtn}
             onClick={onReview}
@@ -50,6 +67,14 @@ function ExpiryOverlay({ totalTokens, totalCost, isMobile, onReview, onRestart }
 export default React.memo(ExpiryOverlay);
 
 /* ─── Styles ──────────────────────────────────────────────────────── */
+
+const expiryPrimaryBtn: React.CSSProperties = {
+  background: arena.accent,
+  border: 'none',
+  borderRadius: 8,
+  color: '#0d1117',
+  cursor: 'pointer',
+};
 
 const s: Record<string, React.CSSProperties> = {
   expiryOverlay: {
@@ -78,6 +103,12 @@ const s: Record<string, React.CSSProperties> = {
     margin: '0 0 20px',
     fontFamily: '"Cormorant Garamond", Georgia, serif',
   },
+  expiryPassedHint: {
+    fontSize: 13,
+    color: arena.textMuted,
+    margin: '0 0 20px',
+    lineHeight: '1.4',
+  },
   expiryStats: {
     display: 'flex',
     justifyContent: 'center',
@@ -105,6 +136,12 @@ const s: Record<string, React.CSSProperties> = {
     gap: 12,
     justifyContent: 'center',
   },
+  expirySubmitBtn: {
+    ...expiryPrimaryBtn,
+    padding: '10px 24px',
+    fontSize: 14,
+    fontWeight: 700,
+  },
   expiryReviewBtn: {
     background: 'transparent',
     border: `1px solid ${arena.border}`,
@@ -116,13 +153,9 @@ const s: Record<string, React.CSSProperties> = {
     cursor: 'pointer',
   },
   expiryRestartBtn: {
-    background: arena.accent,
-    border: 'none',
-    borderRadius: 8,
-    color: '#0d1117',
+    ...expiryPrimaryBtn,
     padding: '8px 20px',
     fontSize: 13,
     fontWeight: 600,
-    cursor: 'pointer',
   },
 };

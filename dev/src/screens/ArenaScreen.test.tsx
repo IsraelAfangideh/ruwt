@@ -151,8 +151,8 @@ function mockFetchForChallenge(challenge = challengeData, profile = profileData)
       return Promise.resolve({
         ok: true,
         json: () => Promise.resolve([
-          { id: 'next-challenge', category: 'prompt_efficiency', difficulty: 'medium' },
-          { id: 'test-challenge', category: 'prompt_efficiency', difficulty: 'medium' },
+          { id: 'next-challenge', category: 'prompt_efficiency', difficulty: 'medium', userStatus: 'not_started' },
+          { id: 'test-challenge', category: 'prompt_efficiency', difficulty: 'medium', userStatus: 'not_started' },
         ]),
       });
     }
@@ -1357,10 +1357,10 @@ describe('ArenaScreen', () => {
         return Promise.resolve({
           ok: true,
           json: () => Promise.resolve([
-            { id: 'hard-one', category: 'debugging', difficulty: 'hard' },
-            { id: 'easy-one', category: 'debugging', difficulty: 'easy' },
-            { id: 'test-challenge', category: 'debugging', difficulty: 'medium' },
-            { id: 'other-cat', category: 'prompt_efficiency', difficulty: 'medium' },
+            { id: 'hard-one', category: 'debugging', difficulty: 'hard', userStatus: 'not_started' },
+            { id: 'easy-one', category: 'debugging', difficulty: 'easy', userStatus: 'not_started' },
+            { id: 'test-challenge', category: 'debugging', difficulty: 'medium', userStatus: 'not_started' },
+            { id: 'other-cat', category: 'prompt_efficiency', difficulty: 'medium', userStatus: 'not_started' },
           ]),
         });
       }
@@ -1416,13 +1416,13 @@ describe('ArenaScreen', () => {
           // First call (from submit) — return error so nextChallenge stays null
           return Promise.reject(new Error('fail'));
         }
-        // Fallback fetch from clicking "Up Next" — multiple challenges for sort coverage (lines 1158-1160)
+        // Fallback fetch from clicking "Up Next" — multiple challenges for sort coverage
         return Promise.resolve({
           ok: true,
           json: () => Promise.resolve([
-            { id: 'fallback-ch', category: 'prompt_efficiency', difficulty: 'medium' },
-            { id: 'fallback-ch2', category: 'prompt_efficiency', difficulty: 'hard' },
-            { id: 'fallback-ch3', category: 'prompt_efficiency', difficulty: 'easy' },
+            { id: 'fallback-ch', category: 'prompt_efficiency', difficulty: 'medium', userStatus: 'not_started' },
+            { id: 'fallback-ch2', category: 'prompt_efficiency', difficulty: 'hard', userStatus: 'not_started' },
+            { id: 'fallback-ch3', category: 'prompt_efficiency', difficulty: 'easy', userStatus: 'not_started' },
           ]),
         });
       }
@@ -1499,9 +1499,9 @@ describe('ArenaScreen', () => {
     await waitFor(() => {
       expect(challengesFetchCount).toBeGreaterThanOrEqual(2);
     });
-    // The catch block sets window.location.href = '/problems'
+    // The catch block sets window.location.href = '/challenges'
     await waitFor(() => {
-      expect(window.location.href).toContain('/problems');
+      expect(window.location.href).toContain('/challenges');
     });
     Object.defineProperty(window, 'location', { value: originalLocation, writable: true });
   });
@@ -1997,7 +1997,7 @@ describe('ArenaScreen', () => {
         return Promise.resolve({
           ok: true,
           json: () => Promise.resolve([
-            { id: 'other-1', category: 'debugging', difficulty: 'easy' },
+            { id: 'other-1', category: 'debugging', difficulty: 'easy', userStatus: 'not_started' },
           ]),
         });
       }
@@ -2011,11 +2011,10 @@ describe('ArenaScreen', () => {
     await act(async () => { fireEvent.click(screen.getByText('Submit')); });
     await waitFor(() => expect(screen.getByText('Challenge Passed!')).toBeTruthy());
 
-    // "Up Next" link should go to /challenges since no same-category
+    // Cross-category fallback: should recommend other-1 from debugging category
     const link = screen.getByText('Up Next');
     expect(link).toBeTruthy();
-    // The href should be /challenges since nextChallenge would be null
-    // (no same-category challenges returned from /api/challenges)
+    expect(link.closest('a')?.getAttribute('href')).toBe('/arena/other-1');
     locationSpy.mockRestore();
   });
 
@@ -2060,5 +2059,356 @@ describe('ArenaScreen', () => {
     await waitFor(() => {
       expect(screen.queryByText('Top Solver')).toBeNull();
     });
+  });
+
+  /* ─── Try Again / Reset ────────────────────────────────────────── */
+
+  it('shows "Try Again" button in success overlay for personal attempts', async () => {
+    render(<ArenaScreen />);
+    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeTruthy());
+    await act(async () => { fireEvent.click(screen.getByText('Start Challenge')); });
+    await waitFor(() => expect(screen.getByText('Submit')).toBeTruthy());
+    await act(async () => { fireEvent.click(screen.getByText('Submit')); });
+    await waitFor(() => {
+      expect(screen.getByText('Challenge Passed!')).toBeTruthy();
+    });
+    // Should show Try Again button (attempt has no assessmentSessionId)
+    expect(screen.getByText(/Try Again/)).toBeTruthy();
+  });
+
+  it('hides "Try Again" button in success overlay for assessment attempts', async () => {
+    const fetchMock = vi.fn().mockImplementation((url: string, opts?: any) => {
+      if (typeof url === 'string' && url.includes('/api/challenges/')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(challengeData) });
+      }
+      if (typeof url === 'string' && url.includes('/api/attempts') && !opts?.method) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ attempts: [] }) });
+      }
+      if (typeof url === 'string' && url.includes('/api/attempts') && opts?.method === 'POST') {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({
+            attempt: { id: 'att-assess', totalCost: 0, inputTokens: 0, outputTokens: 0, status: 'in_progress', expiresAt: null, assessmentSessionId: 'session-1' },
+            isExisting: false,
+            challenge: { starterCode: challengeData.starterCode },
+          }),
+        });
+      }
+      if (typeof url === 'string' && url.includes('/api/submissions')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ success: true, passedTests: 1, totalTests: 1, results: [{ passed: true, input: '1', expectedOutput: '1', actualOutput: '1' }] }),
+        });
+      }
+      if (typeof url === 'string' && url.includes('/api/leaderboard')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ entries: [] }) });
+      }
+      if (typeof url === 'string' && url === '/api/challenges') {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
+      }
+      return Promise.resolve({ ok: false, json: () => Promise.resolve({}) });
+    });
+    globalThis.fetch = fetchMock;
+
+    render(<ArenaScreen />);
+    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeTruthy());
+    await act(async () => { fireEvent.click(screen.getByText('Start Challenge')); });
+    await waitFor(() => expect(screen.getByText('Submit')).toBeTruthy());
+    await act(async () => { fireEvent.click(screen.getByText('Submit')); });
+    await waitFor(() => {
+      expect(screen.getByText('Challenge Passed!')).toBeTruthy();
+    });
+    // Should NOT show Try Again button for assessment attempts
+    expect(screen.queryByText(/Try Again/)).toBeNull();
+  });
+
+  it('hides onRestart for assessment attempts in ArenaIDE', async () => {
+    const fetchMock = vi.fn().mockImplementation((url: string, opts?: any) => {
+      if (typeof url === 'string' && url.includes('/api/challenges/')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(challengeData) });
+      }
+      if (typeof url === 'string' && url.includes('/api/attempts') && !opts?.method) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ attempts: [] }) });
+      }
+      if (typeof url === 'string' && url.includes('/api/attempts') && opts?.method === 'POST') {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({
+            attempt: { id: 'att-assess', totalCost: 0, inputTokens: 0, outputTokens: 0, status: 'in_progress', expiresAt: null, assessmentSessionId: 'session-1' },
+            isExisting: false,
+            challenge: { starterCode: challengeData.starterCode },
+          }),
+        });
+      }
+      return Promise.resolve({ ok: false, json: () => Promise.resolve({}) });
+    });
+    globalThis.fetch = fetchMock;
+
+    render(<ArenaScreen />);
+    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeTruthy());
+    await act(async () => { fireEvent.click(screen.getByText('Start Challenge')); });
+    await waitFor(() => expect(screen.getByTestId('arena-ide')).toBeTruthy());
+    // ArenaIDE mock renders a "Restart" button only if onRestart is passed
+    expect(screen.queryByTestId('ide-restart')).toBeNull();
+  });
+
+  it('"Try Again" button resets state and returns to pre-attempt screen', async () => {
+    render(<ArenaScreen />);
+    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeTruthy());
+    await act(async () => { fireEvent.click(screen.getByText('Start Challenge')); });
+    await waitFor(() => expect(screen.getByText('Submit')).toBeTruthy());
+    await act(async () => { fireEvent.click(screen.getByText('Submit')); });
+    await waitFor(() => {
+      expect(screen.getByText('Challenge Passed!')).toBeTruthy();
+    });
+    // Click Try Again
+    await act(async () => { fireEvent.click(screen.getByText(/Try Again/)); });
+    // Should return to pre-attempt screen
+    await waitFor(() => {
+      expect(screen.queryByText('Challenge Passed!')).toBeNull();
+      expect(screen.getByText('Start Challenge')).toBeTruthy();
+    });
+  });
+
+  it('shows personal best on pre-attempt screen when user has a passed attempt', async () => {
+    const fetchMock = vi.fn().mockImplementation((url: string, opts?: any) => {
+      if (typeof url === 'string' && url.includes('/api/challenges/') && !url.includes('/comments')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(challengeData) });
+      }
+      if (typeof url === 'string' && url.includes('/api/attempts') && !opts?.method) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({
+            attempts: [
+              { id: 'att-prev', status: 'passed', passedTests: 1, totalTests: 1, totalCost: 500, inputTokens: 100, outputTokens: 50, createdAt: '2026-01-01', submittedAt: '2026-01-01' },
+            ],
+          }),
+        });
+      }
+      if (typeof url === 'string' && url.includes('/api/attempts') && opts?.method === 'POST') {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({
+            attempt: { id: 'att-2', totalCost: 0, inputTokens: 0, outputTokens: 0, status: 'in_progress', expiresAt: null },
+            isExisting: false,
+            challenge: { starterCode: challengeData.starterCode },
+          }),
+        });
+      }
+      return Promise.resolve({ ok: false, json: () => Promise.resolve({}) });
+    });
+    globalThis.fetch = fetchMock;
+
+    render(<ArenaScreen />);
+    // Should show personal best cost (500 hundredths = $0.05)
+    await waitFor(() => {
+      expect(screen.getByText(/Your best:/)).toBeTruthy();
+    });
+    // Button should say "Try Again" instead of "Start Challenge"
+    expect(screen.getByText('Try Again')).toBeTruthy();
+  });
+
+  it('shows previous attempts count when no passed attempts exist', async () => {
+    const fetchMock = vi.fn().mockImplementation((url: string, opts?: any) => {
+      if (typeof url === 'string' && url.includes('/api/challenges/') && !url.includes('/comments')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(challengeData) });
+      }
+      if (typeof url === 'string' && url.includes('/api/attempts') && !opts?.method) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({
+            attempts: [
+              { id: 'att-fail', status: 'failed', passedTests: 0, totalTests: 1, totalCost: 200, inputTokens: 50, outputTokens: 30, createdAt: '2026-01-01', submittedAt: '2026-01-01' },
+            ],
+          }),
+        });
+      }
+      return Promise.resolve({ ok: false, json: () => Promise.resolve({}) });
+    });
+    globalThis.fetch = fetchMock;
+
+    render(<ArenaScreen />);
+    await waitFor(() => {
+      expect(screen.getByText('1 previous attempt')).toBeTruthy();
+    });
+  });
+
+  it('auto-resumes into IDE when an in-progress attempt exists', async () => {
+    const fetchMock = vi.fn().mockImplementation((url: string, opts?: any) => {
+      if (typeof url === 'string' && url.includes('/api/challenges/') && !url.includes('/comments')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(challengeData) });
+      }
+      if (typeof url === 'string' && url.includes('/api/attempts') && !opts?.method) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({
+            attempts: [
+              { id: 'att-ip', status: 'in_progress', passedTests: 0, totalTests: 1, totalCost: 100, inputTokens: 20, outputTokens: 10, createdAt: '2026-03-07', submittedAt: null },
+            ],
+          }),
+        });
+      }
+      if (typeof url === 'string' && url.includes('/api/attempts') && opts?.method === 'POST') {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({
+            attempt: { id: 'att-ip', totalCost: 100, inputTokens: 20, outputTokens: 10, status: 'in_progress', expiresAt: null },
+            isExisting: true,
+            challenge: { starterCode: challengeData.starterCode },
+          }),
+        });
+      }
+      return Promise.resolve({ ok: false, json: () => Promise.resolve({}) });
+    });
+    globalThis.fetch = fetchMock;
+
+    render(<ArenaScreen />);
+    // Should auto-resume: skip pre-attempt screen, go straight to IDE
+    await waitFor(() => {
+      expect(screen.getByTestId('arena-ide')).toBeTruthy();
+    });
+    // Should NOT show "Start Challenge" button
+    expect(screen.queryByText('Start Challenge')).toBeNull();
+  });
+
+  /* ─── Never recommend already-solved challenges ──────────── */
+
+  it('never recommends a solved challenge in Up Next', async () => {
+    globalThis.fetch = vi.fn().mockImplementation((url: string, opts?: any) => {
+      if (url.includes('/api/challenges/')) return Promise.resolve({ ok: true, json: () => Promise.resolve(challengeData) });
+      if (url === '/api/profile') return Promise.resolve({ ok: true, json: () => Promise.resolve(profileData) });
+      if (url.includes('/api/attempts') && !opts?.method) return Promise.resolve({ ok: true, json: () => Promise.resolve({ attempts: [] }) });
+      if (url.includes('/api/attempts') && opts?.method === 'POST') {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({
+            attempt: { id: 'att-1', totalCost: 0, inputTokens: 0, outputTokens: 0, status: 'in_progress', expiresAt: null },
+            isExisting: false,
+            challenge: { starterCode: '// code' },
+          }),
+        });
+      }
+      if (url.includes('/api/submissions')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ success: true, passedTests: 1, totalTests: 1, results: [] }) });
+      }
+      if (url.includes('/api/leaderboard')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ entries: [] }) });
+      }
+      if (url === '/api/challenges') {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve([
+            { id: 'solved-one', category: 'prompt_efficiency', difficulty: 'medium', userStatus: 'passed' },
+            { id: 'unsolved-one', category: 'prompt_efficiency', difficulty: 'hard', userStatus: 'not_started' },
+            { id: 'test-challenge', category: 'prompt_efficiency', difficulty: 'medium', userStatus: 'passed' },
+          ]),
+        });
+      }
+      return Promise.resolve({ ok: false, json: () => Promise.resolve({}) });
+    });
+
+    render(<ArenaScreen />);
+    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeTruthy());
+    await act(async () => { fireEvent.click(screen.getByText('Start Challenge')); });
+    await waitFor(() => expect(screen.getByText('Submit')).toBeTruthy());
+    await act(async () => { fireEvent.click(screen.getByText('Submit')); });
+    await waitFor(() => expect(screen.getByText('Challenge Passed!')).toBeTruthy());
+
+    const link = screen.getByText('Up Next');
+    expect(link.closest('a')?.getAttribute('href')).toBe('/arena/unsolved-one');
+  });
+
+  it('falls back to cross-category unsolved challenge when same category is all solved', async () => {
+    globalThis.fetch = vi.fn().mockImplementation((url: string, opts?: any) => {
+      if (url.includes('/api/challenges/')) return Promise.resolve({ ok: true, json: () => Promise.resolve(challengeData) });
+      if (url === '/api/profile') return Promise.resolve({ ok: true, json: () => Promise.resolve(profileData) });
+      if (url.includes('/api/attempts') && !opts?.method) return Promise.resolve({ ok: true, json: () => Promise.resolve({ attempts: [] }) });
+      if (url.includes('/api/attempts') && opts?.method === 'POST') {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({
+            attempt: { id: 'att-1', totalCost: 0, inputTokens: 0, outputTokens: 0, status: 'in_progress', expiresAt: null },
+            isExisting: false,
+            challenge: { starterCode: '// code' },
+          }),
+        });
+      }
+      if (url.includes('/api/submissions')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ success: true, passedTests: 1, totalTests: 1, results: [] }) });
+      }
+      if (url.includes('/api/leaderboard')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ entries: [] }) });
+      }
+      if (url === '/api/challenges') {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve([
+            { id: 'same-cat-solved', category: 'prompt_efficiency', difficulty: 'hard', userStatus: 'passed' },
+            { id: 'test-challenge', category: 'prompt_efficiency', difficulty: 'medium', userStatus: 'passed' },
+            { id: 'other-cat-unsolved', category: 'debugging', difficulty: 'medium', userStatus: 'not_started' },
+          ]),
+        });
+      }
+      return Promise.resolve({ ok: false, json: () => Promise.resolve({}) });
+    });
+
+    render(<ArenaScreen />);
+    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeTruthy());
+    await act(async () => { fireEvent.click(screen.getByText('Start Challenge')); });
+    await waitFor(() => expect(screen.getByText('Submit')).toBeTruthy());
+    await act(async () => { fireEvent.click(screen.getByText('Submit')); });
+    await waitFor(() => expect(screen.getByText('Challenge Passed!')).toBeTruthy());
+
+    const link = screen.getByText('Up Next');
+    expect(link.closest('a')?.getAttribute('href')).toBe('/arena/other-cat-unsolved');
+  });
+
+  it('shows All Challenges Completed when every challenge is solved', async () => {
+    globalThis.fetch = vi.fn().mockImplementation((url: string, opts?: any) => {
+      if (url.includes('/api/challenges/')) return Promise.resolve({ ok: true, json: () => Promise.resolve(challengeData) });
+      if (url === '/api/profile') return Promise.resolve({ ok: true, json: () => Promise.resolve(profileData) });
+      if (url.includes('/api/attempts') && !opts?.method) return Promise.resolve({ ok: true, json: () => Promise.resolve({ attempts: [] }) });
+      if (url.includes('/api/attempts') && opts?.method === 'POST') {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({
+            attempt: { id: 'att-1', totalCost: 0, inputTokens: 0, outputTokens: 0, status: 'in_progress', expiresAt: null },
+            isExisting: false,
+            challenge: { starterCode: '// code' },
+          }),
+        });
+      }
+      if (url.includes('/api/submissions')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ success: true, passedTests: 1, totalTests: 1, results: [] }) });
+      }
+      if (url.includes('/api/leaderboard')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ entries: [] }) });
+      }
+      if (url === '/api/challenges') {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve([
+            { id: 'ch-1', category: 'prompt_efficiency', difficulty: 'medium', userStatus: 'passed' },
+            { id: 'ch-2', category: 'debugging', difficulty: 'hard', userStatus: 'passed' },
+            { id: 'test-challenge', category: 'prompt_efficiency', difficulty: 'medium', userStatus: 'passed' },
+          ]),
+        });
+      }
+      return Promise.resolve({ ok: false, json: () => Promise.resolve({}) });
+    });
+
+    render(<ArenaScreen />);
+    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeTruthy());
+    await act(async () => { fireEvent.click(screen.getByText('Start Challenge')); });
+    await waitFor(() => expect(screen.getByText('Submit')).toBeTruthy());
+    await act(async () => { fireEvent.click(screen.getByText('Submit')); });
+    await waitFor(() => expect(screen.getByText('Challenge Passed!')).toBeTruthy());
+
+    await waitFor(() => {
+      expect(screen.getByText('All Challenges Completed!')).toBeTruthy();
+      expect(screen.getByText('Champion')).toBeTruthy();
+    });
+    // Link should point to /challenges (browse page)
+    expect(screen.getByText('All Challenges Completed!').closest('a')?.getAttribute('href')).toBe('/challenges');
   });
 });

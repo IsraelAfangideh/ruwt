@@ -161,18 +161,25 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
     }
 
     if (attempt.expiresAt && new Date() >= new Date(attempt.expiresAt)) {
-      await db
-        .update(attempts)
-        .set({
-          status: 'constraint_violated',
-          violatedConstraint: 'time',
-          submittedAt: new Date().toISOString(),
-        })
-        .where(eq(attempts.id, attempt.id));
-      return Response.json(
-        { error: 'Time limit expired', violation: 'time' },
-        { status: 403 }
-      );
+      // Grace period: allow submission up to 60s after expiry so users who
+      // solved the challenge but didn't click Submit in time can still lock
+      // in their score. No new AI chat or test runs are allowed — only submit.
+      const GRACE_MS = 60_000;
+      const elapsed = Date.now() - new Date(attempt.expiresAt).getTime();
+      if (elapsed > GRACE_MS) {
+        await db
+          .update(attempts)
+          .set({
+            status: 'constraint_violated',
+            violatedConstraint: 'time',
+            submittedAt: new Date().toISOString(),
+          })
+          .where(eq(attempts.id, attempt.id));
+        return Response.json(
+          { error: 'Time limit expired', violation: 'time' },
+          { status: 403 }
+        );
+      }
     }
 
     const [challenge] = await db

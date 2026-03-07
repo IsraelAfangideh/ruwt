@@ -72,6 +72,7 @@ export interface ArenaAttempt {
   outputTokens: number;
   status: string;
   expiresAt: string | null;
+  assessmentSessionId?: string | null;
 }
 
 // TestResults re-exported from ./arena/ResultsBar
@@ -102,6 +103,7 @@ interface ArenaIDEProps {
   onAttemptUpdate?: (attempt: ArenaAttempt) => void;
   onRestart?: () => void;
   onRunCode: (sourceCode: string, language: string) => Promise<{ stdout: string; stderr: string; exitCode: number }>;
+  onSubmit?: () => void;
   testResults?: TestResults | null;
   onDismissResults?: () => void;
   pastAttempts?: PastAttempt[];
@@ -435,6 +437,7 @@ export function ArenaIDE({
   onRestart,
   onRunTests,
   onRunCode,
+  onSubmit,
   testResults,
   onDismissResults,
   pastAttempts,
@@ -442,7 +445,13 @@ export function ArenaIDE({
   const [totalCost, setTotalCost] = useState(attempt?.totalCost ?? 0);
   const [inputTokens, setInputTokens] = useState(attempt?.inputTokens ?? 0);
   const [outputTokens, setOutputTokens] = useState(attempt?.outputTokens ?? 0);
-  const [messages, setMessages] = useState<{ role: 'system' | 'user' | 'assistant'; content: string; isConstraint?: boolean; meta?: MessageMeta; thinking?: string }[]>([]);
+  const [messages, setMessages] = useState<{ role: 'system' | 'user' | 'assistant'; content: string; isConstraint?: boolean; meta?: MessageMeta; thinking?: string }[]>(() => {
+    if (!attempt?.id) return [];
+    try {
+      const saved = localStorage.getItem(`arena-chat-${attempt.id}`);
+      return saved ? JSON.parse(saved) : [];
+    } catch { return []; }
+  });
   const [streamingContent, setStreamingContent] = useState('');
   const [streamingThinking, setStreamingThinking] = useState('');
   const [isThinkingPhase, setIsThinkingPhase] = useState(false);
@@ -649,6 +658,13 @@ export function ArenaIDE({
       localStorage.setItem(`notepad-${attemptId}`, notepadContent);
     }
   }, [notepadContent, attemptId]);
+
+  // Persist chat messages to localStorage (survives component remounts)
+  useEffect(() => {
+    if (attemptId && messages.length > 0) {
+      localStorage.setItem(`arena-chat-${attemptId}`, JSON.stringify(messages));
+    }
+  }, [messages, attemptId]);
 
   // Auto-save code to localStorage every 30s + on blur/tab switch
   useEffect(() => {
@@ -988,12 +1004,13 @@ export function ArenaIDE({
   const handleClearChat = useCallback(() => {
     if (isLoadingChat) handleStopChat();
     setMessages([]);
+    if (attemptId) localStorage.removeItem(`arena-chat-${attemptId}`);
     resetStreamingState();
     setChatInput('');
     setExpandedMessages(new Set());
     messageQueueRef.current = [];
     setQueueLength(0);
-  }, [isLoadingChat, handleStopChat]);
+  }, [isLoadingChat, handleStopChat, attemptId]);
 
   // Drag-to-resize sidebar (horizontal)
   const handleSidebarDragStart = useCallback((e: React.MouseEvent) => {
@@ -1759,6 +1776,7 @@ export function ArenaIDE({
           totalCost={totalCost}
           isMobile={isMobile}
           onReview={() => setShowExpiryOverlay(false)}
+          onSubmit={testResults?.passed ? onSubmit : undefined}
           onRestart={onRestart}
         />
       )}

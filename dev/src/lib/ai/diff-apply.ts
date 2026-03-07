@@ -63,6 +63,11 @@ function colonMarkerContent(line: string): string {
   return match ? match[1] : '';
 }
 
+/** Remove trailing empty strings from an array in place. */
+function trimTrailingEmpty(lines: string[]): void {
+  while (lines.length > 0 && lines[lines.length - 1] === '') lines.pop();
+}
+
 /** Matches separator lines: =======, ===, --------, or "becomes" (some models use this). */
 function isSeparator(line: string): boolean {
   const t = line.trim();
@@ -159,9 +164,8 @@ export function parseColonEditBlocks(text: string): EditBlock[] {
   let replaceLines: string[] = [];
 
   function emitBlock() {
-    // Trim trailing blank lines
-    while (searchLines.length > 0 && searchLines[searchLines.length - 1] === '') searchLines.pop();
-    while (replaceLines.length > 0 && replaceLines[replaceLines.length - 1] === '') replaceLines.pop();
+    trimTrailingEmpty(searchLines);
+    trimTrailingEmpty(replaceLines);
 
     if (searchLines.length > 0 || replaceLines.length > 0) {
       blocks.push({
@@ -230,9 +234,8 @@ function parseAngleBracketEditBlocks(text: string): EditBlock[] {
   let hasSep = false; // true = standard format (has ======= separator)
 
   function emitBlock() {
-    // Trim trailing blank lines from both sides
-    while (searchLines.length > 0 && searchLines[searchLines.length - 1] === '') searchLines.pop();
-    while (replaceLines.length > 0 && replaceLines[replaceLines.length - 1] === '') replaceLines.pop();
+    trimTrailingEmpty(searchLines);
+    trimTrailingEmpty(replaceLines);
 
     if (searchLines.length > 0 || replaceLines.length > 0) {
       blocks.push(cleanDiffContamination({
@@ -325,7 +328,6 @@ function parseAngleBracketEditBlocks(text: string): EditBlock[] {
  */
 function cleanDiffContamination(block: EditBlock): EditBlock {
   let { search, replace } = block;
-  let cleaned = false;
 
   // Check REPLACE for + prefixes (model outputting additions as diff lines)
   const replaceLines = replace.split('\n');
@@ -334,10 +336,9 @@ function cleanDiffContamination(block: EditBlock): EditBlock {
 
   if (plusCount >= 2 && replaceNonEmpty > 0 && plusCount / replaceNonEmpty >= 0.4) {
     replace = replaceLines
-      .filter(l => !(l.startsWith('-') && !l.startsWith('--'))) // drop removal lines
+      .filter(l => !(l.startsWith('-') && !l.startsWith('--')))
       .map(l => (l.startsWith('+') && !l.startsWith('++')) ? l.slice(1) : l)
       .join('\n');
-    cleaned = true;
   }
 
   // Check SEARCH for - prefixes (model outputting removals as diff lines)
@@ -347,13 +348,12 @@ function cleanDiffContamination(block: EditBlock): EditBlock {
 
   if (minusCount >= 2 && searchNonEmpty > 0 && minusCount / searchNonEmpty >= 0.4) {
     search = searchLines
-      .filter(l => !(l.startsWith('+') && !l.startsWith('++'))) // drop addition lines
+      .filter(l => !(l.startsWith('+') && !l.startsWith('++')))
       .map(l => (l.startsWith('-') && !l.startsWith('--')) ? l.slice(1) : l)
       .join('\n');
-    cleaned = true;
   }
 
-  return cleaned ? { search, replace } : block;
+  return { search, replace };
 }
 
 /**
@@ -400,9 +400,8 @@ export function parseUnifiedDiff(text: string): EditBlock[] {
       // Skip lines starting with \ (no newline at end of file markers)
     }
 
-    // Trim trailing empty lines from both
-    while (searchLines.length > 0 && searchLines[searchLines.length - 1] === '') searchLines.pop();
-    while (replaceLines.length > 0 && replaceLines[replaceLines.length - 1] === '') replaceLines.pop();
+    trimTrailingEmpty(searchLines);
+    trimTrailingEmpty(replaceLines);
 
     if (searchLines.length > 0 || replaceLines.length > 0) {
       blocks.push({
@@ -447,7 +446,8 @@ function findSimilarLines(
   threshold = 0.85
 ): number {
   if (searchLines.length === 0) return -1;
-  const stripped = searchLines.map(l => l.replace(/\s+/g, ''));
+  const strippedCode = codeLines.map(l => l.replace(/\s+/g, ''));
+  const strippedSearch = searchLines.map(l => l.replace(/\s+/g, ''));
 
   let bestStart = -1;
   let bestScore = 0;
@@ -455,8 +455,7 @@ function findSimilarLines(
   for (let i = 0; i <= codeLines.length - searchLines.length; i++) {
     let matches = 0;
     for (let j = 0; j < searchLines.length; j++) {
-      const codeLine = codeLines[i + j].replace(/\s+/g, '');
-      if (codeLine === stripped[j]) matches++;
+      if (strippedCode[i + j] === strippedSearch[j]) matches++;
     }
     const score = matches / searchLines.length;
     if (score > bestScore && score >= threshold) {
@@ -478,7 +477,7 @@ function findSimilarLines(
  *   1. Exact substring match
  *   2. Whitespace-normalized match (tabs→spaces, trim trailing)
  *   3. Space-stripped match (all whitespace removed per line)
- *   4. Line-level similarity match (60%+ lines must match after stripping)
+ *   4. Line-level similarity match (85%+ lines must match after stripping)
  */
 export function applyEditBlocks(currentCode: string, blocks: EditBlock[]): ApplyResult {
   let code = currentCode;
@@ -536,7 +535,7 @@ export function applyEditBlocks(currentCode: string, blocks: EditBlock[]): Apply
     }
     if (matched) continue;
 
-    // --- Strategy 4: Line-level similarity match (60% threshold) ---
+    // --- Strategy 4: Line-level similarity match (85% threshold) ---
     {
       const cLines = code.split('\n');
       const sLines = block.search.split('\n');
@@ -623,11 +622,7 @@ export function parseBareConflictBlocks(text: string): EditBlock[] {
       collecting = true;
       contentLines = [];
     } else if (/^>{3,}\s*$/.test(trimmed) && collecting) {
-      // Closing marker — finish block
-      // Trim trailing blank lines
-      while (contentLines.length > 0 && contentLines[contentLines.length - 1] === '') {
-        contentLines.pop();
-      }
+      trimTrailingEmpty(contentLines);
       blocks.push({ content: contentLines.join('\n') });
       collecting = false;
       contentLines = [];

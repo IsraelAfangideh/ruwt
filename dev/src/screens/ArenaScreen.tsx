@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { View, Text, ActivityIndicator } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { ArenaIDE, type ArenaChallenge, type ArenaAttempt, type TestResults, type PastAttempt } from '@/components/ArenaIDE';
@@ -60,6 +60,18 @@ function BudgetProgressBar({ spent, budget }: { spent: number; budget: number | 
   );
 }
 
+function sortByDifficultyProximity(arr: any[], currentDifficulty: string) {
+  const order = ['sprint', 'easy', 'medium', 'hard', 'impossible'];
+  const currentIdx = order.indexOf(currentDifficulty);
+  arr.sort((a: any, b: any) => {
+    const aIdx = order.indexOf(a.difficulty || '');
+    const bIdx = order.indexOf(b.difficulty || '');
+    const aDist = Math.abs(aIdx - currentIdx) + (aIdx >= currentIdx ? 0 : 5);
+    const bDist = Math.abs(bIdx - currentIdx) + (bIdx >= currentIdx ? 0 : 5);
+    return aDist - bDist;
+  });
+}
+
 function formatWallClock(seconds: number): string {
   const m = Math.floor(seconds / 60);
   const s = seconds % 60;
@@ -93,24 +105,28 @@ export function ArenaScreen() {
   const [successStats, setSuccessStats] = useState<{ rank: number; total: number; topCost: number | null } | null>(null);
   const [copiedShareLink, setCopiedShareLink] = useState(false);
   const [nextChallenge, setNextChallenge] = useState<{ id: string; title: string; difficulty: string } | null>(null);
+  const [nextChallengeResolved, setNextChallengeResolved] = useState(false);
   const [earnedBadges, setEarnedBadges] = useState<BadgeDef[]>([]);
   const [streakInfo, setStreakInfo] = useState<{ currentStreak: number } | null>(null);
   const [commentText, setCommentText] = useState('');
   const [commentSubmitted, setCommentSubmitted] = useState(false);
   const [commentSubmitting, setCommentSubmitting] = useState(false);
   const navigatingRef = useRef(false);
+  const autoResumeCalledRef = useRef(false);
+  const startAttemptRef = useRef<() => void>();
   const isMobile = useIsMobile();
   const { showToast } = useToast();
 
-  // Fetch past attempts for this challenge
-  const fetchPastAttempts = useCallback(async () => {
-    if (!challengeId) return;
+  // Fetch past attempts; returns whether an in-progress attempt exists (for auto-resume)
+  const fetchPastAttempts = useCallback(async (): Promise<boolean> => {
+    if (!challengeId) return false;
     try {
       const res = await fetch(`/api/attempts?challengeId=${challengeId}`);
       if (res.ok) {
         const data = await res.json();
+        const all = data.attempts ?? [];
         setPastAttempts(
-          (data.attempts ?? [])
+          all
             .filter((a: PastAttempt) => a.status !== 'in_progress')
             .map((a: PastAttempt & { challenge?: unknown }) => ({
               id: a.id,
@@ -124,10 +140,12 @@ export function ArenaScreen() {
               submittedAt: a.submittedAt,
             }))
         );
+        return all.some((a: PastAttempt) => a.status === 'in_progress');
       }
     } catch {
       showToast('Failed to load past attempts', 'error');
     }
+    return false;
   }, [challengeId]);
 
   // Reset all state when challengeId changes (e.g. "Try Next Challenge")
@@ -144,11 +162,13 @@ export function ArenaScreen() {
     setIsRunning(false);
     setLoading(true);
     setNextChallenge(null);
+    setNextChallengeResolved(false);
     setEarnedBadges([]);
     setStreakInfo(null);
     setCommentText('');
     setCommentSubmitted(false);
     navigatingRef.current = false;
+    autoResumeCalledRef.current = false;
   }, [challengeId]);
 
   // Load challenge + profile on mount (but don't create attempt yet)
@@ -181,9 +201,18 @@ export function ArenaScreen() {
     return () => { cancelled = true; };
   }, [challengeId]);
 
-  // Fetch past attempts when challenge loads or after submission
+  // Fetch past attempts when challenge loads; auto-resume in-progress attempts on initial load
+  // Post-submission refresh is handled explicitly in onSubmit (line 386).
   useEffect(() => {
-    if (challenge) fetchPastAttempts();
+    if (!challenge) return;
+    if (!autoResumeCalledRef.current) {
+      autoResumeCalledRef.current = true;
+      fetchPastAttempts().then((hasInProgress) => {
+        if (hasInProgress) startAttemptRef.current?.();
+      });
+    } else {
+      fetchPastAttempts();
+    }
   }, [challenge, fetchPastAttempts]);
 
   // Timer for stats display (must be before early returns to avoid hook order issues)
@@ -243,6 +272,7 @@ export function ArenaScreen() {
       setStarting(false);
     }
   }, [challengeId]);
+  useEffect(() => { startAttemptRef.current = startAttempt; }, [startAttempt]);
 
   const onRestart = useCallback(() => {
     setAttempt(null);
@@ -256,6 +286,7 @@ export function ArenaScreen() {
     setStreakInfo(null);
     setCommentText('');
     setCommentSubmitted(false);
+    setNextChallengeResolved(false);
     setIsExpired(false);
     isExpiredRef.current = false;
   }, []);
@@ -336,20 +367,19 @@ export function ArenaScreen() {
           .then(async (chRes) => {
             if (chRes.ok) {
               const allChallenges = await chRes.json();
-              const sameCat = allChallenges.filter((ch: any) => ch.category === challenge?.category && ch.id !== challengeId);
-              const difficultyOrder = ['sprint', 'easy', 'medium', 'hard', 'impossible'];
-              const currentDiffIdx = difficultyOrder.indexOf(challenge?.difficulty || '');
-              sameCat.sort((a: any, b: any) => {
-                const aIdx = difficultyOrder.indexOf(a.difficulty || '');
-                const bIdx = difficultyOrder.indexOf(b.difficulty || '');
-                const aDist = Math.abs(aIdx - currentDiffIdx) + (aIdx >= currentDiffIdx ? 0 : 5);
-                const bDist = Math.abs(bIdx - currentDiffIdx) + (bIdx >= currentDiffIdx ? 0 : 5);
-                return aDist - bDist;
-              });
-              if (sameCat.length > 0) setNextChallenge({ id: sameCat[0].id, title: sameCat[0].title, difficulty: sameCat[0].difficulty });
+              const unsolved = allChallenges.filter((ch: any) => ch.id !== challengeId && ch.userStatus !== 'passed');
+              const sameCat = unsolved.filter((ch: any) => ch.category === challenge?.category);
+              sortByDifficultyProximity(sameCat, challenge?.difficulty || '');
+              if (sameCat.length > 0) {
+                setNextChallenge({ id: sameCat[0].id, title: sameCat[0].title, difficulty: sameCat[0].difficulty });
+              } else if (unsolved.length > 0) {
+                sortByDifficultyProximity(unsolved, challenge?.difficulty || '');
+                setNextChallenge({ id: unsolved[0].id, title: unsolved[0].title, difficulty: unsolved[0].difficulty });
+              }
             }
+            setNextChallengeResolved(true);
           })
-          .catch(() => { /* next challenge fetch failed */ });
+          .catch(() => { /* fetch failed — leave nextChallengeResolved false so UI shows Browse fallback */ });
         await Promise.all([leaderboardPromise, nextChallengePromise]);
       }
       // Refresh past attempts list
@@ -424,6 +454,15 @@ export function ArenaScreen() {
       setIsRunning(false);
     }
   }, [code, language, onSubmit]);
+
+  // Compute personal best from past attempts (memoized; must be before early returns for hooks rules)
+  const personalBest = useMemo(
+    () => pastAttempts.filter((a) => a.status === 'passed').sort((a, b) => a.totalCost - b.totalCost)[0] ?? null,
+    [pastAttempts]
+  );
+
+  const canRestart = !attempt?.assessmentSessionId;
+  const submitBlocked = isExpired && !testResults?.passed;
 
   // Auth loading state
   if (authLoading) {
@@ -586,6 +625,28 @@ export function ArenaScreen() {
             )}
           </div>
 
+          {/* Personal best from previous attempts */}
+          {personalBest && (
+            <div style={{
+              fontSize: 13,
+              color: arena.accent,
+              fontWeight: 600,
+              marginBottom: 16,
+              fontFamily: fontFamily.mono,
+            }}>
+              Your best: {formatCostFromHundredths(personalBest.totalCost)} &mdash; try to beat it
+            </div>
+          )}
+          {!personalBest && pastAttempts.length > 0 && (
+            <div style={{
+              fontSize: 12,
+              color: arena.textMuted,
+              marginBottom: 16,
+            }}>
+              {pastAttempts.length} previous {pastAttempts.length === 1 ? 'attempt' : 'attempts'}
+            </div>
+          )}
+
           {/* Error from failed attempt start */}
           {error && (
             <p style={{ fontSize: 13, color: arena.error, marginBottom: 16 }}>{error}</p>
@@ -608,7 +669,7 @@ export function ArenaScreen() {
             onClick={() => startAttempt()}
             disabled={starting}
           >
-            {starting ? 'Starting...' : 'Start Challenge'}
+            {starting ? 'Starting...' : personalBest ? 'Try Again' : 'Start Challenge'}
           </button>
 
           {/* Back link */}
@@ -725,19 +786,19 @@ export function ArenaScreen() {
             </button>
             <button
               style={{
-                background: isExpired ? arena.textMuted : arena.accent,
+                background: submitBlocked ? arena.textMuted : arena.accent,
                 border: 'none',
                 borderRadius: 6,
                 color: '#0d1117',
                 padding: '4px 10px',
                 fontSize: 12,
                 fontWeight: 600,
-                cursor: isRunning || isExpired ? 'not-allowed' : 'pointer',
-                opacity: isRunning || isExpired ? 0.5 : 1,
+                cursor: isRunning || submitBlocked ? 'not-allowed' : 'pointer',
+                opacity: isRunning || submitBlocked ? 0.5 : 1,
                 flexShrink: 0,
               }}
               onClick={handleSubmit}
-              disabled={isRunning || isExpired}
+              disabled={isRunning || submitBlocked}
             >
               Submit
             </button>
@@ -869,18 +930,18 @@ export function ArenaScreen() {
               </button>
               <button
                 style={{
-                  background: isExpired ? arena.textMuted : arena.accent,
+                  background: submitBlocked ? arena.textMuted : arena.accent,
                   border: 'none',
                   borderRadius: 6,
                   color: '#0d1117',
                   padding: '6px 16px',
                   fontSize: 13,
                   fontWeight: 600,
-                  cursor: isRunning || isExpired ? 'not-allowed' : 'pointer',
-                  opacity: isRunning || isExpired ? 0.5 : 1,
+                  cursor: isRunning || submitBlocked ? 'not-allowed' : 'pointer',
+                  opacity: isRunning || submitBlocked ? 0.5 : 1,
                 }}
                 onClick={handleSubmit}
-                disabled={isRunning || isExpired}
+                disabled={isRunning || submitBlocked}
               >
                 {(() => {
                   const htc = challenge?.hiddenTestCount;
@@ -912,8 +973,9 @@ export function ArenaScreen() {
             onExpire={() => { setIsExpired(true); isExpiredRef.current = true; }}
             onRunTests={onRunTests}
             onAttemptUpdate={(next) => setAttempt(next)}
-            onRestart={onRestart}
+            onRestart={canRestart ? onRestart : undefined}
             onRunCode={onRunCode}
+            onSubmit={handleSubmit}
             testResults={testResults}
             onDismissResults={() => setTestResults(null)}
             pastAttempts={pastAttempts}
@@ -1202,17 +1264,19 @@ export function ArenaScreen() {
                       fetch('/api/challenges')
                         .then(r => r.json())
                         .then((all) => {
-                          const sameCat = all.filter((ch: any) => ch.category === challenge?.category && ch.id !== challengeId);
-                          const difficultyOrder = ['sprint', 'easy', 'medium', 'hard', 'impossible'];
-                          const currentDiffIdx = difficultyOrder.indexOf(challenge?.difficulty || '');
-                          sameCat.sort((a: any, b: any) => {
-                            const aDist = Math.abs(difficultyOrder.indexOf(a.difficulty || '') - currentDiffIdx) + (difficultyOrder.indexOf(a.difficulty || '') >= currentDiffIdx ? 0 : 5);
-                            const bDist = Math.abs(difficultyOrder.indexOf(b.difficulty || '') - currentDiffIdx) + (difficultyOrder.indexOf(b.difficulty || '') >= currentDiffIdx ? 0 : 5);
-                            return aDist - bDist;
-                          });
-                          window.location.href = sameCat.length > 0 ? `/arena/${sameCat[0].id}` : '/challenges';
+                          const unsolved = all.filter((ch: any) => ch.id !== challengeId && ch.userStatus !== 'passed');
+                          const sameCat = unsolved.filter((ch: any) => ch.category === challenge?.category);
+                          sortByDifficultyProximity(sameCat, challenge?.difficulty || '');
+                          if (sameCat.length > 0) {
+                            window.location.href = `/arena/${sameCat[0].id}`;
+                          } else if (unsolved.length > 0) {
+                            sortByDifficultyProximity(unsolved, challenge?.difficulty || '');
+                            window.location.href = `/arena/${unsolved[0].id}`;
+                          } else {
+                            window.location.href = '/challenges';
+                          }
                         })
-                        .catch(() => { window.location.href = '/problems'; });
+                        .catch(() => { window.location.href = '/challenges'; });
                     }
                   }}
                   style={{
@@ -1227,11 +1291,11 @@ export function ArenaScreen() {
                     width: '100%',
                   }}
                 >
-                  <span style={{ fontSize: 11, color: arena.textMuted, textTransform: 'uppercase', letterSpacing: 1 }}>
-                    Up Next
-                  </span>
                   {nextChallenge ? (
                     <>
+                      <span style={{ fontSize: 11, color: arena.textMuted, textTransform: 'uppercase', letterSpacing: 1 }}>
+                        Up Next
+                      </span>
                       <span style={{ display: 'block', fontSize: 14, fontWeight: 600, color: arena.text, marginTop: 4 }}>
                         {nextChallenge.title}
                       </span>
@@ -1239,10 +1303,30 @@ export function ArenaScreen() {
                         {nextChallenge.difficulty}
                       </span>
                     </>
+                  ) : !nextChallenge && nextChallengeResolved ? (
+                    <>
+                      <span style={{ fontSize: 11, color: arena.accent, textTransform: 'uppercase', letterSpacing: 1 }}>
+                        Champion
+                      </span>
+                      <span style={{ display: 'block', fontSize: 22, marginTop: 4 }}>
+                        🏆
+                      </span>
+                      <span style={{ display: 'block', fontSize: 14, fontWeight: 600, color: arena.text, marginTop: 4 }}>
+                        All Challenges Completed!
+                      </span>
+                      <span style={{ fontSize: 12, color: arena.textMuted }}>
+                        You've conquered every challenge on the platform.
+                      </span>
+                    </>
                   ) : (
-                    <span style={{ display: 'block', fontSize: 14, fontWeight: 500, color: arena.text, marginTop: 4 }}>
-                      Browse Challenges
-                    </span>
+                    <>
+                      <span style={{ fontSize: 11, color: arena.textMuted, textTransform: 'uppercase', letterSpacing: 1 }}>
+                        Up Next
+                      </span>
+                      <span style={{ display: 'block', fontSize: 14, fontWeight: 500, color: arena.text, marginTop: 4 }}>
+                        Browse Challenges
+                      </span>
+                    </>
                   )}
                 </a>
                 <button
@@ -1263,6 +1347,28 @@ export function ArenaScreen() {
                 >
                   Back to Problems
                 </button>
+                {/* Try Again — personal accounts only (not assessments) */}
+                {canRestart && (
+                  <button
+                    style={{
+                      background: 'transparent',
+                      border: `1px solid ${arena.accent}40`,
+                      borderRadius: 8,
+                      color: arena.accent,
+                      padding: '10px 20px',
+                      fontSize: 13,
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      width: '100%',
+                    }}
+                    onClick={() => {
+                      setSuccessOverlay(null);
+                      onRestart();
+                    }}
+                  >
+                    Try Again &mdash; Beat {formatCostFromHundredths(attempt?.totalCost ?? 0)}
+                  </button>
+                )}
                 {/* Post-solve comment prompt */}
                 {successOverlay.passed && !commentSubmitted && (
                   <div style={{
