@@ -435,6 +435,34 @@ describe('POST /api/submissions', () => {
     );
   });
 
+  it('test mode: wraps stdin harness with output guard to suppress stray console.log', async () => {
+    mockGetUser.mockResolvedValue(FAKE_USER);
+
+    const attempt = fakeAttempt();
+    const harness = 'let _i="";process.stdin.on("data",d=>_i+=d);process.stdin.on("end",()=>{console.log(solve(JSON.parse(_i)));});';
+    const challenge = fakeChallenge({ testHarness: harness, useStdin: 1 });
+    mockRunTestCases.mockResolvedValue(passingTestResult(1));
+
+    const { db } = makeDb({
+      selectResults: [[attempt], [challenge]],
+    });
+    mockGetDb.mockReturnValue(db);
+
+    await onRequestPost(makePostContext({
+      attemptId: VALID_ATTEMPT_ID,
+      sourceCode: 'function solve(x) { return x; }',
+      mode: 'test',
+    }));
+
+    const calledCode = mockRunTestCases.mock.calls[0][1] as string;
+    // Guard prefix suppresses console.log
+    expect(calledCode).toMatch(/^const _origLog=console\.log;console\.log=\(\)=>\{\};/);
+    // Guard restore before harness
+    expect(calledCode).toContain('console.log=_origLog;\n' + harness);
+    // User code is in between
+    expect(calledCode).toContain('function solve(x) { return x; }');
+  });
+
   it('test mode: skips harness when useStdin code already reads stdin (JS)', async () => {
     mockGetUser.mockResolvedValue(FAKE_USER);
 

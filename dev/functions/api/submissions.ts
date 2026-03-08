@@ -24,6 +24,23 @@ function codeReadsStdin(code: string, lang: string): boolean {
   return /process\.stdin|fs\.readFileSync\s*\(\s*0/.test(code);
 }
 
+/**
+ * For stdin challenges, suppress console.log/print during user code execution
+ * so stray model output doesn't pollute stdout. The harness restores it.
+ */
+function stdinOutputGuard(lang: string): { prefix: string; restore: string } {
+  if (lang === 'python') {
+    return {
+      prefix: '_orig_print=print;print=lambda*a,**k:None\n',
+      restore: '\nprint=_orig_print\n',
+    };
+  }
+  return {
+    prefix: 'const _origLog=console.log;console.log=()=>{};\n',
+    restore: '\nconsole.log=_origLog;\n',
+  };
+}
+
 const submissionSchema = z.object({
   attemptId: z.string().uuid(),
   sourceCode: z.string(),
@@ -105,7 +122,14 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
       const useStdin = !!challenge.useStdin;
       let codeToRun = sourceCode;
       const skipHarness = useStdin && challenge.testHarness && codeReadsStdin(sourceCode, language);
-      if (challenge.testHarness && !skipHarness) codeToRun += '\n' + challenge.testHarness;
+      if (challenge.testHarness && !skipHarness) {
+        if (useStdin) {
+          const guard = stdinOutputGuard(language);
+          codeToRun = guard.prefix + codeToRun + guard.restore + challenge.testHarness;
+        } else {
+          codeToRun += '\n' + challenge.testHarness;
+        }
+      }
       if (challenge.readonlyPrefix) codeToRun = challenge.readonlyPrefix + '\n' + codeToRun;
       const testResult = await runTestCases(
         context.env,
@@ -224,7 +248,14 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
     const useStdin = !!challenge.useStdin;
     let submitCodeToRun = sourceCode;
     const skipHarness = useStdin && challenge.testHarness && codeReadsStdin(sourceCode, language);
-    if (challenge.testHarness && !skipHarness) submitCodeToRun += '\n' + challenge.testHarness;
+    if (challenge.testHarness && !skipHarness) {
+      if (useStdin) {
+        const guard = stdinOutputGuard(language);
+        submitCodeToRun = guard.prefix + submitCodeToRun + guard.restore + challenge.testHarness;
+      } else {
+        submitCodeToRun += '\n' + challenge.testHarness;
+      }
+    }
     if (challenge.readonlyPrefix) submitCodeToRun = challenge.readonlyPrefix + '\n' + submitCodeToRun;
     const testResult = await runTestCases(
       context.env,
