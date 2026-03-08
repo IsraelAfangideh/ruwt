@@ -406,6 +406,22 @@ function solve(input) {
     expect(result.needsApplyModel).toBe(true);
   });
 
+  it('rejects code block at 40% of current code (between old 30% and new 50% threshold)', () => {
+    // 40% is above the old 30% threshold but below the current 50%.
+    // Ensures the tighter threshold correctly rejects partial snippets.
+    const code = 'x'.repeat(200);
+    const response = `\`\`\`js
+function solve(input) {
+  const result = input.split('').reverse().join('');
+  return result;
+}
+\`\`\``;
+
+    const result = applyCodeFromResponse(response, code, 'javascript', 'code');
+    expect(result.applied).toBe(false);
+    expect(result.needsApplyModel).toBe(true);
+  });
+
   it('accepts code block with import keyword when substantial', () => {
     const code = 'const x = 1;';
     const response = `\`\`\`ts
