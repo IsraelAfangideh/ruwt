@@ -9,7 +9,7 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/Card';
-import { Avatar } from '@/components/ui/Avatar';
+import { AvatarUpload } from '@/components/AvatarUpload';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Label } from '@/components/ui/Label';
@@ -169,6 +169,14 @@ export function ProfileScreen() {
   const [usernameError, setUsernameError] = useState<string | null>(null);
   const [savingUsername, setSavingUsername] = useState(false);
 
+  // Bio editing
+  const [editingBio, setEditingBio] = useState(false);
+  const [bio, setBio] = useState('');
+  const [savingBio, setSavingBio] = useState(false);
+
+  // Avatar
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+
   const fetchData = useCallback(async () => {
     try {
       const [dashRes, badgeRes] = await Promise.all([
@@ -179,6 +187,8 @@ export function ProfileScreen() {
         const d = await dashRes.json();
         setData(d as ProfileData);
         setUsername(d.profile.username || '');
+        setBio(d.profile?.bio || '');
+        setAvatarUrl(d.profile?.avatarUrl || null);
       }
       if (badgeRes.ok) {
         const b = await badgeRes.json();
@@ -214,6 +224,21 @@ export function ProfileScreen() {
       setUsernameError('Network error');
     }
     setSavingUsername(false);
+  };
+
+  const handleSaveBio = async () => {
+    setSavingBio(true);
+    try {
+      const res = await fetch('/api/profile', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bio: bio.trim() }),
+      });
+      if (res.ok) {
+        setEditingBio(false);
+      }
+    } catch { /* ignore */ }
+    setSavingBio(false);
   };
 
   if (authLoading || !user) return <ProfileSkeleton />;
@@ -271,9 +296,45 @@ export function ProfileScreen() {
         {/* Profile Card */}
         <Card style={styles.wideCard}>
           <CardContent style={styles.profileHeader}>
-            <Avatar src={user.user_metadata?.avatar_url} fallback={initials} size={80} />
+            <AvatarUpload
+              currentUrl={avatarUrl || user.user_metadata?.avatar_url}
+              fallback={initials}
+              size={80}
+              onUploaded={(url) => setAvatarUrl(url)}
+            />
             <Text style={[styles.name, { color: c.text }]}>{profile.name || 'User'}</Text>
             <Text style={[styles.email, { color: c.textMuted }]}>{profile.email}</Text>
+
+            {/* Bio */}
+            {editingBio ? (
+              <View style={styles.usernameEditRow}>
+                <View style={styles.usernameInputWrap}>
+                  <Label htmlFor="profile-bio">Bio</Label>
+                  <Input
+                    id="profile-bio"
+                    value={bio}
+                    onChangeText={setBio}
+                    placeholder="Tell people about yourself..."
+                    editable={!savingBio}
+                  />
+                  <Text style={{ fontSize: fontSizes.xs, color: c.textMuted }}>{bio.length}/300</Text>
+                </View>
+                <View style={styles.usernameActions}>
+                  <Button size="sm" onPress={handleSaveBio} disabled={savingBio}>
+                    {savingBio ? 'Saving...' : 'Save'}
+                  </Button>
+                  <Button size="sm" variant="ghost" onPress={() => setEditingBio(false)}>
+                    Cancel
+                  </Button>
+                </View>
+              </View>
+            ) : (
+              <Pressable onPress={() => setEditingBio(true)}>
+                <Text style={[styles.usernameDisplay, { color: bio ? c.text : c.accent }]}>
+                  {bio || 'Add a bio'}
+                </Text>
+              </Pressable>
+            )}
 
             {/* Username */}
             {editingUsername ? (

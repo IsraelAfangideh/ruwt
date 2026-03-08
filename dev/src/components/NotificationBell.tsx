@@ -108,6 +108,8 @@ export function NotificationBell() {
     if (type === 'comment_on_solved') return '💬';
     if (type === 'replay_comment') return '💬';
     if (type === 'reaction_received') return '❤️';
+    if (type === 'mention') return '📣';
+    if (type === 'new_follower') return '👤';
     return '🔔';
   };
 

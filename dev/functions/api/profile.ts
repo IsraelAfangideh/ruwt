@@ -91,7 +91,9 @@ export async function onRequestPatch(context: { request: Request; env: Env }) {
       onboardingCompleted: z.union([z.literal(0), z.literal(1)]).optional(),
       newsletterSubscribed: z.union([z.literal(0), z.literal(1)]).optional(),
       accountType: z.enum(['individual', 'team']).optional(),
-    }).refine(data => data.username !== undefined || data.onboardingCompleted !== undefined || data.newsletterSubscribed !== undefined || data.accountType !== undefined, {
+      avatarUrl: z.string().max(100000, 'Avatar too large').optional(),
+      bio: z.string().max(300, 'Bio must be 300 characters or less').optional(),
+    }).refine(data => data.username !== undefined || data.onboardingCompleted !== undefined || data.newsletterSubscribed !== undefined || data.accountType !== undefined || data.avatarUrl !== undefined || data.bio !== undefined, {
       message: 'No valid fields to update',
     });
 
@@ -103,7 +105,7 @@ export async function onRequestPatch(context: { request: Request; env: Env }) {
       );
     }
 
-    const { username, onboardingCompleted, newsletterSubscribed, accountType } = parsed.data;
+    const { username, onboardingCompleted, newsletterSubscribed, accountType, avatarUrl, bio } = parsed.data;
 
     const db = getDb(context.env);
     const updates: Record<string, unknown> = {};
@@ -118,6 +120,14 @@ export async function onRequestPatch(context: { request: Request; env: Env }) {
 
     if (accountType !== undefined) {
       updates.accountType = accountType;
+    }
+
+    if (avatarUrl !== undefined) {
+      updates.avatarUrl = avatarUrl;
+    }
+
+    if (bio !== undefined) {
+      updates.bio = bio;
     }
 
     if (username !== undefined) {

@@ -16,6 +16,12 @@ vi.mock('@/components/ui/Card', () => ({
 vi.mock('@/components/RadarChart', () => ({
   RadarChart: () => <div data-testid="radar-chart" />,
 }));
+vi.mock('@/components/FollowButton', () => ({
+  FollowButton: () => <div data-testid="follow-button" />,
+}));
+vi.mock('@/components/SocialShareButtons', () => ({
+  SocialShareButtons: () => <div data-testid="social-share" />,
+}));
 vi.mock('@/hooks/useDocumentMeta', () => ({ useDocumentMeta: () => {} }));
 vi.mock('@/theme', () => ({
   useColors: () => ({
@@ -34,8 +40,11 @@ vi.mock('@/theme/tokens', () => ({
 }));
 
 const mockProfileData = {
-  user: { name: 'TestUser', avatarUrl: null, username: 'testuser', createdAt: '2026-01-01' },
-  stats: { solved: 10, avgCost: 5000, globalRank: 5 },
+  user: { name: 'TestUser', avatarUrl: null, username: 'testuser', bio: null, createdAt: '2026-01-01' },
+  stats: { solved: 10, avgCost: 5000, globalRank: 5, followers: 3, following: 2 },
+  isFollowing: false,
+  badges: [],
+  similarSolvers: [],
   radar: { modelSelection: 80, promptEfficiency: 70, debugging: 60, multiModel: 50, realWorld: 90 },
   recentReplays: [],
 };

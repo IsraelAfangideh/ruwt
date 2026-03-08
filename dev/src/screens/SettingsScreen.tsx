@@ -9,6 +9,34 @@ import { spacing, fontSizes, fontFamily, radii } from '@/theme/tokens';
 import { useToast } from '@/components/ui/Toast';
 import { useAuthGuard } from '@/hooks/useAuthGuard';
 
+interface NotifPrefs {
+  badgeEarned: number;
+  streakReminder: number;
+  leaderboardChange: number;
+  newChallenge: number;
+  competitiveNudge: number;
+  commentReply: number;
+  commentOnSolved: number;
+  replayComment: number;
+  reactionReceived: number;
+  mention: number;
+  newFollower: number;
+}
+
+const NOTIF_PREF_LABELS: Record<keyof NotifPrefs, string> = {
+  badgeEarned: 'Badge earned',
+  streakReminder: 'Streak reminders',
+  leaderboardChange: 'Leaderboard changes',
+  newChallenge: 'New challenges',
+  competitiveNudge: 'Competitive nudges',
+  commentReply: 'Comment replies',
+  commentOnSolved: 'Comments on solved challenges',
+  replayComment: 'Replay comments',
+  reactionReceived: 'Reactions on comments',
+  mention: '@mentions',
+  newFollower: 'New followers',
+};
+
 export function SettingsScreen() {
   const { user, loading: authLoading } = useAuthGuard();
   const [accountType, setAccountType] = useState<'individual' | 'team'>('individual');
@@ -19,6 +47,7 @@ export function SettingsScreen() {
   const [billingLoading, setBillingLoading] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [profileLoading, setProfileLoading] = useState(true);
+  const [notifPrefs, setNotifPrefs] = useState<NotifPrefs | null>(null);
   const c = useColors();
   const { showToast } = useToast();
 
@@ -39,6 +68,15 @@ export function SettingsScreen() {
       } catch {
         showToast('Failed to load profile', 'error');
       }
+      // Fetch notification preferences
+      try {
+        const np = await fetch('/api/notification-preferences');
+        if (np.ok) {
+          const npData = await np.json() as { preferences: NotifPrefs };
+          setNotifPrefs(npData.preferences);
+        }
+      } catch { /* ignore */ }
+
       setProfileLoading(false);
 
       // Check for purchase success
@@ -75,6 +113,26 @@ export function SettingsScreen() {
       showToast('Failed to update preference', 'error');
     }
     setTogglingNewsletter(false);
+  };
+
+  const toggleNotifPref = async (key: keyof NotifPrefs) => {
+    if (!notifPrefs) return;
+    const newValue = notifPrefs[key] === 1 ? 0 : 1;
+    setNotifPrefs({ ...notifPrefs, [key]: newValue });
+    try {
+      const res = await fetch('/api/notification-preferences', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ [key]: newValue }),
+      });
+      if (!res.ok) {
+        setNotifPrefs({ ...notifPrefs, [key]: notifPrefs[key] }); // revert
+        showToast('Failed to update preference', 'error');
+      }
+    } catch {
+      setNotifPrefs({ ...notifPrefs, [key]: notifPrefs[key] }); // revert
+      showToast('Failed to update preference', 'error');
+    }
   };
 
   if (authLoading || !user) {
@@ -229,6 +287,45 @@ export function SettingsScreen() {
             </Pressable>
           </CardContent>
         </Card>
+
+        {/* Notification Preferences */}
+        {notifPrefs && (
+          <Card style={styles.card}>
+            <CardHeader>
+              <CardTitle>Notification Preferences</CardTitle>
+              <CardDescription>Control which in-app notifications you receive</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {(Object.keys(NOTIF_PREF_LABELS) as Array<keyof NotifPrefs>).map((key) => (
+                <Pressable
+                  key={key}
+                  onPress={() => toggleNotifPref(key)}
+                  style={styles.toggleRow}
+                >
+                  <Text style={[styles.toggleLabel, { color: c.text }]}>
+                    {NOTIF_PREF_LABELS[key]}
+                  </Text>
+                  <View
+                    style={[
+                      styles.toggleTrack,
+                      { backgroundColor: notifPrefs[key] === 1 ? c.accent : c.border },
+                    ]}
+                  >
+                    <View
+                      style={[
+                        styles.toggleThumb,
+                        {
+                          backgroundColor: '#fff',
+                          transform: [{ translateX: notifPrefs[key] === 1 ? 20 : 2 }],
+                        },
+                      ]}
+                    />
+                  </View>
+                </Pressable>
+              ))}
+            </CardContent>
+          </Card>
+        )}
 
         <Card style={styles.card}>
           <CardHeader>

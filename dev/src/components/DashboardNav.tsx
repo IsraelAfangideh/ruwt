@@ -4,7 +4,7 @@ import { useColors } from '@/theme';
 import { spacing, fontSizes, fontFamily } from '@/theme/tokens';
 
 type NavItem = {
-  name: 'Problems' | 'Discuss' | 'Leaderboard' | 'Profile' | 'Assessments' | 'Hiring';
+  name: 'Problems' | 'Discuss' | 'Leaderboard' | 'Profile' | 'Bookmarks' | 'Assessments' | 'Hiring';
   label: string;
   accent?: boolean;
 };
@@ -14,6 +14,7 @@ const baseNavItems: NavItem[] = [
   { name: 'Discuss', label: 'Discuss' },
   { name: 'Leaderboard', label: 'Leaderboard' },
   { name: 'Profile', label: 'My Profile' },
+  { name: 'Bookmarks', label: 'Bookmarks' },
 ];
 
 interface DashboardNavProps {

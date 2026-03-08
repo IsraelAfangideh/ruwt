@@ -1,6 +1,8 @@
 /**
  * PublicProfileScreen: Public user profile page.
  * Route: /u/:username
+ * Includes: badges showcase, follow button, follower/following counts,
+ * similar solvers, social share buttons.
  */
 import { useState, useEffect } from 'react';
 import { View, Text, ScrollView, ActivityIndicator, Pressable, StyleSheet } from 'react-native';
@@ -8,23 +10,46 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { Avatar } from '@/components/ui/Avatar';
 import { Card } from '@/components/ui/Card';
 import { RadarChart } from '@/components/RadarChart';
+import { FollowButton } from '@/components/FollowButton';
+import { SocialShareButtons } from '@/components/SocialShareButtons';
 import { useColors } from '@/theme';
-import { spacing, fontSizes, fontFamily } from '@/theme/tokens';
+import { spacing, fontSizes, fontFamily, radii } from '@/theme/tokens';
 import { useDocumentMeta } from '@/hooks/useDocumentMeta';
 import { formatCostFromHundredths } from '@/lib/ai/pricing';
+
+interface BadgeData {
+  badgeType: string;
+  title: string;
+  description: string;
+  icon: string;
+  earnedAt: string;
+}
+
+interface SimilarSolver {
+  username: string | null;
+  name: string | null;
+  avatarUrl: string | null;
+  shared: number;
+}
 
 interface ProfileData {
   user: {
     name: string;
     avatarUrl: string | null;
     username: string;
+    bio: string | null;
     createdAt: string;
   };
   stats: {
     solved: number;
     avgCost: number;
     globalRank: number;
+    followers: number;
+    following: number;
   };
+  isFollowing: boolean;
+  badges: BadgeData[];
+  similarSolvers: SimilarSolver[];
   radar: {
     modelSelection: number;
     promptEfficiency: number;
@@ -54,6 +79,7 @@ export function PublicProfileScreen() {
   const [data, setData] = useState<ProfileData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [followerCount, setFollowerCount] = useState(0);
 
   useDocumentMeta({
     title: data ? `${data.user.name || data.user.username}'s Profile` : undefined,
@@ -76,7 +102,9 @@ export function PublicProfileScreen() {
           setLoading(false);
           return;
         }
-        setData(await res.json());
+        const d = await res.json() as ProfileData;
+        setData(d);
+        setFollowerCount(d.stats.followers);
       } catch {
         setError('Failed to load profile');
       }
@@ -105,6 +133,8 @@ export function PublicProfileScreen() {
   }
 
   const memberSince = new Date(data.user.createdAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  const profileUrl = `https://ruwt.dev/u/${data.user.username}`;
+  const shareText = `${data.user.name || data.user.username} has solved ${data.stats.solved} challenges on ruwt.dev with an avg cost of ${formatCostFromHundredths(data.stats.avgCost)}`;
 
   return (
     <ScrollView style={[styles.page, { backgroundColor: c.bg }]}>
@@ -120,7 +150,31 @@ export function PublicProfileScreen() {
         <Avatar src={data.user.avatarUrl} fallback={data.user.name?.[0] ?? '?'} size={72} />
         <Text style={[styles.name, { color: c.text }]}>{data.user.name}</Text>
         <Text style={[styles.username, { color: c.textMuted }]}>@{data.user.username}</Text>
+        {data.user.bio && (
+          <Text style={[styles.bio, { color: c.text }]}>{data.user.bio}</Text>
+        )}
         <Text style={[styles.memberSince, { color: c.textMuted }]}>Member since {memberSince}</Text>
+
+        {/* Follow button */}
+        <View style={styles.followRow}>
+          <FollowButton
+            username={data.user.username}
+            initialFollowing={data.isFollowing}
+            onToggle={(following) => setFollowerCount((prev) => following ? prev + 1 : prev - 1)}
+          />
+        </View>
+
+        {/* Follower / Following counts */}
+        <View style={styles.followCounts}>
+          <Text style={[styles.followCount, { color: c.text }]}>
+            <Text style={{ fontWeight: '700' }}>{followerCount}</Text>{' '}
+            <Text style={{ color: c.textMuted }}>followers</Text>
+          </Text>
+          <Text style={[styles.followCount, { color: c.text }]}>
+            <Text style={{ fontWeight: '700' }}>{data.stats.following}</Text>{' '}
+            <Text style={{ color: c.textMuted }}>following</Text>
+          </Text>
+        </View>
       </View>
 
       {/* Stats row */}
@@ -140,6 +194,26 @@ export function PublicProfileScreen() {
           <Text style={[styles.statLabel, { color: c.textMuted }]}>Global Rank</Text>
         </View>
       </View>
+
+      {/* Badges showcase */}
+      {data.badges.length > 0 && (
+        <View style={styles.badgesSection}>
+          <Text style={[styles.sectionTitle, { color: c.text }]}>Badges</Text>
+          <View style={styles.badgeGrid}>
+            {data.badges.map((badge) => (
+              <View
+                key={badge.badgeType}
+                style={[styles.badgeCard, { backgroundColor: c.accentBg, borderColor: c.accent + '30' }]}
+              >
+                <Text style={styles.badgeIcon}>{badge.icon}</Text>
+                <Text style={[styles.badgeTitle, { color: c.text }]} numberOfLines={2}>
+                  {badge.title}
+                </Text>
+              </View>
+            ))}
+          </View>
+        </View>
+      )}
 
       {/* Radar chart */}
       <View style={styles.radarSection}>
@@ -175,6 +249,36 @@ export function PublicProfileScreen() {
           ))
         )}
       </View>
+
+      {/* Similar solvers */}
+      {data.similarSolvers.length > 0 && (
+        <View style={styles.similarSection}>
+          <Text style={[styles.sectionTitle, { color: c.text }]}>Similar Solvers</Text>
+          <View style={styles.similarList}>
+            {data.similarSolvers.map((solver) => (
+              <Pressable
+                key={solver.username}
+                onPress={() => solver.username && (navigation.navigate as any)('PublicProfile', { username: solver.username })}
+                style={[styles.similarRow, { borderBottomColor: c.border }]}
+              >
+                <Avatar src={solver.avatarUrl} fallback={(solver.name || solver.username || '?')[0]} size={32} />
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.similarName, { color: c.text }]}>{solver.name || solver.username}</Text>
+                  <Text style={[styles.similarMeta, { color: c.textMuted }]}>
+                    {solver.shared} shared solves
+                  </Text>
+                </View>
+              </Pressable>
+            ))}
+          </View>
+        </View>
+      )}
+
+      {/* Social share */}
+      <View style={styles.shareSection}>
+        <Text style={[styles.sectionTitle, { color: c.text }]}>Share Profile</Text>
+        <SocialShareButtons text={shareText} url={profileUrl} />
+      </View>
     </ScrollView>
   );
 }
@@ -200,7 +304,15 @@ const styles = StyleSheet.create({
   },
   name: { fontSize: fontSizes.xl, fontWeight: '700', marginTop: spacing.md, fontFamily: fontFamily.body },
   username: { fontSize: fontSizes.sm, marginTop: spacing.xs },
+  bio: { fontSize: fontSizes.sm, fontFamily: fontFamily.body, marginTop: spacing.sm, textAlign: 'center', maxWidth: 400, lineHeight: 20 },
   memberSince: { fontSize: fontSizes.xs, marginTop: spacing.xs },
+  followRow: { marginTop: spacing.md },
+  followCounts: {
+    flexDirection: 'row',
+    gap: spacing.lg,
+    marginTop: spacing.sm,
+  },
+  followCount: { fontSize: fontSizes.sm, fontFamily: fontFamily.body },
   statsRow: {
     flexDirection: 'row',
     justifyContent: 'center',
@@ -214,6 +326,31 @@ const styles = StyleSheet.create({
   statValue: { fontSize: fontSizes.xl, fontWeight: '700', fontFamily: fontFamily.body },
   statLabel: { fontSize: fontSizes.xs, marginTop: spacing.xs },
   statDivider: { width: 1, height: 40 },
+  badgesSection: {
+    paddingVertical: spacing.lg,
+    paddingHorizontal: spacing.lg,
+    maxWidth: 700,
+    alignSelf: 'center',
+    width: '100%',
+  },
+  badgeGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+    justifyContent: 'center',
+  },
+  badgeCard: {
+    width: 80,
+    height: 80,
+    borderRadius: radii.lg,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    padding: spacing.xs,
+  },
+  badgeIcon: { fontSize: 24 },
+  badgeTitle: { fontSize: 10, fontWeight: '600', fontFamily: fontFamily.body, textAlign: 'center' },
   radarSection: {
     paddingVertical: spacing.lg,
     paddingHorizontal: spacing.lg,
@@ -225,7 +362,7 @@ const styles = StyleSheet.create({
   radarWrap: { alignItems: 'center' },
   replaysSection: {
     paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.xl,
+    paddingBottom: spacing.lg,
     maxWidth: 700,
     alignSelf: 'center',
     width: '100%',
@@ -235,4 +372,28 @@ const styles = StyleSheet.create({
   replayRow: { flexDirection: 'row', alignItems: 'center', padding: spacing.md },
   replayTitle: { fontSize: fontSizes.sm, fontWeight: '600' },
   replayMeta: { fontSize: fontSizes.xs, marginTop: 2 },
+  similarSection: {
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.lg,
+    maxWidth: 700,
+    alignSelf: 'center',
+    width: '100%',
+  },
+  similarList: { gap: 0 },
+  similarRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingVertical: spacing.sm,
+    borderBottomWidth: 1,
+  },
+  similarName: { fontSize: fontSizes.sm, fontWeight: '600', fontFamily: fontFamily.body },
+  similarMeta: { fontSize: fontSizes.xs, fontFamily: fontFamily.body },
+  shareSection: {
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing['2xl'],
+    maxWidth: 700,
+    alignSelf: 'center',
+    width: '100%',
+  },
 });

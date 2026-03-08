@@ -10,6 +10,7 @@ import { spacing, fontSizes, fontFamily } from '@/theme/tokens';
 import { getDifficultyStyle } from '@/lib/difficulty';
 import { useDocumentMeta } from '@/hooks/useDocumentMeta';
 import { formatCostFromHundredths } from '@/lib/ai/pricing';
+import { SocialShareButtons } from '@/components/SocialShareButtons';
 
 interface ShareData {
   attemptId: string;
@@ -175,6 +176,14 @@ export function ShareScreen() {
         >
           Watch Replay
         </button>
+
+        {/* Social share buttons */}
+        <View style={{ marginTop: 24, width: '100%' }}>
+          <SocialShareButtons
+            text={`I solved "${data.challenge?.title || 'a challenge'}" for ${formatCostFromHundredths(data.cost)} on ruwt.dev — ranked #${data.rank} by AI efficiency`}
+            url={`https://ruwt.dev/share/${data.attemptId}`}
+          />
+        </View>
       </View>
     </View>
   );

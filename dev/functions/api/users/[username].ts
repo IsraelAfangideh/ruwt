@@ -5,7 +5,8 @@
  */
 import { eq, and, sql, desc } from 'drizzle-orm';
 import { getDb } from '../../_shared/db';
-import { profiles, attempts, challenges } from '../../../drizzle/schema.d1';
+import { getUser } from '../../_shared/auth';
+import { profiles, attempts, challenges, badges, follows } from '../../../drizzle/schema.d1';
 
 export async function onRequestGet(context: { request: Request; env: Env; params: { username: string } }) {
   try {
@@ -70,6 +71,52 @@ export async function onRequestGet(context: { request: Request; env: Env; params
       .orderBy(desc(attempts.submittedAt))
       .limit(10);
 
+    // Badges earned by this user
+    const userBadges = await db
+      .select({
+        badgeType: badges.badgeType,
+        title: badges.title,
+        description: badges.description,
+        icon: badges.icon,
+        earnedAt: badges.earnedAt,
+      })
+      .from(badges)
+      .where(eq(badges.userId, profile.id))
+      .orderBy(desc(badges.earnedAt));
+
+    // Follower / following counts
+    const [[followerCount], [followingCount]] = await Promise.all([
+      db.select({ count: sql<number>`COUNT(*)` }).from(follows).where(eq(follows.followingId, profile.id)),
+      db.select({ count: sql<number>`COUNT(*)` }).from(follows).where(eq(follows.followerId, profile.id)),
+    ]);
+
+    // Check if current viewer follows this user
+    let isFollowing = false;
+    const viewer = await getUser(context.request, context.env);
+    if (viewer && viewer.id !== profile.id) {
+      const [fol] = await db
+        .select({ id: follows.id })
+        .from(follows)
+        .where(and(eq(follows.followerId, viewer.id), eq(follows.followingId, profile.id)))
+        .limit(1);
+      isFollowing = !!fol;
+    }
+
+    // Similar solvers: users who solved the same challenges
+    const similarSolvers = await db.all(sql`
+      SELECT p.username, p.name, p.avatar_url as avatarUrl, COUNT(DISTINCT a2.challenge_id) as shared
+      FROM attempts a1
+      JOIN attempts a2 ON a1.challenge_id = a2.challenge_id AND a1.user_id != a2.user_id
+      JOIN profiles p ON a2.user_id = p.id
+      WHERE a1.user_id = ${profile.id}
+        AND a1.status = 'passed' AND a2.status = 'passed'
+        AND p.username IS NOT NULL
+        AND p.leaderboard_excluded = 0
+      GROUP BY a2.user_id
+      ORDER BY shared DESC
+      LIMIT 5
+    `);
+
     // Radar chart: per-category avg cost relative to global avg
     const categories = ['model_selection', 'prompt_efficiency', 'iterative_debugging', 'multi_model_strategy', 'real_world'];
     const radarKeys = ['modelSelection', 'promptEfficiency', 'debugging', 'multiModel', 'realWorld'];
@@ -117,13 +164,19 @@ export async function onRequestGet(context: { request: Request; env: Env; params
         name: profile.name,
         avatarUrl: profile.avatarUrl,
         username: profile.username,
+        bio: profile.bio,
         createdAt: profile.createdAt,
       },
       stats: {
         solved: Number(stats?.solved || 0),
         avgCost: stats?.avgCost != null ? Math.round(Number(stats.avgCost)) : 0,
         globalRank,
+        followers: Number(followerCount?.count || 0),
+        following: Number(followingCount?.count || 0),
       },
+      isFollowing,
+      badges: userBadges,
+      similarSolvers,
       radar,
       recentReplays,
     });

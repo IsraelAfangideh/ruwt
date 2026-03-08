@@ -253,6 +253,7 @@ export async function onRequestGet(context: { request: Request; env: Env; waitUn
         email: profile.email,
         avatarUrl: profile.avatarUrl,
         username: profile.username,
+        bio: profile.bio,
         credits: profile.credits,
         currentStreak: profile.currentStreak,
         longestStreak: profile.longestStreak,

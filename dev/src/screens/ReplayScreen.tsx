@@ -19,6 +19,7 @@ import { getModelById, tierColor, formatCostFromHundredths } from '@/lib/ai/pric
 import { useDocumentMeta } from '@/hooks/useDocumentMeta';
 import { useIsDesktop } from '@/hooks/useWindowWidth';
 import { CommentSection } from '@/components/CommentSection';
+import { BookmarkButton } from '@/components/BookmarkButton';
 import '@/lib/monaco-init';
 
 const MonacoEditor = React.lazy(() => import('@monaco-editor/react'));
@@ -287,6 +288,7 @@ export function ReplayScreen() {
             </Text>
           </Pressable>
         )}
+        <BookmarkButton targetType="replay" targetId={attemptId} />
         <Pressable onPress={() => navigation.goBack()} style={styles.closeBtn}>
           <Text style={{ color: c.textMuted, fontSize: 20 }}>{'\u00D7'}</Text>
         </Pressable>

@@ -6,6 +6,9 @@ import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
 globalThis.ResizeObserver = class { observe() {} unobserve() {} disconnect() {} };
 
 /* ── Mock all heavy dependencies ────────────────────────────────── */
+vi.mock('@react-navigation/native', () => ({
+  useNavigation: () => ({ navigate: vi.fn() }),
+}));
 vi.mock('@/theme/colors', () => ({
   arena: {
     bg: '#0d1117',

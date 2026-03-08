@@ -6,6 +6,7 @@ import { useColors, useTheme } from '@/theme';
 import { spacing, fontSizes, fontFamily, radii } from '@/theme/tokens';
 import { getDifficultyStyle } from '@/lib/difficulty';
 import { formatCostFromHundredths } from '@/lib/ai/pricing';
+import { BookmarkButton } from '@/components/BookmarkButton';
 
 const IS_WEB = typeof document !== 'undefined';
 
@@ -177,10 +178,13 @@ export function ChallengeCard({ challenge }: { challenge: Challenge }) {
             </Text>
           )}
 
-          {/* CTA link */}
-          <Text style={[styles.ctaLink, { color: ctaColor }]}>
-            {ctaText} {'\u2192'}
-          </Text>
+          {/* CTA + Bookmark */}
+          <View style={styles.footerRow}>
+            <Text style={[styles.ctaLink, { color: ctaColor }]}>
+              {ctaText} {'\u2192'}
+            </Text>
+            <BookmarkButton targetType="challenge" targetId={challenge.id} />
+          </View>
         </View>
       </Card>
     </Pressable>
@@ -234,5 +238,6 @@ const styles = StyleSheet.create({
   spacer: { flex: 1 },
   footer: { marginTop: spacing.sm, alignItems: 'flex-start' },
   statsLine: { fontSize: fontSizes.xs, marginBottom: spacing.xs },
-  ctaLink: { marginTop: spacing.sm, fontSize: fontSizes.sm, fontWeight: '700', fontFamily: fontFamily.body },
+  footerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: spacing.sm, width: '100%' },
+  ctaLink: { fontSize: fontSizes.sm, fontWeight: '700', fontFamily: fontFamily.body },
 });
