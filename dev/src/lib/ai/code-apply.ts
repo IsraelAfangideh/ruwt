@@ -104,11 +104,16 @@ export function applyCodeFromResponse(
 
   if (mode === 'ask') return noChange;
 
+  // Track whether the response contained structured edit markers.
+  // If so, fenced code blocks are explanatory snippets, not full replacements.
+  let hadStructuredEdits = false;
+
   // 1. Try SEARCH/REPLACE blocks (most precise, character-perfect)
   //    Apply only the first block — subsequent blocks are applied in later agent loop
   //    iterations after the model sees the updated file state. This prevents conflicts
   //    where blocks 2–N reference code that block 1 already changed.
   if (hasEditBlocks(responseText)) {
+    hadStructuredEdits = true;
     const blocks = parseEditBlocks(responseText);
     if (blocks.length > 0) {
       const result = applyEditBlocks(currentCode, blocks.slice(0, 1));
@@ -129,6 +134,7 @@ export function applyCodeFromResponse(
   // 2. Try bare conflict markers: <<<<<<< ... >>>>>>> pairs without SEARCH/REPLACE labels
   //    Models like Llama 3.1 produce this format (first block = original, second = replacement)
   if (hasBareConflictMarkers(responseText)) {
+    hadStructuredEdits = true;
     const bareBlocks = parseBareConflictBlocks(responseText);
     if (bareBlocks.length > 0) {
       const result = applyEditBlocks(currentCode, bareBlocks.slice(0, 1));
@@ -147,6 +153,7 @@ export function applyCodeFromResponse(
 
   // 3. Try unified diff (also character-perfect)
   if (hasUnifiedDiff(responseText)) {
+    hadStructuredEdits = true;
     const blocks = parseUnifiedDiff(responseText);
     if (blocks.length > 0) {
       const result = applyEditBlocks(currentCode, blocks);
@@ -164,24 +171,30 @@ export function applyCodeFromResponse(
   }
 
   // 4. Try extracting full code from fenced block (preserves exact characters)
-  const extracted = extractFencedCode(responseText);
-  if (extracted && extracted.trim().length >= 20) {
-    // Only use direct extraction if the block looks like a complete file,
-    // not a tiny snippet. A complete file should be a substantial portion
-    // of the current code, or contain function/class definitions.
-    const looksComplete =
-      extracted.length >= currentCode.length * 0.3 ||
-      /(?:^function |^class |^const |^def |^import |module\.exports)/m.test(extracted);
+  //    SKIP if the response contained structured edits (SEARCH/REPLACE, conflict
+  //    markers, unified diff) — fenced code blocks in those responses are
+  //    explanatory snippets, not full-file replacements. Applying them would
+  //    overwrite the entire file with a partial snippet.
+  if (!hadStructuredEdits) {
+    const extracted = extractFencedCode(responseText);
+    if (extracted && extracted.trim().length >= 20) {
+      // Only use direct extraction if the block looks like a complete file,
+      // not a tiny snippet. Require BOTH size threshold AND code structure
+      // to prevent small illustrative snippets from replacing the whole file.
+      const hasCodeStructure =
+        /(?:^function |^class |^const |^def |^import |module\.exports)/m.test(extracted);
+      const isSubstantial = extracted.length >= currentCode.length * 0.5;
 
-    if (looksComplete) {
-      return {
-        applied: true,
-        newCode: extracted,
-        method: 'code_block',
-        message: 'Code applied',
-        needsApplyModel: false,
-        failedCount: 0,
-      };
+      if (hasCodeStructure && isSubstantial) {
+        return {
+          applied: true,
+          newCode: extracted,
+          method: 'code_block',
+          message: 'Code applied',
+          needsApplyModel: false,
+          failedCount: 0,
+        };
+      }
     }
   }
 

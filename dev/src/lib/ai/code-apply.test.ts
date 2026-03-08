@@ -361,11 +361,9 @@ x = 1;
     expect(result.needsApplyModel).toBe(true);
   });
 
-  it('rejects code block that does not look complete (small fraction, no definition keywords)', () => {
-    // Block is >= 20 chars but less than 30% of currentCode and no function/class/import/const/def keywords
+  it('rejects code block that does not look complete (no definition keywords)', () => {
+    // Block is >= 20 chars but has no function/class/import/const/def keywords
     const code = 'a'.repeat(500);
-    // Use content that avoids all the looksComplete regex triggers:
-    // no function, class, const, def, import, or module.exports at start of line
     const response = `\`\`\`js
 let result = data.map(
   x => x.toString()
@@ -373,14 +371,14 @@ let result = data.map(
 \`\`\``;
 
     const result = applyCodeFromResponse(response, code, 'javascript', 'code');
-    // The block (~45 chars) is < 30% of 500, and no function/class/const/import/def → not complete
+    // No function/class/const/import/def → not complete
     // Tier 5 sees backticks → needsApplyModel
     expect(result.applied).toBe(false);
     expect(result.needsApplyModel).toBe(true);
   });
 
-  it('accepts code block with function keyword even if smaller than 30% of current code', () => {
-    const code = 'x'.repeat(500);
+  it('accepts code block with function keyword when substantial (>=50% of current)', () => {
+    const code = 'function old() { return 1; }';
     const response = `\`\`\`js
 function solve(input) {
   return input.split('').reverse().join('');
@@ -393,8 +391,23 @@ function solve(input) {
     expect(result.newCode).toContain('function solve');
   });
 
-  it('accepts code block with import keyword as complete', () => {
-    const code = 'y'.repeat(500);
+  it('rejects code block with function keyword when too small (<50% of current)', () => {
+    // Simulates the corrupted-json-parser bug: AI shows a single inner function
+    // for analysis, diff applier should NOT replace the entire file with it
+    const code = 'x'.repeat(500);
+    const response = `\`\`\`js
+function solve(input) {
+  return input.split('').reverse().join('');
+}
+\`\`\``;
+
+    const result = applyCodeFromResponse(response, code, 'javascript', 'code');
+    expect(result.applied).toBe(false);
+    expect(result.needsApplyModel).toBe(true);
+  });
+
+  it('accepts code block with import keyword when substantial', () => {
+    const code = 'const x = 1;';
     const response = `\`\`\`ts
 import { readFile } from 'fs/promises';
 const data = await readFile('input.txt', 'utf-8');
@@ -405,8 +418,8 @@ const data = await readFile('input.txt', 'utf-8');
     expect(result.method).toBe('code_block');
   });
 
-  it('accepts code block with class keyword as complete', () => {
-    const code = 'z'.repeat(500);
+  it('accepts code block with class keyword when substantial', () => {
+    const code = 'const x = 1;';
     const response = `\`\`\`ts
 class Solution {
   solve() { return 42; }
@@ -418,8 +431,8 @@ class Solution {
     expect(result.method).toBe('code_block');
   });
 
-  it('accepts code block with module.exports as complete', () => {
-    const code = 'w'.repeat(500);
+  it('accepts code block with module.exports when substantial', () => {
+    const code = 'const x = 1;';
     const response = `\`\`\`js
 module.exports = function handler(req, res) {
   res.send('ok');
@@ -429,6 +442,37 @@ module.exports = function handler(req, res) {
     const result = applyCodeFromResponse(response, code, 'javascript', 'code');
     expect(result.applied).toBe(true);
     expect(result.method).toBe('code_block');
+  });
+
+  it('does not extract fenced code block when SEARCH/REPLACE blocks were present but failed', () => {
+    // AI response has SEARCH/REPLACE that fails to match, plus a fenced code block
+    // showing an inner function for analysis. The fenced block should NOT replace the file.
+    const code = 'function parseJSON(str) {\n  let i = 0;\n  function parseString() { /* ... */ }\n  function parseObject() { /* ... */ }\n  return parseValue();\n}';
+    const response = `The issue is in parseObject. Here is the fix:
+
+<<<<<<< SEARCH
+nonexistent code that wont match
+=======
+replacement
+>>>>>>> REPLACE
+
+Current parseObject:
+
+\`\`\`js
+function parseObject() {
+  i++;
+  const obj = {};
+  return obj;
+}
+\`\`\``;
+
+    const result = applyCodeFromResponse(response, code, 'javascript', 'code');
+    // SEARCH/REPLACE was detected (hadStructuredEdits=true), so fenced code block
+    // extraction is skipped entirely. Falls through to needsApplyModel.
+    expect(result.applied).toBe(false);
+    expect(result.needsApplyModel).toBe(true);
+    // Most importantly: the original code must NOT be replaced with the snippet
+    expect(result.newCode).toBe(code);
   });
 });
 
