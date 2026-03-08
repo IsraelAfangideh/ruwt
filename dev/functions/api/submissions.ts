@@ -26,24 +26,44 @@ function codeReadsStdin(code: string, lang: string): boolean {
 
 /**
  * For stdin challenges, sandbox user code so stray model output and
- * crashes don't break test comparison. Two layers:
- * 1. Suppress stdout (process.stdout.write / sys.stdout) so extra
- *    console.log calls don't pollute output.
- * 2. Wrap in try-catch so model test code that throws doesn't kill
+ * crashes don't break test comparison. Three layers:
+ * 1. Suppress stdout AND stderr so extra prints/logs don't pollute output.
+ * 2. Wrap in try-catch (JS) so model test code that throws doesn't kill
  *    the process before the harness runs. Function declarations hoist
  *    out of try blocks (JS Annex B.3.3), so the harness can call them.
+ * 3. Friendly error handler: if the harness hits a ReferenceError (function
+ *    not defined), output a clear message instead of a raw stack trace.
  */
 function stdinOutputGuard(lang: string): { prefix: string; restore: string } {
   if (lang === 'python') {
+    const _null = 'type("",(),{"write":lambda *a:0,"flush":lambda *a:0})()';
     return {
-      prefix: 'import sys as _sys;_stdout=_sys.stdout;_sys.stdout=type("",(),{"write":lambda *a:0,"flush":lambda *a:0})()\n',
-      restore: '\n_sys.stdout=_stdout\n',
+      prefix: `import sys as _sys;_stdout=_sys.stdout;_stderr=_sys.stderr;_sys.stdout=${_null};_sys.stderr=${_null}\ntry:\n`,
+      restore: '\nexcept:\n    pass\n_sys.stdout=_stdout;_sys.stderr=_stderr\n',
     };
   }
   return {
-    prefix: 'const _stdw=process.stdout.write.bind(process.stdout);process.stdout.write=()=>true;\ntry{\n',
-    restore: '\n}catch(_e){}\nprocess.stdout.write=_stdw;\n',
+    prefix: [
+      'const _stdw=process.stdout.write.bind(process.stdout);process.stdout.write=()=>true;',
+      'const _stde=process.stderr.write.bind(process.stderr);process.stderr.write=()=>true;',
+      'try{',
+    ].join('\n') + '\n',
+    restore: [
+      '',
+      '}catch(_e){}',
+      'process.stdout.write=_stdw;process.stderr.write=_stde;',
+      'process.on("uncaughtException",(e)=>{if(e instanceof ReferenceError){console.error(e.message+". Make sure your code defines this function.");process.exit(1);}});',
+    ].join('\n') + '\n',
   };
+}
+
+/** Assemble code with stdin guard: suppress output, wrap in try/except, append harness. */
+function assembleStdinCode(sourceCode: string, language: string, testHarness: string): string {
+  const guard = stdinOutputGuard(language);
+  const wrapped = language === 'python'
+    ? sourceCode.split('\n').map(l => '    ' + l).join('\n')
+    : sourceCode;
+  return guard.prefix + wrapped + guard.restore + testHarness;
 }
 
 const submissionSchema = z.object({
@@ -129,8 +149,7 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
       const skipHarness = useStdin && challenge.testHarness && codeReadsStdin(sourceCode, language);
       if (challenge.testHarness && !skipHarness) {
         if (useStdin) {
-          const guard = stdinOutputGuard(language);
-          codeToRun = guard.prefix + codeToRun + guard.restore + challenge.testHarness;
+          codeToRun = assembleStdinCode(codeToRun, language, challenge.testHarness);
         } else {
           codeToRun += '\n' + challenge.testHarness;
         }
@@ -255,8 +274,7 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
     const skipHarness = useStdin && challenge.testHarness && codeReadsStdin(sourceCode, language);
     if (challenge.testHarness && !skipHarness) {
       if (useStdin) {
-        const guard = stdinOutputGuard(language);
-        submitCodeToRun = guard.prefix + submitCodeToRun + guard.restore + challenge.testHarness;
+        submitCodeToRun = assembleStdinCode(submitCodeToRun, language, challenge.testHarness);
       } else {
         submitCodeToRun += '\n' + challenge.testHarness;
       }

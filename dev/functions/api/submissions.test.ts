@@ -455,14 +455,19 @@ describe('POST /api/submissions', () => {
     }));
 
     const calledCode = mockRunTestCases.mock.calls[0][1] as string;
-    // Guard intercepts at process.stdout.write level (catches everything)
+    // Guard intercepts at process.stdout.write AND process.stderr.write level
     expect(calledCode).toMatch(/^const _stdw=process\.stdout\.write\.bind/);
     expect(calledCode).toContain('process.stdout.write=()=>true;');
+    expect(calledCode).toContain('const _stde=process.stderr.write.bind(process.stderr);process.stderr.write=()=>true;');
     // User code wrapped in try-catch to survive model crashes
     expect(calledCode).toContain('try{\n');
     expect(calledCode).toContain('}catch(_e){}');
-    // Guard restore before harness
-    expect(calledCode).toContain('process.stdout.write=_stdw;\n' + harness);
+    // Guard restore (stdout + stderr) before harness
+    expect(calledCode).toContain('process.stdout.write=_stdw;process.stderr.write=_stde;');
+    // uncaughtException handler catches ReferenceError from harness
+    expect(calledCode).toContain('process.on("uncaughtException"');
+    // Harness follows the restore
+    expect(calledCode).toContain(harness);
     // User code is in between
     expect(calledCode).toContain('function solve(x) { return x; }');
   });
@@ -492,8 +497,9 @@ describe('POST /api/submissions', () => {
     const calledCode = mockRunTestCases.mock.calls[0][1] as string;
     // Crashing user code is inside try block
     expect(calledCode).toContain('try{\n' + crashingCode + '\n}catch(_e){}');
-    // Harness is AFTER the catch — it still runs
-    expect(calledCode).toContain('}catch(_e){}\nprocess.stdout.write=_stdw;\n' + harness);
+    // Harness is AFTER the catch and restore — it still runs
+    expect(calledCode).toContain('}catch(_e){}\nprocess.stdout.write=_stdw;process.stderr.write=_stde;');
+    expect(calledCode).toContain(harness);
   });
 
   it('test mode: skips harness when useStdin code already reads stdin (JS)', async () => {
@@ -557,6 +563,39 @@ describe('POST /api/submissions', () => {
       expect.any(Array),
       expect.objectContaining({ useStdin: true }),
     );
+  });
+
+  it('test mode: Python stdin harness wraps user code in try-except with indentation', async () => {
+    mockGetUser.mockResolvedValue(FAKE_USER);
+
+    const attempt = fakeAttempt();
+    const harness = 'import json,sys;arr=json.loads(sys.stdin.read());print(json.dumps(solve(arr)))';
+    const challenge = fakeChallenge({ testHarness: harness, useStdin: 1, language: 'python' });
+    mockRunTestCases.mockResolvedValue(passingTestResult(1));
+
+    const { db } = makeDb({
+      selectResults: [[attempt], [challenge]],
+    });
+    mockGetDb.mockReturnValue(db);
+
+    await onRequestPost(makePostContext({
+      attemptId: VALID_ATTEMPT_ID,
+      sourceCode: 'def solve(arr):\n    return list(set(arr))',
+      language: 'python',
+      mode: 'test',
+    }));
+
+    const calledCode = mockRunTestCases.mock.calls[0][1] as string;
+    // Python guard suppresses stdout/stderr
+    expect(calledCode).toContain('_sys.stdout=');
+    expect(calledCode).toContain('_sys.stderr=');
+    // User code is indented inside try block
+    expect(calledCode).toContain('try:\n');
+    expect(calledCode).toContain('    def solve(arr):\n        return list(set(arr))');
+    // except block before restore
+    expect(calledCode).toContain('\nexcept:\n    pass\n');
+    // Harness follows the restore
+    expect(calledCode).toContain(harness);
   });
 
   it('test mode: uses function-call mode when useStdin is 0 even without testHarness', async () => {

@@ -158,6 +158,9 @@ export function parseEditBlocks(text: string): EditBlock[] {
  *   new code line 1
  *   new code line 2
  */
+/** Matches function/class/def keywords — used to reject destructive edits. */
+const DESTRUCTIVE_KEYWORDS = /\b(function|class|def)\b/;
+
 export function parseColonEditBlocks(text: string): EditBlock[] {
   const lines = text.split('\n');
   const blocks: EditBlock[] = [];
@@ -172,10 +175,15 @@ export function parseColonEditBlocks(text: string): EditBlock[] {
     trimTrailingEmpty(replaceLines);
 
     if (searchLines.length > 0 || replaceLines.length > 0) {
-      blocks.push({
-        search: searchLines.join('\n'),
-        replace: replaceLines.join('\n'),
-      });
+      const search = searchLines.join('\n');
+      const replace = replaceLines.join('\n');
+      // Reject destructive edits (see parseAngleBracketEditBlocks for rationale)
+      if (search.length > 0 && replace.length === 0 && DESTRUCTIVE_KEYWORDS.test(search)) {
+        searchLines = [];
+        replaceLines = [];
+        return;
+      }
+      blocks.push({ search, replace });
     }
     searchLines = [];
     replaceLines = [];
@@ -242,10 +250,17 @@ function parseAngleBracketEditBlocks(text: string): EditBlock[] {
     trimTrailingEmpty(replaceLines);
 
     if (searchLines.length > 0 || replaceLines.length > 0) {
-      blocks.push(cleanDiffContamination({
-        search: searchLines.join('\n'),
-        replace: replaceLines.join('\n'),
-      }));
+      const search = searchLines.join('\n');
+      const replace = replaceLines.join('\n');
+      // Reject destructive edits: search has a function/class def but replace is empty.
+      // Small models produce these when they malformat SEARCH/REPLACE blocks.
+      if (search.length > 0 && replace.length === 0 && DESTRUCTIVE_KEYWORDS.test(search)) {
+        searchLines = [];
+        replaceLines = [];
+        hasSep = false;
+        return;
+      }
+      blocks.push(cleanDiffContamination({ search, replace }));
     }
     searchLines = [];
     replaceLines = [];

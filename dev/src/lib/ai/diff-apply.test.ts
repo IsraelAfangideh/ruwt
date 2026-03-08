@@ -782,3 +782,99 @@ This should fix it.`;
     expect(blocks[0].replace).toBe('const x = 2;');
   });
 });
+
+// ---------------------------------------------------------------------------
+// Destructive edit rejection
+// ---------------------------------------------------------------------------
+
+describe('parseEditBlocks — destructive edit rejection', () => {
+  it('rejects angle-bracket block that deletes a function (empty replace)', () => {
+    const text = `
+<<<<SEARCH
+function fizzBuzz(n) {
+  // Your code here
+}
+>>>>>>> REPLACE
+`;
+    const blocks = parseEditBlocks(text);
+    expect(blocks).toHaveLength(0);
+  });
+
+  it('rejects angle-bracket block that deletes a class (empty replace)', () => {
+    const text = `
+<<<<<<< SEARCH
+class EventEmitter {
+  constructor() {}
+}
+=======
+>>>>>>> REPLACE
+`;
+    const blocks = parseEditBlocks(text);
+    expect(blocks).toHaveLength(0);
+  });
+
+  it('rejects colon-format block that deletes a def (Python)', () => {
+    const text = `SEARCH:
+def solve(n):
+    pass
+REPLACE:
+`;
+    const blocks = parseEditBlocks(text);
+    expect(blocks).toHaveLength(0);
+  });
+
+  it('allows non-destructive edits (function in search, non-empty replace)', () => {
+    const text = `
+<<<<<<< SEARCH
+function fizzBuzz(n) {
+  // Your code here
+}
+=======
+function fizzBuzz(n) {
+  const result = [];
+  for (let i = 1; i <= n; i++) result.push(i % 15 === 0 ? 'FizzBuzz' : i % 3 === 0 ? 'Fizz' : i % 5 === 0 ? 'Buzz' : String(i));
+  return result;
+}
+>>>>>>> REPLACE
+`;
+    const blocks = parseEditBlocks(text);
+    expect(blocks).toHaveLength(1);
+    expect(blocks[0].replace).toContain('FizzBuzz');
+  });
+
+  it('allows deletion of non-function code (empty replace)', () => {
+    const text = `
+<<<<<<< SEARCH
+console.log("debug");
+const temp = 42;
+=======
+>>>>>>> REPLACE
+`;
+    const blocks = parseEditBlocks(text);
+    expect(blocks).toHaveLength(1);
+    expect(blocks[0].search).toContain('console.log');
+    expect(blocks[0].replace).toBe('');
+  });
+
+  it('keeps valid blocks from multi-block response when one is destructive', () => {
+    const text = `
+<<<<<<< SEARCH
+module.exports = { fizzBuzz };
+=======
+module.exports = fizzBuzz;
+>>>>>>> REPLACE
+
+<<<<SEARCH
+function fizzBuzz(n) {
+  // Your code here
+}
+>>>>>>> REPLACE
+`;
+    const blocks = parseEditBlocks(text);
+    // First block: valid rename — kept
+    // Second block: destructive function deletion — rejected
+    expect(blocks).toHaveLength(1);
+    expect(blocks[0].search).toBe('module.exports = { fizzBuzz };');
+    expect(blocks[0].replace).toBe('module.exports = fizzBuzz;');
+  });
+});
