@@ -458,10 +458,42 @@ describe('POST /api/submissions', () => {
     // Guard intercepts at process.stdout.write level (catches everything)
     expect(calledCode).toMatch(/^const _stdw=process\.stdout\.write\.bind/);
     expect(calledCode).toContain('process.stdout.write=()=>true;');
+    // User code wrapped in try-catch to survive model crashes
+    expect(calledCode).toContain('try{\n');
+    expect(calledCode).toContain('}catch(_e){}');
     // Guard restore before harness
     expect(calledCode).toContain('process.stdout.write=_stdw;\n' + harness);
     // User code is in between
     expect(calledCode).toContain('function solve(x) { return x; }');
+  });
+
+  it('test mode: try-catch wraps user code so model crashes do not kill harness', async () => {
+    mockGetUser.mockResolvedValue(FAKE_USER);
+
+    const attempt = fakeAttempt();
+    const harness = 'let _i="";process.stdin.on("data",d=>_i+=d);process.stdin.on("end",()=>{console.log(solve(JSON.parse(_i)));});';
+    const challenge = fakeChallenge({ testHarness: harness, useStdin: 1 });
+    mockRunTestCases.mockResolvedValue(passingTestResult(1));
+
+    const { db } = makeDb({
+      selectResults: [[attempt], [challenge]],
+    });
+    mockGetDb.mockReturnValue(db);
+
+    // Model added main() that crashes — function def is correct
+    const crashingCode = 'function solve(x) { return x; }\nfunction main() { JSON.parse("invalid"); }\nmain();';
+
+    await onRequestPost(makePostContext({
+      attemptId: VALID_ATTEMPT_ID,
+      sourceCode: crashingCode,
+      mode: 'test',
+    }));
+
+    const calledCode = mockRunTestCases.mock.calls[0][1] as string;
+    // Crashing user code is inside try block
+    expect(calledCode).toContain('try{\n' + crashingCode + '\n}catch(_e){}');
+    // Harness is AFTER the catch — it still runs
+    expect(calledCode).toContain('}catch(_e){}\nprocess.stdout.write=_stdw;\n' + harness);
   });
 
   it('test mode: skips harness when useStdin code already reads stdin (JS)', async () => {

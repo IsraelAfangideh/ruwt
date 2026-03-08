@@ -25,10 +25,13 @@ function codeReadsStdin(code: string, lang: string): boolean {
 }
 
 /**
- * For stdin challenges, suppress ALL stdout during user code execution
- * so stray model output doesn't pollute test comparison. Intercepts at
- * the lowest level: process.stdout.write (JS) / sys.stdout (Python).
- * The harness restores stdout before producing its own output.
+ * For stdin challenges, sandbox user code so stray model output and
+ * crashes don't break test comparison. Two layers:
+ * 1. Suppress stdout (process.stdout.write / sys.stdout) so extra
+ *    console.log calls don't pollute output.
+ * 2. Wrap in try-catch so model test code that throws doesn't kill
+ *    the process before the harness runs. Function declarations hoist
+ *    out of try blocks (JS Annex B.3.3), so the harness can call them.
  */
 function stdinOutputGuard(lang: string): { prefix: string; restore: string } {
   if (lang === 'python') {
@@ -38,8 +41,8 @@ function stdinOutputGuard(lang: string): { prefix: string; restore: string } {
     };
   }
   return {
-    prefix: 'const _stdw=process.stdout.write.bind(process.stdout);process.stdout.write=()=>true;\n',
-    restore: '\nprocess.stdout.write=_stdw;\n',
+    prefix: 'const _stdw=process.stdout.write.bind(process.stdout);process.stdout.write=()=>true;\ntry{\n',
+    restore: '\n}catch(_e){}\nprocess.stdout.write=_stdw;\n',
   };
 }
 
