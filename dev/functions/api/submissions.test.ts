@@ -435,7 +435,7 @@ describe('POST /api/submissions', () => {
     );
   });
 
-  it('test mode: wraps stdin harness with output guard to suppress stray console.log', async () => {
+  it('test mode: wraps stdin harness with stdout guard (process.stdout.write level)', async () => {
     mockGetUser.mockResolvedValue(FAKE_USER);
 
     const attempt = fakeAttempt();
@@ -455,10 +455,11 @@ describe('POST /api/submissions', () => {
     }));
 
     const calledCode = mockRunTestCases.mock.calls[0][1] as string;
-    // Guard prefix suppresses console.log
-    expect(calledCode).toMatch(/^const _origLog=console\.log;console\.log=\(\)=>\{\};/);
+    // Guard intercepts at process.stdout.write level (catches everything)
+    expect(calledCode).toMatch(/^const _stdw=process\.stdout\.write\.bind/);
+    expect(calledCode).toContain('process.stdout.write=()=>true;');
     // Guard restore before harness
-    expect(calledCode).toContain('console.log=_origLog;\n' + harness);
+    expect(calledCode).toContain('process.stdout.write=_stdw;\n' + harness);
     // User code is in between
     expect(calledCode).toContain('function solve(x) { return x; }');
   });

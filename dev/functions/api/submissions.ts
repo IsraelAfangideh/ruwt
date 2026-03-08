@@ -25,19 +25,21 @@ function codeReadsStdin(code: string, lang: string): boolean {
 }
 
 /**
- * For stdin challenges, suppress console.log/print during user code execution
- * so stray model output doesn't pollute stdout. The harness restores it.
+ * For stdin challenges, suppress ALL stdout during user code execution
+ * so stray model output doesn't pollute test comparison. Intercepts at
+ * the lowest level: process.stdout.write (JS) / sys.stdout (Python).
+ * The harness restores stdout before producing its own output.
  */
 function stdinOutputGuard(lang: string): { prefix: string; restore: string } {
   if (lang === 'python') {
     return {
-      prefix: '_orig_print=print;print=lambda*a,**k:None\n',
-      restore: '\nprint=_orig_print\n',
+      prefix: 'import sys as _sys;_stdout=_sys.stdout;_sys.stdout=type("",(),{"write":lambda *a:0,"flush":lambda *a:0})()\n',
+      restore: '\n_sys.stdout=_stdout\n',
     };
   }
   return {
-    prefix: 'const _origLog=console.log;console.log=()=>{};\n',
-    restore: '\nconsole.log=_origLog;\n',
+    prefix: 'const _stdw=process.stdout.write.bind(process.stdout);process.stdout.write=()=>true;\n',
+    restore: '\nprocess.stdout.write=_stdw;\n',
   };
 }
 
