@@ -18,6 +18,12 @@ import { challengeAttemptNotificationEmail } from '../_shared/email/templates';
 import { ADMIN_EMAIL } from '../_shared/ensure-profile';
 import { attempts, challenges, profiles } from '../../drizzle/schema.d1';
 
+/** Returns true if code already reads stdin (model ignored instructions). */
+function codeReadsStdin(code: string, lang: string): boolean {
+  if (lang === 'python') return /\bsys\.stdin\b|\binput\s*\(/.test(code);
+  return /process\.stdin|fs\.readFileSync\s*\(\s*0/.test(code);
+}
+
 const submissionSchema = z.object({
   attemptId: z.string().uuid(),
   sourceCode: z.string(),
@@ -98,7 +104,8 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
       }
       const useStdin = !!challenge.useStdin;
       let codeToRun = sourceCode;
-      if (challenge.testHarness) codeToRun += '\n' + challenge.testHarness;
+      const skipHarness = useStdin && challenge.testHarness && codeReadsStdin(sourceCode, language);
+      if (challenge.testHarness && !skipHarness) codeToRun += '\n' + challenge.testHarness;
       if (challenge.readonlyPrefix) codeToRun = challenge.readonlyPrefix + '\n' + codeToRun;
       const testResult = await runTestCases(
         context.env,
@@ -216,7 +223,8 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
 
     const useStdin = !!challenge.useStdin;
     let submitCodeToRun = sourceCode;
-    if (challenge.testHarness) submitCodeToRun += '\n' + challenge.testHarness;
+    const skipHarness = useStdin && challenge.testHarness && codeReadsStdin(sourceCode, language);
+    if (challenge.testHarness && !skipHarness) submitCodeToRun += '\n' + challenge.testHarness;
     if (challenge.readonlyPrefix) submitCodeToRun = challenge.readonlyPrefix + '\n' + submitCodeToRun;
     const testResult = await runTestCases(
       context.env,

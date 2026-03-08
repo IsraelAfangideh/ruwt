@@ -435,6 +435,69 @@ describe('POST /api/submissions', () => {
     );
   });
 
+  it('test mode: skips harness when useStdin code already reads stdin (JS)', async () => {
+    mockGetUser.mockResolvedValue(FAKE_USER);
+
+    const attempt = fakeAttempt();
+    const stdinHarness = 'let _i="";process.stdin.on("data",d=>_i+=d);process.stdin.on("end",()=>{console.log(removeDuplicates(JSON.parse(_i)));});';
+    const challenge = fakeChallenge({ testHarness: stdinHarness, useStdin: 1 });
+    mockRunTestCases.mockResolvedValue(passingTestResult(1));
+
+    const { db } = makeDb({
+      selectResults: [[attempt], [challenge]],
+    });
+    mockGetDb.mockReturnValue(db);
+
+    // Model ignored instructions and added its own stdin reading
+    const modelCode = 'const fs=require("fs");const input=fs.readFileSync(0,"utf-8");function removeDuplicates(a){return[...new Set(a)];}console.log(JSON.stringify(removeDuplicates(JSON.parse(input))));';
+
+    await onRequestPost(makePostContext({
+      attemptId: VALID_ATTEMPT_ID,
+      sourceCode: modelCode,
+      mode: 'test',
+    }));
+
+    // Harness should NOT be appended — code already reads stdin
+    expect(mockRunTestCases).toHaveBeenCalledWith(
+      expect.anything(),
+      modelCode, // no harness appended
+      'javascript',
+      expect.any(Array),
+      expect.objectContaining({ useStdin: true }),
+    );
+  });
+
+  it('test mode: skips harness when useStdin code already reads stdin (Python)', async () => {
+    mockGetUser.mockResolvedValue(FAKE_USER);
+
+    const attempt = fakeAttempt();
+    const stdinHarness = 'import json,sys;arr=json.loads(sys.stdin.read());print(json.dumps(remove_duplicates(arr)))';
+    const challenge = fakeChallenge({ testHarness: stdinHarness, useStdin: 1, language: 'python' });
+    mockRunTestCases.mockResolvedValue(passingTestResult(1));
+
+    const { db } = makeDb({
+      selectResults: [[attempt], [challenge]],
+    });
+    mockGetDb.mockReturnValue(db);
+
+    const modelCode = 'import sys\ndef remove_duplicates(arr):\n  return list(dict.fromkeys(arr))\narr=eval(sys.stdin.read())\nprint(remove_duplicates(arr))';
+
+    await onRequestPost(makePostContext({
+      attemptId: VALID_ATTEMPT_ID,
+      sourceCode: modelCode,
+      language: 'python',
+      mode: 'test',
+    }));
+
+    expect(mockRunTestCases).toHaveBeenCalledWith(
+      expect.anything(),
+      modelCode,
+      'python',
+      expect.any(Array),
+      expect.objectContaining({ useStdin: true }),
+    );
+  });
+
   it('test mode: uses function-call mode when useStdin is 0 even without testHarness', async () => {
     mockGetUser.mockResolvedValue(FAKE_USER);
 
@@ -1264,6 +1327,39 @@ describe('POST /api/submissions', () => {
     expect(mockRunTestCases).toHaveBeenCalledWith(
       expect.anything(),
       'console.log("hello")',
+      'javascript',
+      expect.any(Array),
+      expect.objectContaining({ useStdin: true }),
+    );
+  });
+
+  it('submit mode: skips harness when useStdin code already reads stdin', async () => {
+    mockGetUser.mockResolvedValue(FAKE_USER);
+
+    const attempt = fakeAttempt();
+    const stdinHarness = 'let _i="";process.stdin.on("data",d=>_i+=d);process.stdin.on("end",()=>{console.log(removeDuplicates(JSON.parse(_i)));});';
+    const challenge = fakeChallenge({ testHarness: stdinHarness, useStdin: 1 });
+    mockRunTestCases.mockResolvedValue(passingTestResult(2));
+
+    const updateSet = vi.fn().mockReturnValue({
+      where: vi.fn().mockResolvedValue(undefined),
+    });
+    const { db } = makeDb({
+      selectResults: [[attempt], [challenge]],
+      updateSet,
+    });
+    mockGetDb.mockReturnValue(db);
+
+    const modelCode = 'const fs=require("fs");const input=fs.readFileSync(0,"utf-8");function removeDuplicates(a){return[...new Set(a)];}console.log(JSON.stringify(removeDuplicates(JSON.parse(input))));';
+
+    await onRequestPost(makePostContext({
+      attemptId: VALID_ATTEMPT_ID,
+      sourceCode: modelCode,
+    }));
+
+    expect(mockRunTestCases).toHaveBeenCalledWith(
+      expect.anything(),
+      modelCode, // no harness appended
       'javascript',
       expect.any(Array),
       expect.objectContaining({ useStdin: true }),
