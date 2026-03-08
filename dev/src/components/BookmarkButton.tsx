@@ -12,12 +12,13 @@ interface BookmarkButtonProps {
   size?: number;
 }
 
-export function BookmarkButton({ targetType, targetId, initialBookmarked = false, size = 20 }: BookmarkButtonProps) {
+export function BookmarkButton({ targetType, targetId, initialBookmarked = false, size = 18 }: BookmarkButtonProps) {
   const c = useColors();
   const [bookmarked, setBookmarked] = useState(initialBookmarked);
   const [loading, setLoading] = useState(false);
 
-  const handleToggle = useCallback(async () => {
+  const handleToggle = useCallback(async (e?: { stopPropagation?: () => void }) => {
+    e?.stopPropagation?.();
     if (loading) return;
     setLoading(true);
     const prev = bookmarked;

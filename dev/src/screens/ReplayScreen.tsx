@@ -288,7 +288,7 @@ export function ReplayScreen() {
             </Text>
           </Pressable>
         )}
-        <BookmarkButton targetType="replay" targetId={attemptId} size={18} />
+        <BookmarkButton targetType="replay" targetId={attemptId} />
         <Pressable onPress={() => navigation.goBack()} style={styles.closeBtn}>
           <Text style={{ color: c.textMuted, fontSize: 20 }}>{'\u00D7'}</Text>
         </Pressable>

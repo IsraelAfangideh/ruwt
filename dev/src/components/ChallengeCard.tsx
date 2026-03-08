@@ -183,7 +183,7 @@ export function ChallengeCard({ challenge }: { challenge: Challenge }) {
             <Text style={[styles.ctaLink, { color: ctaColor }]}>
               {ctaText} {'\u2192'}
             </Text>
-            <BookmarkButton targetType="challenge" targetId={challenge.id} size={18} />
+            <BookmarkButton targetType="challenge" targetId={challenge.id} />
           </View>
         </View>
       </Card>
