@@ -8,7 +8,7 @@
 -- Bug 3: Object colon - missing skipWhitespace() between key and colon, so {"a" : 1} breaks
 
 UPDATE challenges SET
-  difficulty = 'hard',
+  difficulty = 'impossible',
   description = 'Fix this JSON parser. It handles strings, numbers, booleans, null, arrays and objects but has edge case bugs with:
 Bug 1: Escaped characters in strings - the parser doesn''t handle backslash escapes at all, so strings containing \" or \\ break it.
 Bug 2: Whitespace before delimiters in arrays - after parsing an element, the parser checks for a comma immediately without skipping whitespace first, so [1 , 2] fails.
@@ -109,6 +109,6 @@ Fix all 3 bugs. Use AI to identify edge cases.',
 
   return parseValue();
 }',
-  test_cases = '[{"input":"\"hello\"","expectedOutput":"\"hello\""},{"input":"42","expectedOutput":"42"},{"input":"[1, 2, 3]","expectedOutput":"[1,2,3]"},{"input":"{\"a\": 1, \"b\": 2}","expectedOutput":"{\"a\":1,\"b\":2}"},{"input":"{\"nested\": {\"arr\": [1, true, null]}}","expectedOutput":"{\"nested\":{\"arr\":[1,true,null]}}"}]',
+  test_cases = '[{"input":"\"say \\\"hi\\\"\"","expectedOutput":"\"say \\\"hi\\\"\""},{"input":"[1 , 2 , 3]","expectedOutput":"[1,2,3]"},{"input":"{\"a\" : 1}","expectedOutput":"{\"a\":1}"},{"input":"{ \"x\": [1 , 2] }","expectedOutput":"{\"x\":[1,2]}"},{"input":"{\"a\": 1, \"b\": 2}","expectedOutput":"{\"a\":1,\"b\":2}"}]',
   hidden_test_cases = '[{"input":"true","expectedOutput":"true"},{"input":"null","expectedOutput":"null"},{"input":"[true, false, null]","expectedOutput":"[true,false,null]"},{"input":"\"say \\\"hi\\\"\"","expectedOutput":"\"say \\\"hi\\\"\""},{"input":"{ \"a\" : [ 1 , { \"b\" : 2 } ] }","expectedOutput":"{\"a\":[1,{\"b\":2}]}"},{"input":"\"\"","expectedOutput":"\"\""},{"input":"{\"deeply\":{\"nested\":{\"value\":42}}}","expectedOutput":"{\"deeply\":{\"nested\":{\"value\":42}}}"},{"input":"[\"a\\\\b\", \"c\\\"d\"]","expectedOutput":"[\"a\\\\b\",\"c\\\"d\"]"},{"input":"{\"key with spaces\" : [1 , 2 , 3]}","expectedOutput":"{\"key with spaces\":[1,2,3]}"}]'
 WHERE id = 'corrupted-json-parser';
