@@ -315,9 +315,7 @@ export function ProfileScreen() {
                     value={bio}
                     onChangeText={setBio}
                     placeholder="Tell people about yourself..."
-                    multiline
                     editable={!savingBio}
-                    label="Bio"
                   />
                   <Text style={{ fontSize: fontSizes.xs, color: c.textMuted }}>{bio.length}/300</Text>
                 </View>

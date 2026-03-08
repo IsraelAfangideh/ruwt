@@ -4,7 +4,6 @@
 import { useState, useCallback } from 'react';
 import { Pressable, Text, StyleSheet } from 'react-native';
 import { useColors } from '@/theme';
-import { fontSizes } from '@/theme/tokens';
 
 interface BookmarkButtonProps {
   targetType: 'challenge' | 'replay';

@@ -3,10 +3,9 @@
  * Resizes to 200x200 on client side, stores as base64 data URL.
  */
 import { useState, useRef, useCallback } from 'react';
-import { View, Pressable, Text, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
 import { Avatar } from '@/components/ui/Avatar';
-import { useColors } from '@/theme';
-import { spacing, fontSizes, fontFamily, radii } from '@/theme/tokens';
+import { fontSizes, fontFamily } from '@/theme/tokens';
 
 interface AvatarUploadProps {
   currentUrl: string | null;
@@ -45,7 +44,6 @@ function resizeImage(file: File, maxSize: number): Promise<string> {
 }
 
 export function AvatarUpload({ currentUrl, fallback, size = 80, onUploaded }: AvatarUploadProps) {
-  const c = useColors();
   const [uploading, setUploading] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
