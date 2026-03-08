@@ -1,11 +1,10 @@
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 
 /** Preferences persisted to localStorage */
 interface PersistedPrefs {
   sidebarPosition: 'left' | 'right';
-  chatDock: 'sidebar' | 'bottom';
   resultsDock: 'sidebar' | 'bottom';
-  activeBottomTab: 'terminal' | 'chat' | 'results';
+  activeBottomTab: 'terminal' | 'results';
 }
 
 /** Full layout state (persisted prefs + transient state) */
@@ -18,7 +17,6 @@ const STORAGE_KEY = 'arena-layout-prefs';
 
 const PERSISTED_DEFAULTS: PersistedPrefs = {
   sidebarPosition: 'left',
-  chatDock: 'sidebar',
   resultsDock: 'bottom',
   activeBottomTab: 'terminal',
 };
@@ -42,14 +40,12 @@ function loadPrefs(): ArenaLayoutPrefs {
 
 export function useArenaLayout() {
   const [prefs, setPrefs] = useState<ArenaLayoutPrefs>(loadPrefs);
-  const prefsRef = useRef(prefs);
-  prefsRef.current = prefs;
 
   // Only persist non-transient preferences, not collapsed state
   useEffect(() => {
-    const { sidebarPosition, chatDock, resultsDock, activeBottomTab } = prefs;
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ sidebarPosition, chatDock, resultsDock, activeBottomTab }));
-  }, [prefs.sidebarPosition, prefs.chatDock, prefs.resultsDock, prefs.activeBottomTab]);
+    const { sidebarPosition, resultsDock, activeBottomTab } = prefs;
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ sidebarPosition, resultsDock, activeBottomTab }));
+  }, [prefs.sidebarPosition, prefs.resultsDock, prefs.activeBottomTab]);
 
   const setSidebarCollapsed = useCallback((v: boolean) => {
     setPrefs((p) => ({ ...p, sidebarCollapsed: v }));
@@ -63,23 +59,17 @@ export function useArenaLayout() {
     setPrefs((p) => ({ ...p, sidebarPosition: p.sidebarPosition === 'left' ? 'right' : 'left' }));
   }, []);
 
-  const setChatDock = useCallback((v: 'sidebar' | 'bottom') => {
-    setPrefs((p) => ({ ...p, chatDock: v, activeBottomTab: v === 'bottom' ? 'chat' : p.activeBottomTab }));
-  }, []);
-
   const setResultsDock = useCallback((v: 'sidebar' | 'bottom') => {
     setPrefs((p) => ({ ...p, resultsDock: v, activeBottomTab: v === 'bottom' ? 'results' : p.activeBottomTab }));
   }, []);
 
-  const setActiveBottomTab = useCallback((v: 'terminal' | 'chat' | 'results') => {
+  const setActiveBottomTab = useCallback((v: 'terminal' | 'results') => {
     setPrefs((p) => ({ ...p, activeBottomTab: v }));
   }, []);
 
   // Derive effective bottom tab — if the selected tab isn't actually docked
-  // in the bottom panel, fall back to terminal. This prevents blank renders
-  // regardless of how the user rearranges docking.
+  // in the bottom panel, fall back to terminal.
   const effectiveBottomTab = (
-    (prefs.activeBottomTab === 'chat' && prefs.chatDock === 'bottom') ||
     (prefs.activeBottomTab === 'results' && prefs.resultsDock === 'bottom') ||
     prefs.activeBottomTab === 'terminal'
   ) ? prefs.activeBottomTab : 'terminal';
@@ -90,7 +80,6 @@ export function useArenaLayout() {
     setSidebarCollapsed,
     setBottomCollapsed,
     toggleSidebarPosition,
-    setChatDock,
     setResultsDock,
     setActiveBottomTab,
   };

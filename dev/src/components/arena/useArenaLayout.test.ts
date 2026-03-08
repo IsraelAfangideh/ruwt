@@ -14,18 +14,16 @@ describe('useArenaLayout', () => {
     expect(result.current.sidebarPosition).toBe('left');
     expect(result.current.sidebarCollapsed).toBe(false);
     expect(result.current.bottomCollapsed).toBe(false);
-    expect(result.current.chatDock).toBe('sidebar');
     expect(result.current.resultsDock).toBe('bottom');
     expect(result.current.activeBottomTab).toBe('terminal');
   });
 
   it('loads saved prefs from localStorage', () => {
     vi.spyOn(Storage.prototype, 'getItem').mockReturnValue(
-      JSON.stringify({ sidebarPosition: 'right', chatDock: 'bottom' })
+      JSON.stringify({ sidebarPosition: 'right' })
     );
     const { result } = renderHook(() => useArenaLayout());
     expect(result.current.sidebarPosition).toBe('right');
-    expect(result.current.chatDock).toBe('bottom');
     // Transient state always starts at default
     expect(result.current.sidebarCollapsed).toBe(false);
     // Defaults still apply for unset fields
@@ -84,20 +82,6 @@ describe('useArenaLayout', () => {
     expect(result.current.sidebarPosition).toBe('left');
   });
 
-  it('setChatDock to bottom also sets activeBottomTab', () => {
-    const { result } = renderHook(() => useArenaLayout());
-    act(() => result.current.setChatDock('bottom'));
-    expect(result.current.chatDock).toBe('bottom');
-    expect(result.current.activeBottomTab).toBe('chat');
-  });
-
-  it('setChatDock to sidebar does not change activeBottomTab', () => {
-    const { result } = renderHook(() => useArenaLayout());
-    act(() => result.current.setChatDock('sidebar'));
-    expect(result.current.chatDock).toBe('sidebar');
-    expect(result.current.activeBottomTab).toBe('terminal');
-  });
-
   it('setResultsDock to bottom also sets activeBottomTab', () => {
     const { result } = renderHook(() => useArenaLayout());
     act(() => result.current.setResultsDock('bottom'));
@@ -114,19 +98,9 @@ describe('useArenaLayout', () => {
 
   it('setActiveBottomTab updates state', () => {
     const { result } = renderHook(() => useArenaLayout());
-    act(() => result.current.setChatDock('bottom'));
-    act(() => result.current.setActiveBottomTab('chat'));
-    expect(result.current.activeBottomTab).toBe('chat');
-  });
-
-  it('effectiveBottomTab falls back to terminal when chat is not docked in bottom', () => {
-    const { result } = renderHook(() => useArenaLayout());
-    // Set chat to bottom, select it, then move chat back to sidebar
-    act(() => result.current.setChatDock('bottom'));
-    expect(result.current.activeBottomTab).toBe('chat');
-    act(() => result.current.setChatDock('sidebar'));
-    // Raw activeBottomTab is still 'chat' but derived value falls back to terminal
-    expect(result.current.activeBottomTab).toBe('terminal');
+    act(() => result.current.setResultsDock('bottom'));
+    act(() => result.current.setActiveBottomTab('results'));
+    expect(result.current.activeBottomTab).toBe('results');
   });
 
   it('effectiveBottomTab falls back to terminal when results is not docked in bottom', () => {
@@ -139,11 +113,20 @@ describe('useArenaLayout', () => {
   });
 
   it('effectiveBottomTab falls back to terminal for stale localStorage', () => {
-    // Simulate stale state: activeBottomTab=chat but chatDock=sidebar
     vi.spyOn(Storage.prototype, 'getItem').mockReturnValue(
-      JSON.stringify({ activeBottomTab: 'chat', chatDock: 'sidebar' })
+      JSON.stringify({ activeBottomTab: 'results', resultsDock: 'sidebar' })
     );
     const { result } = renderHook(() => useArenaLayout());
+    expect(result.current.activeBottomTab).toBe('terminal');
+  });
+
+  it('ignores legacy chatDock in localStorage gracefully', () => {
+    vi.spyOn(Storage.prototype, 'getItem').mockReturnValue(
+      JSON.stringify({ sidebarPosition: 'right', chatDock: 'bottom', activeBottomTab: 'chat' })
+    );
+    const { result } = renderHook(() => useArenaLayout());
+    expect(result.current.sidebarPosition).toBe('right');
+    // chat is no longer a valid bottom tab, should fall back to terminal
     expect(result.current.activeBottomTab).toBe('terminal');
   });
 });

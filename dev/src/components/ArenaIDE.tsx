@@ -430,7 +430,7 @@ function DescriptionPanel({ challenge, pastAttempts, notepadContent, onNotepadCh
   );
 }
 
-/* ─── ChatPanel (extracted to avoid duplication between sidebar/bottom) ──── */
+/* ─── ChatPanel (extracted for desktop/mobile reuse) ──── */
 
 interface ChatPanelProps {
   chatScrollRef: React.RefObject<HTMLDivElement>;
@@ -472,8 +472,6 @@ interface ChatPanelProps {
   totalCost: number;
   queueLength: number;
   isMobile: boolean;
-  dockAction?: () => void;
-  dockDirection?: 'sidebar' | 'bottom';
 }
 
 function ChatPanel({
@@ -516,17 +514,12 @@ function ChatPanel({
   totalCost,
   queueLength,
   isMobile,
-  dockAction,
-  dockDirection,
 }: ChatPanelProps) {
   return (
     <div id="panel-chat" role="tabpanel" aria-label="AI Chat" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
-      {/* Mode selector + Clear + optional dock */}
+      {/* Mode selector + Clear */}
       <div style={{ borderBottom: `1px solid ${arena.border}`, display: 'flex', alignItems: 'center' }}>
         <div style={{ flex: 1 }}><ModeSelector mode={mode} onModeChange={setMode} disabled={isLoadingChat} /></div>
-        {dockAction && (
-          <button onClick={dockAction} style={s.clearButton} title={dockDirection === 'sidebar' ? 'Move to sidebar' : 'Move to bottom panel'}>{dockDirection === 'sidebar' ? '\u2190' : '\u2193'}</button>
-        )}
         {messages.filter(m => m.role !== 'system').length > 0 && (
           <button onClick={handleClearChat} style={s.clearButton} title="Clear chat">Clear</button>
         )}
@@ -1645,9 +1638,6 @@ export function ArenaIDE({
     if (panel === 'terminal') {
       layout.setActiveBottomTab('terminal');
       bottomPanelRef.current?.expand();
-    } else if (panel === 'chat' && layout.chatDock === 'bottom') {
-      layout.setActiveBottomTab('chat');
-      bottomPanelRef.current?.expand();
     } else if (panel === 'results' && layout.resultsDock === 'bottom') {
       layout.setActiveBottomTab('results');
       bottomPanelRef.current?.expand();
@@ -1657,7 +1647,7 @@ export function ArenaIDE({
       sidebarPanelRef.current?.expand();
       if (isMobile) setMobilePanel('sidebar');
     }
-  }, [layout.chatDock, layout.resultsDock, layout.setActiveBottomTab, isMobile]);
+  }, [layout.resultsDock, layout.setActiveBottomTab, isMobile]);
   focusPanelRef.current = focusPanel;
 
   const terminalPanelCommonProps = useMemo(() => ({
@@ -1699,14 +1689,6 @@ export function ArenaIDE({
           <button style={activeTab === 'chat' ? s.tabActive : s.tab} onClick={() => { setActiveTab('chat'); setHasUnreadChat(false); }} role="tab" aria-selected={activeTab === 'chat'} aria-controls="panel-chat">
             AI Chat
             {hasUnreadChat && <span style={s.unreadDot} aria-label="unread messages" />}
-            {layout.chatDock === 'sidebar' && (
-              <span
-                onClick={(e) => { e.stopPropagation(); layout.setChatDock('bottom'); }}
-                title="Move to bottom panel"
-                aria-label="Move AI Chat to bottom panel"
-                style={s.dockIcon}
-              >{'\u2193'}</span>
-            )}
           </button>
           <button style={activeTab === 'discussion' ? s.tabActive : s.tab} onClick={() => setActiveTab('discussion')} role="tab" aria-selected={activeTab === 'discussion'} aria-controls="panel-discussion">Discussion</button>
           <button
@@ -1730,13 +1712,8 @@ export function ArenaIDE({
               promptText="Share your approach or discuss this challenge..."
             />
           </div>
-        ) : layout.chatDock === 'sidebar' ? (
-          <ChatPanel {...chatPanelCommonProps} isMobile={false} />
         ) : (
-          <div style={s.chatMovedPlaceholder}>
-            AI Chat moved to bottom panel.
-            <button onClick={() => layout.setChatDock('sidebar')} style={{ ...s.clearButton, marginLeft: 8 }}>Move back</button>
-          </div>
+          <ChatPanel {...chatPanelCommonProps} isMobile={false} />
         )}
       </div>
     )
@@ -1949,28 +1926,17 @@ export function ArenaIDE({
             >
               <div style={s.terminalWrap}>
                 {/* Bottom zone tab bar — only visible when 2+ tabs */}
-                {(layout.chatDock === 'bottom' || (layout.resultsDock === 'bottom' && testResults)) ? (
+                {(layout.resultsDock === 'bottom' && testResults) ? (
                   <div style={s.terminalHeader}>
                     <div style={{ display: 'flex', gap: 0 }}>
                       <button
                         style={layout.activeBottomTab === 'terminal' ? s.bottomTabActive : s.bottomTab}
                         onClick={() => layout.setActiveBottomTab('terminal')}
                       >Terminal</button>
-                      {layout.chatDock === 'bottom' && (
-                        <button
-                          style={layout.activeBottomTab === 'chat' ? s.bottomTabActive : s.bottomTab}
-                          onClick={() => layout.setActiveBottomTab('chat')}
-                        >
-                          AI Chat
-                          {hasUnreadChat && <span style={s.unreadDot} aria-label="unread messages" />}
-                        </button>
-                      )}
-                      {layout.resultsDock === 'bottom' && testResults && (
-                        <button
-                          style={layout.activeBottomTab === 'results' ? s.bottomTabActive : s.bottomTab}
-                          onClick={() => layout.setActiveBottomTab('results')}
-                        >Results</button>
-                      )}
+                      <button
+                        style={layout.activeBottomTab === 'results' ? s.bottomTabActive : s.bottomTab}
+                        onClick={() => layout.setActiveBottomTab('results')}
+                      >Results</button>
                     </div>
                     <button style={s.terminalToggleBtn} onClick={toggleBottomPanel}>
                       {layout.bottomCollapsed ? '\u25B2' : '\u25BC'}
@@ -1988,9 +1954,6 @@ export function ArenaIDE({
                 {/* Bottom tab content */}
                 {layout.activeBottomTab === 'terminal' && (
                   <TerminalPanel ref={terminalRef} {...terminalPanelCommonProps} />
-                )}
-                {layout.activeBottomTab === 'chat' && (
-                  <ChatPanel {...chatPanelCommonProps} isMobile={false} dockAction={() => layout.setChatDock('sidebar')} dockDirection="sidebar" />
                 )}
               </div>
             </Panel>
@@ -2219,16 +2182,6 @@ const s: Record<string, React.CSSProperties> = {
     cursor: 'pointer',
     padding: '4px 8px',
     flexShrink: 0,
-    transition: 'color 0.15s',
-  },
-
-  // Dock icon on tab headers
-  dockIcon: {
-    fontSize: 10,
-    color: arena.textMuted,
-    cursor: 'pointer',
-    marginLeft: 4,
-    padding: '0 2px',
     transition: 'color 0.15s',
   },
 
@@ -2639,18 +2592,6 @@ const s: Record<string, React.CSSProperties> = {
     borderRadius: 4,
     background: arena.accent,
     border: `1.5px solid ${arena.surface}`,
-  },
-
-  // Placeholder when chat is moved to bottom
-  chatMovedPlaceholder: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    flex: 1,
-    color: arena.textMuted,
-    fontSize: 13,
-    fontFamily: fontFamily.mono,
-    padding: 16,
   },
 
   // Clear chat button

@@ -137,13 +137,11 @@ const mockLayout = {
   sidebarPosition: 'left' as const,
   sidebarCollapsed: false,
   bottomCollapsed: false,
-  chatDock: 'sidebar' as const,
   resultsDock: 'bottom' as const,
   activeBottomTab: 'terminal' as const,
   setSidebarCollapsed: vi.fn(),
   setBottomCollapsed: vi.fn(),
   toggleSidebarPosition: vi.fn(),
-  setChatDock: vi.fn(),
   setResultsDock: vi.fn(),
   setActiveBottomTab: vi.fn(),
 };
