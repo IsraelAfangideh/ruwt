@@ -1,17 +1,18 @@
 -- Migration 0053: Fix corrupted-json-parser challenge
--- Problem: starter code was accidentally fixed during 0050 rewrite — all tests pass without edits.
+-- Problem: starter code was accidentally fixed during 0050 rewrite - all tests pass without edits.
 -- Fix: re-introduce 3 real bugs and add test cases that actually exercise them.
 --
--- Bug 1: Escaped quotes — backslash handling is missing, so "say \"hi\"" breaks
--- Bug 2: Whitespace before delimiters in arrays — parseArray checks str[i]===',' without
+-- Bug 1: Escaped quotes - backslash handling is missing, so "say \"hi\"" breaks
+-- Bug 2: Whitespace before delimiters in arrays - parseArray checks str[i]===',' without
 --         skipWhitespace() first, so spaces before commas (e.g. [1 , 2]) cause the loop to exit early
--- Bug 3: Object colon — missing skipWhitespace() between key and colon, so {"a" : 1} breaks
+-- Bug 3: Object colon - missing skipWhitespace() between key and colon, so {"a" : 1} breaks
 
 UPDATE challenges SET
+  difficulty = 'hard',
   description = 'Fix this JSON parser. It handles strings, numbers, booleans, null, arrays and objects but has edge case bugs with:
-Bug 1: Escaped characters in strings — the parser doesn''t handle backslash escapes at all, so strings containing \" or \\ break it.
-Bug 2: Whitespace before delimiters in arrays — after parsing an element, the parser checks for a comma immediately without skipping whitespace first, so [1 , 2] fails.
-Bug 3: Whitespace in objects — the parser doesn''t skip whitespace before keys (after commas) or before colons, so { "a" : 1, "b": 2 } fails.
+Bug 1: Escaped characters in strings - the parser doesn''t handle backslash escapes at all, so strings containing \" or \\ break it.
+Bug 2: Whitespace before delimiters in arrays - after parsing an element, the parser checks for a comma immediately without skipping whitespace first, so [1 , 2] fails.
+Bug 3: Whitespace in objects - the parser doesn''t skip whitespace before keys (after commas) or before colons, so { "a" : 1, "b": 2 } fails.
 The function parseJSON(str) should return the parsed JavaScript value. It must handle:
 - Strings (with escaped quotes like "say \"hi\"")
 - Numbers (integers and decimals)
@@ -44,7 +45,7 @@ Fix all 3 bugs. Use AI to identify edge cases.',
     i++; // skip opening quote
     let result = '''';
     while (i < str.length && str[i] !== ''"'') {
-      // Bug 1: no backslash handling — escaped quotes break the parser
+      // Bug 1: no backslash handling - escaped quotes break the parser
       result += str[i];
       i++;
     }
@@ -95,9 +96,9 @@ Fix all 3 bugs. Use AI to identify edge cases.',
     skipWhitespace();
     if (str[i] === ''}'') { i++; return obj; }
     while (true) {
-      // Bug 3: no skipWhitespace before parseString — fails on { "a": 1 } after comma
+      // Bug 3: no skipWhitespace before parseString - fails on { "a": 1 } after comma
       const key = parseString();
-      // Bug 3 continued: no skipWhitespace before colon — fails on {"a" : 1}
+      // Bug 3 continued: no skipWhitespace before colon - fails on {"a" : 1}
       i++; // skip colon
       obj[key] = parseValue();
       skipWhitespace();
