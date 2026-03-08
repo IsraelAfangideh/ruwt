@@ -26,6 +26,7 @@ export type RootStackParamList = {
   Certificate: { shareToken: string };
   OrgManagement: { orgId?: string };
   OrgJoin: { token: string };
+  Bookmarks: undefined;
   Models: undefined;
   ModelDetail: { modelId: string };
   NotFound: undefined;

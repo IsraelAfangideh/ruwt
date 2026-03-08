@@ -61,6 +61,7 @@ const ShareScreen = lazyWithRetry('Share', () => import('@/screens/ShareScreen')
 const CertificateScreen = lazyWithRetry('Certificate', () => import('@/screens/CertificateScreen'), m => m.CertificateScreen);
 const OrgManagementScreen = lazyWithRetry('OrgManagement', () => import('@/screens/OrgManagementScreen'), m => m.OrgManagementScreen);
 const OrgJoinScreen = lazyWithRetry('OrgJoin', () => import('@/screens/OrgJoinScreen'), m => m.OrgJoinScreen);
+const BookmarksScreen = lazyWithRetry('Bookmarks', () => import('@/screens/BookmarksScreen'), m => m.BookmarksScreen);
 const ModelsScreen = lazyWithRetry('Models', () => import('@/screens/ModelsScreen'), m => m.ModelsScreen);
 const ModelScreen = lazyWithRetry('ModelDetail', () => import('@/screens/ModelScreen'), m => m.ModelScreen);
 const NotFoundScreen = lazyWithRetry('NotFound', () => import('@/screens/NotFoundScreen'), m => m.NotFoundScreen);
@@ -194,6 +195,7 @@ export function AppNavigator() {
           <Stack.Screen name="Certificate" component={CertificateScreen} />
           <Stack.Screen name="OrgManagement" component={OrgManagementScreen} />
           <Stack.Screen name="OrgJoin" component={OrgJoinScreen} />
+          <Stack.Screen name="Bookmarks" component={BookmarksScreen} />
           <Stack.Screen name="Models" component={ModelsScreen} />
           <Stack.Screen name="ModelDetail" component={ModelScreen} />
           <Stack.Screen name="NotFound" component={NotFoundScreen} />

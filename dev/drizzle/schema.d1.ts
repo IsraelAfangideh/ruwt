@@ -394,6 +394,44 @@ export const notifications = sqliteTable('notifications', {
   createdAt: text('created_at').default(sql`(datetime('now'))`).notNull(),
 });
 
+// --- Follows ---
+
+export const follows = sqliteTable('follows', {
+  id: text('id').primaryKey(),
+  followerId: text('follower_id').notNull().references(() => profiles.id),
+  followingId: text('following_id').notNull().references(() => profiles.id),
+  createdAt: text('created_at').default(sql`(datetime('now'))`).notNull(),
+});
+
+// --- Bookmarks ---
+
+export const bookmarks = sqliteTable('bookmarks', {
+  id: text('id').primaryKey(),
+  userId: text('user_id').notNull().references(() => profiles.id),
+  targetType: text('target_type').notNull(), // 'challenge' | 'replay'
+  targetId: text('target_id').notNull(),
+  createdAt: text('created_at').default(sql`(datetime('now'))`).notNull(),
+});
+
+// --- Notification Preferences ---
+
+export const notificationPreferences = sqliteTable('notification_preferences', {
+  id: text('id').primaryKey(),
+  userId: text('user_id').notNull().references(() => profiles.id),
+  badgeEarned: integer('badge_earned').default(1).notNull(),
+  streakReminder: integer('streak_reminder').default(1).notNull(),
+  leaderboardChange: integer('leaderboard_change').default(1).notNull(),
+  newChallenge: integer('new_challenge').default(1).notNull(),
+  competitiveNudge: integer('competitive_nudge').default(1).notNull(),
+  commentReply: integer('comment_reply').default(1).notNull(),
+  commentOnSolved: integer('comment_on_solved').default(1).notNull(),
+  replayComment: integer('replay_comment').default(1).notNull(),
+  reactionReceived: integer('reaction_received').default(1).notNull(),
+  mention: integer('mention').default(1).notNull(),
+  newFollower: integer('new_follower').default(1).notNull(),
+  createdAt: text('created_at').default(sql`(datetime('now'))`).notNull(),
+});
+
 // --- Type exports ---
 
 export type Profile = typeof profiles.$inferSelect;
@@ -425,7 +463,7 @@ export type ChallengeCategory = 'practice' | 'model_selection' | 'prompt_efficie
 export type ChallengeLanguage = 'javascript' | 'typescript' | 'python';
 export type CertificateType = 'track_completion' | 'daily_streak' | 'efficiency_master';
 export type BadgeType = 'first_solve' | 'streak_3' | 'streak_7' | 'streak_30' | 'streak_100' | 'penny_pincher' | 'speed_demon' | 'model_master' | 'polyglot' | 'clean_sweep_easy' | 'clean_sweep_medium' | 'ten_solves' | 'twenty_five_solves' | 'fifty_solves' | 'daily_warrior';
-export type NotificationType = 'badge_earned' | 'streak_reminder' | 'leaderboard_change' | 'new_challenge' | 'competitive_nudge' | 'comment_reply' | 'comment_on_solved' | 'replay_comment' | 'reaction_received';
+export type NotificationType = 'badge_earned' | 'streak_reminder' | 'leaderboard_change' | 'new_challenge' | 'competitive_nudge' | 'comment_reply' | 'comment_on_solved' | 'replay_comment' | 'reaction_received' | 'mention' | 'new_follower';
 export type AssessmentStatus = 'draft' | 'active' | 'archived';
 export type InviteStatus = 'pending' | 'started' | 'completed' | 'expired';
 export type SessionStatus = 'in_progress' | 'completed' | 'expired' | 'abandoned';
@@ -471,6 +509,14 @@ export type EmailLog = typeof emailLogs.$inferSelect;
 export type NewEmailLog = typeof emailLogs.$inferInsert;
 export type AgentConversation = typeof agentConversations.$inferSelect;
 export type NewAgentConversation = typeof agentConversations.$inferInsert;
+
+export type Follow = typeof follows.$inferSelect;
+export type NewFollow = typeof follows.$inferInsert;
+export type Bookmark = typeof bookmarks.$inferSelect;
+export type NewBookmark = typeof bookmarks.$inferInsert;
+export type NotificationPreference = typeof notificationPreferences.$inferSelect;
+export type NewNotificationPreference = typeof notificationPreferences.$inferInsert;
+export type BookmarkTargetType = 'challenge' | 'replay';
 
 export type OrgRole = 'owner' | 'admin' | 'member' | 'viewer';
 export type OrgInvitationStatus = 'pending' | 'accepted' | 'expired' | 'revoked';

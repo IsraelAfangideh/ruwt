@@ -4,6 +4,7 @@
  */
 import { useState, useEffect, useCallback } from 'react';
 import { View, Text, TextInput, Pressable, StyleSheet, ActivityIndicator } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import { useColors } from '@/theme';
 import { spacing, fontSizes, fontFamily } from '@/theme/tokens';
 import { ReactionBar } from './ReactionBar';
@@ -35,9 +36,35 @@ interface CommentSectionProps {
   promptText?: string;
 }
 
+/** Render text with @mentions as clickable links */
+function MentionText({ content, color, accentColor, onMentionPress }: { content: string; color: string; accentColor: string; onMentionPress: (username: string) => void }) {
+  const parts = content.split(/(@[a-z0-9][a-z0-9-]{1,28}[a-z0-9])/g);
+  return (
+    <Text style={[styles.content, { color }]}>
+      {parts.map((part, i) => {
+        if (part.startsWith('@') && /^@[a-z0-9][a-z0-9-]{1,28}[a-z0-9]$/.test(part)) {
+          const username = part.slice(1);
+          return (
+            <Text
+              key={i}
+              style={{ color: accentColor, fontWeight: '600' }}
+              onPress={() => onMentionPress(username)}
+              accessibilityRole="link"
+            >
+              {part}
+            </Text>
+          );
+        }
+        return <Text key={i}>{part}</Text>;
+      })}
+    </Text>
+  );
+}
+
 export function CommentSection({ targetType, targetId: _targetId, apiPath, promptText }: CommentSectionProps) {
   void _targetId; // reserved for future use
   const c = useColors();
+  const navigation = useNavigation();
   const [comments, setComments] = useState<Comment[]>([]);
   const [loading, setLoading] = useState(true);
   const [text, setText] = useState('');
@@ -136,7 +163,12 @@ export function CommentSection({ targetType, targetId: _targetId, apiPath, promp
           {timeAgo(comment.createdAt)}
         </Text>
       </View>
-      <Text style={[styles.content, { color: c.text }]}>{comment.content}</Text>
+      <MentionText
+        content={comment.content}
+        color={c.text}
+        accentColor={c.accent as string}
+        onMentionPress={(username) => (navigation.navigate as any)('PublicProfile', { username })}
+      />
       <View style={styles.commentFooter}>
         <ReactionBar
           targetType={reactionTargetType}

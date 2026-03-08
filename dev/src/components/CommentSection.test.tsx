@@ -2,6 +2,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 
+vi.mock('@react-navigation/native', () => ({
+  useNavigation: () => ({ navigate: vi.fn() }),
+}));
 vi.mock('@/theme', () => ({
   useColors: () => ({
     text: '#000', textMuted: '#888', accent: '#c9a962', border: '#ccc',

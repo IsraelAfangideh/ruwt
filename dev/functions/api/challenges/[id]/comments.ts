@@ -125,9 +125,13 @@ export async function onRequestPost(context: { request: Request; env: Env; param
 
     const { content, parentId } = parsed.data;
 
-    // Verify challenge exists
-    const [challenge] = await db.select({ id: challenges.id, title: challenges.title })
-      .from(challenges).where(eq(challenges.id, challengeId)).limit(1);
+    // Verify challenge exists + fetch commenter profile in parallel
+    const [[challenge], [commenterProfile]] = await Promise.all([
+      db.select({ id: challenges.id, title: challenges.title })
+        .from(challenges).where(eq(challenges.id, challengeId)).limit(1),
+      db.select({ name: profiles.name, username: profiles.username, avatarUrl: profiles.avatarUrl })
+        .from(profiles).where(eq(profiles.id, user.id)).limit(1),
+    ]);
     if (!challenge) return Response.json({ error: 'Challenge not found' }, { status: 404 });
 
     // Verify parent comment exists if parentId is provided
@@ -138,14 +142,12 @@ export async function onRequestPost(context: { request: Request; env: Env; param
 
       // Notify parent comment author of reply
       if (parent.userId !== user.id) {
-        const [profile] = await db.select({ name: profiles.name })
-          .from(profiles).where(eq(profiles.id, user.id)).limit(1);
         await db.insert(notifications).values({
           id: crypto.randomUUID(),
           userId: parent.userId,
           type: 'comment_reply',
           title: 'New reply',
-          body: `${profile?.name || 'Someone'} replied to your comment on ${challenge.title}`,
+          body: `${commenterProfile?.name || 'Someone'} replied to your comment on ${challenge.title}`,
           metadata: JSON.stringify({ challengeId }),
         });
       }
@@ -168,9 +170,25 @@ export async function onRequestPost(context: { request: Request; env: Env; param
       parentId: parentId ?? null,
     });
 
-    // Get user profile for response
-    const [profile] = await db.select({ name: profiles.name, username: profiles.username, avatarUrl: profiles.avatarUrl })
-      .from(profiles).where(eq(profiles.id, user.id)).limit(1);
+    // Parse @mentions and notify mentioned users
+    const mentions = content.match(/@([a-z0-9][a-z0-9-]{1,28}[a-z0-9])/g);
+    if (mentions) {
+      const mentionedUsernames = [...new Set(mentions.map((m: string) => m.slice(1)))];
+      for (const mentionedUsername of mentionedUsernames) {
+        const [mentioned] = await db.select({ id: profiles.id })
+          .from(profiles).where(eq(profiles.username, mentionedUsername)).limit(1);
+        if (mentioned && mentioned.id !== user.id) {
+          await db.insert(notifications).values({
+            id: crypto.randomUUID(),
+            userId: mentioned.id,
+            type: 'mention',
+            title: 'You were mentioned',
+            body: `${commenterProfile?.name || 'Someone'} mentioned you in a comment on ${challenge.title}`,
+            metadata: JSON.stringify({ challengeId, commentId }),
+          });
+        }
+      }
+    }
 
     return Response.json({
       comment: {
@@ -179,7 +197,7 @@ export async function onRequestPost(context: { request: Request; env: Env; param
         solveCost: bestAttempt?.total_cost ?? null,
         parentId: parentId ?? null,
         createdAt: new Date().toISOString(),
-        user: { id: user.id, name: profile?.name, username: profile?.username, avatarUrl: profile?.avatarUrl },
+        user: { id: user.id, name: commenterProfile?.name, username: commenterProfile?.username, avatarUrl: commenterProfile?.avatarUrl },
         reactions: {},
         userReaction: null,
       },

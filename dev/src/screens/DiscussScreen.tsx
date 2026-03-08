@@ -21,6 +21,7 @@ import { useAuthGuard } from '@/hooks/useAuthGuard';
 import { useDocumentMeta } from '@/hooks/useDocumentMeta';
 import { formatCostFromHundredths } from '@/lib/ai/pricing';
 import { timeAgo } from '@/lib/utils';
+import { UserSearch } from '@/components/UserSearch';
 
 interface ActivityEntry {
   user: string;
@@ -73,6 +74,17 @@ export function DiscussScreen() {
         <Text style={[styles.pageSub, { color: c.textMuted }]}>
           See what the community is solving and join challenge discussions.
         </Text>
+
+        {/* User Search */}
+        <Card style={styles.section}>
+          <CardHeader>
+            <CardTitle>Find Users</CardTitle>
+            <CardDescription>Search by username or name</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <UserSearch />
+          </CardContent>
+        </Card>
 
         {/* Recent Activity */}
         <Card style={styles.section}>
