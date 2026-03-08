@@ -3,12 +3,25 @@
 -- Fix: re-introduce 3 real bugs and add test cases that actually exercise them.
 --
 -- Bug 1: Escaped quotes — backslash handling is missing, so "say \"hi\"" breaks
--- Bug 2: Whitespace after comma in arrays — parseArray doesn't skip whitespace after comma,
---         and since it checks str[i]===',' (not calling parseValue which would skipWhitespace),
---         the comma-skip loop itself fails when there's whitespace before the next comma or ']'
+-- Bug 2: Whitespace before delimiters in arrays — parseArray checks str[i]===',' without
+--         skipWhitespace() first, so spaces before commas (e.g. [1 , 2]) cause the loop to exit early
 -- Bug 3: Object colon — missing skipWhitespace() between key and colon, so {"a" : 1} breaks
 
 UPDATE challenges SET
+  description = 'Fix this JSON parser. It handles strings, numbers, booleans, null, arrays and objects but has edge case bugs with:
+Bug 1: Escaped characters in strings — the parser doesn''t handle backslash escapes at all, so strings containing \" or \\ break it.
+Bug 2: Whitespace before delimiters in arrays — after parsing an element, the parser checks for a comma immediately without skipping whitespace first, so [1 , 2] fails.
+Bug 3: Whitespace in objects — the parser doesn''t skip whitespace before keys (after commas) or before colons, so { "a" : 1, "b": 2 } fails.
+The function parseJSON(str) should return the parsed JavaScript value. It must handle:
+- Strings (with escaped quotes like "say \"hi\"")
+- Numbers (integers and decimals)
+- Booleans (true/false)
+- null
+- Arrays (nested, with flexible whitespace)
+- Objects (nested, with flexible whitespace)
+Input: a JSON string.
+Output: the parsed value, stringified back to JSON for comparison.
+Fix all 3 bugs. Use AI to identify edge cases.',
   starter_code = 'function parseJSON(str) {
   // Fix the bugs in this JSON parser
   let i = 0;
