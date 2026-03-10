@@ -3,6 +3,7 @@ import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { createClient } from '@/lib/supabase/client';
 import { Avatar } from '@/components/ui/Avatar';
+import { useAppMode } from '@/lib/AppModeContext';
 import { useColors } from '@/theme';
 import { spacing, fontSizes, fontFamily } from '@/theme/tokens';
 import type { User } from '@supabase/supabase-js';
@@ -16,6 +17,7 @@ export function UserNav({ user }: UserNavProps) {
   const supabase = createClient();
   const [open, setOpen] = useState(false);
   const c = useColors();
+  const { mode, isOrgMember, orgInfo } = useAppMode();
 
   const handleEscape = useCallback((e: KeyboardEvent) => {
     if (e.key === 'Escape' && open) setOpen(false);
@@ -53,6 +55,11 @@ export function UserNav({ user }: UserNavProps) {
           <View style={[styles.menu, { backgroundColor: c.card, borderColor: c.border }]} accessibilityRole="menu">
             <Text style={[styles.menuName, { color: c.text }]}>{user.user_metadata?.name || 'User'}</Text>
             <Text style={[styles.menuEmail, { color: c.mutedForeground }]} numberOfLines={1}>{user.email}</Text>
+            {isOrgMember && orgInfo && (
+              <Text style={[styles.menuMode, { color: c.textMuted }]} testID="user-nav-mode">
+                {mode === 'hiring' ? orgInfo.name : 'Practice Mode'}
+              </Text>
+            )}
             <Pressable
               style={[styles.menuItem, { borderTopColor: c.border }]}
               onPress={() => { setOpen(false); navigation.navigate('Profile' as never); }}
@@ -60,6 +67,16 @@ export function UserNav({ user }: UserNavProps) {
             >
               <Text style={{ color: c.text, fontSize: fontSizes.sm }}>Profile</Text>
             </Pressable>
+            {isOrgMember && (
+              <Pressable
+                style={[styles.menuItem, { borderTopColor: c.border }]}
+                onPress={() => { setOpen(false); navigation.navigate('OrgManagement' as never); }}
+                accessibilityRole="menuitem"
+                testID="user-nav-org-settings"
+              >
+                <Text style={{ color: c.text, fontSize: fontSizes.sm }}>Org Settings</Text>
+              </Pressable>
+            )}
             <Pressable
               style={[styles.menuItem, { borderTopColor: c.border }]}
               onPress={() => { setOpen(false); navigation.navigate('Settings' as never); }}
@@ -94,6 +111,7 @@ const styles = StyleSheet.create({
   },
   menuName: { fontSize: fontSizes.sm, fontWeight: '600', fontFamily: fontFamily.body },
   menuEmail: { fontSize: fontSizes.xs, marginTop: 2 },
+  menuMode: { fontSize: fontSizes.xs, marginTop: 4, fontFamily: fontFamily.body },
   menuItem: {
     paddingVertical: spacing.sm,
     borderTopWidth: 1,

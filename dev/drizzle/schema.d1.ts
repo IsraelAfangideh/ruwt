@@ -26,6 +26,7 @@ export const profiles = sqliteTable('profiles', {
   timezone: text('timezone'), // IANA timezone (e.g., 'America/New_York'), captured from Cloudflare request.cf
   leaderboardExcluded: integer('leaderboard_excluded').default(0).notNull(), // 1 = hidden from leaderboard (QA/system accounts)
   trialUsed: integer('trial_used').default(0).notNull(), // 1 = user has used their free trial (prevents re-trial after org deletion)
+  preferredMode: text('preferred_mode'), // 'practice' | 'hiring' — persists mode switcher state
   createdAt: text('created_at').default(sql`(datetime('now'))`).notNull(),
 });
 

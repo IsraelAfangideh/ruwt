@@ -51,6 +51,19 @@ export async function onRequestGet(context: { request: Request; env: Env; waitUn
     const trial = userOrg ? await getTrialStatus(db, userOrg.org.id) : null;
     const trialEligibility = await canStartTrial(db, user.id);
 
+    // Build org info for the mode switcher context
+    const org = userOrg
+      ? {
+          id: userOrg.org.id,
+          name: userOrg.org.name,
+          role: userOrg.role,
+          subscriptionStatus,
+          subscriptionPlan,
+          subscriptionEndsAt,
+          trial,
+        }
+      : null;
+
     return Response.json({
       email: profile.email,
       name: profile.name,
@@ -69,6 +82,8 @@ export async function onRequestGet(context: { request: Request; env: Env; waitUn
       subscriptionEndsAt,
       trial,
       canStartTrial: trialEligibility.eligible,
+      org,
+      preferredMode: profile.preferredMode ?? null,
     });
   } catch (error) {
     console.error('Profile error:', error);
@@ -93,7 +108,8 @@ export async function onRequestPatch(context: { request: Request; env: Env }) {
       accountType: z.enum(['individual', 'team']).optional(),
       avatarUrl: z.string().max(100000, 'Avatar too large').optional(),
       bio: z.string().max(300, 'Bio must be 300 characters or less').optional(),
-    }).refine(data => data.username !== undefined || data.onboardingCompleted !== undefined || data.newsletterSubscribed !== undefined || data.accountType !== undefined || data.avatarUrl !== undefined || data.bio !== undefined, {
+      preferredMode: z.enum(['practice', 'hiring']).optional(),
+    }).refine(data => data.username !== undefined || data.onboardingCompleted !== undefined || data.newsletterSubscribed !== undefined || data.accountType !== undefined || data.avatarUrl !== undefined || data.bio !== undefined || data.preferredMode !== undefined, {
       message: 'No valid fields to update',
     });
 
@@ -105,7 +121,7 @@ export async function onRequestPatch(context: { request: Request; env: Env }) {
       );
     }
 
-    const { username, onboardingCompleted, newsletterSubscribed, accountType, avatarUrl, bio } = parsed.data;
+    const { username, onboardingCompleted, newsletterSubscribed, accountType, avatarUrl, bio, preferredMode } = parsed.data;
 
     const db = getDb(context.env);
     const updates: Record<string, unknown> = {};
@@ -128,6 +144,10 @@ export async function onRequestPatch(context: { request: Request; env: Env }) {
 
     if (bio !== undefined) {
       updates.bio = bio;
+    }
+
+    if (preferredMode !== undefined) {
+      updates.preferredMode = preferredMode;
     }
 
     if (username !== undefined) {

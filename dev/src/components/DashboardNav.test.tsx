@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { DashboardNav } from './DashboardNav';
 
@@ -18,40 +18,97 @@ vi.mock('@react-navigation/native', () => ({
 }));
 
 vi.mock('@/theme', () => ({
-  useColors: () => ({ text: '#000', textMuted: '#888' }),
+  useColors: () => ({ text: '#000', textMuted: '#888', accent: '#c9a962' }),
 }));
 
 vi.mock('@/theme/tokens', () => ({
   spacing: { xs: 4, sm: 8, md: 16, lg: 24 },
-  fontSizes: { sm: 14 },
+  fontSizes: { xs: 12, sm: 14 },
   fontFamily: { body: 'sans-serif' },
 }));
 
+// Default mock: practice mode, individual
+let mockAppMode = {
+  mode: 'practice' as const,
+  setMode: vi.fn(),
+  profile: null,
+  profileLoading: false,
+  orgInfo: null,
+  isOrgMember: false,
+  canAccessHiringMode: false,
+  refreshProfile: vi.fn(),
+};
+
+vi.mock('@/lib/AppModeContext', () => ({
+  useAppMode: () => mockAppMode,
+}));
+
 describe('DashboardNav', () => {
-  it('renders base nav items for individual accounts', () => {
+  afterEach(() => {
+    mockAppMode = {
+      mode: 'practice' as const,
+      setMode: vi.fn(),
+      profile: null,
+      profileLoading: false,
+      orgInfo: null,
+      isOrgMember: false,
+      canAccessHiringMode: false,
+      refreshProfile: vi.fn(),
+    };
+  });
+
+  it('renders base nav items for individual accounts in practice mode', () => {
     render(<DashboardNav />);
     expect(screen.getByText('Problems')).toBeTruthy();
     expect(screen.getByText('Discuss')).toBeTruthy();
     expect(screen.getByText('Leaderboard')).toBeTruthy();
     expect(screen.getByText('My Profile')).toBeTruthy();
+    expect(screen.getByText('Hiring')).toBeTruthy(); // CTA for non-org users
     expect(screen.queryByText('Assessments')).toBeNull();
   });
 
-  it('includes Assessments link for team accounts', () => {
-    render(<DashboardNav accountType="team" />);
-    expect(screen.getByText('Assessments')).toBeTruthy();
+  it('shows "Your Team" link for org members in practice mode', () => {
+    mockAppMode = { ...mockAppMode, isOrgMember: true, orgInfo: { id: 'o', name: 'Org', role: 'admin', subscriptionStatus: 'active', subscriptionPlan: null, subscriptionEndsAt: null, trial: null } };
+    render(<DashboardNav />);
+    expect(screen.getByText('Your Team')).toBeTruthy();
+    expect(screen.queryByText('Hiring')).toBeNull(); // No accent CTA when already in org
   });
 
-  it('hides account-type nav item while loading', () => {
-    render(<DashboardNav accountType="team" loading />);
+  it('shows hiring nav items when in hiring mode', () => {
+    mockAppMode = {
+      ...mockAppMode,
+      mode: 'hiring' as const,
+      isOrgMember: true,
+      canAccessHiringMode: true,
+      orgInfo: { id: 'o', name: 'Org', role: 'admin', subscriptionStatus: 'active', subscriptionPlan: null, subscriptionEndsAt: null, trial: null },
+    };
+    render(<DashboardNav />);
+    expect(screen.getByText('Assessments')).toBeTruthy();
+    expect(screen.getByText('Org Settings')).toBeTruthy();
+    expect(screen.getByText('Preview Challenges')).toBeTruthy();
+    expect(screen.queryByText('Discuss')).toBeNull();
+    expect(screen.queryByText('Leaderboard')).toBeNull();
+  });
+
+  it('shows base practice items while loading', () => {
+    mockAppMode = { ...mockAppMode, profileLoading: true };
+    render(<DashboardNav />);
+    expect(screen.getByText('Problems')).toBeTruthy();
     expect(screen.queryByText('Assessments')).toBeNull();
     expect(screen.queryByText('Hiring')).toBeNull();
-    expect(screen.getByText('Problems')).toBeTruthy();
   });
 
   it('navigates when a nav item is clicked', () => {
     render(<DashboardNav />);
     fireEvent.click(screen.getByText('Problems'));
     expect(mockNavigate).toHaveBeenCalledWith('Problems');
+  });
+
+  it('falls back to practice nav if hiring mode but cannot access', () => {
+    mockAppMode = { ...mockAppMode, mode: 'hiring' as const, canAccessHiringMode: false };
+    render(<DashboardNav />);
+    expect(screen.getByText('Problems')).toBeTruthy();
+    expect(screen.getByText('Hiring')).toBeTruthy(); // Falls back to individual practice
+    expect(screen.queryByText('Org Settings')).toBeNull();
   });
 });

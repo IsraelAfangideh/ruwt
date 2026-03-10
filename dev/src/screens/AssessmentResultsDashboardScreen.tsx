@@ -294,7 +294,7 @@ export function AssessmentResultsDashboardScreen() {
   }));
 
   return (
-    <DashboardLayout user={user} requireTeam>
+    <DashboardLayout user={user} requireOrg>
       <View style={[styles.section, { borderBottomColor: c.border }]}>
         <View style={styles.headerRow}>
           <View style={{ flex: 1 }}>

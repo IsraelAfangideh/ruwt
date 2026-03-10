@@ -36,6 +36,23 @@ vi.mock('@/lib/supabase/client', () => ({
   createClient: () => ({ auth: { signOut: vi.fn() } }),
 }));
 
+// Default mock for AppModeContext — individual, practice mode
+const mockSetMode = vi.fn();
+let mockAppMode = {
+  mode: 'practice' as const,
+  setMode: mockSetMode,
+  profile: { accountType: 'individual', trial: null, subscriptionStatus: 'none' },
+  profileLoading: false,
+  orgInfo: null,
+  isOrgMember: false,
+  canAccessHiringMode: false,
+  refreshProfile: vi.fn(),
+};
+
+vi.mock('@/lib/AppModeContext', () => ({
+  useAppMode: () => mockAppMode,
+}));
+
 const mockUser = {
   id: 'user-1',
   email: 'test@ruwt.dev',
@@ -45,14 +62,19 @@ const mockUser = {
 describe('DashboardLayout', () => {
   afterEach(() => {
     vi.restoreAllMocks();
+    mockAppMode = {
+      mode: 'practice' as const,
+      setMode: mockSetMode,
+      profile: { accountType: 'individual', trial: null, subscriptionStatus: 'none' },
+      profileLoading: false,
+      orgInfo: null,
+      isOrgMember: false,
+      canAccessHiringMode: false,
+      refreshProfile: vi.fn(),
+    };
   });
 
-  it('renders children content', async () => {
-    vi.spyOn(global, 'fetch').mockResolvedValue({
-      ok: true,
-      json: async () => ({ accountType: 'individual' }),
-    } as Response);
-
+  it('renders children content', () => {
     render(
       <DashboardLayout user={mockUser}>
         <span>Dashboard Content</span>
@@ -61,12 +83,7 @@ describe('DashboardLayout', () => {
     expect(screen.getByText('Dashboard Content')).toBeTruthy();
   });
 
-  it('renders the Ruwt.dev logo', async () => {
-    vi.spyOn(global, 'fetch').mockResolvedValue({
-      ok: true,
-      json: async () => ({ accountType: 'individual' }),
-    } as Response);
-
+  it('renders the Ruwt.dev logo', () => {
     render(
       <DashboardLayout user={mockUser}>
         <span>Content</span>
@@ -76,12 +93,7 @@ describe('DashboardLayout', () => {
     expect(screen.getByText('.dev')).toBeTruthy();
   });
 
-  it('renders navigation items', async () => {
-    vi.spyOn(global, 'fetch').mockResolvedValue({
-      ok: true,
-      json: async () => ({ accountType: 'individual' }),
-    } as Response);
-
+  it('renders navigation items', () => {
     render(
       <DashboardLayout user={mockUser}>
         <span>Content</span>
@@ -91,19 +103,12 @@ describe('DashboardLayout', () => {
     expect(screen.getByText('Discuss')).toBeTruthy();
   });
 
-  it('navigates to Dashboard when logo is clicked', async () => {
-    vi.spyOn(global, 'fetch').mockResolvedValue({
-      ok: true,
-      json: async () => ({ accountType: 'individual' }),
-    } as Response);
-
+  it('navigates to Problems when logo is clicked', () => {
     const { container } = render(
       <DashboardLayout user={mockUser}>
         <span>Content</span>
       </DashboardLayout>
     );
-    // Click the logo link (contains 'R' and '.dev')
-    // react-native-web renders accessibilityLabel as aria-label or lowercased attribute
     const logoLink = container.querySelector('[accessibilitylabel="Ruwt – go to problems"]') ||
                      container.querySelector('[aria-label="Ruwt – go to problems"]');
     expect(logoLink).not.toBeNull();
@@ -111,100 +116,79 @@ describe('DashboardLayout', () => {
     expect(mockNavigate).toHaveBeenCalledWith('Problems');
   });
 
-  it('handles profile fetch returning non-ok (line 27 false branch)', async () => {
-    vi.spyOn(global, 'fetch').mockResolvedValue({
-      ok: false,
-      json: async () => ({}),
-    } as Response);
+  it('renders with null profile (loading fallback)', () => {
+    mockAppMode = {
+      ...mockAppMode,
+      profile: null as any,
+      profileLoading: true,
+    };
 
     render(
       <DashboardLayout user={mockUser}>
         <span>Content</span>
       </DashboardLayout>
     );
-    // Should still render without crashing, using default 'individual' account type
     expect(screen.getByText('Content')).toBeTruthy();
   });
 
-  it('handles profile with missing accountType (line 29 false branch)', async () => {
-    vi.spyOn(global, 'fetch').mockResolvedValue({
-      ok: true,
-      json: async () => ({}),
-    } as Response);
+  /* ── Org gating tests ───────────────────────────────────────── */
 
+  it('shows gate UI when requireOrg is true and user is not org member', () => {
     render(
-      <DashboardLayout user={mockUser}>
-        <span>Content</span>
-      </DashboardLayout>
-    );
-    // Should render with default 'individual'
-    expect(screen.getByText('Content')).toBeTruthy();
-  });
-
-  /* ── Team gating tests ───────────────────────────────────────── */
-
-  it('shows gate UI when requireTeam is true and account is individual', async () => {
-    vi.spyOn(global, 'fetch').mockResolvedValue({
-      ok: true,
-      json: async () => ({ accountType: 'individual' }),
-    } as Response);
-
-    render(
-      <DashboardLayout user={mockUser} requireTeam>
+      <DashboardLayout user={mockUser} requireOrg>
         <span>Protected Content</span>
       </DashboardLayout>
     );
 
-    await waitFor(() => {
-      expect(screen.getByText('Team Account Required')).toBeTruthy();
-    });
+    expect(screen.getByText('Team Account Required')).toBeTruthy();
     expect(screen.queryByText('Protected Content')).toBeNull();
     expect(screen.getByText('Upgrade to Teams')).toBeTruthy();
   });
 
-  it('renders children when requireTeam is true and account is team', async () => {
-    vi.spyOn(global, 'fetch').mockResolvedValue({
-      ok: true,
-      json: async () => ({ accountType: 'team' }),
-    } as Response);
+  it('renders children when requireOrg is true and user is org member', () => {
+    mockAppMode = {
+      ...mockAppMode,
+      isOrgMember: true,
+      orgInfo: { id: 'org-1', name: 'Test Org', role: 'admin', subscriptionStatus: 'active', subscriptionPlan: 'monthly', subscriptionEndsAt: null, trial: null },
+      profile: { ...mockAppMode.profile, accountType: 'team' } as any,
+    };
 
     render(
-      <DashboardLayout user={mockUser} requireTeam>
+      <DashboardLayout user={mockUser} requireOrg>
         <span>Protected Content</span>
       </DashboardLayout>
     );
 
-    await waitFor(() => {
-      expect(screen.getByText('Protected Content')).toBeTruthy();
-    });
+    expect(screen.getByText('Protected Content')).toBeTruthy();
     expect(screen.queryByText('Team Account Required')).toBeNull();
   });
 
-  it('navigates to Teams when Upgrade to Teams is clicked', async () => {
-    vi.spyOn(global, 'fetch').mockResolvedValue({
-      ok: true,
-      json: async () => ({ accountType: 'individual' }),
-    } as Response);
+  it('shows loading spinner when requireOrg and profile is loading', () => {
+    mockAppMode = { ...mockAppMode, profileLoading: true };
 
-    render(
-      <DashboardLayout user={mockUser} requireTeam>
+    const { container } = render(
+      <DashboardLayout user={mockUser} requireOrg>
         <span>Protected Content</span>
       </DashboardLayout>
     );
 
-    await waitFor(() => {
-      expect(screen.getByText('Upgrade to Teams')).toBeTruthy();
-    });
+    expect(screen.queryByText('Protected Content')).toBeNull();
+    // ActivityIndicator renders a div with role="progressbar"
+    expect(container.querySelector('[role="progressbar"]')).not.toBeNull();
+  });
+
+  it('navigates to Hiring when Upgrade to Teams is clicked', () => {
+    render(
+      <DashboardLayout user={mockUser} requireOrg>
+        <span>Protected Content</span>
+      </DashboardLayout>
+    );
+
     fireEvent.click(screen.getByText('Upgrade to Teams'));
     expect(mockNavigate).toHaveBeenCalledWith('Hiring');
   });
 
-  it('renders children without gating when requireTeam is false', async () => {
-    vi.spyOn(global, 'fetch').mockResolvedValue({
-      ok: true,
-      json: async () => ({ accountType: 'individual' }),
-    } as Response);
-
+  it('renders children without gating when requireOrg is false', () => {
     render(
       <DashboardLayout user={mockUser}>
         <span>Open Content</span>
@@ -215,19 +199,20 @@ describe('DashboardLayout', () => {
     expect(screen.queryByText('Team Account Required')).toBeNull();
   });
 
-  it('handles profile fetch error gracefully with requireTeam', async () => {
-    vi.spyOn(global, 'fetch').mockRejectedValue(new Error('Network error'));
+  it('shows trial banner for team accounts with trial', () => {
+    mockAppMode = {
+      ...mockAppMode,
+      isOrgMember: true,
+      orgInfo: { id: 'org-1', name: 'Test Org', role: 'admin', subscriptionStatus: 'none', subscriptionPlan: null, subscriptionEndsAt: null, trial: { isActive: true, daysRemaining: 20, assessmentsUsed: 0, assessmentsLimit: 1, invitesUsed: 0, invitesLimit: 3 } },
+      profile: { ...mockAppMode.profile, accountType: 'team', trial: { isActive: true, daysRemaining: 20, assessmentsUsed: 0, assessmentsLimit: 1, invitesUsed: 0, invitesLimit: 3 }, subscriptionStatus: 'none' } as any,
+    };
 
     render(
-      <DashboardLayout user={mockUser} requireTeam>
-        <span>Protected Content</span>
+      <DashboardLayout user={mockUser}>
+        <span>Content</span>
       </DashboardLayout>
     );
 
-    // After fetch fails, profileLoading becomes false, accountType stays 'individual' → gate shows
-    await waitFor(() => {
-      expect(screen.getByText('Team Account Required')).toBeTruthy();
-    });
-    expect(screen.queryByText('Protected Content')).toBeNull();
+    expect(screen.getByTestId('trial-banner')).toBeTruthy();
   });
 });

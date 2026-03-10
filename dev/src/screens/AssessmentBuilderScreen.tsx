@@ -483,7 +483,7 @@ export function AssessmentBuilderScreen() {
   const draftCustomChallenges = customChallenges.filter((ch) => ch.status === 'draft');
 
   return (
-    <DashboardLayout user={user} requireTeam>
+    <DashboardLayout user={user} requireOrg>
       <View style={[styles.section, { borderBottomColor: c.border }]}>
         <Button
           variant="ghost"

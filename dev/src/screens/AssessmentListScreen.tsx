@@ -182,7 +182,7 @@ export function AssessmentListScreen() {
   };
 
   return (
-    <DashboardLayout user={user} requireTeam>
+    <DashboardLayout user={user} requireOrg>
       {/* Org banner */}
       {orgInfo && (
         <View style={[styles.orgBanner, { backgroundColor: c.accent + '08', borderColor: c.accent + '20' }]}>

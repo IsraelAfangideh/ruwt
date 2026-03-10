@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { UserNav } from './UserNav';
 
@@ -37,9 +37,24 @@ vi.mock('@/theme/tokens', () => ({
   fontFamily: { body: 'sans-serif' },
 }));
 
-// Mock the Avatar component
 vi.mock('@/components/ui/Avatar', () => ({
   Avatar: ({ fallback }: any) => <span data-testid="avatar">{fallback}</span>,
+}));
+
+// Default mock: individual, practice mode
+let mockAppMode = {
+  mode: 'practice' as const,
+  setMode: vi.fn(),
+  profile: null,
+  profileLoading: false,
+  orgInfo: null,
+  isOrgMember: false,
+  canAccessHiringMode: false,
+  refreshProfile: vi.fn(),
+};
+
+vi.mock('@/lib/AppModeContext', () => ({
+  useAppMode: () => mockAppMode,
 }));
 
 const mockUser = {
@@ -49,6 +64,19 @@ const mockUser = {
 } as any;
 
 describe('UserNav', () => {
+  afterEach(() => {
+    mockAppMode = {
+      mode: 'practice' as const,
+      setMode: vi.fn(),
+      profile: null,
+      profileLoading: false,
+      orgInfo: null,
+      isOrgMember: false,
+      canAccessHiringMode: false,
+      refreshProfile: vi.fn(),
+    };
+  });
+
   it('renders user avatar with correct initials', () => {
     render(<UserNav user={mockUser} />);
     expect(screen.getByText('TU')).toBeTruthy();
@@ -76,6 +104,37 @@ describe('UserNav', () => {
     expect(screen.getByText('Sign out')).toBeTruthy();
   });
 
+  it('shows mode indicator and org settings for org members', () => {
+    mockAppMode = {
+      ...mockAppMode,
+      isOrgMember: true,
+      orgInfo: { id: 'o', name: 'Acme Corp', role: 'admin', subscriptionStatus: 'active', subscriptionPlan: null, subscriptionEndsAt: null, trial: null },
+    };
+    render(<UserNav user={mockUser} />);
+    fireEvent.click(screen.getByTestId('avatar'));
+    expect(screen.getByText('Practice Mode')).toBeTruthy();
+    expect(screen.getByText('Org Settings')).toBeTruthy();
+  });
+
+  it('shows org name in mode indicator when in hiring mode', () => {
+    mockAppMode = {
+      ...mockAppMode,
+      mode: 'hiring' as const,
+      isOrgMember: true,
+      orgInfo: { id: 'o', name: 'Acme Corp', role: 'admin', subscriptionStatus: 'active', subscriptionPlan: null, subscriptionEndsAt: null, trial: null },
+    };
+    render(<UserNav user={mockUser} />);
+    fireEvent.click(screen.getByTestId('avatar'));
+    expect(screen.getByText('Acme Corp')).toBeTruthy();
+  });
+
+  it('hides org settings for non-org members', () => {
+    render(<UserNav user={mockUser} />);
+    fireEvent.click(screen.getByTestId('avatar'));
+    expect(screen.queryByText('Org Settings')).toBeNull();
+    expect(screen.queryByText('Practice Mode')).toBeNull();
+  });
+
   it('navigates to Profile when clicked', () => {
     render(<UserNav user={mockUser} />);
     fireEvent.click(screen.getByTestId('avatar'));
@@ -100,14 +159,11 @@ describe('UserNav', () => {
 
   it('closes menu when overlay is clicked', () => {
     const { container } = render(<UserNav user={mockUser} />);
-    // Open the menu
     fireEvent.click(screen.getByTestId('avatar'));
     expect(screen.getByText('Profile')).toBeTruthy();
-    // The overlay is a Pressable (button) with accessibilitylabel attribute for "Close account menu"
     const overlayBtn = container.querySelector('[accessibilitylabel="Close account menu"]') as HTMLElement;
     expect(overlayBtn).not.toBeNull();
     fireEvent.click(overlayBtn);
-    // Menu items should no longer be visible
     expect(screen.queryByText('Profile')).toBeNull();
   });
 
@@ -115,14 +171,12 @@ describe('UserNav', () => {
     render(<UserNav user={mockUser} />);
     fireEvent.click(screen.getByTestId('avatar'));
     expect(screen.getByText('Profile')).toBeTruthy();
-    // Press Escape to close the menu
     fireEvent.keyDown(document, { key: 'Escape' });
     expect(screen.queryByText('Profile')).toBeNull();
   });
 
   it('ignores Escape key when menu is closed (line 21 false branch)', () => {
     render(<UserNav user={mockUser} />);
-    // Menu is closed — pressing Escape should do nothing
     fireEvent.keyDown(document, { key: 'Escape' });
     expect(screen.queryByText('Profile')).toBeNull();
   });

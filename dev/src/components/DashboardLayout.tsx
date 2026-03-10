@@ -1,12 +1,13 @@
-import { useState, useEffect } from 'react';
 import { View, Text, Pressable, ActivityIndicator, StyleSheet } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { DashboardNav } from './DashboardNav';
 import { UserNav } from './UserNav';
 import { ThemeToggle } from './ThemeToggle';
 import { NotificationBell } from './NotificationBell';
-import { TrialBanner, type TrialInfo } from './TrialBanner';
+import { TrialBanner } from './TrialBanner';
+import { ModeSwitcher } from './ModeSwitcher';
 import { Button } from './ui/Button';
+import { useAppMode } from '@/lib/AppModeContext';
 import { useColors } from '@/theme';
 import { spacing, fontSizes, fontFamily } from '@/theme/tokens';
 import type { User } from '@supabase/supabase-js';
@@ -14,42 +15,27 @@ import type { User } from '@supabase/supabase-js';
 interface DashboardLayoutProps {
   user: User;
   children: React.ReactNode;
-  requireTeam?: boolean;
+  requireOrg?: boolean;
 }
 
-export function DashboardLayout({ user, children, requireTeam }: DashboardLayoutProps) {
+export function DashboardLayout({ user, children, requireOrg }: DashboardLayoutProps) {
   const navigation = useNavigation();
   const c = useColors();
-  const [accountType, setAccountType] = useState<string>('individual');
-  const [profileLoading, setProfileLoading] = useState(true);
-  const [trial, setTrial] = useState<TrialInfo | null>(null);
-  const [subscriptionStatus, setSubscriptionStatus] = useState<string>('none');
+  const { profile, profileLoading, isOrgMember, canAccessHiringMode } = useAppMode();
 
-  useEffect(() => {
-    const fetchProfile = async () => {
-      try {
-        const r = await fetch('/api/profile');
-        if (r.ok) {
-          const data = await r.json() as { accountType?: string; trial?: TrialInfo | null; subscriptionStatus?: string };
-          if (data.accountType) setAccountType(data.accountType);
-          if (data.trial) setTrial(data.trial);
-          if (data.subscriptionStatus) setSubscriptionStatus(data.subscriptionStatus);
-        }
-      } catch {}
-      setProfileLoading(false);
-    };
-    fetchProfile();
-  }, []);
+  const accountType = profile?.accountType ?? 'individual';
+  const trial = profile?.trial ?? null;
+  const subscriptionStatus = profile?.subscriptionStatus ?? 'none';
 
   const renderContent = () => {
-    if (requireTeam && profileLoading) {
+    if (requireOrg && profileLoading) {
       return (
         <View style={styles.gateCenter}>
           <ActivityIndicator size="large" color={c.accent} />
         </View>
       );
     }
-    if (requireTeam && accountType !== 'team') {
+    if (requireOrg && !isOrgMember) {
       return (
         <View style={styles.gateCenter}>
           <Text style={[styles.gateTitle, { color: c.text }]}>Team Account Required</Text>
@@ -79,7 +65,8 @@ export function DashboardLayout({ user, children, requireTeam }: DashboardLayout
               Ruwt<Text style={[styles.logoDot, { color: c.primary }]}>.dev</Text>
             </Text>
           </Pressable>
-          <DashboardNav accountType={accountType} loading={profileLoading} />
+          <ModeSwitcher />
+          <DashboardNav />
         </View>
         <View style={styles.headerRight}>
           <NotificationBell />

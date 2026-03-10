@@ -229,7 +229,7 @@ export function OrgManagementScreen() {
   // No org yet — show create form
   if (!org) {
     return (
-      <DashboardLayout user={user} requireTeam>
+      <DashboardLayout user={user} requireOrg>
         <View style={styles.createSection}>
           <Text style={[styles.pageTitle, { color: c.text }]}>Create Your Team</Text>
           <Text style={[styles.subtitle, { color: c.textMuted }]}>
@@ -252,7 +252,7 @@ export function OrgManagementScreen() {
   }
 
   return (
-    <DashboardLayout user={user} requireTeam>
+    <DashboardLayout user={user} requireOrg>
       <View style={[styles.header, { borderBottomColor: c.border }]}>
         <Button
           variant="ghost"

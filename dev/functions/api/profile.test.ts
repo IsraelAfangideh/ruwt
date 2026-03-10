@@ -190,17 +190,21 @@ describe('GET /api/profile', () => {
       subscriptionEndsAt: null,
       trial: null,
       canStartTrial: false,
+      org: null,
+      preferredMode: null,
     });
     // Security: internal ID and unused fields should not be exposed
     expect(json.id).toBeUndefined();
     expect(json.assessmentCredits).toBeUndefined();
   });
 
-  it('includes org subscription status when user belongs to an org', async () => {
+  it('includes org subscription status and org info when user belongs to an org', async () => {
     mockGetUser.mockResolvedValue({ id: 'user-1' });
     dbCallResults = [[FULL_PROFILE]];
     mockGetUserOrg.mockResolvedValue({
       org: {
+        id: 'org-1',
+        name: 'Test Org',
         subscriptionStatus: 'active',
         subscriptionPlan: 'annual',
         subscriptionEndsAt: '2027-02-28T00:00:00Z',
@@ -214,6 +218,15 @@ describe('GET /api/profile', () => {
     expect(json.subscriptionStatus).toBe('active');
     expect(json.subscriptionPlan).toBe('annual');
     expect(json.subscriptionEndsAt).toBe('2027-02-28T00:00:00Z');
+    expect(json.org).toEqual({
+      id: 'org-1',
+      name: 'Test Org',
+      role: 'admin',
+      subscriptionStatus: 'active',
+      subscriptionPlan: 'annual',
+      subscriptionEndsAt: '2027-02-28T00:00:00Z',
+      trial: null,
+    });
   });
 
   it('calls ensureProfile before querying', async () => {
@@ -473,6 +486,39 @@ describe('PATCH /api/profile', () => {
     mockGetUser.mockResolvedValue({ id: 'user-1' });
 
     const res = await onRequestPatch(makePatchContext({ accountType: 'enterprise' }));
+
+    expect(res.status).toBe(400);
+  });
+
+  // -----------------------------------------------------------------------
+  // preferredMode update
+  // -----------------------------------------------------------------------
+  it('updates preferredMode to hiring', async () => {
+    mockGetUser.mockResolvedValue({ id: 'user-1' });
+    mockUpdate.where.mockResolvedValue(undefined);
+
+    const res = await onRequestPatch(makePatchContext({ preferredMode: 'hiring' }));
+    const json = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(json.preferredMode).toBe('hiring');
+  });
+
+  it('updates preferredMode to practice', async () => {
+    mockGetUser.mockResolvedValue({ id: 'user-1' });
+    mockUpdate.where.mockResolvedValue(undefined);
+
+    const res = await onRequestPatch(makePatchContext({ preferredMode: 'practice' }));
+    const json = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(json.preferredMode).toBe('practice');
+  });
+
+  it('rejects invalid preferredMode', async () => {
+    mockGetUser.mockResolvedValue({ id: 'user-1' });
+
+    const res = await onRequestPatch(makePatchContext({ preferredMode: 'admin' }));
 
     expect(res.status).toBe(400);
   });

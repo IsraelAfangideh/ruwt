@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import * as Sentry from '@sentry/react';
 import { ThemeProvider, useTheme } from '@/theme';
 import { ToastProvider } from '@/components/ui/Toast';
+import { AppModeProvider } from '@/lib/AppModeContext';
 import { AppNavigator } from '@/navigation/AppNavigator';
 import './index.css';
 
@@ -45,8 +46,10 @@ export default function App() {
     <Sentry.ErrorBoundary fallback={ErrorFallback}>
       <ThemeProvider>
         <ToastProvider>
-          <BodyTheme />
-          <AppNavigator />
+          <AppModeProvider>
+            <BodyTheme />
+            <AppNavigator />
+          </AppModeProvider>
         </ToastProvider>
       </ThemeProvider>
     </Sentry.ErrorBoundary>

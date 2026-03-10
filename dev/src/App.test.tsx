@@ -36,6 +36,21 @@ vi.mock('@/lib/supabase/client', () => ({
   }),
 }));
 
+/* ── Mock AppModeProvider ────────────────────────────────────────── */
+vi.mock('@/lib/AppModeContext', () => ({
+  AppModeProvider: ({ children }: { children: React.ReactNode }) => <div data-testid="app-mode-provider">{children}</div>,
+  useAppMode: () => ({
+    mode: 'practice',
+    setMode: vi.fn(),
+    profile: null,
+    profileLoading: false,
+    orgInfo: null,
+    isOrgMember: false,
+    canAccessHiringMode: false,
+    refreshProfile: vi.fn(),
+  }),
+}));
+
 /* ── Mock AppNavigator ───────────────────────────────────────────── */
 vi.mock('@/navigation/AppNavigator', () => ({
   AppNavigator: () => <div data-testid="app-navigator">Navigator</div>,
