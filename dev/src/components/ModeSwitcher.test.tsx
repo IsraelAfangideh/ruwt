@@ -29,8 +29,8 @@ vi.mock('@/theme/tokens', () => ({
 }));
 
 const mockSetMode = vi.fn();
-let mockAppMode = {
-  mode: 'practice' as const,
+let mockAppMode: any = {
+  mode: 'practice',
   setMode: mockSetMode,
   profile: null,
   profileLoading: false,
@@ -49,7 +49,7 @@ describe('ModeSwitcher', () => {
     mockSetMode.mockClear();
     mockNavigate.mockClear();
     mockAppMode = {
-      mode: 'practice' as const,
+      mode: 'practice',
       setMode: mockSetMode,
       profile: null,
       profileLoading: false,
@@ -73,7 +73,7 @@ describe('ModeSwitcher', () => {
   });
 
   it('shows org name when in hiring mode', () => {
-    mockAppMode = { ...mockAppMode, mode: 'hiring' as const };
+    mockAppMode = { ...mockAppMode, mode: 'hiring' };
     render(<ModeSwitcher />);
     expect(screen.getByText('Acme Corp')).toBeTruthy();
   });
@@ -95,7 +95,7 @@ describe('ModeSwitcher', () => {
   });
 
   it('switches to practice mode and navigates', () => {
-    mockAppMode = { ...mockAppMode, mode: 'hiring' as const };
+    mockAppMode = { ...mockAppMode, mode: 'hiring' };
     render(<ModeSwitcher />);
     fireEvent.click(screen.getByTestId('mode-switcher'));
     fireEvent.click(screen.getByTestId('mode-option-practice'));

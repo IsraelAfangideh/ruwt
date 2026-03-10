@@ -28,8 +28,8 @@ vi.mock('@/theme/tokens', () => ({
 }));
 
 // Default mock: practice mode, individual
-let mockAppMode = {
-  mode: 'practice' as const,
+let mockAppMode: any = {
+  mode: 'practice',
   setMode: vi.fn(),
   profile: null,
   profileLoading: false,
@@ -46,7 +46,7 @@ vi.mock('@/lib/AppModeContext', () => ({
 describe('DashboardNav', () => {
   afterEach(() => {
     mockAppMode = {
-      mode: 'practice' as const,
+      mode: 'practice',
       setMode: vi.fn(),
       profile: null,
       profileLoading: false,
@@ -77,7 +77,7 @@ describe('DashboardNav', () => {
   it('shows hiring nav items when in hiring mode', () => {
     mockAppMode = {
       ...mockAppMode,
-      mode: 'hiring' as const,
+      mode: 'hiring',
       isOrgMember: true,
       canAccessHiringMode: true,
       orgInfo: { id: 'o', name: 'Org', role: 'admin', subscriptionStatus: 'active', subscriptionPlan: null, subscriptionEndsAt: null, trial: null },
@@ -105,7 +105,7 @@ describe('DashboardNav', () => {
   });
 
   it('falls back to practice nav if hiring mode but cannot access', () => {
-    mockAppMode = { ...mockAppMode, mode: 'hiring' as const, canAccessHiringMode: false };
+    mockAppMode = { ...mockAppMode, mode: 'hiring', canAccessHiringMode: false };
     render(<DashboardNav />);
     expect(screen.getByText('Problems')).toBeTruthy();
     expect(screen.getByText('Hiring')).toBeTruthy(); // Falls back to individual practice

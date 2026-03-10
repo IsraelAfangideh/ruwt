@@ -21,7 +21,7 @@ interface DashboardLayoutProps {
 export function DashboardLayout({ user, children, requireOrg }: DashboardLayoutProps) {
   const navigation = useNavigation();
   const c = useColors();
-  const { profile, profileLoading, isOrgMember, canAccessHiringMode } = useAppMode();
+  const { profile, profileLoading, isOrgMember } = useAppMode();
 
   const accountType = profile?.accountType ?? 'individual';
   const trial = profile?.trial ?? null;

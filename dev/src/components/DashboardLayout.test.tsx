@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { DashboardLayout } from './DashboardLayout';
 
 const mockNavigate = vi.fn();
@@ -38,8 +38,8 @@ vi.mock('@/lib/supabase/client', () => ({
 
 // Default mock for AppModeContext — individual, practice mode
 const mockSetMode = vi.fn();
-let mockAppMode = {
-  mode: 'practice' as const,
+let mockAppMode: any = {
+  mode: 'practice',
   setMode: mockSetMode,
   profile: { accountType: 'individual', trial: null, subscriptionStatus: 'none' },
   profileLoading: false,
@@ -63,7 +63,7 @@ describe('DashboardLayout', () => {
   afterEach(() => {
     vi.restoreAllMocks();
     mockAppMode = {
-      mode: 'practice' as const,
+      mode: 'practice',
       setMode: mockSetMode,
       profile: { accountType: 'individual', trial: null, subscriptionStatus: 'none' },
       profileLoading: false,

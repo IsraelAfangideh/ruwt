@@ -42,8 +42,8 @@ vi.mock('@/components/ui/Avatar', () => ({
 }));
 
 // Default mock: individual, practice mode
-let mockAppMode = {
-  mode: 'practice' as const,
+let mockAppMode: any = {
+  mode: 'practice',
   setMode: vi.fn(),
   profile: null,
   profileLoading: false,
@@ -66,7 +66,7 @@ const mockUser = {
 describe('UserNav', () => {
   afterEach(() => {
     mockAppMode = {
-      mode: 'practice' as const,
+      mode: 'practice',
       setMode: vi.fn(),
       profile: null,
       profileLoading: false,
@@ -119,7 +119,7 @@ describe('UserNav', () => {
   it('shows org name in mode indicator when in hiring mode', () => {
     mockAppMode = {
       ...mockAppMode,
-      mode: 'hiring' as const,
+      mode: 'hiring',
       isOrgMember: true,
       orgInfo: { id: 'o', name: 'Acme Corp', role: 'admin', subscriptionStatus: 'active', subscriptionPlan: null, subscriptionEndsAt: null, trial: null },
     };
