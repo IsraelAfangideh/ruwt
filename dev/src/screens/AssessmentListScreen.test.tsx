@@ -130,17 +130,17 @@ describe('AssessmentListScreen', () => {
     });
   });
 
-  it('shows Create Assessment button in header', async () => {
+  it('shows Build Assessment button in header', async () => {
     render(<AssessmentListScreen />);
     await waitFor(() => {
-      expect(screen.getAllByText('Create Assessment').length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText('Build Assessment').length).toBeGreaterThanOrEqual(1);
     });
   });
 
-  it('navigates to AssessmentBuilder when Create Assessment is clicked', async () => {
+  it('navigates to AssessmentBuilder when Build Assessment is clicked', async () => {
     render(<AssessmentListScreen />);
     await waitFor(() => {
-      const createBtns = screen.getAllByText('Create Assessment');
+      const createBtns = screen.getAllByText('Build Assessment');
       fireEvent.click(createBtns[0]);
       expect(mockNavigate).toHaveBeenCalledWith('AssessmentBuilder');
     });
@@ -313,14 +313,14 @@ describe('AssessmentListScreen', () => {
     await waitFor(() => expect(screen.queryByText('Some error')).toBeNull());
   });
 
-  it('navigates to AssessmentBuilder when Create Assessment is clicked in empty state', async () => {
+  it('navigates to AssessmentBuilder when Build Assessment is clicked in empty state', async () => {
     setupFetch({
       '/api/assessments': ok([]),
     });
     render(<AssessmentListScreen />);
     await waitFor(() => expect(screen.getByText('Get started in 3 steps')).toBeTruthy());
-    // Click the "Create Assessment" button in the empty state card
-    const btns = screen.getAllByText('Create Assessment');
+    // Click the "Build Assessment" button in the empty state card
+    const btns = screen.getAllByText('Build Assessment');
     // The last one is in the empty state card
     fireEvent.click(btns[btns.length - 1]);
     expect(mockNavigate).toHaveBeenCalledWith('AssessmentBuilder');

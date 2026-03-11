@@ -219,7 +219,7 @@ export function AssessmentListScreen() {
               </Button>
             )}
             <Button onPress={() => navigation.navigate('AssessmentBuilder' as never)}>
-              Create Assessment
+              Build Assessment
             </Button>
           </View>
         </View>
