@@ -78,7 +78,7 @@ describe('assessment-templates', () => {
 
     it('includes data structure challenges', () => {
       const t = getTemplateById('backend-dev')!;
-      expect(t.challengeTitles).toContain('LRU Cache');
+      expect(t.challengeTitles).toContain('LRU Cache (O(1))');
       expect(t.challengeTitles).toContain('Binary Search Tree');
     });
   });
