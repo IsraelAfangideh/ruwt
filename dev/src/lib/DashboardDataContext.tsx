@@ -151,6 +151,8 @@ const DashboardDataContext = createContext<DashboardDataContextType | undefined>
 export function DashboardDataProvider({ children }: { children: React.ReactNode }) {
   const { profile } = useAppMode();
   const [state, dispatch] = useReducer(reducer, initialState);
+  const stateRef = useRef(state);
+  stateRef.current = state;
   const abortControllers = useRef<Partial<Record<EndpointName, AbortController>>>({});
   const hasFetched = useRef(false);
   const backgroundInterval = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -198,12 +200,13 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
   const refreshAll = useCallback(async () => {
     const names = Object.keys(ENDPOINTS) as EndpointName[];
     const now = Date.now();
+    const current = stateRef.current;
     const toRefresh = names.filter(
-      (n) => now - state[n].lastFetchedAt >= MIN_REFETCH_INTERVAL,
+      (n) => now - current[n].lastFetchedAt >= MIN_REFETCH_INTERVAL,
     );
     if (toRefresh.length === 0) return;
     await Promise.allSettled(toRefresh.map((n) => fetchEndpoint(n, true)));
-  }, [fetchEndpoint, state]);
+  }, [fetchEndpoint]);
 
   // Initial prefetch when user is authenticated
   useEffect(() => {
@@ -221,7 +224,8 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
     backgroundInterval.current = setInterval(() => {
       const names = Object.keys(ENDPOINTS) as EndpointName[];
       const now = Date.now();
-      const stale = names.filter((n) => now - state[n].lastFetchedAt >= MIN_REFETCH_INTERVAL);
+      const current = stateRef.current;
+      const stale = names.filter((n) => now - current[n].lastFetchedAt >= MIN_REFETCH_INTERVAL);
       if (stale.length > 0) {
         Promise.allSettled(stale.map((n) => fetchEndpoint(n, true)));
       }
@@ -230,7 +234,7 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
     return () => {
       if (backgroundInterval.current) clearInterval(backgroundInterval.current);
     };
-  }, [profile, fetchEndpoint, state]);
+  }, [profile, fetchEndpoint]);
 
   // Cleanup abort controllers on unmount
   useEffect(() => {
