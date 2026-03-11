@@ -4,15 +4,14 @@ import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 
 const mockNavigate = vi.fn();
 const mockReset = vi.fn();
-const mockGetUser = vi.fn().mockResolvedValue({ data: { user: { id: 'u1' } } });
 
 vi.mock('@react-navigation/native', () => ({
   useNavigation: () => ({ navigate: mockNavigate, reset: mockReset }),
 }));
-vi.mock('@/lib/supabase/client', () => ({
-  createClient: () => ({
-    auth: { getUser: mockGetUser },
-  }),
+
+let mockAuthReturn = { user: { id: 'u1' } as any, loading: false };
+vi.mock('@/hooks/useAuthGuard', () => ({
+  useAuthGuard: () => mockAuthReturn,
 }));
 vi.mock('@/components/DashboardLayout', () => ({
   DashboardLayout: ({ children }: any) => <div data-testid="dashboard-layout">{children}</div>,
@@ -94,21 +93,28 @@ const { OrgManagementScreen } = await import('./OrgManagementScreen');
 describe('OrgManagementScreen', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockGetUser.mockResolvedValue({ data: { user: { id: 'u1' } } });
+    mockAuthReturn = { user: { id: 'u1' }, loading: false };
     setupFetch();
   });
 
-  it('renders loading state initially', () => {
+  it('renders nothing while auth is loading', () => {
+    mockAuthReturn = { user: null, loading: true };
+    const { container } = render(<OrgManagementScreen />);
+    expect(container.innerHTML).toBe('');
+  });
+
+  it('renders skeleton while data is loading', () => {
+    mockAuthReturn = { user: { id: 'u1' }, loading: false };
+    // No fetch responses set up, so dataLoading stays true
     const { container } = render(<OrgManagementScreen />);
     expect(container.querySelector('[data-testid="skeleton-table"]')).toBeTruthy();
   });
 
-  it('redirects to Login when user is not authenticated', async () => {
-    mockGetUser.mockResolvedValue({ data: { user: null } });
-    render(<OrgManagementScreen />);
-    await waitFor(() => {
-      expect(mockReset).toHaveBeenCalledWith({ index: 0, routes: [{ name: 'Login' }] });
-    });
+  it('renders nothing when user is not authenticated', () => {
+    mockAuthReturn = { user: null, loading: false };
+    const { container } = render(<OrgManagementScreen />);
+    // useAuthGuard handles redirect; component renders null for no user
+    expect(container.innerHTML).toBe('');
   });
 
   it('shows create org form when user has no organization', async () => {

@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { createClient } from '@/lib/supabase/client';
+import { useAuthGuard } from '@/hooks/useAuthGuard';
 import { TableSkeleton } from '@/components/ui/ScreenSkeletons';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
@@ -54,12 +54,11 @@ const ROLE_COLORS: Record<string, string> = {
 
 export function OrgManagementScreen() {
   const navigation = useNavigation();
+  const { user, loading: authLoading } = useAuthGuard();
   const c = useColors();
   const { showToast } = useToast();
-  const supabase = createClient();
 
-  const [user, setUser] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  const [dataLoading, setDataLoading] = useState(true);
   const [org, setOrg] = useState<Org | null>(null);
   const [members, setMembers] = useState<OrgMember[]>([]);
   const [invitations, setInvitations] = useState<OrgInvitation[]>([]);
@@ -98,14 +97,14 @@ export function OrgManagementScreen() {
         setOrgName(o.name);
         setOrgLogoUrl(o.logoUrl || '');
         setUserRole(o.role);
-        // Fetch members
-        const memRes = await fetch(`/api/orgs/${o.id}/members`);
+        // Fetch members, invitations, and trial status in parallel
+        const [memRes, invRes, trialRes] = await Promise.all([
+          fetch(`/api/orgs/${o.id}/members`),
+          fetch(`/api/orgs/${o.id}/invitations`),
+          fetch('/api/trial/status'),
+        ]);
         if (memRes.ok) setMembers(await memRes.json());
-        // Fetch invitations
-        const invRes = await fetch(`/api/orgs/${o.id}/invitations`);
         if (invRes.ok) setInvitations(await invRes.json());
-        // Fetch trial status
-        const trialRes = await fetch('/api/trial/status');
         if (trialRes.ok) {
           const trialData = await trialRes.json();
           if (trialData.trial) setTrial(trialData.trial);
@@ -115,18 +114,9 @@ export function OrgManagementScreen() {
   }, []);
 
   useEffect(() => {
-    const init = async () => {
-      const { data: { user: u } } = await supabase.auth.getUser();
-      if (!u) {
-        navigation.reset({ index: 0, routes: [{ name: 'Login' as never }] });
-        return;
-      }
-      setUser(u);
-      await fetchOrg();
-      setLoading(false);
-    };
-    init();
-  }, [navigation, supabase.auth, fetchOrg]);
+    if (authLoading || !user) return;
+    fetchOrg().finally(() => setDataLoading(false));
+  }, [authLoading, user, fetchOrg]);
 
   const handleCreateOrg = useCallback(async () => {
     if (!createName.trim()) return;
@@ -215,11 +205,11 @@ export function OrgManagementScreen() {
     await fetchOrg();
   }, [org, fetchOrg]);
 
-  if (loading) {
+  if (authLoading || !user) return null;
+
+  if (dataLoading) {
     return <TableSkeleton />;
   }
-
-  if (!user) return null;
 
   const isAdmin = userRole === 'owner' || userRole === 'admin';
 
