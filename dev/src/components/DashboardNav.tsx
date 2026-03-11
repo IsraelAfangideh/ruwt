@@ -39,9 +39,9 @@ export function DashboardNav() {
   } else if (mode === 'hiring' && canAccessHiringMode) {
     navItems = hiringNavItems;
   } else {
-    // Practice mode
+    // Practice mode — org members see plain practice nav; individuals see Hiring CTA
     navItems = isOrgMember
-      ? [...practiceNavItems, { name: 'Assessments' as const, label: 'Your Team', subtle: true }]
+      ? practiceNavItems
       : [...practiceNavItems, { name: 'Hiring' as const, label: 'Hiring', accent: true }];
   }
 

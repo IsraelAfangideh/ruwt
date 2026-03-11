@@ -104,7 +104,7 @@ describe('UserNav', () => {
     expect(screen.getByText('Sign out')).toBeTruthy();
   });
 
-  it('shows mode indicator and org settings for org members', () => {
+  it('hides mode indicator and org settings for org members in practice mode', () => {
     mockAppMode = {
       ...mockAppMode,
       isOrgMember: true,
@@ -112,11 +112,11 @@ describe('UserNav', () => {
     };
     render(<UserNav user={mockUser} />);
     fireEvent.click(screen.getByTestId('avatar'));
-    expect(screen.getByText('Practice Mode')).toBeTruthy();
-    expect(screen.getByText('Org Settings')).toBeTruthy();
+    expect(screen.queryByText('Practice Mode')).toBeNull();
+    expect(screen.queryByText('Org Settings')).toBeNull();
   });
 
-  it('shows org name in mode indicator when in hiring mode', () => {
+  it('shows org name and org settings in hiring mode', () => {
     mockAppMode = {
       ...mockAppMode,
       mode: 'hiring',
@@ -126,6 +126,7 @@ describe('UserNav', () => {
     render(<UserNav user={mockUser} />);
     fireEvent.click(screen.getByTestId('avatar'));
     expect(screen.getByText('Acme Corp')).toBeTruthy();
+    expect(screen.getByText('Org Settings')).toBeTruthy();
   });
 
   it('hides org settings for non-org members', () => {

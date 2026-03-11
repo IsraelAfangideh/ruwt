@@ -55,9 +55,9 @@ export function UserNav({ user }: UserNavProps) {
           <View style={[styles.menu, { backgroundColor: c.card, borderColor: c.border }]} accessibilityRole="menu">
             <Text style={[styles.menuName, { color: c.text }]}>{user.user_metadata?.name || 'User'}</Text>
             <Text style={[styles.menuEmail, { color: c.mutedForeground }]} numberOfLines={1}>{user.email}</Text>
-            {isOrgMember && orgInfo && (
+            {mode === 'hiring' && isOrgMember && orgInfo && (
               <Text style={[styles.menuMode, { color: c.textMuted }]} testID="user-nav-mode">
-                {mode === 'hiring' ? orgInfo.name : 'Practice Mode'}
+                {orgInfo.name}
               </Text>
             )}
             <Pressable
@@ -67,7 +67,7 @@ export function UserNav({ user }: UserNavProps) {
             >
               <Text style={{ color: c.text, fontSize: fontSizes.sm }}>Profile</Text>
             </Pressable>
-            {isOrgMember && (
+            {mode === 'hiring' && isOrgMember && (
               <Pressable
                 style={[styles.menuItem, { borderTopColor: c.border }]}
                 onPress={() => { setOpen(false); navigation.navigate('OrgManagement' as never); }}

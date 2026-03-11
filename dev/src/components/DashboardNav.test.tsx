@@ -67,11 +67,12 @@ describe('DashboardNav', () => {
     expect(screen.queryByText('Assessments')).toBeNull();
   });
 
-  it('shows "Your Team" link for org members in practice mode', () => {
+  it('hides Hiring CTA for org members in practice mode (plain practice nav)', () => {
     mockAppMode = { ...mockAppMode, isOrgMember: true, orgInfo: { id: 'o', name: 'Org', role: 'admin', subscriptionStatus: 'active', subscriptionPlan: null, subscriptionEndsAt: null, trial: null } };
     render(<DashboardNav />);
-    expect(screen.getByText('Your Team')).toBeTruthy();
+    expect(screen.queryByText('Your Team')).toBeNull(); // No team link in practice mode
     expect(screen.queryByText('Hiring')).toBeNull(); // No accent CTA when already in org
+    expect(screen.getByText('Problems')).toBeTruthy(); // Still shows practice items
   });
 
   it('shows hiring nav items when in hiring mode', () => {
