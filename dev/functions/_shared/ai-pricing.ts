@@ -26,6 +26,7 @@ const MODEL_PRICING: Record<string, ModelPricing> = {
     tier: 'reasoning',
     displayName: 'GPT-OSS 120B',
     description: 'OpenAI open-weight 120B, strongest reasoning',
+    supportsTools: true,
   },
   '@cf/qwen/qwq-32b': {
     input: 0.66,
@@ -60,7 +61,7 @@ const MODEL_PRICING: Record<string, ModelPricing> = {
     provider: 'cloudflare',
     tier: 'premium',
     displayName: 'Mistral Small 3.1',
-    description: 'Mistral 24B, 128k context window',
+    description: 'Mistral 24B, 128k context, strong tool use',
     supportsTools: true,
   },
   '@cf/meta/llama-3.3-70b-instruct-fp8-fast': {
@@ -80,7 +81,7 @@ const MODEL_PRICING: Record<string, ModelPricing> = {
     provider: 'cloudflare',
     tier: 'mid',
     displayName: 'Llama 4 Scout',
-    description: 'Llama 4 MoE with 16 experts',
+    description: 'Llama 4 MoE with 16 experts, native tool use',
     supportsTools: true,
   },
   '@cf/google/gemma-3-12b-it': {
@@ -117,6 +118,7 @@ const MODEL_PRICING: Record<string, ModelPricing> = {
     tier: 'budget',
     displayName: 'Qwen3 30B MoE',
     description: 'Qwen3 MoE, ultra-cheap for its size',
+    supportsTools: true,
   },
   '@cf/zai-org/glm-4.7-flash': {
     input: 0.06,
@@ -124,7 +126,8 @@ const MODEL_PRICING: Record<string, ModelPricing> = {
     provider: 'cloudflare',
     tier: 'budget',
     displayName: 'GLM-4.7 Flash',
-    description: '131k context, fast and cheap',
+    description: '131k context, built for multi-turn tool calling',
+    supportsTools: true,
   },
   '@cf/meta/llama-3.1-8b-instruct': {
     input: 0.01,
@@ -143,7 +146,8 @@ const MODEL_PRICING: Record<string, ModelPricing> = {
     provider: 'cloudflare',
     tier: 'micro',
     displayName: 'Granite Micro',
-    description: 'Ultra-cheap, simple tasks only',
+    description: 'Ultra-cheap, agentic-capable',
+    supportsTools: true,
   },
   '@cf/meta/llama-3.2-1b-instruct': {
     input: 0.027,

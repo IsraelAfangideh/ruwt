@@ -28,6 +28,7 @@ const MODELS: ModelInfo[] = [
     output: 0.75,
     costIndicator: '$$$$$',
     description: 'OpenAI open-weight 120B, strongest reasoning',
+    supportsTools: true,
   },
   {
     id: '@cf/qwen/qwq-32b',
@@ -66,7 +67,7 @@ const MODELS: ModelInfo[] = [
     input: 0.35,
     output: 0.56,
     costIndicator: '$$$',
-    description: 'Mistral 24B, 128k context window',
+    description: 'Mistral 24B, 128k context, strong tool use',
     supportsTools: true,
   },
   {
@@ -88,7 +89,7 @@ const MODELS: ModelInfo[] = [
     input: 0.27,
     output: 0.85,
     costIndicator: '$$',
-    description: 'Llama 4 MoE with 16 experts',
+    description: 'Llama 4 MoE with 16 experts, native tool use',
     supportsTools: true,
   },
   {
@@ -129,6 +130,7 @@ const MODELS: ModelInfo[] = [
     output: 0.34,
     costIndicator: '$',
     description: 'Qwen3 MoE, ultra-cheap for its size',
+    supportsTools: true,
   },
   {
     id: '@cf/zai-org/glm-4.7-flash',
@@ -137,7 +139,8 @@ const MODELS: ModelInfo[] = [
     input: 0.06,
     output: 0.40,
     costIndicator: '$',
-    description: '131k context, fast and cheap',
+    description: '131k context, built for multi-turn tool calling',
+    supportsTools: true,
   },
   {
     id: '@cf/meta/llama-3.1-8b-instruct',
@@ -158,7 +161,8 @@ const MODELS: ModelInfo[] = [
     input: 0.017,
     output: 0.112,
     costIndicator: '\u00A2',
-    description: 'Ultra-cheap, simple tasks only',
+    description: 'Ultra-cheap, agentic-capable',
+    supportsTools: true,
   },
   {
     id: '@cf/meta/llama-3.2-1b-instruct',

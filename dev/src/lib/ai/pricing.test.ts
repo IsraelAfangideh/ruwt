@@ -256,12 +256,12 @@ describe('pricing', () => {
       }
     });
 
-    it('supportsTools is only set on specific models', () => {
+    it('supportsTools is set on models across tiers', () => {
       const withTools = getAllModels().filter((m) => m.supportsTools);
       expect(withTools.length).toBeGreaterThan(0);
-      // Every model that declares tool support should be in the premium, mid, or budget tier
+      // Tool support spans all tiers (reasoning GPT-OSS 120B through micro Granite)
       for (const m of withTools) {
-        expect(['premium', 'mid', 'budget']).toContain(m.tier);
+        expect(['reasoning', 'premium', 'mid', 'budget', 'micro']).toContain(m.tier);
       }
     });
   });

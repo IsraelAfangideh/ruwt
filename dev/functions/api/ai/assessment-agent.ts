@@ -28,10 +28,11 @@ const requestSchema = z.object({
   conversationId: z.string().nullish(),
 });
 
-// Primary model for the agent — must support native function calling
-const AGENT_MODEL = '@cf/meta/llama-3.3-70b-instruct-fp8-fast';
+// Primary model for the agent — must support native function calling.
+// GPT-OSS 120B has the most reliable tool use; Mistral Small 3.1 as fallback.
+const AGENT_MODEL = '@cf/openai/gpt-oss-120b';
 const MAX_TOOL_ITERATIONS = 8;
-const AI_CALL_TIMEOUT_MS = 25_000; // 25s timeout per AI call (within 30s CF Pages limit)
+const AI_CALL_TIMEOUT_MS = 30_000; // 30s timeout per individual AI call
 const MAX_CONVERSATION_MESSAGES = 20; // Keep last N messages to avoid blowing context window
 
 // Tools that require an assessmentId — auto-create draft if needed
@@ -65,7 +66,7 @@ async function callWithTools(
   if (!accountId || !apiToken) throw new Error('Cloudflare AI credentials not configured');
 
   // Build fallback chain: primary model, then tool-capable fallbacks
-  const fallbacks = getToolCapableFallbackChain('premium');
+  const fallbacks = getToolCapableFallbackChain('reasoning');
   const models = [modelId, ...fallbacks.filter((m) => m !== modelId)];
 
   for (const model of models) {
