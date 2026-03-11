@@ -67,6 +67,13 @@ export function UserNav({ user }: UserNavProps) {
             >
               <Text style={{ color: c.text, fontSize: fontSizes.sm }}>Profile</Text>
             </Pressable>
+            <Pressable
+              style={[styles.menuItem, { borderTopColor: c.border }]}
+              onPress={() => { setOpen(false); navigation.navigate('Bookmarks' as never); }}
+              accessibilityRole="menuitem"
+            >
+              <Text style={{ color: c.text, fontSize: fontSizes.sm }}>Bookmarks</Text>
+            </Pressable>
             {mode === 'hiring' && isOrgMember && (
               <Pressable
                 style={[styles.menuItem, { borderTopColor: c.border }]}

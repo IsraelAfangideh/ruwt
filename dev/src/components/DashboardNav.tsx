@@ -6,7 +6,7 @@ import { useColors } from '@/theme';
 import { spacing, fontSizes, fontFamily } from '@/theme/tokens';
 
 type NavItem = {
-  name: 'Problems' | 'Discuss' | 'Leaderboard' | 'Profile' | 'Bookmarks' | 'Assessments' | 'Hiring' | 'OrgManagement';
+  name: 'Problems' | 'Discuss' | 'Leaderboard' | 'Assessments' | 'Hiring' | 'OrgManagement';
   label: string;
   accent?: boolean;
   subtle?: boolean;
@@ -16,8 +16,6 @@ const practiceNavItems: NavItem[] = [
   { name: 'Problems', label: 'Problems' },
   { name: 'Discuss', label: 'Discuss' },
   { name: 'Leaderboard', label: 'Leaderboard' },
-  { name: 'Profile', label: 'My Profile' },
-  { name: 'Bookmarks', label: 'Bookmarks' },
 ];
 
 const hiringNavItems: NavItem[] = [

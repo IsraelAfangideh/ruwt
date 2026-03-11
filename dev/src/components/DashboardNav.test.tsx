@@ -62,7 +62,8 @@ describe('DashboardNav', () => {
     expect(screen.getByText('Problems')).toBeTruthy();
     expect(screen.getByText('Discuss')).toBeTruthy();
     expect(screen.getByText('Leaderboard')).toBeTruthy();
-    expect(screen.getByText('My Profile')).toBeTruthy();
+    expect(screen.queryByText('My Profile')).toBeNull(); // Moved to profile menu
+    expect(screen.queryByText('Bookmarks')).toBeNull(); // Moved to profile menu
     expect(screen.getByText('Hiring')).toBeTruthy(); // CTA for non-org users
     expect(screen.queryByText('Assessments')).toBeNull();
   });

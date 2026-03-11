@@ -100,6 +100,7 @@ describe('UserNav', () => {
     expect(screen.getByText('Test User')).toBeTruthy();
     expect(screen.getByText('test@ruwt.dev')).toBeTruthy();
     expect(screen.getByText('Profile')).toBeTruthy();
+    expect(screen.getByText('Bookmarks')).toBeTruthy();
     expect(screen.getByText('Settings')).toBeTruthy();
     expect(screen.getByText('Sign out')).toBeTruthy();
   });
@@ -141,6 +142,13 @@ describe('UserNav', () => {
     fireEvent.click(screen.getByTestId('avatar'));
     fireEvent.click(screen.getByText('Profile'));
     expect(mockNavigate).toHaveBeenCalledWith('Profile');
+  });
+
+  it('navigates to Bookmarks when clicked', () => {
+    render(<UserNav user={mockUser} />);
+    fireEvent.click(screen.getByTestId('avatar'));
+    fireEvent.click(screen.getByText('Bookmarks'));
+    expect(mockNavigate).toHaveBeenCalledWith('Bookmarks');
   });
 
   it('navigates to Settings when clicked', () => {

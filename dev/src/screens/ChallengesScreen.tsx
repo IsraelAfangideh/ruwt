@@ -1,5 +1,6 @@
 import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
-import { View, Text, ActivityIndicator, StyleSheet, Pressable, TextInput, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, Pressable, TextInput, ScrollView } from 'react-native';
+import { CardGridSkeleton } from '@/components/ui/ScreenSkeletons';
 import { useNavigation } from '@react-navigation/native';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { Card, CardContent } from '@/components/ui/Card';
@@ -250,11 +251,7 @@ export function ChallengesScreen() {
   }, [filtered, progressStats.solved]);
 
   if (authLoading || !user) {
-    return (
-      <View style={[styles.center, { backgroundColor: c.bg }]}>
-        <ActivityIndicator size="large" color={c.accent} />
-      </View>
-    );
+    return <CardGridSkeleton />;
   }
 
   const hasActiveFilters = activeLang !== 'all' || activeCategory !== 'all' || activeDifficulty !== 'all' || searchQuery.trim() !== '' || statusFilter !== 'all';
@@ -263,11 +260,7 @@ export function ChallengesScreen() {
   const progressPct = displayStats.total > 0 ? Math.round((displayStats.solved / displayStats.total) * 100) : 0;
   return (
     <DashboardLayout user={user}>
-      {loading && (
-        <View style={[styles.center, { paddingVertical: spacing['2xl'] }]}>
-          <ActivityIndicator size="large" color={c.accent} />
-        </View>
-      )}
+      {loading && <CardGridSkeleton />}
       {!loading && <>
       {/* Header with title + progress */}
       <View style={styles.headerSection}>
@@ -587,8 +580,7 @@ export function ChallengesScreen() {
           {grouped.map((group) => (
             <View key={group.tier}>
               <View style={styles.tierSection}>
-                {/* @ts-ignore position: sticky is web-only */}
-                <View style={[styles.tierHeader, { backgroundColor: c.bg }]}>
+                <View style={styles.tierHeader}>
                   <Text style={[styles.tierTitle, { color: c.text }]} accessibilityRole="header" aria-level={2}>{group.meta.label}</Text>
                   <Text style={[styles.tierDesc, { color: c.textMuted }]}>{group.meta.description}</Text>
                 </View>
@@ -601,8 +593,7 @@ export function ChallengesScreen() {
               {/* Insert "Where LLMs Struggle" after onboarding tier */}
               {group.tier === 'onboarding' && llmStruggleChallenges.length > 0 && (
                 <View style={styles.tierSection}>
-                  {/* @ts-ignore position: sticky is web-only */}
-                  <View style={[styles.tierHeader, { backgroundColor: c.bg }]}>
+                  <View style={styles.tierHeader}>
                     <Text style={[styles.tierTitle, { color: c.text }]} accessibilityRole="header" aria-level={2}>Where LLMs Struggle</Text>
                     <Text style={[styles.tierDesc, { color: c.textMuted }]}>
                       These challenges push the limits of AI. Your prompting skills matter here.
@@ -813,10 +804,6 @@ const styles = StyleSheet.create({
   // Tier sections
   tierSection: { marginBottom: spacing.xl },
   tierHeader: {
-    // @ts-ignore web-only sticky
-    position: 'sticky',
-    top: 140,
-    zIndex: 10,
     paddingTop: spacing.sm,
     paddingBottom: spacing.xs,
   },
