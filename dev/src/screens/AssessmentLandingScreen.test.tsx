@@ -83,7 +83,7 @@ describe('AssessmentLandingScreen', () => {
     mockFetch.mockReturnValueOnce(new Promise(() => {}));
     const { AssessmentLandingScreen } = await import('./AssessmentLandingScreen');
     const { container } = render(<AssessmentLandingScreen />);
-    expect(container.querySelector('svg') || container.textContent).toBeTruthy();
+    expect(container.querySelector('[data-testid="skeleton-detail"]')).not.toBeNull();
   });
 
   /* ── Preview loaded ────────────────────────────────────────────── */

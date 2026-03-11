@@ -2,7 +2,8 @@
  * CertificateScreen: Public certificate verification page at /cert/:shareToken
  */
 import { useState, useEffect } from 'react';
-import { View, Text, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
+import { DetailCardSkeleton } from '@/components/ui/ScreenSkeletons';
 import { useRoute } from '@react-navigation/native';
 import { useColors } from '@/theme';
 import { spacing, fontSizes, fontFamily } from '@/theme/tokens';
@@ -57,11 +58,7 @@ export function CertificateScreen() {
   }, [shareToken]);
 
   if (loading) {
-    return (
-      <View style={[styles.center, { backgroundColor: c.bg }]}>
-        <ActivityIndicator size="large" color={c.accent} />
-      </View>
-    );
+    return <DetailCardSkeleton />;
   }
 
   if (error || !cert) {

@@ -2,11 +2,12 @@
  * ReplayViewer: Modal overlay showing the conversation replay for a challenge attempt.
  */
 import { useState, useEffect } from 'react';
-import { View, Text, ScrollView, ActivityIndicator, Pressable, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, Pressable, StyleSheet } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useColors } from '@/theme';
 import { spacing, fontSizes, fontFamily } from '@/theme/tokens';
 import { getModelById, tierColor, formatCostFromHundredths } from '@/lib/ai/pricing';
+import { SplitPaneSkeleton } from '@/components/ui/ScreenSkeletons';
 
 interface ReplayMessage {
   role: string;
@@ -113,9 +114,7 @@ export function ReplayViewer({ attemptId, onClose }: ReplayViewerProps) {
         </View>
 
         {loading ? (
-          <View style={styles.center}>
-            <ActivityIndicator size="large" color={c.accent} />
-          </View>
+          <SplitPaneSkeleton />
         ) : error ? (
           <View style={styles.center}>
             <Text style={{ color: c.destructive }}>{error}</Text>

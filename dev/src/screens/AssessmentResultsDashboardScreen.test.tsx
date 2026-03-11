@@ -138,7 +138,7 @@ describe('AssessmentResultsDashboardScreen', () => {
 
   it('renders loading state initially', () => {
     const { container } = render(<AssessmentResultsDashboardScreen />);
-    expect(container.querySelector('svg') || container.textContent).toBeTruthy();
+    expect(container.querySelector('[data-testid="skeleton-table"]')).toBeTruthy();
   });
 
   it('redirects to Login when user is not authenticated', async () => {

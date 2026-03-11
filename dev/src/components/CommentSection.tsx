@@ -7,6 +7,7 @@ import { View, Text, TextInput, Pressable, StyleSheet, ActivityIndicator } from 
 import { useNavigation } from '@react-navigation/native';
 import { useColors } from '@/theme';
 import { spacing, fontSizes, fontFamily } from '@/theme/tokens';
+import { CommentListSkeleton } from '@/components/ui/ScreenSkeletons';
 import { ReactionBar } from './ReactionBar';
 import { timeAgo } from '@/lib/utils';
 import { formatCostFromHundredths } from '@/lib/ai/pricing';
@@ -258,7 +259,7 @@ export function CommentSection({ targetType, targetId: _targetId, apiPath, promp
 
       {/* Comments list */}
       {loading ? (
-        <ActivityIndicator style={{ marginTop: spacing.md }} />
+        <CommentListSkeleton />
       ) : topLevel.length === 0 ? (
         <Text style={[styles.empty, { color: c.textMuted }]}>
           No comments yet. Be the first!

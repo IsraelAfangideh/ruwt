@@ -3,7 +3,8 @@
  * Route: /bookmarks
  */
 import { useState } from 'react';
-import { View, Text, ScrollView, ActivityIndicator, Pressable, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, Pressable, StyleSheet } from 'react-native';
+import { CardGridSkeleton } from '@/components/ui/ScreenSkeletons';
 import { useNavigation } from '@react-navigation/native';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { Card, CardContent } from '@/components/ui/Card';
@@ -57,11 +58,7 @@ export function BookmarksScreen() {
   };
 
   if (authLoading || !user) {
-    return (
-      <View style={[styles.center, { backgroundColor: c.bg }]}>
-        <ActivityIndicator size="large" color={c.accent} />
-      </View>
-    );
+    return <CardGridSkeleton />;
   }
 
   return (
@@ -84,9 +81,7 @@ export function BookmarksScreen() {
         </View>
 
         {loading ? (
-          <View style={styles.loadingWrap}>
-            <ActivityIndicator size="small" color={c.accent} />
-          </View>
+          <CardGridSkeleton cards={3} />
         ) : bookmarks.length === 0 ? (
           <Card style={styles.emptyCard}>
             <CardContent style={styles.emptyContent}>

@@ -24,7 +24,7 @@ vi.mock('@react-navigation/native', () => ({
 
 vi.mock('@/theme', () => ({
   useColors: () => ({
-    text: '#000', textMuted: '#888', textSubtle: '#aaa', accent: '#c9a962',
+    bg: '#fff', text: '#000', textMuted: '#888', textSubtle: '#aaa', accent: '#c9a962',
     border: '#ccc', card: '#fff', destructive: '#b06060', muted: '#ddd',
   }),
 }));
@@ -33,6 +33,7 @@ vi.mock('@/theme/tokens', () => ({
   spacing: { xs: 4, sm: 8, md: 16, lg: 24, xl: 32 },
   fontSizes: { xs: 12, sm: 14, md: 16, lg: 18 },
   fontFamily: { body: 'sans-serif' },
+  radii: { sm: 4, md: 8, lg: 12, xl: 16, full: 9999 },
 }));
 
 vi.mock('@/lib/ai/pricing', () => ({
@@ -51,9 +52,10 @@ describe('ReplayViewer', () => {
 
   it('shows loading state initially', () => {
     vi.spyOn(global, 'fetch').mockReturnValue(new Promise(() => {}));
-    render(<ReplayViewer attemptId="att-1" onClose={mockOnClose} />);
+    const { container } = render(<ReplayViewer attemptId="att-1" onClose={mockOnClose} />);
     expect(screen.getByText('Loading Replay...')).toBeTruthy();
-    expect(screen.getByTestId('spinner')).toBeTruthy();
+    // Skeleton renders with testID which maps to testid attr in this mock context
+    expect(container.querySelector('[testid="skeleton-split-pane"]')).not.toBeNull();
   });
 
   it('shows error message when API fails', async () => {

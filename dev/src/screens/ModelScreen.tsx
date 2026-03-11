@@ -3,7 +3,8 @@
  * Route: /models/:modelId
  */
 import { useEffect, useState } from 'react';
-import { View, Text, ActivityIndicator, ScrollView, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, StyleSheet } from 'react-native';
+import { DetailCardSkeleton } from '@/components/ui/ScreenSkeletons';
 import { useRoute } from '@react-navigation/native';
 import { useColors } from '@/theme';
 import { spacing, fontSizes, fontFamily } from '@/theme/tokens';
@@ -59,11 +60,7 @@ export function ModelScreen() {
   }, [modelId]);
 
   if (loading) {
-    return (
-      <View style={[styles.center, { backgroundColor: c.bg }]}>
-        <ActivityIndicator size="large" />
-      </View>
-    );
+    return <DetailCardSkeleton />;
   }
 
   if (error || !model || !stats) {

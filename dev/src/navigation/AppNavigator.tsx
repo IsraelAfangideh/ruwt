@@ -1,7 +1,8 @@
 import { lazy, Suspense, useEffect, useRef, Component } from 'react';
 import type { ReactNode, ErrorInfo } from 'react';
 import * as Sentry from '@sentry/react';
-import { View, Text, ActivityIndicator, Pressable, StyleSheet } from 'react-native';
+import { View, Text, Pressable, StyleSheet } from 'react-native';
+import { CardGridSkeleton } from '@/components/ui/ScreenSkeletons';
 import { NavigationContainer, createNavigationContainerRef } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import type { RootStackParamList } from './types';
@@ -67,11 +68,7 @@ const ModelScreen = lazyWithRetry('ModelDetail', () => import('@/screens/ModelSc
 const NotFoundScreen = lazyWithRetry('NotFound', () => import('@/screens/NotFoundScreen'), m => m.NotFoundScreen);
 
 function LoadingFallback() {
-  return (
-    <View style={styles.loading}>
-      <ActivityIndicator size="large" color="#c9a962" />
-    </View>
-  );
+  return <CardGridSkeleton />;
 }
 
 class ChunkErrorBoundary extends Component<
@@ -207,12 +204,6 @@ export function AppNavigator() {
 }
 
 const styles = StyleSheet.create({
-  loading: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#f5f3f0',
-  },
   errorWrap: {
     flex: 1,
     justifyContent: 'center',

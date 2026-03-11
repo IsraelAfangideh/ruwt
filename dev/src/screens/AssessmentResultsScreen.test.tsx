@@ -71,7 +71,7 @@ describe('AssessmentResultsScreen', () => {
   it('renders loading state initially', () => {
     vi.stubGlobal('fetch', vi.fn().mockReturnValue(new Promise(() => {})));
     const { container } = render(<AssessmentResultsScreen />);
-    expect(container.querySelector('svg') || container.textContent).toBeTruthy();
+    expect(container.querySelector('[data-testid="skeleton-detail"]')).not.toBeNull();
   });
 
   it('renders results data after loading', async () => {

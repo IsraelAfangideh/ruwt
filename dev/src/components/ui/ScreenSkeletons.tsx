@@ -11,7 +11,7 @@ import { Skeleton, SkeletonLines } from './Skeleton';
 /*  CardGridSkeleton                                                   */
 /*  Title + subtitle + grid of card skeletons                          */
 /* ------------------------------------------------------------------ */
-export function CardGridSkeleton({ cards = 6 }: { cards?: number } = {}) {
+export function CardGridSkeleton({ cards = 6 }: { cards?: number }) {
   const c = useColors();
   return (
     <View testID="skeleton-card-grid" style={[styles.fill, { backgroundColor: c.bg }]}>
@@ -40,7 +40,7 @@ export function CardGridSkeleton({ cards = 6 }: { cards?: number } = {}) {
 /*  TableSkeleton                                                      */
 /*  Title + header row + data rows with avatar circles                 */
 /* ------------------------------------------------------------------ */
-export function TableSkeleton({ rows = 8 }: { rows?: number } = {}) {
+export function TableSkeleton({ rows = 8 }: { rows?: number }) {
   const c = useColors();
   return (
     <View testID="skeleton-table" style={[styles.fill, { backgroundColor: c.bg }]}>
@@ -162,7 +162,7 @@ export function SplitPaneSkeleton() {
 /*  FormSkeleton                                                       */
 /*  Title + form fields (label + input rect) + button                  */
 /* ------------------------------------------------------------------ */
-export function FormSkeleton({ fields = 4 }: { fields?: number } = {}) {
+export function FormSkeleton({ fields = 4 }: { fields?: number }) {
   const c = useColors();
   return (
     <View testID="skeleton-form" style={[styles.fill, { backgroundColor: c.bg }]}>
@@ -185,7 +185,7 @@ export function FormSkeleton({ fields = 4 }: { fields?: number } = {}) {
 /*  CommentListSkeleton                                                */
 /*  Avatar circles + name lines + content lines                        */
 /* ------------------------------------------------------------------ */
-export function CommentListSkeleton({ count = 3 }: { count?: number } = {}) {
+export function CommentListSkeleton({ count = 3 }: { count?: number }) {
   return (
     <View testID="skeleton-comments">
       {Array.from({ length: count }).map((_, i) => (

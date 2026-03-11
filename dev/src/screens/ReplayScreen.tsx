@@ -20,6 +20,7 @@ import { useDocumentMeta } from '@/hooks/useDocumentMeta';
 import { useIsDesktop } from '@/hooks/useWindowWidth';
 import { CommentSection } from '@/components/CommentSection';
 import { BookmarkButton } from '@/components/BookmarkButton';
+import { SplitPaneSkeleton } from '@/components/ui/ScreenSkeletons';
 import '@/lib/monaco-init';
 
 const MonacoEditor = React.lazy(() => import('@monaco-editor/react'));
@@ -186,11 +187,7 @@ export function ReplayScreen() {
   };
 
   if (loading) {
-    return (
-      <View style={[styles.center, { backgroundColor: c.bg }]}>
-        <ActivityIndicator size="large" color={c.accent} />
-      </View>
-    );
+    return <SplitPaneSkeleton />;
   }
 
   if (error) {

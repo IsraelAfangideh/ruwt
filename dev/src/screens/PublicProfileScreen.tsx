@@ -5,7 +5,8 @@
  * similar solvers, social share buttons.
  */
 import { useState, useEffect } from 'react';
-import { View, Text, ScrollView, ActivityIndicator, Pressable, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, Pressable, StyleSheet } from 'react-native';
+import { ProfileSkeleton } from '@/components/ui/ScreenSkeletons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Avatar } from '@/components/ui/Avatar';
 import { Card } from '@/components/ui/Card';
@@ -114,11 +115,7 @@ export function PublicProfileScreen() {
   }, [username]);
 
   if (loading) {
-    return (
-      <View style={[styles.center, { backgroundColor: c.bg }]}>
-        <ActivityIndicator size="large" color={c.accent} />
-      </View>
-    );
+    return <ProfileSkeleton />;
   }
 
   if (error || !data) {

@@ -59,8 +59,7 @@ describe('ModelsScreen', () => {
   it('renders loading state initially', () => {
     setupFetch();
     const { container } = render(<ModelsScreen />);
-    // ActivityIndicator renders as svg or animated view
-    expect(container.querySelector('svg') || container.textContent).toBeTruthy();
+    expect(container.querySelector('[data-testid="skeleton-card-grid"]')).not.toBeNull();
   });
 
   it('renders models after fetch', async () => {

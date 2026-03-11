@@ -81,7 +81,7 @@ describe('GuestArenaScreen', () => {
   it('renders loading state initially', async () => {
     vi.stubGlobal('fetch', vi.fn().mockReturnValue(new Promise(() => {})));
     const { container } = render(<GuestArenaScreen />);
-    expect(container.querySelector('svg') || container.textContent).toBeTruthy();
+    expect(container.querySelector('[data-testid="skeleton-split-pane"]')).toBeTruthy();
   });
 
   it('renders error when challenge not found (404)', async () => {

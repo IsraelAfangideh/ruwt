@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { View, Text, ActivityIndicator, ScrollView, StyleSheet, Pressable } from 'react-native';
+import { TableSkeleton } from '@/components/ui/ScreenSkeletons';
 import { useNavigation } from '@react-navigation/native';
 import { DashboardLayout } from '@/components/DashboardLayout';
 
@@ -121,22 +122,14 @@ export function LeaderboardScreen() {
   };
 
   if (authLoading || !user) {
-    return (
-      <View style={[styles.center, { backgroundColor: c.bg }]}>
-        <ActivityIndicator size="large" color={c.accent} />
-      </View>
-    );
+    return <TableSkeleton />;
   }
 
   return (
     <DashboardLayout user={user}>
       <Text style={[styles.title, { color: c.text }]}>Leaderboard</Text>
 
-      {loading && (
-        <View style={[styles.center, { paddingVertical: spacing['2xl'] }]}>
-          <ActivityIndicator size="large" color={c.accent} />
-        </View>
-      )}
+      {loading && <TableSkeleton />}
       {!loading && <>
 
       {/* Period tabs */}

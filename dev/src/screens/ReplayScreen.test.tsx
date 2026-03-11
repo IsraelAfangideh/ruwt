@@ -55,7 +55,7 @@ describe('ReplayScreen', () => {
     vi.stubGlobal('fetch', vi.fn().mockReturnValue(new Promise(() => {})));
     const { ReplayScreen } = await import('./ReplayScreen');
     const { container } = render(<ReplayScreen />);
-    expect(container.querySelector('svg') || container.textContent).toBeTruthy();
+    expect(container.querySelector('[data-testid="skeleton-split-pane"]')).toBeTruthy();
   });
 
   it('renders replay data after loading', async () => {

@@ -72,7 +72,7 @@ describe('ModelScreen', () => {
   it('renders loading state initially', () => {
     setupFetch();
     const { container } = render(<ModelScreen />);
-    expect(container.querySelector('svg') || container.textContent).toBeTruthy();
+    expect(container.querySelector('[data-testid="skeleton-detail"]')).not.toBeNull();
   });
 
   it('renders model detail after fetch', async () => {

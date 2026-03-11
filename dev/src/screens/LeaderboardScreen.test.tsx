@@ -146,10 +146,10 @@ describe('LeaderboardScreen', () => {
 
   it('renders loading state initially', () => {
     // Set leaderboard status to 'loading' to show the loading spinner
-    mockDashboardState = { ...mockDashboardState, leaderboard: { data: [], status: 'loading', lastFetchedAt: 0 } };
     setupFetch();
+    mockDashboardState = { ...mockDashboardState, leaderboard: { data: [], status: 'loading', lastFetchedAt: 0 } };
     const { container } = render(<LeaderboardScreen />);
-    expect(container.querySelector('svg') || container.textContent).toBeTruthy();
+    expect(container.querySelector('[data-testid="skeleton-table"]')).toBeTruthy();
   });
 
   it('shows loading state when auth is loading (redirect handled by useAuthGuard)', async () => {
@@ -157,7 +157,7 @@ describe('LeaderboardScreen', () => {
     setupFetch();
     const { container } = render(<LeaderboardScreen />);
     // Should show loading spinner since authLoading is true
-    expect(container.querySelector('svg') || container.textContent).toBeTruthy();
+    expect(container.querySelector('[data-testid="skeleton-table"]')).toBeTruthy();
   });
 
   it('renders leaderboard title after loading', async () => {

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { View, Text, ScrollView, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, StyleSheet } from 'react-native';
+import { DetailCardSkeleton } from '@/components/ui/ScreenSkeletons';
 import { useRoute } from '@react-navigation/native';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
@@ -77,11 +78,7 @@ export function AssessmentResultsScreen() {
   }, [params.shareToken]);
 
   if (loading) {
-    return (
-      <View style={[styles.center, { backgroundColor: c.bg }]}>
-        <ActivityIndicator size="large" color={c.accent} />
-      </View>
-    );
+    return <DetailCardSkeleton />;
   }
 
   if (error || !data) {

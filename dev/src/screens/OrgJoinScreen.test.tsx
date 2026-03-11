@@ -242,6 +242,6 @@ describe('OrgJoinScreen', () => {
     mockGetUser.mockReturnValueOnce(new Promise(() => {}));
 
     const { container } = render(<OrgJoinScreen />);
-    expect(container.querySelector('svg') || container.textContent).toBeTruthy();
+    expect(container.querySelector('[data-testid="skeleton-detail"]')).not.toBeNull();
   });
 });

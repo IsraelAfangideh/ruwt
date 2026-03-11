@@ -7,13 +7,14 @@
  * - Run Tests / Submit show signup overlay
  */
 import { useState, useEffect, useCallback } from 'react';
-import { View, Text, ActivityIndicator } from 'react-native';
+import { View, Text } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { ArenaIDE, type ArenaChallenge } from '@/components/ArenaIDE';
 import { arena } from '@/theme/colors';
 import { fontFamily } from '@/theme/tokens';
 import { getDifficultyStyle } from '@/lib/difficulty';
 import { useDocumentMeta } from '@/hooks/useDocumentMeta';
+import { SplitPaneSkeleton } from '@/components/ui/ScreenSkeletons';
 
 export function GuestArenaScreen() {
   const navigation = useNavigation();
@@ -103,12 +104,7 @@ export function GuestArenaScreen() {
   }, [handleGuestAction]);
 
   if (loading) {
-    return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: arena.bg }}>
-        <ActivityIndicator size="large" color={arena.accent} />
-        <Text style={{ marginTop: 8, fontSize: 13, color: arena.textMuted }}>Loading challenge...</Text>
-      </View>
-    );
+    return <SplitPaneSkeleton />;
   }
 
   if (error || !challenge) {

@@ -3,7 +3,8 @@
  * Route: /models
  */
 import { useEffect, useState } from 'react';
-import { View, Text, ActivityIndicator, ScrollView, StyleSheet, Pressable } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, Pressable } from 'react-native';
+import { CardGridSkeleton } from '@/components/ui/ScreenSkeletons';
 import { useNavigation } from '@react-navigation/native';
 import { useColors } from '@/theme';
 import { spacing, fontSizes, fontFamily } from '@/theme/tokens';
@@ -85,7 +86,7 @@ export function ModelsScreen() {
       </View>
 
       {loading ? (
-        <ActivityIndicator style={{ marginTop: spacing.xl }} />
+        <CardGridSkeleton cards={4} />
       ) : filtered.length === 0 ? (
         <Text style={[styles.empty, { color: c.textMuted }]}>No models found.</Text>
       ) : (

@@ -65,7 +65,7 @@ describe('PublicProfileScreen', () => {
   it('renders loading state initially', () => {
     vi.stubGlobal('fetch', vi.fn().mockReturnValue(new Promise(() => {})));
     const { container } = render(<PublicProfileScreen />);
-    expect(container.querySelector('svg') || container.textContent).toBeTruthy();
+    expect(container.querySelector('[data-testid="skeleton-profile"]')).not.toBeNull();
   });
 
   it('shows "No username provided" when route has no username (lines 70-72)', async () => {

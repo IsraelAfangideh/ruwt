@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { View, Text, ActivityIndicator } from 'react-native';
+import { View, Text } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { ArenaIDE, type ArenaChallenge, type ArenaAttempt, type TestResults, type PastAttempt } from '@/components/ArenaIDE';
 import { arena } from '@/theme/colors';
@@ -12,6 +12,7 @@ import { ArenaErrorBoundary } from '@/components/arena/ArenaErrorBoundary';
 import { estimateMessagesForBudget, formatCostFromHundredths } from '@/lib/ai/pricing';
 import { BADGE_DEFS, type BadgeDef } from '@/lib/badge-defs';
 import { formatTime } from '@/lib/utils';
+import { SplitPaneSkeleton } from '@/components/ui/ScreenSkeletons';
 
 /* ─── Budget Progress Bar ──────────────────────────────────────────── */
 
@@ -474,21 +475,12 @@ export function ArenaScreen() {
 
   // Auth loading state
   if (authLoading) {
-    return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: arena.bg }}>
-        <ActivityIndicator size="large" color={arena.accent} />
-      </View>
-    );
+    return <SplitPaneSkeleton />;
   }
 
   // Loading state
   if (loading) {
-    return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: arena.bg }}>
-        <ActivityIndicator size="large" color={arena.accent} />
-        <Text style={{ marginTop: 8, fontSize: 13, color: arena.textMuted }}>Loading arena...</Text>
-      </View>
-    );
+    return <SplitPaneSkeleton />;
   }
 
   // Error state (no challenge)

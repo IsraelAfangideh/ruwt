@@ -54,7 +54,7 @@ describe('CertificateScreen', () => {
   it('renders loading state initially', async () => {
     vi.stubGlobal('fetch', vi.fn().mockReturnValue(new Promise(() => {})));
     const { container } = render(<CertificateScreen />);
-    expect(container.querySelector('svg') || container.textContent).toBeTruthy();
+    expect(container.querySelector('[data-testid="skeleton-detail"]')).not.toBeNull();
   });
 
   it('renders certificate data after loading', async () => {

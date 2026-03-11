@@ -88,7 +88,7 @@ describe('AssessmentListScreen', () => {
 
   it('renders loading state initially', () => {
     const { container } = render(<AssessmentListScreen />);
-    expect(container.querySelector('svg') || container.textContent).toBeTruthy();
+    expect(container.querySelector('[data-testid="skeleton-card-grid"]')).toBeTruthy();
   });
 
   it('redirects to Login when user is not authenticated', async () => {

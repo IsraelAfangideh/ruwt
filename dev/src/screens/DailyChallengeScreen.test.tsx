@@ -76,7 +76,7 @@ describe('DailyChallengeScreen', () => {
 
   it('renders loading state initially', () => {
     const { container } = render(<DailyChallengeScreen />);
-    expect(container.querySelector('svg') || container.textContent).toBeTruthy();
+    expect(container.querySelector('[data-testid="skeleton-detail"]')).not.toBeNull();
   });
 
   it('renders daily challenge title after loading', async () => {

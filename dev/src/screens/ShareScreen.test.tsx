@@ -46,7 +46,7 @@ describe('ShareScreen', () => {
     vi.stubGlobal('fetch', vi.fn().mockReturnValue(new Promise(() => {})));
     const { ShareScreen } = await import('./ShareScreen');
     const { container } = render(<ShareScreen />);
-    expect(container.querySelector('svg') || container.textContent).toBeTruthy();
+    expect(container.querySelector('[data-testid="skeleton-detail"]')).not.toBeNull();
   });
 
   it('renders share data after loading', async () => {

@@ -3,7 +3,8 @@
  * Shows challenge completion details with CTA to try on ruwt.dev
  */
 import { useState, useEffect } from 'react';
-import { View, Text, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
+import { DetailCardSkeleton } from '@/components/ui/ScreenSkeletons';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { useColors } from '@/theme';
 import { spacing, fontSizes, fontFamily } from '@/theme/tokens';
@@ -73,11 +74,7 @@ export function ShareScreen() {
   }, [attemptId]);
 
   if (loading) {
-    return (
-      <View style={[styles.center, { backgroundColor: c.bg }]}>
-        <ActivityIndicator size="large" color={c.accent} />
-      </View>
-    );
+    return <DetailCardSkeleton />;
   }
 
   if (error || !data) {

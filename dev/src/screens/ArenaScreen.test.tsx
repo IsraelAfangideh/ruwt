@@ -194,16 +194,16 @@ describe('ArenaScreen', () => {
   it('shows auth loading spinner when auth is loading', () => {
     authReturn = { user: null as any, loading: true };
     const { container } = render(<ArenaScreen />);
-    // Should render ActivityIndicator (RNW renders it as a div with role)
-    // The key is it should NOT show "Loading arena..." text — that's for data loading
+    // Should render skeleton loading state, not "Loading arena..." text (that's for data loading)
     expect(container.textContent).not.toContain('Loading arena...');
+    expect(container.querySelector('[data-testid="skeleton-split-pane"]')).not.toBeNull();
   });
 
   it('shows loading state while fetching challenge data', () => {
     // fetch that never resolves
     globalThis.fetch = vi.fn().mockReturnValue(new Promise(() => {}));
     const { container } = render(<ArenaScreen />);
-    expect(container.textContent).toContain('Loading arena...');
+    expect(container.querySelector('[data-testid="skeleton-split-pane"]')).not.toBeNull();
   });
 
   /* ─── Error states ─────────────────────────────────────────────── */

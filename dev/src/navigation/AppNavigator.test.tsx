@@ -79,6 +79,9 @@ vi.mock('@/screens/CertificateScreen', () => ({ CertificateScreen: () => <div>Ce
 vi.mock('@/screens/OrgManagementScreen', () => ({ OrgManagementScreen: () => <div>OrgManagementScreen</div> }));
 vi.mock('@/screens/OrgJoinScreen', () => ({ OrgJoinScreen: () => <div>OrgJoinScreen</div> }));
 vi.mock('@/screens/NotFoundScreen', () => ({ NotFoundScreen: () => <div>NotFoundScreen</div> }));
+vi.mock('@/components/ui/ScreenSkeletons', () => ({
+  CardGridSkeleton: () => <div data-testid="skeleton-card-grid" />,
+}));
 
 /* ── Mock @react-navigation ──────────────────────────────────────── */
 vi.mock('@react-navigation/native', () => {
@@ -373,10 +376,7 @@ describe('AppNavigator', () => {
 
     const { container } = render(<AppNavigator />);
 
-    // The Suspense fallback (LoadingFallback) should render an ActivityIndicator
-    // which react-native-web renders as an SVG spinner
-    const spinner = container.querySelector('svg');
-    expect(spinner, 'LoadingFallback should render an ActivityIndicator (SVG spinner)').not.toBeNull();
+    expect(container.querySelector('[data-testid="skeleton-card-grid"]')).not.toBeNull();
 
     // Resolve the suspense so the component unmounts cleanly
     if (shouldChildSuspend.resolve) {
