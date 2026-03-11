@@ -83,7 +83,11 @@ async function callWithTools(
           },
           body: JSON.stringify({
             messages,
-            tools,
+            // Cloudflare Workers AI expects OpenAI-compatible tool format
+            tools: tools.map((t) => ({
+              type: 'function' as const,
+              function: { name: t.name, description: t.description, parameters: t.parameters },
+            })),
             max_tokens: 4096,
             temperature: 0.7,
           }),

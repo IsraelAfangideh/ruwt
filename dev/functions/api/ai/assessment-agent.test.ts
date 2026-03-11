@@ -311,6 +311,27 @@ describe('POST /api/ai/assessment-agent', () => {
     expect(doneEvent.toolCallCount).toBe(0);
   });
 
+  it('wraps tools in OpenAI-compatible format for Cloudflare AI', async () => {
+    (getUser as Mock).mockResolvedValue(TEST_USER);
+    mockDb.selectResults.push([]); // catalog
+
+    mockCFAI([{ ok: true, body: { result: { response: 'OK' } } }]);
+
+    await onRequestPost(makeContext(validBody()));
+
+    const fetchMock = globalThis.fetch as Mock;
+    expect(fetchMock).toHaveBeenCalled();
+    const body = JSON.parse(fetchMock.mock.calls[0][1].body);
+    expect(body.tools[0]).toEqual({
+      type: 'function',
+      function: {
+        name: 'search_challenges',
+        description: 'Search',
+        parameters: { type: 'object', properties: {}, required: [] },
+      },
+    });
+  });
+
   // ------------------------------------------------------------------
   // SSE stream: with tool calls
   // ------------------------------------------------------------------
