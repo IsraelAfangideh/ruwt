@@ -36,6 +36,12 @@ vi.mock('@/lib/supabase/client', () => ({
   }),
 }));
 
+/* ── Mock AuthProvider ──────────────────────────────────────────── */
+vi.mock('@/lib/AuthContext', () => ({
+  AuthProvider: ({ children }: { children: React.ReactNode }) => <div data-testid="auth-provider">{children}</div>,
+  useAuth: () => ({ user: null, loading: false }),
+}));
+
 /* ── Mock AppModeProvider ────────────────────────────────────────── */
 vi.mock('@/lib/AppModeContext', () => ({
   AppModeProvider: ({ children }: { children: React.ReactNode }) => <div data-testid="app-mode-provider">{children}</div>,

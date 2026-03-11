@@ -119,23 +119,12 @@ const navigationRef = createNavigationContainerRef<RootStackParamList>();
 export function AppNavigator() {
   const isNavigationReady = useRef(false);
 
-  // Global auth listener: identify user in Sentry + handle session expiry
+  // Global auth listener: handle session expiry (Sentry ID is handled by AuthProvider)
   useEffect(() => {
     const supabase = createClient();
 
-    // Identify current user on mount (covers page refreshes)
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (user) {
-        Sentry.setUser({ id: user.id, email: user.email ?? undefined });
-      }
-    });
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (session?.user) {
-        Sentry.setUser({ id: session.user.id, email: session.user.email ?? undefined });
-      }
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === 'SIGNED_OUT') {
-        Sentry.setUser(null);
         if (isNavigationReady.current && navigationRef.isReady()) {
           navigationRef.reset({ index: 0, routes: [{ name: 'Landing' }] });
         }

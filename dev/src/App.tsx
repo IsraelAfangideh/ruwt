@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import * as Sentry from '@sentry/react';
 import { ThemeProvider, useTheme } from '@/theme';
 import { ToastProvider } from '@/components/ui/Toast';
+import { AuthProvider } from '@/lib/AuthContext';
 import { AppModeProvider } from '@/lib/AppModeContext';
 import { DashboardDataProvider } from '@/lib/DashboardDataContext';
 import { AppNavigator } from '@/navigation/AppNavigator';
@@ -47,12 +48,14 @@ export default function App() {
     <Sentry.ErrorBoundary fallback={ErrorFallback}>
       <ThemeProvider>
         <ToastProvider>
-          <AppModeProvider>
-            <DashboardDataProvider>
-              <BodyTheme />
-              <AppNavigator />
-            </DashboardDataProvider>
-          </AppModeProvider>
+          <AuthProvider>
+            <AppModeProvider>
+              <DashboardDataProvider>
+                <BodyTheme />
+                <AppNavigator />
+              </DashboardDataProvider>
+            </AppModeProvider>
+          </AuthProvider>
         </ToastProvider>
       </ThemeProvider>
     </Sentry.ErrorBoundary>

@@ -251,13 +251,6 @@ export function OrgManagementScreen() {
   return (
     <DashboardLayout user={user} requireOrg>
       <View style={[styles.header, { borderBottomColor: c.border }]}>
-        <Button
-          variant="ghost"
-          size="sm"
-          onPress={() => navigation.navigate('Assessments' as never)}
-        >
-          ← Back to Assessments
-        </Button>
         <View style={styles.titleRow}>
           <Text style={[styles.pageTitle, { color: c.text }]}>{org.name}</Text>
           <View style={styles.creditsBadge}>

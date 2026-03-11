@@ -139,18 +139,19 @@ describe('DashboardScreen', () => {
   });
   afterEach(() => { vi.useRealTimers(); });
 
-  it('renders loading spinner when auth is loading', () => {
+  it('renders skeleton when auth is loading', () => {
     mockUseAuthGuard.mockReturnValue({ user: null, loading: true });
     mockUseDashboardData.mockReturnValue(makeCachedState(null, 'idle'));
     const { container } = render(<DashboardScreen />);
-    expect(container.querySelector('svg') || container.textContent).toBeTruthy();
+    // DashboardSkeleton renders styled div elements (not ActivityIndicator)
+    expect(container.querySelectorAll('div').length).toBeGreaterThan(0);
   });
 
-  it('renders loading spinner when user is null', () => {
+  it('renders skeleton when user is null', () => {
     mockUseAuthGuard.mockReturnValue({ user: null, loading: false });
     mockUseDashboardData.mockReturnValue(makeCachedState(null, 'idle'));
     const { container } = render(<DashboardScreen />);
-    expect(container.querySelector('svg') || container.textContent).toBeTruthy();
+    expect(container.querySelectorAll('div').length).toBeGreaterThan(0);
   });
 
   it('renders greeting and username after loading', async () => {

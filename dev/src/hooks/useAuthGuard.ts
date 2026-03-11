@@ -1,34 +1,22 @@
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import { useNavigation } from '@react-navigation/native';
-import { createClient } from '@/lib/supabase/client';
+import { useAuth } from '@/lib/AuthContext';
 import type { User } from '@supabase/supabase-js';
 
 /**
- * Auth guard hook: checks supabase session on mount.
- * If no authenticated user, resets navigation to Login screen.
- * Returns { user, loading } so screens can show a spinner while checking.
+ * Auth guard hook: reads cached auth state from AuthContext.
+ * Redirects to Login if not authenticated (after loading completes).
+ * No API calls — the AuthProvider already checked auth on app mount.
  */
 export function useAuthGuard(): { user: User | null; loading: boolean } {
   const navigation = useNavigation();
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { user, loading } = useAuth();
 
   useEffect(() => {
-    let cancelled = false;
-    const check = async () => {
-      const supabase = createClient();
-      const { data: { user: u } } = await supabase.auth.getUser();
-      if (cancelled) return;
-      if (!u) {
-        navigation.reset({ index: 0, routes: [{ name: 'Login' as never }] });
-        return;
-      }
-      setUser(u);
-      setLoading(false);
-    };
-    check();
-    return () => { cancelled = true; };
-  }, [navigation]);
+    if (!loading && !user) {
+      navigation.reset({ index: 0, routes: [{ name: 'Login' as never }] });
+    }
+  }, [loading, user, navigation]);
 
   return { user, loading };
 }

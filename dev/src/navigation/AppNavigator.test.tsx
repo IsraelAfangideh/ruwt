@@ -144,7 +144,6 @@ vi.mock('@react-navigation/native-stack', () => {
 
 // Import Sentry AFTER mock to access the mock functions
 const Sentry = await import('@sentry/react');
-const mockSetUser = vi.mocked(Sentry.setUser);
 const mockCaptureException = vi.mocked(Sentry.captureException);
 
 import { AppNavigator } from './AppNavigator';
@@ -192,80 +191,17 @@ describe('AppNavigator', () => {
     }
   });
 
-  /* ── Sentry user identification on mount ───────────────────────── */
-  it('sets Sentry user when getUser returns a user', async () => {
-    mockGetUserFn.mockResolvedValueOnce({
-      data: { user: { id: 'user-123', email: 'user@test.com' } },
-      error: null,
-    });
-
-    render(<AppNavigator />);
-
-    await waitFor(() => {
-      expect(mockSetUser).toHaveBeenCalledWith({
-        id: 'user-123',
-        email: 'user@test.com',
-      });
-    });
-  });
-
-  it('does not set Sentry user when getUser returns null', async () => {
-    mockGetUserFn.mockResolvedValueOnce({ data: { user: null }, error: null });
-
-    render(<AppNavigator />);
-
-    await waitFor(() => {
-      expect(mockGetUserFn).toHaveBeenCalled();
-    });
-
-    expect(mockSetUser).not.toHaveBeenCalled();
-  });
-
-  /* ── Auth state change: SIGNED_IN sets Sentry user ─────────────── */
-  it('sets Sentry user on SIGNED_IN auth state change', async () => {
-    render(<AppNavigator />);
-
-    expect(onAuthChangeCb).not.toBeNull();
-
-    onAuthChangeCb!('SIGNED_IN', {
-      user: { id: 'user-456', email: 'new@test.com' },
-    });
-
-    expect(mockSetUser).toHaveBeenCalledWith({
-      id: 'user-456',
-      email: 'new@test.com',
-    });
-  });
-
-  /* ── Auth state change: SIGNED_OUT clears Sentry and resets nav ── */
-  it('clears Sentry user and resets nav on SIGNED_OUT', async () => {
+  /* ── Auth state change: SIGNED_OUT resets nav ───────────────────── */
+  it('resets nav to Landing on SIGNED_OUT', async () => {
     render(<AppNavigator />);
 
     expect(onAuthChangeCb).not.toBeNull();
 
     onAuthChangeCb!('SIGNED_OUT', null);
 
-    expect(mockSetUser).toHaveBeenCalledWith(null);
     expect(mockNavReset).toHaveBeenCalledWith({
       index: 0,
       routes: [{ name: 'Landing' }],
-    });
-  });
-
-  /* ── Handles email being undefined ─────────────────────────────── */
-  it('sets Sentry user with undefined email when email is null', async () => {
-    mockGetUserFn.mockResolvedValueOnce({
-      data: { user: { id: 'user-789', email: null } },
-      error: null,
-    });
-
-    render(<AppNavigator />);
-
-    await waitFor(() => {
-      expect(mockSetUser).toHaveBeenCalledWith({
-        id: 'user-789',
-        email: undefined,
-      });
     });
   });
 

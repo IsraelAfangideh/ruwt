@@ -8,7 +8,6 @@ import {
   View,
   Text,
   ScrollView,
-  ActivityIndicator,
   StyleSheet,
   Pressable,
 } from 'react-native';
@@ -818,11 +817,11 @@ export function DashboardScreen() {
     }
   }, [data, navigation]);
 
-  // Loading state
+  // Loading state — show skeleton instead of spinner for faster perceived load
   if (authLoading || !user) {
     return (
       <View style={[styles.center, { backgroundColor: c.bg }]}>
-        <ActivityIndicator size="large" color={c.accent} />
+        <DashboardSkeleton />
       </View>
     );
   }

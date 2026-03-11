@@ -10,7 +10,13 @@ import { fontFamily } from '@/theme/tokens';
 import { VirtualFileSystem } from './arena/VirtualFileSystem';
 import { useCodeSync } from './arena/useCodeSync';
 import { useAIChat, type MessageMeta } from './arena/useAIChat';
-import { TerminalPanel, type TerminalPanelHandle } from './arena/TerminalPanel';
+import type { TerminalPanelHandle } from './arena/TerminalPanel';
+
+const TerminalPanel = React.lazy(() =>
+  import('./arena/TerminalPanel').then(m => ({ default: m.TerminalPanel })),
+);
+const terminalFallback = <div style={{ flex: 1, backgroundColor: arena.bg }} />;
+
 import { TIER_MODELS, TIER_ORDER, getModelById, getModelsForTier, tierColor, tierLabel, estimateTypicalMessageCost, formatCostFromHundredths, type ModelTier } from '@/lib/ai/pricing';
 import { estimateChatCost, formatEstimatedCost } from '@/lib/cost-estimate';
 import { useIsMobile } from '@/lib/useIsMobile';
@@ -1845,7 +1851,9 @@ export function ArenaIDE({
                 </button>
               </div>
             </div>
-            <TerminalPanel ref={terminalRef} {...terminalPanelCommonProps} />
+            <Suspense fallback={terminalFallback}>
+              <TerminalPanel ref={terminalRef} {...terminalPanelCommonProps} />
+            </Suspense>
           </div>
         </div>
       </div>
@@ -1953,7 +1961,9 @@ export function ArenaIDE({
 
                 {/* Bottom tab content */}
                 {layout.activeBottomTab === 'terminal' && (
-                  <TerminalPanel ref={terminalRef} {...terminalPanelCommonProps} />
+                  <Suspense fallback={terminalFallback}>
+                    <TerminalPanel ref={terminalRef} {...terminalPanelCommonProps} />
+                  </Suspense>
                 )}
               </div>
             </Panel>

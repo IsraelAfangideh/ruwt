@@ -4,7 +4,7 @@
  * caches in memory, and exposes to screens for instant tab switching.
  */
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useReducer, useRef } from 'react';
-import { useAppMode } from './AppModeContext';
+import { useAuth } from './AuthContext';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -149,7 +149,7 @@ const BACKGROUND_REFRESH_INTERVAL = 120_000;
 const DashboardDataContext = createContext<DashboardDataContextType | undefined>(undefined);
 
 export function DashboardDataProvider({ children }: { children: React.ReactNode }) {
-  const { profile } = useAppMode();
+  const { user, loading: authLoading } = useAuth();
   const [state, dispatch] = useReducer(reducer, initialState);
   const stateRef = useRef(state);
   stateRef.current = state;
@@ -208,19 +208,19 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
     await Promise.allSettled(toRefresh.map((n) => fetchEndpoint(n, true)));
   }, [fetchEndpoint]);
 
-  // Initial prefetch when user is authenticated
+  // Initial prefetch when user is authenticated (no longer blocked by profile fetch)
   useEffect(() => {
-    if (!profile || hasFetched.current) return;
+    if (authLoading || !user || hasFetched.current) return;
     hasFetched.current = true;
 
     const names = Object.keys(ENDPOINTS) as EndpointName[];
     dispatch({ type: 'BATCH_SET_STATUS', endpoints: names, status: 'loading' });
     Promise.allSettled(names.map((n) => fetchEndpoint(n, false)));
-  }, [profile, fetchEndpoint]);
+  }, [authLoading, user, fetchEndpoint]);
 
   // Background refresh
   useEffect(() => {
-    if (!profile) return;
+    if (!user) return;
     backgroundInterval.current = setInterval(() => {
       const names = Object.keys(ENDPOINTS) as EndpointName[];
       const now = Date.now();
@@ -234,7 +234,7 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
     return () => {
       if (backgroundInterval.current) clearInterval(backgroundInterval.current);
     };
-  }, [profile, fetchEndpoint]);
+  }, [user, fetchEndpoint]);
 
   // Cleanup abort controllers on unmount
   useEffect(() => {

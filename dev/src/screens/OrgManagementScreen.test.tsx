@@ -354,18 +354,6 @@ describe('OrgManagementScreen', () => {
     });
   });
 
-  it('navigates back to Assessments when Back button is clicked', async () => {
-    setupFetch({
-      '/api/orgs': ok([mockOrg]),
-      '/api/orgs/org1/members': ok(mockMembers),
-      '/api/orgs/org1/invitations': ok([]),
-    });
-    render(<OrgManagementScreen />);
-    await waitFor(() => expect(screen.getByText(/Back to Assessments/)).toBeTruthy());
-    fireEvent.click(screen.getByText(/Back to Assessments/));
-    expect(mockNavigate).toHaveBeenCalledWith('Assessments');
-  });
-
   it('saves org settings when Save Settings is clicked', async () => {
     const fn = setupFetch({
       '/api/orgs': ok([mockOrg]),
