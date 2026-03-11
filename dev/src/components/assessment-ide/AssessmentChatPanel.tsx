@@ -281,6 +281,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     overflow: 'hidden',
+    minHeight: 0,
   },
   header: {
     flexDirection: 'row',
@@ -292,7 +293,7 @@ const styles = StyleSheet.create({
   },
   headerLeft: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   headerTitle: { fontSize: fontSizes.sm, fontWeight: '600' },
-  messageArea: { flex: 1 },
+  messageArea: { flex: 1, minHeight: 0 },
   messageContent: { padding: spacing.md, gap: spacing.sm },
   emptyState: { paddingVertical: spacing.xl, paddingHorizontal: spacing.sm },
   emptyTitle: { fontSize: fontSizes.lg, fontWeight: '600', marginBottom: spacing.xs, textAlign: 'center' },
@@ -344,6 +345,7 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     padding: spacing.sm,
     borderTopWidth: 1,
+    flexShrink: 0,
   },
   input: {
     flex: 1,

@@ -344,12 +344,20 @@ describe('select_challenges', () => {
     expect((result.result as any).invalidIds).toEqual(['bogus-id']);
   });
 
-  it('returns error when all challenge IDs are invalid', async () => {
-    const db = createMockDb({ selectResults: [catalogIds, []] });
+  it('returns error with real IDs when all challenge IDs are invalid', async () => {
+    const allChallenges = [
+      { id: 'real-1', title: 'React Hooks', category: 'frontend' },
+      { id: 'real-2', title: 'Node API', category: 'backend' },
+    ];
+    // First select: catalog validation (returns catalog but none match 'no-1','no-2')
+    // Second select: all challenges for suggestions
+    const db = createMockDb({ selectResults: [catalogIds, allChallenges] });
     const result = await run(db, 'select_challenges', { challengeIds: ['no-1', 'no-2'] });
 
     expect(result.success).toBe(false);
     expect(result.error).toContain('None of the challenge IDs are valid');
+    expect(result.error).toContain('real-1');
+    expect(result.error).toContain('React Hooks');
   });
 });
 

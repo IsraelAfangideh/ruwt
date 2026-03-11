@@ -133,7 +133,23 @@ async function selectChallenges(
   const invalid = challengeIds.filter((id) => !validIds.has(id));
   const validChallengeIds = challengeIds.filter((id) => validIds.has(id));
   if (validChallengeIds.length === 0) {
-    return { tool: 'select_challenges', success: false, result: null, error: `None of the challenge IDs are valid: ${invalid.join(', ')}` };
+    // Return real challenge IDs so the model can self-correct
+    const allChallenges = await db
+      .select({ id: challenges.id, title: challenges.title, category: challenges.category })
+      .from(challenges);
+    // Try to guess what category the model wanted from the fake IDs
+    const hint = invalid.join(' ').toLowerCase();
+    const categoryGuess = ['frontend', 'backend', 'devops', 'data'].find((c) => hint.includes(c));
+    const suggestions = categoryGuess
+      ? allChallenges.filter((c) => (c.category || '').toLowerCase().includes(categoryGuess))
+      : allChallenges;
+    const topSuggestions = suggestions.slice(0, 8).map((c) => `${c.id} ("${c.title}")`).join(', ');
+    return {
+      tool: 'select_challenges',
+      success: false,
+      result: null,
+      error: `None of the challenge IDs are valid: ${invalid.join(', ')}. You must use the real challenge IDs from the catalog. Here are some real IDs you can use: ${topSuggestions}`,
+    };
   }
 
   // Get existing challenges
