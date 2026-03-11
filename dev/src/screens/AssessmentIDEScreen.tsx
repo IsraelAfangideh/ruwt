@@ -19,6 +19,9 @@ import { AssessmentDocumentPanel } from '@/components/assessment-ide/AssessmentD
 
 type MobileTab = 'chat' | 'document';
 
+// Panel children need explicit height since Panel doesn't set display:flex
+const panelFill: React.CSSProperties = { display: 'flex', flexDirection: 'column', height: '100%' };
+
 export function AssessmentIDEScreen() {
   const c = useColors();
   const isMobile = useIsMobile();
@@ -140,11 +143,11 @@ export function AssessmentIDEScreen() {
       ) : (
         /* ── Desktop: resizable panels ── */
         <Group orientation="horizontal" id="assessment-ide" style={styles.panelGroup}>
-          <Panel defaultSize="40%" minSize="25%" id="chat-panel">
+          <Panel defaultSize="40%" minSize="25%" id="chat-panel" style={panelFill}>
             {chatPanel}
           </Panel>
           <PanelResizeBar direction="horizontal" />
-          <Panel defaultSize="60%" minSize="30%" id="document-panel">
+          <Panel defaultSize="60%" minSize="30%" id="document-panel" style={panelFill}>
             <View style={{ flex: 1 }}>
               {documentPanel}
               <AssessmentActionBar
