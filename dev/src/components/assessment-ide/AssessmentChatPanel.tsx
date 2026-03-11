@@ -79,6 +79,25 @@ export function AssessmentChatPanel({
     onAssessmentCreated,
   });
 
+  // Rotating thinking verbs (à la Claude Code)
+  const THINKING_VERBS = [
+    'Thinking...', 'Analyzing...', 'Reasoning...', 'Considering...',
+    'Evaluating...', 'Pondering...', 'Processing...', 'Deliberating...',
+    'Assembling...', 'Strategizing...', 'Examining...', 'Formulating...',
+  ];
+  const [thinkingVerb, setThinkingVerb] = useState(THINKING_VERBS[0]);
+  useEffect(() => {
+    if (!streaming || streamingStatus !== 'Thinking...') return;
+    let idx = 0;
+    setThinkingVerb(THINKING_VERBS[0]);
+    const timer = setInterval(() => {
+      idx = (idx + 1) % THINKING_VERBS.length;
+      setThinkingVerb(THINKING_VERBS[idx]);
+    }, 2000);
+    return () => clearInterval(timer);
+  }, [streaming, streamingStatus]);
+  const displayStatus = streamingStatus === 'Thinking...' ? thinkingVerb : streamingStatus;
+
   // Stable message keys
   const msgKeyMap = useRef(new WeakMap<object, number>());
   const getMsgKey = useCallback((msg: object) => {
@@ -249,7 +268,7 @@ export function AssessmentChatPanel({
         )}
         {streaming && (
           <View style={styles.streamingIndicator}>
-            <Text style={{ color: c.accent, fontSize: fontSizes.xs }}>{streamingStatus}</Text>
+            <Text style={{ color: c.accent, fontSize: fontSizes.xs }}>{displayStatus}</Text>
           </View>
         )}
       </ScrollView>
