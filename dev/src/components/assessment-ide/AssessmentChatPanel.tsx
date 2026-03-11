@@ -6,28 +6,31 @@ import { useColors } from '@/theme';
 import { spacing, fontSizes, fontFamily } from '@/theme/tokens';
 import { useAssessmentAgent } from '@/hooks/useAssessmentAgent';
 import { renderMarkdown } from '@/components/arena/ChatMarkdown';
+import { ASSESSMENT_TEMPLATES } from '@/lib/assessment-templates';
 import type { PassThreshold } from '@/components/PassThresholdEditor';
 
 interface Props {
   assessmentId?: string;
-  onChallengesChanged?: () => void;
-  onWeightsChanged?: (weights: Record<string, number>) => void;
-  onBrandingChanged?: (fields: Record<string, string>) => void;
-  onTimeLimitChanged?: (minutes: number) => void;
-  onThresholdChanged?: (threshold: PassThreshold) => void;
-  onCustomChallengeCreated?: (challenge: { id: string; title: string }) => void;
-  onAssessmentCreated?: (assessmentId: string) => void;
+  isEditing: boolean;
+  onChallengesChanged: () => void;
+  onWeightsChanged: (weights: Record<string, number>) => void;
+  onBrandingChanged: (fields: Record<string, string>) => void;
+  onTimeLimitChanged: (minutes: number) => void;
+  onThresholdChanged: (threshold: PassThreshold) => void;
+  onCustomChallengeCreated: () => void;
+  onAssessmentCreated: (assessmentId: string) => void;
 }
 
-const QUICK_ACTIONS = [
+const SUGGESTED_PROMPTS = [
   { label: 'Analyze a job description', prompt: 'I\'d like to create an assessment. Here\'s the job description:\n\n', requiresAssessment: false },
   { label: 'Suggest challenges for a role', prompt: 'Suggest challenges for a senior full-stack engineer role', requiresAssessment: false },
   { label: 'Create a custom challenge', prompt: 'Create a custom coding challenge that tests real-world skills for our team', requiresAssessment: false },
   { label: 'Optimize score weights', prompt: 'Based on the current assessment, what score weights do you recommend and why?', requiresAssessment: true },
 ];
 
-export function AssessmentAgentChat({
+export function AssessmentChatPanel({
   assessmentId,
+  isEditing,
   onChallengesChanged,
   onWeightsChanged,
   onBrandingChanged,
@@ -45,26 +48,25 @@ export function AssessmentAgentChat({
 
   const handleToolResult = useCallback((tool: string, result: any) => {
     if (!result.success) return;
-
     switch (tool) {
       case 'select_challenges':
       case 'remove_challenges':
-        onChallengesChanged?.();
+        onChallengesChanged();
         break;
       case 'set_weights':
-        onWeightsChanged?.(result.result);
+        onWeightsChanged(result.result);
         break;
       case 'set_branding':
-        onBrandingChanged?.(result.result);
+        onBrandingChanged(result.result);
         break;
       case 'set_time_limit':
-        onTimeLimitChanged?.(result.result.minutes);
+        onTimeLimitChanged(result.result.minutes);
         break;
       case 'set_pass_threshold':
-        onThresholdChanged?.(result.result);
+        onThresholdChanged(result.result);
         break;
       case 'create_custom_challenge':
-        onCustomChallengeCreated?.(result.result);
+        onCustomChallengeCreated();
         break;
     }
   }, [onChallengesChanged, onWeightsChanged, onBrandingChanged, onTimeLimitChanged, onThresholdChanged, onCustomChallengeCreated]);
@@ -75,7 +77,7 @@ export function AssessmentAgentChat({
     onAssessmentCreated,
   });
 
-  // Assign stable IDs to messages
+  // Stable message keys
   const msgKeyMap = useRef(new WeakMap<object, number>());
   const getMsgKey = useCallback((msg: object) => {
     if (!msgKeyMap.current.has(msg)) {
@@ -95,10 +97,14 @@ export function AssessmentAgentChat({
     sendMessage(text);
   }, [input, streaming, sendMessage]);
 
-  const handleQuickAction = useCallback((prompt: string) => {
+  const handleSuggestedPrompt = useCallback((prompt: string) => {
     setInput(prompt);
     setTimeout(() => inputRef.current?.focus(), 50);
   }, []);
+
+  const handleTemplateClick = useCallback((templateName: string) => {
+    sendMessage(`Set up a ${templateName} assessment using the ${templateName} template. Select the recommended challenges, set the time limit, and configure appropriate score weights.`);
+  }, [sendMessage]);
 
   const handleKeyPress = useCallback((e: any) => {
     if (e.nativeEvent.key === 'Enter' && !e.nativeEvent.shiftKey) {
@@ -107,8 +113,10 @@ export function AssessmentAgentChat({
     }
   }, [handleSend]);
 
+  const showEmpty = messages.length === 0;
+
   return (
-    <View style={[styles.container, { backgroundColor: c.bgWarm, borderColor: c.border }]}>
+    <View style={[styles.container, { backgroundColor: c.bgWarm }]}>
       {/* Header */}
       <View style={[styles.header, { borderBottomColor: c.border }]}>
         <View style={styles.headerLeft}>
@@ -135,37 +143,61 @@ export function AssessmentAgentChat({
         )}
       </View>
 
-      {/* Messages */}
+      {/* Messages / Empty state */}
       <ScrollView ref={scrollRef} style={styles.messageArea} contentContainerStyle={styles.messageContent}>
-        {messages.length === 0 ? (
+        {showEmpty ? (
           <View style={styles.emptyState}>
             <Text style={[styles.emptyTitle, { color: c.text }]}>
-              Build assessments with AI
+              Build your assessment with AI
             </Text>
             <Text style={[styles.emptyDesc, { color: c.textMuted }]}>
-              Paste a job description, describe your ideal candidate, or ask me to create custom challenges for your domain.
+              Paste a job description, describe your ideal candidate, or pick a template below.
             </Text>
-            <View style={styles.quickActions}>
-              {QUICK_ACTIONS
-                .filter((action) => !action.requiresAssessment || assessmentId)
-                .map((action, i) => (
-                <Pressable
-                  key={i}
-                  onPress={() => handleQuickAction(action.prompt)}
-                  accessibilityRole="button"
-                  style={[styles.quickActionBtn, { borderColor: c.border, backgroundColor: c.bg }]}
-                >
-                  <Text style={[styles.quickActionText, { color: c.accent }]}>
-                    {action.label}
-                  </Text>
-                </Pressable>
-              ))}
+
+            {/* Template suggestions (only for new assessments) */}
+            {!isEditing && (
+              <View style={styles.templateSection}>
+                <Text style={[styles.sectionLabel, { color: c.textMuted }]}>Quick Start</Text>
+                <View style={styles.templateGrid}>
+                  {ASSESSMENT_TEMPLATES.map((t) => (
+                    <Pressable
+                      key={t.id}
+                      onPress={() => handleTemplateClick(t.name)}
+                      accessibilityRole="button"
+                      style={[styles.templateBtn, { borderColor: c.border, backgroundColor: c.bg }]}
+                    >
+                      <Text style={[styles.templateName, { color: c.text }]}>{t.name}</Text>
+                      <Text style={{ fontSize: fontSizes.xs, color: c.textMuted }}>
+                        {t.challengeTitles.length} challenges · {t.timeLimitMinutes} min
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+              </View>
+            )}
+
+            {/* Suggested prompts */}
+            <View style={styles.promptSection}>
+              <Text style={[styles.sectionLabel, { color: c.textMuted }]}>Or try</Text>
+              <View style={styles.prompts}>
+                {SUGGESTED_PROMPTS
+                  .filter((p) => !p.requiresAssessment || assessmentId)
+                  .map((p, i) => (
+                  <Pressable
+                    key={i}
+                    onPress={() => handleSuggestedPrompt(p.prompt)}
+                    accessibilityRole="button"
+                    style={[styles.promptBtn, { borderColor: c.border, backgroundColor: c.bg }]}
+                  >
+                    <Text style={[styles.promptText, { color: c.accent }]}>{p.label}</Text>
+                  </Pressable>
+                ))}
+              </View>
             </View>
           </View>
         ) : (
           messages.map((msg) => {
             const msgKey = getMsgKey(msg);
-            // System messages render as compact chips
             if (msg.role === 'system') {
               const isError = msg.systemType === 'tool_error';
               const isCreated = msg.systemType === 'assessment_created';
@@ -173,10 +205,7 @@ export function AssessmentAgentChat({
               return (
                 <View
                   key={msgKey}
-                  style={[
-                    styles.systemChip,
-                    { backgroundColor: chipColor + '12', borderColor: chipColor + '30' },
-                  ]}
+                  style={[styles.systemChip, { backgroundColor: chipColor + '12', borderColor: chipColor + '30' }]}
                 >
                   <Text style={{ fontSize: fontSizes.xs, color: chipColor }}>
                     {isError ? '\u2717 ' : '\u2713 '}{msg.content}
@@ -196,10 +225,7 @@ export function AssessmentAgentChat({
                 ]}
               >
                 <Text
-                  style={[
-                    styles.roleLabel,
-                    { color: msg.role === 'user' ? c.accent : c.textMuted },
-                  ]}
+                  style={[styles.roleLabel, { color: msg.role === 'user' ? c.accent : c.textMuted }]}
                 >
                   {msg.role === 'user' ? 'You' : 'AI'}
                 </Text>
@@ -227,10 +253,7 @@ export function AssessmentAgentChat({
       <View style={[styles.inputArea, { borderTopColor: c.border }]}>
         <TextInput
           ref={inputRef}
-          style={[
-            styles.input,
-            { color: c.text, backgroundColor: c.bg, borderColor: c.border },
-          ]}
+          style={[styles.input, { color: c.text, backgroundColor: c.bg, borderColor: c.border }]}
           placeholder="Describe the role or paste a job description..."
           placeholderTextColor={c.textSubtle}
           value={input}
@@ -257,11 +280,7 @@ export function AssessmentAgentChat({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    borderWidth: 1,
-    borderRadius: 12,
     overflow: 'hidden',
-    minHeight: 300,
-    maxHeight: 'calc(100vh - 140px)' as any,
   },
   header: {
     flexDirection: 'row',
@@ -275,23 +294,33 @@ const styles = StyleSheet.create({
   headerTitle: { fontSize: fontSizes.sm, fontWeight: '600' },
   messageArea: { flex: 1 },
   messageContent: { padding: spacing.md, gap: spacing.sm },
-  emptyState: { paddingVertical: spacing.xl, alignItems: 'center' },
-  emptyTitle: { fontSize: fontSizes.lg, fontWeight: '600', marginBottom: spacing.xs },
+  emptyState: { paddingVertical: spacing.xl, paddingHorizontal: spacing.sm },
+  emptyTitle: { fontSize: fontSizes.lg, fontWeight: '600', marginBottom: spacing.xs, textAlign: 'center' },
   emptyDesc: {
     fontSize: fontSizes.sm,
     textAlign: 'center',
-    maxWidth: 300,
     marginBottom: spacing.lg,
     fontFamily: fontFamily.body,
   },
-  quickActions: { gap: spacing.sm, width: '100%' },
-  quickActionBtn: {
+  templateSection: { marginBottom: spacing.lg },
+  sectionLabel: { fontSize: fontSizes.xs, fontWeight: '600', textTransform: 'uppercase' as any, marginBottom: spacing.sm },
+  templateGrid: { gap: spacing.sm },
+  templateBtn: {
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     borderWidth: 1,
     borderRadius: 8,
   },
-  quickActionText: { fontSize: fontSizes.sm, fontWeight: '500' },
+  templateName: { fontSize: fontSizes.sm, fontWeight: '600', marginBottom: 2 },
+  promptSection: {},
+  prompts: { gap: spacing.sm },
+  promptBtn: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderWidth: 1,
+    borderRadius: 8,
+  },
+  promptText: { fontSize: fontSizes.sm, fontWeight: '500' },
   messageBubble: {
     padding: spacing.sm,
     borderRadius: 8,

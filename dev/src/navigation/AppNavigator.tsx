@@ -50,7 +50,7 @@ const ArenaScreen = lazyWithRetry('Arena', () => import('@/screens/ArenaScreen')
 const ReplayScreen = lazyWithRetry('Replay', () => import('@/screens/ReplayScreen'), m => m.ReplayScreen);
 const DailyChallengeScreen = lazyWithRetry('DailyChallenge', () => import('@/screens/DailyChallengeScreen'), m => m.DailyChallengeScreen);
 const AssessmentListScreen = lazyWithRetry('AssessmentList', () => import('@/screens/AssessmentListScreen'), m => m.AssessmentListScreen);
-const AssessmentBuilderScreen = lazyWithRetry('AssessmentBuilder', () => import('@/screens/AssessmentBuilderScreen'), m => m.AssessmentBuilderScreen);
+const AssessmentBuilderScreen = lazyWithRetry('AssessmentBuilder', () => import('@/screens/AssessmentIDEScreen'), m => m.AssessmentIDEScreen);
 const AssessmentResultsDashboardScreen = lazyWithRetry('AssessmentResultsDashboard', () => import('@/screens/AssessmentResultsDashboardScreen'), m => m.AssessmentResultsDashboardScreen);
 const AssessmentLandingScreen = lazyWithRetry('AssessmentLanding', () => import('@/screens/AssessmentLandingScreen'), m => m.AssessmentLandingScreen);
 const AssessmentFlowScreen = lazyWithRetry('AssessmentFlow', () => import('@/screens/AssessmentFlowScreen'), m => m.AssessmentFlowScreen);
