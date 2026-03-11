@@ -2,7 +2,6 @@
  * DiscussScreen: Community hub surfacing activity feed and recent challenge discussions.
  * Route: /discuss
  */
-import { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -22,6 +21,7 @@ import { useDocumentMeta } from '@/hooks/useDocumentMeta';
 import { formatCostFromHundredths } from '@/lib/ai/pricing';
 import { timeAgo } from '@/lib/utils';
 import { UserSearch } from '@/components/UserSearch';
+import { useDashboardData } from '@/lib/DashboardDataContext';
 
 interface ActivityEntry {
   user: string;
@@ -37,23 +37,9 @@ export function DiscussScreen() {
   const { user, loading: authLoading } = useAuthGuard();
   const navigation = useNavigation();
   const c = useColors();
-  const [activity, setActivity] = useState<ActivityEntry[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    if (!user) return;
-    const fetchData = async () => {
-      try {
-        const res = await fetch('/api/activity?limit=30');
-        if (res.ok) {
-          const data = await res.json();
-          setActivity(data.activities || []);
-        }
-      } catch { /* ignore */ }
-      setLoading(false);
-    };
-    fetchData();
-  }, [user]);
+  const { state: cachedData } = useDashboardData();
+  const activity = cachedData.activity.data as ActivityEntry[];
+  const loading = cachedData.activity.status === 'loading' || cachedData.activity.status === 'idle';
 
   if (authLoading || !user) {
     return (

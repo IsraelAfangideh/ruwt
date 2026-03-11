@@ -53,6 +53,29 @@ vi.mock('@/lib/AppModeContext', () => ({
   useAppMode: () => mockAppMode,
 }));
 
+const createMockSlice = (data: any = null) => ({ data, status: 'loaded', lastFetchedAt: Date.now() });
+
+let mockDashboardData: any = {
+  initialLoadComplete: true,
+  state: {
+    challenges: createMockSlice([]),
+    dailyChallenge: createMockSlice(null),
+    leaderboard: createMockSlice([]),
+    seasons: createMockSlice([]),
+    dashboard: createMockSlice(null),
+    badges: createMockSlice({ catalog: [], earned: [] }),
+    bookmarks: createMockSlice([]),
+    activity: createMockSlice([]),
+    notifications: createMockSlice({ unreadCount: 0 }),
+  },
+  refreshEndpoint: vi.fn(),
+  refreshAll: vi.fn(),
+};
+
+vi.mock('@/lib/DashboardDataContext', () => ({
+  useDashboardData: () => mockDashboardData,
+}));
+
 const mockUser = {
   id: 'user-1',
   email: 'test@ruwt.dev',
@@ -71,6 +94,22 @@ describe('DashboardLayout', () => {
       isOrgMember: false,
       canAccessHiringMode: false,
       refreshProfile: vi.fn(),
+    };
+    mockDashboardData = {
+      initialLoadComplete: true,
+      state: {
+        challenges: createMockSlice([]),
+        dailyChallenge: createMockSlice(null),
+        leaderboard: createMockSlice([]),
+        seasons: createMockSlice([]),
+        dashboard: createMockSlice(null),
+        badges: createMockSlice({ catalog: [], earned: [] }),
+        bookmarks: createMockSlice([]),
+        activity: createMockSlice([]),
+        notifications: createMockSlice({ unreadCount: 0 }),
+      },
+      refreshEndpoint: vi.fn(),
+      refreshAll: vi.fn(),
     };
   });
 
@@ -197,6 +236,65 @@ describe('DashboardLayout', () => {
 
     expect(screen.getByText('Open Content')).toBeTruthy();
     expect(screen.queryByText('Team Account Required')).toBeNull();
+  });
+
+  /* ── Content skeleton tests ──────────────────────────────── */
+
+  it('shows content skeleton when initial load is not complete', () => {
+    mockDashboardData = { ...mockDashboardData, initialLoadComplete: false };
+
+    const { container } = render(
+      <DashboardLayout user={mockUser}>
+        <span>Dashboard Content</span>
+      </DashboardLayout>
+    );
+
+    // Children should NOT be rendered while loading
+    expect(screen.queryByText('Dashboard Content')).toBeNull();
+    // Skeleton blocks should be present (aria-hidden divs)
+    const skeletons = container.querySelectorAll('[aria-hidden="true"]');
+    expect(skeletons.length).toBeGreaterThan(0);
+  });
+
+  it('renders children once initial load completes', () => {
+    mockDashboardData = { ...mockDashboardData, initialLoadComplete: true };
+
+    render(
+      <DashboardLayout user={mockUser}>
+        <span>Dashboard Content</span>
+      </DashboardLayout>
+    );
+
+    expect(screen.getByText('Dashboard Content')).toBeTruthy();
+  });
+
+  it('does not show content skeleton for requireOrg pages during prefetch', () => {
+    mockDashboardData = { ...mockDashboardData, initialLoadComplete: false };
+    mockAppMode = { ...mockAppMode, profileLoading: true };
+
+    const { container } = render(
+      <DashboardLayout user={mockUser} requireOrg>
+        <span>Org Content</span>
+      </DashboardLayout>
+    );
+
+    // requireOrg + profileLoading should show ActivityIndicator, not skeleton
+    expect(container.querySelector('[role="progressbar"]')).not.toBeNull();
+  });
+
+  it('always renders header and nav even during initial load', () => {
+    mockDashboardData = { ...mockDashboardData, initialLoadComplete: false };
+
+    render(
+      <DashboardLayout user={mockUser}>
+        <span>Content</span>
+      </DashboardLayout>
+    );
+
+    // Header elements should always be visible
+    expect(screen.getByText('R')).toBeTruthy();
+    expect(screen.getByText('.dev')).toBeTruthy();
+    expect(screen.getByText('Problems')).toBeTruthy();
   });
 
   it('shows trial banner for team accounts with trial', () => {

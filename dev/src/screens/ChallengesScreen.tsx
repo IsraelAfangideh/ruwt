@@ -6,13 +6,13 @@ import { Card, CardContent } from '@/components/ui/Card';
 import { ChallengeCard, type Challenge } from '@/components/ChallengeCard';
 import { useColors, useTheme } from '@/theme';
 import { spacing, fontSizes, fontFamily, radii } from '@/theme/tokens';
-import { useToast } from '@/components/ui/Toast';
 import { useIsMobile } from '@/lib/useIsMobile';
 import { DIFFICULTIES, getDifficultyStyle } from '@/lib/difficulty';
 import { useDocumentMeta } from '@/hooks/useDocumentMeta';
 import { useAuthGuard } from '@/hooks/useAuthGuard';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
+import { useDashboardData } from '@/lib/DashboardDataContext';
 
 const CATEGORIES = [
   { key: 'all', label: 'All' },
@@ -80,8 +80,10 @@ export function ChallengesScreen() {
   useDocumentMeta({ title: 'AI Coding Challenges', description: 'Browse 60+ coding challenges across 11 categories. Test your AI efficiency in model selection, prompt engineering, debugging, and more.', canonicalPath: '/problems' });
   const { user, loading: authLoading } = useAuthGuard();
   const navigation = useNavigation();
-  const [challenges, setChallenges] = useState<Challenge[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { state: cachedData } = useDashboardData();
+  const challenges = cachedData.challenges.data as Challenge[];
+  const dailyChallenge = cachedData.dailyChallenge.data as { challengeId: string; title: string; difficulty: string; category: string | null; solvedToday: boolean } | null;
+  const loading = cachedData.challenges.status === 'loading' || cachedData.challenges.status === 'idle';
   const [activeCategory, setActiveCategory] = useState(getInitialTab);
   const [activeLang, setActiveLang] = useState(getInitialLang);
   const [activeDifficulty, setActiveDifficulty] = useState(getInitialDifficulty);
@@ -92,43 +94,19 @@ export function ChallengesScreen() {
   const [sortMenuPos, setSortMenuPos] = useState<{ top: number; right: number } | null>(null);
   const sortBtnRef = useRef<any>(null);
   const [statusFilter, setStatusFilter] = useState<'all' | 'solved' | 'in_progress' | 'not_started'>('all');
-  const [dailyChallenge, setDailyChallenge] = useState<{ challengeId: string; title: string; difficulty: string; category: string | null; solvedToday: boolean } | null>(null);
   const [dailyCountdown, setDailyCountdown] = useState(0);
   const c = useColors();
   const { isDark } = useTheme();
   const activePillText = isDark ? '#0f0e0d' : '#ffffff';
-  const { showToast } = useToast();
   const isMobile = useIsMobile();
 
+  // Initialize daily countdown when dailyChallenge data becomes available
   useEffect(() => {
-    if (!user) return;
-    const init = async () => {
-      try {
-        const [challengeRes, dailyRes] = await Promise.all([
-          fetch('/api/challenges'),
-          fetch('/api/daily-challenge').catch(() => null),
-        ]);
-        if (challengeRes.ok) {
-          const data = await challengeRes.json();
-          setChallenges((data as Challenge[]) ?? []);
-        }
-        if (dailyRes && dailyRes.ok) {
-          const d = await dailyRes.json();
-          if (d.challengeId) {
-            setDailyChallenge(d);
-            const now = new Date();
-            const tomorrow = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1));
-            setDailyCountdown(Math.floor((tomorrow.getTime() - now.getTime()) / 1000));
-          }
-        }
-      } catch (_) {
-        setChallenges([]);
-        showToast('Failed to load challenges. Check your connection.', 'error');
-      }
-      setLoading(false);
-    };
-    init();
-  }, [user]);
+    if (!dailyChallenge?.challengeId) return;
+    const now = new Date();
+    const tomorrow = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1));
+    setDailyCountdown(Math.floor((tomorrow.getTime() - now.getTime()) / 1000));
+  }, [dailyChallenge]);
 
   // Daily challenge countdown
   useEffect(() => {
@@ -271,7 +249,7 @@ export function ChallengesScreen() {
       .slice(0, 4);
   }, [filtered, progressStats.solved]);
 
-  if (authLoading || loading || !user) {
+  if (authLoading || !user) {
     return (
       <View style={[styles.center, { backgroundColor: c.bg }]}>
         <ActivityIndicator size="large" color={c.accent} />
@@ -285,6 +263,12 @@ export function ChallengesScreen() {
   const progressPct = displayStats.total > 0 ? Math.round((displayStats.solved / displayStats.total) * 100) : 0;
   return (
     <DashboardLayout user={user}>
+      {loading && (
+        <View style={[styles.center, { paddingVertical: spacing['2xl'] }]}>
+          <ActivityIndicator size="large" color={c.accent} />
+        </View>
+      )}
+      {!loading && <>
       {/* Header with title + progress */}
       <View style={styles.headerSection}>
         <View style={styles.headerLeft}>
@@ -692,6 +676,7 @@ export function ChallengesScreen() {
           </View>
         </>
       )}
+      </>}
     </DashboardLayout>
   );
 }

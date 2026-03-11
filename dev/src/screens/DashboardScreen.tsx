@@ -13,7 +13,8 @@ import {
   Pressable,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { createClient } from '@/lib/supabase/client';
+import { useAuthGuard } from '@/hooks/useAuthGuard';
+import { useDashboardData } from '@/lib/DashboardDataContext';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import {
   Card,
@@ -769,47 +770,27 @@ function TeamsHint({ onLearnMore }: { onLearnMore: () => void }) {
 export function DashboardScreen() {
   const navigation = useNavigation();
   const c = useColors();
-  const [user, setUser] = useState<any>(null);
-  const [data, setData] = useState<DashboardData | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { user, loading: authLoading } = useAuthGuard();
+  const { state: cachedData } = useDashboardData();
+  const data = cachedData.dashboard.data as DashboardData | null;
+  const loading = cachedData.dashboard.status !== 'loaded';
   const [countdown, setCountdown] = useState(0);
   const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  // Onboarding gate: redirect new users to onboarding flow when dashboard data loads
   useEffect(() => {
-    const init = async () => {
-      const supabase = createClient();
-      const {
-        data: { user: u },
-      } = await supabase.auth.getUser();
-      if (!u) {
-        navigation.reset({ index: 0, routes: [{ name: 'Login' as never }] });
-        return;
-      }
-      setUser(u);
-      try {
-        const res = await fetch('/api/dashboard');
-        if (res.ok) {
-          const d = (await res.json()) as DashboardData;
+    if (data?.profile.onboardingCompleted === 0) {
+      navigation.reset({ index: 0, routes: [{ name: 'Onboarding' as never }] });
+    }
+  }, [data, navigation]);
 
-          // Onboarding gate: redirect new users to onboarding flow
-          if (d.profile.onboardingCompleted === 0) {
-            navigation.reset({ index: 0, routes: [{ name: 'Onboarding' as never }] });
-            return;
-          }
-
-          setData(d);
-          // Calculate seconds until midnight UTC for countdown
-          const now = new Date();
-          const tomorrow = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1));
-          setCountdown(Math.floor((tomorrow.getTime() - now.getTime()) / 1000));
-        }
-      } catch {
-        // API not available yet - show empty state
-      }
-      setLoading(false);
-    };
-    init();
-  }, [navigation]);
+  // Initialize countdown timer when dashboard data loads
+  useEffect(() => {
+    if (!data) return;
+    const now = new Date();
+    const tomorrow = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1));
+    setCountdown(Math.floor((tomorrow.getTime() - now.getTime()) / 1000));
+  }, [data]);
 
   // Countdown ticker
   useEffect(() => {
@@ -838,23 +819,21 @@ export function DashboardScreen() {
   }, [data, navigation]);
 
   // Loading state
+  if (authLoading || !user) {
+    return (
+      <View style={[styles.center, { backgroundColor: c.bg }]}>
+        <ActivityIndicator size="large" color={c.accent} />
+      </View>
+    );
+  }
+
   if (loading) {
-    if (!user) {
-      return (
-        <View style={[styles.center, { backgroundColor: c.bg }]}>
-          <ActivityIndicator size="large" color={c.accent} />
-        </View>
-      );
-    }
     return (
       <DashboardLayout user={user}>
         <DashboardSkeleton />
       </DashboardLayout>
     );
   }
-
-  /* istanbul ignore next -- @preserve */
-  if (!user) return null;
 
   // If the API is not yet available, show a minimal fallback
   if (!data) {

@@ -6,6 +6,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { View, Text, Pressable, ScrollView, StyleSheet } from 'react-native';
 import { useColors } from '@/theme';
 import { spacing, fontSizes, fontFamily, radii } from '@/theme/tokens';
+import { useDashboardData } from '@/lib/DashboardDataContext';
 
 interface Notification {
   id: string;
@@ -19,7 +20,8 @@ interface Notification {
 
 export function NotificationBell() {
   const c = useColors();
-  const [unreadCount, setUnreadCount] = useState(0);
+  const { state: cachedData, refreshEndpoint } = useDashboardData();
+  const [unreadCount, setUnreadCount] = useState(cachedData.notifications.data.unreadCount);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [open, setOpen] = useState(false);
   const [loaded, setLoaded] = useState(false);
@@ -36,22 +38,18 @@ export function NotificationBell() {
     }
   }, [open, handleEscape]);
 
-  // Fetch unread count on mount
+  // Sync unread count from cache
   useEffect(() => {
-    const fetchCount = async () => {
-      try {
-        const res = await fetch('/api/notifications?limit=1');
-        if (res.ok) {
-          const data = await res.json();
-          setUnreadCount(data.unreadCount ?? 0);
-        }
-      } catch {}
-    };
-    fetchCount();
-    // Poll every 60 seconds
-    const interval = setInterval(fetchCount, 60000);
+    setUnreadCount(cachedData.notifications.data.unreadCount);
+  }, [cachedData.notifications.data.unreadCount]);
+
+  // Poll every 60 seconds via cached endpoint
+  useEffect(() => {
+    const interval = setInterval(() => {
+      refreshEndpoint('notifications');
+    }, 60000);
     return () => clearInterval(interval);
-  }, []);
+  }, [refreshEndpoint]);
 
   const loadNotifications = async () => {
     if (loaded) return;

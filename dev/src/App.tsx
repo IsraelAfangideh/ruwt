@@ -3,6 +3,7 @@ import * as Sentry from '@sentry/react';
 import { ThemeProvider, useTheme } from '@/theme';
 import { ToastProvider } from '@/components/ui/Toast';
 import { AppModeProvider } from '@/lib/AppModeContext';
+import { DashboardDataProvider } from '@/lib/DashboardDataContext';
 import { AppNavigator } from '@/navigation/AppNavigator';
 import './index.css';
 
@@ -47,8 +48,10 @@ export default function App() {
       <ThemeProvider>
         <ToastProvider>
           <AppModeProvider>
-            <BodyTheme />
-            <AppNavigator />
+            <DashboardDataProvider>
+              <BodyTheme />
+              <AppNavigator />
+            </DashboardDataProvider>
           </AppModeProvider>
         </ToastProvider>
       </ThemeProvider>

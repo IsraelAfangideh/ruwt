@@ -5,17 +5,19 @@ import { render, screen, waitFor, fireEvent, act } from '@testing-library/react'
 const mockNavigate = vi.fn();
 const mockReset = vi.fn();
 
-const { mockGetUser } = vi.hoisted(() => ({
-  mockGetUser: vi.fn(),
+const { mockUseAuthGuard, mockUseDashboardData } = vi.hoisted(() => ({
+  mockUseAuthGuard: vi.fn(),
+  mockUseDashboardData: vi.fn(),
 }));
 
 vi.mock('@react-navigation/native', () => ({
   useNavigation: () => ({ navigate: mockNavigate, reset: mockReset }),
 }));
-vi.mock('@/lib/supabase/client', () => ({
-  createClient: () => ({
-    auth: { getUser: (...args: any[]) => mockGetUser(...args) },
-  }),
+vi.mock('@/hooks/useAuthGuard', () => ({
+  useAuthGuard: (...args: any[]) => mockUseAuthGuard(...args),
+}));
+vi.mock('@/lib/DashboardDataContext', () => ({
+  useDashboardData: (...args: any[]) => mockUseDashboardData(...args),
 }));
 vi.mock('@/components/DashboardLayout', () => ({
   DashboardLayout: ({ children }: any) => <div data-testid="dashboard-layout">{children}</div>,
@@ -96,38 +98,57 @@ const baseDashboardData: DashboardData = {
 
 const defaultUser = { id: 'u1', user_metadata: { name: 'Test User' }, email: 'test@test.com' };
 
-vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-  ok: true,
-  json: () => Promise.resolve(baseDashboardData),
-}));
+const mockRefreshEndpoint = vi.fn();
+const mockRefreshAll = vi.fn();
+
+function makeCachedState(data: DashboardData | null, status: 'idle' | 'loading' | 'loaded' | 'error' = 'loaded') {
+  return {
+    state: {
+      dashboard: { data, status, lastFetchedAt: Date.now() },
+      challenges: { data: [], status: 'loaded', lastFetchedAt: Date.now() },
+      dailyChallenge: { data: null, status: 'loaded', lastFetchedAt: Date.now() },
+      leaderboard: { data: [], status: 'loaded', lastFetchedAt: Date.now() },
+      seasons: { data: [], status: 'loaded', lastFetchedAt: Date.now() },
+      badges: { data: { catalog: [], earned: [] }, status: 'loaded', lastFetchedAt: Date.now() },
+      bookmarks: { data: [], status: 'loaded', lastFetchedAt: Date.now() },
+      activity: { data: [], status: 'loaded', lastFetchedAt: Date.now() },
+      notifications: { data: { unreadCount: 0 }, status: 'loaded', lastFetchedAt: Date.now() },
+    },
+    initialLoadComplete: status === 'loaded' || status === 'error',
+    refreshEndpoint: mockRefreshEndpoint,
+    refreshAll: mockRefreshAll,
+  };
+}
 
 const { DashboardScreen } = await import('./DashboardScreen');
 
-/** Helper to set up fetch and getUser for a standard successful dashboard render */
+/** Helper to set up mocks for a standard successful dashboard render */
 function setupHappyPath(dashboardOverrides?: Partial<typeof baseDashboardData>) {
-  mockGetUser.mockResolvedValue({ data: { user: defaultUser } });
   const data = dashboardOverrides
     ? { ...baseDashboardData, ...dashboardOverrides }
     : baseDashboardData;
-  vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-    ok: true,
-    json: () => Promise.resolve(data),
-  }));
+  mockUseAuthGuard.mockReturnValue({ user: defaultUser, loading: false });
+  mockUseDashboardData.mockReturnValue(makeCachedState(data));
 }
 
 describe('DashboardScreen', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.useFakeTimers({ shouldAdvanceTime: true });
-    mockGetUser.mockResolvedValue({ data: { user: defaultUser } });
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve(baseDashboardData),
-    }));
+    setupHappyPath();
   });
   afterEach(() => { vi.useRealTimers(); });
 
-  it('renders loading state initially', () => {
+  it('renders loading spinner when auth is loading', () => {
+    mockUseAuthGuard.mockReturnValue({ user: null, loading: true });
+    mockUseDashboardData.mockReturnValue(makeCachedState(null, 'idle'));
+    const { container } = render(<DashboardScreen />);
+    expect(container.querySelector('svg') || container.textContent).toBeTruthy();
+  });
+
+  it('renders loading spinner when user is null', () => {
+    mockUseAuthGuard.mockReturnValue({ user: null, loading: false });
+    mockUseDashboardData.mockReturnValue(makeCachedState(null, 'idle'));
     const { container } = render(<DashboardScreen />);
     expect(container.querySelector('svg') || container.textContent).toBeTruthy();
   });
@@ -378,15 +399,25 @@ describe('DashboardScreen', () => {
     expect(mockNavigate).toHaveBeenCalledWith('Problems');
   });
 
-  it('shows fallback UI when API fetch fails', async () => {
-    mockGetUser.mockResolvedValue({ data: { user: defaultUser } });
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false }));
+  it('shows fallback UI when dashboard data is null but status is loaded', async () => {
+    mockUseAuthGuard.mockReturnValue({ user: defaultUser, loading: false });
+    // status is 'loaded' but data is null (API returned empty)
+    mockUseDashboardData.mockReturnValue(makeCachedState(null, 'loaded'));
     vi.useRealTimers();
     render(<DashboardScreen />);
     await waitFor(() => {
       expect(screen.getByText(/Dashboard data is loading/)).toBeTruthy();
     });
     expect(screen.getByText('Refresh')).toBeTruthy();
+  });
+
+  it('shows skeleton when dashboard status is loading', async () => {
+    mockUseAuthGuard.mockReturnValue({ user: defaultUser, loading: false });
+    mockUseDashboardData.mockReturnValue(makeCachedState(null, 'loading'));
+    vi.useRealTimers();
+    const { container } = render(<DashboardScreen />);
+    // Should show DashboardLayout with DashboardSkeleton
+    expect(container.querySelector('[data-testid="dashboard-layout"]')).not.toBeNull();
   });
 
   it('redirects to Onboarding when onboardingCompleted is 0', async () => {
@@ -472,7 +503,7 @@ describe('DashboardScreen', () => {
     expect(screen.getAllByText('Prompt Efficiency').length).toBeGreaterThanOrEqual(1);
   });
 
-  it('returns null when user is not set and loading is false', async () => {
+  it('renders dashboard with all sections when data is loaded', async () => {
     setupHappyPath();
     vi.useRealTimers();
     render(<DashboardScreen />);
@@ -480,16 +511,6 @@ describe('DashboardScreen', () => {
     await waitFor(() => {
       expect(screen.getAllByText(/TestUser/).length).toBeGreaterThanOrEqual(1);
     });
-  });
-
-  it('renders loading skeleton when user is set but still loading', async () => {
-    // Make fetch hang so loading stays true while user is set
-    mockGetUser.mockResolvedValue({ data: { user: defaultUser } });
-    vi.stubGlobal('fetch', vi.fn().mockReturnValue(new Promise(() => {})));
-    vi.useRealTimers();
-    const { container } = render(<DashboardScreen />);
-    // Initially shows ActivityIndicator (no user yet), then once user is set shows skeleton
-    expect(container.querySelector('svg') || container.textContent).toBeTruthy();
   });
 
   it('shows daily challenge without category badge when category is null', async () => {
@@ -511,16 +532,6 @@ describe('DashboardScreen', () => {
     render(<DashboardScreen />);
     await waitFor(() => {
       expect(screen.getByText('15')).toBeTruthy();
-    });
-  });
-
-  it('handles fetch exception gracefully (try/catch branch)', async () => {
-    mockGetUser.mockResolvedValue({ data: { user: defaultUser } });
-    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('Network error')));
-    vi.useRealTimers();
-    render(<DashboardScreen />);
-    await waitFor(() => {
-      expect(screen.getByText(/Dashboard data is loading/)).toBeTruthy();
     });
   });
 
@@ -558,20 +569,7 @@ describe('DashboardScreen', () => {
     });
   });
 
-  /* ── NEW: Unauthenticated redirect ─────────────────────────────── */
-  it('redirects to Login when getUser returns null', async () => {
-    mockGetUser.mockResolvedValue({ data: { user: null } });
-    vi.useRealTimers();
-    render(<DashboardScreen />);
-    await waitFor(() => {
-      expect(mockReset).toHaveBeenCalledWith({
-        index: 0,
-        routes: [{ name: 'Login' }],
-      });
-    });
-  });
-
-  /* ── Countdown ticker interval reaching 0 (lines 809-813) ──── */
+  /* -- Countdown ticker interval reaching 0 -- */
   it('decrements countdown via interval and clears when reaching 0', async () => {
     // Use fake timers with shouldAdvanceTime so promises resolve
     vi.useFakeTimers({ shouldAdvanceTime: true });
@@ -586,21 +584,21 @@ describe('DashboardScreen', () => {
       expect(screen.getByText("Start Today's Challenge")).toBeTruthy();
     });
 
-    // Tick 1: prev=3 -> return prev-1=2 (line 813)
+    // Tick 1: prev=3 -> return prev-1=2
     await act(async () => { vi.advanceTimersByTime(1000); });
-    // Tick 2: prev=2 -> return prev-1=1 (line 813)
+    // Tick 2: prev=2 -> return prev-1=1
     await act(async () => { vi.advanceTimersByTime(1000); });
-    // Tick 3: prev=1, prev<=1 -> clearInterval + return 0 (lines 810-811)
+    // Tick 3: prev=1, prev<=1 -> clearInterval + return 0
     await act(async () => { vi.advanceTimersByTime(1000); });
 
     // After countdown reaches 0, should display 00:00:00
     expect(screen.getByText('00:00:00')).toBeTruthy();
   });
 
-  /* ── NEW: Fallback Refresh button calls window.location.reload ── */
+  /* -- Fallback Refresh button calls window.location.reload -- */
   it('calls window.location.reload when fallback Refresh button is clicked', async () => {
-    mockGetUser.mockResolvedValue({ data: { user: defaultUser } });
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false }));
+    mockUseAuthGuard.mockReturnValue({ user: defaultUser, loading: false });
+    mockUseDashboardData.mockReturnValue(makeCachedState(null, 'loaded'));
     const reloadMock = vi.fn();
     Object.defineProperty(window, 'location', {
       value: { ...window.location, reload: reloadMock },
@@ -616,7 +614,7 @@ describe('DashboardScreen', () => {
     expect(reloadMock).toHaveBeenCalled();
   });
 
-  /* ── NEW: Activity feed with < 3 unique users but non-empty ───── */
+  /* -- Activity feed with < 3 unique users but non-empty -- */
   it('shows community fallback when activity has entries but fewer than 3 unique users', async () => {
     const now = new Date().toISOString();
     setupHappyPath({
@@ -633,7 +631,7 @@ describe('DashboardScreen', () => {
     expect(screen.getByText(/Be among the first/)).toBeTruthy();
   });
 
-  /* ── NEW: Heatmap with actual data for intensity color branches ── */
+  /* -- Heatmap with actual data for intensity color branches -- */
   it('renders heatmap cells with varying intensity when heatmap data is present', async () => {
     const today = new Date().toISOString().split('T')[0];
     const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
@@ -654,7 +652,7 @@ describe('DashboardScreen', () => {
     expect(screen.getByText(/14 activities across 3 active days/)).toBeTruthy();
   });
 
-  /* ── NEW: relativeTime helper covers various time ranges ──────── */
+  /* -- relativeTime helper covers various time ranges -- */
   it('shows relative timestamps in activity feed (minutes, hours, days, months)', async () => {
     const now = Date.now();
     setupHappyPath({
@@ -680,7 +678,6 @@ describe('DashboardScreen', () => {
     expect(screen.getByText('1mo ago')).toBeTruthy();
   });
 
-  /* ── NEW: formatCost with larger spend (>= 1 cent) ─────────────── */
   it('shows zero best streak', async () => {
     setupHappyPath({
       profile: { ...baseDashboardData.profile, longestStreak: 0 },

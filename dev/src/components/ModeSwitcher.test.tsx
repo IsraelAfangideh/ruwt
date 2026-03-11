@@ -8,7 +8,7 @@ const mockNavigate = vi.fn();
 vi.mock('react-native', () => ({
   View: ({ children, testID, ...p }: any) => <div data-testid={testID} {...p}>{children}</div>,
   Text: ({ children, style, testID, ...p }: any) => <span data-testid={testID} style={style} {...p}>{children}</span>,
-  Pressable: ({ children, onPress, testID, ...p }: any) => <button data-testid={testID} onClick={onPress} {...p}>{typeof children === 'function' ? children({ pressed: false }) : children}</button>,
+  Pressable: ({ children, onPress, testID, style, ...p }: any) => <button data-testid={testID} onClick={onPress} style={typeof style === 'function' ? style({ pressed: false, hovered: false }) : style} {...p}>{typeof children === 'function' ? children({ pressed: false }) : children}</button>,
   StyleSheet: { create: (s: any) => s },
 }));
 
@@ -18,7 +18,7 @@ vi.mock('@react-navigation/native', () => ({
 
 vi.mock('@/theme', () => ({
   useColors: () => ({
-    text: '#000', textMuted: '#888', muted: '#ddd', border: '#ccc', card: '#fff',
+    text: '#000', textMuted: '#888', textSubtle: '#666', muted: '#ddd', border: '#ccc', card: '#fff',
   }),
 }));
 
@@ -26,6 +26,7 @@ vi.mock('@/theme/tokens', () => ({
   spacing: { xs: 4, sm: 8, md: 16 },
   fontSizes: { xs: 12, sm: 14 },
   fontFamily: { body: 'sans-serif' },
+  radii: { sm: 4, md: 8, lg: 12 },
 }));
 
 const mockSetMode = vi.fn();

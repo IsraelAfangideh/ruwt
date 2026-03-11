@@ -28,6 +28,27 @@ vi.mock('@/components/ReplayViewer', () => ({
   ReplayViewer: ({ onClose }: any) => <div data-testid="replay-viewer"><button onClick={onClose}>Close</button></div>,
 }));
 vi.mock('@/hooks/useDocumentMeta', () => ({ useDocumentMeta: () => {} }));
+
+let mockDashboardState: any = {
+  leaderboard: { data: [], status: 'loaded', lastFetchedAt: Date.now() },
+  challenges: { data: [], status: 'loaded', lastFetchedAt: Date.now() },
+  seasons: { data: [], status: 'loaded', lastFetchedAt: Date.now() },
+  dashboard: { data: null, status: 'loaded', lastFetchedAt: Date.now() },
+  dailyChallenge: { data: null, status: 'loaded', lastFetchedAt: Date.now() },
+  badges: { data: { catalog: [], earned: [] }, status: 'loaded', lastFetchedAt: Date.now() },
+  bookmarks: { data: [], status: 'loaded', lastFetchedAt: Date.now() },
+  activity: { data: [], status: 'loaded', lastFetchedAt: Date.now() },
+  notifications: { data: { unreadCount: 0 }, status: 'loaded', lastFetchedAt: Date.now() },
+};
+
+vi.mock('@/lib/DashboardDataContext', () => ({
+  useDashboardData: () => ({
+    state: mockDashboardState,
+    initialLoadComplete: true,
+    refreshEndpoint: vi.fn(),
+    refreshAll: vi.fn(),
+  }),
+}));
 vi.mock('@/theme', () => ({
   useColors: () => ({
     bg: '#fff', text: '#000', textMuted: '#888', accent: '#c9a962', border: '#ccc',
@@ -78,6 +99,16 @@ const mockSeasons = [
 
 function setupFetch(overrides: { leaderboardEntries?: any[]; challenges?: any[]; seasons?: any[]; challengeEntries?: any[]; leaderboardOk?: boolean } = {}) {
   const { leaderboardEntries = [], challenges = mockChallenges, seasons = [], challengeEntries: chEntries, leaderboardOk = true } = overrides;
+
+  // Update the cached dashboard state so the component gets initial data from context
+  mockDashboardState = {
+    ...mockDashboardState,
+    leaderboard: { data: leaderboardEntries, status: 'loaded', lastFetchedAt: Date.now() },
+    challenges: { data: challenges, status: 'loaded', lastFetchedAt: Date.now() },
+    seasons: { data: seasons, status: 'loaded', lastFetchedAt: Date.now() },
+  };
+
+  // Also set up fetch for when the component re-fetches (period/division/challenge changes)
   vi.stubGlobal('fetch', vi.fn().mockImplementation((url: string) => {
     if (url.includes('/api/leaderboard')) {
       if (url.includes('challengeId=') && chEntries) {
@@ -99,9 +130,23 @@ describe('LeaderboardScreen', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockAuthReturn = { user: { id: 'u1' }, loading: false };
+    // Reset cached state
+    mockDashboardState = {
+      leaderboard: { data: [], status: 'loaded', lastFetchedAt: Date.now() },
+      challenges: { data: [], status: 'loaded', lastFetchedAt: Date.now() },
+      seasons: { data: [], status: 'loaded', lastFetchedAt: Date.now() },
+      dashboard: { data: null, status: 'loaded', lastFetchedAt: Date.now() },
+      dailyChallenge: { data: null, status: 'loaded', lastFetchedAt: Date.now() },
+      badges: { data: { catalog: [], earned: [] }, status: 'loaded', lastFetchedAt: Date.now() },
+      bookmarks: { data: [], status: 'loaded', lastFetchedAt: Date.now() },
+      activity: { data: [], status: 'loaded', lastFetchedAt: Date.now() },
+      notifications: { data: { unreadCount: 0 }, status: 'loaded', lastFetchedAt: Date.now() },
+    };
   });
 
   it('renders loading state initially', () => {
+    // Set leaderboard status to 'loading' to show the loading spinner
+    mockDashboardState = { ...mockDashboardState, leaderboard: { data: [], status: 'loading', lastFetchedAt: 0 } };
     setupFetch();
     const { container } = render(<LeaderboardScreen />);
     expect(container.querySelector('svg') || container.textContent).toBeTruthy();

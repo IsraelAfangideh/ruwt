@@ -2,7 +2,7 @@
  * BookmarksScreen: Displays user's saved challenges and replays.
  * Route: /bookmarks
  */
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { View, Text, ScrollView, ActivityIndicator, Pressable, StyleSheet } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { DashboardLayout } from '@/components/DashboardLayout';
@@ -14,6 +14,7 @@ import { useDocumentMeta } from '@/hooks/useDocumentMeta';
 import { formatCostFromHundredths } from '@/lib/ai/pricing';
 import { timeAgo } from '@/lib/utils';
 import { getDifficultyStyle } from '@/lib/difficulty';
+import { useDashboardData } from '@/lib/DashboardDataContext';
 
 interface BookmarkItem {
   id: string;
@@ -35,26 +36,12 @@ export function BookmarksScreen() {
   const { user, loading: authLoading } = useAuthGuard();
   const navigation = useNavigation();
   const c = useColors();
-  const [bookmarks, setBookmarks] = useState<BookmarkItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { state: cachedData, refreshEndpoint } = useDashboardData();
   const [filter, setFilter] = useState<'all' | 'challenge' | 'replay'>('all');
 
-  useEffect(() => {
-    if (!user) return;
-    const fetchBookmarks = async () => {
-      try {
-        const typeParam = filter === 'all' ? '' : `?type=${filter}`;
-        const res = await fetch(`/api/bookmarks${typeParam}`);
-        if (res.ok) {
-          const data = await res.json() as { bookmarks: BookmarkItem[] };
-          setBookmarks(data.bookmarks);
-        }
-      } catch { /* ignore */ }
-      setLoading(false);
-    };
-    setLoading(true);
-    fetchBookmarks();
-  }, [user, filter]);
+  const allBookmarks = cachedData.bookmarks.data as BookmarkItem[];
+  const bookmarks = filter === 'all' ? allBookmarks : allBookmarks.filter(b => b.targetType === filter);
+  const loading = cachedData.bookmarks.status === 'loading' || cachedData.bookmarks.status === 'idle';
 
   const handleRemove = async (targetType: string, targetId: string) => {
     try {
@@ -64,7 +51,7 @@ export function BookmarksScreen() {
         body: JSON.stringify({ targetType, targetId }),
       });
       if (res.ok) {
-        setBookmarks((prev) => prev.filter((b) => !(b.targetType === targetType && b.targetId === targetId)));
+        refreshEndpoint('bookmarks');
       }
     } catch { /* ignore */ }
   };

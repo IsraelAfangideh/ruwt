@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -18,6 +18,7 @@ import { Skeleton } from '@/components/ui/Skeleton';
 import { useColors } from '@/theme';
 import { spacing, fontSizes, fontFamily, radii } from '@/theme/tokens';
 import { useAuthGuard } from '@/hooks/useAuthGuard';
+import { useDashboardData } from '@/lib/DashboardDataContext';
 import { useDocumentMeta } from '@/hooks/useDocumentMeta';
 import { formatCategory, generateHeatmapDays } from '@/lib/utils';
 
@@ -158,10 +159,18 @@ export function ProfileScreen() {
   const { user, loading: authLoading } = useAuthGuard();
   const navigation = useNavigation();
   const c = useColors();
-  const [data, setData] = useState<ProfileData | null>(null);
-  const [allBadges, setAllBadges] = useState<BadgeCatalogEntry[]>([]);
-  const [earnedTypes, setEarnedTypes] = useState<Set<string>>(new Set());
-  const [loading, setLoading] = useState(true);
+  const { state: cachedData, refreshEndpoint } = useDashboardData();
+  const data = cachedData.dashboard.data as ProfileData | null;
+  const loading = cachedData.dashboard.status !== 'loaded';
+
+  const allBadges = useMemo<BadgeCatalogEntry[]>(
+    () => cachedData.badges.data?.catalog ?? [],
+    [cachedData.badges.data],
+  );
+  const earnedTypes = useMemo<Set<string>>(
+    () => new Set((cachedData.badges.data?.earned ?? []).map((e: any) => e.badgeType)),
+    [cachedData.badges.data],
+  );
 
   // Username editing
   const [editingUsername, setEditingUsername] = useState(false);
@@ -177,31 +186,14 @@ export function ProfileScreen() {
   // Avatar
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
 
-  const fetchData = useCallback(async () => {
-    try {
-      const [dashRes, badgeRes] = await Promise.all([
-        fetch('/api/dashboard'),
-        fetch('/api/badges'),
-      ]);
-      if (dashRes.ok) {
-        const d = await dashRes.json();
-        setData(d as ProfileData);
-        setUsername(d.profile.username || '');
-        setBio(d.profile?.bio || '');
-        setAvatarUrl(d.profile?.avatarUrl || null);
-      }
-      if (badgeRes.ok) {
-        const b = await badgeRes.json();
-        setAllBadges(b.catalog || []);
-        setEarnedTypes(new Set((b.earned || []).map((e: any) => e.badgeType)));
-      }
-    } catch {}
-    setLoading(false);
-  }, []);
-
+  // Initialize local state from cached data when it loads
   useEffect(() => {
-    if (user) fetchData();
-  }, [user, fetchData]);
+    if (data) {
+      setUsername(data.profile.username || '');
+      setBio((data.profile as any)?.bio || '');
+      setAvatarUrl(data.profile?.avatarUrl || null);
+    }
+  }, [data]);
 
   const handleSaveUsername = async () => {
     if (!username.trim()) return;
@@ -218,7 +210,7 @@ export function ProfileScreen() {
         setUsernameError(err.error || 'Failed to save');
       } else {
         setEditingUsername(false);
-        fetchData();
+        refreshEndpoint('dashboard');
       }
     } catch {
       setUsernameError('Network error');
@@ -267,7 +259,7 @@ export function ProfileScreen() {
               <Text style={{ fontSize: fontSizes.sm, color: c.textMuted, textAlign: 'center', marginBottom: spacing.md }}>
                 Could not load your profile. Try refreshing the page.
               </Text>
-              <Button onPress={() => { setLoading(true); fetchData(); }}>Refresh</Button>
+              <Button onPress={() => refreshEndpoint('dashboard')}>Refresh</Button>
             </CardContent>
           </Card>
         </View>

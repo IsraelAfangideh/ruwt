@@ -8,7 +8,7 @@ import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useAppMode } from '@/lib/AppModeContext';
 import { useColors } from '@/theme';
-import { spacing, fontSizes, fontFamily } from '@/theme/tokens';
+import { spacing, fontSizes, fontFamily, radii } from '@/theme/tokens';
 
 export function ModeSwitcher() {
   const { mode, setMode, canAccessHiringMode, orgInfo } = useAppMode();
@@ -45,16 +45,16 @@ export function ModeSwitcher() {
     <View style={styles.wrap}>
       <Pressable
         onPress={() => setOpen((v) => !v)}
-        style={[styles.pill, { backgroundColor: c.muted, borderColor: c.border }]}
+        style={({ hovered }: any) => [styles.pill, hovered && { backgroundColor: c.muted }]}
         accessibilityRole="button"
         accessibilityLabel={`Current mode: ${mode === 'practice' ? 'Practice' : 'Hiring'}. Switch mode.`}
         accessibilityState={{ expanded: open }}
         testID="mode-switcher"
       >
-        <Text style={[styles.pillText, { color: c.text }]}>
+        <Text style={[styles.pillText, { color: c.textMuted }]}>
           {mode === 'practice' ? 'Practice' : orgInfo?.name ?? 'Hiring'}
         </Text>
-        <Text style={[styles.chevron, { color: c.textMuted }]}>{open ? '\u25B2' : '\u25BC'}</Text>
+        <Text style={[styles.chevron, { color: c.textSubtle }]}>{open ? '\u25B4' : '\u25BE'}</Text>
       </Pressable>
       {open && (
         <>
@@ -97,15 +97,15 @@ const styles = StyleSheet.create({
   pill: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.xs,
-    paddingHorizontal: spacing.sm,
+    gap: 3,
+    paddingHorizontal: spacing.xs,
     paddingVertical: spacing.xs,
-    borderRadius: 6,
-    borderWidth: 1,
+    borderRadius: radii.sm,
+    minHeight: 44,
   },
   pillText: {
     fontSize: fontSizes.sm,
-    fontWeight: '600',
+    fontWeight: '500',
     fontFamily: fontFamily.body,
   },
   chevron: {

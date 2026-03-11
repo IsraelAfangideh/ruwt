@@ -23,9 +23,6 @@ vi.mock('@/components/ui/Card', () => ({
 vi.mock('@/components/ChallengeCard', () => ({
   ChallengeCard: ({ challenge }: any) => <div data-testid="challenge-card">{challenge.title}</div>,
 }));
-vi.mock('@/components/ui/Toast', () => ({
-  useToast: () => ({ showToast: vi.fn() }),
-}));
 vi.mock('@/lib/useIsMobile', () => ({ useIsMobile: () => false }));
 vi.mock('@/lib/difficulty', () => ({
   DIFFICULTIES: [
@@ -63,9 +60,18 @@ const mockChallenges = [
   { id: 'c4', title: 'Impossible Maze', description: 'Navigate an impossible maze', difficulty: 'impossible', category: 'model_selection', tier: 'headline', sortOrder: 1, language: 'javascript', userStatus: null, skillTested: null, stats: { solvers: 0 }, maxCost: 1000 },
 ];
 
-vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-  ok: true,
-  json: () => Promise.resolve(mockChallenges),
+let mockDashboardState: any = {
+  challenges: { data: mockChallenges, status: 'loaded', lastFetchedAt: Date.now() },
+  dailyChallenge: { data: null, status: 'loaded', lastFetchedAt: Date.now() },
+};
+
+vi.mock('@/lib/DashboardDataContext', () => ({
+  useDashboardData: () => ({
+    state: mockDashboardState,
+    initialLoadComplete: true,
+    refreshEndpoint: vi.fn(),
+    refreshAll: vi.fn(),
+  }),
 }));
 
 const { ChallengesScreen } = await import('./ChallengesScreen');
@@ -75,84 +81,53 @@ describe('ChallengesScreen', () => {
     vi.clearAllMocks();
     // Reset URL params so getInitialTab/Lang/Difficulty return defaults
     window.history.replaceState({}, '', window.location.pathname);
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve(mockChallenges),
-    }));
+    mockDashboardState = {
+      challenges: { data: mockChallenges, status: 'loaded', lastFetchedAt: Date.now() },
+      dailyChallenge: { data: null, status: 'loaded', lastFetchedAt: Date.now() },
+    };
   });
 
-  it('renders loading state initially', () => {
+  it('renders loading state when challenges are loading', () => {
+    mockDashboardState = {
+      challenges: { data: [], status: 'loading', lastFetchedAt: 0 },
+      dailyChallenge: { data: null, status: 'loading', lastFetchedAt: 0 },
+    };
     const { container } = render(<ChallengesScreen />);
-    expect(container.querySelector('svg') || container.textContent).toBeTruthy();
+    // Should render DashboardLayout with loading indicator inside
+    expect(container.querySelector('[data-testid="dashboard-layout"]')).toBeTruthy();
   });
 
-  it('renders title after loading', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve(mockChallenges),
-    }));
+  it('renders title after loading', () => {
     render(<ChallengesScreen />);
-    await waitFor(() => {
-      expect(screen.getAllByText('Engineering Challenges').length).toBeGreaterThanOrEqual(1);
-    });
+    expect(screen.getAllByText('Engineering Challenges').length).toBeGreaterThanOrEqual(1);
   });
 
-  it('renders challenge cards after loading', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve(mockChallenges),
-    }));
+  it('renders challenge cards after loading', () => {
     const { container } = render(<ChallengesScreen />);
-    await waitFor(() => {
-      const cards = container.querySelectorAll('[data-testid="challenge-card"]');
-      expect(cards.length).toBeGreaterThanOrEqual(1);
-    });
+    const cards = container.querySelectorAll('[data-testid="challenge-card"]');
+    expect(cards.length).toBeGreaterThanOrEqual(1);
   });
 
-  it('renders search box', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve(mockChallenges),
-    }));
+  it('renders search box', () => {
     const { container } = render(<ChallengesScreen />);
-    await waitFor(() => {
-      expect(container.querySelector('input[placeholder="Search challenges..."]')).not.toBeNull();
-    });
+    expect(container.querySelector('input[placeholder="Search challenges..."]')).not.toBeNull();
   });
 
-  it('renders filter pills for categories and languages', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve(mockChallenges),
-    }));
+  it('renders filter pills for categories and languages', () => {
     render(<ChallengesScreen />);
-    await waitFor(() => {
-      expect(screen.getAllByText('All').length).toBeGreaterThanOrEqual(1);
-    });
+    expect(screen.getAllByText('All').length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText('JavaScript').length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText('Python').length).toBeGreaterThanOrEqual(1);
   });
 
-  it('renders progress stats', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve(mockChallenges),
-    }));
+  it('renders progress stats', () => {
     render(<ChallengesScreen />);
-    await waitFor(() => {
-      expect(screen.getAllByText('total').length).toBeGreaterThanOrEqual(1);
-    });
+    expect(screen.getAllByText('total').length).toBeGreaterThanOrEqual(1);
   });
 
   it('filters by search query', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve(mockChallenges),
-    }));
-    const { container } = render(<ChallengesScreen />);
-    await waitFor(() => {
-      expect(container.querySelectorAll('[data-testid="challenge-card"]').length).toBe(5);
-    });
+const { container } = render(<ChallengesScreen />);
+    expect(container.querySelectorAll('[data-testid="challenge-card"]').length).toBe(5);
     const input = container.querySelector('input[placeholder="Search challenges..."]') as HTMLInputElement;
     fireEvent.change(input, { target: { value: 'FizzBuzz' } });
     await waitFor(() => {
@@ -162,14 +137,8 @@ describe('ChallengesScreen', () => {
   });
 
   it('filters by skill tested in search', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve(mockChallenges),
-    }));
-    const { container } = render(<ChallengesScreen />);
-    await waitFor(() => {
-      expect(container.querySelectorAll('[data-testid="challenge-card"]').length).toBe(5);
-    });
+const { container } = render(<ChallengesScreen />);
+    expect(container.querySelectorAll('[data-testid="challenge-card"]').length).toBe(5);
     const input = container.querySelector('input[placeholder="Search challenges..."]') as HTMLInputElement;
     fireEvent.change(input, { target: { value: 'prompt writing' } });
     await waitFor(() => {
@@ -178,14 +147,8 @@ describe('ChallengesScreen', () => {
   });
 
   it('shows clear button when search has text', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve(mockChallenges),
-    }));
-    const { container } = render(<ChallengesScreen />);
-    await waitFor(() => {
-      expect(container.querySelectorAll('[data-testid="challenge-card"]').length).toBe(5);
-    });
+const { container } = render(<ChallengesScreen />);
+    expect(container.querySelectorAll('[data-testid="challenge-card"]').length).toBe(5);
     const input = container.querySelector('input[placeholder="Search challenges..."]') as HTMLInputElement;
     fireEvent.change(input, { target: { value: 'FizzBuzz' } });
     // The clear button (x) should appear
@@ -193,31 +156,17 @@ describe('ChallengesScreen', () => {
   });
 
   it('clears search when clear button is clicked', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve(mockChallenges),
-    }));
-    const { container } = render(<ChallengesScreen />);
-    await waitFor(() => {
-      expect(container.querySelectorAll('[data-testid="challenge-card"]').length).toBe(5);
-    });
+const { container } = render(<ChallengesScreen />);
+    expect(container.querySelectorAll('[data-testid="challenge-card"]').length).toBe(5);
     const input = container.querySelector('input[placeholder="Search challenges..."]') as HTMLInputElement;
     fireEvent.change(input, { target: { value: 'FizzBuzz' } });
     fireEvent.click(screen.getByText('\u2715'));
-    await waitFor(() => {
-      expect(container.querySelectorAll('[data-testid="challenge-card"]').length).toBe(5);
-    });
+    expect(container.querySelectorAll('[data-testid="challenge-card"]').length).toBe(5);
   });
 
   it('filters by language when Python is clicked', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve(mockChallenges),
-    }));
-    const { container } = render(<ChallengesScreen />);
-    await waitFor(() => {
-      expect(container.querySelectorAll('[data-testid="challenge-card"]').length).toBe(5);
-    });
+const { container } = render(<ChallengesScreen />);
+    expect(container.querySelectorAll('[data-testid="challenge-card"]').length).toBe(5);
     fireEvent.click(screen.getAllByText('Python')[0]);
     await waitFor(() => {
       expect(container.querySelectorAll('[data-testid="challenge-card"]').length).toBe(1);
@@ -226,14 +175,8 @@ describe('ChallengesScreen', () => {
   });
 
   it('filters by difficulty when Easy is clicked', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve(mockChallenges),
-    }));
-    const { container } = render(<ChallengesScreen />);
-    await waitFor(() => {
-      expect(container.querySelectorAll('[data-testid="challenge-card"]').length).toBe(5);
-    });
+const { container } = render(<ChallengesScreen />);
+    expect(container.querySelectorAll('[data-testid="challenge-card"]').length).toBe(5);
     fireEvent.click(screen.getAllByText('Easy')[0]);
     await waitFor(() => {
       expect(container.querySelectorAll('[data-testid="challenge-card"]').length).toBe(1);
@@ -241,14 +184,8 @@ describe('ChallengesScreen', () => {
   });
 
   it('filters by category when Debugging is clicked', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve(mockChallenges),
-    }));
-    const { container } = render(<ChallengesScreen />);
-    await waitFor(() => {
-      expect(container.querySelectorAll('[data-testid="challenge-card"]').length).toBe(5);
-    });
+const { container } = render(<ChallengesScreen />);
+    expect(container.querySelectorAll('[data-testid="challenge-card"]').length).toBe(5);
     fireEvent.click(screen.getAllByText('Debugging')[0]);
     await waitFor(() => {
       expect(container.querySelectorAll('[data-testid="challenge-card"]').length).toBe(1);
@@ -256,14 +193,8 @@ describe('ChallengesScreen', () => {
   });
 
   it('shows "No Challenges Found" with clear filters when filtering yields no results', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve(mockChallenges),
-    }));
-    const { container } = render(<ChallengesScreen />);
-    await waitFor(() => {
-      expect(container.querySelectorAll('[data-testid="challenge-card"]').length).toBe(5);
-    });
+const { container } = render(<ChallengesScreen />);
+    expect(container.querySelectorAll('[data-testid="challenge-card"]').length).toBe(5);
     const input = container.querySelector('input[placeholder="Search challenges..."]') as HTMLInputElement;
     fireEvent.change(input, { target: { value: 'nonexistent challenge xyz' } });
     await waitFor(() => {
@@ -274,25 +205,15 @@ describe('ChallengesScreen', () => {
   });
 
   it('shows Showing X challenges count', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve(mockChallenges),
-    }));
-    render(<ChallengesScreen />);
+render(<ChallengesScreen />);
     await waitFor(() => {
       expect(screen.getByText(/Showing 4 challenges/)).toBeTruthy();
     });
   });
 
   it('shows "(filtered)" text when filters are active', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve(mockChallenges),
-    }));
-    const { container } = render(<ChallengesScreen />);
-    await waitFor(() => {
-      expect(container.querySelectorAll('[data-testid="challenge-card"]').length).toBe(5);
-    });
+const { container } = render(<ChallengesScreen />);
+    expect(container.querySelectorAll('[data-testid="challenge-card"]').length).toBe(5);
     fireEvent.click(screen.getAllByText('Python')[0]);
     await waitFor(() => {
       expect(screen.getByText(/filtered/)).toBeTruthy();
@@ -300,14 +221,8 @@ describe('ChallengesScreen', () => {
   });
 
   it('shows Clear filters button when filters are active', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve(mockChallenges),
-    }));
-    const { container } = render(<ChallengesScreen />);
-    await waitFor(() => {
-      expect(container.querySelectorAll('[data-testid="challenge-card"]').length).toBe(5);
-    });
+const { container } = render(<ChallengesScreen />);
+    expect(container.querySelectorAll('[data-testid="challenge-card"]').length).toBe(5);
     fireEvent.click(screen.getAllByText('Python')[0]);
     await waitFor(() => {
       expect(screen.getByText('Clear filters')).toBeTruthy();
@@ -315,33 +230,19 @@ describe('ChallengesScreen', () => {
   });
 
   it('clears all filters when Clear filters is clicked', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve(mockChallenges),
-    }));
-    const { container } = render(<ChallengesScreen />);
-    await waitFor(() => {
-      expect(container.querySelectorAll('[data-testid="challenge-card"]').length).toBe(5);
-    });
+const { container } = render(<ChallengesScreen />);
+    expect(container.querySelectorAll('[data-testid="challenge-card"]').length).toBe(5);
     fireEvent.click(screen.getAllByText('Python')[0]);
     await waitFor(() => {
       expect(container.querySelectorAll('[data-testid="challenge-card"]').length).toBe(1);
     });
     fireEvent.click(screen.getByText('Clear filters'));
-    await waitFor(() => {
-      expect(container.querySelectorAll('[data-testid="challenge-card"]').length).toBe(5);
-    });
+    expect(container.querySelectorAll('[data-testid="challenge-card"]').length).toBe(5);
   });
 
   it('filters by solved status when solved count is clicked', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve(mockChallenges),
-    }));
-    const { container } = render(<ChallengesScreen />);
-    await waitFor(() => {
-      expect(container.querySelectorAll('[data-testid="challenge-card"]').length).toBe(5);
-    });
+const { container } = render(<ChallengesScreen />);
+    expect(container.querySelectorAll('[data-testid="challenge-card"]').length).toBe(5);
     // Click on the "solved" stat
     fireEvent.click(screen.getAllByText('solved')[0]);
     await waitFor(() => {
@@ -351,14 +252,8 @@ describe('ChallengesScreen', () => {
   });
 
   it('filters by in_progress status', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve(mockChallenges),
-    }));
-    const { container } = render(<ChallengesScreen />);
-    await waitFor(() => {
-      expect(container.querySelectorAll('[data-testid="challenge-card"]').length).toBe(5);
-    });
+const { container } = render(<ChallengesScreen />);
+    expect(container.querySelectorAll('[data-testid="challenge-card"]').length).toBe(5);
     fireEvent.click(screen.getAllByText('in progress')[0]);
     await waitFor(() => {
       expect(container.querySelectorAll('[data-testid="challenge-card"]').length).toBe(1);
@@ -366,14 +261,8 @@ describe('ChallengesScreen', () => {
   });
 
   it('filters by not_started status', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve(mockChallenges),
-    }));
-    const { container } = render(<ChallengesScreen />);
-    await waitFor(() => {
-      expect(container.querySelectorAll('[data-testid="challenge-card"]').length).toBe(5);
-    });
+const { container } = render(<ChallengesScreen />);
+    expect(container.querySelectorAll('[data-testid="challenge-card"]').length).toBe(5);
     fireEvent.click(screen.getAllByText('not started')[0]);
     await waitFor(() => {
       // c1 and c4 are not started (2 in tiers + c4 again in "Where LLMs Struggle" = 3)
@@ -382,89 +271,52 @@ describe('ChallengesScreen', () => {
   });
 
   it('toggles status filter off when clicked again', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve(mockChallenges),
-    }));
-    const { container } = render(<ChallengesScreen />);
-    await waitFor(() => {
-      expect(container.querySelectorAll('[data-testid="challenge-card"]').length).toBe(5);
-    });
+const { container } = render(<ChallengesScreen />);
+    expect(container.querySelectorAll('[data-testid="challenge-card"]').length).toBe(5);
     fireEvent.click(screen.getAllByText('solved')[0]);
     await waitFor(() => {
       expect(container.querySelectorAll('[data-testid="challenge-card"]').length).toBe(1);
     });
     // Click again to toggle off
     fireEvent.click(screen.getAllByText('solved')[0]);
-    await waitFor(() => {
-      expect(container.querySelectorAll('[data-testid="challenge-card"]').length).toBe(5);
-    });
+    expect(container.querySelectorAll('[data-testid="challenge-card"]').length).toBe(5);
   });
 
-  it('renders tier sections in default sort', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve(mockChallenges),
-    }));
+  it('renders tier sections in default sort', () => {
     render(<ChallengesScreen />);
-    await waitFor(() => {
-      expect(screen.getByText('Getting Started')).toBeTruthy();
-    });
+    expect(screen.getByText('Getting Started')).toBeTruthy();
     expect(screen.getByText('Core Challenges')).toBeTruthy();
     expect(screen.getByText('Headline Challenges')).toBeTruthy();
   });
 
-  it('renders "Where LLMs Struggle" section for returning users with hard/impossible challenges', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve(mockChallenges), // c2 is passed (solvedCount>0), c4 is impossible/unsolved
-    }));
+  it('renders "Where LLMs Struggle" section for returning users with hard/impossible challenges', () => {
+    // c2 is passed (solvedCount>0), c4 is impossible/unsolved
     render(<ChallengesScreen />);
-    await waitFor(() => {
-      expect(screen.getByText('Where LLMs Struggle')).toBeTruthy();
-    });
+    expect(screen.getByText('Where LLMs Struggle')).toBeTruthy();
   });
 
-  it('renders Sort button', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve(mockChallenges),
-    }));
+  it('renders Sort button', () => {
     render(<ChallengesScreen />);
-    await waitFor(() => {
-      expect(screen.getByText(/Sort: Default/)).toBeTruthy();
-    });
+    expect(screen.getByText(/Sort: Default/)).toBeTruthy();
   });
 
-  it('renders subtitle text', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve(mockChallenges),
-    }));
+  it('renders subtitle text', () => {
     render(<ChallengesScreen />);
-    await waitFor(() => {
-      expect(screen.getByText(/Real engineering problems/)).toBeTruthy();
-    });
+    expect(screen.getByText(/Real engineering problems/)).toBeTruthy();
   });
 
-  it('handles empty challenges gracefully', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve([]),
-    }));
+  it('handles empty challenges gracefully', () => {
+    mockDashboardState = {
+      challenges: { data: [], status: 'loaded', lastFetchedAt: Date.now() },
+      dailyChallenge: { data: null, status: 'loaded', lastFetchedAt: Date.now() },
+    };
     render(<ChallengesScreen />);
-    await waitFor(() => {
-      expect(screen.getByText('No Challenges Found')).toBeTruthy();
-    });
+    expect(screen.getByText('No Challenges Found')).toBeTruthy();
     expect(screen.getByText('Check back later for new challenges.')).toBeTruthy();
   });
 
   it('opens sort menu when Sort button is clicked', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve(mockChallenges),
-    }));
-    render(<ChallengesScreen />);
+render(<ChallengesScreen />);
     await waitFor(() => {
       expect(screen.getByText(/Sort: Default/)).toBeTruthy();
     });
@@ -478,11 +330,7 @@ describe('ChallengesScreen', () => {
   });
 
   it('sorts by difficulty when Difficulty option is selected', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve(mockChallenges),
-    }));
-    render(<ChallengesScreen />);
+render(<ChallengesScreen />);
     await waitFor(() => {
       expect(screen.getByText(/Sort: Default/)).toBeTruthy();
     });
@@ -497,11 +345,7 @@ describe('ChallengesScreen', () => {
   });
 
   it('sorts by popularity when Most Solved option is selected', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve(mockChallenges),
-    }));
-    render(<ChallengesScreen />);
+render(<ChallengesScreen />);
     await waitFor(() => {
       expect(screen.getByText(/Sort: Default/)).toBeTruthy();
     });
@@ -516,11 +360,7 @@ describe('ChallengesScreen', () => {
   });
 
   it('sorts by cost when Lowest Cost option is selected', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve(mockChallenges),
-    }));
-    render(<ChallengesScreen />);
+render(<ChallengesScreen />);
     await waitFor(() => {
       expect(screen.getByText(/Sort: Default/)).toBeTruthy();
     });
@@ -535,11 +375,7 @@ describe('ChallengesScreen', () => {
   });
 
   it('toggles sort direction when clicking the same sort option again', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve(mockChallenges),
-    }));
-    render(<ChallengesScreen />);
+render(<ChallengesScreen />);
     await waitFor(() => {
       expect(screen.getByText(/Sort: Default/)).toBeTruthy();
     });
@@ -570,11 +406,7 @@ describe('ChallengesScreen', () => {
   });
 
   it('closes sort menu when backdrop is clicked', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve(mockChallenges),
-    }));
-    render(<ChallengesScreen />);
+render(<ChallengesScreen />);
     await waitFor(() => {
       expect(screen.getByText(/Sort: Default/)).toBeTruthy();
     });
@@ -591,14 +423,8 @@ describe('ChallengesScreen', () => {
   });
 
   it('clears all filters from empty state clear button', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve(mockChallenges),
-    }));
-    const { container } = render(<ChallengesScreen />);
-    await waitFor(() => {
-      expect(container.querySelectorAll('[data-testid="challenge-card"]').length).toBe(5);
-    });
+const { container } = render(<ChallengesScreen />);
+    expect(container.querySelectorAll('[data-testid="challenge-card"]').length).toBe(5);
     // Search for something that doesn't exist
     const input = container.querySelector('input[placeholder="Search challenges..."]') as HTMLInputElement;
     fireEvent.change(input, { target: { value: 'nonexistent challenge xyz' } });
@@ -607,18 +433,12 @@ describe('ChallengesScreen', () => {
     });
     // Click "Clear all filters" in empty state
     fireEvent.click(screen.getByText('Clear all filters'));
-    await waitFor(() => {
-      expect(container.querySelectorAll('[data-testid="challenge-card"]').length).toBe(5);
-    });
+    expect(container.querySelectorAll('[data-testid="challenge-card"]').length).toBe(5);
   });
 
   it('reads initial tab from URL params', async () => {
     window.history.replaceState({}, '', '?tab=real_world');
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve(mockChallenges),
-    }));
-    render(<ChallengesScreen />);
+render(<ChallengesScreen />);
     await waitFor(() => {
       // Real-World category filter should be active, showing only those challenges
       expect(screen.getByText(/Showing/)).toBeTruthy();
@@ -627,11 +447,7 @@ describe('ChallengesScreen', () => {
 
   it('reads initial lang from URL params', async () => {
     window.history.replaceState({}, '', '?lang=python');
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve(mockChallenges),
-    }));
-    render(<ChallengesScreen />);
+render(<ChallengesScreen />);
     await waitFor(() => {
       expect(screen.getByText(/Showing/)).toBeTruthy();
     });
@@ -639,61 +455,47 @@ describe('ChallengesScreen', () => {
 
   it('reads initial difficulty from URL params', async () => {
     window.history.replaceState({}, '', '?difficulty=hard');
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve(mockChallenges),
-    }));
-    render(<ChallengesScreen />);
+render(<ChallengesScreen />);
     await waitFor(() => {
       expect(screen.getByText(/Showing/)).toBeTruthy();
     });
   });
 
-  it('shows back-to-top button when more than 12 challenges', async () => {
+  it('shows back-to-top button when more than 12 challenges', () => {
     // Create 15 challenges to trigger the back-to-top button
     const manyChallenges = Array.from({ length: 15 }, (_, i) => ({
       id: `c${i}`, title: `Challenge ${i}`, description: `Desc ${i}`, difficulty: 'easy',
       category: 'prompt_efficiency', tier: 'core', sortOrder: i, language: 'javascript',
       userStatus: null, skillTested: null, stats: { solvers: 1 }, maxCost: 100,
     }));
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve(manyChallenges),
-    }));
+    mockDashboardState = {
+      challenges: { data: manyChallenges, status: 'loaded', lastFetchedAt: Date.now() },
+      dailyChallenge: { data: null, status: 'loaded', lastFetchedAt: Date.now() },
+    };
     vi.stubGlobal('scrollTo', vi.fn());
     render(<ChallengesScreen />);
-    await waitFor(() => {
-      expect(screen.getByText(/Back to top/)).toBeTruthy();
-    });
+    expect(screen.getByText(/Back to top/)).toBeTruthy();
     fireEvent.click(screen.getByText(/Back to top/));
     expect(window.scrollTo).toHaveBeenCalled();
   });
 
-  it('shows filtered stats with "of" suffix when non-status filters are active', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve(mockChallenges),
-    }));
+  it('shows filtered stats with "of" suffix when non-status filters are active', () => {
     render(<ChallengesScreen />);
-    await waitFor(() => {
-      expect(screen.getAllByText('Engineering Challenges').length).toBeGreaterThanOrEqual(1);
-    });
+    expect(screen.getAllByText('Engineering Challenges').length).toBeGreaterThanOrEqual(1);
     // Click on a category filter
     fireEvent.click(screen.getAllByText('Debugging')[0]);
-    await waitFor(() => {
-      // Should show "solved of X" to indicate filtered stats relative to global (e.g., "1 of 1")
-      const solvedLabels = screen.getAllByText(/solved/);
-      expect(solvedLabels.length).toBeGreaterThanOrEqual(1);
-    });
+    // Should show "solved of X" to indicate filtered stats relative to global (e.g., "1 of 1")
+    const solvedLabels = screen.getAllByText(/solved/);
+    expect(solvedLabels.length).toBeGreaterThanOrEqual(1);
   });
 
-  it('handles fetch failure and shows toast', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('fail')));
+  it('handles error state from context gracefully', () => {
+    mockDashboardState = {
+      challenges: { data: [], status: 'error', lastFetchedAt: Date.now() },
+      dailyChallenge: { data: null, status: 'error', lastFetchedAt: Date.now() },
+    };
     render(<ChallengesScreen />);
-    // Should still render something (returns null when no user initially, but user mock exists)
-    await waitFor(() => {
-      expect(screen.getByText('Engineering Challenges')).toBeTruthy();
-    });
+    expect(screen.getByText('Engineering Challenges')).toBeTruthy();
   });
 
   it('sorts LLM Struggle challenges by solver count when multiple exist (line 247)', async () => {
@@ -702,29 +504,21 @@ describe('ChallengesScreen', () => {
       ...mockChallenges,
       { id: 'c5', title: 'Hard Unsolved', description: 'Hard one', difficulty: 'hard', category: 'prompt_efficiency', tier: 'core', sortOrder: 4, language: 'javascript', userStatus: null, skillTested: null, stats: { solvers: 1 }, maxCost: 500 },
     ];
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve(extendedChallenges),
-    }));
+    mockDashboardState = {
+      challenges: { data: extendedChallenges, status: 'loaded', lastFetchedAt: Date.now() },
+      dailyChallenge: { data: null, status: 'loaded', lastFetchedAt: Date.now() },
+    };
     render(<ChallengesScreen />);
-    await waitFor(() => {
-      // "Where LLMs Struggle" section should appear with multiple challenges sorted
-      expect(screen.getByText('Where LLMs Struggle')).toBeTruthy();
-    });
+    // "Where LLMs Struggle" section should appear with multiple challenges sorted
+    expect(screen.getByText('Where LLMs Struggle')).toBeTruthy();
     // Both hard/impossible unsolved challenges should appear (may appear in multiple sections)
     expect(screen.getAllByText('Impossible Maze').length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText('Hard Unsolved').length).toBeGreaterThanOrEqual(1);
   });
 
   it('clicking total stat sets statusFilter to all (line 321)', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve(mockChallenges),
-    }));
-    const { container } = render(<ChallengesScreen />);
-    await waitFor(() => {
-      expect(container.querySelectorAll('[data-testid="challenge-card"]').length).toBe(5);
-    });
+const { container } = render(<ChallengesScreen />);
+    expect(container.querySelectorAll('[data-testid="challenge-card"]').length).toBe(5);
     // First filter to something specific
     fireEvent.click(screen.getAllByText('solved')[0]);
     await waitFor(() => {
@@ -732,17 +526,11 @@ describe('ChallengesScreen', () => {
     });
     // Now click the "total" stat to reset to 'all'
     fireEvent.click(screen.getAllByText('total')[0]);
-    await waitFor(() => {
-      expect(container.querySelectorAll('[data-testid="challenge-card"]').length).toBe(5);
-    });
+    expect(container.querySelectorAll('[data-testid="challenge-card"]').length).toBe(5);
   });
 
   it('closes sort menu when sort backdrop is clicked (line 600)', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve(mockChallenges),
-    }));
-    render(<ChallengesScreen />);
+render(<ChallengesScreen />);
     await waitFor(() => {
       expect(screen.getByText(/Sort: Default/)).toBeTruthy();
     });
@@ -760,11 +548,7 @@ describe('ChallengesScreen', () => {
   });
 
   it('renders flat list when sort is not default', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve(mockChallenges),
-    }));
-    render(<ChallengesScreen />);
+render(<ChallengesScreen />);
     await waitFor(() => {
       expect(screen.getByText(/Sort: Default/)).toBeTruthy();
     });

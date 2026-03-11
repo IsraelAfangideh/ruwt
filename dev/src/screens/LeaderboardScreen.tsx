@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { View, Text, ActivityIndicator, ScrollView, StyleSheet, Pressable } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { DashboardLayout } from '@/components/DashboardLayout';
@@ -12,6 +12,7 @@ import { spacing, fontSizes, fontFamily } from '@/theme/tokens';
 import { useDocumentMeta } from '@/hooks/useDocumentMeta';
 import { useAuthGuard } from '@/hooks/useAuthGuard';
 import { formatCostFromHundredths } from '@/lib/ai/pricing';
+import { useDashboardData } from '@/lib/DashboardDataContext';
 
 type GlobalEntry = {
   rank: number;
@@ -51,16 +52,18 @@ export function LeaderboardScreen() {
   useDocumentMeta({ title: 'Leaderboard', description: 'See who uses AI most efficiently. Global rankings by challenges solved and average cost.', canonicalPath: '/leaderboard' });
   const { user, loading: authLoading } = useAuthGuard();
   const navigation = useNavigation();
+  const { state: cachedData } = useDashboardData();
   const [tab, setTab] = useState<Tab>('global');
   const [period, setPeriod] = useState<Period>('week');
-  const [globalEntries, setGlobalEntries] = useState<GlobalEntry[]>([]);
+  const [localGlobalEntries, setLocalGlobalEntries] = useState<GlobalEntry[] | null>(null);
+  const globalEntries = localGlobalEntries ?? cachedData.leaderboard.data as GlobalEntry[];
   const [challengeEntries, setChallengeEntries] = useState<ChallengeEntry[]>([]);
-  const [challenges, setChallenges] = useState<ChallengeInfo[]>([]);
+  const challenges = cachedData.challenges.data as ChallengeInfo[];
   const [selectedChallenge, setSelectedChallenge] = useState<string>('');
-  const [loading, setLoading] = useState(true);
+  const loading = cachedData.leaderboard.status === 'loading' || cachedData.leaderboard.status === 'idle';
   const [challengeLoading, setChallengeLoading] = useState(false);
   const [replayAttemptId, setReplayAttemptId] = useState<string | null>(null);
-  const [allSeasons, setAllSeasons] = useState<SeasonInfo[]>([]);
+  const allSeasons = cachedData.seasons.data as SeasonInfo[];
   const [selectedSeason, setSelectedSeason] = useState<string>('');
   const [division, setDivision] = useState<Division>('open');
   const c = useColors();
@@ -73,34 +76,10 @@ export function LeaderboardScreen() {
       const r = await fetch(url);
       if (r.ok) {
         const data = await r.json() as { entries: GlobalEntry[] };
-        setGlobalEntries(data.entries ?? []);
+        setLocalGlobalEntries(data.entries ?? []);
       }
     } catch {}
   };
-
-  useEffect(() => {
-    if (!user) return;
-    const init = async () => {
-      const base = typeof window !== 'undefined' ? window.location.origin : '';
-      try {
-        const [, chRes, seasonsRes] = await Promise.all([
-          fetchGlobal('week'),
-          fetch(`${base}/api/challenges`),
-          fetch(`${base}/api/seasons`),
-        ]);
-        if (chRes.ok) {
-          const chData = await chRes.json() as ChallengeInfo[];
-          setChallenges(chData);
-        }
-        if (seasonsRes.ok) {
-          const sData = await seasonsRes.json() as { seasons: SeasonInfo[] };
-          setAllSeasons(sData.seasons ?? []);
-        }
-      } catch {}
-      setLoading(false);
-    };
-    init();
-  }, [user]);
 
   const handlePeriodChange = (p: Period) => {
     setPeriod(p);
@@ -141,7 +120,7 @@ export function LeaderboardScreen() {
     fetchChallengeLeaderboard(id);
   };
 
-  if (authLoading || loading || !user) {
+  if (authLoading || !user) {
     return (
       <View style={[styles.center, { backgroundColor: c.bg }]}>
         <ActivityIndicator size="large" color={c.accent} />
@@ -152,6 +131,13 @@ export function LeaderboardScreen() {
   return (
     <DashboardLayout user={user}>
       <Text style={[styles.title, { color: c.text }]}>Leaderboard</Text>
+
+      {loading && (
+        <View style={[styles.center, { paddingVertical: spacing['2xl'] }]}>
+          <ActivityIndicator size="large" color={c.accent} />
+        </View>
+      )}
+      {!loading && <>
 
       {/* Period tabs */}
       <View style={[styles.periodBar, { borderBottomColor: c.border }]}>
@@ -404,6 +390,7 @@ export function LeaderboardScreen() {
       {replayAttemptId && (
         <ReplayViewer attemptId={replayAttemptId} onClose={() => setReplayAttemptId(null)} />
       )}
+      </>}
     </DashboardLayout>
   );
 }
