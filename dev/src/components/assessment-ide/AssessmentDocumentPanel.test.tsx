@@ -137,6 +137,16 @@ describe('AssessmentDocumentPanel', () => {
     expect(screen.getByLabelText('Title')).toBeTruthy();
   });
 
+  it('shows "Title required" when title is empty', () => {
+    render(<AssessmentDocumentPanel {...baseProps} title="" />);
+    expect(screen.getByText('Title required')).toBeTruthy();
+  });
+
+  it('hides "Title required" when title is set', () => {
+    render(<AssessmentDocumentPanel {...baseProps} title="My Assessment" />);
+    expect(screen.queryByText('Title required')).toBeNull();
+  });
+
   it('renders description input', () => {
     render(<AssessmentDocumentPanel {...baseProps} />);
     expect(screen.getByLabelText('Description (optional)')).toBeTruthy();

@@ -50,12 +50,17 @@ export function AssessmentDocumentPanel(props: Props) {
 
       {/* Title & Description */}
       <View style={styles.section}>
-        <Input
-          label="Title"
-          placeholder="e.g. Backend Developer Assessment"
-          value={props.title}
-          onChangeText={props.setTitle}
-        />
+        <View>
+          <Input
+            label="Title"
+            placeholder="e.g. Backend Developer Assessment"
+            value={props.title}
+            onChangeText={props.setTitle}
+          />
+          {!props.title && (
+            <Text style={{ fontSize: 10, color: c.destructive, marginTop: 2 }}>Title required</Text>
+          )}
+        </View>
         <Input
           label="Description (optional)"
           placeholder="Describe what this assessment evaluates"

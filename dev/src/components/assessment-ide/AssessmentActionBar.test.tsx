@@ -74,9 +74,9 @@ describe('AssessmentActionBar', () => {
     expect(btn.closest('button')?.disabled).toBe(true);
   });
 
-  it('shows "Title required" validation message when title is empty', () => {
+  it('does not show "Title required" in action bar (moved to document panel)', () => {
     render(<AssessmentActionBar {...baseProps} title="" />);
-    expect(screen.getByText('Title required')).toBeTruthy();
+    expect(screen.queryByText('Title required')).toBeNull();
   });
 
   it('disables Save Draft when weightSum is not 100', () => {

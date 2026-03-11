@@ -42,19 +42,12 @@ export function AssessmentActionBar({
   return (
     <View style={[styles.bar, { backgroundColor: c.bg, borderTopColor: c.border }]}>
       <View style={styles.left}>
-        <View style={{ alignItems: 'flex-start' }}>
-          <Button onPress={onSave} disabled={saveDisabled}>
-            {saving ? 'Saving...' : saveError ? '\u2717 Error' : saveSuccess ? '\u2713 Saved' : 'Save Draft'}
-          </Button>
-          {!saving && !saveSuccess && !saveError && saveDisabled && (
-            <Text style={{ fontSize: 10, color: c.destructive, marginTop: 2 }}>
-              {!title ? 'Title required' : 'Weights must = 100'}
-            </Text>
-          )}
-        </View>
         {[saveError, activateError, inviteError].filter(Boolean).map((err) => (
           <Text key={err} style={{ fontSize: fontSizes.xs, color: c.destructive }}>{err}</Text>
         ))}
+        {!saving && !saveSuccess && !saveError && saveDisabled && weightSum !== 100 && title && (
+          <Text style={{ fontSize: 10, color: c.destructive }}>Weights must = 100</Text>
+        )}
       </View>
       <View style={styles.right}>
         {assessmentId && status === 'draft' && (
@@ -73,7 +66,9 @@ export function AssessmentActionBar({
             </Button>
           )
         )}
-        {/* Generate Invite Link is in AssessmentInviteSection (document panel) */}
+        <Button onPress={onSave} disabled={saveDisabled}>
+          {saving ? 'Saving...' : saveError ? '\u2717 Error' : saveSuccess ? '\u2713 Saved' : 'Save Draft'}
+        </Button>
       </View>
     </View>
   );
@@ -85,10 +80,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    paddingVertical: spacing.xs,
     borderTopWidth: 1,
-    minHeight: 52,
-    flexWrap: 'wrap',
+    minHeight: 40,
     gap: spacing.sm,
   },
   left: {
