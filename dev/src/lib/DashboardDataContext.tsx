@@ -64,7 +64,7 @@ function reducer(state: DashboardDataState, action: Action): DashboardDataState 
       return {
         ...state,
         [action.endpoint]: { ...state[action.endpoint], status: action.status },
-      };
+      } as DashboardDataState;
     case 'SET_DATA':
       return {
         ...state,
@@ -73,13 +73,13 @@ function reducer(state: DashboardDataState, action: Action): DashboardDataState 
           status: action.status,
           lastFetchedAt: Date.now(),
         },
-      };
+      } as DashboardDataState;
     case 'BATCH_SET_STATUS': {
-      const next = { ...state };
+      const next = { ...state } as Record<string, any>;
       for (const ep of action.endpoints) {
-        next[ep] = { ...next[ep], status: action.status };
+        next[ep] = { ...state[ep], status: action.status };
       }
-      return next;
+      return next as DashboardDataState;
     }
     default:
       return state;

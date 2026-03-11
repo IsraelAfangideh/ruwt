@@ -5,25 +5,12 @@ import { DashboardNav } from './DashboardNav';
 
 const mockNavigate = vi.fn();
 
-vi.mock('react-native', () => {
-  const AnimatedValue = class {
-    _value: number;
-    constructor(v: number) { this._value = v; }
-    setValue(v: number) { this._value = v; }
-  };
-  return {
-    View: ({ children, ...p }: any) => <div {...p}>{children}</div>,
-    Text: ({ children, style, ...p }: any) => <span style={style} {...p}>{children}</span>,
-    Pressable: ({ children, onPress, ...p }: any) => <button onClick={onPress} {...p}>{typeof children === 'function' ? children({ pressed: false }) : children}</button>,
-    Animated: {
-      Value: AnimatedValue,
-      View: ({ children, style, ...p }: any) => <div style={style} {...p}>{children}</div>,
-      timing: (_val: any, _cfg: any) => ({ start: (cb?: () => void) => cb?.() }),
-      parallel: (anims: any[]) => ({ start: (cb?: () => void) => { anims.forEach((a: any) => a.start()); cb?.(); } }),
-    },
-    StyleSheet: { create: (s: any) => s },
-  };
-});
+vi.mock('react-native', () => ({
+  View: ({ children, ...p }: any) => <div {...p}>{children}</div>,
+  Text: ({ children, style, ...p }: any) => <span style={style} {...p}>{children}</span>,
+  Pressable: ({ children, onPress, ...p }: any) => <button onClick={onPress} {...p}>{typeof children === 'function' ? children({ pressed: false }) : children}</button>,
+  StyleSheet: { create: (s: any) => s },
+}));
 
 vi.mock('@react-navigation/native', () => ({
   useNavigation: () => ({ navigate: mockNavigate }),

@@ -1,5 +1,5 @@
 import { useRef, useEffect, useCallback } from 'react';
-import { View, Text, Pressable, Animated, StyleSheet, type LayoutChangeEvent } from 'react-native';
+import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useAppMode } from '@/lib/AppModeContext';
 import { useColors } from '@/theme';
@@ -36,8 +36,7 @@ export function DashboardNav() {
   const { mode, profileLoading, isOrgMember, canAccessHiringMode } = useAppMode();
 
   const layouts = useRef<Record<string, { x: number; width: number }>>({});
-  const translateX = useRef(new Animated.Value(0)).current;
-  const underlineWidth = useRef(new Animated.Value(0)).current;
+  const underlineRef = useRef<HTMLDivElement>(null);
   const hasInitialized = useRef(false);
 
   let navItems: NavItem[];
@@ -52,34 +51,34 @@ export function DashboardNav() {
       : [...practiceNavItems, { name: 'Hiring' as const, label: 'Hiring', accent: true }];
   }
 
-  const animateToTab = useCallback((name: string) => {
+  const moveUnderline = useCallback((name: string) => {
     const layout = layouts.current[name];
-    if (!layout) return;
+    const el = underlineRef.current;
+    if (!layout || !el) return;
 
-    if (prefersReducedMotion || !hasInitialized.current) {
-      translateX.setValue(layout.x);
-      underlineWidth.setValue(layout.width);
+    if (!hasInitialized.current) {
+      el.style.transition = 'none';
       hasInitialized.current = true;
-      return;
+    } else if (prefersReducedMotion) {
+      el.style.transition = 'none';
+    } else {
+      el.style.transition = 'transform 200ms ease, width 200ms ease';
     }
-
-    Animated.parallel([
-      Animated.timing(translateX, { toValue: layout.x, duration: 200, useNativeDriver: false }),
-      Animated.timing(underlineWidth, { toValue: layout.width, duration: 200, useNativeDriver: false }),
-    ]).start();
-  }, [translateX, underlineWidth]);
+    el.style.transform = `translateX(${layout.x}px)`;
+    el.style.width = `${layout.width}px`;
+  }, []);
 
   useEffect(() => {
-    animateToTab(route.name);
-  }, [route.name, animateToTab]);
+    moveUnderline(route.name);
+  }, [route.name, moveUnderline]);
 
-  const handleLayout = useCallback((name: string, e: LayoutChangeEvent) => {
+  const handleLayout = useCallback((name: string, e: { nativeEvent: { layout: { x: number; width: number } } }) => {
     const { x, width } = e.nativeEvent.layout;
     layouts.current[name] = { x, width };
     if (name === route.name) {
-      animateToTab(name);
+      moveUnderline(name);
     }
-  }, [route.name, animateToTab]);
+  }, [route.name, moveUnderline]);
 
   return (
     <View style={styles.container} accessibilityRole="navigation" accessibilityLabel="Main navigation">
@@ -89,7 +88,7 @@ export function DashboardNav() {
           <Pressable
             key={item.name}
             onPress={() => navigation.navigate(item.name as never)}
-            onLayout={(e) => handleLayout(item.name, e)}
+            onLayout={(e: any) => handleLayout(item.name, e)}
             style={styles.item}
             accessibilityRole="link"
             accessibilityLabel={item.label}
@@ -106,15 +105,9 @@ export function DashboardNav() {
           </Pressable>
         );
       })}
-      <Animated.View
-        style={[
-          styles.underline,
-          {
-            backgroundColor: c.accent,
-            transform: [{ translateX }],
-            width: underlineWidth,
-          },
-        ]}
+      <div
+        ref={underlineRef}
+        style={{ position: 'absolute', bottom: 0, left: 0, height: 2, backgroundColor: c.accent, width: 0 }}
       />
     </View>
   );
@@ -124,5 +117,4 @@ const styles = StyleSheet.create({
   container: { flexDirection: 'row', alignItems: 'center', gap: spacing.lg, position: 'relative' },
   item: { paddingVertical: spacing.xs, minHeight: 44, justifyContent: 'center' },
   text: { fontSize: fontSizes.sm, fontWeight: '500', fontFamily: fontFamily.body },
-  underline: { position: 'absolute', bottom: 0, left: 0, height: 2 },
 });

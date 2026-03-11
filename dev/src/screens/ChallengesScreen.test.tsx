@@ -126,7 +126,7 @@ describe('ChallengesScreen', () => {
   });
 
   it('filters by search query', async () => {
-const { container } = render(<ChallengesScreen />);
+    const { container } = render(<ChallengesScreen />);
     expect(container.querySelectorAll('[data-testid="challenge-card"]').length).toBe(5);
     const input = container.querySelector('input[placeholder="Search challenges..."]') as HTMLInputElement;
     fireEvent.change(input, { target: { value: 'FizzBuzz' } });
@@ -137,7 +137,7 @@ const { container } = render(<ChallengesScreen />);
   });
 
   it('filters by skill tested in search', async () => {
-const { container } = render(<ChallengesScreen />);
+    const { container } = render(<ChallengesScreen />);
     expect(container.querySelectorAll('[data-testid="challenge-card"]').length).toBe(5);
     const input = container.querySelector('input[placeholder="Search challenges..."]') as HTMLInputElement;
     fireEvent.change(input, { target: { value: 'prompt writing' } });
@@ -146,8 +146,8 @@ const { container } = render(<ChallengesScreen />);
     });
   });
 
-  it('shows clear button when search has text', async () => {
-const { container } = render(<ChallengesScreen />);
+  it('shows clear button when search has text', () => {
+        const { container } = render(<ChallengesScreen />);
     expect(container.querySelectorAll('[data-testid="challenge-card"]').length).toBe(5);
     const input = container.querySelector('input[placeholder="Search challenges..."]') as HTMLInputElement;
     fireEvent.change(input, { target: { value: 'FizzBuzz' } });
@@ -156,7 +156,7 @@ const { container } = render(<ChallengesScreen />);
   });
 
   it('clears search when clear button is clicked', async () => {
-const { container } = render(<ChallengesScreen />);
+    const { container } = render(<ChallengesScreen />);
     expect(container.querySelectorAll('[data-testid="challenge-card"]').length).toBe(5);
     const input = container.querySelector('input[placeholder="Search challenges..."]') as HTMLInputElement;
     fireEvent.change(input, { target: { value: 'FizzBuzz' } });
@@ -165,7 +165,7 @@ const { container } = render(<ChallengesScreen />);
   });
 
   it('filters by language when Python is clicked', async () => {
-const { container } = render(<ChallengesScreen />);
+    const { container } = render(<ChallengesScreen />);
     expect(container.querySelectorAll('[data-testid="challenge-card"]').length).toBe(5);
     fireEvent.click(screen.getAllByText('Python')[0]);
     await waitFor(() => {
@@ -175,7 +175,7 @@ const { container } = render(<ChallengesScreen />);
   });
 
   it('filters by difficulty when Easy is clicked', async () => {
-const { container } = render(<ChallengesScreen />);
+    const { container } = render(<ChallengesScreen />);
     expect(container.querySelectorAll('[data-testid="challenge-card"]').length).toBe(5);
     fireEvent.click(screen.getAllByText('Easy')[0]);
     await waitFor(() => {
@@ -184,7 +184,7 @@ const { container } = render(<ChallengesScreen />);
   });
 
   it('filters by category when Debugging is clicked', async () => {
-const { container } = render(<ChallengesScreen />);
+    const { container } = render(<ChallengesScreen />);
     expect(container.querySelectorAll('[data-testid="challenge-card"]').length).toBe(5);
     fireEvent.click(screen.getAllByText('Debugging')[0]);
     await waitFor(() => {
@@ -193,7 +193,7 @@ const { container } = render(<ChallengesScreen />);
   });
 
   it('shows "No Challenges Found" with clear filters when filtering yields no results', async () => {
-const { container } = render(<ChallengesScreen />);
+    const { container } = render(<ChallengesScreen />);
     expect(container.querySelectorAll('[data-testid="challenge-card"]').length).toBe(5);
     const input = container.querySelector('input[placeholder="Search challenges..."]') as HTMLInputElement;
     fireEvent.change(input, { target: { value: 'nonexistent challenge xyz' } });
@@ -204,15 +204,13 @@ const { container } = render(<ChallengesScreen />);
     expect(screen.getByText('Clear all filters')).toBeTruthy();
   });
 
-  it('shows Showing X challenges count', async () => {
-render(<ChallengesScreen />);
-    await waitFor(() => {
-      expect(screen.getByText(/Showing 4 challenges/)).toBeTruthy();
-    });
+  it('shows Showing X challenges count', () => {
+    render(<ChallengesScreen />);
+    expect(screen.getByText(/Showing 4 challenges/)).toBeTruthy();
   });
 
   it('shows "(filtered)" text when filters are active', async () => {
-const { container } = render(<ChallengesScreen />);
+    const { container } = render(<ChallengesScreen />);
     expect(container.querySelectorAll('[data-testid="challenge-card"]').length).toBe(5);
     fireEvent.click(screen.getAllByText('Python')[0]);
     await waitFor(() => {
@@ -221,7 +219,7 @@ const { container } = render(<ChallengesScreen />);
   });
 
   it('shows Clear filters button when filters are active', async () => {
-const { container } = render(<ChallengesScreen />);
+    const { container } = render(<ChallengesScreen />);
     expect(container.querySelectorAll('[data-testid="challenge-card"]').length).toBe(5);
     fireEvent.click(screen.getAllByText('Python')[0]);
     await waitFor(() => {
@@ -230,7 +228,7 @@ const { container } = render(<ChallengesScreen />);
   });
 
   it('clears all filters when Clear filters is clicked', async () => {
-const { container } = render(<ChallengesScreen />);
+    const { container } = render(<ChallengesScreen />);
     expect(container.querySelectorAll('[data-testid="challenge-card"]').length).toBe(5);
     fireEvent.click(screen.getAllByText('Python')[0]);
     await waitFor(() => {
@@ -241,7 +239,7 @@ const { container } = render(<ChallengesScreen />);
   });
 
   it('filters by solved status when solved count is clicked', async () => {
-const { container } = render(<ChallengesScreen />);
+    const { container } = render(<ChallengesScreen />);
     expect(container.querySelectorAll('[data-testid="challenge-card"]').length).toBe(5);
     // Click on the "solved" stat
     fireEvent.click(screen.getAllByText('solved')[0]);
@@ -252,7 +250,7 @@ const { container } = render(<ChallengesScreen />);
   });
 
   it('filters by in_progress status', async () => {
-const { container } = render(<ChallengesScreen />);
+    const { container } = render(<ChallengesScreen />);
     expect(container.querySelectorAll('[data-testid="challenge-card"]').length).toBe(5);
     fireEvent.click(screen.getAllByText('in progress')[0]);
     await waitFor(() => {
@@ -261,7 +259,7 @@ const { container } = render(<ChallengesScreen />);
   });
 
   it('filters by not_started status', async () => {
-const { container } = render(<ChallengesScreen />);
+    const { container } = render(<ChallengesScreen />);
     expect(container.querySelectorAll('[data-testid="challenge-card"]').length).toBe(5);
     fireEvent.click(screen.getAllByText('not started')[0]);
     await waitFor(() => {
@@ -271,7 +269,7 @@ const { container } = render(<ChallengesScreen />);
   });
 
   it('toggles status filter off when clicked again', async () => {
-const { container } = render(<ChallengesScreen />);
+    const { container } = render(<ChallengesScreen />);
     expect(container.querySelectorAll('[data-testid="challenge-card"]').length).toBe(5);
     fireEvent.click(screen.getAllByText('solved')[0]);
     await waitFor(() => {
@@ -316,10 +314,8 @@ const { container } = render(<ChallengesScreen />);
   });
 
   it('opens sort menu when Sort button is clicked', async () => {
-render(<ChallengesScreen />);
-    await waitFor(() => {
-      expect(screen.getByText(/Sort: Default/)).toBeTruthy();
-    });
+    render(<ChallengesScreen />);
+    expect(screen.getByText(/Sort: Default/)).toBeTruthy();
     // Click to open sort menu
     fireEvent.click(screen.getByText(/Sort: Default/));
     await waitFor(() => {
@@ -330,10 +326,8 @@ render(<ChallengesScreen />);
   });
 
   it('sorts by difficulty when Difficulty option is selected', async () => {
-render(<ChallengesScreen />);
-    await waitFor(() => {
-      expect(screen.getByText(/Sort: Default/)).toBeTruthy();
-    });
+    render(<ChallengesScreen />);
+    expect(screen.getByText(/Sort: Default/)).toBeTruthy();
     fireEvent.click(screen.getByText(/Sort: Default/));
     await waitFor(() => {
       expect(screen.getByText('Difficulty')).toBeTruthy();
@@ -345,10 +339,8 @@ render(<ChallengesScreen />);
   });
 
   it('sorts by popularity when Most Solved option is selected', async () => {
-render(<ChallengesScreen />);
-    await waitFor(() => {
-      expect(screen.getByText(/Sort: Default/)).toBeTruthy();
-    });
+    render(<ChallengesScreen />);
+    expect(screen.getByText(/Sort: Default/)).toBeTruthy();
     fireEvent.click(screen.getByText(/Sort: Default/));
     await waitFor(() => {
       expect(screen.getByText('Most Solved')).toBeTruthy();
@@ -360,10 +352,8 @@ render(<ChallengesScreen />);
   });
 
   it('sorts by cost when Lowest Cost option is selected', async () => {
-render(<ChallengesScreen />);
-    await waitFor(() => {
-      expect(screen.getByText(/Sort: Default/)).toBeTruthy();
-    });
+    render(<ChallengesScreen />);
+    expect(screen.getByText(/Sort: Default/)).toBeTruthy();
     fireEvent.click(screen.getByText(/Sort: Default/));
     await waitFor(() => {
       expect(screen.getByText('Lowest Cost')).toBeTruthy();
@@ -375,10 +365,8 @@ render(<ChallengesScreen />);
   });
 
   it('toggles sort direction when clicking the same sort option again', async () => {
-render(<ChallengesScreen />);
-    await waitFor(() => {
-      expect(screen.getByText(/Sort: Default/)).toBeTruthy();
-    });
+    render(<ChallengesScreen />);
+    expect(screen.getByText(/Sort: Default/)).toBeTruthy();
     // Select difficulty sort
     const sortBtn = screen.getByTestId('sort-button');
     fireEvent.click(sortBtn);
@@ -406,10 +394,8 @@ render(<ChallengesScreen />);
   });
 
   it('closes sort menu when backdrop is clicked', async () => {
-render(<ChallengesScreen />);
-    await waitFor(() => {
-      expect(screen.getByText(/Sort: Default/)).toBeTruthy();
-    });
+    render(<ChallengesScreen />);
+    expect(screen.getByText(/Sort: Default/)).toBeTruthy();
     fireEvent.click(screen.getByText(/Sort: Default/));
     await waitFor(() => {
       expect(screen.getByText('Difficulty')).toBeTruthy();
@@ -423,7 +409,7 @@ render(<ChallengesScreen />);
   });
 
   it('clears all filters from empty state clear button', async () => {
-const { container } = render(<ChallengesScreen />);
+    const { container } = render(<ChallengesScreen />);
     expect(container.querySelectorAll('[data-testid="challenge-card"]').length).toBe(5);
     // Search for something that doesn't exist
     const input = container.querySelector('input[placeholder="Search challenges..."]') as HTMLInputElement;
@@ -436,29 +422,22 @@ const { container } = render(<ChallengesScreen />);
     expect(container.querySelectorAll('[data-testid="challenge-card"]').length).toBe(5);
   });
 
-  it('reads initial tab from URL params', async () => {
+  it('reads initial tab from URL params', () => {
     window.history.replaceState({}, '', '?tab=real_world');
-render(<ChallengesScreen />);
-    await waitFor(() => {
-      // Real-World category filter should be active, showing only those challenges
-      expect(screen.getByText(/Showing/)).toBeTruthy();
-    });
+    render(<ChallengesScreen />);
+    expect(screen.getByText(/Showing/)).toBeTruthy();
   });
 
-  it('reads initial lang from URL params', async () => {
+  it('reads initial lang from URL params', () => {
     window.history.replaceState({}, '', '?lang=python');
-render(<ChallengesScreen />);
-    await waitFor(() => {
-      expect(screen.getByText(/Showing/)).toBeTruthy();
-    });
+    render(<ChallengesScreen />);
+    expect(screen.getByText(/Showing/)).toBeTruthy();
   });
 
-  it('reads initial difficulty from URL params', async () => {
+  it('reads initial difficulty from URL params', () => {
     window.history.replaceState({}, '', '?difficulty=hard');
-render(<ChallengesScreen />);
-    await waitFor(() => {
-      expect(screen.getByText(/Showing/)).toBeTruthy();
-    });
+    render(<ChallengesScreen />);
+    expect(screen.getByText(/Showing/)).toBeTruthy();
   });
 
   it('shows back-to-top button when more than 12 challenges', () => {
@@ -517,7 +496,7 @@ render(<ChallengesScreen />);
   });
 
   it('clicking total stat sets statusFilter to all (line 321)', async () => {
-const { container } = render(<ChallengesScreen />);
+    const { container } = render(<ChallengesScreen />);
     expect(container.querySelectorAll('[data-testid="challenge-card"]').length).toBe(5);
     // First filter to something specific
     fireEvent.click(screen.getAllByText('solved')[0]);
@@ -530,10 +509,8 @@ const { container } = render(<ChallengesScreen />);
   });
 
   it('closes sort menu when sort backdrop is clicked (line 600)', async () => {
-render(<ChallengesScreen />);
-    await waitFor(() => {
-      expect(screen.getByText(/Sort: Default/)).toBeTruthy();
-    });
+    render(<ChallengesScreen />);
+    expect(screen.getByText(/Sort: Default/)).toBeTruthy();
     // Open sort menu
     fireEvent.click(screen.getByText(/Sort: Default/));
     await waitFor(() => {
@@ -548,10 +525,8 @@ render(<ChallengesScreen />);
   });
 
   it('renders flat list when sort is not default', async () => {
-render(<ChallengesScreen />);
-    await waitFor(() => {
-      expect(screen.getByText(/Sort: Default/)).toBeTruthy();
-    });
+    render(<ChallengesScreen />);
+    expect(screen.getByText(/Sort: Default/)).toBeTruthy();
     // Switch to difficulty sort
     fireEvent.click(screen.getByText(/Sort: Default/));
     await waitFor(() => expect(screen.getByText('Difficulty')).toBeTruthy());
