@@ -145,11 +145,76 @@ async function callWithTools(
       }
     }
 
+    // Fallback: if no native tool_calls but response text contains JSON tool calls,
+    // extract them. Cloudflare Workers AI sometimes fails to use the native format.
+    if (toolCalls.length === 0 && response) {
+      const extracted = extractToolCallsFromText(response);
+      if (extracted.length > 0) {
+        return { response: '', toolCalls: extracted, model };
+      }
+    }
+
     return { response, toolCalls, model };
   }
 
   /* istanbul ignore next -- @preserve */
   throw new Error('All models failed');
+}
+
+/**
+ * Normalize model-generated tool names to our actual tool names.
+ * Models sometimes drop underscores or use slight variations.
+ */
+const TOOL_NAME_MAP: Record<string, string> = {
+  searchchallenges: 'search_challenges',
+  search_challenge: 'search_challenges',
+  selectchallenges: 'select_challenges',
+  select_challenge: 'select_challenges',
+  addchallenges: 'select_challenges',
+  add_challenges: 'select_challenges',
+  removechallenges: 'remove_challenges',
+  remove_challenge: 'remove_challenges',
+  setweights: 'set_weights',
+  set_weight: 'set_weights',
+  settimelimit: 'set_time_limit',
+  settimeLimit: 'set_time_limit',
+  setbranding: 'set_branding',
+  setpassthreshold: 'set_pass_threshold',
+  set_pass_thresholds: 'set_pass_threshold',
+  createcustomchallenge: 'create_custom_challenge',
+  create_challenge: 'create_custom_challenge',
+};
+
+function normalizeToolName(name: string): string {
+  const lower = name.toLowerCase().trim();
+  return TOOL_NAME_MAP[lower] || lower;
+}
+
+/**
+ * Fallback parser: extract tool calls from text when the model fails to use
+ * native function calling format. Handles JSON objects with "name" + "parameters"/"arguments".
+ */
+function extractToolCallsFromText(text: string): ToolCall[] {
+  const calls: ToolCall[] = [];
+  // Match JSON objects that look like tool calls: {"name": "...", "parameters": {...}}
+  const jsonPattern = /\{[^{}]*"name"\s*:\s*"[^"]+"\s*,\s*"(?:parameters|arguments)"\s*:\s*\{[^{}]*\}[^{}]*\}/g;
+  const matches = text.match(jsonPattern);
+  if (!matches) return calls;
+
+  for (const match of matches) {
+    try {
+      const parsed = JSON.parse(match);
+      const rawName = typeof parsed.name === 'string' ? parsed.name : '';
+      const name = normalizeToolName(rawName);
+      const args = parsed.parameters || parsed.arguments || {};
+      if (name && typeof args === 'object') {
+        calls.push({ name, arguments: args });
+      }
+    } catch {
+      // Malformed JSON — skip
+    }
+  }
+  return calls;
 }
 
 export async function onRequestPost(context: {

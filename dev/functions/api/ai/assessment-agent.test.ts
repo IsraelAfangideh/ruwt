@@ -946,6 +946,108 @@ describe('POST /api/ai/assessment-agent', () => {
   // Non-streaming error when Cloudflare AI returns a non-404 error on last model
   // ------------------------------------------------------------------
 
+  // ------------------------------------------------------------------
+  // Fallback: extract tool calls from text when native format fails
+  // ------------------------------------------------------------------
+
+  it('extracts tool calls from text when model outputs JSON instead of native tool_calls', async () => {
+    (getUser as Mock).mockResolvedValue(TEST_USER);
+    mockDb.selectResults.push([]); // catalog
+
+    (executeToolCall as Mock).mockResolvedValue({
+      tool: 'set_weights',
+      success: true,
+      result: { modelSelection: 20, promptEfficiency: 20, debugging: 20, strategy: 20, speed: 20 },
+    });
+
+    // Model outputs text with JSON tool calls instead of native format
+    mockCFAI([
+      {
+        ok: true,
+        body: {
+          result: {
+            response: 'Here is the correctly formatted function call: {"name": "setweights", "parameters": {"modelSelection": "20", "promptEfficiency": "20", "debugging": "20", "strategy": "20", "speed": "20"}}',
+          },
+        },
+      },
+      { ok: true, body: { result: { response: 'Weights configured.' } } },
+    ]);
+
+    const res = await onRequestPost(makeContext(validBody()));
+    const events = await readSSEEvents(res);
+
+    const toolCalls = events.filter((e: any) => e.type === 'tool_call');
+    expect(toolCalls).toHaveLength(1);
+    // Tool name should be normalized from "setweights" to "set_weights"
+    expect((toolCalls[0] as any).tool).toBe('set_weights');
+  });
+
+  it('normalizes tool names from text fallback (selectchallenges → select_challenges)', async () => {
+    (getUser as Mock).mockResolvedValue(TEST_USER);
+    mockDb.selectResults.push([]); // catalog
+
+    (executeToolCall as Mock).mockResolvedValue({
+      tool: 'select_challenges',
+      success: true,
+      result: { added: 2 },
+    });
+
+    mockCFAI([
+      {
+        ok: true,
+        body: {
+          result: {
+            response: '{"name": "selectchallenges", "parameters": {"challengeIds": ["ch-1", "ch-2"]}}',
+          },
+        },
+      },
+      { ok: true, body: { result: { response: 'Challenges added.' } } },
+    ]);
+
+    const res = await onRequestPost(makeContext(validBody()));
+    const events = await readSSEEvents(res);
+
+    const toolCalls = events.filter((e: any) => e.type === 'tool_call');
+    expect(toolCalls).toHaveLength(1);
+    expect((toolCalls[0] as any).tool).toBe('select_challenges');
+    expect((toolCalls[0] as any).params).toEqual({ challengeIds: ['ch-1', 'ch-2'] });
+  });
+
+  it('does not extract from text when native tool_calls are present', async () => {
+    (getUser as Mock).mockResolvedValue(TEST_USER);
+    mockDb.selectResults.push([]); // catalog
+
+    (executeToolCall as Mock).mockResolvedValue({
+      tool: 'search_challenges',
+      success: true,
+      result: { count: 0 },
+    });
+
+    // Model provides BOTH native tool_calls AND text with JSON
+    mockCFAI([
+      {
+        ok: true,
+        body: {
+          result: {
+            response: '{"name": "setweights", "parameters": {"modelSelection": "50"}}',
+            tool_calls: [
+              { name: 'search_challenges', arguments: { category: 'frontend' } },
+            ],
+          },
+        },
+      },
+      { ok: true, body: { result: { response: 'Done.' } } },
+    ]);
+
+    const res = await onRequestPost(makeContext(validBody()));
+    const events = await readSSEEvents(res);
+
+    // Only the native tool_call should be executed, not the text one
+    const toolCalls = events.filter((e: any) => e.type === 'tool_call');
+    expect(toolCalls).toHaveLength(1);
+    expect((toolCalls[0] as any).tool).toBe('search_challenges');
+  });
+
   it('throws with status details when last model returns a non-recoverable error', async () => {
     (getUser as Mock).mockResolvedValue(TEST_USER);
     mockDb.selectResults.push([]); // catalog

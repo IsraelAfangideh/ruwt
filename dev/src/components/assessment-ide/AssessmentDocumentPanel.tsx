@@ -52,7 +52,7 @@ export function AssessmentDocumentPanel(props: Props) {
       <View style={styles.section}>
         <Input
           label="Title"
-          placeholder="Senior Frontend Engineer Assessment"
+          placeholder="e.g. Backend Developer Assessment"
           value={props.title}
           onChangeText={props.setTitle}
         />
