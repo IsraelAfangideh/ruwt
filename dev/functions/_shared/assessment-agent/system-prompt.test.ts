@@ -375,7 +375,7 @@ describe('buildAssessmentAgentPrompt', () => {
     expect(prompt).toContain('### Time Limits');
     expect(prompt).toContain('### Custom Challenges');
     expect(prompt).toContain('### Communication Style');
-    expect(prompt).toContain('### IMPORTANT: Search Strategy');
+    expect(prompt).toContain('### CRITICAL: Tool Usage Rules');
   });
 
   it('includes role-based recommendation tiers', () => {

@@ -75,6 +75,7 @@ const baseProps = {
   onThresholdChanged: vi.fn(),
   onCustomChallengeCreated: vi.fn(),
   onAssessmentCreated: vi.fn(),
+  onApplyTemplate: vi.fn(),
 };
 
 describe('AssessmentChatPanel', () => {
@@ -129,11 +130,15 @@ describe('AssessmentChatPanel', () => {
     expect(screen.queryByText('Quick Start')).toBeNull();
   });
 
-  it('sends template setup message on template click', () => {
-    render(<AssessmentChatPanel {...baseProps} />);
+  it('applies template directly and sends summary on template click', () => {
+    const onApplyTemplate = vi.fn();
+    render(<AssessmentChatPanel {...baseProps} onApplyTemplate={onApplyTemplate} />);
     fireEvent.click(screen.getByText('Frontend Developer'));
+    expect(onApplyTemplate).toHaveBeenCalledWith(
+      expect.objectContaining({ name: 'Frontend Developer' })
+    );
     expect(mockSendMessage).toHaveBeenCalledWith(
-      expect.stringContaining('Frontend Developer')
+      expect.stringContaining('Frontend Developer template')
     );
   });
 

@@ -55,6 +55,7 @@ export function AssessmentIDEScreen() {
       onThresholdChanged={state.handleAgentThresholdChanged}
       onCustomChallengeCreated={state.handleCustomChallengeCreated}
       onAssessmentCreated={state.handleAgentAssessmentCreated}
+      onApplyTemplate={state.applyTemplate}
     />
   );
 
@@ -144,27 +145,48 @@ export function AssessmentIDEScreen() {
           </Panel>
           <PanelResizeBar direction="horizontal" />
           <Panel defaultSize="60%" minSize="30%" id="document-panel">
-            {documentPanel}
+            <View style={{ flex: 1 }}>
+              {documentPanel}
+              <AssessmentActionBar
+                assessmentId={state.assessmentId}
+                status={state.status}
+                title={state.title}
+                saving={state.saving}
+                saveSuccess={state.saveSuccess}
+                saveError={state.saveError}
+                activating={state.activating}
+                activateError={state.activateError}
+                confirmActivate={state.confirmActivate}
+                weightSum={state.weightSum}
+                inviteError={state.inviteError}
+                onSave={state.handleSave}
+                onActivate={state.handleActivate}
+                onSetConfirmActivate={state.setConfirmActivate}
+              />
+            </View>
           </Panel>
         </Group>
       )}
 
-      <AssessmentActionBar
-        assessmentId={state.assessmentId}
-        status={state.status}
-        title={state.title}
-        saving={state.saving}
-        saveSuccess={state.saveSuccess}
-        saveError={state.saveError}
-        activating={state.activating}
-        activateError={state.activateError}
-        confirmActivate={state.confirmActivate}
-        weightSum={state.weightSum}
-        inviteError={state.inviteError}
-        onSave={state.handleSave}
-        onActivate={state.handleActivate}
-        onSetConfirmActivate={state.setConfirmActivate}
-      />
+      {/* Mobile: action bar below both panels */}
+      {isMobile && (
+        <AssessmentActionBar
+          assessmentId={state.assessmentId}
+          status={state.status}
+          title={state.title}
+          saving={state.saving}
+          saveSuccess={state.saveSuccess}
+          saveError={state.saveError}
+          activating={state.activating}
+          activateError={state.activateError}
+          confirmActivate={state.confirmActivate}
+          weightSum={state.weightSum}
+          inviteError={state.inviteError}
+          onSave={state.handleSave}
+          onActivate={state.handleActivate}
+          onSetConfirmActivate={state.setConfirmActivate}
+        />
+      )}
     </View>
   );
 }

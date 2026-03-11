@@ -283,14 +283,17 @@ ${assessmentState}
 - If the job description is vague, ask clarifying questions before building
 - Keep responses concise but informative
 
-### IMPORTANT: Search Strategy
-- The full challenge catalog is listed above. Use it to identify relevant challenges BEFORE searching.
-- If search_challenges returns 0 results, do NOT repeat the same search. Instead:
-  1. Look at the catalog above and pick the closest matching challenges by ID
-  2. Call select_challenges with those IDs to add them to the assessment
-  3. Suggest creating custom challenges for domain-specific needs
-- After deciding on challenges, ALWAYS take action: call set_branding, select_challenges, set_weights, and set_time_limit to fully configure the assessment.
-- A complete assessment needs: a title, selected challenges, score weights, and a time limit. Configure all of these.
-- Do NOT call the same tool twice with the same or similar parameters.`;
+### CRITICAL: Tool Usage Rules
+1. You MUST use tools to take actions. Never just describe what you would do — actually call the tools.
+2. Challenge IDs are listed in the catalog above in [square brackets]. You MUST use these exact IDs when calling select_challenges. NEVER invent IDs like "frontend_1" or "backend_challenge_2".
+3. Weights MUST sum to exactly 100. Example: modelSelection=25, promptEfficiency=25, debugging=20, strategy=15, speed=15.
+4. When building an assessment, ALWAYS call ALL of these tools in sequence:
+   - set_branding (title + description)
+   - select_challenges (with real IDs from the catalog above)
+   - set_weights (values summing to 100)
+   - set_time_limit (appropriate minutes)
+5. Do NOT use search_challenges unless the user asks to search. The full catalog is already listed above — pick challenge IDs directly from it.
+6. Do NOT call the same tool twice with the same or similar parameters.
+7. A complete assessment needs: a title, selected challenges, score weights summing to 100, and a time limit.`;
 
 }

@@ -6,7 +6,7 @@ import { useColors } from '@/theme';
 import { spacing, fontSizes, fontFamily } from '@/theme/tokens';
 import { useAssessmentAgent } from '@/hooks/useAssessmentAgent';
 import { renderMarkdown } from '@/components/arena/ChatMarkdown';
-import { ASSESSMENT_TEMPLATES } from '@/lib/assessment-templates';
+import { ASSESSMENT_TEMPLATES, type AssessmentTemplate } from '@/lib/assessment-templates';
 import type { PassThreshold } from '@/components/PassThresholdEditor';
 
 interface Props {
@@ -19,6 +19,7 @@ interface Props {
   onThresholdChanged: (threshold: PassThreshold) => void;
   onCustomChallengeCreated: () => void;
   onAssessmentCreated: (assessmentId: string) => void;
+  onApplyTemplate: (template: AssessmentTemplate) => void;
 }
 
 const SUGGESTED_PROMPTS = [
@@ -38,6 +39,7 @@ export function AssessmentChatPanel({
   onThresholdChanged,
   onCustomChallengeCreated,
   onAssessmentCreated,
+  onApplyTemplate,
 }: Props) {
   const c = useColors();
   const [input, setInput] = useState('');
@@ -102,9 +104,12 @@ export function AssessmentChatPanel({
     setTimeout(() => inputRef.current?.focus(), 50);
   }, []);
 
-  const handleTemplateClick = useCallback((templateName: string) => {
-    sendMessage(`Set up a ${templateName} assessment using the ${templateName} template. Select the recommended challenges, set the time limit, and configure appropriate score weights.`);
-  }, [sendMessage]);
+  const handleTemplateClick = useCallback((template: AssessmentTemplate) => {
+    // Apply template settings directly (instant, reliable — no AI needed)
+    onApplyTemplate(template);
+    // Send a summary to the AI so it knows the context for follow-up questions
+    sendMessage(`I just applied the ${template.name} template. It selected ${template.challengeTitles.length} challenges (${template.challengeTitles.join(', ')}), set the time limit to ${template.timeLimitMinutes} minutes, and configured the title and description. What adjustments would you recommend for this assessment?`);
+  }, [onApplyTemplate, sendMessage]);
 
   const handleKeyPress = useCallback((e: any) => {
     if (e.nativeEvent.key === 'Enter' && !e.nativeEvent.shiftKey) {
@@ -162,7 +167,7 @@ export function AssessmentChatPanel({
                   {ASSESSMENT_TEMPLATES.map((t) => (
                     <Pressable
                       key={t.id}
-                      onPress={() => handleTemplateClick(t.name)}
+                      onPress={() => handleTemplateClick(t)}
                       accessibilityRole="button"
                       style={[styles.templateBtn, { borderColor: c.border, backgroundColor: c.bg }]}
                     >
