@@ -1,5 +1,5 @@
 /**
- * Profile/Settings screen — goals, units, theme, sign out.
+ * Profile/Settings screen — goals, TDEE info, units, theme, sign out.
  */
 import { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable, ActivityIndicator } from 'react-native';
@@ -25,27 +25,42 @@ export function ProfileScreen() {
     weightGoal: '',
     activityLevel: 'moderate',
   });
+  const [profile, setProfile] = useState({
+    heightInches: '',
+    birthYear: '',
+    sex: '',
+  });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [tdee, setTdee] = useState<any>(null);
 
   useEffect(() => {
-    fetch('/api/goals')
-      .then(r => r.ok ? r.json() : null)
-      .then(data => {
-        if (data) {
-          setGoals({
-            calorieTarget: String(data.calorieTarget || 2000),
-            proteinTarget: String(data.proteinTarget || 150),
-            carbsTarget: String(data.carbsTarget || 200),
-            fatTarget: String(data.fatTarget || 67),
-            waterTarget: String(data.waterTarget || 8),
-            weightGoal: data.weightGoal ? String(data.weightGoal) : '',
-            activityLevel: data.activityLevel || 'moderate',
-          });
-        }
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
+    Promise.all([
+      fetch('/api/goals').then(r => r.ok ? r.json() : null),
+      fetch('/api/profile').then(r => r.ok ? r.json() : null),
+      fetch('/api/ai/tdee').then(r => r.ok ? r.json() : null),
+    ]).then(([goalsData, profileData, tdeeData]) => {
+      if (goalsData) {
+        setGoals({
+          calorieTarget: String(goalsData.calorieTarget || 2000),
+          proteinTarget: String(goalsData.proteinTarget || 150),
+          carbsTarget: String(goalsData.carbsTarget || 200),
+          fatTarget: String(goalsData.fatTarget || 67),
+          waterTarget: String(goalsData.waterTarget || 8),
+          weightGoal: goalsData.weightGoal ? String(goalsData.weightGoal) : '',
+          activityLevel: goalsData.activityLevel || 'moderate',
+        });
+      }
+      if (profileData) {
+        setProfile({
+          heightInches: profileData.heightInches ? String(profileData.heightInches) : '',
+          birthYear: profileData.birthYear ? String(profileData.birthYear) : '',
+          sex: profileData.sex || '',
+        });
+      }
+      if (tdeeData && !tdeeData.error) setTdee(tdeeData);
+      setLoading(false);
+    }).catch(() => setLoading(false));
   }, []);
 
   const handleSaveGoals = async () => {
@@ -62,6 +77,16 @@ export function ProfileScreen() {
           waterTarget: parseInt(goals.waterTarget) || 8,
           weightGoal: goals.weightGoal ? parseFloat(goals.weightGoal) : null,
           activityLevel: goals.activityLevel,
+        }),
+      });
+      // Save profile fields
+      await fetch('/api/profile', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          heightInches: profile.heightInches ? parseFloat(profile.heightInches) : null,
+          birthYear: profile.birthYear ? parseInt(profile.birthYear) : null,
+          sex: profile.sex || null,
         }),
       });
     } catch {}
@@ -81,11 +106,13 @@ export function ProfileScreen() {
     );
   }
 
+  const activityLevels = ['sedentary', 'light', 'moderate', 'active', 'very_active'];
+
   return (
     <ScrollView style={[styles.scroll, { backgroundColor: c.bg }]} contentContainerStyle={styles.content}>
       <View style={styles.header}>
         <Pressable onPress={() => navigation.goBack()}>
-          <Text style={[styles.backText, { color: c.accent }]}>← Back</Text>
+          <Text style={[styles.backText, { color: c.accent }]}>&#x2190; Back</Text>
         </Pressable>
         <Text style={[styles.title, { color: c.text }]}>Settings</Text>
       </View>
@@ -103,6 +130,68 @@ export function ProfileScreen() {
         </CardContent>
       </Card>
 
+      {/* Body Stats (for TDEE) */}
+      <Card>
+        <CardTitle>Body Stats</CardTitle>
+        <CardContent>
+          <Input
+            label="Height (inches)"
+            value={profile.heightInches}
+            onChangeText={v => setProfile(p => ({ ...p, heightInches: v }))}
+            keyboardType="numeric"
+            placeholder="e.g. 70"
+          />
+          <Input
+            label="Birth Year"
+            value={profile.birthYear}
+            onChangeText={v => setProfile(p => ({ ...p, birthYear: v }))}
+            keyboardType="numeric"
+            placeholder="e.g. 1995"
+          />
+          <View style={styles.sexRow}>
+            <Text style={[styles.sexLabel, { color: c.text }]}>Sex</Text>
+            <View style={styles.sexBtns}>
+              {['male', 'female'].map(s => (
+                <Pressable
+                  key={s}
+                  onPress={() => setProfile(p => ({ ...p, sex: s }))}
+                  style={[
+                    styles.sexBtn,
+                    { borderColor: c.border },
+                    profile.sex === s && { borderColor: c.accent, backgroundColor: c.accentBg },
+                  ]}
+                >
+                  <Text style={[styles.sexBtnText, { color: profile.sex === s ? c.accent : c.text }]}>
+                    {s === 'male' ? 'Male' : 'Female'}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+          </View>
+        </CardContent>
+      </Card>
+
+      {/* TDEE Estimate */}
+      {tdee?.estimatedTDEE && (
+        <Card>
+          <CardTitle>Estimated TDEE</CardTitle>
+          <CardContent>
+            <Text style={[styles.tdeeValue, { color: c.accent }]}>
+              {tdee.estimatedTDEE} cal/day
+            </Text>
+            <Text style={[styles.tdeeMethod, { color: c.textMuted }]}>
+              Method: {tdee.method === 'adaptive' ? 'Adaptive (from your log data)' : 'Mifflin-St Jeor formula'}
+              {' \u00B7 '}Confidence: {tdee.confidence}
+            </Text>
+            {tdee.formula && (
+              <Text style={[styles.tdeeDetail, { color: c.textSubtle }]}>
+                BMR: {tdee.formula.bmr} cal &times; {tdee.formula.multiplier} activity = {tdee.formula.tdee} cal
+              </Text>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       {/* Nutrition Goals */}
       <Card>
         <CardTitle>Daily Goals</CardTitle>
@@ -115,8 +204,32 @@ export function ProfileScreen() {
           </View>
           <Input label="Water (cups)" value={goals.waterTarget} onChangeText={v => setGoals(g => ({ ...g, waterTarget: v }))} keyboardType="numeric" />
           <Input label="Target Weight" value={goals.weightGoal} onChangeText={v => setGoals(g => ({ ...g, weightGoal: v }))} keyboardType="numeric" placeholder="Optional" />
+
+          {/* Activity Level */}
+          <Text style={[styles.activityLabel, { color: c.text }]}>Activity Level</Text>
+          <View style={styles.activityRow}>
+            {activityLevels.map(level => (
+              <Pressable
+                key={level}
+                onPress={() => setGoals(g => ({ ...g, activityLevel: level }))}
+                style={[
+                  styles.activityBtn,
+                  { borderColor: c.border },
+                  goals.activityLevel === level && { borderColor: c.accent, backgroundColor: c.accentBg },
+                ]}
+              >
+                <Text style={[
+                  styles.activityBtnText,
+                  { color: goals.activityLevel === level ? c.accent : c.textMuted },
+                ]}>
+                  {level.replace('_', ' ')}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+
           <Button onPress={handleSaveGoals} disabled={saving} fullWidth>
-            {saving ? 'Saving...' : 'Save Goals'}
+            {saving ? 'Saving...' : 'Save Settings'}
           </Button>
         </CardContent>
       </Card>
@@ -134,7 +247,7 @@ export function ProfileScreen() {
                 mode === 'light' && { borderColor: c.accent, backgroundColor: c.accentBg },
               ]}
             >
-              <Text style={[styles.themeLabel, { color: c.text }]}>☀️ Light</Text>
+              <Text style={[styles.themeLabel, { color: c.text }]}>Light</Text>
             </Pressable>
             <Pressable
               onPress={() => setMode('dark')}
@@ -144,7 +257,7 @@ export function ProfileScreen() {
                 mode === 'dark' && { borderColor: c.accent, backgroundColor: c.accentBg },
               ]}
             >
-              <Text style={[styles.themeLabel, { color: c.text }]}>🌙 Dark</Text>
+              <Text style={[styles.themeLabel, { color: c.text }]}>Dark</Text>
             </Pressable>
           </View>
         </CardContent>
@@ -180,8 +293,40 @@ const styles = StyleSheet.create({
   },
   infoText: { fontSize: fontSizes.md, fontFamily: fontFamily.body },
   infoSubtext: { fontSize: fontSizes.xs, fontFamily: fontFamily.body },
+  sexRow: { gap: spacing.sm },
+  sexLabel: { fontSize: fontSizes.sm, fontWeight: '600', fontFamily: fontFamily.body },
+  sexBtns: { flexDirection: 'row', gap: spacing.md },
+  sexBtn: {
+    flex: 1,
+    padding: spacing.sm,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    alignItems: 'center',
+  },
+  sexBtnText: { fontSize: fontSizes.sm, fontWeight: '600', fontFamily: fontFamily.body },
+  tdeeValue: {
+    fontSize: fontSizes['2xl'],
+    fontWeight: '700',
+    fontFamily: fontFamily.body,
+  },
+  tdeeMethod: { fontSize: fontSizes.xs, fontFamily: fontFamily.body },
+  tdeeDetail: { fontSize: fontSizes.xs, fontFamily: fontFamily.body, marginTop: spacing.xs },
   row: { flexDirection: 'row', gap: spacing.md },
   thirdInput: { flex: 1 },
+  activityLabel: { fontSize: fontSizes.sm, fontWeight: '600', fontFamily: fontFamily.body },
+  activityRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  activityBtn: {
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.md,
+    borderRadius: radii.full,
+    borderWidth: 1,
+  },
+  activityBtnText: {
+    fontSize: fontSizes.xs,
+    fontWeight: '600',
+    fontFamily: fontFamily.body,
+    textTransform: 'capitalize',
+  },
   themeRow: { flexDirection: 'row', gap: spacing.md },
   themeBtn: {
     flex: 1,

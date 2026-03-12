@@ -1,6 +1,5 @@
 /**
- * Progress screen — weight chart, nutrition averages, workout trends.
- * Uses simple SVG charts (no chart library needed).
+ * Progress screen — weight chart, nutrition averages, workout trends, weekly AI insight.
  */
 import { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable, ActivityIndicator } from 'react-native';
@@ -16,6 +15,13 @@ interface ProgressData {
   workouts: { date: string; count: number; totalMinutes: number }[];
 }
 
+interface WeeklyInsight {
+  insight: string;
+  highlights: string[];
+  suggestion: string;
+  generatedAt: string;
+}
+
 type RangeOption = 7 | 30 | 90;
 
 export function ProgressScreen() {
@@ -24,6 +30,8 @@ export function ProgressScreen() {
   const [range, setRange] = useState<RangeOption>(7);
   const [data, setData] = useState<ProgressData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [insight, setInsight] = useState<WeeklyInsight | null>(null);
+  const [insightLoading, setInsightLoading] = useState(true);
 
   useEffect(() => {
     setLoading(true);
@@ -32,6 +40,15 @@ export function ProgressScreen() {
       .then(d => { setData(d); setLoading(false); })
       .catch(() => setLoading(false));
   }, [range]);
+
+  // Fetch weekly insight once
+  useEffect(() => {
+    fetch('/api/ai/weekly-insight')
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d && !d.error) setInsight(d); })
+      .catch(() => {})
+      .finally(() => setInsightLoading(false));
+  }, []);
 
   if (loading) {
     return (
@@ -48,17 +65,41 @@ export function ProgressScreen() {
     ? Math.round(data.nutrition.reduce((s, n) => s + n.protein, 0) / data.nutrition.length)
     : 0;
   const totalWorkouts = data?.workouts.reduce((s, w) => s + w.count, 0) || 0;
-  const totalMinutes = data?.workouts.reduce((s, w) => s + w.totalMinutes, 0) || 0;
-  void totalMinutes; // Available for workout duration display
 
   return (
     <ScrollView style={[styles.scroll, { backgroundColor: c.bg }]} contentContainerStyle={styles.content}>
       <View style={styles.header}>
         <Pressable onPress={() => navigation.goBack()}>
-          <Text style={[styles.backText, { color: c.accent }]}>← Back</Text>
+          <Text style={[styles.backText, { color: c.accent }]}>&#x2190; Back</Text>
         </Pressable>
         <Text style={[styles.title, { color: c.text }]}>Progress</Text>
       </View>
+
+      {/* Weekly AI Insight */}
+      {!insightLoading && insight && (
+        <Card>
+          <CardTitle>&#x2728; Weekly AI Insight</CardTitle>
+          <CardContent>
+            <Text style={[styles.insightText, { color: c.text }]}>{insight.insight}</Text>
+            {insight.highlights.length > 0 && (
+              <View style={styles.highlightList}>
+                {insight.highlights.map((h, i) => (
+                  <Text key={i} style={[styles.highlightItem, { color: c.textMuted }]}>
+                    &bull; {h}
+                  </Text>
+                ))}
+              </View>
+            )}
+            {insight.suggestion && (
+              <View style={[styles.suggestionBox, { backgroundColor: c.accentBg }]}>
+                <Text style={[styles.suggestionText, { color: c.accent }]}>
+                  Tip: {insight.suggestion}
+                </Text>
+              </View>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Range Selector */}
       <View style={styles.rangeRow}>
@@ -104,7 +145,6 @@ export function ProgressScreen() {
             <SimpleLineChart
               data={data.weight.map(w => ({ label: w.date.slice(5), value: w.weight }))}
               color={c.accent}
-
               textColor={c.textMuted}
             />
           </CardContent>
@@ -119,7 +159,6 @@ export function ProgressScreen() {
             <SimpleBarChart
               data={data.nutrition.map(n => ({ label: n.date.slice(5), value: n.calories }))}
               color={c.accent}
-
               textColor={c.textMuted}
             />
           </CardContent>
@@ -219,6 +258,23 @@ const styles = StyleSheet.create({
     fontSize: fontSizes['2xl'],
     fontWeight: '700',
     fontFamily: fontFamily.display,
+  },
+  insightText: {
+    fontSize: fontSizes.sm,
+    fontFamily: fontFamily.body,
+    lineHeight: 22,
+    marginBottom: spacing.sm,
+  },
+  highlightList: { gap: spacing.xs, marginBottom: spacing.sm },
+  highlightItem: { fontSize: fontSizes.sm, fontFamily: fontFamily.body },
+  suggestionBox: {
+    padding: spacing.md,
+    borderRadius: radii.md,
+  },
+  suggestionText: {
+    fontSize: fontSizes.sm,
+    fontWeight: '600',
+    fontFamily: fontFamily.body,
   },
   rangeRow: {
     flexDirection: 'row',

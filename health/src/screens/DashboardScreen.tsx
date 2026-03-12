@@ -1,8 +1,8 @@
 /**
- * Main dashboard — today's calorie ring, macro bars, meal list, workout summary.
+ * Main dashboard — today's calorie ring, macro bars, AI quick-log, meal list, workout summary.
  */
 import { useEffect, useState, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Pressable, ActivityIndicator, TextInput } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useColors } from '@/theme';
 import { spacing, fontSizes, fontFamily, radii } from '@/theme/tokens';
@@ -24,12 +24,22 @@ interface DashboardData {
   waterCups: number;
 }
 
+interface StreakData {
+  currentStreak: number;
+  longestStreak: number;
+}
+
 export function DashboardScreen() {
   const c = useColors();
   const { user } = useAuth();
   const navigation = useNavigation<any>();
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [streak, setStreak] = useState<StreakData | null>(null);
+
+  // Quick-log state
+  const [quickLogText, setQuickLogText] = useState('');
+  const [quickLogParsing, setQuickLogParsing] = useState(false);
 
   const fetchDashboard = useCallback(async () => {
     try {
@@ -43,7 +53,53 @@ export function DashboardScreen() {
 
   useEffect(() => {
     fetchDashboard();
+    // Fetch streak
+    fetch('/api/streak')
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d) setStreak(d); })
+      .catch(() => {});
   }, [fetchDashboard]);
+
+  // Quick-log: parse + auto-log
+  const handleQuickLog = async () => {
+    if (!quickLogText.trim() || quickLogParsing) return;
+    setQuickLogParsing(true);
+    try {
+      const parseRes = await fetch('/api/ai/parse-meal', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: quickLogText.trim() }),
+      });
+      const parseData = await parseRes.json();
+      if (!parseRes.ok || !parseData.items?.length) throw new Error('Parse failed');
+
+      const today = new Date().toISOString().slice(0, 10);
+      const logRes = await fetch('/api/ai/log-meal', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          date: today,
+          mealType: parseData.suggestedMealType || 'snack',
+          items: parseData.items.map((item: any) => ({
+            foodId: item.matchedFoodId || undefined,
+            name: item.name,
+            quantity: item.quantity,
+            servingSize: item.servingSize || 1,
+            servingUnit: item.servingUnit || item.unit,
+            calories: item.estimatedCalories,
+            protein: item.estimatedProtein,
+            carbs: item.estimatedCarbs,
+            fat: item.estimatedFat,
+          })),
+        }),
+      });
+      if (logRes.ok) {
+        setQuickLogText('');
+        fetchDashboard();
+      }
+    } catch {}
+    setQuickLogParsing(false);
+  };
 
   if (loading) {
     return (
@@ -80,9 +136,17 @@ export function DashboardScreen() {
       {/* Header */}
       <View style={styles.header}>
         <View>
-          <Text style={[styles.greeting, { color: c.text }]}>
-            {getGreeting()}, {user?.user_metadata?.name?.split(' ')[0] || 'there'}
-          </Text>
+          <View style={styles.greetingRow}>
+            <Text style={[styles.greeting, { color: c.text }]}>
+              {getGreeting()}, {user?.user_metadata?.name?.split(' ')[0] || 'there'}
+            </Text>
+            {streak && streak.currentStreak > 0 && (
+              <View style={styles.streakBadge}>
+                <Text style={styles.streakIcon}>&#x1F525;</Text>
+                <Text style={[styles.streakText, { color: c.accent }]}>{streak.currentStreak}</Text>
+              </View>
+            )}
+          </View>
           <Text style={[styles.date, { color: c.textMuted }]}>
             {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
           </Text>
@@ -93,6 +157,38 @@ export function DashboardScreen() {
           </View>
         </Pressable>
       </View>
+
+      {/* AI Quick Log */}
+      <Card>
+        <CardContent>
+          <Text style={[styles.quickLogLabel, { color: c.textMuted }]}>&#x2728; Quick Log</Text>
+          <View style={styles.quickLogRow}>
+            <TextInput
+              style={[styles.quickLogInput, { color: c.text, borderColor: c.border }]}
+              placeholder="e.g., 2 eggs and toast"
+              placeholderTextColor={c.textMuted}
+              value={quickLogText}
+              onChangeText={setQuickLogText}
+              onSubmitEditing={handleQuickLog}
+            />
+            <Pressable
+              onPress={handleQuickLog}
+              disabled={!quickLogText.trim() || quickLogParsing}
+              style={[
+                styles.quickLogBtn,
+                { backgroundColor: c.accent },
+                (!quickLogText.trim() || quickLogParsing) && { opacity: 0.5 },
+              ]}
+            >
+              {quickLogParsing ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <Text style={styles.quickLogBtnText}>Log</Text>
+              )}
+            </Pressable>
+          </View>
+        </CardContent>
+      </Card>
 
       {/* Calorie Ring */}
       <Card>
@@ -110,6 +206,29 @@ export function DashboardScreen() {
           </View>
         </CardContent>
       </Card>
+
+      {/* AI Section */}
+      <View style={styles.section}>
+        <Text style={[styles.sectionTitle, { color: c.text }]}>AI Tools</Text>
+        <View style={styles.aiRow}>
+          <Pressable
+            onPress={() => navigation.navigate('Coach')}
+            style={[styles.aiCard, { backgroundColor: c.card, borderColor: c.border }]}
+          >
+            <Text style={styles.aiCardIcon}>&#x1F4AC;</Text>
+            <Text style={[styles.aiCardTitle, { color: c.text }]}>Coach</Text>
+            <Text style={[styles.aiCardDesc, { color: c.textMuted }]}>Ask anything</Text>
+          </Pressable>
+          <Pressable
+            onPress={() => navigation.navigate('MealHistory')}
+            style={[styles.aiCard, { backgroundColor: c.card, borderColor: c.border }]}
+          >
+            <Text style={styles.aiCardIcon}>&#x1F4C5;</Text>
+            <Text style={[styles.aiCardTitle, { color: c.text }]}>History</Text>
+            <Text style={[styles.aiCardDesc, { color: c.textMuted }]}>Past meals</Text>
+          </Pressable>
+        </View>
+      </View>
 
       {/* Meals */}
       <View style={styles.section}>
@@ -173,7 +292,7 @@ export function DashboardScreen() {
           onPress={handleAddWater}
           style={[styles.statCard, { backgroundColor: c.card, borderColor: c.border }]}
         >
-          <Text style={styles.statIcon}>💧</Text>
+          <Text style={styles.statIcon}>&#x1F4A7;</Text>
           <Text style={[styles.statValue, { color: c.text }]}>{data.waterCups}</Text>
           <Text style={[styles.statLabel, { color: c.textMuted }]}>
             / {data.goals.waterTarget} cups
@@ -185,9 +304,9 @@ export function DashboardScreen() {
           onPress={() => navigation.navigate('Progress')}
           style={[styles.statCard, { backgroundColor: c.card, borderColor: c.border }]}
         >
-          <Text style={styles.statIcon}>⚖️</Text>
+          <Text style={styles.statIcon}>&#x2696;&#xFE0F;</Text>
           <Text style={[styles.statValue, { color: c.text }]}>
-            {data.latestWeight ? `${data.latestWeight.weight}` : '—'}
+            {data.latestWeight ? `${data.latestWeight.weight}` : '\u2014'}
           </Text>
           <Text style={[styles.statLabel, { color: c.textMuted }]}>
             {data.latestWeight ? data.latestWeight.weightUnit : 'Log weight'}
@@ -229,10 +348,26 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingTop: spacing.md,
   },
+  greetingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
   greeting: {
     fontSize: fontSizes['2xl'],
     fontWeight: '700',
     fontFamily: fontFamily.display,
+  },
+  streakBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+  },
+  streakIcon: { fontSize: 18 },
+  streakText: {
+    fontSize: fontSizes.md,
+    fontWeight: '700',
+    fontFamily: fontFamily.body,
   },
   date: {
     fontSize: fontSizes.sm,
@@ -250,6 +385,62 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: '700',
     fontSize: fontSizes.md,
+  },
+  quickLogLabel: {
+    fontSize: fontSizes.sm,
+    fontWeight: '600',
+    fontFamily: fontFamily.body,
+    marginBottom: spacing.sm,
+  },
+  quickLogRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    alignItems: 'center',
+  },
+  quickLogInput: {
+    flex: 1,
+    borderWidth: 1,
+    borderRadius: radii.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    fontSize: fontSizes.sm,
+    fontFamily: fontFamily.body,
+  },
+  quickLogBtn: {
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    borderRadius: radii.md,
+    minWidth: 60,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  quickLogBtnText: {
+    color: '#fff',
+    fontSize: fontSizes.sm,
+    fontWeight: '700',
+    fontFamily: fontFamily.body,
+  },
+  aiRow: {
+    flexDirection: 'row',
+    gap: spacing.md,
+  },
+  aiCard: {
+    flex: 1,
+    padding: spacing.md,
+    borderRadius: radii.lg,
+    borderWidth: 1,
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  aiCardIcon: { fontSize: 24 },
+  aiCardTitle: {
+    fontSize: fontSizes.sm,
+    fontWeight: '700',
+    fontFamily: fontFamily.body,
+  },
+  aiCardDesc: {
+    fontSize: fontSizes.xs,
+    fontFamily: fontFamily.body,
   },
   ringSection: {
     alignItems: 'center',

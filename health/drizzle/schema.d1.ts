@@ -1,7 +1,8 @@
 /**
  * Ruwt Fit — D1/SQLite schema via Drizzle ORM.
  * Tables: profiles, user_goals, foods, meals, meal_items, exercises,
- *         workouts, workout_sets, body_logs, daily_logs
+ *         workouts, workout_sets, body_logs, daily_logs,
+ *         ai_logs, food_frequency, streaks
  */
 import { sqliteTable, text, integer, real } from 'drizzle-orm/sqlite-core';
 import { sql } from 'drizzle-orm';
@@ -14,6 +15,9 @@ export const profiles = sqliteTable('profiles', {
   avatarUrl: text('avatar_url'),
   timezone: text('timezone').default('UTC'),
   unitSystem: text('unit_system').default('imperial'),  // 'imperial' | 'metric'
+  heightInches: real('height_inches'),
+  birthYear: integer('birth_year'),
+  sex: text('sex'),                                     // 'male' | 'female'
   createdAt: text('created_at').default(sql`(datetime('now'))`),
   updatedAt: text('updated_at').default(sql`(datetime('now'))`),
 });
@@ -141,6 +145,36 @@ export const dailyLogs = sqliteTable('daily_logs', {
   updatedAt: text('updated_at').default(sql`(datetime('now'))`),
 });
 
+// ---- AI Logs ----
+export const aiLogs = sqliteTable('ai_logs', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  userId: text('user_id').notNull().references(() => profiles.id),
+  type: text('type').notNull(),               // 'parse_meal', 'coach', 'suggest', 'insight', 'workout_gen'
+  inputText: text('input_text').notNull(),
+  outputJson: text('output_json'),
+  model: text('model'),
+  createdAt: text('created_at').default(sql`(datetime('now'))`),
+});
+
+// ---- Food Frequency (recent/frequent foods per user) ----
+export const foodFrequency = sqliteTable('food_frequency', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  userId: text('user_id').notNull().references(() => profiles.id),
+  foodId: text('food_id').notNull().references(() => foods.id),
+  useCount: integer('use_count').default(1),
+  lastUsed: text('last_used').default(sql`(datetime('now'))`),
+});
+
+// ---- Streaks ----
+export const streaks = sqliteTable('streaks', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  userId: text('user_id').notNull().references(() => profiles.id),
+  currentStreak: integer('current_streak').default(0),
+  longestStreak: integer('longest_streak').default(0),
+  lastLogDate: text('last_log_date'),
+  updatedAt: text('updated_at').default(sql`(datetime('now'))`),
+});
+
 // Type exports
 export type Profile = typeof profiles.$inferSelect;
 export type NewProfile = typeof profiles.$inferInsert;
@@ -154,3 +188,6 @@ export type Workout = typeof workouts.$inferSelect;
 export type WorkoutSet = typeof workoutSets.$inferSelect;
 export type BodyLog = typeof bodyLogs.$inferSelect;
 export type DailyLog = typeof dailyLogs.$inferSelect;
+export type AiLog = typeof aiLogs.$inferSelect;
+export type FoodFreq = typeof foodFrequency.$inferSelect;
+export type Streak = typeof streaks.$inferSelect;

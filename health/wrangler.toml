@@ -8,5 +8,8 @@ database_name = "ruwt-health"
 database_id = "a3126eb6-d8bb-4e34-9e56-950956ad2115"
 migrations_dir = "drizzle/migrations-d1"
 
+[ai]
+binding = "AI"
+
 # Runtime vars for Pages Functions are set via wrangler pages secret put in the deploy workflow.
 # Do NOT add [vars] here for values already set in the Dashboard — causes "Binding name already in use" failures.

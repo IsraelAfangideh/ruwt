@@ -15,6 +15,13 @@
       "when": 1741862400000,
       "tag": "0001_add_missing_indexes",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1741948800000,
+      "tag": "0002_ai_and_features",
+      "breakpoints": true
     }
   ]
 }

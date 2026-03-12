@@ -5,10 +5,12 @@ export type RootStackParamList = {
   Callback: undefined;
   Dashboard: undefined;
   LogMeal: { mealType?: string; date?: string } | undefined;
-  LogWorkout: undefined;
+  LogWorkout: { prefill?: any } | undefined;
   FoodSearch: undefined;
   Progress: undefined;
   Profile: undefined;
+  Coach: undefined;
+  MealHistory: undefined;
 };
 
 declare global {

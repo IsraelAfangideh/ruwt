@@ -1,11 +1,11 @@
 /**
- * Log Workout screen — name workout, add exercises and sets, save.
+ * Log Workout screen — name workout, search exercises, add sets, AI generate option.
  */
 import { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable, ActivityIndicator } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { useColors } from '@/theme';
-import { spacing, fontSizes, fontFamily } from '@/theme/tokens';
+import { spacing, fontSizes, fontFamily, radii } from '@/theme/tokens';
 import { Button, Input, Card, CardContent } from '@/components/ui';
 
 interface ExerciseItem {
@@ -28,27 +28,57 @@ interface WorkoutSet {
 export function LogWorkoutScreen() {
   const c = useColors();
   const navigation = useNavigation<any>();
+  const route = useRoute<any>();
   const today = new Date().toISOString().slice(0, 10);
 
   const [name, setName] = useState('');
   const [search, setSearch] = useState('');
-  const [_exercises, _setExercises] = useState<ExerciseItem[]>([]);
-  const [searching, _setSearching] = useState(false);
+  const [exercises, setExercises] = useState<ExerciseItem[]>([]);
+  const [searching, setSearching] = useState(false);
   const [sets, setSets] = useState<WorkoutSet[]>([]);
   const [saving, setSaving] = useState(false);
 
+  // AI generate state
+  const [showGenerate, setShowGenerate] = useState(false);
+  const [genType, setGenType] = useState('');
+  const [generating, setGenerating] = useState(false);
+
+  // Pre-fill from AI generation (via route params)
+  useEffect(() => {
+    const prefill = route.params?.prefill;
+    if (prefill?.name) setName(prefill.name);
+    if (prefill?.exercises) {
+      const prefillSets: WorkoutSet[] = [];
+      for (const ex of prefill.exercises) {
+        const numSets = ex.sets || 3;
+        for (let s = 1; s <= numSets; s++) {
+          prefillSets.push({
+            exerciseId: ex.exerciseId || `gen-${crypto.randomUUID()}`,
+            exerciseName: ex.matchedName || ex.name,
+            setNumber: s,
+            reps: ex.reps,
+            weight: 0,
+            durationSeconds: ex.durationSeconds,
+          });
+        }
+      }
+      setSets(prefillSets);
+    }
+  }, [route.params?.prefill]);
+
+  // Debounced exercise search
   useEffect(() => {
     if (!search.trim()) {
-      _setExercises([]);
+      setExercises([]);
       return;
     }
     const timeout = setTimeout(async () => {
-      _setSearching(true);
+      setSearching(true);
       try {
-        // TODO: Wire up /api/exercises endpoint when available
-        _setExercises([]);
-      } catch { /* exercise search not yet implemented */ }
-      _setSearching(false);
+        const res = await fetch(`/api/exercises?q=${encodeURIComponent(search)}&limit=20`);
+        if (res.ok) setExercises(await res.json());
+      } catch {}
+      setSearching(false);
     }, 300);
     return () => clearTimeout(timeout);
   }, [search]);
@@ -64,9 +94,8 @@ export function LogWorkoutScreen() {
       durationSeconds: exercise.type === 'cardio' ? 0 : undefined,
     }]);
     setSearch('');
-    _setExercises([]);
+    setExercises([]);
   };
-  void addSet; // Exercise search not yet wired up
 
   const updateSet = (index: number, updates: Partial<WorkoutSet>) => {
     setSets(prev => prev.map((s, i) => i === index ? { ...s, ...updates } : s));
@@ -74,6 +103,41 @@ export function LogWorkoutScreen() {
 
   const removeSet = (index: number) => {
     setSets(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleGenerate = async () => {
+    if (!genType.trim()) return;
+    setGenerating(true);
+    try {
+      const res = await fetch('/api/ai/generate-workout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: genType.trim() }),
+      });
+      if (res.ok) {
+        const workout = await res.json();
+        if (workout.name) setName(workout.name);
+        if (workout.exercises) {
+          const genSets: WorkoutSet[] = [];
+          for (const ex of workout.exercises) {
+            const numSets = ex.sets || 3;
+            for (let s = 1; s <= numSets; s++) {
+              genSets.push({
+                exerciseId: ex.exerciseId || `gen-${crypto.randomUUID()}`,
+                exerciseName: ex.matchedName || ex.name,
+                setNumber: s,
+                reps: ex.reps,
+                weight: 0,
+                durationSeconds: ex.durationSeconds,
+              });
+            }
+          }
+          setSets(genSets);
+        }
+        setShowGenerate(false);
+      }
+    } catch {}
+    setGenerating(false);
   };
 
   const handleSave = async () => {
@@ -105,9 +169,9 @@ export function LogWorkoutScreen() {
     <ScrollView style={[styles.scroll, { backgroundColor: c.bg }]} contentContainerStyle={styles.content}>
       <View style={styles.header}>
         <Pressable onPress={() => navigation.goBack()}>
-          <Text style={[styles.backText, { color: c.accent }]}>← Back</Text>
+          <Text style={[styles.backText, { color: c.accent }]}>&#x2190; Back</Text>
         </Pressable>
-        <Text style={[styles.title, { color: c.text }]}>💪 Log Workout</Text>
+        <Text style={[styles.title, { color: c.text }]}>&#x1F4AA; Log Workout</Text>
         <Text style={[styles.dateText, { color: c.textMuted }]}>{today}</Text>
       </View>
 
@@ -118,6 +182,35 @@ export function LogWorkoutScreen() {
         placeholder="e.g. Upper Body, Leg Day, Morning Run..."
       />
 
+      {/* AI Generate */}
+      {!showGenerate ? (
+        <Pressable onPress={() => setShowGenerate(true)}>
+          <Text style={[styles.generateLink, { color: c.accent }]}>
+            &#x2728; Generate workout with AI
+          </Text>
+        </Pressable>
+      ) : (
+        <Card>
+          <CardContent>
+            <Text style={[styles.genTitle, { color: c.text }]}>&#x2728; AI Workout Generator</Text>
+            <Input
+              label="Workout type"
+              value={genType}
+              onChangeText={setGenType}
+              placeholder="e.g. push day, leg day, full body, cardio..."
+            />
+            <View style={styles.genButtons}>
+              <Button onPress={handleGenerate} disabled={generating || !genType.trim()} size="sm">
+                {generating ? 'Generating...' : 'Generate'}
+              </Button>
+              <Button variant="ghost" onPress={() => setShowGenerate(false)} size="sm">
+                Cancel
+              </Button>
+            </View>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Exercise Search */}
       <View style={styles.searchSection}>
         <Input
@@ -127,6 +220,26 @@ export function LogWorkoutScreen() {
           placeholder="Search exercises..."
         />
         {searching && <ActivityIndicator size="small" color={c.accent} />}
+        {exercises.length > 0 && (
+          <View style={[styles.resultsList, { backgroundColor: c.card, borderColor: c.border }]}>
+            {exercises.map(ex => (
+              <Pressable
+                key={ex.id}
+                onPress={() => addSet(ex)}
+                style={({ pressed }: { pressed: boolean }) => [
+                  styles.resultItem,
+                  { borderColor: c.border },
+                  pressed && { backgroundColor: c.bgWarm },
+                ]}
+              >
+                <Text style={[styles.resultName, { color: c.text }]}>{ex.name}</Text>
+                <Text style={[styles.resultCategory, { color: c.textMuted }]}>
+                  {ex.category} &middot; {ex.type}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+        )}
       </View>
 
       {/* Sets */}
@@ -172,7 +285,7 @@ export function LogWorkoutScreen() {
                   )}
                 </View>
                 <Pressable onPress={() => removeSet(i)}>
-                  <Text style={[styles.removeBtn, { color: c.error }]}>✕</Text>
+                  <Text style={[styles.removeBtn, { color: c.error }]}>&#x2715;</Text>
                 </Pressable>
               </View>
             ))}
@@ -211,7 +324,35 @@ const styles = StyleSheet.create({
     fontFamily: fontFamily.display,
   },
   dateText: { fontSize: fontSizes.sm, fontFamily: fontFamily.body },
+  generateLink: {
+    fontSize: fontSizes.sm,
+    fontWeight: '600',
+    fontFamily: fontFamily.body,
+    textAlign: 'center',
+  },
+  genTitle: {
+    fontSize: fontSizes.md,
+    fontWeight: '700',
+    fontFamily: fontFamily.body,
+    marginBottom: spacing.sm,
+  },
+  genButtons: {
+    flexDirection: 'row',
+    gap: spacing.md,
+    marginTop: spacing.sm,
+  },
   searchSection: { gap: spacing.sm },
+  resultsList: {
+    borderWidth: 1,
+    borderRadius: radii.lg,
+    overflow: 'hidden',
+  },
+  resultItem: {
+    padding: spacing.md,
+    borderBottomWidth: 1,
+  },
+  resultName: { fontSize: fontSizes.sm, fontWeight: '600', fontFamily: fontFamily.body },
+  resultCategory: { fontSize: fontSizes.xs, fontFamily: fontFamily.body },
   setsTitle: { fontSize: fontSizes.md, fontWeight: '700', fontFamily: fontFamily.body },
   setRow: {
     flexDirection: 'row',

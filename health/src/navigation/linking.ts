@@ -19,6 +19,8 @@ export const linking: LinkingOptions<RootStackParamList> = {
       FoodSearch: 'foods',
       Progress: 'progress',
       Profile: 'profile',
+      Coach: 'coach',
+      MealHistory: 'meal-history',
     },
   },
 };

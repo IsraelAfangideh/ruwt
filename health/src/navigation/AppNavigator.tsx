@@ -19,6 +19,8 @@ import { LogWorkoutScreen } from '@/screens/LogWorkoutScreen';
 import { FoodSearchScreen } from '@/screens/FoodSearchScreen';
 import { ProgressScreen } from '@/screens/ProgressScreen';
 import { ProfileScreen } from '@/screens/ProfileScreen';
+import { CoachScreen } from '@/screens/CoachScreen';
+import { MealHistoryScreen } from '@/screens/MealHistoryScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -57,6 +59,8 @@ export function AppNavigator() {
             <Stack.Screen name="FoodSearch" component={FoodSearchScreen} />
             <Stack.Screen name="Progress" component={ProgressScreen} />
             <Stack.Screen name="Profile" component={ProfileScreen} />
+            <Stack.Screen name="Coach" component={CoachScreen} />
+            <Stack.Screen name="MealHistory" component={MealHistoryScreen} />
           </>
         )}
       </Stack.Navigator>

@@ -1,5 +1,5 @@
 /**
- * Landing page — unauthenticated users see hero + sign-in CTA.
+ * Landing page — AI-first messaging with sign-in CTA.
  */
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
@@ -16,16 +16,16 @@ export function LandingScreen() {
       <View style={styles.hero}>
         <Text style={[styles.title, { color: c.text }]}>Ruwt Fit</Text>
         <Text style={[styles.subtitle, { color: c.textMuted }]}>
-          Track meals, workouts, and nutrition.{'\n'}Hit your goals, see your progress.
+          AI-powered nutrition tracking.{'\n'}Just describe your meal. AI handles the rest.
         </Text>
       </View>
 
       <View style={styles.features}>
         {[
-          { icon: '🍽️', title: 'Log Meals', desc: 'Track breakfast, lunch, dinner, and snacks with a 500+ food database' },
-          { icon: '💪', title: 'Track Workouts', desc: 'Log strength, cardio, and flexibility exercises with sets and reps' },
-          { icon: '📊', title: 'See Progress', desc: 'Calorie rings, macro bars, weight charts, and nutrition trends' },
-          { icon: '🎯', title: 'Set Goals', desc: 'Customize calorie and macro targets, track water intake and weight' },
+          { icon: '\u2728', title: 'AI Food Logger', desc: 'Say "chicken sandwich with fries" and AI logs it with full nutrition data' },
+          { icon: '\uD83D\uDCAC', title: 'AI Nutrition Coach', desc: 'Get personalized advice based on your actual intake, goals, and trends' },
+          { icon: '\uD83D\uDCAA', title: 'Smart Workouts', desc: '120+ exercises with AI workout generation. Just tell it what you want' },
+          { icon: '\uD83D\uDCC8', title: 'AI Insights', desc: 'Weekly analysis of your nutrition patterns with actionable suggestions' },
         ].map((f, i) => (
           <View key={i} style={[styles.featureCard, { backgroundColor: c.card, borderColor: c.border }]}>
             <Text style={styles.featureIcon}>{f.icon}</Text>
@@ -33,6 +33,21 @@ export function LandingScreen() {
             <Text style={[styles.featureDesc, { color: c.textMuted }]}>{f.desc}</Text>
           </View>
         ))}
+      </View>
+
+      <View style={styles.statsRow}>
+        <View style={[styles.statCard, { backgroundColor: c.card, borderColor: c.border }]}>
+          <Text style={[styles.statValue, { color: c.accent }]}>500+</Text>
+          <Text style={[styles.statLabel, { color: c.textMuted }]}>Foods</Text>
+        </View>
+        <View style={[styles.statCard, { backgroundColor: c.card, borderColor: c.border }]}>
+          <Text style={[styles.statValue, { color: c.accent }]}>120+</Text>
+          <Text style={[styles.statLabel, { color: c.textMuted }]}>Exercises</Text>
+        </View>
+        <View style={[styles.statCard, { backgroundColor: c.card, borderColor: c.border }]}>
+          <Text style={[styles.statValue, { color: c.accent }]}>AI</Text>
+          <Text style={[styles.statLabel, { color: c.textMuted }]}>Powered</Text>
+        </View>
       </View>
 
       <View style={styles.cta}>
@@ -97,6 +112,27 @@ const styles = StyleSheet.create({
     fontSize: fontSizes.sm,
     fontFamily: fontFamily.body,
     lineHeight: 22,
+  },
+  statsRow: {
+    flexDirection: 'row',
+    gap: spacing.md,
+  },
+  statCard: {
+    flex: 1,
+    padding: spacing.md,
+    borderRadius: radii.lg,
+    borderWidth: 1,
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  statValue: {
+    fontSize: fontSizes.xl,
+    fontWeight: '700',
+    fontFamily: fontFamily.body,
+  },
+  statLabel: {
+    fontSize: fontSizes.xs,
+    fontFamily: fontFamily.body,
   },
   cta: {
     gap: spacing.md,
