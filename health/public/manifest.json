@@ -1,0 +1,16 @@
+{
+  "name": "Ruwt Fit",
+  "short_name": "Ruwt Fit",
+  "description": "Track your workouts, meals, and nutrition. Set calorie and macro goals, build routines, and monitor your progress.",
+  "start_url": "/",
+  "display": "standalone",
+  "theme_color": "#1a1816",
+  "background_color": "#f5f3f0",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "type": "image/svg+xml",
+      "sizes": "any"
+    }
+  ]
+}

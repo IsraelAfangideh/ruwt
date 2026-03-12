@@ -5,6 +5,7 @@
 ```
 ruwt/
 ├── dev/          # AI-Efficiency Assessment Platform (web app)
+├── health/       # Ruwt Fit — Fitness & Nutrition Tracker (web app)
 ├── social/       # Ruwt Social Network (mobile + API)
 └── .github/      # CI/CD workflows
 ```
@@ -48,6 +49,22 @@ Be sure that when we add challenges some of them are non trivial for models to s
   - History format uses Gemini-style `{role: 'user'|'model', parts: [{text}]}` for mobile compatibility
   - Conversion to OpenAI format happens in `cloudflare-ai.ts` → `convertHistory()`
 
+## /health — Ruwt Fit (Fitness & Nutrition Tracker)
+
+- **Stack**: React (react-native-web) + Vite, Cloudflare Pages + Functions, Cloudflare D1 (SQLite), Supabase Auth (shared with /dev)
+- **Domain**: `ruwt.health` (planned), fallback `ruwt-health.pages.dev`
+- **Cloudflare Pages project**: `ruwt-health`
+- **D1 database**: `ruwt-health` (ID: `a3126eb6-d8bb-4e34-9e56-950956ad2115`)
+- **Auth**: Shared Supabase project `fzncpdelyfuvdeqmwznx` (same user accounts as ruwt.dev)
+- **Deploy**: GitHub Actions (`deploy-health.yml`) → `npx wrangler pages deploy dist --project-name=ruwt-health`
+  - Triggers on push to `main` with changes in `health/**`, or manual `workflow_dispatch`
+- **Design system**: Same warm cream/dark palette with gold accent as /dev and /social
+- **Database tables**: profiles, user_goals, foods (~90 seeded), meals, meal_items, exercises, workouts, workout_sets, body_logs, daily_logs
+- **Key screens**: Dashboard (calorie ring, macro bars, meal/workout summary), LogMeal, LogWorkout, FoodSearch, Progress (SVG charts), Profile/Settings
+- **API endpoints**: /api/dashboard, /api/goals, /api/meals, /api/workouts, /api/foods, /api/body-logs, /api/progress, /api/daily-log
+- **Setup needed**: Purchase ruwt.health domain, add Supabase redirect URLs for ruwt-health.pages.dev
+- **Local dev**: `cd health && npm run dev` (port 5174), `npx wrangler pages dev dist --d1=DB` for Functions
+
 ## Cloudflare Account
 
 - **Account ID**: `32f5999dbd09eae38c1de8c15de98d48`
@@ -65,7 +82,7 @@ Be sure that when we add challenges some of them are non trivial for models to s
 - **Management API token**: `SUPABASE_ADMIN_TOKEN` in `dev/.env.local`
 - **Auth config** (ruwt-dev project):
   - `site_url`: `https://ruwt.dev`
-  - `uri_allow_list`: `https://ruwt.dev/**,https://ruwt-dev.pages.dev/**,http://localhost:5173/**`
+  - `uri_allow_list`: `https://ruwt.dev/**,https://ruwt-dev.pages.dev/**,http://localhost:5173/**,https://ruwt-health.pages.dev/**,http://localhost:5174/**`
   - Providers: GitHub OAuth + email/password (Google disabled)
 
 ## Git Workflow
