@@ -20,6 +20,14 @@ vi.mock('@/hooks/useAssessmentAgent', () => ({
     clearHistory: mockClearHistory,
     abort: mockAbort,
   }),
+  TOOL_SUCCESS_LABELS: {
+    select_challenges: (r: any) => `Added ${r?.added ?? 0} challenges`,
+    set_weights: () => 'Score weights updated',
+  },
+}));
+
+vi.mock('@/components/ui/Toast', () => ({
+  useToast: () => ({ showToast: vi.fn() }),
 }));
 
 vi.mock('@/components/arena/ChatMarkdown', () => ({
@@ -63,7 +71,7 @@ vi.mock('@/theme/tokens', () => ({
   radii: { sm: 4, md: 8, lg: 12, xl: 16, full: 9999 },
 }));
 
-const { AssessmentChatPanel } = await import('./AssessmentChatPanel');
+const { AssessmentChatPanel, extractQuickReplies } = await import('./AssessmentChatPanel');
 
 const baseProps = {
   assessmentId: undefined as string | undefined,
@@ -270,5 +278,82 @@ describe('AssessmentChatPanel', () => {
     mockMessages.current = [{ role: 'user', content: 'Hi' }];
     render(<AssessmentChatPanel {...baseProps} />);
     expect(screen.queryByText('Build your assessment with AI')).toBeNull();
+  });
+
+  it('renders quick-reply buttons when assistant message contains options', () => {
+    mockMessages.current = [
+      { role: 'assistant', content: 'Option A: Add more challenges\nOption B: Keep current set' },
+    ];
+    render(<AssessmentChatPanel {...baseProps} />);
+    expect(screen.getByText('Option A')).toBeTruthy();
+    expect(screen.getByText('Option B')).toBeTruthy();
+  });
+
+  it('sends quick-reply message when chip is clicked', () => {
+    mockMessages.current = [
+      { role: 'assistant', content: 'Option A: Add more challenges\nOption B: Keep current set' },
+    ];
+    render(<AssessmentChatPanel {...baseProps} />);
+    fireEvent.click(screen.getByText('Option A'));
+    expect(mockSendMessage).toHaveBeenCalledWith('Option A');
+  });
+
+  it('renders "Apply all" button when assistant message ends with question', () => {
+    mockMessages.current = [
+      { role: 'assistant', content: 'I recommend swapping challenge X for Y. Want me to apply this?' },
+    ];
+    render(<AssessmentChatPanel {...baseProps} />);
+    expect(screen.getByText('Apply all')).toBeTruthy();
+  });
+
+  it('does not render quick-reply buttons when streaming', () => {
+    mockStreaming.current = true;
+    mockMessages.current = [
+      { role: 'assistant', content: 'Option A: Something\nOption B: Other' },
+    ];
+    render(<AssessmentChatPanel {...baseProps} />);
+    expect(screen.queryByText('Option A')).toBeNull();
+  });
+
+  it('does not render quick-reply buttons for user messages', () => {
+    mockMessages.current = [
+      { role: 'user', content: 'Option A: foo' },
+    ];
+    render(<AssessmentChatPanel {...baseProps} />);
+    // Quick-reply chips only render after the last *assistant* message
+    // With only a user message, no quick-reply chip buttons should exist
+    const buttons = screen.queryAllByRole('button');
+    const optionButton = buttons.find(b => b.textContent === 'Option A');
+    expect(optionButton).toBeUndefined();
+  });
+});
+
+describe('extractQuickReplies', () => {
+  it('extracts Option A/B labels', () => {
+    const content = 'Here are two approaches:\nOption A: Use more challenges\nOption B: Keep it lean';
+    expect(extractQuickReplies(content)).toEqual(['Option A', 'Option B']);
+  });
+
+  it('extracts Option A/B/C labels', () => {
+    const content = 'Option A: first\nOption B: second\nOption C: third';
+    expect(extractQuickReplies(content)).toEqual(['Option A', 'Option B', 'Option C']);
+  });
+
+  it('handles case insensitive options', () => {
+    const content = 'option a: lower case\nOPTION B: upper case';
+    expect(extractQuickReplies(content)).toEqual(['Option A', 'Option B']);
+  });
+
+  it('returns empty for no options', () => {
+    expect(extractQuickReplies('Just a plain message without options.')).toEqual([]);
+  });
+
+  it('returns empty for empty string', () => {
+    expect(extractQuickReplies('')).toEqual([]);
+  });
+
+  it('deduplicates repeated options', () => {
+    const content = 'Option A: first mention\nSome text\nOption A: repeated mention';
+    expect(extractQuickReplies(content)).toEqual(['Option A']);
   });
 });

@@ -1,10 +1,11 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { View, Text, TextInput, ScrollView, StyleSheet, Pressable } from 'react-native';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { useColors } from '@/theme';
 import { spacing, fontSizes, fontFamily } from '@/theme/tokens';
-import { useAssessmentAgent } from '@/hooks/useAssessmentAgent';
+import { useAssessmentAgent, TOOL_SUCCESS_LABELS } from '@/hooks/useAssessmentAgent';
+import { useToast } from '@/components/ui/Toast';
 import { renderMarkdown } from '@/components/arena/ChatMarkdown';
 import { ASSESSMENT_TEMPLATES, type AssessmentTemplate } from '@/lib/assessment-templates';
 import type { PassThreshold } from '@/components/PassThresholdEditor';
@@ -20,6 +21,21 @@ interface Props {
   onCustomChallengeCreated: () => void;
   onAssessmentCreated: (assessmentId: string) => void;
   onApplyTemplate: (template: AssessmentTemplate) => void;
+}
+
+/** Detect option-like patterns in the last assistant message for quick-reply buttons. */
+export function extractQuickReplies(content: string): string[] {
+  const replies: string[] = [];
+  // Match "Option A:", "Option B:", etc. (case-insensitive)
+  const optionRegex = /\b(Option\s+[A-C])\s*:/gi;
+  let match;
+  while ((match = optionRegex.exec(content)) !== null) {
+    // Normalize to "Option X" format
+    const letter = match[1].slice(-1).toUpperCase();
+    const label = `Option ${letter}`;
+    if (!replies.includes(label)) replies.push(label);
+  }
+  return replies;
 }
 
 const SUGGESTED_PROMPTS = [
@@ -42,6 +58,7 @@ export function AssessmentChatPanel({
   onApplyTemplate,
 }: Props) {
   const c = useColors();
+  const { showToast } = useToast();
   const [input, setInput] = useState('');
   const [confirmClear, setConfirmClear] = useState(false);
   const scrollRef = useRef<any>(null);
@@ -50,6 +67,9 @@ export function AssessmentChatPanel({
 
   const handleToolResult = useCallback((tool: string, result: any) => {
     if (!result.success) return;
+    // Fire toast using existing label map
+    const labelFn = TOOL_SUCCESS_LABELS[tool];
+    if (labelFn) showToast(labelFn(result.result), 'success');
     switch (tool) {
       case 'select_challenges':
       case 'remove_challenges':
@@ -71,7 +91,7 @@ export function AssessmentChatPanel({
         onCustomChallengeCreated();
         break;
     }
-  }, [onChallengesChanged, onWeightsChanged, onBrandingChanged, onTimeLimitChanged, onThresholdChanged, onCustomChallengeCreated]);
+  }, [onChallengesChanged, onWeightsChanged, onBrandingChanged, onTimeLimitChanged, onThresholdChanged, onCustomChallengeCreated, showToast]);
 
   const { messages, sendMessage, streaming, streamingStatus, clearHistory, abort } = useAssessmentAgent({
     assessmentId,
@@ -127,7 +147,7 @@ export function AssessmentChatPanel({
     // Apply template settings directly (instant, reliable — no AI needed)
     onApplyTemplate(template);
     // Send a summary to the AI so it knows the context for follow-up questions
-    sendMessage(`I just applied the ${template.name} template. It selected ${template.challengeTitles.length} challenges (${template.challengeTitles.join(', ')}), set the time limit to ${template.timeLimitMinutes} minutes, and configured the title and description. What adjustments would you recommend for this assessment?`);
+    sendMessage(`I applied the ${template.name} template with ${template.challengeTitles.length} challenges and a ${template.timeLimitMinutes}-minute limit. Review it and make any improvements directly — swap challenges, adjust weights, or change the time limit as you see fit.`);
   }, [onApplyTemplate, sendMessage]);
 
   const handleKeyPress = useCallback((e: any) => {
@@ -138,6 +158,17 @@ export function AssessmentChatPanel({
   }, [handleSend]);
 
   const showEmpty = messages.length === 0;
+
+  // Memoize quick-reply extraction so regex only runs when last message changes
+  const lastAssistantContent = !streaming && messages.length > 0 && messages[messages.length - 1].role === 'assistant'
+    ? messages[messages.length - 1].content : null;
+  const quickReplyButtons = useMemo(() => {
+    if (!lastAssistantContent) return null;
+    const quickReplies = extractQuickReplies(lastAssistantContent);
+    const endsWithQuestion = /\?\s*$/.test(lastAssistantContent.trim());
+    if (quickReplies.length === 0 && !endsWithQuestion) return null;
+    return { quickReplies, showApplyAll: endsWithQuestion && quickReplies.length === 0 };
+  }, [lastAssistantContent]);
 
   return (
     <View style={[styles.container, { backgroundColor: c.bgWarm }]}>
@@ -266,6 +297,30 @@ export function AssessmentChatPanel({
             );
           })
         )}
+        {/* Quick-reply buttons from last assistant message */}
+        {quickReplyButtons && (
+          <View style={styles.quickReplyRow}>
+            {quickReplyButtons.quickReplies.map((label) => (
+              <Pressable
+                key={label}
+                accessibilityRole="button"
+                onPress={() => sendMessage(label)}
+                style={[styles.quickReplyBtn, { borderColor: c.accent + '50', backgroundColor: c.accent + '10' }]}
+              >
+                <Text style={[styles.quickReplyText, { color: c.accent }]}>{label}</Text>
+              </Pressable>
+            ))}
+            {quickReplyButtons.showApplyAll && (
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => sendMessage('Apply all')}
+                style={[styles.quickReplyBtn, { borderColor: c.accent + '50', backgroundColor: c.accent + '10' }]}
+              >
+                <Text style={[styles.quickReplyText, { color: c.accent }]}>Apply all</Text>
+              </Pressable>
+            )}
+          </View>
+        )}
         {streaming && (
           <View style={styles.streamingIndicator}>
             <Text style={{ color: c.accent, fontSize: fontSizes.xs }}>{displayStatus}</Text>
@@ -362,6 +417,9 @@ const styles = StyleSheet.create({
   },
   roleLabel: { fontSize: 10, fontWeight: '600', marginBottom: 2, textTransform: 'uppercase' as any },
   messageText: { fontSize: fontSizes.sm, lineHeight: 20, fontFamily: fontFamily.body },
+  quickReplyRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs, paddingVertical: spacing.xs },
+  quickReplyBtn: { paddingHorizontal: spacing.sm, paddingVertical: 4, borderRadius: 999, borderWidth: 1 },
+  quickReplyText: { fontSize: fontSizes.xs, fontWeight: '600' },
   streamingIndicator: { alignSelf: 'flex-start', padding: spacing.xs },
   inputArea: {
     flexDirection: 'row',

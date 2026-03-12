@@ -35,7 +35,7 @@ const TOOL_LABELS: Record<string, string> = {
   set_pass_threshold: 'Configuring thresholds...',
 };
 
-const TOOL_SUCCESS_LABELS: Record<string, (result: any) => string> = {
+export const TOOL_SUCCESS_LABELS: Record<string, (result: any) => string> = {
   select_challenges: (r) => `Added ${r?.added ?? 0} challenge${r?.added === 1 ? '' : 's'}`,
   remove_challenges: (r) => `Removed ${r?.removed ?? 0} challenge${r?.removed === 1 ? '' : 's'}`,
   set_weights: () => 'Score weights updated',

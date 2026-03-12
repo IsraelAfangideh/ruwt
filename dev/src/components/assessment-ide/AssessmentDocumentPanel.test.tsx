@@ -249,4 +249,5 @@ describe('AssessmentDocumentPanel', () => {
     fireEvent.click(screen.getByText('Delete'));
     expect(handleDelete).toHaveBeenCalledWith('cc1');
   });
+
 });
