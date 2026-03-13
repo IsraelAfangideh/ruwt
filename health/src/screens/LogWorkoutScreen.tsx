@@ -1,5 +1,6 @@
 /**
- * Log Workout screen — name workout, search exercises, add sets, AI generate option.
+ * Log Workout screen — name workout, search exercises, track sets with
+ * reps/weight/duration/distance, workout duration & notes, AI generate.
  */
 import { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable, ActivityIndicator } from 'react-native';
@@ -13,16 +14,40 @@ interface ExerciseItem {
   name: string;
   category: string;
   type: string;
+  muscleGroup?: string;
 }
 
-interface WorkoutSet {
-  exerciseId: string;
-  exerciseName: string;
-  setNumber: number;
+interface SetEntry {
   reps?: number;
   weight?: number;
   durationSeconds?: number;
   distanceMiles?: number;
+}
+
+interface ExerciseBlock {
+  id: string;
+  exercise: ExerciseItem;
+  sets: SetEntry[];
+  notes: string;
+}
+
+/** Convert AI/prefill exercise data into an ExerciseBlock. */
+function toExerciseBlock(ex: any): ExerciseBlock {
+  return {
+    id: crypto.randomUUID(),
+    exercise: {
+      id: ex.exerciseId || `gen-${crypto.randomUUID()}`,
+      name: ex.matchedName || ex.name,
+      category: '',
+      type: ex.durationSeconds ? 'cardio' : 'strength',
+    },
+    sets: Array.from({ length: ex.sets || 3 }, () => ({
+      reps: ex.reps,
+      weight: undefined,
+      durationSeconds: ex.durationSeconds,
+    })),
+    notes: '',
+  };
 }
 
 export function LogWorkoutScreen() {
@@ -32,11 +57,14 @@ export function LogWorkoutScreen() {
   const today = new Date().toISOString().slice(0, 10);
 
   const [name, setName] = useState('');
+  const [durationMinutes, setDurationMinutes] = useState('');
+  const [workoutNotes, setWorkoutNotes] = useState('');
   const [search, setSearch] = useState('');
-  const [exercises, setExercises] = useState<ExerciseItem[]>([]);
+  const [searchResults, setSearchResults] = useState<ExerciseItem[]>([]);
   const [searching, setSearching] = useState(false);
-  const [sets, setSets] = useState<WorkoutSet[]>([]);
+  const [blocks, setBlocks] = useState<ExerciseBlock[]>([]);
   const [saving, setSaving] = useState(false);
+  const [weightUnit, setWeightUnit] = useState<'lbs' | 'kg'>('lbs');
 
   // AI generate state
   const [showGenerate, setShowGenerate] = useState(false);
@@ -48,61 +76,73 @@ export function LogWorkoutScreen() {
     const prefill = route.params?.prefill;
     if (prefill?.name) setName(prefill.name);
     if (prefill?.exercises) {
-      const prefillSets: WorkoutSet[] = [];
-      for (const ex of prefill.exercises) {
-        const numSets = ex.sets || 3;
-        for (let s = 1; s <= numSets; s++) {
-          prefillSets.push({
-            exerciseId: ex.exerciseId || `gen-${crypto.randomUUID()}`,
-            exerciseName: ex.matchedName || ex.name,
-            setNumber: s,
-            reps: ex.reps,
-            weight: 0,
-            durationSeconds: ex.durationSeconds,
-          });
-        }
-      }
-      setSets(prefillSets);
+      setBlocks(prefill.exercises.map(toExerciseBlock));
     }
   }, [route.params?.prefill]);
 
   // Debounced exercise search
   useEffect(() => {
     if (!search.trim()) {
-      setExercises([]);
+      setSearchResults([]);
       return;
     }
     const timeout = setTimeout(async () => {
       setSearching(true);
       try {
         const res = await fetch(`/api/exercises?q=${encodeURIComponent(search)}&limit=20`);
-        if (res.ok) setExercises(await res.json());
+        if (res.ok) setSearchResults(await res.json());
       } catch {}
       setSearching(false);
     }, 300);
     return () => clearTimeout(timeout);
   }, [search]);
 
-  const addSet = (exercise: ExerciseItem) => {
-    const existingSets = sets.filter(s => s.exerciseId === exercise.id);
-    setSets(prev => [...prev, {
-      exerciseId: exercise.id,
-      exerciseName: exercise.name,
-      setNumber: existingSets.length + 1,
-      reps: exercise.type === 'strength' ? 10 : undefined,
-      weight: exercise.type === 'strength' ? 0 : undefined,
-      durationSeconds: exercise.type === 'cardio' ? 0 : undefined,
+  const addExercise = (exercise: ExerciseItem) => {
+    const defaultSet: SetEntry = exercise.type === 'cardio'
+      ? {}
+      : { reps: 10 };
+    setBlocks(prev => [...prev, {
+      id: crypto.randomUUID(),
+      exercise,
+      sets: [defaultSet],
+      notes: '',
     }]);
     setSearch('');
-    setExercises([]);
+    setSearchResults([]);
   };
 
-  const updateSet = (index: number, updates: Partial<WorkoutSet>) => {
-    setSets(prev => prev.map((s, i) => i === index ? { ...s, ...updates } : s));
+  const removeBlock = (blockIdx: number) => {
+    setBlocks(prev => prev.filter((_, i) => i !== blockIdx));
   };
 
-  const removeSet = (index: number) => {
-    setSets(prev => prev.filter((_, i) => i !== index));
+  const addSet = (blockIdx: number) => {
+    setBlocks(prev => prev.map((block, i) => {
+      if (i !== blockIdx) return block;
+      // Copy the last set's values as defaults for the new set
+      const lastSet = block.sets[block.sets.length - 1];
+      return { ...block, sets: [...block.sets, { ...lastSet }] };
+    }));
+  };
+
+  const removeSet = (blockIdx: number, setIdx: number) => {
+    setBlocks(prev => prev.map((block, i) => {
+      if (i !== blockIdx || block.sets.length <= 1) return block;
+      return { ...block, sets: block.sets.filter((_, si) => si !== setIdx) };
+    }));
+  };
+
+  const updateSet = (blockIdx: number, setIdx: number, updates: Partial<SetEntry>) => {
+    setBlocks(prev => prev.map((block, i) => {
+      if (i !== blockIdx) return block;
+      return {
+        ...block,
+        sets: block.sets.map((s, si) => si === setIdx ? { ...s, ...updates } : s),
+      };
+    }));
+  };
+
+  const updateBlockNotes = (blockIdx: number, notes: string) => {
+    setBlocks(prev => prev.map((block, i) => i === blockIdx ? { ...block, notes } : block));
   };
 
   const handleGenerate = async () => {
@@ -118,22 +158,9 @@ export function LogWorkoutScreen() {
         const workout = await res.json();
         if (workout.name) setName(workout.name);
         if (workout.exercises) {
-          const genSets: WorkoutSet[] = [];
-          for (const ex of workout.exercises) {
-            const numSets = ex.sets || 3;
-            for (let s = 1; s <= numSets; s++) {
-              genSets.push({
-                exerciseId: ex.exerciseId || `gen-${crypto.randomUUID()}`,
-                exerciseName: ex.matchedName || ex.name,
-                setNumber: s,
-                reps: ex.reps,
-                weight: 0,
-                durationSeconds: ex.durationSeconds,
-              });
-            }
-          }
-          setSets(genSets);
+          setBlocks(workout.exercises.map(toExerciseBlock));
         }
+        if (workout.estimatedDuration) setDurationMinutes(String(workout.estimatedDuration));
         setShowGenerate(false);
       }
     } catch {}
@@ -141,29 +168,39 @@ export function LogWorkoutScreen() {
   };
 
   const handleSave = async () => {
-    if (!name.trim()) return;
+    if (!name.trim() || blocks.length === 0) return;
     setSaving(true);
     try {
+      // Flatten blocks into sets array for the API
+      const flatSets = blocks.flatMap((block, _bi) =>
+        block.sets.map((s, si) => ({
+          exerciseId: block.exercise.id,
+          setNumber: si + 1,
+          reps: s.reps || null,
+          weight: s.weight || null,
+          weightUnit,
+          durationSeconds: s.durationSeconds || null,
+          distanceMiles: s.distanceMiles || null,
+        }))
+      );
+
       const res = await fetch('/api/workouts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: name.trim(),
           date: today,
-          sets: sets.map(s => ({
-            exerciseId: s.exerciseId,
-            setNumber: s.setNumber,
-            reps: s.reps,
-            weight: s.weight,
-            durationSeconds: s.durationSeconds,
-            distanceMiles: s.distanceMiles,
-          })),
+          durationMinutes: durationMinutes ? parseInt(durationMinutes) : null,
+          notes: workoutNotes.trim() || null,
+          sets: flatSets,
         }),
       });
       if (res.ok) navigation.goBack();
     } catch {}
     setSaving(false);
   };
+
+  const totalSets = blocks.reduce((sum, b) => sum + b.sets.length, 0);
 
   return (
     <ScrollView style={[styles.scroll, { backgroundColor: c.bg }]} contentContainerStyle={styles.content}>
@@ -175,12 +212,54 @@ export function LogWorkoutScreen() {
         <Text style={[styles.dateText, { color: c.textMuted }]}>{today}</Text>
       </View>
 
-      <Input
-        label="Workout Name"
-        value={name}
-        onChangeText={setName}
-        placeholder="e.g. Upper Body, Leg Day, Morning Run..."
-      />
+      {/* Workout info */}
+      <Card>
+        <CardContent>
+          <Input
+            label="Workout Name"
+            value={name}
+            onChangeText={setName}
+            placeholder="e.g. Upper Body, Leg Day, Morning Run..."
+          />
+          <View style={styles.row}>
+            <Input
+              label="Duration (min)"
+              value={durationMinutes}
+              onChangeText={setDurationMinutes}
+              placeholder="e.g. 60"
+              keyboardType="numeric"
+              containerStyle={styles.halfInput}
+            />
+            <View style={[styles.halfInput, { gap: spacing.xs }]}>
+              <Text style={[styles.fieldLabel, { color: c.text }]}>Weight Unit</Text>
+              <View style={styles.unitRow}>
+                {(['lbs', 'kg'] as const).map(u => (
+                  <Pressable
+                    key={u}
+                    onPress={() => setWeightUnit(u)}
+                    style={[
+                      styles.unitBtn,
+                      { borderColor: c.border },
+                      weightUnit === u && { borderColor: c.accent, backgroundColor: c.accentBg },
+                    ]}
+                  >
+                    <Text style={[styles.unitBtnText, { color: weightUnit === u ? c.accent : c.textMuted }]}>
+                      {u}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+            </View>
+          </View>
+          <Input
+            label="Notes (optional)"
+            value={workoutNotes}
+            onChangeText={setWorkoutNotes}
+            placeholder="How did it go? Energy level, PRs, etc."
+            multiline
+          />
+        </CardContent>
+      </Card>
 
       {/* AI Generate */}
       {!showGenerate ? (
@@ -220,21 +299,26 @@ export function LogWorkoutScreen() {
           placeholder="Search exercises..."
         />
         {searching && <ActivityIndicator size="small" color={c.accent} />}
-        {exercises.length > 0 && (
+        {searchResults.length > 0 && (
           <View style={[styles.resultsList, { backgroundColor: c.card, borderColor: c.border }]}>
-            {exercises.map(ex => (
+            {searchResults.map(ex => (
               <Pressable
                 key={ex.id}
-                onPress={() => addSet(ex)}
+                onPress={() => addExercise(ex)}
                 style={({ pressed }: { pressed: boolean }) => [
                   styles.resultItem,
                   { borderColor: c.border },
                   pressed && { backgroundColor: c.bgWarm },
                 ]}
               >
-                <Text style={[styles.resultName, { color: c.text }]}>{ex.name}</Text>
+                <View style={styles.resultRow}>
+                  <Text style={[styles.resultName, { color: c.text }]}>{ex.name}</Text>
+                  <Text style={[styles.resultBadge, { color: c.accent, backgroundColor: c.accentBg }]}>
+                    {ex.type}
+                  </Text>
+                </View>
                 <Text style={[styles.resultCategory, { color: c.textMuted }]}>
-                  {ex.category} &middot; {ex.type}
+                  {ex.category}{ex.muscleGroup ? ` \u00B7 ${ex.muscleGroup}` : ''}
                 </Text>
               </Pressable>
             ))}
@@ -242,60 +326,124 @@ export function LogWorkoutScreen() {
         )}
       </View>
 
-      {/* Sets */}
-      {sets.length > 0 && (
-        <Card>
-          <CardContent>
-            <Text style={[styles.setsTitle, { color: c.text }]}>
-              Exercises ({sets.length} set{sets.length !== 1 ? 's' : ''})
-            </Text>
-            {sets.map((s, i) => (
-              <View key={i} style={[styles.setRow, { borderColor: c.border }]}>
-                <View style={styles.setInfo}>
-                  <Text style={[styles.setName, { color: c.text }]}>{s.exerciseName}</Text>
-                  <Text style={[styles.setNum, { color: c.textMuted }]}>Set {s.setNumber}</Text>
+      {/* Exercise Blocks */}
+      {blocks.map((block, bi) => {
+        const isCardio = block.exercise.type === 'cardio';
+        const isFlexibility = block.exercise.type === 'flexibility';
+
+        return (
+          <Card key={block.id}>
+            <CardContent>
+              {/* Exercise header */}
+              <View style={styles.blockHeader}>
+                <View style={styles.blockNameWrap}>
+                  <Text style={[styles.blockName, { color: c.text }]}>{block.exercise.name}</Text>
+                  <Text style={[styles.blockMeta, { color: c.textMuted }]}>
+                    {block.exercise.category}{block.exercise.muscleGroup ? ` \u00B7 ${block.exercise.muscleGroup}` : ''}
+                  </Text>
                 </View>
-                <View style={styles.setInputs}>
-                  {s.reps !== undefined && (
-                    <Input
-                      value={String(s.reps || '')}
-                      onChangeText={v => updateSet(i, { reps: parseInt(v) || 0 })}
-                      placeholder="Reps"
-                      keyboardType="numeric"
-                      containerStyle={styles.smallInput}
-                    />
-                  )}
-                  {s.weight !== undefined && (
-                    <Input
-                      value={String(s.weight || '')}
-                      onChangeText={v => updateSet(i, { weight: parseFloat(v) || 0 })}
-                      placeholder="Weight"
-                      keyboardType="numeric"
-                      containerStyle={styles.smallInput}
-                    />
-                  )}
-                  {s.durationSeconds !== undefined && (
-                    <Input
-                      value={String(s.durationSeconds || '')}
-                      onChangeText={v => updateSet(i, { durationSeconds: parseInt(v) || 0 })}
-                      placeholder="Seconds"
-                      keyboardType="numeric"
-                      containerStyle={styles.smallInput}
-                    />
-                  )}
-                </View>
-                <Pressable onPress={() => removeSet(i)}>
-                  <Text style={[styles.removeBtn, { color: c.error }]}>&#x2715;</Text>
+                <Pressable onPress={() => removeBlock(bi)} hitSlop={8}>
+                  <Text style={[styles.removeBlockBtn, { color: c.error }]}>&#x2715;</Text>
                 </Pressable>
               </View>
-            ))}
-          </CardContent>
-        </Card>
+
+              {/* Column headers */}
+              <View style={[styles.setHeaderRow, { borderColor: c.border }]}>
+                <Text style={[styles.setHeaderText, styles.setCol, { color: c.textMuted }]}>SET</Text>
+                {!isCardio && !isFlexibility && (
+                  <>
+                    <Text style={[styles.setHeaderText, styles.inputCol, { color: c.textMuted }]}>REPS</Text>
+                    <Text style={[styles.setHeaderText, styles.inputCol, { color: c.textMuted }]}>{weightUnit.toUpperCase()}</Text>
+                  </>
+                )}
+                {(isCardio || isFlexibility) && (
+                  <>
+                    <Text style={[styles.setHeaderText, styles.inputCol, { color: c.textMuted }]}>TIME (s)</Text>
+                    {isCardio && (
+                      <Text style={[styles.setHeaderText, styles.inputCol, { color: c.textMuted }]}>MILES</Text>
+                    )}
+                  </>
+                )}
+                <Text style={[styles.setHeaderText, styles.removeCol, { color: c.textMuted }]}></Text>
+              </View>
+
+              {/* Set rows */}
+              {block.sets.map((set, si) => (
+                <View key={si} style={[styles.setInputRow, { borderColor: c.border }]}>
+                  <Text style={[styles.setNumber, styles.setCol, { color: c.textMuted }]}>{si + 1}</Text>
+                  {!isCardio && !isFlexibility && (
+                    <>
+                      <Input
+                        value={set.reps != null ? String(set.reps) : ''}
+                        onChangeText={v => updateSet(bi, si, { reps: parseInt(v) || undefined })}
+                        placeholder="—"
+                        keyboardType="numeric"
+                        containerStyle={styles.inputCol}
+                      />
+                      <Input
+                        value={set.weight != null ? String(set.weight) : ''}
+                        onChangeText={v => updateSet(bi, si, { weight: parseFloat(v) || undefined })}
+                        placeholder="—"
+                        keyboardType="numeric"
+                        containerStyle={styles.inputCol}
+                      />
+                    </>
+                  )}
+                  {(isCardio || isFlexibility) && (
+                    <>
+                      <Input
+                        value={set.durationSeconds != null ? String(set.durationSeconds) : ''}
+                        onChangeText={v => updateSet(bi, si, { durationSeconds: parseInt(v) || undefined })}
+                        placeholder="—"
+                        keyboardType="numeric"
+                        containerStyle={styles.inputCol}
+                      />
+                      {isCardio && (
+                        <Input
+                          value={set.distanceMiles != null ? String(set.distanceMiles) : ''}
+                          onChangeText={v => updateSet(bi, si, { distanceMiles: parseFloat(v) || undefined })}
+                          placeholder="—"
+                          keyboardType="numeric"
+                          containerStyle={styles.inputCol}
+                        />
+                      )}
+                    </>
+                  )}
+                  <Pressable onPress={() => removeSet(bi, si)} style={styles.removeCol} hitSlop={8}>
+                    <Text style={[styles.removeSetText, { color: block.sets.length > 1 ? c.error : c.border }]}>&#x2715;</Text>
+                  </Pressable>
+                </View>
+              ))}
+
+              {/* Add set + notes */}
+              <View style={styles.blockFooter}>
+                <Pressable onPress={() => addSet(bi)} style={[styles.addSetBtn, { borderColor: c.border }]}>
+                  <Text style={[styles.addSetText, { color: c.accent }]}>+ Add Set</Text>
+                </Pressable>
+                <Input
+                  value={block.notes}
+                  onChangeText={v => updateBlockNotes(bi, v)}
+                  placeholder="Exercise notes..."
+                  containerStyle={styles.blockNotesInput}
+                />
+              </View>
+            </CardContent>
+          </Card>
+        );
+      })}
+
+      {/* Summary + Save */}
+      {blocks.length > 0 && (
+        <View style={[styles.summaryRow, { backgroundColor: c.card, borderColor: c.border }]}>
+          <Text style={[styles.summaryText, { color: c.text }]}>
+            {blocks.length} exercise{blocks.length !== 1 ? 's' : ''} &middot; {totalSets} set{totalSets !== 1 ? 's' : ''}
+          </Text>
+        </View>
       )}
 
       <Button
         onPress={handleSave}
-        disabled={saving || !name.trim()}
+        disabled={saving || !name.trim() || blocks.length === 0}
         fullWidth
         size="lg"
       >
@@ -324,6 +472,18 @@ const styles = StyleSheet.create({
     fontFamily: fontFamily.display,
   },
   dateText: { fontSize: fontSizes.sm, fontFamily: fontFamily.body },
+  row: { flexDirection: 'row', gap: spacing.md },
+  halfInput: { flex: 1 },
+  fieldLabel: { fontSize: fontSizes.sm, fontWeight: '600', fontFamily: fontFamily.body },
+  unitRow: { flexDirection: 'row', gap: spacing.sm },
+  unitBtn: {
+    flex: 1,
+    paddingVertical: spacing.sm,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    alignItems: 'center',
+  },
+  unitBtnText: { fontSize: fontSizes.sm, fontWeight: '600', fontFamily: fontFamily.body },
   generateLink: {
     fontSize: fontSizes.sm,
     fontWeight: '600',
@@ -351,21 +511,88 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     borderBottomWidth: 1,
   },
+  resultRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
   resultName: { fontSize: fontSizes.sm, fontWeight: '600', fontFamily: fontFamily.body },
-  resultCategory: { fontSize: fontSizes.xs, fontFamily: fontFamily.body },
-  setsTitle: { fontSize: fontSizes.md, fontWeight: '700', fontFamily: fontFamily.body },
-  setRow: {
+  resultBadge: {
+    fontSize: fontSizes.xs,
+    fontWeight: '600',
+    fontFamily: fontFamily.body,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+    borderRadius: radii.full,
+    overflow: 'hidden',
+  },
+  resultCategory: { fontSize: fontSizes.xs, fontFamily: fontFamily.body, marginTop: 2 },
+
+  // Exercise block
+  blockHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: spacing.sm,
+  },
+  blockNameWrap: { flex: 1 },
+  blockName: { fontSize: fontSizes.md, fontWeight: '700', fontFamily: fontFamily.body },
+  blockMeta: { fontSize: fontSizes.xs, fontFamily: fontFamily.body },
+  removeBlockBtn: { fontSize: fontSizes.lg, padding: spacing.xs },
+
+  // Set table
+  setHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: spacing.sm,
     borderBottomWidth: 1,
+    paddingBottom: spacing.xs,
+    marginBottom: spacing.xs,
+  },
+  setHeaderText: {
+    fontSize: fontSizes.xs,
+    fontWeight: '700',
+    fontFamily: fontFamily.body,
+    textAlign: 'center',
+  },
+  setCol: { width: 36, textAlign: 'center' },
+  inputCol: { flex: 1 },
+  removeCol: { width: 28, alignItems: 'center' },
+  setInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    paddingVertical: 2,
+  },
+  setNumber: {
+    fontSize: fontSizes.sm,
+    fontWeight: '700',
+    fontFamily: fontFamily.body,
+  },
+
+  // Block footer
+  blockFooter: {
+    marginTop: spacing.sm,
     gap: spacing.sm,
   },
-  setInfo: { flex: 1, gap: 2 },
-  setName: { fontSize: fontSizes.sm, fontWeight: '600', fontFamily: fontFamily.body },
-  setNum: { fontSize: fontSizes.xs, fontFamily: fontFamily.body },
-  setInputs: { flexDirection: 'row', gap: spacing.sm },
-  smallInput: { width: 70 },
-  removeBtn: { fontSize: fontSizes.md, paddingLeft: spacing.sm },
+  addSetBtn: {
+    alignSelf: 'flex-start',
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.md,
+    borderWidth: 1,
+    borderRadius: radii.full,
+    borderStyle: 'dashed',
+  },
+  addSetText: { fontSize: fontSizes.xs, fontWeight: '600', fontFamily: fontFamily.body },
+  removeSetText: { fontSize: fontSizes.sm },
+  blockNotesInput: { flex: 1 },
+
+  // Summary
+  summaryRow: {
+    padding: spacing.md,
+    borderRadius: radii.lg,
+    borderWidth: 1,
+    alignItems: 'center',
+  },
+  summaryText: { fontSize: fontSizes.sm, fontWeight: '600', fontFamily: fontFamily.body },
+
   bottomPad: { height: spacing['2xl'] },
 });
