@@ -18,7 +18,7 @@ export default defineConfig({
   resolve: {
     alias: {
       'react-native': 'react-native-web',
-      'react-native-safe-area-context': path.resolve(__dirname, './src/stubs/safe-area-context.ts'),
+      'react-native-safe-area-context': path.resolve(__dirname, './src/shared/stubs/safe-area-context.ts'),
       '@': path.resolve(__dirname, './src'),
     },
     extensions: ['.web.tsx', '.web.ts', '.tsx', '.ts', '.web.jsx', '.jsx', '.js', '.json'],

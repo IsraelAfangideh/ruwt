@@ -1,11 +1,11 @@
 import { useEffect } from 'react';
 import * as Sentry from '@sentry/react';
-import { ThemeProvider, useTheme } from '@/theme';
-import { ToastProvider } from '@/components/ui/Toast';
-import { AuthProvider } from '@/lib/AuthContext';
-import { AppModeProvider } from '@/lib/AppModeContext';
-import { DashboardDataProvider } from '@/lib/DashboardDataContext';
-import { AppNavigator } from '@/navigation/AppNavigator';
+import { ThemeProvider, useTheme } from '@/shared/theme';
+import { ToastProvider } from '@/shared/ui/Toast';
+import { AuthProvider } from '@/shared/lib/AuthContext';
+import { AppModeProvider } from '@/shared/lib/AppModeContext';
+import { DashboardDataProvider } from '@/shared/lib/DashboardDataContext';
+import { AppNavigator } from '@/shared/navigation/AppNavigator';
 import './index.css';
 
 function BodyTheme() {

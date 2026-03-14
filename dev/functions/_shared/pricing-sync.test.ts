@@ -3,7 +3,7 @@
  * If this test fails, it means someone updated one side without the other.
  */
 import { describe, it, expect } from 'vitest';
-import { getAllModels } from '../../src/lib/ai/pricing';
+import { getAllModels } from '../../src/shared/lib/ai/pricing';
 import { getCloudflareModels } from './ai-pricing';
 
 describe('pricing sync (client <-> server)', () => {

@@ -3,7 +3,7 @@
  * If this test fails, it means someone updated one side without the other.
  */
 import { describe, it, expect } from 'vitest';
-import { BADGE_DEFS as CLIENT_BADGES } from '../../src/lib/badge-defs';
+import { BADGE_DEFS as CLIENT_BADGES } from '../../src/shared/lib/badge-defs';
 import { BADGE_DEFS as SERVER_BADGES } from './badges';
 
 describe('badge sync (client <-> server)', () => {

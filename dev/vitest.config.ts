@@ -16,7 +16,7 @@ export default defineConfig({
   test: {
     include: ['src/**/*.test.ts', 'src/**/*.test.tsx', 'functions/**/*.test.ts'],
     environment: 'node',
-    setupFiles: ['./src/test/setup.ts'],
+    setupFiles: ['./src/shared/test/setup.ts'],
     coverage: {
       provider: 'istanbul',
       // REQUIRED: clean:false prevents vitest from deleting .tmp coverage data mid-run (vitest v4 bug)
@@ -29,12 +29,12 @@ export default defineConfig({
         '**/*.test.ts',
         '**/*.test.tsx',
         '**/*.d.ts',
-        'src/stubs/**',
+        'src/shared/stubs/**',
         'src/vite-env.d.ts',
-        'src/components/ui/index.ts',
-        'src/theme/index.ts',
-        'src/navigation/types.ts',
-        'src/test/helpers.ts',
+        'src/shared/ui/index.ts',
+        'src/shared/theme/index.ts',
+        'src/shared/navigation/types.ts',
+        'src/shared/test/helpers.ts',
       ],
     },
   },

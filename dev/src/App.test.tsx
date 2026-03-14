@@ -25,7 +25,7 @@ vi.mock('react-native', async () => {
 });
 
 /* ── Mock supabase client ────────────────────────────────────────── */
-vi.mock('@/lib/supabase/client', () => ({
+vi.mock('@/shared/lib/supabase/client', () => ({
   createClient: () => ({
     auth: {
       getUser: () => Promise.resolve({ data: { user: null }, error: null }),
@@ -37,13 +37,13 @@ vi.mock('@/lib/supabase/client', () => ({
 }));
 
 /* ── Mock AuthProvider ──────────────────────────────────────────── */
-vi.mock('@/lib/AuthContext', () => ({
+vi.mock('@/shared/lib/AuthContext', () => ({
   AuthProvider: ({ children }: { children: React.ReactNode }) => <div data-testid="auth-provider">{children}</div>,
   useAuth: () => ({ user: null, loading: false }),
 }));
 
 /* ── Mock AppModeProvider ────────────────────────────────────────── */
-vi.mock('@/lib/AppModeContext', () => ({
+vi.mock('@/shared/lib/AppModeContext', () => ({
   AppModeProvider: ({ children }: { children: React.ReactNode }) => <div data-testid="app-mode-provider">{children}</div>,
   useAppMode: () => ({
     mode: 'practice',
@@ -58,7 +58,7 @@ vi.mock('@/lib/AppModeContext', () => ({
 }));
 
 /* ── Mock AppNavigator ───────────────────────────────────────────── */
-vi.mock('@/navigation/AppNavigator', () => ({
+vi.mock('@/shared/navigation/AppNavigator', () => ({
   AppNavigator: () => <div data-testid="app-navigator">Navigator</div>,
 }));
 
