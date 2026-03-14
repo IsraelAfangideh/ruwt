@@ -38,6 +38,9 @@
 .idea/
 .idea/workspace.xml
 .DS_Store
+**/*.swp
+**/*.swo
+**/.zshrc
 
 # Cursor stuff
 /.cursor
