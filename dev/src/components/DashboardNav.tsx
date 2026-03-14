@@ -20,8 +20,8 @@ const practiceNavItems: NavItem[] = [
 
 const hiringNavItems: NavItem[] = [
   { name: 'Assessments', label: 'Assessments' },
-  { name: 'OrgManagement', label: 'Org Settings' },
   { name: 'Problems', label: 'Preview Challenges', subtle: true },
+  { name: 'OrgManagement', label: 'Org Settings' },
 ];
 
 const prefersReducedMotion =
