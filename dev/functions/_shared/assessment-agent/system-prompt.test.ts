@@ -259,7 +259,7 @@ describe('buildAssessmentAgentPrompt', () => {
     expect(prompt).toContain('Description: Evaluates backend AI fluency');
     expect(prompt).toContain('Time Limit: 60 minutes');
     expect(prompt).toContain('Selected Challenges (3): ch-001, ch-002, ch-003');
-    expect(prompt).toContain('"modelSelection":20');
+    expect(prompt).toContain('Model Selection: 20%');
     expect(prompt).toContain('Company: Acme Corp');
     expect(prompt).toContain('Welcome Message: Welcome to the Acme assessment!');
   });

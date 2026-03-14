@@ -35,10 +35,24 @@ const TOOL_LABELS: Record<string, string> = {
   set_pass_threshold: 'Configuring thresholds...',
 };
 
+const WEIGHT_DIMENSION_LABELS: Record<string, string> = {
+  modelSelection: 'Model Selection',
+  promptEfficiency: 'Prompt Efficiency',
+  debugging: 'Debugging',
+  strategy: 'Strategy',
+  speed: 'Speed',
+};
+
 export const TOOL_SUCCESS_LABELS: Record<string, (result: any) => string> = {
   select_challenges: (r) => `Added ${r?.added ?? 0} challenge${r?.added === 1 ? '' : 's'}`,
   remove_challenges: (r) => `Removed ${r?.removed ?? 0} challenge${r?.removed === 1 ? '' : 's'}`,
-  set_weights: () => 'Score weights updated',
+  set_weights: (r) => {
+    if (!r || typeof r !== 'object') return 'Score weights updated';
+    const parts = Object.entries(r as Record<string, unknown>)
+      .filter(([k]) => k in WEIGHT_DIMENSION_LABELS)
+      .map(([k, v]) => `${WEIGHT_DIMENSION_LABELS[k]} ${v}%`);
+    return parts.length > 0 ? `Weights: ${parts.join(', ')}` : 'Score weights updated';
+  },
   set_time_limit: (r) => `Time limit set to ${r?.minutes ?? '?'} min`,
   set_branding: () => 'Branding updated',
   create_custom_challenge: (r) => `Custom challenge "${r?.title ?? 'Untitled'}" created (draft)`,

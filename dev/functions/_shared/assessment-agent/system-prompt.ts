@@ -194,6 +194,20 @@ export function getAssessmentAgentTools(): ToolDefinition[] {
   ];
 }
 
+const WEIGHT_LABELS: Record<string, string> = {
+  modelSelection: 'Model Selection',
+  promptEfficiency: 'Prompt Efficiency',
+  debugging: 'Debugging',
+  strategy: 'Strategy',
+  speed: 'Speed',
+};
+
+function formatWeights(weights: Record<string, number>): string {
+  const entries = Object.entries(weights);
+  if (entries.length === 0) return '(not set)';
+  return entries.map(([k, v]) => `${WEIGHT_LABELS[k] || k}: ${v}%`).join(', ');
+}
+
 export function buildAssessmentAgentPrompt(params: {
   challengeCatalog: CatalogEntry[];
   currentAssessment: AssessmentState | null;
@@ -216,7 +230,7 @@ export function buildAssessmentAgentPrompt(params: {
         `Description: ${currentAssessment.description || '(not set)'}`,
         `Time Limit: ${Math.floor(currentAssessment.timeLimit / 60)} minutes`,
         `Selected Challenges (${currentAssessment.selectedChallengeIds.length}): ${currentAssessment.selectedChallengeIds.join(', ') || '(none)'}`,
-        `Weights: ${JSON.stringify(currentAssessment.weights)}`,
+        `Weights: ${formatWeights(currentAssessment.weights)}`,
         `Company: ${currentAssessment.companyName || '(not set)'}`,
         `Welcome Message: ${currentAssessment.welcomeMessage || '(not set)'}`,
       ].join('\n')
@@ -282,6 +296,7 @@ ${assessmentState}
 - Never present a menu of options and ask the user to pick. Instead, make your best recommendation and apply it directly. If there's genuine ambiguity (e.g., two equally valid approaches), briefly describe both options and end with "Reply A or B" — keep it short.
 - If the job description is vague, ask ONE clarifying question — don't interrogate.
 - Keep responses under 150 words. No markdown tables in chat — use bullet points if needed.
+- When summarizing score weights, format as: Model Selection 25%, Prompt Efficiency 25%, etc.
 
 ### CRITICAL: Tool Usage Rules
 1. You MUST use tools to take actions. Never just describe what you would do — actually call the tools.

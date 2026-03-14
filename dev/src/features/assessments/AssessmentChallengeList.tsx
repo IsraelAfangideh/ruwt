@@ -86,20 +86,21 @@ export function AssessmentChallengeList({
   const [search, setSearch] = useState('');
   const [difficultyFilter, setDifficultyFilter] = useState('all');
   const [categoryFilter, setCategoryFilter] = useState('all');
+  const [showSelectedOnly, setShowSelectedOnly] = useState(false);
 
   const selectedSet = useMemo(() => new Set(selectedChallengeIds), [selectedChallengeIds]);
 
   const filteredChallenges = useMemo(() => {
     const q = search.toLowerCase();
-    return allChallenges.filter((ch) => matchesFilters(ch, q, difficultyFilter, categoryFilter));
-  }, [allChallenges, search, difficultyFilter, categoryFilter]);
+    return allChallenges.filter((ch) => matchesFilters(ch, q, difficultyFilter, categoryFilter) && (!showSelectedOnly || selectedSet.has(ch.id)));
+  }, [allChallenges, search, difficultyFilter, categoryFilter, showSelectedOnly, selectedSet]);
 
   const filteredCustom = useMemo(() => {
     const q = search.toLowerCase();
     return customChallenges.filter((ch) =>
-      ch.status === 'active' && matchesFilters(ch, q, difficultyFilter, categoryFilter)
+      ch.status === 'active' && matchesFilters(ch, q, difficultyFilter, categoryFilter) && (!showSelectedOnly || selectedSet.has(ch.id))
     );
-  }, [customChallenges, search, difficultyFilter, categoryFilter]);
+  }, [customChallenges, search, difficultyFilter, categoryFilter, showSelectedOnly, selectedSet]);
 
   const allVisibleIds = useMemo(
     () => [...filteredChallenges, ...filteredCustom].map((ch) => ch.id),
@@ -139,6 +140,22 @@ export function AssessmentChallengeList({
             </Pressable>
           ))}
         </View>
+        {selectedChallengeIds.length > 0 && (
+          <View style={[styles.filterPills, { marginTop: spacing.xs }]}>
+            <Pressable
+              onPress={() => setShowSelectedOnly((v) => !v)}
+              accessibilityRole="button"
+              style={[styles.pill, {
+                backgroundColor: showSelectedOnly ? c.accent + '20' : 'transparent',
+                borderColor: showSelectedOnly ? c.accent : c.border,
+              }]}
+            >
+              <Text style={{ fontSize: fontSizes.xs, color: showSelectedOnly ? c.accent : c.textMuted }}>
+                Selected ({selectedChallengeIds.length})
+              </Text>
+            </Pressable>
+          </View>
+        )}
         <View style={styles.filterPills}>
           {PICKER_CATEGORIES.map((cat) => (
             <Pressable
@@ -193,7 +210,7 @@ export function AssessmentChallengeList({
           </Text>
           <Pressable
             accessibilityRole="button"
-            onPress={() => { setSearch(''); setDifficultyFilter('all'); setCategoryFilter('all'); }}
+            onPress={() => { setSearch(''); setDifficultyFilter('all'); setCategoryFilter('all'); setShowSelectedOnly(false); }}
           >
             <Text style={{ fontSize: fontSizes.sm, color: c.accent, fontWeight: '600' }}>Clear filters</Text>
           </Pressable>

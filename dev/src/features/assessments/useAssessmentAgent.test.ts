@@ -368,6 +368,437 @@ describe('useAssessmentAgent', () => {
     expect(assistant?.content).toBe('ok');
   });
 
+  // ─── assessment_created event ──────────────────────────────────────
+
+  it('fires onAssessmentCreated and adds system message on assessment_created event', async () => {
+    const onAssessmentCreated = vi.fn();
+    const chunks = [
+      encode(
+        sseLine({ type: 'assessment_created', assessmentId: 'new-a-42' }) +
+        sseLine({ type: 'done' })
+      ),
+    ];
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(okResponse(chunks));
+
+    const { result } = renderHook(() =>
+      useAssessmentAgent({ onAssessmentCreated })
+    );
+
+    await act(async () => {
+      await result.current.sendMessage('create');
+    });
+
+    expect(onAssessmentCreated).toHaveBeenCalledWith('new-a-42');
+    const sysMsg = result.current.messages.find(
+      (m) => m.role === 'system' && m.systemType === 'assessment_created'
+    );
+    expect(sysMsg?.content).toBe('New assessment draft created');
+  });
+
+  it('does not call onAssessmentCreated when assessmentId is missing', async () => {
+    const onAssessmentCreated = vi.fn();
+    const chunks = [
+      encode(sseLine({ type: 'assessment_created' }) + sseLine({ type: 'done' })),
+    ];
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(okResponse(chunks));
+
+    const { result } = renderHook(() =>
+      useAssessmentAgent({ onAssessmentCreated })
+    );
+
+    await act(async () => {
+      await result.current.sendMessage('go');
+    });
+
+    expect(onAssessmentCreated).not.toHaveBeenCalled();
+  });
+
+  // ─── tool_call updates streamingStatus ────────────────────────────
+
+  it('sets streamingStatus for unknown tool names via fallback', async () => {
+    const chunks = [
+      encode(
+        sseLine({ type: 'tool_call', tool: 'mystery_tool', input: {} }) +
+        sseLine({ type: 'done' })
+      ),
+    ];
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(okResponse(chunks));
+
+    const { result } = renderHook(() => useAssessmentAgent({}));
+
+    await act(async () => {
+      await result.current.sendMessage('test');
+    });
+
+    expect(result.current.streaming).toBe(false);
+  });
+
+  // ─── tool_result with failed result ─────────────────────────────
+
+  it('adds tool_error system message on failed tool_result', async () => {
+    const chunks = [
+      encode(
+        sseLine({ type: 'tool_result', tool: 'select_challenges', success: false, error: 'Not found' }) +
+        sseLine({ type: 'done' })
+      ),
+    ];
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(okResponse(chunks));
+
+    const { result } = renderHook(() => useAssessmentAgent({}));
+
+    await act(async () => {
+      await result.current.sendMessage('add');
+    });
+
+    const errMsg = result.current.messages.find(
+      (m) => m.role === 'system' && m.systemType === 'tool_error'
+    );
+    expect(errMsg?.content).toBe('Failed: Not found');
+  });
+
+  it('uses tool name as fallback label for failed tool_result without error', async () => {
+    const chunks = [
+      encode(
+        sseLine({ type: 'tool_result', tool: 'set_weights', success: false }) +
+        sseLine({ type: 'done' })
+      ),
+    ];
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(okResponse(chunks));
+
+    const { result } = renderHook(() => useAssessmentAgent({}));
+
+    await act(async () => {
+      await result.current.sendMessage('w');
+    });
+
+    const errMsg = result.current.messages.find(
+      (m) => m.role === 'system' && m.systemType === 'tool_error'
+    );
+    expect(errMsg?.content).toBe('Failed: set_weights');
+  });
+
+  it('uses fallback "completed" label for unknown tool on success', async () => {
+    const chunks = [
+      encode(
+        sseLine({ type: 'tool_result', tool: 'custom_thing', success: true, result: {} }) +
+        sseLine({ type: 'done' })
+      ),
+    ];
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(okResponse(chunks));
+
+    const { result } = renderHook(() => useAssessmentAgent({}));
+
+    await act(async () => {
+      await result.current.sendMessage('custom');
+    });
+
+    const sysMsg = result.current.messages.find(
+      (m) => m.role === 'system' && m.systemType === 'tool_result'
+    );
+    expect(sysMsg?.content).toBe('custom_thing completed');
+  });
+
+  // ─── done without conversationId ──────────────────────────────────
+
+  it('does not set conversationId when done event lacks it', async () => {
+    const chunks = [encode(sseLine({ type: 'done' }))];
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(okResponse(chunks));
+
+    const { result } = renderHook(() => useAssessmentAgent({}));
+
+    await act(async () => {
+      await result.current.sendMessage('x');
+    });
+
+    expect(result.current.conversationId).toBeNull();
+  });
+
+  // ─── clearHistory sends DELETE when conversationId exists ─────────
+
+  it('clearHistory sends DELETE request when conversationId is set', async () => {
+    const chunks = [encode(sseLine({ type: 'done', conversationId: 'conv-del' }))];
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(okResponse(chunks));
+
+    const { result } = renderHook(() => useAssessmentAgent({}));
+
+    await act(async () => {
+      await result.current.sendMessage('hi');
+    });
+
+    expect(result.current.conversationId).toBe('conv-del');
+
+    act(() => {
+      result.current.clearHistory();
+    });
+
+    const delCall = fetchSpy.mock.calls.find(
+      (c) => typeof c[0] === 'string' && c[0].includes('conversationId=conv-del')
+    );
+    expect(delCall).toBeTruthy();
+    expect((delCall![1] as any).method).toBe('DELETE');
+  });
+
+  // ─── HTTP error with empty error field ────────────────────────────
+
+  it('shows "Something went wrong" when HTTP error has no error field', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(errorResponse(500, {}));
+
+    const { result } = renderHook(() => useAssessmentAgent({}));
+
+    await act(async () => {
+      await result.current.sendMessage('test');
+    });
+
+    const msgs = result.current.messages;
+    expect(msgs[msgs.length - 1].content).toContain('Something went wrong');
+  });
+
+  // ─── Filters system messages from POST body ──────────────────────
+
+  it('filters system messages from POST body', async () => {
+    const chunks1 = [
+      encode(
+        sseLine({ type: 'tool_result', tool: 'set_weights', success: true, result: {} }) +
+        sseLine({ type: 'chunk', content: 'ok' }) +
+        sseLine({ type: 'done', conversationId: 'c1' })
+      ),
+    ];
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(okResponse(chunks1));
+
+    const { result } = renderHook(() => useAssessmentAgent({}));
+
+    await act(async () => {
+      await result.current.sendMessage('set weights');
+    });
+
+    const systemMsgs = result.current.messages.filter((m) => m.role === 'system');
+    expect(systemMsgs.length).toBeGreaterThan(0);
+
+    const chunks2 = [encode(sseLine({ type: 'done' }))];
+    fetchSpy.mockResolvedValue(okResponse(chunks2));
+
+    await act(async () => {
+      await result.current.sendMessage('next');
+    });
+
+    const lastCall = fetchSpy.mock.calls[fetchSpy.mock.calls.length - 1];
+    const body = JSON.parse((lastCall[1] as RequestInit).body as string);
+    const systemInBody = body.messages.filter((m: any) => m.role === 'system');
+    expect(systemInBody.length).toBe(0);
+  });
+
+  // ─── TOOL_SUCCESS_LABELS: all tool types produce correct system messages ────
+
+  it('select_challenges: singular "1 challenge" label', async () => {
+    const chunks = [
+      encode(
+        sseLine({ type: 'tool_result', tool: 'select_challenges', success: true, result: { added: 1 } }) +
+        sseLine({ type: 'done' })
+      ),
+    ];
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(okResponse(chunks));
+    const { result } = renderHook(() => useAssessmentAgent({}));
+    await act(async () => { await result.current.sendMessage('add'); });
+    const sysMsg = result.current.messages.find((m) => m.role === 'system' && m.systemType === 'tool_result');
+    expect(sysMsg?.content).toBe('Added 1 challenge');
+  });
+
+  it('select_challenges: plural "3 challenges" label', async () => {
+    const chunks = [
+      encode(
+        sseLine({ type: 'tool_result', tool: 'select_challenges', success: true, result: { added: 3 } }) +
+        sseLine({ type: 'done' })
+      ),
+    ];
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(okResponse(chunks));
+    const { result } = renderHook(() => useAssessmentAgent({}));
+    await act(async () => { await result.current.sendMessage('x'); });
+    const sysMsg = result.current.messages.find((m) => m.role === 'system' && m.systemType === 'tool_result');
+    expect(sysMsg?.content).toBe('Added 3 challenges');
+  });
+
+  it('select_challenges: nullish result defaults to 0', async () => {
+    const chunks = [
+      encode(
+        sseLine({ type: 'tool_result', tool: 'select_challenges', success: true, result: null }) +
+        sseLine({ type: 'done' })
+      ),
+    ];
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(okResponse(chunks));
+    const { result } = renderHook(() => useAssessmentAgent({}));
+    await act(async () => { await result.current.sendMessage('x'); });
+    const sysMsg = result.current.messages.find((m) => m.role === 'system' && m.systemType === 'tool_result');
+    expect(sysMsg?.content).toBe('Added 0 challenges');
+  });
+
+  it('remove_challenges: singular label', async () => {
+    const chunks = [
+      encode(
+        sseLine({ type: 'tool_result', tool: 'remove_challenges', success: true, result: { removed: 1 } }) +
+        sseLine({ type: 'done' })
+      ),
+    ];
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(okResponse(chunks));
+    const { result } = renderHook(() => useAssessmentAgent({}));
+    await act(async () => { await result.current.sendMessage('x'); });
+    const sysMsg = result.current.messages.find((m) => m.role === 'system' && m.systemType === 'tool_result');
+    expect(sysMsg?.content).toBe('Removed 1 challenge');
+  });
+
+  it('remove_challenges: plural label', async () => {
+    const chunks = [
+      encode(
+        sseLine({ type: 'tool_result', tool: 'remove_challenges', success: true, result: { removed: 2 } }) +
+        sseLine({ type: 'done' })
+      ),
+    ];
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(okResponse(chunks));
+    const { result } = renderHook(() => useAssessmentAgent({}));
+    await act(async () => { await result.current.sendMessage('x'); });
+    const sysMsg = result.current.messages.find((m) => m.role === 'system' && m.systemType === 'tool_result');
+    expect(sysMsg?.content).toBe('Removed 2 challenges');
+  });
+
+  it('set_weights: produces formatted label with weight values', async () => {
+    const chunks = [
+      encode(
+        sseLine({ type: 'tool_result', tool: 'set_weights', success: true, result: { modelSelection: 25, promptEfficiency: 25, debugging: 20, strategy: 15, speed: 15 } }) +
+        sseLine({ type: 'done' })
+      ),
+    ];
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(okResponse(chunks));
+    const { result } = renderHook(() => useAssessmentAgent({}));
+    await act(async () => { await result.current.sendMessage('x'); });
+    const sysMsg = result.current.messages.find((m) => m.role === 'system' && m.systemType === 'tool_result');
+    expect(sysMsg?.content).toBe('Weights: Model Selection 25%, Prompt Efficiency 25%, Debugging 20%, Strategy 15%, Speed 15%');
+  });
+
+  it('set_weights: falls back to generic label when result is empty', async () => {
+    const chunks = [
+      encode(
+        sseLine({ type: 'tool_result', tool: 'set_weights', success: true, result: {} }) +
+        sseLine({ type: 'done' })
+      ),
+    ];
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(okResponse(chunks));
+    const { result } = renderHook(() => useAssessmentAgent({}));
+    await act(async () => { await result.current.sendMessage('x'); });
+    const sysMsg = result.current.messages.find((m) => m.role === 'system' && m.systemType === 'tool_result');
+    expect(sysMsg?.content).toBe('Score weights updated');
+  });
+
+  it('set_weights: falls back to generic label when result is null', async () => {
+    const chunks = [
+      encode(
+        sseLine({ type: 'tool_result', tool: 'set_weights', success: true, result: null }) +
+        sseLine({ type: 'done' })
+      ),
+    ];
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(okResponse(chunks));
+    const { result } = renderHook(() => useAssessmentAgent({}));
+    await act(async () => { await result.current.sendMessage('x'); });
+    const sysMsg = result.current.messages.find((m) => m.role === 'system' && m.systemType === 'tool_result');
+    expect(sysMsg?.content).toBe('Score weights updated');
+  });
+
+  it('set_time_limit: produces label with minutes', async () => {
+    const chunks = [
+      encode(
+        sseLine({ type: 'tool_result', tool: 'set_time_limit', success: true, result: { minutes: 90 } }) +
+        sseLine({ type: 'done' })
+      ),
+    ];
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(okResponse(chunks));
+    const { result } = renderHook(() => useAssessmentAgent({}));
+    await act(async () => { await result.current.sendMessage('x'); });
+    const sysMsg = result.current.messages.find((m) => m.role === 'system' && m.systemType === 'tool_result');
+    expect(sysMsg?.content).toBe('Time limit set to 90 min');
+  });
+
+  it('set_branding: produces correct label', async () => {
+    const chunks = [
+      encode(
+        sseLine({ type: 'tool_result', tool: 'set_branding', success: true, result: {} }) +
+        sseLine({ type: 'done' })
+      ),
+    ];
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(okResponse(chunks));
+    const { result } = renderHook(() => useAssessmentAgent({}));
+    await act(async () => { await result.current.sendMessage('x'); });
+    const sysMsg = result.current.messages.find((m) => m.role === 'system' && m.systemType === 'tool_result');
+    expect(sysMsg?.content).toBe('Branding updated');
+  });
+
+  it('create_custom_challenge: produces label with title', async () => {
+    const chunks = [
+      encode(
+        sseLine({ type: 'tool_result', tool: 'create_custom_challenge', success: true, result: { title: 'FizzBuzz' } }) +
+        sseLine({ type: 'done' })
+      ),
+    ];
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(okResponse(chunks));
+    const { result } = renderHook(() => useAssessmentAgent({}));
+    await act(async () => { await result.current.sendMessage('x'); });
+    const sysMsg = result.current.messages.find((m) => m.role === 'system' && m.systemType === 'tool_result');
+    expect(sysMsg?.content).toBe('Custom challenge "FizzBuzz" created (draft)');
+  });
+
+  it('create_custom_challenge: uses "Untitled" for missing title', async () => {
+    const chunks = [
+      encode(
+        sseLine({ type: 'tool_result', tool: 'create_custom_challenge', success: true, result: {} }) +
+        sseLine({ type: 'done' })
+      ),
+    ];
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(okResponse(chunks));
+    const { result } = renderHook(() => useAssessmentAgent({}));
+    await act(async () => { await result.current.sendMessage('x'); });
+    const sysMsg = result.current.messages.find((m) => m.role === 'system' && m.systemType === 'tool_result');
+    expect(sysMsg?.content).toBe('Custom challenge "Untitled" created (draft)');
+  });
+
+  it('set_pass_threshold: produces correct label', async () => {
+    const chunks = [
+      encode(
+        sseLine({ type: 'tool_result', tool: 'set_pass_threshold', success: true, result: {} }) +
+        sseLine({ type: 'done' })
+      ),
+    ];
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(okResponse(chunks));
+    const { result } = renderHook(() => useAssessmentAgent({}));
+    await act(async () => { await result.current.sendMessage('x'); });
+    const sysMsg = result.current.messages.find((m) => m.role === 'system' && m.systemType === 'tool_result');
+    expect(sysMsg?.content).toBe('Pass threshold configured');
+  });
+
+  it('search_challenges: singular "1 challenge" label', async () => {
+    const chunks = [
+      encode(
+        sseLine({ type: 'tool_result', tool: 'search_challenges', success: true, result: { count: 1 } }) +
+        sseLine({ type: 'done' })
+      ),
+    ];
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(okResponse(chunks));
+    const { result } = renderHook(() => useAssessmentAgent({}));
+    await act(async () => { await result.current.sendMessage('x'); });
+    const sysMsg = result.current.messages.find((m) => m.role === 'system' && m.systemType === 'tool_result');
+    expect(sysMsg?.content).toBe('Found 1 matching challenge');
+  });
+
+  it('search_challenges: plural "5 challenges" label', async () => {
+    const chunks = [
+      encode(
+        sseLine({ type: 'tool_result', tool: 'search_challenges', success: true, result: { count: 5 } }) +
+        sseLine({ type: 'done' })
+      ),
+    ];
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(okResponse(chunks));
+    const { result } = renderHook(() => useAssessmentAgent({}));
+    await act(async () => { await result.current.sendMessage('x'); });
+    const sysMsg = result.current.messages.find((m) => m.role === 'system' && m.systemType === 'tool_result');
+    expect(sysMsg?.content).toBe('Found 5 matching challenges');
+  });
+
   // ─── Non-data lines ignored ─────────────────────────────────────────
 
   it('ignores lines that do not start with "data: "', async () => {
