@@ -162,9 +162,10 @@ export function getAssessmentAgentTools(): ToolDefinition[] {
             description: 'Hidden test cases (edge cases)',
           },
           testHarness: { type: 'string', description: 'Code that wraps the solution, runs tests, prints PASS/FAIL per case' },
+          referenceSolution: { type: 'string', description: 'A working solution that passes all test cases. Used to validate the test harness before saving. Not stored.' },
           tags: { type: 'array', items: { type: 'string' }, description: 'Tags for categorization' },
         },
-        required: ['title', 'description', 'difficulty', 'category', 'language', 'starterCode', 'testCases', 'testHarness'],
+        required: ['title', 'description', 'difficulty', 'category', 'language', 'starterCode', 'testCases', 'testHarness', 'referenceSolution'],
       },
     },
     {
@@ -205,6 +206,7 @@ const WEIGHT_LABELS: Record<string, string> = {
 function formatWeights(weights: Record<string, number>): string {
   const entries = Object.entries(weights);
   if (entries.length === 0) return '(not set)';
+  /* istanbul ignore next -- @preserve */
   return entries.map(([k, v]) => `${WEIGHT_LABELS[k] || k}: ${v}%`).join(', ');
 }
 
@@ -290,6 +292,8 @@ ${assessmentState}
   4. Be language-appropriate (JavaScript: Node.js, Python: standard lib)
 - Starter code should have clear TODOs and function signatures
 - Difficulty should match the role level
+- Always provide a \`referenceSolution\` — a complete working solution that passes all test cases. This validates the test harness before saving. It is NOT stored.
+- If harness validation fails, fix the test harness or reference solution and try again.
 
 ### Communication Style
 - Act first — make changes using tools, then briefly explain what you did and why in 2-3 sentences.

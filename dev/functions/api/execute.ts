@@ -7,6 +7,7 @@
 import { z } from 'zod';
 import { getUser } from '../_shared/auth';
 import { logError } from '../_shared/error-monitor';
+import { getPistonUrl, buildPistonHeaders } from '../_shared/piston-client';
 
 const executeSchema = z.object({
   language: z.string().min(1),
@@ -29,7 +30,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     return Response.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const execUrl = context.env.PISTON_API_URL || 'https://ruwt-exec.fly.dev/api/v2/piston';
+  const execUrl = getPistonUrl(context.env);
 
   try {
     const body = await context.request.json().catch(() => ({}));
@@ -41,14 +42,9 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
       );
     }
 
-    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-    if (context.env.EXECUTOR_SECRET) {
-      headers['X-Executor-Secret'] = context.env.EXECUTOR_SECRET;
-    }
-
     const res = await fetch(`${execUrl}/execute`, {
       method: 'POST',
-      headers,
+      headers: buildPistonHeaders(context.env),
       body: JSON.stringify(parsed.data),
     });
 

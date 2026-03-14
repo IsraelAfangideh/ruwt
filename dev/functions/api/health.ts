@@ -3,6 +3,7 @@
  * Validates internal system connectivity: D1, Supabase, Workers AI, Piston.
  * No auth required. Returns JSON summary of each system's status.
  */
+import { getPistonUrl, buildPistonHeaders } from '../_shared/piston-client';
 
 interface CheckResult {
   ok: boolean;
@@ -59,14 +60,10 @@ export async function onRequestGet(context: {
 
   // 4. Piston code execution engine — run actual code (no /runtimes on this instance)
   checks.piston = await timedCheck(async () => {
-    const pistonUrl = context.env.PISTON_API_URL || 'https://ruwt-exec.fly.dev/api/v2/piston';
-    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-    if (context.env.EXECUTOR_SECRET) {
-      headers['X-Executor-Secret'] = context.env.EXECUTOR_SECRET;
-    }
+    const pistonUrl = getPistonUrl(context.env);
     const res = await fetch(`${pistonUrl}/execute`, {
       method: 'POST',
-      headers,
+      headers: buildPistonHeaders(context.env),
       body: JSON.stringify({
         language: 'python', version: '3.10.0',
         files: [{ content: 'print(42)' }], run_timeout: 5000,

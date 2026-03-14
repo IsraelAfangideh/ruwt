@@ -729,7 +729,7 @@ describe('useAssessmentAgent', () => {
     expect(sysMsg?.content).toBe('Branding updated');
   });
 
-  it('create_custom_challenge: produces label with title', async () => {
+  it('create_custom_challenge: produces label with title (draft)', async () => {
     const chunks = [
       encode(
         sseLine({ type: 'tool_result', tool: 'create_custom_challenge', success: true, result: { title: 'FizzBuzz' } }) +
@@ -741,6 +741,20 @@ describe('useAssessmentAgent', () => {
     await act(async () => { await result.current.sendMessage('x'); });
     const sysMsg = result.current.messages.find((m) => m.role === 'system' && m.systemType === 'tool_result');
     expect(sysMsg?.content).toBe('Custom challenge "FizzBuzz" created (draft)');
+  });
+
+  it('create_custom_challenge: shows added to assessment label when auto-added', async () => {
+    const chunks = [
+      encode(
+        sseLine({ type: 'tool_result', tool: 'create_custom_challenge', success: true, result: { title: 'FizzBuzz', addedToAssessment: true } }) +
+        sseLine({ type: 'done' })
+      ),
+    ];
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(okResponse(chunks));
+    const { result } = renderHook(() => useAssessmentAgent({}));
+    await act(async () => { await result.current.sendMessage('x'); });
+    const sysMsg = result.current.messages.find((m) => m.role === 'system' && m.systemType === 'tool_result');
+    expect(sysMsg?.content).toBe('Custom challenge "FizzBuzz" created + added to assessment');
   });
 
   it('create_custom_challenge: uses "Untitled" for missing title', async () => {

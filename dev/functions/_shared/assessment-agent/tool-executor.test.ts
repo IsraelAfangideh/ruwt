@@ -253,12 +253,17 @@ describe('select_challenges', () => {
   });
 
   it('calculates sortOrder based on existing challenges', async () => {
-    const existing = [
-      { challengeId: 'existing-1', sortOrder: 0 },
-      { challengeId: 'existing-2', sortOrder: 1 },
+    const existingIds = [
+      { challengeId: 'existing-1' },
+      { challengeId: 'existing-2' },
+    ];
+    const existingSortOrders = [
+      { sortOrder: 0 },
+      { sortOrder: 1 },
     ];
     const valuesMock = vi.fn().mockResolvedValue(undefined);
-    const db = createMockDb({ selectResults: [catalogIds, existing], insertFn: valuesMock });
+    // 3 selects: 1) catalog validation, 2) existing challengeIds, 3) getNextSortOrder
+    const db = createMockDb({ selectResults: [catalogIds, existingIds, existingSortOrders], insertFn: valuesMock });
     const result = await run(db, 'select_challenges', { challengeIds: ['ch-new'] });
 
     expect(result.success).toBe(true);
@@ -723,7 +728,7 @@ describe('create_custom_challenge', () => {
     expect((result.result as any).status).toBe('draft');
     expect((result.result as any).title).toBe('Custom API Challenge');
     expect((result.result as any).id).toMatch(/^custom-/);
-    expect((result.result as any).message).toContain('draft');
+    expect((result.result as any).message).toContain('Custom challenge created');
 
     const inserted = valuesMock.mock.calls[0][0];
     expect(inserted.id).toBe('custom-aaaaaaaa');
@@ -849,6 +854,171 @@ describe('create_custom_challenge', () => {
 
     const inserted = valuesMock.mock.calls[0][0];
     expect(inserted.skillTested).toBeNull();
+  });
+
+  // ─── Harness validation ─────────────────────────────────────────────
+
+  it('validates harness and saves when all tests PASS', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify({ run: { stdout: 'PASS\nPASS\n', stderr: '', code: 0 } }), { status: 200 })
+    );
+    const valuesMock = vi.fn().mockResolvedValue(undefined);
+    const db = createMockDb({ insertFn: valuesMock });
+    const result = await run(db, 'create_custom_challenge', {
+      title: 'Validated',
+      testHarness: 'console.log("PASS")',
+      referenceSolution: 'function solve() { return 1; }',
+    }, fullContext);
+
+    expect(result.success).toBe(true);
+    expect(valuesMock).toHaveBeenCalled();
+    vi.restoreAllMocks();
+  });
+
+  it('rejects when harness produces FAIL output', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify({ run: { stdout: 'PASS\nFAIL: expected 2 got 1\n', stderr: '', code: 0 } }), { status: 200 })
+    );
+    const valuesMock = vi.fn().mockResolvedValue(undefined);
+    const db = createMockDb({ insertFn: valuesMock });
+    const result = await run(db, 'create_custom_challenge', {
+      title: 'Bad',
+      testHarness: 'console.log("FAIL")',
+      referenceSolution: 'function solve() {}',
+    }, fullContext);
+
+    expect(result.success).toBe(false);
+    expect(result.error).toContain('FAILED');
+    expect(valuesMock).not.toHaveBeenCalled();
+    vi.restoreAllMocks();
+  });
+
+  it('rejects when harness produces no PASS/FAIL output', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify({ run: { stdout: 'hello world', stderr: '', code: 0 } }), { status: 200 })
+    );
+    const valuesMock = vi.fn().mockResolvedValue(undefined);
+    const db = createMockDb({ insertFn: valuesMock });
+    const result = await run(db, 'create_custom_challenge', {
+      title: 'NoOutput',
+      testHarness: 'console.log("hello")',
+      referenceSolution: 'function solve() {}',
+    }, fullContext);
+
+    expect(result.success).toBe(false);
+    expect(result.error).toContain('no PASS/FAIL output');
+    expect(valuesMock).not.toHaveBeenCalled();
+    vi.restoreAllMocks();
+  });
+
+  it('rejects when execution has non-zero exit code', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify({ run: { stdout: '', stderr: 'SyntaxError', code: 1 } }), { status: 200 })
+    );
+    const valuesMock = vi.fn().mockResolvedValue(undefined);
+    const db = createMockDb({ insertFn: valuesMock });
+    const result = await run(db, 'create_custom_challenge', {
+      title: 'SyntaxErr',
+      testHarness: 'bad code {{',
+      referenceSolution: 'function solve() {}',
+    }, fullContext);
+
+    expect(result.success).toBe(false);
+    expect(result.error).toContain('exit code 1');
+    expect(result.error).toContain('SyntaxError');
+    expect(valuesMock).not.toHaveBeenCalled();
+    vi.restoreAllMocks();
+  });
+
+  it('saves with warning when executor is unreachable (graceful degradation)', async () => {
+    vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('ECONNREFUSED'));
+    const valuesMock = vi.fn().mockResolvedValue(undefined);
+    const db = createMockDb({ insertFn: valuesMock });
+    const result = await run(db, 'create_custom_challenge', {
+      title: 'Offline',
+      testHarness: 'console.log("PASS")',
+      referenceSolution: 'function solve() {}',
+    }, fullContext);
+
+    expect(result.success).toBe(true);
+    expect(valuesMock).toHaveBeenCalled();
+    expect((result.result as any).message).toContain('Warning');
+    vi.restoreAllMocks();
+  });
+
+  it('saves with warning when executor returns non-200', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response('Server Error', { status: 500 })
+    );
+    const valuesMock = vi.fn().mockResolvedValue(undefined);
+    const db = createMockDb({ insertFn: valuesMock });
+    const result = await run(db, 'create_custom_challenge', {
+      title: 'ServerErr',
+      testHarness: 'console.log("PASS")',
+      referenceSolution: 'function solve() {}',
+    }, fullContext);
+
+    expect(result.success).toBe(true);
+    expect(valuesMock).toHaveBeenCalled();
+    expect((result.result as any).message).toContain('Warning');
+    vi.restoreAllMocks();
+  });
+
+  it('skips validation when referenceSolution is not provided', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch');
+    const valuesMock = vi.fn().mockResolvedValue(undefined);
+    const db = createMockDb({ insertFn: valuesMock });
+    const result = await run(db, 'create_custom_challenge', {
+      title: 'NoRef',
+      testHarness: 'console.log("PASS")',
+    }, fullContext);
+
+    expect(result.success).toBe(true);
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(valuesMock).toHaveBeenCalled();
+    vi.restoreAllMocks();
+  });
+
+  // ─── Auto-select into assessment ────────────────────────────────────
+
+  it('auto-adds to assessment when assessmentId is present', async () => {
+    const valuesMock = vi.fn().mockResolvedValue(undefined);
+    const db = createMockDb({ selectResults: [[{ sortOrder: 2 }, { sortOrder: 5 }]], insertFn: valuesMock });
+    const result = await run(db, 'create_custom_challenge', { title: 'AutoAdd' }, fullContext);
+
+    expect(result.success).toBe(true);
+    expect((result.result as any).addedToAssessment).toBe(true);
+    expect((result.result as any).message).toContain('added to assessment');
+    // Two inserts: one for customChallenges, one for assessmentChallenges
+    expect(valuesMock).toHaveBeenCalledTimes(2);
+    // Second insert should have correct sortOrder (max 5 + 1 = 6)
+    const assessmentInsert = valuesMock.mock.calls[1][0];
+    expect(assessmentInsert.sortOrder).toBe(6);
+    expect(assessmentInsert.challengeId).toBe('custom-aaaaaaaa');
+    expect(assessmentInsert.customChallengeId).toBe('custom-aaaaaaaa');
+  });
+
+  it('does not auto-add when assessmentId is absent', async () => {
+    const valuesMock = vi.fn().mockResolvedValue(undefined);
+    const db = createMockDb({ insertFn: valuesMock });
+    const result = await run(db, 'create_custom_challenge', { title: 'NoAssess' }, withOrg);
+
+    expect(result.success).toBe(true);
+    expect((result.result as any).addedToAssessment).toBe(false);
+    expect((result.result as any).message).toContain('draft');
+    // Only one insert (customChallenges)
+    expect(valuesMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('auto-select uses sortOrder 0 when assessment has no existing challenges', async () => {
+    const valuesMock = vi.fn().mockResolvedValue(undefined);
+    const db = createMockDb({ selectResults: [[]], insertFn: valuesMock });
+    const result = await run(db, 'create_custom_challenge', { title: 'First' }, fullContext);
+
+    expect(result.success).toBe(true);
+    expect(valuesMock).toHaveBeenCalledTimes(2);
+    const assessmentInsert = valuesMock.mock.calls[1][0];
+    expect(assessmentInsert.sortOrder).toBe(0);
   });
 });
 

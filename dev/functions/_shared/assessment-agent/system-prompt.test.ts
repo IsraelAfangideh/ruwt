@@ -117,6 +117,14 @@ describe('getAssessmentAgentTools', () => {
     expect(required).toContain('starterCode');
     expect(required).toContain('testCases');
     expect(required).toContain('testHarness');
+    expect(required).toContain('referenceSolution');
+  });
+
+  it('create_custom_challenge has referenceSolution property', () => {
+    const tool = tools.find((t) => t.name === 'create_custom_challenge')!;
+    const params = tool.parameters as Record<string, unknown>;
+    const props = params.properties as Record<string, unknown>;
+    expect(props).toHaveProperty('referenceSolution');
   });
 
   it('create_custom_challenge supports optional hiddenTestCases and tags arrays', () => {
@@ -408,6 +416,16 @@ describe('buildAssessmentAgentPrompt', () => {
     expect(prompt).toContain('set branding');
     expect(prompt).toContain('create custom challenges');
     expect(prompt).toContain('pass/fail thresholds');
+  });
+
+  it('includes referenceSolution guideline in custom challenges section', () => {
+    const prompt = buildAssessmentAgentPrompt({
+      challengeCatalog: [],
+      currentAssessment: null,
+      orgCustomChallenges: [],
+    });
+    expect(prompt).toContain('referenceSolution');
+    expect(prompt).toContain('validates the test harness');
   });
 
   // ----- Integration: full scenario -----

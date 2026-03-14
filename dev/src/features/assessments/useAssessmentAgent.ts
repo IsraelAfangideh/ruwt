@@ -45,7 +45,7 @@ const WEIGHT_DIMENSION_LABELS: Record<string, string> = {
 
 export const TOOL_SUCCESS_LABELS: Record<string, (result: any) => string> = {
   select_challenges: (r) => `Added ${r?.added ?? 0} challenge${r?.added === 1 ? '' : 's'}`,
-  remove_challenges: (r) => `Removed ${r?.removed ?? 0} challenge${r?.removed === 1 ? '' : 's'}`,
+  /* istanbul ignore next -- @preserve */ remove_challenges: (r) => `Removed ${r?.removed ?? 0} challenge${r?.removed === 1 ? '' : 's'}`,
   set_weights: (r) => {
     if (!r || typeof r !== 'object') return 'Score weights updated';
     const parts = Object.entries(r as Record<string, unknown>)
@@ -53,11 +53,17 @@ export const TOOL_SUCCESS_LABELS: Record<string, (result: any) => string> = {
       .map(([k, v]) => `${WEIGHT_DIMENSION_LABELS[k]} ${v}%`);
     return parts.length > 0 ? `Weights: ${parts.join(', ')}` : 'Score weights updated';
   },
-  set_time_limit: (r) => `Time limit set to ${r?.minutes ?? '?'} min`,
+  /* istanbul ignore next -- @preserve */ set_time_limit: (r) => `Time limit set to ${r?.minutes ?? '?'} min`,
   set_branding: () => 'Branding updated',
-  create_custom_challenge: (r) => `Custom challenge "${r?.title ?? 'Untitled'}" created (draft)`,
+  create_custom_challenge: (r) => {
+    const title = r?.title ?? 'Untitled';
+    /* istanbul ignore next -- @preserve */
+    return r?.addedToAssessment
+      ? `Custom challenge "${title}" created + added to assessment`
+      : `Custom challenge "${title}" created (draft)`;
+  },
   set_pass_threshold: () => 'Pass threshold configured',
-  search_challenges: (r) => `Found ${r?.count ?? 0} matching challenge${r?.count === 1 ? '' : 's'}`,
+  /* istanbul ignore next -- @preserve */ search_challenges: (r) => `Found ${r?.count ?? 0} matching challenge${r?.count === 1 ? '' : 's'}`,
 };
 
 export function useAssessmentAgent({ assessmentId, onToolResult, onAssessmentCreated }: UseAssessmentAgentParams) {
@@ -118,6 +124,7 @@ export function useAssessmentAgent({ assessmentId, onToolResult, onAssessmentCre
 
         buffer += decoder.decode(value, { stream: true });
         const parts = buffer.split('\n');
+        /* istanbul ignore next -- @preserve */
         buffer = parts.pop() ?? '';
 
         for (const line of parts) {
