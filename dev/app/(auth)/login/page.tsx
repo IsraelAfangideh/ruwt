@@ -17,7 +17,7 @@ function LoginContent() {
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
   const searchParams = useSearchParams();
-  const redirectTo = searchParams.get('redirectTo') || '/challenges';
+  const redirectTo = searchParams.get('redirectTo') || '/assessments';
 
   const supabase = createClient();
 
