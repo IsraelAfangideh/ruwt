@@ -60,7 +60,7 @@ jobs:
               -X POST "https://api.cloudflare.com/client/v4/accounts/${{ secrets.CLOUDFLARE_ACCOUNT_ID }}/ai/run/${MODEL}" \
               -H "Authorization: Bearer ${{ secrets.CLOUDFLARE_WORKERS_AI_TOKEN }}" \
               -H "Content-Type: application/json" \
-              -d '{"messages":[{"role":"user","content":"Respond with exactly: HEALTH_OK"}],"max_tokens":5}')
+              -d '{"messages":[{"role":"user","content":"Respond with exactly: HEALTH_OK"}],"max_tokens":5}') || HTTP="timeout"
 
             if [ "$HTTP" = "200" ]; then
               echo "  OK: $MODEL"
