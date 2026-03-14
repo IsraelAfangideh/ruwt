@@ -60,7 +60,7 @@ export function AssessmentListScreen() {
       if (orgsRes?.ok) {
         const orgs = await orgsRes.json();
         if (orgs.length > 0) {
-          setOrgInfo({ id: orgs[0].orgId, name: orgs[0].orgName, role: orgs[0].role });
+          setOrgInfo({ id: orgs[0].id, name: orgs[0].name, role: orgs[0].role });
         }
       }
 

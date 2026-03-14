@@ -74,7 +74,7 @@ const mockOrg = {
   id: 'org1', name: 'Acme Corp', logoUrl: 'https://acme.com/logo.png',
   domain: 'acme.com', assessmentCredits: 10, subscriptionStatus: 'active',
   subscriptionPlan: 'monthly', subscriptionEndsAt: '2026-06-01T00:00:00Z',
-  orgId: 'org1', orgName: 'Acme Corp', role: 'owner',
+  role: 'owner',
 };
 
 const mockMembers = [
@@ -586,6 +586,191 @@ describe('OrgManagementScreen', () => {
     fireEvent.click(screen.getByText('Create Organization'));
     const postCalls = fn.mock.calls.filter((c: any) => c[1]?.method === 'POST');
     expect(postCalls.length).toBe(0);
+  });
+
+  it('shows active trial badge with days remaining and usage stats', async () => {
+    const trialOrg = { ...mockOrg, subscriptionStatus: 'none' };
+    setupFetch({
+      '/api/orgs': ok([trialOrg]),
+      '/api/orgs/org1/members': ok(mockMembers),
+      '/api/orgs/org1/invitations': ok([]),
+      '/api/trial/status': ok({
+        trial: {
+          isActive: true, daysRemaining: 14,
+          assessmentsUsed: 1, assessmentsLimit: 3,
+          invitesUsed: 2, invitesLimit: 5,
+        },
+      }),
+    });
+    render(<OrgManagementScreen />);
+    await waitFor(() => {
+      expect(screen.getByText(/Free Trial/)).toBeTruthy();
+      expect(screen.getByText(/14 days left/)).toBeTruthy();
+      expect(screen.getByText(/1\/3 assessments/)).toBeTruthy();
+      expect(screen.getByText(/2\/5 invites/)).toBeTruthy();
+      expect(screen.getByText('Subscribe')).toBeTruthy();
+    });
+  });
+
+  it('navigates to Hiring when Subscribe is clicked during active trial', async () => {
+    const trialOrg = { ...mockOrg, subscriptionStatus: 'none' };
+    setupFetch({
+      '/api/orgs': ok([trialOrg]),
+      '/api/orgs/org1/members': ok(mockMembers),
+      '/api/orgs/org1/invitations': ok([]),
+      '/api/trial/status': ok({
+        trial: {
+          isActive: true, daysRemaining: 14,
+          assessmentsUsed: 0, assessmentsLimit: 3,
+          invitesUsed: 0, invitesLimit: 5,
+        },
+      }),
+    });
+    render(<OrgManagementScreen />);
+    await waitFor(() => expect(screen.getByText('Subscribe')).toBeTruthy());
+    fireEvent.click(screen.getByText('Subscribe'));
+    expect(mockNavigate).toHaveBeenCalledWith('Hiring');
+  });
+
+  it('shows Trial Expired badge and Subscribe button for expired trial', async () => {
+    const trialOrg = { ...mockOrg, subscriptionStatus: 'none' };
+    setupFetch({
+      '/api/orgs': ok([trialOrg]),
+      '/api/orgs/org1/members': ok(mockMembers),
+      '/api/orgs/org1/invitations': ok([]),
+      '/api/trial/status': ok({
+        trial: {
+          isActive: false, daysRemaining: 0,
+          assessmentsUsed: 1, assessmentsLimit: 1,
+          invitesUsed: 3, invitesLimit: 3,
+        },
+      }),
+    });
+    render(<OrgManagementScreen />);
+    await waitFor(() => {
+      expect(screen.getByText('Trial Expired')).toBeTruthy();
+      expect(screen.getByText('Subscribe')).toBeTruthy();
+    });
+  });
+
+  it('navigates to Hiring when Subscribe is clicked for expired trial', async () => {
+    const trialOrg = { ...mockOrg, subscriptionStatus: 'none' };
+    setupFetch({
+      '/api/orgs': ok([trialOrg]),
+      '/api/orgs/org1/members': ok(mockMembers),
+      '/api/orgs/org1/invitations': ok([]),
+      '/api/trial/status': ok({
+        trial: {
+          isActive: false, daysRemaining: 0,
+          assessmentsUsed: 1, assessmentsLimit: 1,
+          invitesUsed: 3, invitesLimit: 3,
+        },
+      }),
+    });
+    render(<OrgManagementScreen />);
+    await waitFor(() => expect(screen.getByText('Subscribe')).toBeTruthy());
+    fireEvent.click(screen.getByText('Subscribe'));
+    expect(mockNavigate).toHaveBeenCalledWith('Hiring');
+  });
+
+  it('shows toast when billing portal returns error instead of URL', async () => {
+    setupFetch({
+      '/api/orgs': ok([mockOrg]),
+      '/api/orgs/org1/members': ok(mockMembers),
+      '/api/orgs/org1/invitations': ok([]),
+      '/api/billing/portal': ok({ error: 'No subscription' }),
+    });
+    render(<OrgManagementScreen />);
+    await waitFor(() => expect(screen.getByText('Manage Billing')).toBeTruthy());
+    fireEvent.click(screen.getByText('Manage Billing'));
+    await waitFor(() => {
+      expect(mockShowToast).toHaveBeenCalledWith('No subscription', 'error');
+    });
+  });
+
+  it('shows toast when billing portal fetch throws', async () => {
+    const fn = vi.fn().mockImplementation((url: string, opts?: any) => {
+      if (url.includes('/api/billing/portal') && opts?.method === 'POST') {
+        return Promise.reject(new Error('Network'));
+      }
+      if (url.includes('/api/orgs') && !url.includes('/members') && !url.includes('/invitations')) {
+        return Promise.resolve(ok([mockOrg]));
+      }
+      if (url.includes('/members')) return Promise.resolve(ok(mockMembers));
+      if (url.includes('/invitations')) return Promise.resolve(ok([]));
+      return Promise.resolve(ok([]));
+    });
+    vi.stubGlobal('fetch', fn);
+    render(<OrgManagementScreen />);
+    await waitFor(() => expect(screen.getByText('Manage Billing')).toBeTruthy());
+    fireEvent.click(screen.getByText('Manage Billing'));
+    await waitFor(() => {
+      expect(mockShowToast).toHaveBeenCalledWith('Failed to open billing portal', 'error');
+    });
+  });
+
+  it('shows toast when past_due billing portal fetch throws', async () => {
+    const pastDueOrg = { ...mockOrg, subscriptionStatus: 'past_due' };
+    const fn = vi.fn().mockImplementation((url: string, opts?: any) => {
+      if (url.includes('/api/billing/portal') && opts?.method === 'POST') {
+        return Promise.reject(new Error('Network'));
+      }
+      if (url.includes('/api/orgs') && !url.includes('/members') && !url.includes('/invitations')) {
+        return Promise.resolve(ok([pastDueOrg]));
+      }
+      if (url.includes('/members')) return Promise.resolve(ok(mockMembers));
+      if (url.includes('/invitations')) return Promise.resolve(ok([]));
+      return Promise.resolve(ok([]));
+    });
+    vi.stubGlobal('fetch', fn);
+    render(<OrgManagementScreen />);
+    await waitFor(() => expect(screen.getByText('Update Payment')).toBeTruthy());
+    fireEvent.click(screen.getByText('Update Payment'));
+    await waitFor(() => {
+      expect(mockShowToast).toHaveBeenCalledWith('Failed to open billing portal', 'error');
+    });
+  });
+
+  it('shows toast when past_due billing portal returns error', async () => {
+    const pastDueOrg = { ...mockOrg, subscriptionStatus: 'past_due' };
+    setupFetch({
+      '/api/orgs': ok([pastDueOrg]),
+      '/api/orgs/org1/members': ok(mockMembers),
+      '/api/orgs/org1/invitations': ok([]),
+      '/api/billing/portal': ok({ error: 'Billing error' }),
+    });
+    render(<OrgManagementScreen />);
+    await waitFor(() => expect(screen.getByText('Update Payment')).toBeTruthy());
+    fireEvent.click(screen.getByText('Update Payment'));
+    await waitFor(() => {
+      expect(mockShowToast).toHaveBeenCalledWith('Billing error', 'error');
+    });
+  });
+
+  it('shows create org form when /api/orgs returns non-ok (line 92)', async () => {
+    setupFetch({ '/api/orgs': fail({ error: 'Server error' }) });
+    render(<OrgManagementScreen />);
+    await waitFor(() => {
+      // When fetchOrg returns early on !res.ok, org stays null, shows create form
+      expect(screen.getByText('Create Your Team')).toBeTruthy();
+    });
+  });
+
+  it('handleCreateOrg catches fetch exception gracefully (line 122/134)', async () => {
+    const fn = vi.fn().mockImplementation((url: string, opts?: any) => {
+      if (opts?.method === 'POST') return Promise.reject(new Error('Network'));
+      return Promise.resolve(ok([]));
+    });
+    vi.stubGlobal('fetch', fn);
+    render(<OrgManagementScreen />);
+    await waitFor(() => expect(screen.getByText('Create Organization')).toBeTruthy());
+    const input = screen.getByDisplayValue('');
+    fireEvent.change(input, { target: { value: 'Test Org' } });
+    fireEvent.click(screen.getByText('Create Organization'));
+    // Should not crash
+    await waitFor(() => {
+      expect(screen.getByText('Create Organization')).toBeTruthy();
+    });
   });
 
   it('shows annual plan label for active annual subscription', async () => {

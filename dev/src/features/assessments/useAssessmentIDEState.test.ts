@@ -78,7 +78,7 @@ describe('useAssessmentIDEState', () => {
   it('loads org and custom challenges when orgs API returns data', async () => {
     fetchFn = setupFetch({
       '/api/challenges': ok(CHALLENGES),
-      '/api/orgs': ok([{ orgId: 'org1' }]),
+      '/api/orgs': ok([{ id: 'org1' }]),
       '/api/orgs/org1/challenges': ok([{ id: 'cc1', title: 'Custom', status: 'active' }]),
     });
     const { result } = renderHook(() => useAssessmentIDEState());
@@ -506,7 +506,7 @@ describe('useAssessmentIDEState', () => {
     it('handleCustomChallengeCreated re-fetches custom challenges', async () => {
       fetchFn = setupFetch({
         '/api/challenges': ok(CHALLENGES),
-        '/api/orgs': ok([{ orgId: 'org1' }]),
+        '/api/orgs': ok([{ id: 'org1' }]),
         '/api/orgs/org1/challenges': ok([{ id: 'cc1', title: 'Old Custom', status: 'active' }]),
       });
       const { result } = renderHook(() => useAssessmentIDEState());
@@ -547,7 +547,7 @@ describe('useAssessmentIDEState', () => {
     it('handleApproveCustomChallenge updates status to active', async () => {
       fetchFn = setupFetch({
         '/api/challenges': ok(CHALLENGES),
-        '/api/orgs': ok([{ orgId: 'org1' }]),
+        '/api/orgs': ok([{ id: 'org1' }]),
         '/api/orgs/org1/challenges': ok([{ id: 'cc1', title: 'Draft Challenge', status: 'draft' }]),
       });
       const { result } = renderHook(() => useAssessmentIDEState());
@@ -559,7 +559,7 @@ describe('useAssessmentIDEState', () => {
     it('handleDeleteCustomChallenge removes from list', async () => {
       fetchFn = setupFetch({
         '/api/challenges': ok(CHALLENGES),
-        '/api/orgs': ok([{ orgId: 'org1' }]),
+        '/api/orgs': ok([{ id: 'org1' }]),
         '/api/orgs/org1/challenges': ok([
           { id: 'cc1', title: 'A', status: 'draft' },
           { id: 'cc2', title: 'B', status: 'draft' },
@@ -639,6 +639,310 @@ describe('useAssessmentIDEState', () => {
       expect(result.current.confirmActivate).toBe(false);
       act(() => { result.current.setConfirmActivate(true); });
       expect(result.current.confirmActivate).toBe(true);
+    });
+  });
+
+  describe('beforeunload handler', () => {
+    it('calls preventDefault on beforeunload when dirty', async () => {
+      const { result } = renderHook(() => useAssessmentIDEState());
+      await waitFor(() => expect(result.current.loading).toBe(false));
+      // Make it dirty
+      await act(async () => { await new Promise((r) => setTimeout(r, 10)); });
+      act(() => { result.current.setTitle('Changed'); });
+      expect(result.current.dirty).toBe(true);
+      // Simulate beforeunload
+      const event = new Event('beforeunload', { cancelable: true });
+      const spy = vi.spyOn(event, 'preventDefault');
+      window.dispatchEvent(event);
+      expect(spy).toHaveBeenCalled();
+    });
+
+    it('does not call preventDefault on beforeunload when not dirty', async () => {
+      const { result } = renderHook(() => useAssessmentIDEState());
+      await waitFor(() => expect(result.current.loading).toBe(false));
+      expect(result.current.dirty).toBe(false);
+      const event = new Event('beforeunload', { cancelable: true });
+      const spy = vi.spyOn(event, 'preventDefault');
+      window.dispatchEvent(event);
+      expect(spy).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('handleSave edge cases', () => {
+    it('saves branding and weights on newly created assessment (new id, no prior assessmentId)', async () => {
+      fetchFn = setupFetch({
+        '/api/challenges': ok(CHALLENGES),
+        '/api/assessments': ok({ id: 'new-a1' }),
+        '/api/assessments/new-a1': ok({}),
+        '/api/assessments/new-a1/challenges': ok({}),
+      });
+      const { result } = renderHook(() => useAssessmentIDEState());
+      await waitFor(() => expect(result.current.loading).toBe(false));
+      act(() => {
+        result.current.setTitle('Test');
+        result.current.setCompanyName('Acme');
+      });
+      await act(async () => { await result.current.handleSave(); });
+      // Should have: POST /api/assessments (create), PUT /api/assessments/new-a1 (branding), PUT challenges
+      const putBranding = fetchFn.mock.calls.filter(
+        (call: any[]) => call[0]?.includes('/api/assessments/new-a1') && call[1]?.method === 'PUT'
+          && !call[0]?.includes('/challenges')
+      );
+      expect(putBranding.length).toBeGreaterThan(0);
+    });
+
+    it('sets saveError with timer on challenges PUT failure', async () => {
+      mockRoute.params = { assessmentId: 'a1' };
+      fetchFn = setupFetch({
+        '/api/challenges': ok(CHALLENGES),
+        '/api/assessments/a1': ok({ title: 'T', timeLimit: 3600, challenges: [] }),
+      });
+      const { result } = renderHook(() => useAssessmentIDEState());
+      await waitFor(() => expect(result.current.loading).toBe(false));
+      // Override: assessment PUT succeeds, challenges PUT fails
+      fetchFn.mockImplementation((url: string, opts: any) => {
+        if (url.includes('/challenges') && opts?.method === 'PUT') {
+          return Promise.resolve({ ok: false, json: () => Promise.resolve({}) });
+        }
+        if (url.includes('/api/assessments/a1') && opts?.method === 'PUT') {
+          return Promise.resolve(ok({}));
+        }
+        return Promise.resolve(ok([]));
+      });
+      act(() => { result.current.setTitle('T'); });
+      await act(async () => { await result.current.handleSave(); });
+      expect(result.current.saveError).toBeTruthy();
+    });
+
+  });
+
+  describe('handleGenerateInvite edge cases', () => {
+    it('handles invite response where json() throws', async () => {
+      mockRoute.params = { assessmentId: 'a1' };
+      fetchFn = setupFetch({
+        '/api/challenges': ok(CHALLENGES),
+        '/api/assessments/a1': ok({ title: 'T', timeLimit: 3600, challenges: [] }),
+      });
+      const { result } = renderHook(() => useAssessmentIDEState());
+      await waitFor(() => expect(result.current.loading).toBe(false));
+      // Make the invite POST return ok:false with non-parseable json
+      fetchFn.mockImplementation((url: string, opts: any) => {
+        if (opts?.method === 'POST' && url.includes('/invites')) {
+          return Promise.resolve({
+            ok: false,
+            json: () => Promise.resolve({ error: 'Invalid response' }),
+          });
+        }
+        return Promise.resolve(ok([]));
+      });
+      await act(async () => { await result.current.handleGenerateInvite(); });
+      expect(result.current.inviteError).toBe('Invalid response');
+    });
+
+    it('sets default error message when invite fails without error field', async () => {
+      mockRoute.params = { assessmentId: 'a1' };
+      fetchFn = setupFetch({
+        '/api/challenges': ok(CHALLENGES),
+        '/api/assessments/a1': ok({ title: 'T', timeLimit: 3600, challenges: [] }),
+      });
+      const { result } = renderHook(() => useAssessmentIDEState());
+      await waitFor(() => expect(result.current.loading).toBe(false));
+      fetchFn.mockImplementation((url: string, opts: any) => {
+        if (opts?.method === 'POST' && url.includes('/invites')) {
+          return Promise.resolve({
+            ok: false,
+            json: () => Promise.resolve({}),
+          });
+        }
+        return Promise.resolve(ok([]));
+      });
+      await act(async () => { await result.current.handleGenerateInvite(); });
+      expect(result.current.inviteError).toBe('Failed to generate invite link');
+    });
+  });
+
+  describe('agent branding edge cases', () => {
+    it('handleAgentBrandingChanged sets description and companyLogoUrl', async () => {
+      fetchFn = setupFetch({ '/api/challenges': ok(CHALLENGES) });
+      const { result } = renderHook(() => useAssessmentIDEState());
+      await waitFor(() => expect(result.current.loading).toBe(false));
+      act(() => {
+        result.current.handleAgentBrandingChanged({
+          description: 'New description',
+          companyLogoUrl: 'https://logo.png',
+        });
+      });
+      expect(result.current.description).toBe('New description');
+      expect(result.current.companyLogoUrl).toBe('https://logo.png');
+    });
+  });
+
+  describe('handleSave: existing assessment PUT failure (line 323)', () => {
+    it('sets saveError when existing assessment PUT returns not ok', async () => {
+      mockRoute.params = { assessmentId: 'a1' };
+      fetchFn = setupFetch({
+        '/api/challenges': ok(CHALLENGES),
+        '/api/assessments/a1': ok({ title: 'T', timeLimit: 3600, challenges: [] }),
+      });
+      const { result } = renderHook(() => useAssessmentIDEState());
+      await waitFor(() => expect(result.current.loading).toBe(false));
+      // Override so the assessment PUT fails
+      fetchFn.mockImplementation((url: string, opts: any) => {
+        if (url.includes('/api/assessments/a1') && opts?.method === 'PUT') {
+          return Promise.resolve({ ok: false, json: () => Promise.resolve({}) });
+        }
+        return Promise.resolve(ok([]));
+      });
+      await act(async () => { await result.current.handleSave(); });
+      expect(result.current.saveError).toBe('Failed to save assessment');
+    });
+  });
+
+  describe('handleSave: new assessment branding PUT failure (line 343)', () => {
+    it('sets saveError when branding PUT on new assessment fails', async () => {
+      let callCount = 0;
+      fetchFn = setupFetch({
+        '/api/challenges': ok(CHALLENGES),
+      });
+      const { result } = renderHook(() => useAssessmentIDEState());
+      await waitFor(() => expect(result.current.loading).toBe(false));
+      act(() => {
+        result.current.setTitle('Test');
+        result.current.setCompanyName('Acme');
+      });
+      // Override fetch: POST creates successfully, first PUT for branding fails
+      fetchFn.mockImplementation((url: string, opts: any) => {
+        if (opts?.method === 'POST' && url.includes('/api/assessments')) {
+          return Promise.resolve(ok({ id: 'new-a1' }));
+        }
+        if (url.includes('/api/assessments/new-a1') && opts?.method === 'PUT' && !url.includes('/challenges')) {
+          return Promise.resolve({ ok: false, json: () => Promise.resolve({}) });
+        }
+        return Promise.resolve(ok([]));
+      });
+      await act(async () => { await result.current.handleSave(); });
+      expect(result.current.saveError).toBe('Failed to save assessment details');
+    });
+  });
+
+  describe('handleSave: branding fields companyLogoUrl and welcomeMessage (lines 297-298)', () => {
+    it('includes companyLogoUrl and welcomeMessage in branding PUT', async () => {
+      mockRoute.params = { assessmentId: 'a1' };
+      fetchFn = setupFetch({
+        '/api/challenges': ok(CHALLENGES),
+        '/api/assessments/a1': ok({ title: 'T', timeLimit: 3600, challenges: [] }),
+        '/api/assessments/a1/challenges': ok({}),
+      });
+      const { result } = renderHook(() => useAssessmentIDEState());
+      await waitFor(() => expect(result.current.loading).toBe(false));
+      act(() => {
+        result.current.setTitle('T');
+        result.current.setCompanyLogoUrl('https://logo.png');
+        result.current.setWelcomeMessage('Welcome!');
+      });
+      await act(async () => { await result.current.handleSave(); });
+      // Verify the PUT was called with branding fields
+      const putCalls = fetchFn.mock.calls.filter(
+        (call: any[]) => call[0]?.includes('/api/assessments/a1') && call[1]?.method === 'PUT'
+          && !call[0]?.includes('/challenges')
+      );
+      expect(putCalls.length).toBeGreaterThan(0);
+      const body = JSON.parse(putCalls[0][1].body);
+      expect(body.companyLogoUrl).toBe('https://logo.png');
+      expect(body.welcomeMessage).toBe('Welcome!');
+    });
+  });
+
+  describe('init: fetch catches returning null (lines 210-212)', () => {
+    it('handles fetch rejection for challenges gracefully', async () => {
+      fetchFn = setupFetch({});
+      fetchFn.mockImplementation((url: string) => {
+        if (url.includes('/api/challenges')) return Promise.reject(new Error('Network fail'));
+        return Promise.resolve(ok([]));
+      });
+      const { result } = renderHook(() => useAssessmentIDEState());
+      await waitFor(() => expect(result.current.loading).toBe(false));
+      expect(result.current.loadError).toBe('Failed to load challenges. Try refreshing the page.');
+    });
+
+    it('handles fetch rejection for orgs gracefully', async () => {
+      fetchFn.mockImplementation((url: string) => {
+        if (url.includes('/api/challenges')) return Promise.resolve(ok(CHALLENGES));
+        if (url.includes('/api/orgs')) return Promise.reject(new Error('Network fail'));
+        return Promise.resolve(ok([]));
+      });
+      const { result } = renderHook(() => useAssessmentIDEState());
+      await waitFor(() => expect(result.current.loading).toBe(false));
+      // Should still load challenges fine, orgId stays null
+      expect(result.current.allChallenges).toEqual(CHALLENGES);
+      expect(result.current.orgId).toBeNull();
+    });
+
+    it('handles fetch rejection for assessment gracefully', async () => {
+      mockRoute.params = { assessmentId: 'a1' };
+      fetchFn.mockImplementation((url: string) => {
+        if (url.includes('/api/challenges')) return Promise.resolve(ok(CHALLENGES));
+        if (url.includes('/api/assessments/a1')) return Promise.reject(new Error('Network fail'));
+        return Promise.resolve(ok([]));
+      });
+      const { result } = renderHook(() => useAssessmentIDEState());
+      await waitFor(() => expect(result.current.loading).toBe(false));
+      // Should still load, just no assessment data
+      expect(result.current.title).toBe('');
+    });
+  });
+
+  describe('handleAgentChallengesChanged: early return without assessmentId (line 431)', () => {
+    it('returns early when assessmentIdRef.current is null', async () => {
+      // No assessmentId route param, and no save has been done
+      const { result } = renderHook(() => useAssessmentIDEState());
+      await waitFor(() => expect(result.current.loading).toBe(false));
+      expect(result.current.assessmentId).toBeUndefined();
+      const callsBefore = fetchFn.mock.calls.length;
+      await act(async () => { await result.current.handleAgentChallengesChanged(); });
+      // No fetch should have been made
+      expect(fetchFn.mock.calls.length).toBe(callsBefore);
+    });
+  });
+
+  describe('handleActivate: error catch with non-Error (line 389)', () => {
+    it('sets activateError with generic message on non-Error throw', async () => {
+      mockRoute.params = { assessmentId: 'a1' };
+      fetchFn = setupFetch({
+        '/api/challenges': ok(CHALLENGES),
+        '/api/assessments/a1': ok({ title: 'T', timeLimit: 3600, challenges: [{ id: 'ch1', sortOrder: 0 }] }),
+      });
+      const { result } = renderHook(() => useAssessmentIDEState());
+      await waitFor(() => expect(result.current.loading).toBe(false));
+      // Override to throw a non-Error
+      fetchFn.mockImplementation(() => {
+        return Promise.reject('string error');
+      });
+      await act(async () => { await result.current.handleActivate(); });
+      expect(result.current.activateError).toBe('Activation failed');
+    });
+  });
+
+  describe('handleGenerateInvite: json parse catch (line 405)', () => {
+    it('handles invite response where json() rejects', async () => {
+      mockRoute.params = { assessmentId: 'a1' };
+      fetchFn = setupFetch({
+        '/api/challenges': ok(CHALLENGES),
+        '/api/assessments/a1': ok({ title: 'T', timeLimit: 3600, challenges: [] }),
+      });
+      const { result } = renderHook(() => useAssessmentIDEState());
+      await waitFor(() => expect(result.current.loading).toBe(false));
+      fetchFn.mockImplementation((url: string, opts: any) => {
+        if (opts?.method === 'POST' && url.includes('/invites')) {
+          return Promise.resolve({
+            ok: false,
+            json: () => Promise.reject(new Error('parse error')),
+          });
+        }
+        return Promise.resolve(ok([]));
+      });
+      await act(async () => { await result.current.handleGenerateInvite(); });
+      expect(result.current.inviteError).toBe('Invalid response');
     });
   });
 

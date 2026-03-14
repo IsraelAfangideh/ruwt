@@ -130,6 +130,26 @@ describe('AssessmentListScreen', () => {
     });
   });
 
+  it('navigates to AssessmentBuilder when Create Your First Assessment is clicked (line 262)', async () => {
+    setupFetch({
+      '/api/assessments': ok([]),
+    });
+    render(<AssessmentListScreen />);
+    await waitFor(() => expect(screen.getByText(/Create Your First Assessment/)).toBeTruthy());
+    fireEvent.click(screen.getByText(/Create Your First Assessment/));
+    expect(mockNavigate).toHaveBeenCalledWith('AssessmentBuilder');
+  });
+
+  it('navigates to AssessmentBuilder when template link is clicked (line 267)', async () => {
+    setupFetch({
+      '/api/assessments': ok([]),
+    });
+    render(<AssessmentListScreen />);
+    await waitFor(() => expect(screen.getByText(/template/)).toBeTruthy());
+    fireEvent.click(screen.getByText(/template/));
+    expect(mockNavigate).toHaveBeenCalledWith('AssessmentBuilder');
+  });
+
   it('shows Build Assessment button in header', async () => {
     render(<AssessmentListScreen />);
     await waitFor(() => {
@@ -148,7 +168,7 @@ describe('AssessmentListScreen', () => {
 
   it('shows org banner when user has an org', async () => {
     setupFetch({
-      '/api/orgs': ok([{ orgId: 'org1', orgName: 'Acme Team', role: 'owner' }]),
+      '/api/orgs': ok([{ id: 'org1', name: 'Acme Team', role: 'owner' }]),
     });
     render(<AssessmentListScreen />);
     await waitFor(() => {
@@ -170,7 +190,7 @@ describe('AssessmentListScreen', () => {
 
   it('navigates to OrgManagement when Manage Team is clicked', async () => {
     setupFetch({
-      '/api/orgs': ok([{ orgId: 'org1', orgName: 'Acme', role: 'admin' }]),
+      '/api/orgs': ok([{ id: 'org1', name: 'Acme', role: 'admin' }]),
     });
     render(<AssessmentListScreen />);
     await waitFor(() => expect(screen.getByText('Manage Team')).toBeTruthy());

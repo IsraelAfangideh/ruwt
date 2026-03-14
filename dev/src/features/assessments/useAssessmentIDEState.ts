@@ -222,7 +222,7 @@ export function useAssessmentIDEState(): AssessmentIDEState {
       if (orgsRes?.ok) {
         const orgs = await orgsRes.json();
         if (orgs.length > 0) {
-          const oid = orgs[0].orgId;
+          const oid = orgs[0].id;
           setOrgId(oid);
           try {
             const ccRes = await fetch(`/api/orgs/${oid}/challenges`);
@@ -362,7 +362,7 @@ export function useAssessmentIDEState(): AssessmentIDEState {
   }, [assessmentId, title, description, timeLimitMinutes, selectedChallengeIds, companyName, companyLogoUrl, welcomeMessage, weights, passThreshold]);
 
   const handleActivate = useCallback(async () => {
-    /* v8 ignore next */
+    /* istanbul ignore next -- @preserve */
     if (!assessmentId) return;
     if (!title.trim()) {
       setActivateError('Enter a title before activating.');
@@ -392,7 +392,7 @@ export function useAssessmentIDEState(): AssessmentIDEState {
   }, [assessmentId, title, selectedChallengeIds.length]);
 
   const handleGenerateInvite = useCallback(async () => {
-    /* v8 ignore next */
+    /* istanbul ignore next -- @preserve */
     if (!assessmentId) return;
     setInviteError(null);
     setGeneratingInvite(true);
