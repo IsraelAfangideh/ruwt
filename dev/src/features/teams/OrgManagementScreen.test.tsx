@@ -757,7 +757,7 @@ describe('OrgManagementScreen', () => {
   });
 
   it('handleCreateOrg catches fetch exception gracefully (line 122/134)', async () => {
-    const fn = vi.fn().mockImplementation((url: string, opts?: any) => {
+    const fn = vi.fn().mockImplementation((_url: string, opts?: any) => {
       if (opts?.method === 'POST') return Promise.reject(new Error('Network'));
       return Promise.resolve(ok([]));
     });

@@ -800,7 +800,6 @@ describe('useAssessmentIDEState', () => {
 
   describe('handleSave: new assessment branding PUT failure (line 343)', () => {
     it('sets saveError when branding PUT on new assessment fails', async () => {
-      let callCount = 0;
       fetchFn = setupFetch({
         '/api/challenges': ok(CHALLENGES),
       });
