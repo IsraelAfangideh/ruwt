@@ -629,6 +629,45 @@ describe('POST /api/ai/assessment-agent', () => {
     expect(chunks.length).toBeGreaterThan(0);
   });
 
+  it('extracts tool_calls from OpenAI choices[0].message.tool_calls format', async () => {
+    (getUser as Mock).mockResolvedValue(TEST_USER);
+    mockDb.selectResults.push([]); // catalog
+
+    (executeToolCall as Mock).mockResolvedValue({
+      tool: 'search_challenges',
+      success: true,
+      result: { count: 2, challenges: [] },
+    });
+
+    // GPT-OSS 120B returns tool_calls nested under choices[0].message
+    mockCFAI([
+      {
+        ok: true,
+        body: {
+          result: {
+            choices: [{
+              message: {
+                content: null,
+                tool_calls: [
+                  { function: { name: 'search_challenges', arguments: '{"category":"debugging"}' } },
+                ],
+              },
+            }],
+          },
+        },
+      },
+      { ok: true, body: { result: { response: 'Found 2 debugging challenges.' } } },
+    ]);
+
+    const res = await onRequestPost(makeContext(validBody()));
+    const events = await readSSEEvents(res);
+
+    const toolCalls = events.filter((e: any) => e.type === 'tool_call');
+    expect(toolCalls).toHaveLength(1);
+    expect((toolCalls[0] as any).tool).toBe('search_challenges');
+    expect((toolCalls[0] as any).params).toEqual({ category: 'debugging' });
+  });
+
   it('handles tool_calls with arguments as string (JSON)', async () => {
     (getUser as Mock).mockResolvedValue(TEST_USER);
     mockDb.selectResults.push([]); // catalog

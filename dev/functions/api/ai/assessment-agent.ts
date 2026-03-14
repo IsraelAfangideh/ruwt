@@ -119,6 +119,11 @@ async function callWithTools(
       throw new Error('Empty result from model');
     }
 
+    // Extract OpenAI-compatible message object once (used for both content and tool_calls)
+    const choicesMsg = Array.isArray(result.choices) && result.choices.length > 0
+      ? (result.choices[0] as Record<string, unknown>)?.message as Record<string, unknown> | undefined
+      : undefined;
+
     // Extract response text
     // Handle string, number, and boolean tokens (Cloudflare API can return non-string values)
     let response = '';
@@ -126,25 +131,32 @@ async function callWithTools(
       response = result.response;
     } else if (typeof result.response === 'number' || typeof result.response === 'boolean') {
       response = String(result.response);
-    } else if (Array.isArray(result.choices) && result.choices.length > 0) {
-      const msg = (result.choices[0] as Record<string, unknown>)?.message as Record<string, unknown> | undefined;
-      const rawContent = msg?.content;
+    } else if (choicesMsg) {
+      const rawContent = choicesMsg.content;
       response = typeof rawContent === 'string' ? rawContent
         : (typeof rawContent === 'number' || typeof rawContent === 'boolean') ? String(rawContent)
         : '';
     }
 
-    // Extract tool_calls (Cloudflare native format)
+    // Extract tool_calls from either Cloudflare native format (result.tool_calls)
+    // or OpenAI-compatible format (choices[0].message.tool_calls)
     const toolCalls: ToolCall[] = [];
-    const rawToolCalls = result.tool_calls as Array<Record<string, unknown>> | undefined;
+    let rawToolCalls = result.tool_calls as Array<Record<string, unknown>> | undefined;
+    if (!Array.isArray(rawToolCalls) && choicesMsg) {
+      rawToolCalls = choicesMsg.tool_calls as Array<Record<string, unknown>> | undefined;
+    }
     if (Array.isArray(rawToolCalls)) {
       for (const tc of rawToolCalls) {
-        const name = typeof tc.name === 'string' ? tc.name : '';
+        // OpenAI format nests under tc.function.name / tc.function.arguments
+        const fn = tc.function as Record<string, unknown> | undefined;
+        const name = typeof tc.name === 'string' ? tc.name
+          : (fn && typeof fn.name === 'string') ? fn.name : '';
         let args: Record<string, unknown> = {};
-        if (typeof tc.arguments === 'string') {
-          try { args = JSON.parse(tc.arguments); } catch {}
-        } else if (typeof tc.arguments === 'object' && tc.arguments !== null) {
-          args = tc.arguments as Record<string, unknown>;
+        const rawArgs = tc.arguments ?? fn?.arguments;
+        if (typeof rawArgs === 'string') {
+          try { args = JSON.parse(rawArgs); } catch {}
+        } else if (typeof rawArgs === 'object' && rawArgs !== null) {
+          args = rawArgs as Record<string, unknown>;
         }
         if (name) toolCalls.push({ name, arguments: args });
       }
@@ -157,6 +169,11 @@ async function callWithTools(
       if (extracted.length > 0) {
         return { response: '', toolCalls: extracted, model };
       }
+    }
+
+    // If both response and toolCalls are empty, the model failed silently — try next
+    if (!response && toolCalls.length === 0 && model !== models[models.length - 1]) {
+      continue;
     }
 
     return { response, toolCalls, model };
