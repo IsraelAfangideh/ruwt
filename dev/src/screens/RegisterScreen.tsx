@@ -1,12 +1,14 @@
 import { useState, useRef, useEffect } from 'react';
-import { View, Text, ScrollView, StyleSheet, Image, Pressable } from 'react-native';
+import { View, Text, StyleSheet, Image, Pressable } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { createClient } from '@/lib/supabase/client';
+import { useAuth } from '@/lib/AuthContext';
+import { resetNavigation } from '@/navigation/resetNavigation';
+import { DEFAULT_AUTH_REDIRECT } from '@/navigation/types';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Label } from '@/components/ui/Label';
-import { BrandPanel } from '@/components/BrandPanel';
-import { useIsDesktop } from '@/hooks/useWindowWidth';
+import { AuthShell } from '@/components/AuthShell';
 import { useColors } from '@/theme';
 import { spacing, fontSizes, fontFamily, radii } from '@/theme/tokens';
 import { useDocumentMeta } from '@/hooks/useDocumentMeta';
@@ -25,8 +27,15 @@ export function RegisterScreen() {
   const navigation = useNavigation();
   const supabase = createClient();
   const c = useColors();
-  const isDesktop = useIsDesktop();
   const errorRef = useRef<any>(null);
+  const { user: authUser, loading: authLoading } = useAuth();
+
+  // Redirect already-authenticated users away from register
+  useEffect(() => {
+    if (!authLoading && authUser) {
+      resetNavigation(navigation, [{ name: DEFAULT_AUTH_REDIRECT }]);
+    }
+  }, [authLoading, authUser, navigation]);
 
   useEffect(() => {
     if (error && errorRef.current) {
@@ -69,187 +78,133 @@ export function RegisterScreen() {
 
   if (success) {
     return (
-      <View style={[styles.root, { backgroundColor: c.bg }]}>
-        {isDesktop && <BrandPanel />}
-        <ScrollView
-          contentContainerStyle={[styles.formPanel, !isDesktop && styles.formPanelMobile]}
-          style={{ flex: 1 }}
+      <AuthShell>
+        <View style={[styles.successIcon, { backgroundColor: c.successBg }]}>
+          <Text style={{ fontSize: 28 }}>{'\u2709'}</Text>
+        </View>
+        <Text style={[styles.formTitle, { color: c.text }]}>Check your email</Text>
+        <Text style={[styles.formSubtitle, { color: c.textMuted }]}>
+          We sent a confirmation link to{' '}
+          <Text style={{ fontWeight: '600', color: c.text }}>{email}</Text>
+        </Text>
+        <Text style={[styles.confirmHint, { color: c.textMuted }]}>
+          Click the link in your email to activate your account and start competing.
+        </Text>
+        <Button
+          variant="outline"
+          onPress={() => navigation.navigate('Login')}
+          fullWidth
+          style={{ marginTop: spacing.sm }}
         >
-          {!isDesktop && (
-            <Pressable onPress={() => navigation.navigate('Landing' as never)} style={styles.mobileHeader}>
-              <Text style={[styles.mobileLogo, { color: c.text }]}>Ruwt</Text>
-            </Pressable>
-          )}
-          <View style={styles.formWrap}>
-            <View style={[styles.successIcon, { backgroundColor: c.successBg }]}>
-              <Text style={{ fontSize: 28 }}>{'\u2709'}</Text>
-            </View>
-            <Text style={[styles.formTitle, { color: c.text }]}>Check your email</Text>
-            <Text style={[styles.formSubtitle, { color: c.textMuted }]}>
-              We sent a confirmation link to{' '}
-              <Text style={{ fontWeight: '600', color: c.text }}>{email}</Text>
-            </Text>
-            <Text style={[styles.confirmHint, { color: c.textMuted }]}>
-              Click the link in your email to activate your account and start competing.
-            </Text>
-            <Button
-              variant="outline"
-              onPress={() => navigation.navigate('Login' as never)}
-              fullWidth
-              style={{ marginTop: spacing.sm }}
-            >
-              Back to sign in
-            </Button>
-          </View>
-        </ScrollView>
-      </View>
+          Back to sign in
+        </Button>
+      </AuthShell>
     );
   }
 
   return (
-    <View style={[styles.root, { backgroundColor: c.bg }]}>
-      {isDesktop && <BrandPanel />}
-      <ScrollView
-        contentContainerStyle={[styles.formPanel, !isDesktop && styles.formPanelMobile]}
-        style={{ flex: 1 }}
-      >
-        {!isDesktop && (
-          <Pressable onPress={() => navigation.navigate('Landing' as never)} style={styles.mobileHeader}>
-            <Text style={[styles.mobileLogo, { color: c.text }]}>Ruwt</Text>
-          </Pressable>
-        )}
-        <View style={styles.formWrap}>
-          <View style={styles.formHeader}>
-            <Text style={[styles.formTitle, { color: c.text }]}>Create your account</Text>
-            <Text style={[styles.formSubtitle, { color: c.textMuted }]}>
-              Start competing in under a minute
-            </Text>
-          </View>
+    <AuthShell>
+      <View style={styles.formHeader}>
+        <Text style={[styles.formTitle, { color: c.text }]}>Create your account</Text>
+        <Text style={[styles.formSubtitle, { color: c.textMuted }]}>
+          Start competing in under a minute
+        </Text>
+      </View>
 
-          <View style={[styles.creditsBadge, { backgroundColor: c.accentBg }]}>
-            <Text style={[styles.creditsBadgeText, { color: c.accent }]}>
-              {'\u2728'} Free to practice. Unlimited AI.
-            </Text>
-          </View>
+      <View style={[styles.creditsBadge, { backgroundColor: c.accentBg }]}>
+        <Text style={[styles.creditsBadgeText, { color: c.accent }]}>
+          {'\u2728'} Free to practice. Unlimited AI.
+        </Text>
+      </View>
 
-          {error && (
-            <View ref={errorRef} style={[styles.errorBox, { backgroundColor: c.errorBg }]} accessibilityRole="alert" accessibilityLiveRegion="polite" tabIndex={-1}>
-              <Text style={[styles.errorText, { color: c.error }]}>{error}</Text>
-            </View>
-          )}
-
-          <Pressable
-            onPress={() => handleOAuth('github')}
-            disabled={loading}
-            accessibilityRole="button"
-            accessibilityLabel="Continue with GitHub"
-            testID="github-oauth-button"
-            style={({ pressed }: { pressed: boolean }) => [
-              styles.oauthBtn,
-              { borderColor: c.borderStrong },
-              pressed && { opacity: 0.9 },
-              loading && { opacity: 0.5 },
-            ]}
-          >
-            <Image source={{ uri: githubIconUri(c.text) }} style={styles.oauthIcon} resizeMode="contain" accessibilityLabel="" />
-            <Text style={[styles.oauthBtnText, { color: c.text }]}>Continue with GitHub</Text>
-          </Pressable>
-
-          <View style={styles.divider}>
-            <View style={[styles.dividerLine, { backgroundColor: c.borderStrong }]} />
-            <Text style={[styles.dividerText, { color: c.textMuted }]}>or</Text>
-            <View style={[styles.dividerLine, { backgroundColor: c.borderStrong }]} />
-          </View>
-
-          <View style={styles.inputGroup}>
-            <Label htmlFor="register-name">Name</Label>
-            <Input
-              id="register-name"
-              placeholder="Your name"
-              value={name}
-              onChangeText={setName}
-              editable={!loading}
-              testID="name-input"
-            />
-          </View>
-
-          <View style={styles.inputGroup}>
-            <Label htmlFor="register-email">Email</Label>
-            <Input
-              id="register-email"
-              placeholder="you@example.com"
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              editable={!loading}
-            />
-          </View>
-
-          <View style={styles.inputGroup}>
-            <Label htmlFor="register-password">Password</Label>
-            <Input
-              id="register-password"
-              placeholder="••••••••"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-              editable={!loading}
-              onSubmitEditing={handleRegister}
-              aria-describedby="register-password-hint"
-            />
-            <Text nativeID="register-password-hint" style={[styles.hint, { color: c.textMuted }]}>Must be at least 8 characters</Text>
-          </View>
-
-          <Button onPress={handleRegister} disabled={loading} fullWidth size="lg" testID="register-button">
-            {loading ? 'Creating account...' : 'Create account'}
-          </Button>
-
-          <Text style={[styles.switchText, { color: c.textMuted }]}>
-            Already have an account?{' '}
-            <Text
-              style={{ color: c.accent, fontWeight: '600' }}
-              onPress={() => navigation.navigate('Login' as never)}
-              accessibilityRole="link"
-            >
-              Sign in
-            </Text>
-          </Text>
+      {error && (
+        <View ref={errorRef} style={[styles.errorBox, { backgroundColor: c.errorBg }]} accessibilityRole="alert" accessibilityLiveRegion="polite" tabIndex={-1}>
+          <Text style={[styles.errorText, { color: c.error }]}>{error}</Text>
         </View>
-      </ScrollView>
-    </View>
+      )}
+
+      <Pressable
+        onPress={() => handleOAuth('github')}
+        disabled={loading}
+        accessibilityRole="button"
+        accessibilityLabel="Continue with GitHub"
+        testID="github-oauth-button"
+        style={({ pressed }: { pressed: boolean }) => [
+          styles.oauthBtn,
+          { borderColor: c.borderStrong },
+          pressed && { opacity: 0.9 },
+          loading && { opacity: 0.5 },
+        ]}
+      >
+        <Image source={{ uri: githubIconUri(c.text) }} style={styles.oauthIcon} resizeMode="contain" accessibilityLabel="" />
+        <Text style={[styles.oauthBtnText, { color: c.text }]}>Continue with GitHub</Text>
+      </Pressable>
+
+      <View style={styles.divider}>
+        <View style={[styles.dividerLine, { backgroundColor: c.borderStrong }]} />
+        <Text style={[styles.dividerText, { color: c.textMuted }]}>or</Text>
+        <View style={[styles.dividerLine, { backgroundColor: c.borderStrong }]} />
+      </View>
+
+      <View style={styles.inputGroup}>
+        <Label htmlFor="register-name">Name</Label>
+        <Input
+          id="register-name"
+          placeholder="Your name"
+          value={name}
+          onChangeText={setName}
+          editable={!loading}
+          testID="name-input"
+        />
+      </View>
+
+      <View style={styles.inputGroup}>
+        <Label htmlFor="register-email">Email</Label>
+        <Input
+          id="register-email"
+          placeholder="you@example.com"
+          value={email}
+          onChangeText={setEmail}
+          keyboardType="email-address"
+          autoCapitalize="none"
+          editable={!loading}
+        />
+      </View>
+
+      <View style={styles.inputGroup}>
+        <Label htmlFor="register-password">Password</Label>
+        <Input
+          id="register-password"
+          placeholder="••••••••"
+          value={password}
+          onChangeText={setPassword}
+          secureTextEntry
+          editable={!loading}
+          onSubmitEditing={handleRegister}
+          aria-describedby="register-password-hint"
+        />
+        <Text nativeID="register-password-hint" style={[styles.hint, { color: c.textMuted }]}>Must be at least 8 characters</Text>
+      </View>
+
+      <Button onPress={handleRegister} disabled={loading} fullWidth size="lg" testID="register-button">
+        {loading ? 'Creating account...' : 'Create account'}
+      </Button>
+
+      <Text style={[styles.switchText, { color: c.textMuted }]}>
+        Already have an account?{' '}
+        <Text
+          style={{ color: c.accent, fontWeight: '600' }}
+          onPress={() => navigation.navigate('Login')}
+          accessibilityRole="link"
+        >
+          Sign in
+        </Text>
+      </Text>
+    </AuthShell>
   );
 }
 
 const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-    flexDirection: 'row',
-    minHeight: '100%' as any,
-  },
-  formPanel: {
-    flexGrow: 1,
-    justifyContent: 'center',
-    padding: spacing.xl,
-  },
-  formPanelMobile: {
-    padding: spacing.lg,
-  },
-  mobileHeader: {
-    alignSelf: 'center',
-    marginBottom: spacing.xl,
-  },
-  mobileLogo: {
-    fontSize: 36,
-    fontWeight: '700',
-    fontFamily: fontFamily.display,
-  },
-  formWrap: {
-    maxWidth: 380,
-    width: '100%',
-    alignSelf: 'center',
-    gap: spacing.md,
-  },
   formHeader: {
     gap: spacing.xs,
     marginBottom: spacing.xs,

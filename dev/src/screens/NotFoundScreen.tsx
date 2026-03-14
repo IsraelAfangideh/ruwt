@@ -19,7 +19,7 @@ export function NotFoundScreen() {
         style={{ flex: 1 }}
       >
         {!isDesktop && (
-          <Pressable onPress={() => navigation.navigate('Landing' as never)} style={styles.mobileHeader}>
+          <Pressable onPress={() => navigation.navigate('Landing')} style={styles.mobileHeader}>
             <Text style={[styles.mobileLogo, { color: c.text }]}>Ruwt</Text>
           </Pressable>
         )}
@@ -31,7 +31,7 @@ export function NotFoundScreen() {
           </Text>
           <View style={styles.links}>
             <Button
-              onPress={() => navigation.navigate('Landing' as never)}
+              onPress={() => navigation.navigate('Landing')}
               fullWidth
               size="lg"
             >
@@ -39,14 +39,14 @@ export function NotFoundScreen() {
             </Button>
             <Button
               variant="outline"
-              onPress={() => navigation.navigate('Problems' as never)}
+              onPress={() => navigation.navigate('Problems')}
               fullWidth
             >
               Browse Problems
             </Button>
             <Button
               variant="ghost"
-              onPress={() => navigation.navigate('Login' as never)}
+              onPress={() => navigation.navigate('Login')}
               fullWidth
             >
               Sign In

@@ -32,6 +32,16 @@ export type RootStackParamList = {
   NotFound: undefined;
 };
 
+/** Default screen to show after login / OAuth callback. */
+export const DEFAULT_AUTH_REDIRECT = 'Assessments' as const satisfies keyof RootStackParamList;
+
+/** Routes that are valid post-auth redirect targets (OAuth callback whitelist). */
+export const ALLOWED_AUTH_REDIRECTS = new Set<keyof RootStackParamList>([
+  'Problems', 'Leaderboard', 'Profile', 'Settings',
+  'Arena', 'DailyChallenge', 'Assessments', 'AssessmentBuilder',
+  'Hiring', 'OrgManagement', 'Replay', 'Share', 'Certificate',
+]);
+
 declare global {
   namespace ReactNavigation {
     interface RootParamList extends RootStackParamList {}

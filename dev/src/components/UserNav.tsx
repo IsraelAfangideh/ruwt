@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { createClient } from '@/lib/supabase/client';
+import { resetNavigation } from '@/navigation/resetNavigation';
 import { Avatar } from '@/components/ui/Avatar';
 import { useAppMode } from '@/lib/AppModeContext';
 import { useColors } from '@/theme';
@@ -33,7 +34,7 @@ export function UserNav({ user }: UserNavProps) {
   const handleSignOut = async () => {
     setOpen(false);
     await supabase.auth.signOut();
-    navigation.reset({ index: 0, routes: [{ name: 'Landing' as never }] });
+    resetNavigation(navigation, [{ name: 'Landing' }]);
   };
 
   const initials = user.user_metadata?.name
@@ -62,14 +63,14 @@ export function UserNav({ user }: UserNavProps) {
             )}
             <Pressable
               style={[styles.menuItem, { borderTopColor: c.border }]}
-              onPress={() => { setOpen(false); navigation.navigate('Profile' as never); }}
+              onPress={() => { setOpen(false); navigation.navigate('Profile'); }}
               accessibilityRole="menuitem"
             >
               <Text style={{ color: c.text, fontSize: fontSizes.sm }}>Profile</Text>
             </Pressable>
             <Pressable
               style={[styles.menuItem, { borderTopColor: c.border }]}
-              onPress={() => { setOpen(false); navigation.navigate('Bookmarks' as never); }}
+              onPress={() => { setOpen(false); navigation.navigate('Bookmarks'); }}
               accessibilityRole="menuitem"
             >
               <Text style={{ color: c.text, fontSize: fontSizes.sm }}>Bookmarks</Text>
@@ -77,7 +78,7 @@ export function UserNav({ user }: UserNavProps) {
             {mode === 'hiring' && isOrgMember && (
               <Pressable
                 style={[styles.menuItem, { borderTopColor: c.border }]}
-                onPress={() => { setOpen(false); navigation.navigate('OrgManagement' as never); }}
+                onPress={() => { setOpen(false); navigation.navigate('OrgManagement', {}); }}
                 accessibilityRole="menuitem"
                 testID="user-nav-org-settings"
               >
@@ -86,7 +87,7 @@ export function UserNav({ user }: UserNavProps) {
             )}
             <Pressable
               style={[styles.menuItem, { borderTopColor: c.border }]}
-              onPress={() => { setOpen(false); navigation.navigate('Settings' as never); }}
+              onPress={() => { setOpen(false); navigation.navigate('Settings'); }}
               accessibilityRole="menuitem"
             >
               <Text style={{ color: c.text, fontSize: fontSizes.sm }}>Settings</Text>

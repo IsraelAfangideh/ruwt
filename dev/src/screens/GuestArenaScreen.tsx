@@ -121,7 +121,7 @@ export function GuestArenaScreen() {
             fontSize: 13,
             cursor: 'pointer',
           }}
-          onClick={() => navigation.navigate('Landing' as never)}
+          onClick={() => navigation.navigate('Landing')}
         >
           Back to Home
         </button>
@@ -163,7 +163,7 @@ export function GuestArenaScreen() {
               padding: '4px 8px',
               fontFamily: fontFamily.mono,
             }}
-            onClick={() => navigation.navigate('Landing' as never)}
+            onClick={() => navigation.navigate('Landing')}
           >
             &larr; ruwt.dev
           </button>
@@ -300,7 +300,7 @@ export function GuestArenaScreen() {
                     cursor: 'pointer',
                     width: '100%',
                   }}
-                  onClick={() => navigation.navigate('Register' as never)}
+                  onClick={() => navigation.navigate('Register')}
                 >
                   Sign Up Free
                 </button>
@@ -316,7 +316,7 @@ export function GuestArenaScreen() {
                     cursor: 'pointer',
                     width: '100%',
                   }}
-                  onClick={() => navigation.navigate('Login' as never)}
+                  onClick={() => navigation.navigate('Login')}
                 >
                   Already have an account? Sign In
                 </button>

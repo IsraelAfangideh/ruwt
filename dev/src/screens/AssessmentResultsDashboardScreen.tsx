@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { createClient } from '@/lib/supabase/client';
+import { resetNavigation } from '@/navigation/resetNavigation';
 import { TableSkeleton } from '@/components/ui/ScreenSkeletons';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { Card, CardContent } from '@/components/ui/Card';
@@ -120,7 +121,7 @@ export function AssessmentResultsDashboardScreen() {
     const init = async () => {
       const { data: { user: u } } = await supabase.auth.getUser();
       if (!u) {
-        navigation.reset({ index: 0, routes: [{ name: 'Login' as never }] });
+        resetNavigation(navigation, [{ name: 'Login' }]);
         return;
       }
       setUser(u);
@@ -298,7 +299,7 @@ export function AssessmentResultsDashboardScreen() {
             <Button
               variant="ghost"
               size="sm"
-              onPress={() => navigation.navigate('Assessments' as never)}
+              onPress={() => navigation.navigate('Assessments')}
             >
               {'\u2190'} Back to Assessments
             </Button>

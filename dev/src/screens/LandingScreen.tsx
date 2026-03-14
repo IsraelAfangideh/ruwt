@@ -13,16 +13,18 @@ import { useColors } from '@/theme';
 import { spacing, fontSizes, fontFamily } from '@/theme/tokens';
 import { useWindowWidth } from '@/hooks/useWindowWidth';
 import { useDocumentMeta } from '@/hooks/useDocumentMeta';
+import { DEFAULT_AUTH_REDIRECT } from '@/navigation/types';
+import { resetNavigation } from '@/navigation/resetNavigation';
 
 export function LandingScreen() {
   useDocumentMeta({ canonicalPath: '/' });
   const navigation = useNavigation();
   const c = useColors();
 
-  // Redirect logged-in users to Dashboard
+  // Redirect logged-in users to Assessments
   useEffect(() => {
     createClient().auth.getUser().then(({ data: { user } }) => {
-      if (user) navigation.reset({ index: 0, routes: [{ name: 'Problems' as never }] });
+      if (user) resetNavigation(navigation, [{ name: DEFAULT_AUTH_REDIRECT }]);
     });
   }, [navigation]);
   const width = useWindowWidth();
@@ -35,9 +37,9 @@ export function LandingScreen() {
       <View style={[styles.header, { borderBottomColor: c.border }]} accessibilityRole="banner">
         <Text style={[styles.logo, { color: c.text }]}>Ruwt</Text>
         <View style={styles.headerActions} accessibilityRole="navigation" accessibilityLabel="Main navigation">
-          <Button variant="ghost" onPress={() => navigation.navigate('Hiring' as never)} textStyle={{ color: c.accent }}>For Teams</Button>
-          <Button variant="ghost" onPress={() => navigation.navigate('Login' as never)}>Sign in</Button>
-          <Button onPress={() => navigation.navigate('Register' as never)}>Get Started</Button>
+          <Button variant="ghost" onPress={() => navigation.navigate('Hiring')} textStyle={{ color: c.accent }}>For Teams</Button>
+          <Button variant="ghost" onPress={() => navigation.navigate('Login')}>Sign in</Button>
+          <Button onPress={() => navigation.navigate('Register')}>Get Started</Button>
         </View>
       </View>
 
@@ -71,7 +73,7 @@ export function LandingScreen() {
           <View style={styles.heroCtas}>
             <Button
               size="lg"
-              onPress={() => navigation.navigate('Register' as never)}
+              onPress={() => navigation.navigate('Register')}
               style={{ backgroundColor: '#c9a962' }}
               textStyle={{ color: '#1a1816' }}
             >
@@ -105,7 +107,7 @@ export function LandingScreen() {
           <Button
             size="sm"
             variant="outline"
-            onPress={() => navigation.navigate('Hiring' as never)}
+            onPress={() => navigation.navigate('Hiring')}
             style={{ borderColor: c.accent }}
             textStyle={{ color: c.accent }}
           >
@@ -141,7 +143,7 @@ export function LandingScreen() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Button variant="outline" onPress={() => navigation.navigate('Register' as never)}>
+            <Button variant="outline" onPress={() => navigation.navigate('Register')}>
               See Today's Challenge
             </Button>
           </CardContent>
@@ -166,7 +168,7 @@ export function LandingScreen() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Button variant="outline" onPress={() => navigation.navigate('Register' as never)}>
+            <Button variant="outline" onPress={() => navigation.navigate('Register')}>
               Try This Challenge
             </Button>
           </CardContent>
@@ -285,7 +287,7 @@ export function LandingScreen() {
           <CardContent>
             <Button
               variant="outline"
-              onPress={() => navigation.navigate('Problems' as never)}
+              onPress={() => navigation.navigate('Problems')}
               style={{ borderColor: c.accent }}
               textStyle={{ color: c.accent }}
             >
@@ -321,7 +323,7 @@ export function LandingScreen() {
           <View style={styles.heroCtas}>
             <Button
               size="lg"
-              onPress={() => navigation.navigate('Hiring' as never)}
+              onPress={() => navigation.navigate('Hiring')}
               style={{ backgroundColor: '#c9a962' }}
               textStyle={{ color: '#1a1816', fontWeight: '700' }}
             >
@@ -330,7 +332,7 @@ export function LandingScreen() {
             <Button
               variant="outline"
               size="lg"
-              onPress={() => navigation.navigate('Hiring' as never)}
+              onPress={() => navigation.navigate('Hiring')}
               style={{ borderColor: 'rgba(232,228,223,0.25)' }}
               textStyle={{ color: '#f5f3f0' }}
             >
@@ -349,7 +351,7 @@ export function LandingScreen() {
         <View style={styles.heroCtas}>
           <Button
             size="lg"
-            onPress={() => navigation.navigate('Register' as never)}
+            onPress={() => navigation.navigate('Register')}
             style={{ backgroundColor: '#c9a962' }}
             textStyle={{ color: '#1a1816' }}
           >
@@ -358,7 +360,7 @@ export function LandingScreen() {
           <Button
             size="lg"
             variant="outline"
-            onPress={() => navigation.navigate('Hiring' as never)}
+            onPress={() => navigation.navigate('Hiring')}
             style={{ borderColor: 'rgba(232,228,223,0.25)' }}
             textStyle={{ color: '#f5f3f0' }}
           >

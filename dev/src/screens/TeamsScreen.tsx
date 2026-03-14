@@ -90,13 +90,13 @@ export function TeamsScreen() {
     try {
       const res = await fetch('/api/trial/start', { method: 'POST' });
       if (res.ok) {
-        navigation.navigate('AssessmentBuilder' as never);
+        navigation.navigate('AssessmentBuilder', {});
         return;
       }
       const data = await res.json().catch(() => ({} as Record<string, string>));
       // User already has team access (used trial or has subscription) — navigate directly
       if (data.error === 'Trial already used' || data.error === 'Already subscribed') {
-        navigation.navigate('AssessmentBuilder' as never);
+        navigation.navigate('AssessmentBuilder', {});
         return;
       }
       setTrialError(data.error || 'Failed to start trial. Please try again.');
@@ -114,7 +114,7 @@ export function TeamsScreen() {
         localStorage.setItem('ruwt_team_intent', '1');
         localStorage.setItem('ruwt_trial_intent', '1');
       }
-      navigation.navigate('Register' as never);
+      navigation.navigate('Register');
     }
   };
 
@@ -143,7 +143,7 @@ export function TeamsScreen() {
       if (data.url) {
         window.location.href = data.url;
       } else if (data.error === 'Unauthorized') {
-        navigation.navigate('Register' as never);
+        navigation.navigate('Register');
       } else if (data.error) {
         setShowDemoForm(true);
       }
@@ -236,12 +236,12 @@ export function TeamsScreen() {
     <ScrollView style={[styles.page, { backgroundColor: c.bg }]}>
       {/* ─── Header ─── */}
       <View style={[styles.header, { borderBottomColor: 'transparent' }]}>
-        <Pressable onPress={() => navigation.navigate('Landing' as never)}>
+        <Pressable onPress={() => navigation.navigate('Landing')}>
           <Text style={[styles.logo, { color: '#f5f3f0' }]}>Ruwt</Text>
         </Pressable>
         <View style={styles.headerActions}>
           {isLoggedIn ? (
-            <Button onPress={() => navigation.navigate('Dashboard' as never)}
+            <Button onPress={() => navigation.navigate('Dashboard')}
               style={{ backgroundColor: '#c9a962' }}
               textStyle={{ color: '#1a1816' }}
             >
@@ -249,12 +249,12 @@ export function TeamsScreen() {
             </Button>
           ) : (
             <>
-              <Button variant="ghost" onPress={() => navigation.navigate('Login' as never)}
+              <Button variant="ghost" onPress={() => navigation.navigate('Login')}
                 textStyle={{ color: '#f5f3f0' }}
               >
                 Sign in
               </Button>
-              <Button onPress={() => navigation.navigate('Register' as never)}
+              <Button onPress={() => navigation.navigate('Register')}
                 style={{ backgroundColor: '#c9a962' }}
                 textStyle={{ color: '#1a1816' }}
               >
@@ -703,7 +703,7 @@ export function TeamsScreen() {
 
       {/* Cross-link */}
       <View style={styles.crossLink}>
-        <Pressable onPress={() => navigation.navigate('Landing' as never)}>
+        <Pressable onPress={() => navigation.navigate('Landing')}>
           <Text style={[styles.crossLinkText, { color: c.textMuted }]}>
             Developer? Practice free challenges {'\u2192'}
           </Text>

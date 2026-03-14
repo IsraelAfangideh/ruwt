@@ -25,7 +25,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     // Initial check
     supabase.auth.getUser().then(({ data: { user: u } }) => {
-      setUser(u);
+      setUser(prev => (prev?.id === u?.id ? prev : u));
       setLoading(false);
       if (u) Sentry.setUser({ id: u.id, email: u.email ?? undefined });
     });

@@ -142,7 +142,7 @@ describe('AssessmentListScreen', () => {
     await waitFor(() => {
       const createBtns = screen.getAllByText('Build Assessment');
       fireEvent.click(createBtns[0]);
-      expect(mockNavigate).toHaveBeenCalledWith('AssessmentBuilder');
+      expect(mockNavigate).toHaveBeenCalledWith('AssessmentBuilder', {});
     });
   });
 
@@ -323,7 +323,7 @@ describe('AssessmentListScreen', () => {
     const btns = screen.getAllByText('Build Assessment');
     // The last one is in the empty state card
     fireEvent.click(btns[btns.length - 1]);
-    expect(mockNavigate).toHaveBeenCalledWith('AssessmentBuilder');
+    expect(mockNavigate).toHaveBeenCalledWith('AssessmentBuilder', {});
   });
 
   it('copies existing invite link when clicked again (line 285)', async () => {
@@ -537,7 +537,7 @@ describe('AssessmentListScreen', () => {
     render(<AssessmentListScreen />);
     await waitFor(() => expect(screen.getByText('Create Team')).toBeTruthy());
     fireEvent.click(screen.getByText('Create Team'));
-    expect(mockNavigate).toHaveBeenCalledWith('OrgManagement');
+    expect(mockNavigate).toHaveBeenCalledWith('OrgManagement', {});
   });
 
   it('handles fetch rejection for assessments (line 49 catch)', async () => {

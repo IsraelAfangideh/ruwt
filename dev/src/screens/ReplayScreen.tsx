@@ -194,7 +194,7 @@ export function ReplayScreen() {
     return (
       <View style={[styles.center, { backgroundColor: c.bg }]}>
         <Text style={[styles.errorText, { color: c.destructive }]}>{error}</Text>
-        <Pressable onPress={() => navigation.navigate('Problems' as never)} style={styles.backLink}>
+        <Pressable onPress={() => navigation.navigate('Problems')} style={styles.backLink}>
           <Text style={{ color: c.accent, fontSize: fontSizes.sm }}>Back to Challenges</Text>
         </Pressable>
       </View>
@@ -333,7 +333,7 @@ export function ReplayScreen() {
         >
           <Text style={[styles.ctaText, { color: '#0d1117' }]}>Try This Challenge</Text>
         </Pressable>
-        <Pressable onPress={() => navigation.navigate('Problems' as never)} style={styles.backLink}>
+        <Pressable onPress={() => navigation.navigate('Problems')} style={styles.backLink}>
           <Text style={{ color: c.textMuted, fontSize: fontSizes.sm }}>Back to Challenges</Text>
         </Pressable>
       </View>

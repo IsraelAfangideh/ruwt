@@ -12,6 +12,7 @@ import {
   Pressable,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { resetNavigation } from '@/navigation/resetNavigation';
 import { useAuthGuard } from '@/hooks/useAuthGuard';
 import { useDashboardData } from '@/lib/DashboardDataContext';
 import { DashboardLayout } from '@/components/DashboardLayout';
@@ -779,7 +780,7 @@ export function DashboardScreen() {
   // Onboarding gate: redirect new users to onboarding flow when dashboard data loads
   useEffect(() => {
     if (data?.profile.onboardingCompleted === 0) {
-      navigation.reset({ index: 0, routes: [{ name: 'Onboarding' as never }] });
+      resetNavigation(navigation, [{ name: 'Onboarding' }]);
     }
   }, [data, navigation]);
 

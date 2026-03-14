@@ -167,7 +167,7 @@ describe('LoginScreen', () => {
 
     expect(mockReset).toHaveBeenCalledWith({
       index: 0,
-      routes: [{ name: 'Dashboard' }],
+      routes: [{ name: 'Assessments' }],
     });
   });
 
@@ -237,8 +237,8 @@ describe('LoginScreen', () => {
       fireEvent.click(screen.getByText('Continue with GitHub'));
     });
 
-    // Default redirectTo is 'Dashboard'
-    expect(localStorage.getItem('oauth_redirect')).toBe('Dashboard');
+    // Default redirectTo is 'Assessments'
+    expect(localStorage.getItem('oauth_redirect')).toBe('Assessments');
   });
 
   it('shows error when OAuth fails', async () => {

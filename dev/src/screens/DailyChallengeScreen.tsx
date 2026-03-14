@@ -7,6 +7,7 @@ import { View, Text, ScrollView, StyleSheet } from 'react-native';
 import { DetailCardSkeleton } from '@/components/ui/ScreenSkeletons';
 import { useNavigation } from '@react-navigation/native';
 import { createClient } from '@/lib/supabase/client';
+import { resetNavigation } from '@/navigation/resetNavigation';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
@@ -51,7 +52,7 @@ export function DailyChallengeScreen() {
       const supabase = createClient();
       const { data: { user: u } } = await supabase.auth.getUser();
       if (!u) {
-        navigation.reset({ index: 0, routes: [{ name: 'Login' as never }] });
+        resetNavigation(navigation, [{ name: 'Login' }]);
         return;
       }
       setUser(u);

@@ -35,9 +35,9 @@ export function ModeSwitcher() {
     setMode(next);
     // Navigate to the new mode's home screen
     if (next === 'practice') {
-      navigation.navigate('Problems' as never);
+      navigation.navigate('Problems');
     } else {
-      navigation.navigate('Assessments' as never);
+      navigation.navigate('Assessments');
     }
   };
 

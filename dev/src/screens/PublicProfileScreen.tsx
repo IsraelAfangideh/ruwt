@@ -122,7 +122,7 @@ export function PublicProfileScreen() {
     return (
       <View style={[styles.center, { backgroundColor: c.bg }]}>
         <Text style={[styles.errorText, { color: c.destructive }]}>{error || 'User not found'}</Text>
-        <Pressable onPress={() => navigation.navigate('Leaderboard' as never)} style={styles.backLink}>
+        <Pressable onPress={() => navigation.navigate('Leaderboard')} style={styles.backLink}>
           <Text style={{ color: c.accent, fontSize: fontSizes.sm }}>Back to Leaderboard</Text>
         </Pressable>
       </View>

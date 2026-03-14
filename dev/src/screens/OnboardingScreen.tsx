@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { createClient } from '@/lib/supabase/client';
+import { resetNavigation } from '@/navigation/resetNavigation';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -37,7 +38,7 @@ export function OnboardingScreen() {
         data: { user },
       } = await supabase.auth.getUser();
       if (!user) {
-        navigation.reset({ index: 0, routes: [{ name: 'Login' as never }] });
+        resetNavigation(navigation, [{ name: 'Login' }]);
         return;
       }
       // Check if onboarding already completed
@@ -46,7 +47,7 @@ export function OnboardingScreen() {
         if (res.ok) {
           const profile = await res.json();
           if (profile.onboardingCompleted === 1) {
-            navigation.reset({ index: 0, routes: [{ name: 'Problems' as never }] });
+            resetNavigation(navigation, [{ name: 'Problems' }]);
             return;
           }
         }
@@ -95,7 +96,7 @@ export function OnboardingScreen() {
       // Non-blocking — mark completed even if API fails
     }
     setSubmitting(false);
-    navigation.reset({ index: 0, routes: [{ name: 'Problems' as never }] });
+    resetNavigation(navigation, [{ name: 'Problems' }]);
   };
 
   if (loading) {

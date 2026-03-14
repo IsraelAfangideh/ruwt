@@ -85,7 +85,7 @@ export function DashboardNav() {
         return (
           <Pressable
             key={item.name}
-            onPress={() => navigation.navigate(item.name as never)}
+            onPress={() => (navigation as any).navigate(item.name)}
             onLayout={(e: any) => handleLayout(item.name, e)}
             style={styles.item}
             accessibilityRole="link"

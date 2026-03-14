@@ -102,8 +102,8 @@ describe('CallbackScreen', () => {
     expect(container.querySelector('svg') || container.textContent).toBeTruthy();
   });
 
-  /* ── Auth state change: SIGNED_IN → navigate to Problems ─────── */
-  it('navigates to Problems on SIGNED_IN event when no pending challenge', async () => {
+  /* ── Auth state change: SIGNED_IN → navigate to Assessments ─────── */
+  it('navigates to Assessments on SIGNED_IN event when no pending challenge', async () => {
     render(<CallbackScreen />);
     expect(onAuthStateChangeCb).not.toBeNull();
 
@@ -114,7 +114,7 @@ describe('CallbackScreen', () => {
     await waitFor(() => {
       expect(mockReset).toHaveBeenCalledWith({
         index: 0,
-        routes: [{ name: 'Problems' }],
+        routes: [{ name: 'Assessments' }],
       });
     });
   });
@@ -223,7 +223,7 @@ describe('CallbackScreen', () => {
     await waitFor(() => {
       expect(mockReset).toHaveBeenCalledWith({
         index: 0,
-        routes: [{ name: 'Problems' }],
+        routes: [{ name: 'Assessments' }],
       });
     });
   });
@@ -407,7 +407,7 @@ describe('CallbackScreen', () => {
     await waitFor(() => {
       expect(screen.getAllByText('Password updated').length).toBeGreaterThanOrEqual(1);
     });
-    expect(screen.getAllByText(/Redirecting you to the dashboard/).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText(/Redirecting you to assessments/).length).toBeGreaterThanOrEqual(1);
   });
 
   it('shows error from updateUser failure', async () => {
@@ -537,7 +537,7 @@ describe('CallbackScreen', () => {
 
     expect(mockReset).toHaveBeenCalledWith({
       index: 0,
-      routes: [{ name: 'Problems' }],
+      routes: [{ name: 'Assessments' }],
     });
 
     vi.useRealTimers();

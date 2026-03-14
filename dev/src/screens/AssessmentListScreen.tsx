@@ -3,6 +3,7 @@ import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { CardGridSkeleton } from '@/components/ui/ScreenSkeletons';
 import { useNavigation } from '@react-navigation/native';
 import { createClient } from '@/lib/supabase/client';
+import { resetNavigation } from '@/navigation/resetNavigation';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
@@ -41,7 +42,7 @@ export function AssessmentListScreen() {
     const init = async () => {
       const { data: { user: u } } = await supabase.auth.getUser();
       if (!u) {
-        navigation.reset({ index: 0, routes: [{ name: 'Login' as never }] });
+        resetNavigation(navigation, [{ name: 'Login' }]);
         return;
       }
       setUser(u);
@@ -213,12 +214,12 @@ export function AssessmentListScreen() {
             {!orgInfo && (
               <Button
                 variant="outline"
-                onPress={() => navigation.navigate('OrgManagement' as never)}
+                onPress={() => navigation.navigate('OrgManagement', {})}
               >
                 Create Team
               </Button>
             )}
-            <Button onPress={() => navigation.navigate('AssessmentBuilder' as never)}>
+            <Button onPress={() => navigation.navigate('AssessmentBuilder', {})}>
               Build Assessment
             </Button>
           </View>
@@ -259,12 +260,12 @@ export function AssessmentListScreen() {
             </View>
             <Button
               style={{ marginTop: spacing.lg }}
-              onPress={() => navigation.navigate('AssessmentBuilder' as never)}
+              onPress={() => navigation.navigate('AssessmentBuilder', {})}
             >
               Create Your First Assessment
             </Button>
             <Pressable
-              onPress={() => navigation.navigate('AssessmentBuilder' as never)}
+              onPress={() => navigation.navigate('AssessmentBuilder', {})}
               style={{ marginTop: spacing.sm }}
             >
               <Text style={{ fontSize: fontSizes.sm, color: c.accent }}>

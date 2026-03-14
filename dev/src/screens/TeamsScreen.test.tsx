@@ -232,7 +232,7 @@ describe('TeamsScreen', () => {
     await waitFor(() => expect(screen.getByText('Dashboard')).toBeTruthy());
     fireEvent.click(screen.getAllByText('Start Free Trial')[0]);
     await waitFor(() => {
-      expect(mockNavigate).toHaveBeenCalledWith('AssessmentBuilder');
+      expect(mockNavigate).toHaveBeenCalledWith('AssessmentBuilder', {});
     });
     expect(fetch).toHaveBeenCalledWith('/api/trial/start', { method: 'POST' });
   });
@@ -246,7 +246,7 @@ describe('TeamsScreen', () => {
     await waitFor(() => expect(screen.getByText('Dashboard')).toBeTruthy());
     fireEvent.click(screen.getAllByText('Start Free Trial')[0]);
     await waitFor(() => {
-      expect(mockNavigate).toHaveBeenCalledWith('AssessmentBuilder');
+      expect(mockNavigate).toHaveBeenCalledWith('AssessmentBuilder', {});
     });
   });
 
@@ -262,7 +262,7 @@ describe('TeamsScreen', () => {
       expect(screen.getByText('Profile not found')).toBeTruthy();
     });
     // Should NOT navigate to AssessmentBuilder
-    expect(mockNavigate).not.toHaveBeenCalledWith('AssessmentBuilder');
+    expect(mockNavigate).not.toHaveBeenCalledWith('AssessmentBuilder', {});
   });
 
   it('renders Book a Demo button', () => {

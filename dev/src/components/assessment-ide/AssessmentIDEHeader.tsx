@@ -22,7 +22,7 @@ export function AssessmentIDEHeader({ title, assessmentId, status, isEditing, di
         <Pressable
           onPress={() => {
             if (dirty && !window.confirm('You have unsaved changes. Leave anyway?')) return;
-            navigation.navigate('Assessments' as never);
+            navigation.navigate('Assessments');
           }}
           accessibilityRole="button"
           accessibilityLabel="Back to Assessments"

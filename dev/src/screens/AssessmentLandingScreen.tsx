@@ -57,7 +57,7 @@ export function AssessmentLandingScreen() {
 
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
-      navigation.navigate('Login' as never);
+      navigation.navigate('Login');
       return;
     }
 

@@ -498,7 +498,7 @@ export function ArenaScreen() {
             fontSize: 13,
             cursor: 'pointer',
           }}
-          onClick={() => navigation.navigate('Problems' as never)}
+          onClick={() => navigation.navigate('Problems')}
         >
           Back to Problems
         </button>
@@ -683,7 +683,7 @@ export function ArenaScreen() {
               marginTop: 24,
               fontFamily: fontFamily.mono,
             }}
-            onClick={() => navigation.navigate('Problems' as never)}
+            onClick={() => navigation.navigate('Problems')}
           >
             &larr; Back to Problems
           </button>
@@ -735,7 +735,7 @@ export function ArenaScreen() {
                 fontFamily: fontFamily.mono,
                 flexShrink: 0,
               }}
-              onClick={() => navigation.navigate('Problems' as never)}
+              onClick={() => navigation.navigate('Problems')}
             >
               &larr;
             </button>
@@ -842,7 +842,7 @@ export function ArenaScreen() {
                 padding: '4px 8px',
                 fontFamily: fontFamily.mono,
               }}
-              onClick={() => navigation.navigate('Problems' as never)}
+              onClick={() => navigation.navigate('Problems')}
             >
               &larr; Back
             </button>
@@ -1333,7 +1333,7 @@ export function ArenaScreen() {
                     if (navigatingRef.current) return;
                     navigatingRef.current = true;
                     setSuccessOverlay(null);
-                    navigation.navigate('Problems' as never);
+                    navigation.navigate('Problems');
                   }}
                 >
                   Back to Problems

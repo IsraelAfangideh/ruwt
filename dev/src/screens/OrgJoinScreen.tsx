@@ -3,6 +3,7 @@ import { View, Text, StyleSheet } from 'react-native';
 import { DetailCardSkeleton } from '@/components/ui/ScreenSkeletons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { createClient } from '@/lib/supabase/client';
+import { resetNavigation } from '@/navigation/resetNavigation';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { useColors } from '@/theme';
@@ -26,7 +27,7 @@ export function OrgJoinScreen() {
       if (!u) {
         // Store intent and redirect to login
         localStorage.setItem('ruwt_org_join_token', token || '');
-        navigation.reset({ index: 0, routes: [{ name: 'Login' as never }] });
+        resetNavigation(navigation, [{ name: 'Login' }]);
         return;
       }
       setLoading(false);
@@ -48,7 +49,7 @@ export function OrgJoinScreen() {
       if (res.ok) {
         setSuccess(true);
         setTimeout(() => {
-          navigation.reset({ index: 0, routes: [{ name: 'Assessments' as never }] });
+          resetNavigation(navigation, [{ name: 'Assessments' }]);
         }, 2000);
       } else {
         setError(data.error || 'Failed to join organization');

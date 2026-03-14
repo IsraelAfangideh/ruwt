@@ -7,6 +7,7 @@ import { NavigationContainer, createNavigationContainerRef } from '@react-naviga
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import type { RootStackParamList } from './types';
 import { linking } from './linking';
+import { resetNavigation } from './resetNavigation';
 import { createClient } from '@/lib/supabase/client';
 
 // Eager: LandingScreen is first paint for most visitors
@@ -126,7 +127,7 @@ export function AppNavigator() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === 'SIGNED_OUT') {
         if (isNavigationReady.current && navigationRef.isReady()) {
-          navigationRef.reset({ index: 0, routes: [{ name: 'Landing' }] });
+          resetNavigation(navigationRef, [{ name: 'Landing' }]);
         }
       }
     });

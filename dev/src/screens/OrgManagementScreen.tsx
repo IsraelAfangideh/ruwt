@@ -294,7 +294,7 @@ export function OrgManagementScreen() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onPress={() => navigation.navigate('Hiring' as never)}
+                  onPress={() => navigation.navigate('Hiring')}
                 >
                   Resubscribe
                 </Button>
@@ -341,7 +341,7 @@ export function OrgManagementScreen() {
                 </Text>
                 <Button
                   size="sm"
-                  onPress={() => navigation.navigate('Hiring' as never)}
+                  onPress={() => navigation.navigate('Hiring')}
                 >
                   Subscribe
                 </Button>
@@ -355,7 +355,7 @@ export function OrgManagementScreen() {
                 </Badge>
                 <Button
                   size="sm"
-                  onPress={() => navigation.navigate('Hiring' as never)}
+                  onPress={() => navigation.navigate('Hiring')}
                 >
                   Subscribe
                 </Button>
@@ -363,7 +363,7 @@ export function OrgManagementScreen() {
             ) : (
               <Button
                 size="sm"
-                onPress={() => navigation.navigate('Hiring' as never)}
+                onPress={() => navigation.navigate('Hiring')}
               >
                 Subscribe
               </Button>

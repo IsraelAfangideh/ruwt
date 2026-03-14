@@ -210,7 +210,7 @@ describe('LandingScreen', () => {
   });
 
   /* ── Redirect logged-in user ───────────────────────────────────── */
-  it('redirects logged-in users to Problems', async () => {
+  it('redirects logged-in users to Assessments', async () => {
     mockGetUser.mockResolvedValueOnce({ data: { user: { id: 'u1' } } });
 
     render(<LandingScreen />);
@@ -218,7 +218,7 @@ describe('LandingScreen', () => {
     await waitFor(() => {
       expect(mockReset).toHaveBeenCalledWith({
         index: 0,
-        routes: [{ name: 'Problems' }],
+        routes: [{ name: 'Assessments' }],
       });
     });
   });

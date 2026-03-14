@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '@/lib/AuthContext';
+import { resetNavigation } from '@/navigation/resetNavigation';
 import type { User } from '@supabase/supabase-js';
 
 /**
@@ -14,7 +15,7 @@ export function useAuthGuard(): { user: User | null; loading: boolean } {
 
   useEffect(() => {
     if (!loading && !user) {
-      navigation.reset({ index: 0, routes: [{ name: 'Login' as never }] });
+      resetNavigation(navigation, [{ name: 'Login' }]);
     }
   }, [loading, user, navigation]);
 
