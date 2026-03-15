@@ -10,6 +10,9 @@ import {
   tierLabel,
   estimateTypicalMessageCost,
   estimateMessagesForBudget,
+  friendlyModelName,
+  getModelTier,
+  getCostEfficiencySignal,
   type ModelTier,
 } from './pricing';
 
@@ -263,6 +266,70 @@ describe('pricing', () => {
       for (const m of withTools) {
         expect(['reasoning', 'premium', 'mid', 'budget', 'micro']).toContain(m.tier);
       }
+    });
+  });
+
+  describe('friendlyModelName', () => {
+    it('strips @cf/meta/ prefix and -instruct suffix', () => {
+      expect(friendlyModelName('@cf/meta/llama-3.1-8b-instruct')).toBe('llama-3.1-8b');
+    });
+
+    it('strips @cf/mistralai/ prefix', () => {
+      expect(friendlyModelName('@cf/mistralai/mistral-small-3.1-24b-instruct')).toBe('mistral-small-3.1-24b');
+    });
+
+    it('strips @hf/ prefix and -chat suffix', () => {
+      expect(friendlyModelName('@hf/some-model-chat')).toBe('some-model');
+    });
+
+    it('handles model with no prefix or suffix', () => {
+      expect(friendlyModelName('plain-model')).toBe('plain-model');
+    });
+  });
+
+  describe('getModelTier', () => {
+    it('returns correct tier for known model', () => {
+      expect(getModelTier('@cf/meta/llama-3.3-70b-instruct-fp8-fast')).toBe('premium');
+    });
+
+    it('returns premium fallback for unknown 70b model', () => {
+      expect(getModelTier('unknown-70b-model')).toBe('premium');
+    });
+
+    it('returns mid fallback for unknown 12b model', () => {
+      expect(getModelTier('unknown-12b-model')).toBe('mid');
+    });
+
+    it('returns micro fallback for completely unknown model', () => {
+      expect(getModelTier('tiny-unknown')).toBe('micro');
+    });
+  });
+
+  describe('getCostEfficiencySignal', () => {
+    it('warns on easy challenge with premium model', () => {
+      const signal = getCostEfficiencySignal('easy', 'premium', true);
+      expect(signal?.type).toBe('warning');
+      expect(signal?.message).toContain('Expensive');
+    });
+
+    it('warns on hard challenge with budget model that failed', () => {
+      const signal = getCostEfficiencySignal('hard', 'budget', false);
+      expect(signal?.type).toBe('warning');
+      expect(signal?.message).toContain('Budget model');
+    });
+
+    it('positive signal on hard challenge with budget model that passed', () => {
+      const signal = getCostEfficiencySignal('hard', 'budget', true);
+      expect(signal?.type).toBe('positive');
+      expect(signal?.message).toContain('Efficient');
+    });
+
+    it('returns null for medium challenge with mid-tier model', () => {
+      expect(getCostEfficiencySignal('medium', 'mid', true)).toBeNull();
+    });
+
+    it('returns null for easy challenge with micro model', () => {
+      expect(getCostEfficiencySignal('easy', 'micro', true)).toBeNull();
     });
   });
 });

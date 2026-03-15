@@ -1,6 +1,12 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+
+const mockNavigate = vi.fn();
+vi.mock('@react-navigation/native', () => ({
+  useNavigation: () => ({ navigate: mockNavigate }),
+}));
+
 import { CustomChallengeReview } from './CustomChallengeReview';
 
 vi.mock('@/shared/theme', () => ({
@@ -119,5 +125,21 @@ describe('CustomChallengeReview', () => {
     render(<CustomChallengeReview challenge={challenge} orgId="org1" onApprove={mockOnApprove} onDelete={mockOnDelete} compact />);
     fireEvent.click(screen.getByText(/Expand/));
     expect(screen.getByText(/Collapse/)).toBeTruthy();
+  });
+
+  it('renders Try Challenge button when starterCode exists', () => {
+    render(<CustomChallengeReview challenge={challenge} orgId="org1" onApprove={mockOnApprove} onDelete={mockOnDelete} />);
+    expect(screen.getByText('Try Challenge')).toBeTruthy();
+  });
+
+  it('navigates to Arena when Try Challenge is clicked', () => {
+    render(<CustomChallengeReview challenge={challenge} orgId="org1" onApprove={mockOnApprove} onDelete={mockOnDelete} />);
+    fireEvent.click(screen.getByText('Try Challenge'));
+    expect(mockNavigate).toHaveBeenCalledWith('Arena', { challengeId: 'c1' });
+  });
+
+  it('does not render Try Challenge when starterCode is null', () => {
+    render(<CustomChallengeReview challenge={{ ...challenge, starterCode: null }} orgId="org1" onApprove={mockOnApprove} onDelete={mockOnDelete} />);
+    expect(screen.queryByText('Try Challenge')).toBeNull();
   });
 });
