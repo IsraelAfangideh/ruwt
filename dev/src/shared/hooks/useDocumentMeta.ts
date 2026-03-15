@@ -8,9 +8,10 @@ interface DocumentMetaOptions {
   title?: string;
   description?: string;
   canonicalPath?: string;
+  ogImage?: string;
 }
 
-export function useDocumentMeta({ title, description, canonicalPath }: DocumentMetaOptions) {
+export function useDocumentMeta({ title, description, canonicalPath, ogImage }: DocumentMetaOptions) {
   useEffect(() => {
     document.title = title ? `${title} | Ruwt` : DEFAULT_TITLE;
 
@@ -24,10 +25,23 @@ export function useDocumentMeta({ title, description, canonicalPath }: DocumentM
       canonical.href = `${SITE}${canonicalPath}`;
     }
 
+    // OG image meta tag
+    if (ogImage) {
+      let ogMeta = document.querySelector('meta[property="og:image"]') as HTMLMetaElement | null;
+      if (!ogMeta) {
+        ogMeta = document.createElement('meta');
+        ogMeta.setAttribute('property', 'og:image');
+        document.head.appendChild(ogMeta);
+      }
+      ogMeta.setAttribute('content', ogImage);
+    }
+
     return () => {
       document.title = DEFAULT_TITLE;
       if (metaDesc) metaDesc.setAttribute('content', DEFAULT_DESC);
       if (canonical) canonical.href = `${SITE}/`;
+      const ogMeta = document.querySelector('meta[property="og:image"]') as HTMLMetaElement | null;
+      if (ogMeta && ogImage) ogMeta.setAttribute('content', `${SITE}/og-image.png`);
     };
-  }, [title, description, canonicalPath]);
+  }, [title, description, canonicalPath, ogImage]);
 }

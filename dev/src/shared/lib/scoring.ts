@@ -76,6 +76,9 @@ export interface CertificationDef {
   minAFI: number;
 }
 
+/** Minimum solves required before AFI is shown. Mirrors server-side. */
+export const AFI_MIN_SOLVES = 5;
+
 export const CERTIFICATIONS: CertificationDef[] = [
   {
     type: 'ai_fluent',

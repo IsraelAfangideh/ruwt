@@ -14,11 +14,14 @@ import { useDocumentMeta } from '@/shared/hooks/useDocumentMeta';
 import { useAuthGuard } from '@/shared/hooks/useAuthGuard';
 import { formatCostFromHundredths } from '@/shared/lib/ai/pricing';
 import { useDashboardData } from '@/shared/lib/DashboardDataContext';
+import { AFI_TIER_COLORS, AFI_MIN_SOLVES } from '@/shared/lib/scoring';
+import type { AFITier } from '@/shared/lib/scoring';
 
 type GlobalEntry = {
   rank: number;
   user: { id: string; name: string; avatarUrl?: string | null; username?: string | null };
   stats?: { solved: number; attempts: number; avgCost: number; totalCost: number };
+  afi?: { score: number; tier: string };
 };
 
 type ChallengeEntry = {
@@ -270,6 +273,7 @@ export function LeaderboardScreen() {
                   <th scope="col" style={{ width: 32, fontSize: fontSizes.xs, fontWeight: 600, color: c.textMuted as string, textAlign: 'left', padding: `${spacing.xs}px 0` }}>#</th>
                   <th scope="col" style={{ fontSize: fontSizes.xs, fontWeight: 600, color: c.textMuted as string, textAlign: 'left', padding: `${spacing.xs}px 0` }}>User</th>
                   <th scope="col" style={{ width: 80, fontSize: fontSizes.xs, fontWeight: 600, color: c.textMuted as string, textAlign: 'right', padding: `${spacing.xs}px 0` }}>Solved</th>
+                  <th scope="col" style={{ width: 70, fontSize: fontSizes.xs, fontWeight: 600, color: c.textMuted as string, textAlign: 'right', padding: `${spacing.xs}px 0` }}>AFI</th>
                   <th scope="col" style={{ width: 80, fontSize: fontSizes.xs, fontWeight: 600, color: c.textMuted as string, textAlign: 'right', padding: `${spacing.xs}px 0` }}>Avg Cost</th>
                   <th scope="col" style={{ width: 80, fontSize: fontSizes.xs, fontWeight: 600, color: c.textMuted as string, textAlign: 'right', padding: `${spacing.xs}px 0` }}>Total Cost</th>
                 </tr>
@@ -289,12 +293,16 @@ export function LeaderboardScreen() {
                     {e.stats ? (
                       <>
                         <td style={{ width: 80, fontSize: fontSizes.xs, color: c.text as string, textAlign: 'right', padding: `${spacing.sm}px 0` }}>{e.stats.solved}</td>
+                        <td style={{ width: 70, fontSize: fontSizes.xs, fontWeight: 600, textAlign: 'right', padding: `${spacing.sm}px 0`, color: (e.afi && e.afi.score > 0 && e.stats.solved >= AFI_MIN_SOLVES ? AFI_TIER_COLORS[(e.afi.tier || 'novice') as AFITier] : c.textMuted) as string }}>
+                          {e.afi && e.afi.score > 0 && e.stats.solved >= AFI_MIN_SOLVES ? e.afi.score : '\u2014'}
+                        </td>
                         <td style={{ width: 80, fontSize: fontSizes.xs, color: c.textMuted as string, textAlign: 'right', padding: `${spacing.sm}px 0` }}>{formatCostFromHundredths(e.stats.avgCost)}</td>
                         <td style={{ width: 80, fontSize: fontSizes.xs, color: c.textMuted as string, textAlign: 'right', padding: `${spacing.sm}px 0` }}>{formatCostFromHundredths(e.stats.totalCost)}</td>
                       </>
                     ) : (
                       <>
                         <td style={{ width: 80, fontSize: fontSizes.xs, color: c.textMuted as string, textAlign: 'right', padding: `${spacing.sm}px 0` }}>-</td>
+                        <td style={{ width: 70, fontSize: fontSizes.xs, color: c.textMuted as string, textAlign: 'right', padding: `${spacing.sm}px 0` }}>-</td>
                         <td style={{ width: 80, fontSize: fontSizes.xs, color: c.textMuted as string, textAlign: 'right', padding: `${spacing.sm}px 0` }}>-</td>
                         <td style={{ width: 80, fontSize: fontSizes.xs, color: c.textMuted as string, textAlign: 'right', padding: `${spacing.sm}px 0` }}>-</td>
                       </>

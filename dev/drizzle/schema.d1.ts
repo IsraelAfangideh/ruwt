@@ -27,7 +27,18 @@ export const profiles = sqliteTable('profiles', {
   leaderboardExcluded: integer('leaderboard_excluded').default(0).notNull(), // 1 = hidden from leaderboard (QA/system accounts)
   trialUsed: integer('trial_used').default(0).notNull(), // 1 = user has used their free trial (prevents re-trial after org deletion)
   preferredMode: text('preferred_mode'), // 'practice' | 'hiring' — persists mode switcher state
+  afiScore: integer('afi_score').default(0).notNull(), // Cached AFI score (0-850), updated on each solve
+  afiTier: text('afi_tier').default('novice').notNull(), // Cached AFI tier label
   createdAt: text('created_at').default(sql`(datetime('now'))`).notNull(),
+});
+
+export const afiHistory = sqliteTable('afi_history', {
+  id: text('id').primaryKey(),
+  userId: text('user_id').notNull().references(() => profiles.id),
+  score: integer('score').notNull(),
+  tier: text('tier').notNull(),
+  solveCount: integer('solve_count').default(0).notNull(),
+  recordedAt: text('recorded_at').default(sql`(datetime('now'))`).notNull(),
 });
 
 export const challenges = sqliteTable('challenges', {

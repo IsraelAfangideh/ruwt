@@ -146,6 +146,8 @@ export async function onRequestGet(context: { request: Request; env: Env }) {
         userName: profiles.name,
         avatarUrl: profiles.avatarUrl,
         username: profiles.username,
+        afiScore: profiles.afiScore,
+        afiTier: profiles.afiTier,
         solvedCount: sql<number>`COUNT(DISTINCT CASE WHEN ${attempts.status} = 'passed' ${combinedFilter} THEN ${attempts.challengeId} END)`,
         totalAttempts: sql<number>`COUNT(CASE WHEN 1=1 ${combinedFilter} THEN ${attempts.id} END)`,
         avgCost: sql<number>`AVG(CASE WHEN ${attempts.status} = 'passed' ${combinedFilter} THEN ${attempts.totalCost} END)`,
@@ -154,7 +156,7 @@ export async function onRequestGet(context: { request: Request; env: Env }) {
       .from(profiles)
       .leftJoin(attempts, eq(profiles.id, attempts.userId))
       .where(eq(profiles.leaderboardExcluded, 0))
-      .groupBy(profiles.id, profiles.name, profiles.avatarUrl, profiles.username)
+      .groupBy(profiles.id, profiles.name, profiles.avatarUrl, profiles.username, profiles.afiScore, profiles.afiTier)
       .having(sql`COUNT(DISTINCT CASE WHEN ${attempts.status} = 'passed' ${combinedFilter} THEN ${attempts.challengeId} END) > 0`)
       .orderBy(
         desc(sql`COUNT(DISTINCT CASE WHEN ${attempts.status} = 'passed' ${combinedFilter} THEN ${attempts.challengeId} END)`),
@@ -179,6 +181,10 @@ export async function onRequestGet(context: { request: Request; env: Env }) {
           attempts: Number(r.totalAttempts),
           avgCost: r.avgCost != null ? Math.round(Number(r.avgCost)) : 0,
           totalCost: Number(r.totalCost) || 0,
+        },
+        afi: {
+          score: Number(r.afiScore) || 0,
+          tier: r.afiTier || 'novice',
         },
       })),
     });

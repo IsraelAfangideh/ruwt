@@ -8,6 +8,7 @@ import { getDb } from '../_shared/db';
 import { getUser } from '../_shared/auth';
 import { runTestCases, type SupportedLanguage } from '../_shared/judge';
 import { checkAndAwardBadges } from '../_shared/badges';
+import { updateProfileAFI } from '../_shared/afi-update';
 import { updateStreak } from '../_shared/streaks';
 import { createCompetitiveNudges } from '../_shared/competitive-nudges';
 import { createNewUserNearRankNotifications } from '../_shared/new-user-alerts';
@@ -332,7 +333,7 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
     if (testResult.passed) {
       const baseUrl = new URL(context.request.url).origin;
 
-      const [badgeResult, streakRes, , , ] = await Promise.all([
+      const [badgeResult, streakRes, , , , ] = await Promise.all([
         // Check and award badges
         checkAndAwardBadges(db, user.id).catch(/* istanbul ignore next -- @preserve */ (e) => {
           console.error('Badge check error (non-blocking):', e);
@@ -342,6 +343,10 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
         updateStreak(db, user.id).catch(/* istanbul ignore next -- @preserve */ (e) => {
           console.error('Streak update error (non-blocking):', e);
           return null;
+        }),
+        // Update cached AFI score on profile + record history
+        updateProfileAFI(db, user.id).catch(/* istanbul ignore next -- @preserve */ (e) => {
+          console.error('AFI update error (non-blocking):', e);
         }),
         // Competitive nudge notifications
         /* istanbul ignore next -- @preserve */

@@ -136,3 +136,6 @@ export function determineCertification(
   }
   return null;
 }
+
+/** Minimum solves required before AFI is shown. Below this, score is too noisy. */
+export const AFI_MIN_SOLVES = 5;

@@ -32,7 +32,7 @@ import { spacing, fontSizes, fontFamily, radii } from '@/shared/theme/tokens';
 import { getDifficultyStyle } from '@/shared/lib/difficulty';
 import { formatCostFromHundredths } from '@/shared/lib/ai/pricing';
 import { timeAgo, formatCategory, generateHeatmapDays } from '@/shared/lib/utils';
-import { AFI_TIER_COLORS, CERTIFICATIONS, type AFITier } from '@/shared/lib/scoring';
+import { AFI_TIER_COLORS, CERTIFICATIONS, AFI_MIN_SOLVES, type AFITier } from '@/shared/lib/scoring';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -739,6 +739,7 @@ function AFICard({ data, onViewProfile }: { data: DashboardData; onViewProfile: 
   const afiTier = (afiData?.tier ?? 'novice') as AFITier;
   const afiLabel = afiData?.label ?? 'Novice';
   const tierColor = AFI_TIER_COLORS[afiTier];
+  const isPreliminary = progress.solvedCount < AFI_MIN_SOLVES;
 
   // Find next certification milestone
   /* istanbul ignore next -- @preserve */
@@ -778,7 +779,7 @@ function AFICard({ data, onViewProfile }: { data: DashboardData; onViewProfile: 
                 <Text style={[styles.afiTierText, { color: tierColor }]}>{afiLabel}</Text>
               </View>
             </View>
-            <Text style={[styles.afiScale, { color: c.textMuted }]}>out of 850</Text>
+            <Text style={[styles.afiScale, { color: c.textMuted }]}>{isPreliminary ? `${AFI_MIN_SOLVES - progress.solvedCount} more solve${AFI_MIN_SOLVES - progress.solvedCount !== 1 ? 's' : ''} to stabilize` : 'out of 850'}</Text>
           </View>
           <View style={styles.afiRight}>
             {certSection}

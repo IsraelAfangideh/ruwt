@@ -18,6 +18,7 @@ import { spacing, fontSizes, fontFamily, radii } from '@/shared/theme/tokens';
 import { useDocumentMeta } from '@/shared/hooks/useDocumentMeta';
 import { formatCostFromHundredths } from '@/shared/lib/ai/pricing';
 import { computeAFI, AFI_TIER_COLORS, CERTIFICATIONS, type AFITier } from '@/shared/lib/scoring';
+import { AFISparkline } from '@/features/profile/AFISparkline';
 
 interface BadgeData {
   badgeType: string;
@@ -99,6 +100,7 @@ export function PublicProfileScreen() {
     title: data ? `${profileDisplayName}'s Profile — AFI ${afiData?.score ?? 0}` : undefined,
     description: data ? `${profileDisplayName} has an AI Fluency Index of ${afiData?.score ?? 0} (${afiData?.label ?? 'Novice'}). ${data.stats.solved} challenges solved. View their AI efficiency profile on ruwt.dev.` : undefined,
     canonicalPath: username ? `/u/${username}` : undefined,
+    ogImage: username ? `https://ruwt.dev/api/og/afi/${username}` : undefined,
   });
 
   useEffect(() => {
@@ -200,6 +202,8 @@ export function PublicProfileScreen() {
               <Text style={[styles.afiTierText, { color: AFI_TIER_COLORS[afiData.tier] }]}>{afiData.label}</Text>
             </View>
             <Text style={[styles.afiScale, { color: c.textMuted }]}>out of 850</Text>
+            {/* AFI trend sparkline */}
+            <AFISparkline username={data.user.username} currentTier={afiData.tier} />
           </View>
           {/* Certification badge */}
           {/* istanbul ignore next -- @preserve */ certDef && (

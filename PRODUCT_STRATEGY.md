@@ -116,9 +116,12 @@ Developers who meet AFI + solve count thresholds earn verified certification bad
 - Risk: divergence — keep mirrored files in sync manually
 
 ### AFI Data Flow
-1. User solves challenge → `checkAndAwardBadges()` computes radar + AFI → awards certification badges
-2. Public profile load → `/api/users/:username` computes radar + AFI → returns in response
-3. Client renders AFI card (with client-side `computeAFI()` fallback for stale API responses)
+1. User solves challenge → `updateProfileAFI()` recomputes radar + AFI → stores on profile + records history
+2. `checkAndAwardBadges()` awards certification badges based on AFI thresholds
+3. Dashboard API (`/api/dashboard`) computes AFI from query data → returns in response
+4. Public profile API (`/api/users/:username`) computes AFI from radar → returns in response
+5. Leaderboard API reads cached `afi_score`/`afi_tier` from profiles table (no recomputation)
+6. AFI history API (`/api/afi-history`) returns daily snapshots for sparkline display
 
 ### Certification Badge Flow
 1. After each solve, `checkAndAwardBadges()` runs
@@ -131,12 +134,48 @@ Developers who meet AFI + solve count thresholds earn verified certification bad
 
 ---
 
+## Round 3: Leaderboard, Share Cards, History, Stabilization
+
+### 9. AFI on Leaderboard
+**Status: IMPLEMENTED**
+
+- [x] Migration 0056: `afi_score` + `afi_tier` columns on profiles table
+- [x] `afi_history` table for tracking score changes over time
+- [x] `updateProfileAFI()` called after each successful solve (non-blocking)
+- [x] Leaderboard API returns `afi.score` + `afi.tier` per user
+- [x] Leaderboard UI shows AFI column with tier-colored scores
+- [x] Score hidden (shows "—") when user has < 5 solves (stabilization)
+
+### 10. Social Share Cards
+**Status: IMPLEMENTED**
+
+- [x] `buildAfiShareSvg()` generates 1200x630 SVG with score, tier, certification, name
+- [x] `/api/og/afi/:username` endpoint renders SVG → PNG (resvg-wasm) with 1hr cache
+- [x] `useDocumentMeta` extended with `ogImage` support
+- [x] Public profile sets `og:image` to AFI share card URL
+
+### 11. AFI History/Trends
+**Status: IMPLEMENTED**
+
+- [x] `afi_history` table stores daily snapshots (userId, score, tier, solveCount, date)
+- [x] `updateProfileAFI()` records history on each solve (max one per day via conflict skip)
+- [x] `/api/afi-history?username=:username` returns last 90 days
+- [x] `AFISparkline` component renders SVG line chart with trend indicator
+- [x] Sparkline shown on public profile below AFI score card
+
+### 12. Score Stabilization
+**Status: IMPLEMENTED**
+
+- [x] `AFI_MIN_SOLVES = 5` constant (server + client)
+- [x] Dashboard shows "X more solves to stabilize" below threshold
+- [x] Leaderboard shows "—" for AFI when user has < 5 solves
+
+---
+
 ## Future Work
 
-- [ ] AFI column on leaderboard (requires DB-stored AFI or per-user computation)
-- [ ] Shareable AFI score cards (social media image generation)
+- [ ] "State of AI Fluency" report — aggregate anonymized data into public page
 - [ ] Team average AFI dashboard
 - [ ] Internal team benchmarking features (not just assessment)
-- [ ] "State of AI Fluency" report using aggregate data
-- [ ] AFI trends over time (sparkline on profile)
 - [ ] Post-solve AFI delta (show score change after each solve — needs before/after comparison)
+- [ ] AFI-based leaderboard sorting option (sort by AFI instead of solve count)
