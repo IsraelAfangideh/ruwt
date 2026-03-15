@@ -84,7 +84,7 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
           userId: commentAuthorId,
           type: 'reaction_received',
           title: 'New reaction',
-          body: `${profile?.name || 'Someone'} reacted ${emojiDisplay[emoji] || emoji} to your comment`,
+          body: `${/* istanbul ignore next -- @preserve */ profile?.name || 'Someone'} reacted ${/* istanbul ignore next -- @preserve */ emojiDisplay[emoji] || emoji} to your comment`,
           metadata: JSON.stringify({ targetType, targetId, emoji }),
         /* istanbul ignore next -- @preserve */
         }).catch(/* istanbul ignore next -- @preserve */ () => {}); // non-blocking

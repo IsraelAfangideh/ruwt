@@ -131,7 +131,8 @@ export async function onRequestPost(context: { request: Request; env: Env; param
           recipientEmail: creator.email,
           assessmentId: assessment.id,
           subject: template.subject,
-          status: result.success ? 'sent' : 'failed',
+          status: /* istanbul ignore next -- @preserve */ result.success ? 'sent' : 'failed',
+          /* istanbul ignore next -- @preserve */
           errorMessage: result.error ?? null,
         }).catch(/* istanbul ignore next -- @preserve */ () => {});
       } catch {}

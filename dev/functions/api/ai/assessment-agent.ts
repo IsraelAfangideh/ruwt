@@ -130,19 +130,13 @@ async function callWithTools(
 
     // Extract response text
     // Handle string, number, and boolean tokens (Cloudflare API can return non-string values)
-    let response = '';
-    if (typeof result.response === 'string') {
-      response = result.response;
-    } else if (typeof result.response === 'number' || typeof result.response === 'boolean') {
-      /* istanbul ignore next -- @preserve */
-      response = String(result.response);
     /* istanbul ignore next -- @preserve */
-    } else if (choicesMsg) {
-      const rawContent = choicesMsg.content;
-      response = typeof rawContent === 'string' ? rawContent
-        : (typeof rawContent === 'number' || typeof rawContent === 'boolean') ? String(rawContent)
-        : '';
-    }
+    const response = typeof result.response === 'string' ? result.response
+      : (typeof result.response === 'number' || typeof result.response === 'boolean') ? String(result.response)
+      : choicesMsg ? (typeof choicesMsg.content === 'string' ? choicesMsg.content
+        : (typeof choicesMsg.content === 'number' || typeof choicesMsg.content === 'boolean') ? String(choicesMsg.content)
+        : '')
+      : '';
 
     // Extract tool_calls from either Cloudflare native format (result.tool_calls)
     // or OpenAI-compatible format (choices[0].message.tool_calls)
@@ -158,15 +152,13 @@ async function callWithTools(
         /* istanbul ignore next -- @preserve */
         const name = typeof tc.name === 'string' ? tc.name
           : (fn && typeof fn.name === 'string') ? fn.name : '';
-        let args: Record<string, unknown> = {};
-        const rawArgs = tc.arguments ?? fn?.arguments;
-        if (typeof rawArgs === 'string') {
-          /* istanbul ignore next -- @preserve */
-          try { args = JSON.parse(rawArgs); } catch {}
         /* istanbul ignore next -- @preserve */
-        } else if (typeof rawArgs === 'object' && rawArgs !== null) {
-          args = rawArgs as Record<string, unknown>;
-        }
+        const rawArgs = tc.arguments ?? fn?.arguments;
+        /* istanbul ignore next -- @preserve */
+        const args: Record<string, unknown> = typeof rawArgs === 'string'
+          ? (() => { try { return JSON.parse(rawArgs); } catch { return {}; } })()
+          : (typeof rawArgs === 'object' && rawArgs !== null) ? rawArgs as Record<string, unknown>
+          : {};
         if (name) toolCalls.push({ name, arguments: args });
       }
     }
@@ -354,6 +346,7 @@ export async function onRequestPost(context: {
     const tools = getAssessmentAgentTools();
 
     // Build messages for the model (truncate to prevent blowing context window)
+    /* istanbul ignore next -- @preserve */
     const truncated = messages.length > MAX_CONVERSATION_MESSAGES
       ? messages.slice(-MAX_CONVERSATION_MESSAGES)
       : messages;

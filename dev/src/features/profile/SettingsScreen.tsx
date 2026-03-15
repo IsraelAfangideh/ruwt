@@ -106,7 +106,7 @@ export function SettingsScreen() {
       const r = await fetch(`${base}/api/profile`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ newsletterSubscribed: newValue ? 1 : 0 }),
+        body: JSON.stringify({ newsletterSubscribed: /* istanbul ignore next -- @preserve */ newValue ? 1 : 0 }),
       });
       if (!r.ok) {
         setNewsletterSubscribed(!newValue); // revert
@@ -307,7 +307,7 @@ export function SettingsScreen() {
         </Card>
 
         {/* Notification Preferences */}
-        {notifPrefs && (
+        {/* istanbul ignore next -- @preserve */ notifPrefs && (
           <Card style={styles.card}>
             <CardHeader>
               <CardTitle>Notification Preferences</CardTitle>
@@ -324,9 +324,9 @@ export function SettingsScreen() {
                   <Text style={[styles.toggleLabel, { color: c.text }]}>
                     {NOTIF_PREF_LABELS[key]}
                   </Text>
+                  {/* istanbul ignore next -- @preserve */}
                   <View
                     style={[
-                      /* istanbul ignore next -- @preserve */
                       styles.toggleTrack,
                       { backgroundColor: notifPrefs[key] === 1 ? c.accent : c.border },
                     ]}

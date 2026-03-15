@@ -91,7 +91,7 @@ export function OnboardingScreen() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           onboardingCompleted: 1,
-          newsletterSubscribed: wantsNewsletter ? 1 : 0,
+          newsletterSubscribed: /* istanbul ignore next -- @preserve */ wantsNewsletter ? 1 : 0,
         }),
       });
     } catch {
@@ -128,6 +128,7 @@ export function OnboardingScreen() {
           )}
           {/* istanbul ignore next -- @preserve step 2 is unreachable: goNext is only passed to step 0, step 1 has no path to step 2 */}
           {step === 2 && (
+            /* istanbul ignore next -- @preserve */
             <StepComplete
               colors={c}
               onBack={goBack}

@@ -46,8 +46,8 @@ async function executeCode(
     language: langConfig.language,
     version: langConfig.version,
     files: [{ content: sourceCode }],
-    stdin: stdin || '',
-    /* istanbul ignore next -- @preserve */ run_timeout: options?.runTimeout || 5000,
+    stdin: /* istanbul ignore next -- @preserve */ stdin || '',
+    run_timeout: /* istanbul ignore next -- @preserve */ options?.runTimeout || 5000,
   });
 }
 

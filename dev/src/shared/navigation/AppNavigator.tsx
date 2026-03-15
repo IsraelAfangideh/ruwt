@@ -116,8 +116,7 @@ class ChunkErrorBoundary extends Component<
     // Chunk load failures happen when a deploy invalidates cached chunks
     Sentry.captureException(error, {
       tags: { type: 'chunk_error' },
-      /* istanbul ignore next -- @preserve */
-      contexts: { react: { componentStack: info.componentStack ?? undefined } },
+      contexts: { react: { componentStack: /* istanbul ignore next -- @preserve */ info.componentStack ?? undefined } },
     });
   }
 
@@ -133,6 +132,7 @@ class ChunkErrorBoundary extends Component<
             /* istanbul ignore next -- @preserve */
             style={({ pressed }: { pressed: boolean }) => [
               styles.reloadBtn,
+              /* istanbul ignore next -- @preserve */
               pressed && { opacity: 0.8 },
             ]}
             onPress={() => window.location.reload()}

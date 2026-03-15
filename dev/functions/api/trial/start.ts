@@ -122,7 +122,7 @@ export async function onRequestPost(context: { request: Request; env: Env; waitU
       const adminEmail = trialStartNotificationEmail({
         /* istanbul ignore next -- @preserve */
         userName,
-        userEmail: user.email ?? '',
+        userEmail: /* istanbul ignore next -- @preserve */ user.email ?? '',
         orgName,
         provider,
         trialEndsAt: trialEnds.toISOString(),

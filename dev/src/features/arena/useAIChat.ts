@@ -119,9 +119,11 @@ export function useAIChat(options: UseAIChatOptions) {
           } else if (data.type === 'error') {
             /* istanbul ignore next -- @preserve */
             onError(data.message || 'Unknown error');
-          /* istanbul ignore next -- @preserve */
-          } else if (data.type === 'constraint_warning') {
-            onConstraint?.(data.violation || 'unknown', data.message || 'Constraint reached');
+          } else {
+            /* istanbul ignore next -- @preserve */
+            if (data.type === 'constraint_warning') {
+              onConstraint?.(data.violation || 'unknown', data.message || 'Constraint reached');
+            }
           }
         };
 

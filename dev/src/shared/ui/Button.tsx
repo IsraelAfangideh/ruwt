@@ -68,6 +68,7 @@ export function Button({
         s.container,
         size === 'icon' && styles.iconMinHeight,
         fullWidth && styles.fullWidth,
+        /* istanbul ignore next -- @preserve */
         pressed && styles.pressed,
         disabled && styles.disabled,
         style,

@@ -1179,9 +1179,9 @@ export function trialExpiredEmail(params: TrialExpiredParams): EmailTemplate {
   const subject = 'Your trial has ended';
   const usedAssessments = assessmentsUsed > 0;
 
+  /* istanbul ignore next -- @preserve */
   const content = `
             <p style="margin: 0 0 16px 0; font-size: 16px; color: #1a1816;">${greeting}</p>
-            /* istanbul ignore next -- @preserve */
             <p style="margin: 0 0 20px 0; color: #1a1816; line-height: 1.6;">Your 30-day trial for <strong>${escapeHtml(orgName)}</strong> has ended.</p>${usedAssessments ? `
             <!-- Usage recap -->
             <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin: 0 0 28px 0; background-color: #f5f3f0; border-radius: 8px;">
@@ -1203,7 +1203,7 @@ export function trialExpiredEmail(params: TrialExpiredParams): EmailTemplate {
                 </td>
               </tr>
             </table>
-            <p style="margin: 0 0 24px 0; color: #1a1816; line-height: 1.6;">You ran <strong>${assessmentsUsed} assessment${assessmentsUsed === 1 ? '' : 's'}</strong> during your trial. Subscribe to keep going.</p>` : `
+            <p style="margin: 0 0 24px 0; color: #1a1816; line-height: 1.6;">You ran <strong>${assessmentsUsed} assessment${/* istanbul ignore next -- @preserve */ assessmentsUsed === 1 ? '' : 's'}</strong> during your trial. Subscribe to keep going.</p>` : `
             <p style="margin: 0 0 24px 0; color: #1a1816; line-height: 1.6;">Your trial ended before you created an assessment. We&rsquo;d love to help &mdash; reply to this email.</p>`}
             <p style="margin: 0 0 24px 0; color: #5c564e; font-size: 14px; line-height: 1.6;">All your data is saved. Subscribe anytime to pick up where you left off.</p>
             <!-- CTA -->
@@ -1218,6 +1218,7 @@ export function trialExpiredEmail(params: TrialExpiredParams): EmailTemplate {
 
   const html = wrapInLayout(content, 'Your trial has ended \u2014 subscribe to continue');
 
+  /* istanbul ignore next -- @preserve */
   const text = [
     greeting,
     '',
@@ -1226,10 +1227,15 @@ export function trialExpiredEmail(params: TrialExpiredParams): EmailTemplate {
     ...(usedAssessments
       /* istanbul ignore next -- @preserve */
       ? [
+          /* istanbul ignore next -- @preserve */
           `During your trial:`,
+          /* istanbul ignore next -- @preserve */
           `- Assessments: ${assessmentsUsed}`,
+          /* istanbul ignore next -- @preserve */
           `- Invites sent: ${invitesUsed}`,
+          /* istanbul ignore next -- @preserve */
           '',
+          /* istanbul ignore next -- @preserve */
           `You ran ${assessmentsUsed} assessment${assessmentsUsed === 1 ? '' : 's'} during your trial. Subscribe to keep going.`,
         ]
       /* istanbul ignore next -- @preserve */

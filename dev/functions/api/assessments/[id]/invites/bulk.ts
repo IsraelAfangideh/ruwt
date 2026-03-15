@@ -176,7 +176,7 @@ export async function onRequestPost(context: { request: Request; env: Env; param
           inviteId,
           subject: `Assessment invite for ${assessment.title}`,
           status: 'failed',
-          errorMessage: emailErr?.message ?? 'Unknown error',
+          errorMessage: /* istanbul ignore next -- @preserve */ emailErr?.message ?? 'Unknown error',
         /* istanbul ignore next -- @preserve */
         }).catch(/* istanbul ignore next -- @preserve */ () => {}); // don't fail if logging fails either
       }

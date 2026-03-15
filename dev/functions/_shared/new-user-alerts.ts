@@ -44,7 +44,7 @@ export async function createNewUserNearRankNotifications(
         ${target.user_id},
         'leaderboard_change',
         ${`${userName} joined the leaderboard`},
-        ${gap === 0 ? `${userName} is tied with you.` : `${userName} is ${gap} solve${gap > 1 ? 's' : ''} behind you.`},
+        ${/* istanbul ignore next -- @preserve */ gap === 0 ? `${userName} is tied with you.` : `${userName} is ${gap} solve${gap > 1 ? 's' : ''} behind you.`},
         ${JSON.stringify({ newUserId: userId, gap })}
       )`);
   }

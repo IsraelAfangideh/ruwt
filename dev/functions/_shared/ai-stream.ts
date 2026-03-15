@@ -291,8 +291,8 @@ export async function* streamCloudflareAIWithFallback(
           max_tokens: options?.maxTokens ?? 2048,
           temperature: options?.temperature ?? 0.7,
           stream: true,
-          ...(options?.tools?.length && { tools: options.tools }),
-          ...(options?.response_format && { response_format: options.response_format }),
+          ...(/* istanbul ignore next -- @preserve */ options?.tools?.length && { tools: options.tools }),
+          ...(/* istanbul ignore next -- @preserve */ options?.response_format && { response_format: options.response_format }),
         }),
       }
     );

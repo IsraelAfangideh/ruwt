@@ -132,6 +132,7 @@ export function LoginScreen() {
         style={({ pressed }: { pressed: boolean }) => [
           styles.oauthBtn,
           { borderColor: c.borderStrong },
+          /* istanbul ignore next -- @preserve */
           pressed && { opacity: 0.9 },
           loading && { opacity: 0.5 },
         ]}

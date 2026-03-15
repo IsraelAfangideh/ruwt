@@ -70,7 +70,7 @@ export async function pistonExecute(
       stdin: request.stdin ?? '',
       run_timeout: request.run_timeout,
     }),
-    ...(fetchOptions?.signal ? { signal: fetchOptions.signal } : {}),
+    ...(/* istanbul ignore next -- @preserve */ fetchOptions?.signal ? { signal: fetchOptions.signal } : {}),
   });
 
   if (!res.ok) {

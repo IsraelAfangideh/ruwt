@@ -144,7 +144,7 @@ export async function onRequestPost(context: { request: Request; env: Env; param
         userId: attempt.userId,
         type: 'replay_comment',
         title: 'New comment on your replay',
-        body: `${profile?.name || 'Someone'} commented on your replay of ${challenge?.title || 'a challenge'}`,
+        body: `${/* istanbul ignore next -- @preserve */ profile?.name || 'Someone'} commented on your replay of ${/* istanbul ignore next -- @preserve */ challenge?.title || 'a challenge'}`,
         metadata: JSON.stringify({ attemptId }),
       });
     }

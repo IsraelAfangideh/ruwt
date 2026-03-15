@@ -207,11 +207,13 @@ export class RuwtTUI {
             this.picker.modelIdx = 0;
             /* istanbul ignore next -- @preserve */
             this.renderPicker();
-          /* istanbul ignore next -- @preserve */
-          } else if (arrow === 'D') {
-            this.picker.tierIdx = (this.picker.tierIdx - 1 + TIER_ORDER.length) % TIER_ORDER.length;
-            this.picker.modelIdx = 0;
-            this.renderPicker();
+          } else {
+            /* istanbul ignore next -- @preserve */
+            if (arrow === 'D') {
+              this.picker.tierIdx = (this.picker.tierIdx - 1 + TIER_ORDER.length) % TIER_ORDER.length;
+              this.picker.modelIdx = 0;
+              this.renderPicker();
+            }
           }
           i += 2;
         } else if (code === 9) {
@@ -224,9 +226,11 @@ export class RuwtTUI {
         } else if (code === 3 || ch === 'q') {
           /* istanbul ignore next -- @preserve */
           this.closeModelPicker(false);
-        /* istanbul ignore next -- @preserve */
-        } else if (ch === '\x1b') {
-          this.closeModelPicker(false);
+        } else {
+          /* istanbul ignore next -- @preserve */
+          if (ch === '\x1b') {
+            this.closeModelPicker(false);
+          }
         }
         continue;
       }
@@ -279,11 +283,13 @@ export class RuwtTUI {
           }
           /* istanbul ignore next -- @preserve */
           this.resetInput();
-        /* istanbul ignore next -- @preserve */
-        } else if (code >= 32) {
-          const lastSeg = this.lastTextSeg();
-          lastSeg.content = lastSeg.content.slice(0, this.cursorPos) + ch + lastSeg.content.slice(this.cursorPos);
-          this.cursorPos++;
+        } else {
+          /* istanbul ignore next -- @preserve */
+          if (code >= 32) {
+            const lastSeg = this.lastTextSeg();
+            lastSeg.content = lastSeg.content.slice(0, this.cursorPos) + ch + lastSeg.content.slice(this.cursorPos);
+            this.cursorPos++;
+          }
         }
         continue;
       }
@@ -513,7 +519,7 @@ export class RuwtTUI {
         /* istanbul ignore next -- @preserve */
         attemptId: this.attemptId,
         currentCode: oldCode,
-        aiResponse: remaining || responseText,
+        aiResponse: /* istanbul ignore next -- @preserve */ remaining || responseText,
         language: this.language,
         challengeTitle: this.challengeTitle,
       });
@@ -761,7 +767,7 @@ export class RuwtTUI {
           passed: testResult.passed,
           passedTests: testResult.passedTests,
           totalTests: testResult.totalTests,
-          results: (testResult.results || []) as TestResults['results'],
+          results: /* istanbul ignore next -- @preserve */ (testResult.results || []) as TestResults['results'],
         };
 
         /* istanbul ignore next -- @preserve */

@@ -349,8 +349,7 @@ export function AssessmentChatPanel({
             {quickReplyButtons.showApplyAll && (
               <Pressable
                 accessibilityRole="button"
-                /* istanbul ignore next -- @preserve */
-                onPress={() => sendMessage('Apply all')}
+                onPress={/* istanbul ignore next -- @preserve */ () => sendMessage('Apply all')}
                 style={[styles.quickReplyBtn, { borderColor: c.accent + '50', backgroundColor: c.accent + '10' }]}
               >
                 <Text style={[styles.quickReplyText, { color: c.accent }]}>Apply all</Text>

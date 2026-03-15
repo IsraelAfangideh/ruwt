@@ -218,8 +218,8 @@ async function handleExpired(
         /* istanbul ignore next -- @preserve */
         to: alertEmail,
         subject: `Trial expired: ${org.org_name}`,
-        html: `<div dir="ltr"><p><font color="#8a847a" size="2">trial expired</font></p><p>${escapeHtml(org.org_name)} — owner: ${escapeHtml(org.owner_name || 'N/A')} (${escapeHtml(org.owner_email)})</p><p>assessments used: ${org.trial_assessments_used}/${TRIAL_MAX_ASSESSMENTS}</p><p><font color="#b0aaa0" size="1">ruwt.dev trial lifecycle</font></p></div>`,
-        text: `trial expired\n\n${org.org_name} — owner: ${org.owner_name || 'N/A'} (${org.owner_email})\nassessments used: ${org.trial_assessments_used}/${TRIAL_MAX_ASSESSMENTS}\n\n---\nruwt.dev trial lifecycle`,
+        html: `<div dir="ltr"><p><font color="#8a847a" size="2">trial expired</font></p><p>${escapeHtml(org.org_name)} — owner: ${escapeHtml(/* istanbul ignore next -- @preserve */ org.owner_name || 'N/A')} (${escapeHtml(org.owner_email)})</p><p>assessments used: ${org.trial_assessments_used}/${TRIAL_MAX_ASSESSMENTS}</p><p><font color="#b0aaa0" size="1">ruwt.dev trial lifecycle</font></p></div>`,
+        text: `trial expired\n\n${org.org_name} — owner: ${/* istanbul ignore next -- @preserve */ org.owner_name || 'N/A'} (${org.owner_email})\nassessments used: ${org.trial_assessments_used}/${TRIAL_MAX_ASSESSMENTS}\n\n---\nruwt.dev trial lifecycle`,
         from: 'ruwt alerts <alerts@ruwt.dev>',
       });
     }

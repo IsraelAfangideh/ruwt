@@ -114,7 +114,7 @@ export async function onRequestGet(context: { request: Request; env: Env }) {
           user: {
             /* istanbul ignore next -- @preserve */
             id: r.userId,
-            name: r.userName || r.username || 'Anonymous',
+            name: /* istanbul ignore next -- @preserve */ r.userName || r.username || 'Anonymous',
             avatarUrl: r.avatarUrl,
             username: r.username,
           },

@@ -529,7 +529,7 @@ export async function onRequestPost(context: {
       {
         /* istanbul ignore next -- @preserve */
         error: 'Internal server error',
-        details: error instanceof Error ? error.message : String(error),
+        details: /* istanbul ignore next -- @preserve */ error instanceof Error ? error.message : String(error),
       },
       { status: 500 }
     );

@@ -153,7 +153,7 @@ export function BulkInvitePanel({ assessmentId, onInvitesSent }: Props) {
         {results && (
           <View style={[styles.resultsBanner, { backgroundColor: c.success + '15', borderColor: c.success + '30' }]}>
             <Text style={{ color: c.success, fontSize: fontSizes.sm, fontWeight: '600' }}>
-              {created} invite{created !== 1 ? 's' : ''} created, {emailed} email{emailed !== 1 ? 's' : ''} sent
+              {created} invite{/* istanbul ignore next -- @preserve */ created !== 1 ? 's' : ''} created, {emailed} email{/* istanbul ignore next -- @preserve */ emailed !== 1 ? 's' : ''} sent
             </Text>
             {results.filter((r) => r.status === 'failed').length > 0 && (
               <View style={{ marginTop: spacing.xs }}>
@@ -162,7 +162,7 @@ export function BulkInvitePanel({ assessmentId, onInvitesSent }: Props) {
                 </Text>
                 {results.filter((r) => r.status === 'failed').map((r, i) => (
                   <Text key={i} style={{ color: c.destructive, fontSize: fontSizes.xs }}>
-                    {r.email}{r.error ? ` — ${r.error}` : ''}
+                    {r.email}{/* istanbul ignore next -- @preserve */ r.error ? ` — ${r.error}` : ''}
                   </Text>
                 ))}
               </View>

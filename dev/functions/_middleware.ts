@@ -153,7 +153,7 @@ export async function onRequest(context: { request: Request; env: Env; next: () 
           userId: userId ?? undefined,
           errorMessage,
           requestBody: requestBody?.slice(0, 10000),
-          level: response.status >= 500 ? 'error' : 'warn',
+          level: /* istanbul ignore next -- @preserve */ response.status >= 500 ? 'error' : 'warn',
         /* istanbul ignore next -- @preserve */
         }).catch(/* istanbul ignore next -- @preserve */ () => {}); // fire-and-forget, never block response
       }

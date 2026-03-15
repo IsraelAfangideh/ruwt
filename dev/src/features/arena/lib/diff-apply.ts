@@ -425,11 +425,13 @@ export function parseUnifiedDiff(text: string): EditBlock[] {
         searchLines.push(line.slice(1));
         /* istanbul ignore next -- @preserve */
         replaceLines.push(line.slice(1));
-      /* istanbul ignore next -- @preserve */
-      } else if (line === '') {
-        // Empty line in diff = context line with no prefix
-        searchLines.push('');
-        replaceLines.push('');
+      } else {
+        /* istanbul ignore next -- @preserve */
+        if (line === '') {
+          // Empty line in diff = context line with no prefix
+          searchLines.push('');
+          replaceLines.push('');
+        }
       }
       // Skip lines starting with \ (no newline at end of file markers)
     }

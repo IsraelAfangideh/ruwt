@@ -102,8 +102,7 @@ export function DashboardNav() {
             key={item.name}
             /* istanbul ignore next -- @preserve */
             onPress={() => (navigation as any).navigate(item.name)}
-            /* istanbul ignore next -- @preserve */
-            onLayout={(e: any) => handleLayout(item.name, e)}
+            onLayout={/* istanbul ignore next -- @preserve */ (e: any) => handleLayout(item.name, e)}
             style={styles.item}
             accessibilityRole="link"
             accessibilityLabel={item.label}

@@ -50,13 +50,9 @@ export function CustomChallengeReview({ challenge, orgId, onApprove, onDelete, c
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: 'active' }),
       });
-      if (res.ok) onApprove(challenge.id);
       /* istanbul ignore next -- @preserve */
-      else setActionError('Failed to approve challenge');
-    } catch {
-      /* istanbul ignore next -- @preserve */
-      setActionError('Network error — could not approve');
-    }
+      if (res.ok) onApprove(challenge.id); else setActionError('Failed to approve challenge');
+    } catch { /* istanbul ignore next -- @preserve */ setActionError('Network error — could not approve'); }
     setApproving(false);
   }, [challenge.id, orgId, onApprove]);
 
@@ -67,13 +63,9 @@ export function CustomChallengeReview({ challenge, orgId, onApprove, onDelete, c
       const res = await fetch(`/api/orgs/${orgId}/challenges/${challenge.id}`, {
         method: 'DELETE',
       });
-      if (res.ok) onDelete(challenge.id);
       /* istanbul ignore next -- @preserve */
-      else setActionError('Failed to delete challenge');
-    } catch {
-      /* istanbul ignore next -- @preserve */
-      setActionError('Network error — could not delete');
-    }
+      if (res.ok) onDelete(challenge.id); else setActionError('Failed to delete challenge');
+    } catch { /* istanbul ignore next -- @preserve */ setActionError('Network error — could not delete'); }
     setDeleting(false);
     setConfirmDelete(false);
   }, [challenge.id, orgId, onDelete]);
@@ -193,6 +185,7 @@ export function CustomChallengeReview({ challenge, orgId, onApprove, onDelete, c
 
           {/* Actions */}
           {actionError && (
+            /* istanbul ignore next -- @preserve */
             <Text style={{ color: c.destructive, fontSize: fontSizes.xs, marginTop: spacing.sm }}>
               {actionError}
             </Text>

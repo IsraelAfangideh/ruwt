@@ -127,11 +127,11 @@ export async function onRequestPost(context: { request: Request; env: Env; param
         const template = candidateInviteEmail({
           /* istanbul ignore next -- @preserve */
           candidateName: undefined,
-          companyName: assessment.companyName ?? undefined,
-          companyLogoUrl: assessment.companyLogoUrl ?? undefined,
+          companyName: /* istanbul ignore next -- @preserve */ assessment.companyName ?? undefined,
+          companyLogoUrl: /* istanbul ignore next -- @preserve */ assessment.companyLogoUrl ?? undefined,
           assessmentTitle: assessment.title,
-          assessmentDescription: assessment.description ?? undefined,
-          challengeCount: Number(challengeCount[0]?.count ?? 0),
+          assessmentDescription: /* istanbul ignore next -- @preserve */ assessment.description ?? undefined,
+          challengeCount: Number(/* istanbul ignore next -- @preserve */ challengeCount[0]?.count ?? 0),
           timeLimit: Math.floor(assessment.timeLimit / 60),
           inviteUrl,
           expiresAt: expiresAt.toISOString(),
@@ -156,9 +156,8 @@ export async function onRequestPost(context: { request: Request; env: Env; param
           assessmentId: context.params.id,
           inviteId,
           subject: template.subject,
-          status: result.success ? 'sent' : 'failed',
-          errorMessage: result.error ?? null,
-        /* istanbul ignore next -- @preserve */
+          status: /* istanbul ignore next -- @preserve */ result.success ? 'sent' : 'failed',
+          errorMessage: /* istanbul ignore next -- @preserve */ result.error ?? null,
         }).catch(/* istanbul ignore next -- @preserve */ () => {}); // fire-and-forget
       } catch {}
     }

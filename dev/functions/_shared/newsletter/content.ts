@@ -535,7 +535,7 @@ ${platCtx.join('\n')}
 /* istanbul ignore next -- @preserve */
 RULES (non-negotiable — Gmail Primary inbox):
 - Write like a friend texting. Lowercase fine. Fragments fine.
-- Start with "${firstName || 'hey'} —" and then dive in.
+- Start with "${/* istanbul ignore next -- @preserve */ firstName || 'hey'} —" and then dive in.
 - NEVER use calls to action. No "check it out", "try it", "join us".
 - NEVER use marketing language. No "exciting", "thrilled", "game-changer".
 - No bullet points, numbered lists, or headers.

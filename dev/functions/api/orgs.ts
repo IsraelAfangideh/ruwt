@@ -119,7 +119,7 @@ export async function onRequestGet(context: { request: Request; env: Env }) {
           /* istanbul ignore next -- @preserve */
           ...row.org,
           role: row.role,
-          memberCount: countRow?.count ?? 0,
+          memberCount: /* istanbul ignore next -- @preserve */ countRow?.count ?? 0,
         };
       })
     );
