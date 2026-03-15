@@ -59,8 +59,13 @@ export function LeaderboardScreen() {
   const { state: cachedData } = useDashboardData();
   const [tab, setTab] = useState<Tab>('global');
   const [period, setPeriod] = useState<Period>('week');
+  type SortBy = 'default' | 'afi';
+  const [sortBy, setSortBy] = useState<SortBy>('default');
   const [localGlobalEntries, setLocalGlobalEntries] = useState<GlobalEntry[] | null>(null);
-  const globalEntries = localGlobalEntries ?? cachedData.leaderboard.data as GlobalEntry[];
+  const rawGlobalEntries = (localGlobalEntries ?? cachedData.leaderboard.data ?? []) as GlobalEntry[];
+  const globalEntries = sortBy === 'afi'
+    ? [...rawGlobalEntries].sort((a, b) => (b.afi?.score ?? 0) - (a.afi?.score ?? 0)).map((e, i) => ({ ...e, rank: i + 1 }))
+    : rawGlobalEntries;
   const [challengeEntries, setChallengeEntries] = useState<ChallengeEntry[]>([]);
   const challenges = cachedData.challenges.data as ChallengeInfo[];
   const [selectedChallenge, setSelectedChallenge] = useState<string>('');
@@ -188,6 +193,23 @@ export function LeaderboardScreen() {
       <Text style={{ fontSize: fontSizes.xs, color: c.textMuted, marginBottom: spacing.sm, paddingHorizontal: spacing.xs }}>
         Open: Cloudflare models only. Unlimited: All models.
       </Text>
+
+
+      {/* Sort toggle */}
+      <View style={[styles.periodBar, { borderBottomColor: c.border }]}>
+        {([['default', 'By Solves'], ['afi', 'By AFI']] as const).map(([key, label]) => (
+          <Pressable
+            key={key}
+            onPress={() => setSortBy(key)}
+            style={[styles.periodTab, { borderBottomColor: sortBy === key ? c.accent : 'transparent' }]}
+            accessibilityState={{ selected: sortBy === key }}
+          >
+            <Text style={{ fontSize: fontSizes.xs, fontWeight: sortBy === key ? '700' : '500', color: sortBy === key ? c.text : c.textMuted }}>
+              {label}
+            </Text>
+          </Pressable>
+        ))}
+      </View>
 
       {/* Season filter */}
       {allSeasons.length > 0 && (
