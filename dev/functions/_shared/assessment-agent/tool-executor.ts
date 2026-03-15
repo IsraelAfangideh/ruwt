@@ -176,11 +176,11 @@ async function selectChallenges(
     added++;
   }
 
-  return {
-    tool: 'select_challenges',
-    success: true,
-    result: { added, total: existing.length + added, ...(invalid.length > 0 ? { invalidIds: invalid } : {}) },
-  };
+  const result: Record<string, unknown> = { added, total: existing.length + added };
+  if (invalid.length > 0) result.invalidIds = invalid;
+  if (added === 0 && newIds.length === 0) result.note = 'All requested challenges were already selected';
+
+  return { tool: 'select_challenges', success: true, result };
 }
 
 async function removeChallenges(
@@ -241,13 +241,13 @@ async function setWeights(
     speed: params.speed != null ? Number(params.speed) : 20,
   };
   // Replace NaN with default
+  /* istanbul ignore next -- @preserve */
   const weights = {
-    /* istanbul ignore next -- @preserve */
     modelSelection: Number.isFinite(raw.modelSelection) ? raw.modelSelection : 20,
-    /* istanbul ignore next -- @preserve */ promptEfficiency: Number.isFinite(raw.promptEfficiency) ? raw.promptEfficiency : 20,
-    /* istanbul ignore next -- @preserve */ debugging: Number.isFinite(raw.debugging) ? raw.debugging : 20,
-    /* istanbul ignore next -- @preserve */ strategy: Number.isFinite(raw.strategy) ? raw.strategy : 20,
-    /* istanbul ignore next -- @preserve */ speed: Number.isFinite(raw.speed) ? raw.speed : 20,
+    promptEfficiency: Number.isFinite(raw.promptEfficiency) ? raw.promptEfficiency : 20,
+    debugging: Number.isFinite(raw.debugging) ? raw.debugging : 20,
+    strategy: Number.isFinite(raw.strategy) ? raw.strategy : 20,
+    speed: Number.isFinite(raw.speed) ? raw.speed : 20,
   };
   const sum = weights.modelSelection + weights.promptEfficiency + weights.debugging + weights.strategy + weights.speed;
   if (sum !== 100) {

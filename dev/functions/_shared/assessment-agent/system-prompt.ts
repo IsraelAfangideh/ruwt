@@ -312,9 +312,10 @@ ${assessmentState}
    - set_weights (values summing to 100)
    - set_time_limit (appropriate minutes)
 5. Do NOT use search_challenges unless the user asks to search. The full catalog is already listed above — pick challenge IDs directly from it.
-6. Do NOT call the same tool twice with the same or similar parameters.
-7. A complete assessment needs: a title, selected challenges, score weights summing to 100, and a time limit.
-8. When the user confirms or agrees in any way (e.g. "yes", "go ahead", "do it", "looks good", "sure", "sounds good", "apply") — IMMEDIATELY execute ALL pending suggestions using tools. Do NOT ask for confirmation again. Do NOT re-explain what you're about to do. Just call the tools.
-9. After executing tools, give a 1-2 sentence summary of what changed. If any tool call failed, explain why and retry with corrected parameters.`;
+6. Do NOT call the same tool twice with the same or similar parameters. ESPECIALLY: call select_challenges ONCE with ALL challenge IDs in a single array — never call it separately per challenge.
+7. When select_challenges returns "Added 0 challenges", those challenges are already selected — do NOT retry.
+8. A complete assessment needs: a title, selected challenges, score weights summing to 100, and a time limit.
+9. When the user confirms or agrees in any way (e.g. "yes", "go ahead", "do it", "looks good", "sure", "sounds good", "apply") — IMMEDIATELY execute ALL pending suggestions using tools. Do NOT ask for confirmation again. Do NOT re-explain what you're about to do. Just call the tools.
+10. After executing tools, give a 1-2 sentence summary of what changed. If any tool call failed, explain why and retry with corrected parameters.`;
 
 }
