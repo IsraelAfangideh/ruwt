@@ -418,6 +418,57 @@ export function OrgManagementScreen() {
         </Card>
       )}
 
+      {/* Team AFI Overview */}
+      {members.length > 0 && (() => {
+        const membersWithAFI = members.filter((m) => (m.afiScore ?? 0) > 0);
+        const avgAFI = membersWithAFI.length > 0
+          ? Math.round(membersWithAFI.reduce((s, m) => s + (m.afiScore ?? 0), 0) / membersWithAFI.length)
+          : 0;
+        const topMembers = [...membersWithAFI].sort((a, b) => (b.afiScore ?? 0) - (a.afiScore ?? 0)).slice(0, 5);
+        return (
+          <Card style={[styles.section, { borderColor: '#c9a962' + '40', borderWidth: 1 }]}>
+            <CardHeader>
+              <CardTitle>Team AI Fluency</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {membersWithAFI.length === 0 ? (
+                <Text style={{ fontSize: fontSizes.sm, color: c.textMuted }}>
+                  No team members have AFI scores yet. Members earn scores by solving challenges.
+                </Text>
+              ) : (
+                <View style={{ gap: spacing.md }}>
+                  <View>
+                    <Text style={{ fontSize: fontSizes.xs, color: c.textMuted, textTransform: 'uppercase' as any, letterSpacing: 1.5, fontFamily: fontFamily.body }}>
+                      Team Average AFI
+                    </Text>
+                    <Text style={{ fontSize: 36, fontWeight: '700', color: '#c9a962', fontFamily: fontFamily.body }}>
+                      {avgAFI}
+                    </Text>
+                    <Text style={{ fontSize: 10, color: c.textMuted, fontFamily: fontFamily.body }}>
+                      {membersWithAFI.length} of {members.length} members scored
+                    </Text>
+                  </View>
+                  {topMembers.length > 0 && (
+                    <View style={{ gap: spacing.sm }}>
+                      <Text style={{ fontSize: fontSizes.xs, fontWeight: '600', color: c.textMuted, textTransform: 'uppercase' as any, letterSpacing: 1 }}>
+                        Top Performers
+                      </Text>
+                      {topMembers.map((m, i) => (
+                        <View key={m.id} style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.xs }}>
+                          <Text style={{ fontSize: fontSizes.sm, color: c.textMuted, width: 20, fontFamily: fontFamily.body }}>{i + 1}.</Text>
+                          <Text style={{ fontSize: fontSizes.sm, color: c.text, flex: 1, fontFamily: fontFamily.body }}>{m.name || m.email}</Text>
+                          <Text style={{ fontSize: fontSizes.sm, fontWeight: '700', color: AFI_TIER_COLORS[(m.afiTier || 'novice') as AFITier], fontFamily: fontFamily.body }}>{m.afiScore}</Text>
+                        </View>
+                      ))}
+                    </View>
+                  )}
+                </View>
+              )}
+            </CardContent>
+          </Card>
+        );
+      })()}
+
       {/* Members */}
       <Card style={[styles.section, { borderColor: c.border }]}>
         <CardHeader>
