@@ -113,6 +113,12 @@ export function ArenaScreen() {
   const [attempt, setAttempt] = useState<ArenaAttempt | null>(null);
   const [code, setCode] = useState('');
   const language = challenge?.language || 'javascript';
+  /* istanbul ignore next -- @preserve */
+  const categoryDisplayName = challenge?.category === 'model_selection' ? 'Model Selection'
+    : challenge?.category === 'prompt_efficiency' ? 'Prompt Efficiency'
+    : challenge?.category === 'iterative_debugging' ? 'Debugging'
+    : challenge?.category === 'multi_model_strategy' ? 'Multi-Model Strategy'
+    : 'AI Fluency';
   const [loading, setLoading] = useState(true);
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -1131,11 +1137,7 @@ export function ArenaScreen() {
                 <span style={{ fontSize: 12, color: arena.textMuted, textAlign: 'center' }}>
                   This solve builds your{' '}
                   <span style={{ color: arena.accent, fontWeight: 600 }}>
-                    {/* istanbul ignore next -- @preserve */ challenge.category === 'model_selection' ? 'Model Selection'
-                    : /* istanbul ignore next -- @preserve */ challenge.category === 'prompt_efficiency' ? 'Prompt Efficiency'
-                    : /* istanbul ignore next -- @preserve */ challenge.category === 'iterative_debugging' ? 'Debugging'
-                    : /* istanbul ignore next -- @preserve */ challenge.category === 'multi_model_strategy' ? 'Multi-Model Strategy'
-                    : 'AI Fluency'}
+                    {categoryDisplayName}
                   </span>
                   {' '}score
                 </span>
