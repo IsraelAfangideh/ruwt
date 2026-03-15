@@ -34,6 +34,8 @@ export async function onRequestGet(context: { request: Request; env: Env; params
         name: profiles.name,
         email: profiles.email,
         avatarUrl: profiles.avatarUrl,
+        afiScore: profiles.afiScore,
+        afiTier: profiles.afiTier,
       })
       .from(orgMembers)
       .innerJoin(profiles, eq(orgMembers.userId, profiles.id))
