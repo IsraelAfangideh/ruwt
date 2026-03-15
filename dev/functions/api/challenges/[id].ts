@@ -1,13 +1,14 @@
 /**
  * GET /api/challenges/:id
- * Single challenge by id. No auth required.
- * Includes solver stats (solvers, avgCost, bestCost).
+ * Single challenge by id.
+ * Public challenges: no auth. Custom challenges (custom-*): auth + org membership.
  */
 import { eq, sql } from 'drizzle-orm';
 import { getDb } from '../../_shared/db';
 import { challenges, attempts, customChallenges } from '../../../drizzle/schema.d1';
 import { withCache } from '../../_shared/cache';
 import { getUser } from '../../_shared/auth';
+import { requireOrgAccess } from '../../_shared/org';
 
 export async function onRequestGet(context: {
   request: Request;
@@ -32,6 +33,11 @@ export async function onRequestGet(context: {
       const [custom] = await db.select().from(customChallenges).where(eq(customChallenges.id, id)).limit(1);
       /* istanbul ignore next -- @preserve */
       if (!custom) return Response.json({ error: 'Challenge not found' }, { status: 404 });
+
+      // Verify user belongs to the org that owns this challenge
+      const role = await requireOrgAccess(db, user.id, custom.orgId, 'viewer');
+      /* istanbul ignore next -- @preserve */
+      if (!role) return Response.json({ error: 'Forbidden' }, { status: 403 });
 
       let hiddenTestCount = 0;
       /* istanbul ignore next -- @preserve */
