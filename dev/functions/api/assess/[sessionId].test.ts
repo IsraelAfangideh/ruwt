@@ -217,6 +217,56 @@ describe('GET /api/assess/:sessionId', () => {
     expect((await res.json()).error).toBe('Internal server error');
   });
 
+  it('returns null assessment and pending status for challenges without attempts', async () => {
+    mockGetUser.mockResolvedValue(FAKE_USER);
+
+    const futureDate = new Date(Date.now() + 3600000).toISOString();
+    const session = {
+      id: 'sess-1',
+      assessmentId: 'a-1',
+      userId: 'user-123',
+      status: 'in_progress',
+      currentChallengeIndex: 0,
+      expiresAt: futureDate,
+    };
+    const challengeList = [
+      { challenge: { id: 'ch-1', title: 'Ch 1', difficulty: 'easy' } },
+    ];
+    // No attempts at all → 'pending' fallback
+    const allAttempts: any[] = [];
+
+    let selectCallCount = 0;
+    const db: Record<string, any> = {};
+    db.select = vi.fn().mockImplementation(() => {
+      selectCallCount++;
+      const currentCall = selectCallCount;
+      const chain: Record<string, any> = {};
+      chain.from = vi.fn().mockReturnValue(chain);
+      chain.where = vi.fn().mockImplementation(() => {
+        if (currentCall === 5) return Promise.resolve(allAttempts);
+        return chain;
+      });
+      chain.innerJoin = vi.fn().mockReturnValue(chain);
+      chain.orderBy = vi.fn().mockResolvedValue(challengeList);
+      chain.limit = vi.fn().mockImplementation(() => {
+        if (currentCall === 1) return Promise.resolve([session]);
+        if (currentCall === 2) return Promise.resolve([]); // no assessment → null
+        if (currentCall === 4) return Promise.resolve([]);
+        return Promise.resolve([]);
+      });
+      return chain;
+    });
+    mockGetDb.mockReturnValue(db);
+
+    const res = await onRequestGet(makeContext('sess-1'));
+    const json = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(json.assessment).toBeNull();
+    expect(json.challengeProgress[0].status).toBe('pending');
+    expect(json.challengeProgress[0].cost).toBe(0);
+  });
+
   it('handles completed session with no current challenge', async () => {
     mockGetUser.mockResolvedValue(FAKE_USER);
 

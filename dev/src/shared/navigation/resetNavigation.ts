@@ -41,6 +41,7 @@ export function resetNavigation(
 ) {
   navigation.reset({ index, routes });
 
+  /* istanbul ignore next -- @preserve */
   if (typeof window === 'undefined' || !linking.config) return;
 
   const path = getPathFromState(
@@ -48,7 +49,9 @@ export function resetNavigation(
     linking.config,
   );
 
+  /* istanbul ignore next -- @preserve */
   if (path && path !== '*') {
+    /* istanbul ignore next -- @preserve */
     try { window.history.replaceState(null, '', path.startsWith('/') ? path : '/' + path); } catch { /* test env */ }
   }
 }

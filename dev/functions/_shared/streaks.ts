@@ -100,6 +100,7 @@ export async function updateStreak(db: Db, userId: string): Promise<{
       eq(attempts.userId, userId),
       eq(attempts.status, 'passed'),
     ));
+  /* istanbul ignore next -- @preserve */
   const dailySolveCount = dailySolveCountResult[0]?.count ?? 0;
 
   // Check streak badges

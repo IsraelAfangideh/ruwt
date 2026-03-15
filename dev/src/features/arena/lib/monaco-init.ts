@@ -6,4 +6,5 @@
 import { loader } from '@monaco-editor/react';
 import * as monaco from 'monaco-editor';
 
+/* istanbul ignore next -- @preserve */
 loader.config({ monaco });

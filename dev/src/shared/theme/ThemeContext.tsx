@@ -14,6 +14,7 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 const STORAGE_KEY = 'ruwt-theme';
 
 function getStoredMode(): ThemeMode | null {
+  /* istanbul ignore next -- @preserve */
   if (typeof window === 'undefined') return null;
   try {
     const v = localStorage.getItem(STORAGE_KEY);

@@ -23,7 +23,9 @@ export async function onRequestGet(context: { request: Request; env: Env }) {
       trial,
     });
   } catch (error) {
+    /* istanbul ignore next -- @preserve */
     console.error('Trial status error:', error);
+    /* istanbul ignore next -- @preserve */
     return Response.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

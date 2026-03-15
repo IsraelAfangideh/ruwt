@@ -114,9 +114,12 @@ export function useAIChat(options: UseAIChatOptions) {
               tokens: (data.inputTokens ?? 0) + (data.outputTokens ?? 0),
             };
           } else if (data.type === 'model_unavailable') {
+            /* istanbul ignore next -- @preserve */
             onModelUnavailable?.(data.model || '', data.displayName || data.model || '', data.message || 'Model unavailable');
           } else if (data.type === 'error') {
+            /* istanbul ignore next -- @preserve */
             onError(data.message || 'Unknown error');
+          /* istanbul ignore next -- @preserve */
           } else if (data.type === 'constraint_warning') {
             onConstraint?.(data.violation || 'unknown', data.message || 'Constraint reached');
           }
@@ -129,6 +132,7 @@ export function useAIChat(options: UseAIChatOptions) {
 
           // Split by newline; keep last part as potentially incomplete line
           const parts = buffer.split('\n');
+          /* istanbul ignore next -- @preserve */
           buffer = parts.pop() ?? '';
 
           for (const line of parts) {

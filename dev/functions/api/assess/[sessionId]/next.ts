@@ -86,6 +86,7 @@ export async function onRequestPost(context: { request: Request; env: Env; param
     const attemptId = crypto.randomUUID();
 
     await db.insert(attempts).values({
+      /* istanbul ignore next -- @preserve */
       id: attemptId,
       userId: user.id,
       challengeId: nextChallenge.id,

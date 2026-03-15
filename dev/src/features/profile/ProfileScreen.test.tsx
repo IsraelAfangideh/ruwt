@@ -583,4 +583,55 @@ describe('ProfileScreen', () => {
     fireEvent.click(screen.getByText('Refresh'));
     expect(mockRefreshEndpoint).toHaveBeenCalledWith('dashboard');
   });
+
+  it('renders bio text when bio exists', async () => {
+    setupCachedData();
+    mockUseDashboardData.mockReturnValue({
+      ...makeCachedState({
+        ...mockProfileData,
+        profile: { ...mockProfileData.profile },
+      }, mockBadgeData),
+    });
+    render(<ProfileScreen />);
+    await waitFor(() => {
+      expect(screen.getByText('Add a bio')).toBeTruthy();
+    });
+  });
+
+  it('opens bio editing when "Add a bio" is clicked', async () => {
+    setupCachedData();
+    render(<ProfileScreen />);
+    await waitFor(() => {
+      expect(screen.getByText('Add a bio')).toBeTruthy();
+    });
+    fireEvent.click(screen.getByText('Add a bio'));
+    await waitFor(() => {
+      // Should show the bio editing controls
+      expect(screen.getByText('Save')).toBeTruthy();
+    });
+  });
+
+  it('renders with heatmap data', async () => {
+    const heatmapData = { '2026-01-01': 3, '2026-01-02': 0, '2026-01-03': 5 };
+    setupCachedData();
+    // Use a profile data that includes heatmap
+    const profileWithHeatmap = { ...mockProfileData, heatmap: heatmapData };
+    mockUseDashboardData.mockReturnValue(makeCachedState(profileWithHeatmap as any, mockBadgeData));
+    render(<ProfileScreen />);
+    await waitFor(() => {
+      expect(screen.getByText('Profile')).toBeTruthy();
+    });
+  });
+
+  it('renders no category progress when categoryTotals is empty', async () => {
+    setupCachedData({
+      progress: { ...mockProfileData.progress, categoryTotals: {}, categorySolves: {} },
+    });
+    render(<ProfileScreen />);
+    await waitFor(() => {
+      expect(screen.getByText('Challenge Progress')).toBeTruthy();
+    });
+    // No category pills should be rendered
+    expect(screen.queryByText(/Prompt Efficiency/)).toBeNull();
+  });
 });

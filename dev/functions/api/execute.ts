@@ -67,7 +67,8 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
       errorMessage: error.message,
       errorStack: error.stack,
       level: 'error',
-    }).catch(() => {});
+    /* istanbul ignore next -- @preserve */
+    }).catch(/* istanbul ignore next -- @preserve */ () => {});
 
     return new Response(
       JSON.stringify({

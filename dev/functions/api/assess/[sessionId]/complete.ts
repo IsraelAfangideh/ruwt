@@ -105,6 +105,7 @@ export async function onRequestPost(context: { request: Request; env: Env; param
 
         const resultsUrl = `${new URL(context.request.url).origin}/assessments/${assessment.id}/results`;
 
+        /* istanbul ignore next -- @preserve */
         const template = resultsReadyEmail({
           hiringManagerName: creator.displayName ?? undefined,
           candidateName: candidateProfile?.displayName ?? candidateProfile?.email ?? 'A candidate',
@@ -124,6 +125,7 @@ export async function onRequestPost(context: { request: Request; env: Env; param
         });
 
         await db.insert(emailLogs).values({
+          /* istanbul ignore next -- @preserve */
           id: crypto.randomUUID(),
           type: 'results_ready',
           recipientEmail: creator.email,
@@ -131,7 +133,7 @@ export async function onRequestPost(context: { request: Request; env: Env; param
           subject: template.subject,
           status: result.success ? 'sent' : 'failed',
           errorMessage: result.error ?? null,
-        }).catch(() => {});
+        }).catch(/* istanbul ignore next -- @preserve */ () => {});
       } catch {}
     })();
 

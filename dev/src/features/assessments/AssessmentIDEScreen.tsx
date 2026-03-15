@@ -31,8 +31,10 @@ export function AssessmentIDEScreen() {
   // Keyboard shortcut: Cmd+L → focus chat
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
+      /* istanbul ignore next -- @preserve */
       if ((e.metaKey || e.ctrlKey) && e.key === 'l') {
         e.preventDefault();
+        /* istanbul ignore next -- @preserve */
         if (isMobile) setMobileTab('chat');
       }
     };

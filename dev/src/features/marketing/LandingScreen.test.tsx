@@ -264,4 +264,29 @@ describe('LandingScreen', () => {
     expect(screen.getAllByText('100+').length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText('5').length).toBeGreaterThanOrEqual(1);
   });
+
+  it('navigates to Hiring when For Teams is clicked', () => {
+    render(<LandingScreen />);
+    fireEvent.click(screen.getByText('For Teams'));
+    expect(mockNavigate).toHaveBeenCalledWith('Hiring');
+  });
+
+  it('navigates to Problems when Browse Challenges is clicked', () => {
+    render(<LandingScreen />);
+    fireEvent.click(screen.getByText('Browse Challenges'));
+    expect(mockNavigate).toHaveBeenCalledWith('Problems');
+  });
+
+  it('navigates to Hiring when Explore Assessments is clicked', () => {
+    render(<LandingScreen />);
+    fireEvent.click(screen.getByText('Explore Assessments'));
+    expect(mockNavigate).toHaveBeenCalledWith('Hiring');
+  });
+
+  it('navigates to Hiring from second Book a Demo button', () => {
+    render(<LandingScreen />);
+    const bookDemoButtons = screen.getAllByText('Book a Demo');
+    fireEvent.click(bookDemoButtons[bookDemoButtons.length - 1]);
+    expect(mockNavigate).toHaveBeenCalledWith('Hiring');
+  });
 });

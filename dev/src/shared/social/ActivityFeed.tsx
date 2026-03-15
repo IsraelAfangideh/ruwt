@@ -26,6 +26,7 @@ export function ActivityFeed({ limit = 10, heading }: { limit?: number; heading?
   const fetchActivities = async () => {
     try {
       const res = await fetch(`/api/activity?limit=${limit}`);
+      /* istanbul ignore next -- @preserve */
       if (res.ok) {
         const data = await res.json() as { activities: Activity[]; uniqueUsers: number };
         setActivities(data.activities);

@@ -137,7 +137,7 @@ describe('AssessmentListScreen', () => {
     render(<AssessmentListScreen />);
     await waitFor(() => expect(screen.getByText(/Create Your First Assessment/)).toBeTruthy());
     fireEvent.click(screen.getByText(/Create Your First Assessment/));
-    expect(mockNavigate).toHaveBeenCalledWith('AssessmentBuilder');
+    expect(mockNavigate).toHaveBeenCalledWith('AssessmentBuilder', {});
   });
 
   it('navigates to AssessmentBuilder when template link is clicked (line 267)', async () => {
@@ -147,7 +147,7 @@ describe('AssessmentListScreen', () => {
     render(<AssessmentListScreen />);
     await waitFor(() => expect(screen.getByText(/template/)).toBeTruthy());
     fireEvent.click(screen.getByText(/template/));
-    expect(mockNavigate).toHaveBeenCalledWith('AssessmentBuilder');
+    expect(mockNavigate).toHaveBeenCalledWith('AssessmentBuilder', {});
   });
 
   it('shows Build Assessment button in header', async () => {

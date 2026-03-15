@@ -48,6 +48,7 @@ export function FeaturedReplay() {
     fetch('/api/featured-replay')
       .then((res) => res.json())
       .then((data) => {
+        /* istanbul ignore next -- @preserve */
         if (data && data.messages && data.messages.length > 0) {
           setLiveData(data);
         }

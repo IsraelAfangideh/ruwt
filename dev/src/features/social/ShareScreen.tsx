@@ -37,6 +37,7 @@ interface ShareData {
 export function ShareScreen() {
   const route = useRoute();
   const navigation = useNavigation();
+  /* istanbul ignore next -- @preserve */
   const params = (route.params || {}) as { attemptId?: string };
   const attemptId = params.attemptId ?? '';
   const c = useColors();

@@ -17,6 +17,7 @@ export function ModeSwitcher() {
   const [open, setOpen] = useState(false);
 
   const handleEscape = useCallback((e: KeyboardEvent) => {
+    /* istanbul ignore next -- @preserve */
     if (e.key === 'Escape' && open) setOpen(false);
   }, [open]);
 

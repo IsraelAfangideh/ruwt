@@ -108,4 +108,26 @@ describe('GET /api/models', () => {
     const res = await onRequestGet(makeCtx());
     expect(res.status).toBe(500);
   });
+
+  it('maps all tier levels to correct costIndicator', async () => {
+    const allTierModels = [
+      { id: 'r1', displayName: 'Reasoning', tier: 'reasoning', description: '', input: 1, output: 1, provider: 'cf' },
+      { id: 'p1', displayName: 'Premium', tier: 'premium', description: '', input: 1, output: 1, provider: 'cf' },
+      { id: 'm1', displayName: 'Mid', tier: 'mid', description: '', input: 1, output: 1, provider: 'cf' },
+      { id: 'b1', displayName: 'Budget', tier: 'budget', description: '', input: 1, output: 1, provider: 'cf' },
+      { id: 'u1', displayName: 'Unknown', tier: 'free', description: '', input: 1, output: 1, provider: 'cf' },
+    ];
+    mockGetCloudflareModels.mockReturnValue(allTierModels);
+    const db = { all: vi.fn().mockResolvedValue([]) };
+    mockGetDb.mockReturnValue(db);
+
+    const res = await onRequestGet(makeCtx());
+    const json = await res.json() as any;
+
+    expect(json.find((m: any) => m.id === 'r1').costIndicator).toBe('$$$$$');
+    expect(json.find((m: any) => m.id === 'p1').costIndicator).toBe('$$$');
+    expect(json.find((m: any) => m.id === 'm1').costIndicator).toBe('$$');
+    expect(json.find((m: any) => m.id === 'b1').costIndicator).toBe('$');
+    expect(json.find((m: any) => m.id === 'u1').costIndicator).toBe('$');
+  });
 });

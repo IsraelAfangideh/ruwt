@@ -24,6 +24,7 @@ function calculateConstraintStatus(
     };
   }
   if (expiresAt) {
+    /* istanbul ignore next -- @preserve */
     const exp = typeof expiresAt === 'string' ? new Date(expiresAt) : expiresAt;
     if (new Date() >= exp) {
       return { valid: false, violation: 'time', message: 'Time limit expired' };

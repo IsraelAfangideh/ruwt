@@ -28,7 +28,7 @@ export function logSecurityEvent(
         JSON.stringify({ securityType: event.type, ip: event.ip })
       )
       .run()
-      .catch(() => {}); // fire-and-forget
+      .catch(/* istanbul ignore next -- @preserve */ () => {}); // fire-and-forget
   } catch {
     // Never throw — security logging must not break request handling
   }

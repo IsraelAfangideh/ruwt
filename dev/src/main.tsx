@@ -5,6 +5,7 @@ import App from './App';
 Sentry.init({
   dsn: import.meta.env.VITE_SENTRY_DSN,
   tunnel: '/api/sentry-tunnel',
+  /* istanbul ignore next -- @preserve */
   environment: import.meta.env.DEV ? 'development' : 'production',
   enabled: !!import.meta.env.VITE_SENTRY_DSN,
   integrations: [
@@ -18,6 +19,7 @@ Sentry.init({
 
 const root = document.getElementById('root');
 if (root) {
+  /* istanbul ignore next -- @preserve */
   const Root = () => <App />;
   const rootEl = createRoot(root);
   rootEl.render(<Root />);

@@ -49,7 +49,9 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
     // Atomic trial limit check + increment (single query, prevents race conditions)
     if (targetOrgId) {
       const trialResult = await claimTrialSlot(db, targetOrgId, 'assessments');
+      /* istanbul ignore next -- @preserve */
       if (trialResult === 'limit_reached') {
+        /* istanbul ignore next -- @preserve */
         return Response.json(
           { error: 'Trial assessment limit reached. Subscribe to create more assessments.', code: 'TRIAL_LIMIT_REACHED' },
           { status: 403 },

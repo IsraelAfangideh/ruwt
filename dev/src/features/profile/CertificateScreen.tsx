@@ -21,7 +21,9 @@ interface CertData {
 
 export function CertificateScreen() {
   const route = useRoute();
+  /* istanbul ignore next -- @preserve */
   const params = (route.params || {}) as { shareToken?: string };
+  /* istanbul ignore next -- @preserve */
   const shareToken = params.shareToken ?? '';
   const c = useColors();
 

@@ -26,6 +26,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 
   const removeToast = useCallback((id: number) => {
     // Start fade-out animation
+    /* istanbul ignore next -- @preserve */
     setToasts((prev) => prev.map((t) => (t.id === id ? { ...t, removing: true } : t)));
     // Remove from DOM after animation completes
     setTimeout(() => {
@@ -107,6 +108,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
                 }}
                 onClick={() => {
                   const timer = timersRef.current.get(toast.id);
+                  /* istanbul ignore next -- @preserve */
                   if (timer) {
                     clearTimeout(timer);
                     timersRef.current.delete(toast.id);

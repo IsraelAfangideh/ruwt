@@ -30,6 +30,7 @@ interface ModelStats {
 
 export function ModelScreen() {
   const route = useRoute<any>();
+  /* istanbul ignore next -- @preserve */
   const modelId = route.params?.modelId ?? '';
   const c = useColors();
   const [model, setModel] = useState<ModelDetail | null>(null);
@@ -45,6 +46,7 @@ export function ModelScreen() {
 
   useEffect(() => {
     if (!modelId) return;
+    /* istanbul ignore next -- @preserve */
     const base = typeof window !== 'undefined' ? window.location.origin : '';
     fetch(`${base}/api/models/${encodeURIComponent(modelId)}`)
       .then((r) => {

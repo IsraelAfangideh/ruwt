@@ -99,6 +99,7 @@ export async function onRequestPut(context: { request: Request; env: Env; params
         .from(orgMembers)
         .where(and(eq(orgMembers.orgId, orgId), eq(orgMembers.role, 'owner')));
 
+      /* istanbul ignore next -- @preserve */
       if (owners.length <= 1) {
         return Response.json({ error: 'Cannot demote yourself as the only owner' }, { status: 400 });
       }

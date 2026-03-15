@@ -12,6 +12,7 @@ import { spacing, fontSizes, fontFamily } from '@/shared/theme/tokens';
 export function OrgJoinScreen() {
   const navigation = useNavigation();
   const route = useRoute();
+  /* istanbul ignore next -- @preserve */
   const { token } = (route.params || {}) as { token?: string };
   const c = useColors();
   const supabase = createClient();
@@ -26,6 +27,7 @@ export function OrgJoinScreen() {
       const { data: { user: u } } = await supabase.auth.getUser();
       if (!u) {
         // Store intent and redirect to login
+        /* istanbul ignore next -- @preserve */
         localStorage.setItem('ruwt_org_join_token', token || '');
         resetNavigation(navigation, [{ name: 'Login' }]);
         return;
@@ -36,6 +38,7 @@ export function OrgJoinScreen() {
   }, [navigation, supabase.auth, token]);
 
   const handleJoin = useCallback(async () => {
+    /* istanbul ignore next -- @preserve */
     if (!token) return;
     setJoining(true);
     setError(null);

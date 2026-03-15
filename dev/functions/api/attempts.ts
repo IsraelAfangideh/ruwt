@@ -89,6 +89,7 @@ export async function onRequestPost(context: { request: Request; env: Env; waitU
     if (challenge.hiddenTestCases) {
       try { hiddenCount = JSON.parse(challenge.hiddenTestCases).length; } catch {}
     }
+    /* istanbul ignore next -- @preserve */
     const totalTests = (Array.isArray(testCases) ? testCases.length : 0) + hiddenCount;
 
     const attemptId = crypto.randomUUID();

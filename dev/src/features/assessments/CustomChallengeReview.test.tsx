@@ -142,4 +142,93 @@ describe('CustomChallengeReview', () => {
     render(<CustomChallengeReview challenge={{ ...challenge, starterCode: null }} orgId="org1" onApprove={mockOnApprove} onDelete={mockOnDelete} />);
     expect(screen.queryByText('Try Challenge')).toBeNull();
   });
+
+  it('shows APPROVED for active status', () => {
+    render(<CustomChallengeReview challenge={{ ...challenge, status: 'active' }} orgId="org1" onApprove={mockOnApprove} onDelete={mockOnDelete} />);
+    expect(screen.getByText('APPROVED')).toBeTruthy();
+  });
+
+  it('shows ARCHIVED for archived status', () => {
+    render(<CustomChallengeReview challenge={{ ...challenge, status: 'archived' }} orgId="org1" onApprove={mockOnApprove} onDelete={mockOnDelete} />);
+    expect(screen.getByText('ARCHIVED')).toBeTruthy();
+  });
+
+  it('uses fallback color for unknown difficulty', () => {
+    render(<CustomChallengeReview challenge={{ ...challenge, difficulty: 'insane' }} orgId="org1" onApprove={mockOnApprove} onDelete={mockOnDelete} />);
+    expect(screen.getByText('INSANE')).toBeTruthy();
+  });
+
+  it('does not show skillTested when null', () => {
+    render(<CustomChallengeReview challenge={{ ...challenge, skillTested: null }} orgId="org1" onApprove={mockOnApprove} onDelete={mockOnDelete} />);
+    expect(screen.queryByText('Math operations')).toBeNull();
+  });
+
+  it('does not show testHarness when null', () => {
+    render(<CustomChallengeReview challenge={{ ...challenge, testHarness: null }} orgId="org1" onApprove={mockOnApprove} onDelete={mockOnDelete} />);
+    expect(screen.queryByText('Test Harness')).toBeNull();
+  });
+
+  it('does not show AI Generated badge when aiGenerated is 0', () => {
+    render(<CustomChallengeReview challenge={{ ...challenge, aiGenerated: 0 }} orgId="org1" onApprove={mockOnApprove} onDelete={mockOnDelete} />);
+    expect(screen.queryByText('AI Generated')).toBeNull();
+  });
+
+  it('shows "+N more test cases" when more than 5 test cases exist', () => {
+    const manyTestCases = Array.from({ length: 7 }, (_, i) => ({
+      input: `input-${i}`,
+      expectedOutput: `output-${i}`,
+    }));
+    render(<CustomChallengeReview
+      challenge={{ ...challenge, testCases: JSON.stringify(manyTestCases) }}
+      orgId="org1"
+      onApprove={mockOnApprove}
+      onDelete={mockOnDelete}
+    />);
+    expect(screen.getByText('+2 more test cases not shown')).toBeTruthy();
+  });
+
+  it('shows singular "test case" when exactly 6 test cases', () => {
+    const sixTestCases = Array.from({ length: 6 }, (_, i) => ({
+      input: `input-${i}`,
+      expectedOutput: `output-${i}`,
+    }));
+    render(<CustomChallengeReview
+      challenge={{ ...challenge, testCases: JSON.stringify(sixTestCases) }}
+      orgId="org1"
+      onApprove={mockOnApprove}
+      onDelete={mockOnDelete}
+    />);
+    expect(screen.getByText('+1 more test case not shown')).toBeTruthy();
+  });
+
+  it('cancels delete confirmation when Cancel is clicked', () => {
+    render(<CustomChallengeReview challenge={challenge} orgId="org1" onApprove={mockOnApprove} onDelete={mockOnDelete} />);
+    fireEvent.click(screen.getByText('Delete Draft'));
+    expect(screen.getByText('Confirm Delete')).toBeTruthy();
+    // Click Cancel to dismiss
+    fireEvent.click(screen.getByLabelText('Cancel delete'));
+    // Should show Delete Draft again
+    expect(screen.getByText('Delete Draft')).toBeTruthy();
+  });
+
+  it('handles hiddenTestCases being null', () => {
+    render(<CustomChallengeReview
+      challenge={{ ...challenge, hiddenTestCases: null }}
+      orgId="org1"
+      onApprove={mockOnApprove}
+      onDelete={mockOnDelete}
+    />);
+    expect(screen.getByText(/1 visible, 0 hidden/)).toBeTruthy();
+  });
+
+  it('handles invalid testCases JSON gracefully', () => {
+    render(<CustomChallengeReview
+      challenge={{ ...challenge, testCases: 'not-json' }}
+      orgId="org1"
+      onApprove={mockOnApprove}
+      onDelete={mockOnDelete}
+    />);
+    // Should still render (testCases defaults to empty array on parse error)
+    expect(screen.getByText(/0 visible/)).toBeTruthy();
+  });
 });

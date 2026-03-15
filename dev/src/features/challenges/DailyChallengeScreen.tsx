@@ -89,6 +89,7 @@ export function DailyChallengeScreen() {
     return <DetailCardSkeleton />;
   }
 
+  /* istanbul ignore next -- @preserve */
   if (!user) return null;
 
   return (

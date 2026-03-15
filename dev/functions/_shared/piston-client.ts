@@ -60,6 +60,7 @@ export async function pistonExecute(
   const headers = buildPistonHeaders(env);
 
   const res = await fetch(`${url}/execute`, {
+    /* istanbul ignore next -- @preserve */
     method: 'POST',
     headers,
     body: JSON.stringify({

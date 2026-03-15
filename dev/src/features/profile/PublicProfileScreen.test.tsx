@@ -16,8 +16,12 @@ vi.mock('@/shared/ui/Card', () => ({
 vi.mock('@/features/profile/RadarChart', () => ({
   RadarChart: () => <div data-testid="radar-chart" />,
 }));
+let capturedFollowOnToggle: ((following: boolean) => void) | null = null;
 vi.mock('@/features/profile/FollowButton', () => ({
-  FollowButton: () => <div data-testid="follow-button" />,
+  FollowButton: ({ onToggle }: any) => {
+    capturedFollowOnToggle = onToggle;
+    return <div data-testid="follow-button" />;
+  },
 }));
 vi.mock('@/shared/social/SocialShareButtons', () => ({
   SocialShareButtons: () => <div data-testid="social-share" />,
@@ -183,5 +187,85 @@ describe('PublicProfileScreen', () => {
     });
     fireEvent.click(screen.getByText('Cache Buster'));
     expect(mockNavigate).toHaveBeenCalledWith('Replay', { attemptId: 'att1' });
+  });
+
+  it('renders badges section when badges are present', async () => {
+    setupFetch({
+      ok: true,
+      json: () => Promise.resolve({
+        ...mockProfileData,
+        badges: [
+          { badgeType: 'speed_demon', title: 'Speed Demon', icon: '\u26A1' },
+          { badgeType: 'budget_master', title: 'Budget Master', icon: '\uD83D\uDCB0' },
+        ],
+      }),
+    });
+    render(<PublicProfileScreen />);
+    await waitFor(() => {
+      expect(screen.getByText('Badges')).toBeTruthy();
+    });
+    expect(screen.getByText('Speed Demon')).toBeTruthy();
+    expect(screen.getByText('Budget Master')).toBeTruthy();
+  });
+
+  it('FollowButton onToggle increments follower count', async () => {
+    render(<PublicProfileScreen />);
+    await waitFor(() => {
+      expect(screen.getByText('TestUser')).toBeTruthy();
+    });
+    // Initial follower count
+    expect(screen.getByText('3')).toBeTruthy(); // 3 followers
+    // Toggle follow on
+    if (capturedFollowOnToggle) {
+      capturedFollowOnToggle(true);
+    }
+    await waitFor(() => {
+      expect(screen.getByText('4')).toBeTruthy(); // now 4
+    });
+  });
+
+  it('FollowButton onToggle decrements follower count', async () => {
+    render(<PublicProfileScreen />);
+    await waitFor(() => {
+      expect(screen.getByText('TestUser')).toBeTruthy();
+    });
+    // Toggle unfollow
+    if (capturedFollowOnToggle) {
+      capturedFollowOnToggle(false);
+    }
+    await waitFor(() => {
+      expect(screen.getByText('2')).toBeTruthy(); // 3 - 1
+    });
+  });
+
+  it('renders bio when user has a bio', async () => {
+    setupFetch({
+      ok: true,
+      json: () => Promise.resolve({
+        ...mockProfileData,
+        user: { ...mockProfileData.user, bio: 'I love coding!' },
+      }),
+    });
+    render(<PublicProfileScreen />);
+    await waitFor(() => {
+      expect(screen.getByText('I love coding!')).toBeTruthy();
+    });
+  });
+
+  it('renders similar solvers section', async () => {
+    setupFetch({
+      ok: true,
+      json: () => Promise.resolve({
+        ...mockProfileData,
+        similarSolvers: [
+          { username: 'alice', name: 'Alice', avatarUrl: null, solved: 5 },
+        ],
+      }),
+    });
+    render(<PublicProfileScreen />);
+    await waitFor(() => {
+      expect(screen.getByText('Similar Solvers')).toBeTruthy();
+    });
+    expect(screen.getByText('Alice')).toBeTruthy();
   });
 });

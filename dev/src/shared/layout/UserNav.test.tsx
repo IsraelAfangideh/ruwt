@@ -189,4 +189,18 @@ describe('UserNav', () => {
     fireEvent.keyDown(document, { key: 'Escape' });
     expect(screen.queryByText('Profile')).toBeNull();
   });
+
+  it('navigates to OrgManagement when Org Settings is clicked in hiring mode', () => {
+    mockAppMode = {
+      ...mockAppMode,
+      mode: 'hiring',
+      isOrgMember: true,
+      orgInfo: { id: 'o', name: 'Acme Corp', role: 'admin', subscriptionStatus: 'active', subscriptionPlan: null, subscriptionEndsAt: null, trial: null },
+    };
+    render(<UserNav user={mockUser} />);
+    fireEvent.click(screen.getByTestId('avatar'));
+    mockNavigate.mockClear();
+    fireEvent.click(screen.getByText('Org Settings'));
+    expect(mockNavigate).toHaveBeenCalledWith('OrgManagement', {});
+  });
 });

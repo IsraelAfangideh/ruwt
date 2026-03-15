@@ -74,4 +74,34 @@ describe('ExpiryOverlay', () => {
     expect(screen.getByText('Review Code')).toBeTruthy();
     expect(screen.getByText('Start New Attempt')).toBeTruthy();
   });
+
+  it('renders "solved it" heading and Submit button when onSubmit is provided', () => {
+    const mockOnSubmit = vi.fn();
+    render(<ExpiryOverlay totalTokens={200} totalCost={300} isMobile={false} onReview={mockOnReview} onSubmit={mockOnSubmit} />);
+    expect(screen.getByText("Time's Up — But You Solved It!")).toBeTruthy();
+    expect(screen.getByText('All tests passed. Submit now to lock in your score.')).toBeTruthy();
+    expect(screen.getByText('Submit Solution')).toBeTruthy();
+  });
+
+  it('calls onSubmit when Submit Solution is clicked', () => {
+    const mockOnSubmit = vi.fn();
+    render(<ExpiryOverlay totalTokens={0} totalCost={0} isMobile={false} onReview={mockOnReview} onSubmit={mockOnSubmit} />);
+    fireEvent.click(screen.getByText('Submit Solution'));
+    expect(mockOnSubmit).toHaveBeenCalled();
+  });
+
+  it('does not render Submit Solution or passed hint when onSubmit is not provided', () => {
+    render(<ExpiryOverlay totalTokens={0} totalCost={0} isMobile={false} onReview={mockOnReview} />);
+    expect(screen.queryByText('Submit Solution')).toBeNull();
+    expect(screen.queryByText(/All tests passed/)).toBeNull();
+  });
+
+  it('renders mobile layout with onSubmit', () => {
+    const mockOnSubmit = vi.fn();
+    render(<ExpiryOverlay totalTokens={100} totalCost={200} isMobile={true} onReview={mockOnReview} onSubmit={mockOnSubmit} onRestart={mockOnRestart} />);
+    expect(screen.getByText("Time's Up — But You Solved It!")).toBeTruthy();
+    expect(screen.getByText('Submit Solution')).toBeTruthy();
+    expect(screen.getByText('Review Code')).toBeTruthy();
+    expect(screen.getByText('Start New Attempt')).toBeTruthy();
+  });
 });

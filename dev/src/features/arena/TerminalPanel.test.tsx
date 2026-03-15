@@ -376,4 +376,42 @@ describe('TerminalPanel', () => {
     const { unmount } = render(<TerminalPanel {...defaultProps} />);
     expect(() => unmount()).not.toThrow();
   });
+
+  it('RuwtTUI onModelChange callback forwards to prop (line 121)', () => {
+    const onModelChange = vi.fn();
+    render(<TerminalPanel {...defaultProps} onModelChange={onModelChange} currentModelId="model-1" />);
+    expect(capturedTuiOpts).not.toBeNull();
+    act(() => {
+      capturedTuiOpts!.onModelChange('premium', 'new-model');
+    });
+    expect(onModelChange).toHaveBeenCalledWith('premium', 'new-model');
+  });
+
+  it('RuwtTUI getCurrentModelId returns default when currentModelId is undefined (line 122)', () => {
+    render(<TerminalPanel {...defaultProps} currentModelId={undefined} />);
+    expect(capturedTuiOpts).not.toBeNull();
+    const result = capturedTuiOpts!.getCurrentModelId();
+    expect(result).toBe('@cf/meta/llama-3.1-8b-instruct');
+  });
+
+  it('RuwtTUI getCurrentModelId returns currentModelId when set (line 122)', () => {
+    render(<TerminalPanel {...defaultProps} currentModelId="my-model" />);
+    expect(capturedTuiOpts).not.toBeNull();
+    const result = capturedTuiOpts!.getCurrentModelId();
+    expect(result).toBe('my-model');
+  });
+
+  it('handles onModelChange being undefined (line 121)', () => {
+    render(<TerminalPanel {...defaultProps} onModelChange={undefined} />);
+    expect(capturedTuiOpts).not.toBeNull();
+    // Calling onModelChange via optional chaining should not throw
+    expect(() => capturedTuiOpts!.onModelChange('budget', 'x')).not.toThrow();
+  });
+
+  it('passes readonlyPrefix and useStdin props through', () => {
+    const { container } = render(
+      <TerminalPanel {...defaultProps} readonlyPrefix="// read only" useStdin={true} />
+    );
+    expect(container.firstChild).toBeTruthy();
+  });
 });

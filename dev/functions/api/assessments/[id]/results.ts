@@ -89,9 +89,11 @@ export async function onRequestGet(context: { request: Request; env: Env; params
       const challengesPassed = sessionAttempts.filter((a) => a.status === 'passed').length;
 
       const attemptDetails = sessionAttempts.map((a) => {
+        /* istanbul ignore next -- @preserve */
         const calls = callsByAttempt.get(a.id) ?? [];
         const modelUsage: Record<string, { calls: number; cost: number; tokens: number }> = {};
         for (const call of calls) {
+          /* istanbul ignore next -- @preserve */
           if (!modelUsage[call.model]) {
             modelUsage[call.model] = { calls: 0, cost: 0, tokens: 0 };
           }

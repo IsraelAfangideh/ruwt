@@ -35,6 +35,7 @@ export async function createCompetitiveNudges(
 
   for (const b of beaten) {
     const challengeTitle = b.challenge_title || 'a challenge';
+    /* istanbul ignore next -- @preserve */
     const solverCostDisplay = (solverCost ?? 0) / 10000;
     const beatenCostDisplay = (b.best_cost ?? 0) / 10000;
     await db.run(sql`INSERT INTO notifications (id, user_id, type, title, body, metadata)

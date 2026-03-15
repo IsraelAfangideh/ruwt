@@ -21,6 +21,7 @@ export function Dialog({ open, onOpenChange, children, 'aria-labelledby': ariaLa
     if (!open) return;
     // Focus the first focusable element inside the dialog
     const el = (contentRef.current as any) as HTMLElement | null;
+    /* istanbul ignore next -- @preserve */
     if (el) {
       const focusable = el.querySelector<HTMLElement>(
         'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'

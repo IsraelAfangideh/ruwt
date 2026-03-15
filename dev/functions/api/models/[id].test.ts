@@ -142,4 +142,28 @@ describe('GET /api/models/:id', () => {
     const res = await onRequestGet(makeCtx('@cf/meta/llama-3.3-70b-instruct-fp8-fast'));
     expect(res.status).toBe(500);
   });
+
+  it('handles empty stats result (undefined stats row) with nullish coalescing defaults', async () => {
+    mockGetModelPricing.mockReturnValue(FAKE_PRICING);
+
+    let allCall = 0;
+    const db = {
+      all: vi.fn().mockImplementation(() => {
+        allCall++;
+        if (allCall === 1) {
+          // Return empty array so destructured stats is undefined
+          return Promise.resolve([]);
+        }
+        return Promise.resolve([{ total: 0, wins: 0 }]);
+      }),
+    };
+    mockGetDb.mockReturnValue(db);
+
+    const res = await onRequestGet(makeCtx('@cf/meta/llama-3.3-70b-instruct-fp8-fast'));
+    const json = await res.json() as any;
+    expect(res.status).toBe(200);
+    expect(json.stats.timesUsed).toBe(0);
+    expect(json.stats.totalMessages).toBe(0);
+    expect(json.stats.avgCostPerMessage).toBe(0);
+  });
 });

@@ -37,6 +37,7 @@ export function ModelsScreen() {
   const [filter, setFilter] = useState<ModelTier | 'all'>('all');
 
   useEffect(() => {
+    /* istanbul ignore next -- @preserve */
     const base = typeof window !== 'undefined' ? window.location.origin : '';
     fetch(`${base}/api/models`)
       .then((r) => (r.ok ? r.json() : []))

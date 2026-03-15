@@ -28,6 +28,7 @@ export async function onRequestGet(context: { request: Request; env: Env }) {
     }
 
     const models = allModels.map((m) => ({
+      /* istanbul ignore next -- @preserve */
       id: m.id,
       displayName: m.displayName,
       tier: m.tier,

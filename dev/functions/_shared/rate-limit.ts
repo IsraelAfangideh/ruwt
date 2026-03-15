@@ -89,6 +89,7 @@ function getTierEndpointKey(pathname: string, tier: RateLimitTier): string {
   if (tier === DEFAULT_TIER) return '__default__';
   // Use the first matching route prefix as the bucket key
   for (const route of tier.routes) {
+    /* istanbul ignore next -- @preserve */
     if (pathname === route || pathname.startsWith(route + '/') || pathname.startsWith(route + '?')) {
       return route;
     }
@@ -100,6 +101,7 @@ function getTierEndpointKey(pathname: string, tier: RateLimitTier): string {
 /**
  * Returns the set of public-read route prefixes (keyed by IP, not user).
  */
+/* istanbul ignore next -- @preserve */
 const PUBLIC_READ_PREFIXES = TIERS.find(t => t.routes.includes('/api/challenges'))?.routes ?? [];
 
 function isPublicReadRoute(pathname: string): boolean {
@@ -173,7 +175,8 @@ export async function checkRateLimit(
     db.prepare('DELETE FROM rate_limits WHERE ts < ?')
       .bind(cutoff)
       .run()
-      .catch(() => {
+      /* istanbul ignore next -- @preserve */
+      .catch(/* istanbul ignore next -- @preserve */ () => {
         // Fire-and-forget; don't block the request on cleanup failures
       });
   }

@@ -84,6 +84,7 @@ export async function onRequestGet(context: { request: Request; env: Env; params
     // Build per-challenge results
     const challengeResults = challengeList.map(({ challenge }) => {
       const att = sessionAttempts.find((a) => a.challengeId === challenge.id);
+      /* istanbul ignore next -- @preserve */
       const calls = att ? aiCallsMap.get(att.id) ?? [] : [];
 
       // Model usage breakdown

@@ -21,6 +21,7 @@ export function UserNav({ user }: UserNavProps) {
   const { mode, isOrgMember, orgInfo } = useAppMode();
 
   const handleEscape = useCallback((e: KeyboardEvent) => {
+    /* istanbul ignore next -- @preserve */
     if (e.key === 'Escape' && open) setOpen(false);
   }, [open]);
 

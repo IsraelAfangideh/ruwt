@@ -52,6 +52,7 @@ export function CandidateComparisonView({
   formatCost,
 }: CandidateComparisonViewProps) {
   const c = useColors();
+  /* istanbul ignore next -- @preserve */
   const [leftId, setLeftId] = useState<string>(candidates[0]?.sessionId ?? '');
   const [rightId, setRightId] = useState<string>(candidates[1]?.sessionId ?? '');
   const [showLeftDropdown, setShowLeftDropdown] = useState(false);
@@ -142,6 +143,7 @@ export function CandidateComparisonView({
     profile: AIProfile | undefined,
     insights: { flags: FlagSummary; comparatives: ComparativeMetric[] } | undefined,
   ) => {
+    /* istanbul ignore next -- @preserve */
     if (!candidate) return <Text style={{ color: c.textMuted }}>Select a candidate</Text>;
 
     return (

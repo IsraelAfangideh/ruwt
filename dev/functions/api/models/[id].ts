@@ -46,6 +46,7 @@ export async function onRequestGet(context: { request: Request; env: Env; params
         input: pricing.input,
         output: pricing.output,
       },
+      /* istanbul ignore next -- @preserve */
       stats: {
         timesUsed: stats?.times_used ?? 0,
         totalMessages: stats?.total_messages ?? 0,

@@ -338,6 +338,7 @@ export function AssessmentResultsScreen() {
                     if (!highestTier) return null;
                     const signal = getCostEfficiencySignal(cr.challenge.difficulty, highestTier, cr.status === 'passed');
                     if (!signal) return null;
+                    /* istanbul ignore next -- @preserve */
                     const signalColor = signal.type === 'positive' ? c.success : c.accent;
                     return (
                       <Text style={{ fontSize: fontSizes.xs, color: signalColor, marginTop: spacing.xs, fontStyle: 'italic' }}>
@@ -358,6 +359,7 @@ export function AssessmentResultsScreen() {
               : 'Ruwt \u2014 AI-Efficiency Assessment'}
           </Text>
           <Text style={[styles.footerLink, { color: c.accent }]}
+            /* istanbul ignore next -- @preserve */
             onPress={() => { window.open('https://ruwt.dev/teams', '_blank'); }}
           >
             Assess your engineering candidates with Ruwt

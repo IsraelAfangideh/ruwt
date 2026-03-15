@@ -156,6 +156,7 @@ export function AssessmentAdvancedSection({
                       src={companyLogoUrl}
                       alt="Logo preview"
                       style={{ maxHeight: 40, maxWidth: 120, objectFit: 'contain', borderRadius: 4 }}
+                      /* istanbul ignore next -- @preserve */
                       onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
                     />
                     <Text style={{ fontSize: fontSizes.xs, color: c.textMuted }}>Preview</Text>

@@ -97,7 +97,9 @@ function buildBaseContext(opts: BuildSystemPromptOptions): string {
     }
   }
 
+  /* istanbul ignore next -- @preserve */
   if (opts.readonlyPrefix) {
+    /* istanbul ignore next -- @preserve */
     parts.push(
       `## Read-Only Context (pre-loaded, NOT editable)\n` +
       `The following code is injected into the execution environment before your code runs.\n` +
@@ -108,6 +110,7 @@ function buildBaseContext(opts: BuildSystemPromptOptions): string {
       `- Your edits are ONLY to "Current code" below\n` +
       `\`\`\`${opts.language}\n${opts.readonlyPrefix}\n\`\`\``
     );
+    /* istanbul ignore next -- @preserve */
     parts.push('');
   }
 

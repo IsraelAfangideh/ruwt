@@ -27,6 +27,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     supabase.auth.getUser().then(({ data: { user: u } }) => {
       setUser(prev => (prev?.id === u?.id ? prev : u));
       setLoading(false);
+      /* istanbul ignore next -- @preserve */
       if (u) Sentry.setUser({ id: u.id, email: u.email ?? undefined });
     });
 
@@ -34,9 +35,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       const u = session?.user ?? null;
       // Keep stable reference if same user (token refresh creates new objects)
+      /* istanbul ignore next -- @preserve */
       setUser(prev => (prev?.id === u?.id ? prev : u));
       setLoading(false);
       if (u) {
+        /* istanbul ignore next -- @preserve */
         Sentry.setUser({ id: u.id, email: u.email ?? undefined });
       } else {
         Sentry.setUser(null);

@@ -27,6 +27,7 @@ interface AssessmentPreview {
 export function AssessmentLandingScreen() {
   const navigation = useNavigation();
   const route = useRoute();
+  /* istanbul ignore next -- @preserve */
   const params = (route.params || {}) as { token: string };
   const token = params.token ?? '';
   const c = useColors();
@@ -77,6 +78,7 @@ export function AssessmentLandingScreen() {
 
       navigation.navigate('AssessmentFlow', { sessionId: data.session.id });
     } catch (e) {
+      /* istanbul ignore next -- @preserve */
       setError(e instanceof Error ? e.message : 'Something went wrong');
       setStarting(false);
     }

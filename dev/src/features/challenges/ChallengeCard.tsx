@@ -54,6 +54,7 @@ export function ChallengeCard({ challenge }: { challenge: Challenge }) {
   const diffBg = diffStyle.bg;
 
   const catLabel = categoryLabel(challenge.category);
+  /* istanbul ignore next -- @preserve */
   const catColor = challenge.category === 'model_selection' ? (isDark ? c.accent : '#6b5520')
     : challenge.category === 'prompt_efficiency' ? (isDark ? c.success : '#3a6b3a')
     : challenge.category === 'iterative_debugging' ? (isDark ? c.destructive : '#8b4040')

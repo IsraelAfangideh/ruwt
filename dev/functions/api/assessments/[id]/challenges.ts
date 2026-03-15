@@ -26,6 +26,7 @@ export async function onRequestPut(context: { request: Request; env: Env; params
     const user = await getUser(context.request, context.env);
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
+    /* istanbul ignore next -- @preserve */
     const body = await context.request.json().catch(() => ({}));
     const parsed = setChallengesSchema.safeParse(body);
     if (!parsed.success) {

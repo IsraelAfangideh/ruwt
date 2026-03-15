@@ -186,4 +186,105 @@ describe('GET /api/attempts/:id/replay', () => {
     const res = await onRequestGet(makeCtx('att-1'));
     expect(res.status).toBe(500);
   });
+
+  it('returns "Anonymous" when solver has no name and no email', async () => {
+    mockGetUser.mockResolvedValue(FAKE_USER);
+    const attempt = {
+      id: 'att-1', userId: FAKE_USER.id, challengeId: 'ch-1',
+      status: 'passed', totalCost: 100, inputTokens: 50, outputTokens: 50,
+      replayPublic: 1, submittedAt: '2024-01-01', createdAt: '2024-01-01',
+      challengeTitle: 'Test', challengeDifficulty: 'easy', challengeCategory: 'c',
+    };
+    const solver = { name: null, email: null, avatarUrl: null };
+    const msgs: any[] = [];
+
+    let selectCall = 0;
+    const db = {
+      select: vi.fn().mockImplementation(() => {
+        selectCall++;
+        if (selectCall === 1) {
+          return { from: vi.fn().mockReturnThis(), innerJoin: vi.fn().mockReturnThis(), where: vi.fn().mockReturnThis(), limit: vi.fn().mockResolvedValue([attempt]) };
+        }
+        if (selectCall === 2) {
+          return { from: vi.fn().mockReturnThis(), where: vi.fn().mockReturnThis(), limit: vi.fn().mockResolvedValue([solver]) };
+        }
+        return { from: vi.fn().mockReturnThis(), where: vi.fn().mockReturnThis(), orderBy: vi.fn().mockResolvedValue(msgs) };
+      }),
+    };
+    mockGetDb.mockReturnValue(db);
+
+    const res = await onRequestGet(makeCtx('att-1'));
+    const json = await res.json();
+    expect(res.status).toBe(200);
+    expect(json.solver.name).toBe('Anonymous');
+  });
+
+  it('returns null for codeSnapshot that is whitespace-only', async () => {
+    mockGetUser.mockResolvedValue(FAKE_USER);
+    const attempt = {
+      id: 'att-1', userId: FAKE_USER.id, challengeId: 'ch-1',
+      status: 'passed', totalCost: 100, inputTokens: 50, outputTokens: 50,
+      replayPublic: 1, submittedAt: '2024-01-01', createdAt: '2024-01-01',
+      challengeTitle: 'Test', challengeDifficulty: 'easy', challengeCategory: 'c',
+    };
+    const solver = { name: 'Dev', email: 'dev@test.com', avatarUrl: null };
+    const msgs = [
+      { role: 'user', content: 'Help', model: null, inputTokens: 10, outputTokens: 0, cost: 0, codeSnapshot: '   \n  ', createdAt: '2024-01-01', sequence: 1 },
+      { role: 'assistant', content: 'OK', model: 'llm', inputTokens: 5, outputTokens: 10, cost: 5, codeSnapshot: 'const x = 1;', createdAt: '2024-01-01', sequence: 2 },
+      { role: 'user', content: 'More', model: null, inputTokens: 10, outputTokens: 0, cost: null, codeSnapshot: null, createdAt: '2024-01-01', sequence: 3 },
+    ];
+
+    let selectCall = 0;
+    const db = {
+      select: vi.fn().mockImplementation(() => {
+        selectCall++;
+        if (selectCall === 1) {
+          return { from: vi.fn().mockReturnThis(), innerJoin: vi.fn().mockReturnThis(), where: vi.fn().mockReturnThis(), limit: vi.fn().mockResolvedValue([attempt]) };
+        }
+        if (selectCall === 2) {
+          return { from: vi.fn().mockReturnThis(), where: vi.fn().mockReturnThis(), limit: vi.fn().mockResolvedValue([solver]) };
+        }
+        return { from: vi.fn().mockReturnThis(), where: vi.fn().mockReturnThis(), orderBy: vi.fn().mockResolvedValue(msgs) };
+      }),
+    };
+    mockGetDb.mockReturnValue(db);
+
+    const res = await onRequestGet(makeCtx('att-1'));
+    const json = await res.json();
+    expect(res.status).toBe(200);
+    expect(json.messages[0].codeSnapshot).toBeNull(); // whitespace-only → null
+    expect(json.messages[1].codeSnapshot).toBe('const x = 1;'); // real code → kept
+    expect(json.messages[2].codeSnapshot).toBeNull(); // null → null
+  });
+
+  it('handles no solver found in DB (undefined)', async () => {
+    mockGetUser.mockResolvedValue(FAKE_USER);
+    const attempt = {
+      id: 'att-1', userId: FAKE_USER.id, challengeId: 'ch-1',
+      status: 'passed', totalCost: 100, inputTokens: 50, outputTokens: 50,
+      replayPublic: 1, submittedAt: '2024-01-01', createdAt: '2024-01-01',
+      challengeTitle: 'T', challengeDifficulty: 'easy', challengeCategory: 'c',
+    };
+    const msgs: any[] = [];
+
+    let selectCall = 0;
+    const db = {
+      select: vi.fn().mockImplementation(() => {
+        selectCall++;
+        if (selectCall === 1) {
+          return { from: vi.fn().mockReturnThis(), innerJoin: vi.fn().mockReturnThis(), where: vi.fn().mockReturnThis(), limit: vi.fn().mockResolvedValue([attempt]) };
+        }
+        if (selectCall === 2) {
+          return { from: vi.fn().mockReturnThis(), where: vi.fn().mockReturnThis(), limit: vi.fn().mockResolvedValue([]) }; // no solver
+        }
+        return { from: vi.fn().mockReturnThis(), where: vi.fn().mockReturnThis(), orderBy: vi.fn().mockResolvedValue(msgs) };
+      }),
+    };
+    mockGetDb.mockReturnValue(db);
+
+    const res = await onRequestGet(makeCtx('att-1'));
+    const json = await res.json();
+    expect(res.status).toBe(200);
+    expect(json.solver.name).toBe('Anonymous');
+  });
 });

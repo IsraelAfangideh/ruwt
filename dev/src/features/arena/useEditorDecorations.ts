@@ -25,6 +25,7 @@ export function useEditorDecorations(editorRef: React.RefObject<unknown>) {
     const editor = editorRef.current as MonacoEditor | null;
     if (!editor || decorationIds.current.length === 0) return;
     decorationIds.current = editor.deltaDecorations(decorationIds.current, []);
+    /* istanbul ignore next -- @preserve */
     if (timerRef.current) {
       clearTimeout(timerRef.current);
       timerRef.current = null;

@@ -250,4 +250,29 @@ describe('AssessmentDocumentPanel', () => {
     expect(handleDelete).toHaveBeenCalledWith('cc1');
   });
 
+  it('onSelectAll callback merges new IDs with existing selected IDs', () => {
+    const setSelectedChallengeIds = vi.fn();
+    render(<AssessmentDocumentPanel {...baseProps} setSelectedChallengeIds={setSelectedChallengeIds} selectedChallengeIds={['ch1']} />);
+    // Invoke onSelectAll via the captured props
+    expect(mockChallengeListProps.current.onSelectAll).toBeDefined();
+    mockChallengeListProps.current.onSelectAll(['ch2', 'ch3']);
+    expect(setSelectedChallengeIds).toHaveBeenCalled();
+    // The callback passes a function updater; call it to verify behavior
+    const updater = setSelectedChallengeIds.mock.calls[0][0];
+    const result = updater(['ch1']);
+    expect(result).toEqual(expect.arrayContaining(['ch1', 'ch2', 'ch3']));
+  });
+
+  it('onClearAll callback clears all selected challenge IDs', () => {
+    const setSelectedChallengeIds = vi.fn();
+    render(<AssessmentDocumentPanel {...baseProps} setSelectedChallengeIds={setSelectedChallengeIds} selectedChallengeIds={['ch1']} />);
+    expect(mockChallengeListProps.current.onClearAll).toBeDefined();
+    mockChallengeListProps.current.onClearAll();
+    expect(setSelectedChallengeIds).toHaveBeenCalledWith([]);
+  });
+
+  it('passes loadError to AssessmentChallengeList', () => {
+    render(<AssessmentDocumentPanel {...baseProps} loadError="Failed to load" />);
+    expect(mockChallengeListProps.current.loadError).toBe('Failed to load');
+  });
 });

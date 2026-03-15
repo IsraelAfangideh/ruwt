@@ -257,4 +257,68 @@ describe('AssessmentAdvancedSection', () => {
     expect(screen.getByText('Minimum 5 min, maximum 240 min')).toBeTruthy();
     expect(screen.queryByText('Enter a number')).toBeNull();
   });
+
+  it('calls onWeightsChange when weight input changes', () => {
+    const onWeightsChange = vi.fn();
+    render(<AssessmentAdvancedSection {...baseProps} onWeightsChange={onWeightsChange} />);
+    fireEvent.click(screen.getByLabelText('Expand advanced settings'));
+    // Find the Model Selection weight input
+    const weightInputs = screen.getAllByPlaceholderText('20');
+    expect(weightInputs.length).toBeGreaterThan(0);
+    fireEvent.change(weightInputs[0], { target: { value: '30' } });
+    expect(onWeightsChange).toHaveBeenCalled();
+    // Verify the updater function works correctly
+    const updater = onWeightsChange.mock.calls[0][0];
+    const result = updater({ modelSelection: '20', promptEfficiency: '20', debugging: '20', strategy: '20', speed: '20' });
+    expect(result.modelSelection).toBe('30');
+  });
+
+  it('shows weight bar as destructive color when sum exceeds 100', () => {
+    render(<AssessmentAdvancedSection {...baseProps} weightSum={120} />);
+    fireEvent.click(screen.getByLabelText('Expand advanced settings'));
+    expect(screen.getByText('120/100')).toBeTruthy();
+    expect(screen.getByText('Weights must sum to 100')).toBeTruthy();
+  });
+
+  it('shows weight bar as success color when sum is exactly 100', () => {
+    render(<AssessmentAdvancedSection {...baseProps} weightSum={100} />);
+    fireEvent.click(screen.getByLabelText('Expand advanced settings'));
+    expect(screen.getByText('100/100')).toBeTruthy();
+    expect(screen.queryByText('Weights must sum to 100')).toBeNull();
+  });
+
+  it('shows dash for non-finite weight sum', () => {
+    render(<AssessmentAdvancedSection {...baseProps} weightSum={NaN} />);
+    fireEvent.click(screen.getByLabelText('Expand advanced settings'));
+    expect(screen.getByText('\u2014/100')).toBeTruthy();
+  });
+
+  it('renders company branding inputs when expanded', () => {
+    render(<AssessmentAdvancedSection {...baseProps} />);
+    fireEvent.click(screen.getByLabelText('Expand advanced settings'));
+    expect(screen.getByLabelText('Company Name')).toBeTruthy();
+    expect(screen.getByLabelText('Company Logo URL')).toBeTruthy();
+    expect(screen.getByLabelText('Welcome Message')).toBeTruthy();
+  });
+
+  it('calls onCompanyNameChange when company name input changes', () => {
+    const onCompanyNameChange = vi.fn();
+    render(<AssessmentAdvancedSection {...baseProps} onCompanyNameChange={onCompanyNameChange} />);
+    fireEvent.click(screen.getByLabelText('Expand advanced settings'));
+    fireEvent.change(screen.getByLabelText('Company Name'), { target: { value: 'Acme' } });
+    expect(onCompanyNameChange).toHaveBeenCalledWith('Acme');
+  });
+
+  it('shows logo preview when companyLogoUrl is a valid URL', () => {
+    render(<AssessmentAdvancedSection {...baseProps} companyLogoUrl="https://example.com/logo.png" />);
+    fireEvent.click(screen.getByLabelText('Expand advanced settings'));
+    expect(screen.getByText('Preview')).toBeTruthy();
+    expect(screen.getByAltText('Logo preview')).toBeTruthy();
+  });
+
+  it('does not show logo preview for non-URL logo text', () => {
+    render(<AssessmentAdvancedSection {...baseProps} companyLogoUrl="not-a-url" />);
+    fireEvent.click(screen.getByLabelText('Expand advanced settings'));
+    expect(screen.queryByText('Preview')).toBeNull();
+  });
 });

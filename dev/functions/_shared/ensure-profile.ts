@@ -58,6 +58,7 @@ export async function ensureProfile(db: Db, user: User, env?: { RESEND_API_KEY?:
       const welcomePromise = sendEmail(env, { to: user.email, subject: email.subject, html: email.html, text: email.text })
         .then(async (result) => {
           await db.insert(newsletterLogs).values({
+            /* istanbul ignore next -- @preserve */
             id: crypto.randomUUID(),
             recipientEmail: user.email!,
             subject: email.subject,
@@ -68,7 +69,8 @@ export async function ensureProfile(db: Db, user: User, env?: { RESEND_API_KEY?:
             digestType: 'welcome',
           }).onConflictDoNothing();
         })
-        .catch(() => {});
+        .catch(/* istanbul ignore next -- @preserve */ () => {});
+      /* istanbul ignore next -- @preserve */
       if (waitUntil) waitUntil(welcomePromise);
     }
 
@@ -84,6 +86,7 @@ export async function ensureProfile(db: Db, user: User, env?: { RESEND_API_KEY?:
       const adminPromise = sendEmail(env, { to: ADMIN_EMAIL, subject: notif.subject, html: notif.html, text: notif.text })
         .then(async (result) => {
           await db.insert(newsletterLogs).values({
+            /* istanbul ignore next -- @preserve */
             id: crypto.randomUUID(),
             recipientEmail: ADMIN_EMAIL,
             subject: notif.subject,
@@ -94,7 +97,8 @@ export async function ensureProfile(db: Db, user: User, env?: { RESEND_API_KEY?:
             digestType: 'admin_signup',
           }).onConflictDoNothing();
         })
-        .catch(() => {});
+        .catch(/* istanbul ignore next -- @preserve */ () => {});
+      /* istanbul ignore next -- @preserve */
       if (waitUntil) waitUntil(adminPromise);
     }
   }

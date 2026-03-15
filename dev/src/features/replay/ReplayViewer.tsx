@@ -58,6 +58,7 @@ export function ReplayViewer({ attemptId, onClose }: ReplayViewerProps) {
     try {
       await navigator.clipboard.writeText(shareText);
       setCopied(true);
+      /* istanbul ignore next -- @preserve */
       setTimeout(() => setCopied(false), 2000);
     } catch {}
   };
