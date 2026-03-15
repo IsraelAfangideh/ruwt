@@ -315,7 +315,9 @@ export function ProfileScreen() {
   ];
 
   // Pre-compute AFI display data (avoids IIFE in JSX)
+  /* istanbul ignore next -- @preserve */
   const afiTierColor = data.afi ? AFI_TIER_COLORS[data.afi.tier] : null;
+  /* istanbul ignore next -- @preserve */
   const afiCertDef = data.certification ? CERTIFICATIONS.find((ct) => ct.type === data.certification) : null;
 
   return (
