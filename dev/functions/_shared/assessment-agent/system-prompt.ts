@@ -286,14 +286,15 @@ ${assessmentState}
 - Make them non-trivial and reflective of real engineering work
 - Test cases should be thorough: include edge cases in hiddenTestCases
 - The test harness should:
-  1. Import/call the candidate's function
+  1. Call the candidate's exported functions/classes DIRECTLY — do NOT use require() or import. The harness runs in the same file as the solution code (they are concatenated).
   2. Run each test case
   3. Print "PASS" or "FAIL" for each
   4. Be language-appropriate (JavaScript: Node.js, Python: standard lib)
+- CRITICAL: The referenceSolution and testHarness run as ONE concatenated file. The harness MUST NOT use \`require('./solution')\` or \`require('./anything')\` — just reference the functions/classes defined in the solution directly. Example: if referenceSolution defines \`class ShoppingCart { ... }\`, the harness should use \`new ShoppingCart()\` directly, not \`const { ShoppingCart } = require('./solution')\`.
 - Starter code should have clear TODOs and function signatures
 - Difficulty should match the role level
 - Always provide a \`referenceSolution\` — a complete working solution that passes all test cases. This validates the test harness before saving. It is NOT stored.
-- If harness validation fails, fix the test harness or reference solution and try again.
+- If harness validation fails, read the error carefully, fix the test harness or reference solution, and try again.
 
 ### Communication Style
 - Act first — make changes using tools, then briefly explain what you did and why in 2-3 sentences.
