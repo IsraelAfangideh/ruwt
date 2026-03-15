@@ -10,6 +10,7 @@ import { Button } from '@/shared/ui/Button';
 import { Input } from '@/shared/ui/Input';
 import { useColors } from '@/shared/theme';
 import { spacing, fontSizes, fontFamily } from '@/shared/theme/tokens';
+import { AFI_TIER_COLORS, type AFITier } from '@/shared/lib/scoring';
 import { useToast } from '@/shared/ui/Toast';
 import type { TrialInfo } from '@/shared/layout/TrialBanner';
 
@@ -21,6 +22,8 @@ interface OrgMember {
   name: string | null;
   email: string;
   avatarUrl: string | null;
+  afiScore?: number;
+  afiTier?: string;
 }
 
 interface OrgInvitation {
