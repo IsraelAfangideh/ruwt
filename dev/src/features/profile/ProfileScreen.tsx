@@ -21,6 +21,7 @@ import { useAuthGuard } from '@/shared/hooks/useAuthGuard';
 import { useDashboardData } from '@/shared/lib/DashboardDataContext';
 import { useDocumentMeta } from '@/shared/hooks/useDocumentMeta';
 import { formatCategory, generateHeatmapDays } from '@/shared/lib/utils';
+import { AFI_TIER_COLORS, CERTIFICATIONS, type AFITier } from '@/shared/lib/scoring';
 
 interface ProfileData {
   profile: {
@@ -48,6 +49,12 @@ interface ProfileData {
     earnedAt: string;
   }>;
   heatmap?: Record<string, number>;
+  afi?: {
+    score: number;
+    tier: AFITier;
+    label: string;
+  };
+  certification?: string | null;
 }
 
 interface BadgeCatalogEntry {
@@ -307,6 +314,10 @@ export function ProfileScreen() {
     c.accent, c.success, c.error, '#6b8cce', '#b07acc', '#cc8c5e', '#5ead94',
   ];
 
+  // Pre-compute AFI display data (avoids IIFE in JSX)
+  const afiTierColor = data.afi ? AFI_TIER_COLORS[data.afi.tier] : null;
+  const afiCertDef = data.certification ? CERTIFICATIONS.find((ct) => ct.type === data.certification) : null;
+
   return (
     <DashboardLayout user={user}>
       <ScrollView
@@ -424,6 +435,30 @@ export function ProfileScreen() {
             </Card>
           ))}
         </View>
+
+        {/* AFI Score */}
+        {/* istanbul ignore next -- @preserve */ data.afi && data.afi.score > 0 && afiTierColor && (
+          <Card style={[styles.section, { borderColor: afiTierColor + '40', borderWidth: 1 }]}>
+            <CardContent style={styles.afiRow}>
+              <View>
+                <Text style={[styles.afiLabel, { color: c.textMuted }]}>AI Fluency Index</Text>
+                <View style={styles.afiScoreRow}>
+                  <Text style={[styles.afiScoreText, { color: afiTierColor }]}>{data.afi.score}</Text>
+                  <View style={[styles.afiTierPill, { backgroundColor: afiTierColor + '20' }]}>
+                    <Text style={[styles.afiTierLabel, { color: afiTierColor }]}>{data.afi.label}</Text>
+                  </View>
+                </View>
+                <Text style={[styles.afiScaleText, { color: c.textMuted }]}>out of 850</Text>
+              </View>
+              {afiCertDef && (
+                <View style={styles.afiCertWrap}>
+                  <Text style={{ fontSize: 28 }}>{afiCertDef.icon}</Text>
+                  <Text style={[styles.afiCertTitle, { color: c.accent }]}>{afiCertDef.title}</Text>
+                </View>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         {/* Heatmap */}
         {data.heatmap && <ActivityHeatmap heatmap={data.heatmap} />}
@@ -549,6 +584,17 @@ const styles = StyleSheet.create({
     fontFamily: fontFamily.body,
   },
   wideCard: { marginBottom: spacing.lg },
+
+  // AFI card
+  afiRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md },
+  afiLabel: { fontSize: fontSizes.xs, textTransform: 'uppercase' as any, letterSpacing: 1.5, fontFamily: fontFamily.body },
+  afiScoreRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: 4 },
+  afiScoreText: { fontSize: 36, fontWeight: '700', fontFamily: fontFamily.body },
+  afiTierPill: { paddingHorizontal: spacing.sm, paddingVertical: 2, borderRadius: radii.full },
+  afiTierLabel: { fontSize: fontSizes.xs, fontWeight: '700', textTransform: 'uppercase' as any, fontFamily: fontFamily.body },
+  afiScaleText: { fontSize: 10, fontFamily: fontFamily.body },
+  afiCertWrap: { alignItems: 'center', gap: 4 },
+  afiCertTitle: { fontSize: fontSizes.xs, fontWeight: '700', fontFamily: fontFamily.body },
 
   // Profile header
   profileHeader: {

@@ -16,6 +16,7 @@ import { eq, and, desc, sql, gte } from 'drizzle-orm';
 import { getDb } from '../_shared/db';
 import { getUser } from '../_shared/auth';
 import { ensureProfile } from '../_shared/ensure-profile';
+import { computeAFI, computeRadarFromCosts, determineCertification } from '../_shared/scoring';
 import {
   profiles,
   attempts,
@@ -49,6 +50,7 @@ export async function onRequestGet(context: { request: Request; env: Env; waitUn
       dailyChallengeRow,
       rankResult,
       heatmapRows,
+      globalAvgCosts,
     ] = await Promise.all([
       // 1. Profile info
       db
@@ -76,11 +78,12 @@ export async function onRequestGet(context: { request: Request; env: Env; waitUn
         })
         .from(challenges),
 
-      // 3. User's passed attempts (unique challenge IDs + categories)
+      // 3. User's passed attempts (unique challenge IDs + categories + cost for AFI)
       db
         .select({
           challengeId: attempts.challengeId,
           category: challenges.category,
+          totalCost: attempts.totalCost,
         })
         .from(attempts)
         .innerJoin(challenges, eq(attempts.challengeId, challenges.id))
@@ -170,6 +173,19 @@ export async function onRequestGet(context: { request: Request; env: Env; waitUn
           )
         )
         .groupBy(sql`DATE(${attempts.submittedAt})`),
+
+      // 10. Global avg cost per category (for AFI radar)
+      db
+        .select({
+          category: challenges.category,
+          avgCost: sql<number>`AVG(${attempts.totalCost})`,
+        })
+        .from(attempts)
+        .innerJoin(challenges, eq(attempts.challengeId, challenges.id))
+        .where(eq(attempts.status, 'passed'))
+        .groupBy(challenges.category),
+
+      // 11. (Removed — user avg cost per category computed from query #3 in JS)
     ]);
 
     const profile = profileRow[0];
@@ -249,6 +265,24 @@ export async function onRequestGet(context: { request: Request; env: Env; waitUn
       timestamp: r.submittedAt,
     }));
 
+    // --- Compute AFI from real radar data ---
+    // Derive user avg cost per category from query #3 (avoids extra DB query)
+    const userCostBuckets: Record<string, number[]> = {};
+    for (const a of userPassedAttempts) {
+      /* istanbul ignore next -- @preserve */
+      const cat = a.category || 'practice';
+      (userCostBuckets[cat] ??= []).push(Number(a.totalCost));
+    }
+    const userAvgCosts = Object.entries(userCostBuckets).map(([category, costs]) => ({
+      category,
+      avgCost: costs.reduce((s, v) => s + v, 0) / costs.length,
+    }));
+
+    const radar = computeRadarFromCosts(globalAvgCosts, userAvgCosts);
+    const afi = computeAFI(radar);
+    const solvedCategoryCount = new Set(userAvgCosts.map((u) => u.category)).size;
+    const certification = determineCertification(userSolveCount, solvedCategoryCount, afi.score);
+
     return Response.json({
       profile: {
         name: profile.name,
@@ -286,6 +320,12 @@ export async function onRequestGet(context: { request: Request; env: Env; waitUn
         totalRanked,
       },
       heatmap,
+      afi: {
+        score: afi.score,
+        tier: afi.tier,
+        label: afi.label,
+      },
+      certification,
     });
   } catch (error) {
     console.error('Dashboard error:', error);

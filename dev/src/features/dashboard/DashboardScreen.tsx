@@ -32,6 +32,7 @@ import { spacing, fontSizes, fontFamily, radii } from '@/shared/theme/tokens';
 import { getDifficultyStyle } from '@/shared/lib/difficulty';
 import { formatCostFromHundredths } from '@/shared/lib/ai/pricing';
 import { timeAgo, formatCategory, generateHeatmapDays } from '@/shared/lib/utils';
+import { AFI_TIER_COLORS, CERTIFICATIONS, type AFITier } from '@/shared/lib/scoring';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -79,6 +80,12 @@ interface DashboardData {
   }>;
   unreadNotifications: number;
   heatmap: Record<string, number>;
+  afi?: {
+    score: number;
+    tier: AFITier;
+    label: string;
+  };
+  certification?: string | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -187,8 +194,8 @@ function GreetingSection({
         </Text>
         <Text style={[styles.greetingSub, { color: c.textMuted }]}>
           {profile.currentStreak > 0
-            ? "Keep up the momentum. Every challenge sharpens your edge."
-            : "Ready to start building your streak?"}
+            ? "Every solve builds your AI Fluency Index."
+            : "Ready to start building your AFI?"}
         </Text>
       </View>
       <View style={styles.streakWrap}>
@@ -723,6 +730,65 @@ function ActivityFeedSection({ data }: { data: DashboardData }) {
   );
 }
 
+function AFICard({ data, onViewProfile }: { data: DashboardData; onViewProfile: () => void }) {
+  const c = useColors();
+  const { progress, afi: afiData, certification } = data;
+
+  // Use real AFI from API (falls back to zero for legacy responses)
+  const afiScore = afiData?.score ?? 0;
+  const afiTier = (afiData?.tier ?? 'novice') as AFITier;
+  const afiLabel = afiData?.label ?? 'Novice';
+  const tierColor = AFI_TIER_COLORS[afiTier];
+
+  // Find next certification milestone
+  /* istanbul ignore next -- @preserve */
+  const nextCert = CERTIFICATIONS.find((cert) => afiScore < cert.minAFI || progress.solvedCount < cert.minSolves);
+  // Current cert from API, or derive from CERTIFICATIONS
+  /* istanbul ignore next -- @preserve */
+  const currentCert = certification
+    ? CERTIFICATIONS.find((cert) => cert.type === certification)
+    : [...CERTIFICATIONS].reverse().find(
+        (cert) => afiScore >= cert.minAFI && progress.solvedCount >= cert.minSolves
+      );
+
+  /* istanbul ignore next -- @preserve */
+  const certSection = currentCert ? (
+    <View style={styles.afiCertWrap}>
+      <Text style={{ fontSize: 28 }}>{currentCert.icon}</Text>
+      <Text style={[styles.afiCertTitle, { color: c.accent }]}>{currentCert.title}</Text>
+    </View>
+  ) : nextCert ? (
+    <View style={styles.afiCertWrap}>
+      <Text style={[styles.afiNextLabel, { color: c.textMuted }]}>Next: {nextCert.title}</Text>
+      <Text style={[styles.afiNextReq, { color: c.textSubtle }]}>
+        AFI {nextCert.minAFI}+ {'\u00B7'} {nextCert.minSolves}+ solves
+      </Text>
+    </View>
+  ) : null;
+
+  return (
+    <Pressable onPress={onViewProfile}>
+      <Card style={[styles.afiCard, { borderColor: tierColor + '40' }]}>
+        <CardContent style={styles.afiContent}>
+          <View style={styles.afiLeft}>
+            <Text style={[styles.afiLabel, { color: c.textMuted }]}>AI Fluency Index</Text>
+            <View style={styles.afiScoreRow}>
+              <Text style={[styles.afiScore, { color: tierColor }]}>{afiScore}</Text>
+              <View style={[styles.afiTierPill, { backgroundColor: tierColor + '20' }]}>
+                <Text style={[styles.afiTierText, { color: tierColor }]}>{afiLabel}</Text>
+              </View>
+            </View>
+            <Text style={[styles.afiScale, { color: c.textMuted }]}>out of 850</Text>
+          </View>
+          <View style={styles.afiRight}>
+            {certSection}
+          </View>
+        </CardContent>
+      </Card>
+    </Pressable>
+  );
+}
+
 function TeamsHint({ onLearnMore }: { onLearnMore: () => void }) {
   const c = useColors();
   const [dismissed, setDismissed] = useState(false);
@@ -754,10 +820,10 @@ function TeamsHint({ onLearnMore }: { onLearnMore: () => void }) {
       <CardContent style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md, flexWrap: 'wrap' }}>
         <View style={{ flex: 1, minWidth: 200 }}>
           <Text style={{ fontSize: fontSizes.sm, fontWeight: '600', color: c.text, fontFamily: fontFamily.body, marginBottom: 2 }}>
-            Hiring engineers?
+            Building a team?
           </Text>
           <Text style={{ fontSize: fontSizes.xs, color: c.textMuted, fontFamily: fontFamily.body, lineHeight: 18 }}>
-            Use Ruwt assessments to measure how candidates actually use AI. Same challenges, real data.
+            Measure your team's AI Fluency Index. Same challenges, real AFI scores, objective comparison.
           </Text>
         </View>
         <View style={{ flexDirection: 'row', gap: spacing.sm, alignItems: 'center' }}>
@@ -890,6 +956,19 @@ export function DashboardScreen() {
             <GetStartedBanner
               onTryFizzBuzz={() => (navigation.navigate as any)('Arena', { challengeId: 'fizzbuzz-budget' })}
               onBrowse={() => (navigation.navigate as any)('Problems')}
+            />
+          </View>
+        )}
+
+        {/* 1b. AFI Score Card — shown after first solve */}
+        {data.progress.solvedCount > 0 && (
+          <View style={styles.section}>
+            <AFICard
+              data={data}
+              onViewProfile={/* istanbul ignore next -- @preserve */ () => data.profile.username
+                ? (navigation.navigate as any)('PublicProfile', { username: data.profile.username })
+                : (navigation.navigate as any)('Profile')
+              }
             />
           </View>
         )}
@@ -1050,6 +1129,68 @@ const styles = StyleSheet.create({
   },
   solvedCost: {
     fontSize: fontSizes.sm,
+    fontFamily: fontFamily.body,
+    marginTop: 2,
+  },
+
+  // AFI Card
+  afiCard: { borderWidth: 1 },
+  afiContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  afiLeft: { flex: 1 },
+  afiLabel: {
+    fontSize: fontSizes.xs,
+    textTransform: 'uppercase',
+    letterSpacing: 1.5,
+    fontFamily: fontFamily.body,
+  },
+  afiScoreRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginTop: 4,
+  },
+  afiScore: {
+    fontSize: 40,
+    fontWeight: '700',
+    fontFamily: fontFamily.body,
+    lineHeight: 48,
+  },
+  afiTierPill: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+    borderRadius: radii.full,
+  },
+  afiTierText: {
+    fontSize: fontSizes.xs,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    fontFamily: fontFamily.body,
+  },
+  afiScale: {
+    fontSize: 10,
+    fontFamily: fontFamily.body,
+    marginTop: 2,
+  },
+  afiRight: { alignItems: 'flex-end' },
+  afiCertWrap: { alignItems: 'center', gap: 4 },
+  afiCertTitle: {
+    fontSize: fontSizes.xs,
+    fontWeight: '700',
+    fontFamily: fontFamily.body,
+  },
+  afiNextLabel: {
+    fontSize: fontSizes.xs,
+    fontWeight: '600',
+    fontFamily: fontFamily.body,
+  },
+  afiNextReq: {
+    fontSize: 10,
     fontFamily: fontFamily.body,
     marginTop: 2,
   },

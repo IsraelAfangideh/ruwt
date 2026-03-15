@@ -42,21 +42,8 @@ vi.mock('@/shared/ui/Progress', () => ({
 vi.mock('@/shared/lib/difficulty', () => ({
   getDifficultyStyle: () => ({ color: '#38bdf8', bg: 'rgba(56,189,248,0.12)', label: 'Medium' }),
 }));
-vi.mock('@/shared/theme', () => ({
-  useColors: () => ({
-    bg: '#fff', text: '#000', textMuted: '#888', accent: '#c9a962', border: '#ccc',
-    borderStrong: '#999', card: '#fff', muted: '#f5f5f5', error: '#f00', errorBg: '#fee',
-    success: '#0a0', successBg: '#efe', primary: '#000', primaryForeground: '#fff',
-    secondary: '#eee', secondaryForeground: '#000', destructive: '#f00',
-    textSubtle: '#aaa', bgElevated: '#fafafa', accentBg: '#ffe',
-  }),
-}));
-vi.mock('@/shared/theme/tokens', () => ({
-  spacing: { xs: 4, sm: 8, md: 16, lg: 24, xl: 32, '2xl': 48 },
-  fontSizes: { xs: 12, sm: 14, md: 16, lg: 18, xl: 20, '2xl': 24, '3xl': 30, '4xl': 36 },
-  fontFamily: { display: 'serif', body: 'sans-serif' },
-  radii: { sm: 4, md: 8, lg: 12, xl: 16, full: 9999 },
-}));
+vi.mock('@/shared/theme', async () => (await import('@/shared/test/helpers')).mockTheme());
+vi.mock('@/shared/theme/tokens', async () => (await import('@/shared/test/helpers')).mockTokens());
 
 interface DashboardData {
   profile: {
@@ -186,7 +173,7 @@ describe('DashboardScreen', () => {
     vi.useRealTimers();
     render(<DashboardScreen />);
     await waitFor(() => {
-      expect(screen.getByText("Start Today's Challenge")).toBeTruthy();
+      expect(screen.getByText("Start Today's Challenge")).toBeInTheDocument();
     });
   });
 
@@ -197,7 +184,7 @@ describe('DashboardScreen', () => {
     vi.useRealTimers();
     render(<DashboardScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Completed!')).toBeTruthy();
+      expect(screen.getByText('Completed!')).toBeInTheDocument();
     });
   });
 
@@ -206,7 +193,7 @@ describe('DashboardScreen', () => {
     vi.useRealTimers();
     render(<DashboardScreen />);
     await waitFor(() => {
-      expect(screen.getByText(/No daily challenge available/)).toBeTruthy();
+      expect(screen.getByText(/No daily challenge available/)).toBeInTheDocument();
     });
   });
 
@@ -215,11 +202,11 @@ describe('DashboardScreen', () => {
     vi.useRealTimers();
     render(<DashboardScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Solved')).toBeTruthy();
+      expect(screen.getByText('Solved')).toBeInTheDocument();
     });
-    expect(screen.getByText('Global Rank')).toBeTruthy();
-    expect(screen.getByText('Streak')).toBeTruthy();
-    expect(screen.getByText('Best Streak')).toBeTruthy();
+    expect(screen.getByText('Global Rank')).toBeInTheDocument();
+    expect(screen.getByText('Streak')).toBeInTheDocument();
+    expect(screen.getByText('Best Streak')).toBeInTheDocument();
   });
 
   it('renders rank as #12 when position is set', async () => {
@@ -227,7 +214,7 @@ describe('DashboardScreen', () => {
     vi.useRealTimers();
     render(<DashboardScreen />);
     await waitFor(() => {
-      expect(screen.getByText('#12')).toBeTruthy();
+      expect(screen.getByText('#12')).toBeInTheDocument();
     });
   });
 
@@ -236,7 +223,7 @@ describe('DashboardScreen', () => {
     vi.useRealTimers();
     render(<DashboardScreen />);
     await waitFor(() => {
-      expect(screen.getByText('--')).toBeTruthy();
+      expect(screen.getByText('--')).toBeInTheDocument();
     });
   });
 
@@ -245,9 +232,9 @@ describe('DashboardScreen', () => {
     vi.useRealTimers();
     render(<DashboardScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Your Progress')).toBeTruthy();
+      expect(screen.getByText('Your Progress')).toBeInTheDocument();
     });
-    expect(screen.getByText(/8% of challenges completed/)).toBeTruthy();
+    expect(screen.getByText(/8% of challenges completed/)).toBeInTheDocument();
     // Category pills (Prompt Efficiency may appear in both category pills and daily challenge badge)
     expect(screen.getAllByText(/Prompt Efficiency/).length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText(/Iterative Debugging/).length).toBeGreaterThanOrEqual(1);
@@ -259,11 +246,11 @@ describe('DashboardScreen', () => {
     vi.useRealTimers();
     render(<DashboardScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Activity')).toBeTruthy();
+      expect(screen.getByText('Activity')).toBeInTheDocument();
     });
-    expect(screen.getByText('Last 90 days')).toBeTruthy();
-    expect(screen.getByText('Less')).toBeTruthy();
-    expect(screen.getByText('More')).toBeTruthy();
+    expect(screen.getByText('Last 90 days')).toBeInTheDocument();
+    expect(screen.getByText('Less')).toBeInTheDocument();
+    expect(screen.getByText('More')).toBeInTheDocument();
   });
 
   it('renders streak badge with count when streak > 0', async () => {
@@ -271,7 +258,7 @@ describe('DashboardScreen', () => {
     vi.useRealTimers();
     render(<DashboardScreen />);
     await waitFor(() => {
-      expect(screen.getByText('day streak')).toBeTruthy();
+      expect(screen.getByText('day streak')).toBeInTheDocument();
     });
   });
 
@@ -282,9 +269,9 @@ describe('DashboardScreen', () => {
     vi.useRealTimers();
     render(<DashboardScreen />);
     await waitFor(() => {
-      expect(screen.getByText(/Ready to start building your streak/)).toBeTruthy();
+      expect(screen.getByText(/Ready to start building your AFI/)).toBeInTheDocument();
     });
-    expect(screen.getByText('Start your streak!')).toBeTruthy();
+    expect(screen.getByText('Start your streak!')).toBeInTheDocument();
   });
 
   it('shows streak freezes when > 0', async () => {
@@ -292,7 +279,7 @@ describe('DashboardScreen', () => {
     vi.useRealTimers();
     render(<DashboardScreen />);
     await waitFor(() => {
-      expect(screen.getByText('2 freezes')).toBeTruthy();
+      expect(screen.getByText('2 freezes')).toBeInTheDocument();
     });
   });
 
@@ -303,7 +290,7 @@ describe('DashboardScreen', () => {
     vi.useRealTimers();
     render(<DashboardScreen />);
     await waitFor(() => {
-      expect(screen.getByText('1 freeze')).toBeTruthy();
+      expect(screen.getByText('1 freeze')).toBeInTheDocument();
     });
   });
 
@@ -312,11 +299,11 @@ describe('DashboardScreen', () => {
     vi.useRealTimers();
     render(<DashboardScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Achievements')).toBeTruthy();
+      expect(screen.getByText('Achievements')).toBeInTheDocument();
     });
-    expect(screen.getByText('View All')).toBeTruthy();
-    expect(screen.getByText(/Solve challenges and build streaks/)).toBeTruthy();
-    expect(screen.getByText('First Solve')).toBeTruthy();
+    expect(screen.getByText('View All')).toBeInTheDocument();
+    expect(screen.getByText(/Solve challenges and build streaks/)).toBeInTheDocument();
+    expect(screen.getByText('First Solve')).toBeInTheDocument();
   });
 
   it('shows earned badges when present', async () => {
@@ -328,7 +315,7 @@ describe('DashboardScreen', () => {
     vi.useRealTimers();
     render(<DashboardScreen />);
     await waitFor(() => {
-      expect(screen.getByText('First Solve')).toBeTruthy();
+      expect(screen.getByText('First Solve')).toBeInTheDocument();
     });
   });
 
@@ -337,9 +324,9 @@ describe('DashboardScreen', () => {
     vi.useRealTimers();
     render(<DashboardScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Community')).toBeTruthy();
+      expect(screen.getByText('Community')).toBeInTheDocument();
     });
-    expect(screen.getByText(/Be among the first/)).toBeTruthy();
+    expect(screen.getByText(/Be among the first/)).toBeInTheDocument();
   });
 
   it('shows recent activity feed when >= 3 unique users', async () => {
@@ -354,11 +341,11 @@ describe('DashboardScreen', () => {
     vi.useRealTimers();
     render(<DashboardScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Recent Activity')).toBeTruthy();
+      expect(screen.getByText('Recent Activity')).toBeInTheDocument();
     });
-    expect(screen.getByText('alice')).toBeTruthy();
-    expect(screen.getByText('bob')).toBeTruthy();
-    expect(screen.getByText('carol')).toBeTruthy();
+    expect(screen.getByText('alice')).toBeInTheDocument();
+    expect(screen.getByText('bob')).toBeInTheDocument();
+    expect(screen.getByText('carol')).toBeInTheDocument();
   });
 
   it('shows GetStartedBanner when user has 0 solved challenges', async () => {
@@ -368,10 +355,10 @@ describe('DashboardScreen', () => {
     vi.useRealTimers();
     render(<DashboardScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Start Your First Challenge')).toBeTruthy();
+      expect(screen.getByText('Start Your First Challenge')).toBeInTheDocument();
     });
-    expect(screen.getByText('Try FizzBuzz Budget')).toBeTruthy();
-    expect(screen.getByText('Browse all challenges')).toBeTruthy();
+    expect(screen.getByText('Try FizzBuzz Budget')).toBeInTheDocument();
+    expect(screen.getByText('Browse all challenges')).toBeInTheDocument();
   });
 
   it('navigates to Arena with fizzbuzz-budget when Try FizzBuzz Budget is clicked', async () => {
@@ -381,7 +368,7 @@ describe('DashboardScreen', () => {
     vi.useRealTimers();
     render(<DashboardScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Try FizzBuzz Budget')).toBeTruthy();
+      expect(screen.getByText('Try FizzBuzz Budget')).toBeInTheDocument();
     });
     fireEvent.click(screen.getByText('Try FizzBuzz Budget'));
     expect(mockNavigate).toHaveBeenCalledWith('Arena', { challengeId: 'fizzbuzz-budget' });
@@ -394,7 +381,7 @@ describe('DashboardScreen', () => {
     vi.useRealTimers();
     render(<DashboardScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Browse all challenges')).toBeTruthy();
+      expect(screen.getByText('Browse all challenges')).toBeInTheDocument();
     });
     fireEvent.click(screen.getByText('Browse all challenges'));
     expect(mockNavigate).toHaveBeenCalledWith('Problems');
@@ -407,9 +394,9 @@ describe('DashboardScreen', () => {
     vi.useRealTimers();
     render(<DashboardScreen />);
     await waitFor(() => {
-      expect(screen.getByText(/Dashboard data is loading/)).toBeTruthy();
+      expect(screen.getByText(/Dashboard data is loading/)).toBeInTheDocument();
     });
-    expect(screen.getByText('Refresh')).toBeTruthy();
+    expect(screen.getByText('Refresh')).toBeInTheDocument();
   });
 
   it('shows skeleton when dashboard status is loading', async () => {
@@ -440,7 +427,7 @@ describe('DashboardScreen', () => {
     vi.useRealTimers();
     render(<DashboardScreen />);
     await waitFor(() => {
-      expect(screen.getByText('View All')).toBeTruthy();
+      expect(screen.getByText('View All')).toBeInTheDocument();
     });
     fireEvent.click(screen.getByText('View All'));
     expect(mockNavigate).toHaveBeenCalledWith('Profile');
@@ -451,7 +438,7 @@ describe('DashboardScreen', () => {
     vi.useRealTimers();
     render(<DashboardScreen />);
     await waitFor(() => {
-      expect(screen.getByText("Start Today's Challenge")).toBeTruthy();
+      expect(screen.getByText("Start Today's Challenge")).toBeInTheDocument();
     });
     fireEvent.click(screen.getByText("Start Today's Challenge"));
     expect(mockNavigate).toHaveBeenCalledWith('Arena', { challengeId: 'dc1' });
@@ -462,7 +449,7 @@ describe('DashboardScreen', () => {
     vi.useRealTimers();
     render(<DashboardScreen />);
     await waitFor(() => {
-      expect(screen.getByText("Today's Challenge")).toBeTruthy();
+      expect(screen.getByText("Today's Challenge")).toBeInTheDocument();
     });
   });
 
@@ -471,7 +458,7 @@ describe('DashboardScreen', () => {
     vi.useRealTimers();
     render(<DashboardScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Next in')).toBeTruthy();
+      expect(screen.getByText('Next in')).toBeInTheDocument();
     });
   });
 
@@ -480,7 +467,7 @@ describe('DashboardScreen', () => {
     vi.useRealTimers();
     render(<DashboardScreen />);
     await waitFor(() => {
-      expect(screen.getByText('5 / 60')).toBeTruthy();
+      expect(screen.getByText('5 / 60')).toBeInTheDocument();
     });
   });
 
@@ -489,9 +476,9 @@ describe('DashboardScreen', () => {
     vi.useRealTimers();
     render(<DashboardScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Best Streak')).toBeTruthy();
+      expect(screen.getByText('Best Streak')).toBeInTheDocument();
     });
-    expect(screen.getByText('7')).toBeTruthy(); // longestStreak from mock data
+    expect(screen.getByText('7')).toBeInTheDocument(); // longestStreak from mock data
   });
 
   it('renders category difficulty badge for daily challenge', async () => {
@@ -521,7 +508,7 @@ describe('DashboardScreen', () => {
     vi.useRealTimers();
     render(<DashboardScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Daily FizzBuzz')).toBeTruthy();
+      expect(screen.getByText('Daily FizzBuzz')).toBeInTheDocument();
     });
   });
 
@@ -532,7 +519,7 @@ describe('DashboardScreen', () => {
     vi.useRealTimers();
     render(<DashboardScreen />);
     await waitFor(() => {
-      expect(screen.getByText('15')).toBeTruthy();
+      expect(screen.getByText('15')).toBeInTheDocument();
     });
   });
 
@@ -543,7 +530,7 @@ describe('DashboardScreen', () => {
     vi.useRealTimers();
     render(<DashboardScreen />);
     await waitFor(() => {
-      expect(screen.getByText('day streak')).toBeTruthy();
+      expect(screen.getByText('day streak')).toBeInTheDocument();
     });
     expect(screen.queryByText(/freeze/)).toBeNull();
   });
@@ -555,7 +542,7 @@ describe('DashboardScreen', () => {
     vi.useRealTimers();
     render(<DashboardScreen />);
     await waitFor(() => {
-      expect(screen.getByText(/0% of challenges completed/)).toBeTruthy();
+      expect(screen.getByText(/0% of challenges completed/)).toBeInTheDocument();
     });
   });
 
@@ -566,7 +553,7 @@ describe('DashboardScreen', () => {
     vi.useRealTimers();
     render(<DashboardScreen />);
     await waitFor(() => {
-      expect(screen.getByText(/50% of challenges completed/)).toBeTruthy();
+      expect(screen.getByText(/50% of challenges completed/)).toBeInTheDocument();
     });
   });
 
@@ -582,7 +569,7 @@ describe('DashboardScreen', () => {
 
     // Wait for dashboard to load
     await waitFor(() => {
-      expect(screen.getByText("Start Today's Challenge")).toBeTruthy();
+      expect(screen.getByText("Start Today's Challenge")).toBeInTheDocument();
     });
 
     // Tick 1: prev=3 -> return prev-1=2
@@ -593,7 +580,7 @@ describe('DashboardScreen', () => {
     await act(async () => { vi.advanceTimersByTime(1000); });
 
     // After countdown reaches 0, should display 00:00:00
-    expect(screen.getByText('00:00:00')).toBeTruthy();
+    expect(screen.getByText('00:00:00')).toBeInTheDocument();
   });
 
   /* -- Fallback Refresh button calls window.location.reload -- */
@@ -609,7 +596,7 @@ describe('DashboardScreen', () => {
     vi.useRealTimers();
     render(<DashboardScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Refresh')).toBeTruthy();
+      expect(screen.getByText('Refresh')).toBeInTheDocument();
     });
     fireEvent.click(screen.getByText('Refresh'));
     expect(reloadMock).toHaveBeenCalled();
@@ -627,9 +614,9 @@ describe('DashboardScreen', () => {
     vi.useRealTimers();
     render(<DashboardScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Community')).toBeTruthy();
+      expect(screen.getByText('Community')).toBeInTheDocument();
     });
-    expect(screen.getByText(/Be among the first/)).toBeTruthy();
+    expect(screen.getByText(/Be among the first/)).toBeInTheDocument();
   });
 
   /* -- Heatmap with actual data for intensity color branches -- */
@@ -647,10 +634,10 @@ describe('DashboardScreen', () => {
     vi.useRealTimers();
     render(<DashboardScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Activity')).toBeTruthy();
+      expect(screen.getByText('Activity')).toBeInTheDocument();
     });
     // The accessible summary should reflect the activity data
-    expect(screen.getByText(/14 activities across 3 active days/)).toBeTruthy();
+    expect(screen.getByText(/14 activities across 3 active days/)).toBeInTheDocument();
   });
 
   /* -- relativeTime helper covers various time ranges -- */
@@ -669,14 +656,14 @@ describe('DashboardScreen', () => {
     vi.useRealTimers();
     render(<DashboardScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Recent Activity')).toBeTruthy();
+      expect(screen.getByText('Recent Activity')).toBeInTheDocument();
     });
-    expect(screen.getByText('just now')).toBeTruthy();
-    expect(screen.getByText('5m ago')).toBeTruthy();
-    expect(screen.getByText('3h ago')).toBeTruthy();
-    expect(screen.getByText('yesterday')).toBeTruthy();
-    expect(screen.getByText('5d ago')).toBeTruthy();
-    expect(screen.getByText('1mo ago')).toBeTruthy();
+    expect(screen.getByText('just now')).toBeInTheDocument();
+    expect(screen.getByText('5m ago')).toBeInTheDocument();
+    expect(screen.getByText('3h ago')).toBeInTheDocument();
+    expect(screen.getByText('yesterday')).toBeInTheDocument();
+    expect(screen.getByText('5d ago')).toBeInTheDocument();
+    expect(screen.getByText('1mo ago')).toBeInTheDocument();
   });
 
   it('shows zero best streak', async () => {
@@ -686,7 +673,7 @@ describe('DashboardScreen', () => {
     vi.useRealTimers();
     render(<DashboardScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Best Streak')).toBeTruthy();
+      expect(screen.getByText('Best Streak')).toBeInTheDocument();
     });
   });
 });

@@ -56,11 +56,12 @@ const FAQ_ITEMS = [
 // ─── Comparison Data ─────────────────────────────────────────────────────────
 
 const COMPARISON_ROWS = [
+  { label: 'AI Fluency Index (0-850)', ruwt: true, hackerrank: false, codility: false, takehome: false },
   { label: 'Measures AI usage', ruwt: true, hackerrank: false, codility: false, takehome: false },
   { label: 'Real cost tracking', ruwt: true, hackerrank: false, codility: false, takehome: false },
-  { label: 'Model selection strategy', ruwt: true, hackerrank: false, codility: false, takehome: false },
+  { label: 'Certification system', ruwt: true, hackerrank: false, codility: false, takehome: false },
+  { label: 'Team benchmarking', ruwt: true, hackerrank: false, codility: false, takehome: false },
   { label: 'Full session replay', ruwt: true, hackerrank: 'Partial', codility: false, takehome: false },
-  { label: 'Behavioral insights', ruwt: true, hackerrank: false, codility: false, takehome: false },
   { label: 'Setup time', ruwt: '5 min', hackerrank: '30 min', codility: '30 min', takehome: '2+ hrs' },
   { label: 'Anti-cheat (server-tracked)', ruwt: true, hackerrank: 'Partial', codility: 'Partial', takehome: false },
   { label: 'Pricing', ruwt: '$200/mo flat', hackerrank: '$100+/seat/mo', codility: '$100+/seat/mo', takehome: 'Free' },
@@ -280,25 +281,24 @@ export function TeamsScreen() {
       {/* ─── Dark Hero ─── */}
       <View style={[styles.hero, { backgroundColor: '#1a1816' }]}>
         <View style={styles.heroInner}>
-          <Badge variant="secondary" style={{ alignSelf: 'center' }}>For Hiring Teams</Badge>
+          <Badge variant="secondary" style={{ alignSelf: 'center' }}>For Engineering Teams</Badge>
           <Text style={styles.heroTitle}>
-            Your Candidates Claim{'\n'}They're{' '}
-            <Text style={{ color: '#c9a962' }}>AI-Fluent</Text>.{'\n'}
-            Now You Can Verify It.
+            Measure Your Team's{'\n'}
+            <Text style={{ color: '#c9a962' }}>AI Fluency</Text>.{'\n'}
+            Hire for It.
           </Text>
           <Text style={styles.heroSub}>
-            Ruwt is the only assessment platform that measures how engineers actually use AI —
-            which models they pick, how they prompt, what they spend, and how they debug.
-            Objective data. Impossible to fake.
+            Every engineer gets an AI Fluency Index (0-850) — model selection, prompt efficiency, debugging, speed.
+            Benchmark your existing team. Assess candidates. One score that tells you who's efficient and who needs upskilling.
           </Text>
 
           {/* ROI Stats in hero */}
           {/* istanbul ignore next -- @preserve */}
           <View style={[styles.heroStats, /* istanbul ignore next -- @preserve */ isMobile && styles.heroStatsMobile]}>
             {[
+              { value: '0-850', label: 'AFI SCORE' },
               { value: '5 min', label: 'SETUP' },
-              { value: '60 min', label: 'CANDIDATE TIME' },
-              { value: '5 axes', label: 'AI PROFILE' },
+              { value: '3-tier', label: 'CERTIFICATION' },
               { value: '100%', label: 'SERVER-TRACKED' },
             ].map((s) => (
               <View key={s.label} style={styles.heroStat}>
@@ -674,10 +674,10 @@ export function TeamsScreen() {
       {/* ─── Final CTA ─── */}
       <View style={[styles.ctaSection, { backgroundColor: '#1a1816' }]}>
         <Text style={styles.ctaTitle}>
-          Stop Guessing. Start Measuring.
+          One Score. Every Engineer.
         </Text>
         <Text style={styles.ctaSub}>
-          Your next hire will use AI every day. Find the one who uses it best.
+          Benchmark your team's AI fluency. Assess every candidate. The AFI tells you who's efficient — and who's burning tokens.
         </Text>
         <View style={styles.ctaButtons}>
           <Button

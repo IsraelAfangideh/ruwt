@@ -44,21 +44,8 @@ vi.mock('@/shared/ui/Progress', () => ({
 vi.mock('@/shared/ui/Skeleton', () => ({
   Skeleton: () => <div data-testid="skeleton" />,
 }));
-vi.mock('@/shared/theme', () => ({
-  useColors: () => ({
-    bg: '#fff', text: '#000', textMuted: '#888', accent: '#c9a962', border: '#ccc',
-    borderStrong: '#999', card: '#fff', muted: '#f5f5f5', error: '#f00', errorBg: '#fee',
-    success: '#0a0', successBg: '#efe', primary: '#000', primaryForeground: '#fff',
-    secondary: '#eee', secondaryForeground: '#000', destructive: '#f00',
-    textSubtle: '#aaa', bgElevated: '#fafafa', accentBg: '#ffe',
-  }),
-}));
-vi.mock('@/shared/theme/tokens', () => ({
-  spacing: { xs: 4, sm: 8, md: 16, lg: 24, xl: 32, '2xl': 48 },
-  fontSizes: { xs: 12, sm: 14, md: 16, lg: 18, xl: 20, '2xl': 24, '3xl': 30, '4xl': 36 },
-  fontFamily: { display: 'serif', body: 'sans-serif' },
-  radii: { sm: 4, md: 8, lg: 12, xl: 16, full: 9999 },
-}));
+vi.mock('@/shared/theme', async () => (await import('@/shared/test/helpers')).mockTheme());
+vi.mock('@/shared/theme/tokens', async () => (await import('@/shared/test/helpers')).mockTokens());
 
 const mockProfileData: {
   profile: {
@@ -158,7 +145,7 @@ describe('ProfileScreen', () => {
   it('renders username with @ prefix', async () => {
     render(<ProfileScreen />);
     await waitFor(() => {
-      expect(screen.getByText('@testuser')).toBeTruthy();
+      expect(screen.getByText('@testuser')).toBeInTheDocument();
     });
   });
 
@@ -175,14 +162,14 @@ describe('ProfileScreen', () => {
     });
     render(<ProfileScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Set username')).toBeTruthy();
+      expect(screen.getByText('Set username')).toBeInTheDocument();
     });
   });
 
   it('shows View public profile link when username exists', async () => {
     render(<ProfileScreen />);
     await waitFor(() => {
-      expect(screen.getByText('View public profile')).toBeTruthy();
+      expect(screen.getByText('View public profile')).toBeInTheDocument();
     });
   });
 
@@ -192,7 +179,7 @@ describe('ProfileScreen', () => {
     });
     render(<ProfileScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Set username')).toBeTruthy();
+      expect(screen.getByText('Set username')).toBeInTheDocument();
     });
     expect(screen.queryByText('View public profile')).toBeNull();
   });
@@ -200,17 +187,17 @@ describe('ProfileScreen', () => {
   it('renders stats row with Solved count', async () => {
     render(<ProfileScreen />);
     await waitFor(() => {
-      expect(screen.getByText('5/60')).toBeTruthy();
+      expect(screen.getByText('5/60')).toBeInTheDocument();
     });
-    expect(screen.getByText('Solved')).toBeTruthy();
+    expect(screen.getByText('Solved')).toBeInTheDocument();
   });
 
   it('renders rank position', async () => {
     render(<ProfileScreen />);
     await waitFor(() => {
-      expect(screen.getByText('#12')).toBeTruthy();
+      expect(screen.getByText('#12')).toBeInTheDocument();
     });
-    expect(screen.getByText('Rank')).toBeTruthy();
+    expect(screen.getByText('Rank')).toBeInTheDocument();
   });
 
   it('shows -- for rank when position is null', async () => {
@@ -219,32 +206,32 @@ describe('ProfileScreen', () => {
     });
     render(<ProfileScreen />);
     await waitFor(() => {
-      expect(screen.getByText('--')).toBeTruthy();
+      expect(screen.getByText('--')).toBeInTheDocument();
     });
   });
 
   it('renders streak count', async () => {
     render(<ProfileScreen />);
     await waitFor(() => {
-      expect(screen.getByText('3')).toBeTruthy();
+      expect(screen.getByText('3')).toBeInTheDocument();
     });
-    expect(screen.getByText('Streak')).toBeTruthy();
+    expect(screen.getByText('Streak')).toBeInTheDocument();
   });
 
   it('renders best streak', async () => {
     render(<ProfileScreen />);
     await waitFor(() => {
-      expect(screen.getByText('7')).toBeTruthy();
+      expect(screen.getByText('7')).toBeInTheDocument();
     });
-    expect(screen.getByText('Best Streak')).toBeTruthy();
+    expect(screen.getByText('Best Streak')).toBeInTheDocument();
   });
 
   it('renders Challenge Progress section', async () => {
     render(<ProfileScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Challenge Progress')).toBeTruthy();
+      expect(screen.getByText('Challenge Progress')).toBeInTheDocument();
     });
-    expect(screen.getByText(/8% complete/)).toBeTruthy();
+    expect(screen.getByText(/8% complete/)).toBeInTheDocument();
   });
 
   it('renders progress bar with correct percentage', async () => {
@@ -259,57 +246,57 @@ describe('ProfileScreen', () => {
   it('renders category progress pills', async () => {
     render(<ProfileScreen />);
     await waitFor(() => {
-      expect(screen.getByText(/Prompt Efficiency/)).toBeTruthy();
+      expect(screen.getByText(/Prompt Efficiency/)).toBeInTheDocument();
     });
-    expect(screen.getByText(/3\/10/)).toBeTruthy();
-    expect(screen.getByText(/Iterative Debugging/)).toBeTruthy();
-    expect(screen.getByText(/2\/8/)).toBeTruthy();
+    expect(screen.getByText(/3\/10/)).toBeInTheDocument();
+    expect(screen.getByText(/Iterative Debugging/)).toBeInTheDocument();
+    expect(screen.getByText(/2\/8/)).toBeInTheDocument();
   });
 
   it('renders Achievements section with badge counts', async () => {
     render(<ProfileScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Achievements')).toBeTruthy();
+      expect(screen.getByText('Achievements')).toBeInTheDocument();
     });
-    expect(screen.getByText('1 of 2 unlocked')).toBeTruthy();
+    expect(screen.getByText('1 of 2 unlocked')).toBeInTheDocument();
   });
 
   it('renders badge catalog with earned and unearned badges', async () => {
     render(<ProfileScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Speed Demon')).toBeTruthy();
+      expect(screen.getByText('Speed Demon')).toBeInTheDocument();
     });
-    expect(screen.getByText('Budget Master')).toBeTruthy();
+    expect(screen.getByText('Budget Master')).toBeInTheDocument();
   });
 
   it('renders Account section with credits', async () => {
     render(<ProfileScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Account')).toBeTruthy();
+      expect(screen.getByText('Account')).toBeInTheDocument();
     });
-    expect(screen.getByText('Credits')).toBeTruthy();
-    expect(screen.getByText('50,000')).toBeTruthy();
+    expect(screen.getByText('Credits')).toBeInTheDocument();
+    expect(screen.getByText('50,000')).toBeInTheDocument();
   });
 
   it('renders Streak Freezes in Account section', async () => {
     render(<ProfileScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Streak Freezes')).toBeTruthy();
+      expect(screen.getByText('Streak Freezes')).toBeInTheDocument();
     });
-    expect(screen.getByText('2')).toBeTruthy();
+    expect(screen.getByText('2')).toBeInTheDocument();
   });
 
   it('renders Account Settings button', async () => {
     render(<ProfileScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Account Settings')).toBeTruthy();
+      expect(screen.getByText('Account Settings')).toBeInTheDocument();
     });
   });
 
   it('navigates to Settings when Account Settings is clicked', async () => {
     render(<ProfileScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Account Settings')).toBeTruthy();
+      expect(screen.getByText('Account Settings')).toBeInTheDocument();
     });
     fireEvent.click(screen.getByText('Account Settings'));
     expect(mockNavigate).toHaveBeenCalledWith('Settings');
@@ -321,12 +308,12 @@ describe('ProfileScreen', () => {
     });
     render(<ProfileScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Set username')).toBeTruthy();
+      expect(screen.getByText('Set username')).toBeInTheDocument();
     });
     fireEvent.click(screen.getByText('Set username'));
     await waitFor(() => {
-      expect(screen.getByText('Save')).toBeTruthy();
-      expect(screen.getByText('Cancel')).toBeTruthy();
+      expect(screen.getByText('Save')).toBeInTheDocument();
+      expect(screen.getByText('Cancel')).toBeInTheDocument();
     });
   });
 
@@ -336,15 +323,15 @@ describe('ProfileScreen', () => {
     });
     render(<ProfileScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Set username')).toBeTruthy();
+      expect(screen.getByText('Set username')).toBeInTheDocument();
     });
     fireEvent.click(screen.getByText('Set username'));
     await waitFor(() => {
-      expect(screen.getByText('Cancel')).toBeTruthy();
+      expect(screen.getByText('Cancel')).toBeInTheDocument();
     });
     fireEvent.click(screen.getByText('Cancel'));
     await waitFor(() => {
-      expect(screen.getByText('Set username')).toBeTruthy();
+      expect(screen.getByText('Set username')).toBeInTheDocument();
     });
   });
 
@@ -363,11 +350,11 @@ describe('ProfileScreen', () => {
 
     render(<ProfileScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Set username')).toBeTruthy();
+      expect(screen.getByText('Set username')).toBeInTheDocument();
     });
     fireEvent.click(screen.getByText('Set username'));
     await waitFor(() => {
-      expect(screen.getByText('Save')).toBeTruthy();
+      expect(screen.getByText('Save')).toBeInTheDocument();
     });
     const input = document.querySelector('[data-testid="username-input"]') as HTMLInputElement;
     fireEvent.change(input, { target: { value: 'newuser' } });
@@ -394,17 +381,17 @@ describe('ProfileScreen', () => {
 
     render(<ProfileScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Set username')).toBeTruthy();
+      expect(screen.getByText('Set username')).toBeInTheDocument();
     });
     fireEvent.click(screen.getByText('Set username'));
     await waitFor(() => {
-      expect(screen.getByText('Save')).toBeTruthy();
+      expect(screen.getByText('Save')).toBeInTheDocument();
     });
     const input = document.querySelector('[data-testid="username-input"]') as HTMLInputElement;
     fireEvent.change(input, { target: { value: 'taken' } });
     fireEvent.click(screen.getByText('Save'));
     await waitFor(() => {
-      expect(screen.getByText('Username already taken')).toBeTruthy();
+      expect(screen.getByText('Username already taken')).toBeInTheDocument();
     });
   });
 
@@ -421,24 +408,24 @@ describe('ProfileScreen', () => {
 
     render(<ProfileScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Set username')).toBeTruthy();
+      expect(screen.getByText('Set username')).toBeInTheDocument();
     });
     fireEvent.click(screen.getByText('Set username'));
     await waitFor(() => {
-      expect(screen.getByText('Save')).toBeTruthy();
+      expect(screen.getByText('Save')).toBeInTheDocument();
     });
     const input = document.querySelector('[data-testid="username-input"]') as HTMLInputElement;
     fireEvent.change(input, { target: { value: 'newuser' } });
     fireEvent.click(screen.getByText('Save'));
     await waitFor(() => {
-      expect(screen.getByText('Network error')).toBeTruthy();
+      expect(screen.getByText('Network error')).toBeInTheDocument();
     });
   });
 
   it('navigates to PublicProfile when View public profile is clicked', async () => {
     render(<ProfileScreen />);
     await waitFor(() => {
-      expect(screen.getByText('View public profile')).toBeTruthy();
+      expect(screen.getByText('View public profile')).toBeInTheDocument();
     });
     fireEvent.click(screen.getByText('View public profile'));
     expect(mockNavigate).toHaveBeenCalledWith('PublicProfile', { username: 'testuser' });
@@ -459,11 +446,11 @@ describe('ProfileScreen', () => {
 
     render(<ProfileScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Set username')).toBeTruthy();
+      expect(screen.getByText('Set username')).toBeInTheDocument();
     });
     fireEvent.click(screen.getByText('Set username'));
     await waitFor(() => {
-      expect(screen.getByText('Save')).toBeTruthy();
+      expect(screen.getByText('Save')).toBeInTheDocument();
     });
     // Leave input empty (default is '') and click Save
     fireEvent.click(screen.getByText('Save'));
@@ -484,17 +471,17 @@ describe('ProfileScreen', () => {
 
     render(<ProfileScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Set username')).toBeTruthy();
+      expect(screen.getByText('Set username')).toBeInTheDocument();
     });
     fireEvent.click(screen.getByText('Set username'));
     await waitFor(() => {
-      expect(screen.getByText('Save')).toBeTruthy();
+      expect(screen.getByText('Save')).toBeInTheDocument();
     });
     const input = document.querySelector('[data-testid="username-input"]') as HTMLInputElement;
     fireEvent.change(input, { target: { value: 'newuser' } });
     fireEvent.click(screen.getByText('Save'));
     await waitFor(() => {
-      expect(screen.getByText('Failed to save')).toBeTruthy();
+      expect(screen.getByText('Failed to save')).toBeInTheDocument();
     });
   });
 
@@ -504,7 +491,7 @@ describe('ProfileScreen', () => {
     });
     render(<ProfileScreen />);
     await waitFor(() => {
-      expect(screen.getByText(/0% complete/)).toBeTruthy();
+      expect(screen.getByText(/0% complete/)).toBeInTheDocument();
     });
   });
 
@@ -514,7 +501,7 @@ describe('ProfileScreen', () => {
     // the screen still renders when name is present (covers initials logic).
     render(<ProfileScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Profile')).toBeTruthy();
+      expect(screen.getByText('Profile')).toBeInTheDocument();
     });
   });
 
@@ -545,9 +532,9 @@ describe('ProfileScreen', () => {
     );
     render(<ProfileScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Achievements')).toBeTruthy();
+      expect(screen.getByText('Achievements')).toBeInTheDocument();
     });
-    expect(screen.getByText('0 of 0 unlocked')).toBeTruthy();
+    expect(screen.getByText('0 of 0 unlocked')).toBeInTheDocument();
   });
 
   it('shows "User" when profile.name is empty', async () => {
@@ -556,7 +543,7 @@ describe('ProfileScreen', () => {
     });
     render(<ProfileScreen />);
     await waitFor(() => {
-      expect(screen.getByText('User')).toBeTruthy();
+      expect(screen.getByText('User')).toBeInTheDocument();
     });
   });
 
@@ -570,7 +557,7 @@ describe('ProfileScreen', () => {
     });
     render(<ProfileScreen />);
     await waitFor(() => {
-      expect(screen.getByText(/0\/10/)).toBeTruthy();
+      expect(screen.getByText(/0\/10/)).toBeInTheDocument();
     });
   });
 
@@ -578,7 +565,7 @@ describe('ProfileScreen', () => {
     mockUseDashboardData.mockReturnValue(makeCachedState(null, mockBadgeData, 'loaded', 'loaded'));
     render(<ProfileScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Profile data unavailable')).toBeTruthy();
+      expect(screen.getByText('Profile data unavailable')).toBeInTheDocument();
     });
     fireEvent.click(screen.getByText('Refresh'));
     expect(mockRefreshEndpoint).toHaveBeenCalledWith('dashboard');
@@ -594,7 +581,7 @@ describe('ProfileScreen', () => {
     });
     render(<ProfileScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Add a bio')).toBeTruthy();
+      expect(screen.getByText('Add a bio')).toBeInTheDocument();
     });
   });
 
@@ -602,12 +589,12 @@ describe('ProfileScreen', () => {
     setupCachedData();
     render(<ProfileScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Add a bio')).toBeTruthy();
+      expect(screen.getByText('Add a bio')).toBeInTheDocument();
     });
     fireEvent.click(screen.getByText('Add a bio'));
     await waitFor(() => {
       // Should show the bio editing controls
-      expect(screen.getByText('Save')).toBeTruthy();
+      expect(screen.getByText('Save')).toBeInTheDocument();
     });
   });
 
@@ -619,7 +606,7 @@ describe('ProfileScreen', () => {
     mockUseDashboardData.mockReturnValue(makeCachedState(profileWithHeatmap as any, mockBadgeData));
     render(<ProfileScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Profile')).toBeTruthy();
+      expect(screen.getByText('Profile')).toBeInTheDocument();
     });
   });
 
@@ -629,7 +616,7 @@ describe('ProfileScreen', () => {
     });
     render(<ProfileScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Challenge Progress')).toBeTruthy();
+      expect(screen.getByText('Challenge Progress')).toBeInTheDocument();
     });
     // No category pills should be rendered
     expect(screen.queryByText(/Prompt Efficiency/)).toBeNull();

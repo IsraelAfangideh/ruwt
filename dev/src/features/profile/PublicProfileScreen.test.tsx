@@ -27,21 +27,8 @@ vi.mock('@/shared/social/SocialShareButtons', () => ({
   SocialShareButtons: () => <div data-testid="social-share" />,
 }));
 vi.mock('@/shared/hooks/useDocumentMeta', () => ({ useDocumentMeta: () => {} }));
-vi.mock('@/shared/theme', () => ({
-  useColors: () => ({
-    bg: '#fff', text: '#000', textMuted: '#888', accent: '#c9a962', border: '#ccc',
-    borderStrong: '#999', card: '#fff', muted: '#f5f5f5', error: '#f00', errorBg: '#fee',
-    success: '#0a0', successBg: '#efe', primary: '#000', primaryForeground: '#fff',
-    secondary: '#eee', secondaryForeground: '#000', destructive: '#f00',
-    textSubtle: '#aaa', bgElevated: '#fafafa', accentBg: '#ffe',
-  }),
-}));
-vi.mock('@/shared/theme/tokens', () => ({
-  spacing: { xs: 4, sm: 8, md: 16, lg: 24, xl: 32, '2xl': 48 },
-  fontSizes: { xs: 12, sm: 14, md: 16, lg: 18, xl: 20, '2xl': 24, '3xl': 30, '4xl': 36 },
-  fontFamily: { display: 'serif', body: 'sans-serif' },
-  radii: { sm: 4, md: 8, lg: 12, xl: 16, full: 9999 },
-}));
+vi.mock('@/shared/theme', async () => (await import('@/shared/test/helpers')).mockTheme());
+vi.mock('@/shared/theme/tokens', async () => (await import('@/shared/test/helpers')).mockTokens());
 
 const mockProfileData = {
   user: { name: 'TestUser', avatarUrl: null, username: 'testuser', bio: null, createdAt: '2026-01-01' },
@@ -72,11 +59,11 @@ describe('PublicProfileScreen', () => {
     expect(container.querySelector('[data-testid="skeleton-profile"]')).not.toBeNull();
   });
 
-  it('shows "No username provided" when route has no username (lines 70-72)', async () => {
+  it('shows "No username provided" when route has no username param', async () => {
     mockRouteParams = {};
     render(<PublicProfileScreen />);
     await waitFor(() => {
-      expect(screen.getByText('No username provided')).toBeTruthy();
+      expect(screen.getByText('No username provided')).toBeInTheDocument();
     });
   });
 
@@ -99,40 +86,40 @@ describe('PublicProfileScreen', () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('Network failure')));
     render(<PublicProfileScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Failed to load profile')).toBeTruthy();
+      expect(screen.getByText('Failed to load profile')).toBeInTheDocument();
     });
   });
 
-  it('renders Back to Leaderboard link and navigates on click (line 104)', async () => {
+  it('renders Back to Leaderboard link and navigates on click', async () => {
     setupFetch({ ok: false, json: () => Promise.resolve({ error: 'Not found' }) });
     render(<PublicProfileScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Back to Leaderboard')).toBeTruthy();
+      expect(screen.getByText('Back to Leaderboard')).toBeInTheDocument();
     });
     fireEvent.click(screen.getByText('Back to Leaderboard'));
     expect(mockNavigate).toHaveBeenCalledWith('Leaderboard');
   });
 
-  it('renders full profile with stats, radar, and empty replays (lines 117-165)', async () => {
+  it('renders full profile with stats, radar chart, and empty replays section', async () => {
     render(<PublicProfileScreen />);
     await waitFor(() => {
-      expect(screen.getByText('TestUser')).toBeTruthy();
+      expect(screen.getByText('TestUser')).toBeInTheDocument();
     });
-    expect(screen.getByText(/Back/)).toBeTruthy();
-    expect(screen.getByText('@testuser')).toBeTruthy();
-    expect(screen.getByText(/Member since/)).toBeTruthy();
-    expect(screen.getByText('10')).toBeTruthy();
-    expect(screen.getByText('Challenges Solved')).toBeTruthy();
-    expect(screen.getByText('Avg Cost')).toBeTruthy();
-    expect(screen.getByText('#5')).toBeTruthy();
-    expect(screen.getByText('Global Rank')).toBeTruthy();
-    expect(screen.getByText('Skill Profile')).toBeTruthy();
-    expect(screen.getByTestId('radar-chart')).toBeTruthy();
-    expect(screen.getByText('Recent Replays')).toBeTruthy();
-    expect(screen.getByText('No public replays yet.')).toBeTruthy();
+    expect(screen.getByText(/Back/)).toBeInTheDocument();
+    expect(screen.getByText('@testuser')).toBeInTheDocument();
+    expect(screen.getByText(/Member since/)).toBeInTheDocument();
+    expect(screen.getByText('10')).toBeInTheDocument();
+    expect(screen.getByText('Challenges Solved')).toBeInTheDocument();
+    expect(screen.getByText('Avg Cost')).toBeInTheDocument();
+    expect(screen.getByText('#5')).toBeInTheDocument();
+    expect(screen.getByText('Global Rank')).toBeInTheDocument();
+    expect(screen.getByText('AI Fluency Breakdown')).toBeInTheDocument();
+    expect(screen.getByTestId('radar-chart')).toBeInTheDocument();
+    expect(screen.getByText('Recent Replays')).toBeInTheDocument();
+    expect(screen.getByText('No public replays yet.')).toBeInTheDocument();
   });
 
-  it('renders recent replays when present (lines 162-179)', async () => {
+  it('renders recent replays with cost and token details', async () => {
     setupFetch({
       ok: true,
       json: () => Promise.resolve({
@@ -146,30 +133,30 @@ describe('PublicProfileScreen', () => {
     });
     render(<PublicProfileScreen />);
     await waitFor(() => {
-      expect(screen.getByText('FizzBuzz Budget')).toBeTruthy();
+      expect(screen.getByText('FizzBuzz Budget')).toBeInTheDocument();
     });
-    expect(screen.getByText(/\$0\.05/)).toBeTruthy();
-    expect(screen.getByText(/300 tokens/)).toBeTruthy();
+    expect(screen.getByText(/\$0\.05/)).toBeInTheDocument();
+    expect(screen.getByText(/300 tokens/)).toBeInTheDocument();
   });
 
-  it('renders fallback "User not found" when fetch !ok and json has no error field (line 103)', async () => {
+  it('shows "User not found" when fetch fails and JSON has no error field', async () => {
     setupFetch({ ok: false, json: () => Promise.reject(new Error('no json')) });
     render(<PublicProfileScreen />);
     await waitFor(() => {
-      expect(screen.getByText('User not found')).toBeTruthy();
+      expect(screen.getByText('User not found')).toBeInTheDocument();
     });
   });
 
-  it('navigates back when Back button is clicked (line 117)', async () => {
+  it('navigates back when Back button is clicked', async () => {
     render(<PublicProfileScreen />);
     await waitFor(() => {
-      expect(screen.getByText(/Back/)).toBeTruthy();
+      expect(screen.getByText(/Back/)).toBeInTheDocument();
     });
     fireEvent.click(screen.getByText(/Back/));
     expect(mockGoBack).toHaveBeenCalled();
   });
 
-  it('navigates to Replay when replay card is clicked (line 165)', async () => {
+  it('navigates to Replay when replay card is clicked', async () => {
     setupFetch({
       ok: true,
       json: () => Promise.resolve({
@@ -183,7 +170,7 @@ describe('PublicProfileScreen', () => {
     });
     render(<PublicProfileScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Cache Buster')).toBeTruthy();
+      expect(screen.getByText('Cache Buster')).toBeInTheDocument();
     });
     fireEvent.click(screen.getByText('Cache Buster'));
     expect(mockNavigate).toHaveBeenCalledWith('Replay', { attemptId: 'att1' });
@@ -202,39 +189,39 @@ describe('PublicProfileScreen', () => {
     });
     render(<PublicProfileScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Badges')).toBeTruthy();
+      expect(screen.getByText('Badges')).toBeInTheDocument();
     });
-    expect(screen.getByText('Speed Demon')).toBeTruthy();
-    expect(screen.getByText('Budget Master')).toBeTruthy();
+    expect(screen.getByText('Speed Demon')).toBeInTheDocument();
+    expect(screen.getByText('Budget Master')).toBeInTheDocument();
   });
 
   it('FollowButton onToggle increments follower count', async () => {
     render(<PublicProfileScreen />);
     await waitFor(() => {
-      expect(screen.getByText('TestUser')).toBeTruthy();
+      expect(screen.getByText('TestUser')).toBeInTheDocument();
     });
     // Initial follower count
-    expect(screen.getByText('3')).toBeTruthy(); // 3 followers
+    expect(screen.getByText('3')).toBeInTheDocument(); // 3 followers
     // Toggle follow on
     if (capturedFollowOnToggle) {
       capturedFollowOnToggle(true);
     }
     await waitFor(() => {
-      expect(screen.getByText('4')).toBeTruthy(); // now 4
+      expect(screen.getByText('4')).toBeInTheDocument(); // now 4
     });
   });
 
   it('FollowButton onToggle decrements follower count', async () => {
     render(<PublicProfileScreen />);
     await waitFor(() => {
-      expect(screen.getByText('TestUser')).toBeTruthy();
+      expect(screen.getByText('TestUser')).toBeInTheDocument();
     });
     // Toggle unfollow
     if (capturedFollowOnToggle) {
       capturedFollowOnToggle(false);
     }
     await waitFor(() => {
-      expect(screen.getByText('2')).toBeTruthy(); // 3 - 1
+      expect(screen.getByText('2')).toBeInTheDocument(); // 3 - 1
     });
   });
 
@@ -248,7 +235,7 @@ describe('PublicProfileScreen', () => {
     });
     render(<PublicProfileScreen />);
     await waitFor(() => {
-      expect(screen.getByText('I love coding!')).toBeTruthy();
+      expect(screen.getByText('I love coding!')).toBeInTheDocument();
     });
   });
 
@@ -264,8 +251,8 @@ describe('PublicProfileScreen', () => {
     });
     render(<PublicProfileScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Similar Solvers')).toBeTruthy();
+      expect(screen.getByText('Similar Solvers')).toBeInTheDocument();
     });
-    expect(screen.getByText('Alice')).toBeTruthy();
+    expect(screen.getByText('Alice')).toBeInTheDocument();
   });
 });

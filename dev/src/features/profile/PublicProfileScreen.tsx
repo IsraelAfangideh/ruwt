@@ -17,6 +17,7 @@ import { useColors } from '@/shared/theme';
 import { spacing, fontSizes, fontFamily, radii } from '@/shared/theme/tokens';
 import { useDocumentMeta } from '@/shared/hooks/useDocumentMeta';
 import { formatCostFromHundredths } from '@/shared/lib/ai/pricing';
+import { computeAFI, AFI_TIER_COLORS, CERTIFICATIONS, type AFITier } from '@/shared/lib/scoring';
 
 interface BadgeData {
   badgeType: string;
@@ -48,6 +49,12 @@ interface ProfileData {
     followers: number;
     following: number;
   };
+  afi?: {
+    score: number;
+    tier: AFITier;
+    label: string;
+  };
+  certification?: string | null;
   isFollowing: boolean;
   badges: BadgeData[];
   similarSolvers: SimilarSolver[];
@@ -85,11 +92,12 @@ export function PublicProfileScreen() {
 
   /* istanbul ignore next -- @preserve */
   const profileDisplayName = data ? (data.user.name || data.user.username) : '';
+  // Compute AFI client-side as fallback when API doesn't return it
+  const afiData = data?.afi ?? (data ? computeAFI(data.radar) : undefined);
+  /* istanbul ignore next -- @preserve */
   useDocumentMeta({
-    /* istanbul ignore next -- @preserve */
-    title: data ? `${profileDisplayName}'s Profile` : undefined,
-    /* istanbul ignore next -- @preserve */
-    description: data ? `${profileDisplayName} has solved ${data.stats.solved} challenges with an average cost of ${formatCostFromHundredths(data.stats.avgCost)}. View their AI efficiency stats on ruwt.dev.` : undefined,
+    title: data ? `${profileDisplayName}'s Profile — AFI ${afiData?.score ?? 0}` : undefined,
+    description: data ? `${profileDisplayName} has an AI Fluency Index of ${afiData?.score ?? 0} (${afiData?.label ?? 'Novice'}). ${data.stats.solved} challenges solved. View their AI efficiency profile on ruwt.dev.` : undefined,
     canonicalPath: username ? `/u/${username}` : undefined,
   });
 
@@ -137,7 +145,9 @@ export function PublicProfileScreen() {
   const memberSince = new Date(data.user.createdAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
   const profileUrl = `https://ruwt.dev/u/${data.user.username}`;
   /* istanbul ignore next -- @preserve */
-  const shareText = `${data.user.name || data.user.username} has solved ${data.stats.solved} challenges on ruwt.dev with an avg cost of ${formatCostFromHundredths(data.stats.avgCost)}`;
+  const certDef = data.certification ? CERTIFICATIONS.find((ct) => ct.type === data.certification) : null;
+  /* istanbul ignore next -- @preserve */
+  const shareText = `${data.user.name || data.user.username} has an AI Fluency Index of ${afiData?.score ?? 0} on ruwt.dev — ${data.stats.solved} challenges solved, avg cost ${formatCostFromHundredths(data.stats.avgCost)}`;
 
   return (
     <ScrollView style={[styles.page, { backgroundColor: c.bg }]}>
@@ -180,6 +190,30 @@ export function PublicProfileScreen() {
         </View>
       </View>
 
+      {/* AFI Score Card */}
+      {afiData && (
+        <View style={styles.afiSection}>
+          <View style={[styles.afiCard, { backgroundColor: AFI_TIER_COLORS[afiData.tier] + '15', borderColor: AFI_TIER_COLORS[afiData.tier] + '40' }]}>
+            <Text style={[styles.afiLabel, { color: c.textMuted }]}>AI Fluency Index</Text>
+            <Text style={[styles.afiScore, { color: AFI_TIER_COLORS[afiData.tier] }]}>{afiData.score}</Text>
+            <View style={[styles.afiTierBadge, { backgroundColor: AFI_TIER_COLORS[afiData.tier] + '25' }]}>
+              <Text style={[styles.afiTierText, { color: AFI_TIER_COLORS[afiData.tier] }]}>{afiData.label}</Text>
+            </View>
+            <Text style={[styles.afiScale, { color: c.textMuted }]}>out of 850</Text>
+          </View>
+          {/* Certification badge */}
+          {/* istanbul ignore next -- @preserve */ certDef && (
+            <View style={[styles.certBadge, { backgroundColor: c.accentBg, borderColor: c.accent + '40' }]}>
+              <Text style={{ fontSize: 20 }}>{certDef.icon}</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.certTitle, { color: c.accent }]}>{certDef.title} Verified</Text>
+                <Text style={[styles.certDesc, { color: c.textMuted }]}>{certDef.description}</Text>
+              </View>
+            </View>
+          )}
+        </View>
+      )}
+
       {/* Stats row */}
       <View style={styles.statsRow}>
         <View style={styles.statItem}>
@@ -220,7 +254,7 @@ export function PublicProfileScreen() {
 
       {/* Radar chart */}
       <View style={styles.radarSection}>
-        <Text style={[styles.sectionTitle, { color: c.text }]}>Skill Profile</Text>
+        <Text style={[styles.sectionTitle, { color: c.text }]}>AI Fluency Breakdown</Text>
         <View style={styles.radarWrap}>
           <RadarChart data={data.radar} accentColor={c.accent as string} />
         </View>
@@ -316,6 +350,75 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
   },
   followCount: { fontSize: fontSizes.sm, fontFamily: fontFamily.body },
+  afiSection: {
+    alignItems: 'center',
+    paddingHorizontal: spacing.lg,
+    gap: spacing.sm,
+    maxWidth: 700,
+    alignSelf: 'center',
+    width: '100%',
+  },
+  afiCard: {
+    alignItems: 'center',
+    paddingVertical: spacing.lg,
+    paddingHorizontal: spacing.xl,
+    borderRadius: radii.lg,
+    borderWidth: 1,
+    width: '100%',
+    maxWidth: 300,
+  },
+  afiLabel: {
+    fontSize: fontSizes.xs,
+    textTransform: 'uppercase' as any,
+    letterSpacing: 1.5,
+    fontFamily: fontFamily.body,
+    marginBottom: spacing.xs,
+  },
+  afiScore: {
+    fontSize: 56,
+    fontWeight: '700',
+    fontFamily: fontFamily.body,
+    lineHeight: 64,
+  },
+  afiTierBadge: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: 4,
+    borderRadius: radii.full,
+    marginTop: spacing.xs,
+  },
+  afiTierText: {
+    fontSize: fontSizes.xs,
+    fontWeight: '700',
+    textTransform: 'uppercase' as any,
+    letterSpacing: 1,
+    fontFamily: fontFamily.body,
+  },
+  afiScale: {
+    fontSize: 10,
+    marginTop: 4,
+    fontFamily: fontFamily.body,
+  },
+  certBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: radii.lg,
+    borderWidth: 1,
+    width: '100%',
+    maxWidth: 300,
+  },
+  certTitle: {
+    fontSize: fontSizes.sm,
+    fontWeight: '700',
+    fontFamily: fontFamily.body,
+  },
+  certDesc: {
+    fontSize: 10,
+    fontFamily: fontFamily.body,
+    marginTop: 2,
+  },
   statsRow: {
     flexDirection: 'row',
     justifyContent: 'center',

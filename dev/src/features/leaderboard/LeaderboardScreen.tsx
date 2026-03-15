@@ -386,12 +386,12 @@ export function LeaderboardScreen() {
       {/* Teams hint — below the leaderboard content */}
       <View style={[styles.teamsHint, { borderColor: c.accent + '20', backgroundColor: c.accent + '05' }]}>
         <Text style={{ fontSize: fontSizes.sm, color: c.textMuted }}>
-          These rankings measure real AI efficiency. Use the same system to{' '}
+          These rankings reflect real AI Fluency Index scores. Use the same system to{' '}
           <Text
             style={{ color: c.accent, textDecorationLine: 'underline' }}
             onPress={/* istanbul ignore next -- @preserve */ () => navigation.navigate('Hiring')}
           >
-            assess engineering candidates
+            benchmark your team and assess candidates
           </Text>
           .
         </Text>

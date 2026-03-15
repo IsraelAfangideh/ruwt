@@ -176,7 +176,7 @@ function StepWelcome({
         <Badge variant="default">New to ruwt.dev?</Badge>
         <Text style={[styles.heroTitle, { color: c.text }]}>Welcome to ruwt.dev</Text>
         <Text style={[styles.heroSubtitle, { color: c.textMuted }]}>
-          Here, you don't just code — you compete on how efficiently you use AI.
+          Build your AI Fluency Index. Earn certifications. Prove how efficiently you use AI.
         </Text>
       </View>
 
@@ -185,32 +185,31 @@ function StepWelcome({
         <FlowCard
           colors={c}
           number="1"
-          title="Pick a Challenge"
-          description="Browse real engineering problems across categories — from debugging to system design."
+          title="Solve Challenges"
+          description="Pick from 100+ real engineering problems. Use 15 AI models across 5 cost tiers — choose strategically."
         />
         <FlowCard
           colors={c}
           number="2"
-          title="Solve with AI"
-          description="Use the AI chat to write and debug code. Each message costs credits based on the model you choose."
+          title="Build Your AFI"
+          description="Every solve builds your AI Fluency Index (0-850). Cheap, fast, correct solutions push your score higher."
         />
         <FlowCard
           colors={c}
           number="3"
-          title="Rank by Efficiency"
-          description="The cheapest correct solution wins. Your rank reflects how wisely you spend, not just speed."
+          title="Earn Certification"
+          description="Hit AFI milestones to earn AI-Fluent Verified badges. Share on LinkedIn. Stand out to hiring teams."
         />
       </View>
 
       <Card style={{ borderColor: c.accent, borderWidth: 1 }}>
         <CardContent>
           <Text style={[styles.tipText, { color: c.text }]}>
-            Your AI budget matters. Choose your models wisely.
+            Your model choices shape your AFI score.
           </Text>
           <Text style={[styles.tipDetail, { color: c.textMuted }]}>
             Budget models ($) are cheap but may need more attempts. Premium models ($$$) are
-            powerful but expensive. The best engineers find the sweet spot. Look for the star
-            indicator next to the recommended tier for each challenge.
+            powerful but expensive. The best engineers find the sweet spot — and their AFI shows it.
           </Text>
         </CardContent>
       </Card>

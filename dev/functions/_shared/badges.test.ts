@@ -93,7 +93,7 @@ function createSequentialDb() {
 
   const makeSelectChain = (rows: unknown[]) => {
     const chain: Record<string, any> = {};
-    for (const m of ['from', 'where', 'limit', 'innerJoin']) {
+    for (const m of ['from', 'where', 'limit', 'innerJoin', 'groupBy']) {
       chain[m] = vi.fn().mockReturnValue(chain);
     }
     chain.then = (res: any, rej: any) => Promise.resolve(rows).then(res, rej);
@@ -146,6 +146,7 @@ describe('BADGE_DEFS', () => {
       'penny_pincher', 'speed_demon', 'model_master', 'polyglot',
       'clean_sweep_easy', 'clean_sweep_medium',
       'ten_solves', 'twenty_five_solves', 'fifty_solves', 'daily_warrior',
+      'ai_fluent', 'ai_fluent_pro', 'ai_fluent_expert',
     ];
     for (const key of expected) {
       expect(BADGE_DEFS[key]).toBeDefined();
@@ -222,6 +223,10 @@ describe('checkAndAwardBadges', () => {
     db._enqueue(Array.from({ length: 20 }, (_, i) => ({ id: `ch-${i}` })));
     // Query 5: medium challenges
     db._enqueue([{ id: 'ch-medium-1' }]);
+    // Query 6: globalAvgs (certification radar)
+    db._enqueue([{ category: 'model_selection', avgCost: 1000 }]);
+    // Query 7: userAvgs (certification radar)
+    db._enqueue([{ category: 'model_selection', avgCost: 1000 }]);
 
     const awarded = await checkAndAwardBadges(db, userId);
 
@@ -494,6 +499,10 @@ describe('checkAndAwardBadges', () => {
     db._enqueue(Array.from({ length: 15 }, (_, i) => ({ id: `ch-${i}` })));
     // medium
     db._enqueue([]);
+    // globalAvgs (certification radar)
+    db._enqueue([{ category: 'model_selection', avgCost: 1000 }]);
+    // userAvgs (certification radar)
+    db._enqueue([{ category: 'model_selection', avgCost: 1000 }]);
 
     const awarded = await checkAndAwardBadges(db, userId);
 
@@ -526,6 +535,10 @@ describe('checkAndAwardBadges', () => {
     db._enqueue(Array.from({ length: 30 }, (_, i) => ({ id: `ch-${i}` })));
     // medium challenges
     db._enqueue([{ id: 'ch-medium-1' }]);
+    // globalAvgs (certification radar)
+    db._enqueue([{ category: 'model_selection', avgCost: 1000 }]);
+    // userAvgs (certification radar)
+    db._enqueue([{ category: 'model_selection', avgCost: 1000 }]);
 
     const awarded = await checkAndAwardBadges(db, userId);
 
@@ -557,6 +570,10 @@ describe('checkAndAwardBadges', () => {
     db._enqueue(Array.from({ length: 60 }, (_, i) => ({ id: `ch-${i}` })));
     // medium challenges
     db._enqueue([{ id: 'ch-medium-1' }]);
+    // globalAvgs (certification radar)
+    db._enqueue([{ category: 'model_selection', avgCost: 1000 }]);
+    // userAvgs (certification radar)
+    db._enqueue([{ category: 'model_selection', avgCost: 1000 }]);
 
     const awarded = await checkAndAwardBadges(db, userId);
 

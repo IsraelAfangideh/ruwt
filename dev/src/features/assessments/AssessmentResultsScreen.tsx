@@ -11,6 +11,7 @@ import {
   formatCostFromHundredths, friendlyModelName, getModelTier, tierColor,
   tierLabel, getCostEfficiencySignal, TIER_ORDER,
 } from '@/shared/lib/ai/pricing';
+import { computeAFI, AFI_TIER_COLORS } from '@/shared/lib/scoring';
 
 interface ChallengeResult {
   challenge: {
@@ -248,9 +249,26 @@ export function AssessmentResultsScreen() {
             strategy: strategyScore,
             speed: speedScore,
           };
+          // Compute AFI from profile (map strategy→multiModel, speed→realWorld for scoring)
+          const afiResult = computeAFI({
+            modelSelection: profile.modelSelection,
+            promptEfficiency: profile.promptEfficiency,
+            debugging: profile.debugging,
+            multiModel: profile.strategy,
+            realWorld: profile.speed,
+          });
+          const afiColor = AFI_TIER_COLORS[afiResult.tier];
           return (
             <View style={styles.radarSection}>
-              <Text style={[styles.sectionTitle, { color: c.text }]}>AI Profile</Text>
+              <Text style={[styles.sectionTitle, { color: c.text }]}>AI Fluency Profile</Text>
+              <View style={{ alignItems: 'center', marginBottom: spacing.md }}>
+                <Text style={{ fontSize: fontSizes.xs, color: c.textMuted, textTransform: 'uppercase' as any, letterSpacing: 1.5 }}>AI Fluency Index</Text>
+                <Text style={{ fontSize: 40, fontWeight: '700', color: afiColor, fontFamily: fontFamily.body }}>{afiResult.score}</Text>
+                <View style={{ backgroundColor: afiColor + '20', paddingHorizontal: spacing.sm, paddingVertical: 2, borderRadius: 9999 }}>
+                  <Text style={{ fontSize: fontSizes.xs, fontWeight: '700', color: afiColor, textTransform: 'uppercase' as any }}>{afiResult.label}</Text>
+                </View>
+                <Text style={{ fontSize: 10, color: c.textMuted, marginTop: 2 }}>out of 850</Text>
+              </View>
               <AIProfileRadar profile={profile} size={280} />
             </View>
           );

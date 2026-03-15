@@ -73,21 +73,8 @@ vi.mock('@/shared/lib/ai/pricing', () => ({
   tierColor: () => '#ccc',
   formatCostFromHundredths: (c: number) => { const d = c / 10000; return d < 0.01 ? `$${d.toFixed(4)}` : `$${d.toFixed(2)}`; },
 }));
-vi.mock('@/shared/theme', () => ({
-  useColors: () => ({
-    bg: '#fff', text: '#000', textMuted: '#888', accent: '#c9a962', border: '#ccc',
-    borderStrong: '#999', card: '#fff', muted: '#f5f5f5', error: '#f00', errorBg: '#fee',
-    success: '#0a0', successBg: '#efe', primary: '#000', primaryForeground: '#fff',
-    secondary: '#eee', secondaryForeground: '#000', destructive: '#f00',
-    textSubtle: '#aaa', bgElevated: '#fafafa', accentBg: '#ffe',
-  }),
-}));
-vi.mock('@/shared/theme/tokens', () => ({
-  spacing: { xs: 4, sm: 8, md: 16, lg: 24, xl: 32, '2xl': 48 },
-  fontSizes: { xs: 12, sm: 14, md: 16, lg: 18, xl: 20, '2xl': 24, '3xl': 30, '4xl': 36 },
-  fontFamily: { display: 'serif', body: 'sans-serif', mono: 'monospace' },
-  radii: { sm: 4, md: 8, lg: 12, xl: 16, full: 9999 },
-}));
+vi.mock('@/shared/theme', async () => (await import('@/shared/test/helpers')).mockTheme());
+vi.mock('@/shared/theme/tokens', async () => (await import('@/shared/test/helpers')).mockTokens({ mono: true }));
 
 /* ── helpers ────────────────────────────────────────────────────── */
 
@@ -212,7 +199,7 @@ describe('ArenaScreen', () => {
     routeParams = {};
     render(<ArenaScreen />);
     await waitFor(() => {
-      expect(screen.getByText('No challenge selected')).toBeTruthy();
+      expect(screen.getByText('No challenge selected')).toBeInTheDocument();
     });
   });
 
@@ -228,7 +215,7 @@ describe('ArenaScreen', () => {
     });
     render(<ArenaScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Challenge not found')).toBeTruthy();
+      expect(screen.getByText('Challenge not found')).toBeInTheDocument();
     });
   });
 
@@ -244,7 +231,7 @@ describe('ArenaScreen', () => {
     });
     render(<ArenaScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Failed to load challenge')).toBeTruthy();
+      expect(screen.getByText('Failed to load challenge')).toBeInTheDocument();
     });
   });
 
@@ -252,7 +239,7 @@ describe('ArenaScreen', () => {
     globalThis.fetch = vi.fn().mockRejectedValue(new Error('Network error'));
     render(<ArenaScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Network error')).toBeTruthy();
+      expect(screen.getByText('Network error')).toBeInTheDocument();
     });
   });
 
@@ -260,7 +247,7 @@ describe('ArenaScreen', () => {
     globalThis.fetch = vi.fn().mockRejectedValue('something broke');
     render(<ArenaScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Something went wrong')).toBeTruthy();
+      expect(screen.getByText('Something went wrong')).toBeInTheDocument();
     });
   });
 
@@ -268,7 +255,7 @@ describe('ArenaScreen', () => {
     globalThis.fetch = vi.fn().mockRejectedValue(new Error('Oops'));
     render(<ArenaScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Oops')).toBeTruthy();
+      expect(screen.getByText('Oops')).toBeInTheDocument();
     });
     fireEvent.click(screen.getByText('Back to Problems'));
     expect(mockNavigate).toHaveBeenCalledWith('Problems');
@@ -279,15 +266,15 @@ describe('ArenaScreen', () => {
   it('renders pre-attempt screen with challenge info', async () => {
     render(<ArenaScreen />);
     await waitFor(() => {
-      expect(screen.getByText('FizzBuzz Budget')).toBeTruthy();
+      expect(screen.getByText('FizzBuzz Budget')).toBeInTheDocument();
     });
-    expect(screen.getByText('Start Challenge')).toBeTruthy();
+    expect(screen.getByText('Start Challenge')).toBeInTheDocument();
   });
 
   it('shows difficulty badge on pre-attempt screen', async () => {
     render(<ArenaScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Medium')).toBeTruthy();
+      expect(screen.getByText('Medium')).toBeInTheDocument();
     });
   });
 
@@ -297,7 +284,7 @@ describe('ArenaScreen', () => {
     render(<ArenaScreen />);
     await waitFor(() => {
       const desc = 'A'.repeat(200) + '...';
-      expect(screen.getByText(desc)).toBeTruthy();
+      expect(screen.getByText(desc)).toBeInTheDocument();
     });
   });
 
@@ -305,7 +292,7 @@ describe('ArenaScreen', () => {
     globalThis.fetch = mockFetchForChallenge({ ...challengeData, description: 'Short desc' });
     render(<ArenaScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Short desc')).toBeTruthy();
+      expect(screen.getByText('Short desc')).toBeInTheDocument();
     });
   });
 
@@ -313,16 +300,16 @@ describe('ArenaScreen', () => {
     globalThis.fetch = mockFetchForChallenge({ ...challengeData, maxCost: 50000 });
     render(<ArenaScreen />);
     await waitFor(() => {
-      expect(screen.getByText(/Your AI Budget/)).toBeTruthy();
+      expect(screen.getByText(/Your AI Budget/)).toBeInTheDocument();
     });
   });
 
   it('shows "No Budget Limit" when maxCost is null', async () => {
     render(<ArenaScreen />);
     await waitFor(() => {
-      expect(screen.getByText('No Budget Limit')).toBeTruthy();
+      expect(screen.getByText('No Budget Limit')).toBeInTheDocument();
     });
-    expect(screen.getByText(/Spend freely/)).toBeTruthy();
+    expect(screen.getByText(/Spend freely/)).toBeInTheDocument();
   });
 
   it('shows best solver stats when available', async () => {
@@ -333,7 +320,7 @@ describe('ArenaScreen', () => {
     });
     render(<ArenaScreen />);
     await waitFor(() => {
-      expect(screen.getByText(/Best solver spent/)).toBeTruthy();
+      expect(screen.getByText(/Best solver spent/)).toBeInTheDocument();
     });
   });
 
@@ -345,7 +332,7 @@ describe('ArenaScreen', () => {
     });
     render(<ArenaScreen />);
     await waitFor(() => {
-      expect(screen.getByText('FizzBuzz Budget')).toBeTruthy();
+      expect(screen.getByText('FizzBuzz Budget')).toBeInTheDocument();
     });
     expect(screen.queryByText(/Best solver/)).toBeNull();
   });
@@ -354,14 +341,14 @@ describe('ArenaScreen', () => {
     globalThis.fetch = mockFetchForChallenge({ ...challengeData, wallClockLimit: 300 });
     render(<ArenaScreen />);
     await waitFor(() => {
-      expect(screen.getByText('5m time limit')).toBeTruthy();
+      expect(screen.getByText('5m time limit')).toBeInTheDocument();
     });
   });
 
   it('shows "Back" link on pre-attempt screen that navigates', async () => {
     render(<ArenaScreen />);
     await waitFor(() => {
-      expect(screen.getByText('FizzBuzz Budget')).toBeTruthy();
+      expect(screen.getByText('FizzBuzz Budget')).toBeInTheDocument();
     });
     // The back link has "&larr; Back to Problems" which renders as ← Back to Problems
     const backButton = screen.getByText(/Back to Problems/);
@@ -374,13 +361,13 @@ describe('ArenaScreen', () => {
   it('clicking "Start Challenge" calls POST /api/attempts and shows IDE', async () => {
     render(<ArenaScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Start Challenge')).toBeTruthy();
+      expect(screen.getByText('Start Challenge')).toBeInTheDocument();
     });
     await act(async () => {
       fireEvent.click(screen.getByText('Start Challenge'));
     });
     await waitFor(() => {
-      expect(screen.getByTestId('arena-ide')).toBeTruthy();
+      expect(screen.getByTestId('arena-ide')).toBeInTheDocument();
     });
   });
 
@@ -397,10 +384,10 @@ describe('ArenaScreen', () => {
     });
 
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
 
     fireEvent.click(screen.getByText('Start Challenge'));
-    await waitFor(() => expect(screen.getByText('Starting...')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Starting...')).toBeInTheDocument());
 
     // Resolve the promise
     await act(async () => {
@@ -427,12 +414,12 @@ describe('ArenaScreen', () => {
     });
 
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
     await act(async () => {
       fireEvent.click(screen.getByText('Start Challenge'));
     });
     await waitFor(() => {
-      expect(screen.getByText('Failed to start attempt')).toBeTruthy();
+      expect(screen.getByText('Failed to start attempt')).toBeInTheDocument();
     });
   });
 
@@ -448,12 +435,12 @@ describe('ArenaScreen', () => {
     });
 
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
     await act(async () => {
       fireEvent.click(screen.getByText('Start Challenge'));
     });
     await waitFor(() => {
-      expect(screen.getByText('Connection refused')).toBeTruthy();
+      expect(screen.getByText('Connection refused')).toBeInTheDocument();
     });
   });
 
@@ -469,12 +456,12 @@ describe('ArenaScreen', () => {
     });
 
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
     await act(async () => {
       fireEvent.click(screen.getByText('Start Challenge'));
     });
     await waitFor(() => {
-      expect(screen.getByText('Failed to start attempt')).toBeTruthy();
+      expect(screen.getByText('Failed to start attempt')).toBeInTheDocument();
     });
   });
 
@@ -502,12 +489,12 @@ describe('ArenaScreen', () => {
     });
 
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
     await act(async () => {
       fireEvent.click(screen.getByText('Start Challenge'));
     });
     await waitFor(() => {
-      expect(screen.getByTestId('ide-code')).toBeTruthy();
+      expect(screen.getByTestId('ide-code')).toBeInTheDocument();
     });
     expect(screen.getByTestId('ide-code').textContent).toBe('saved code from before');
     expect(mockShowToast).toHaveBeenCalledWith('Restored your progress', 'success');
@@ -515,7 +502,7 @@ describe('ArenaScreen', () => {
 
   it('uses starterCode for new attempt', async () => {
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
     await act(async () => {
       fireEvent.click(screen.getByText('Start Challenge'));
     });
@@ -530,7 +517,7 @@ describe('ArenaScreen', () => {
     // The stale closure means it uses the JS default comment — this tests actual behavior.
     globalThis.fetch = mockFetchForChallenge({ ...challengeData, language: 'python', starterCode: null });
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
     await act(async () => {
       fireEvent.click(screen.getByText('Start Challenge'));
     });
@@ -561,7 +548,7 @@ describe('ArenaScreen', () => {
     });
 
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
     await act(async () => {
       fireEvent.click(screen.getByText('Start Challenge'));
     });
@@ -574,12 +561,12 @@ describe('ArenaScreen', () => {
 
   it('renders ArenaIDE after starting attempt with correct props', async () => {
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
     await act(async () => {
       fireEvent.click(screen.getByText('Start Challenge'));
     });
     await waitFor(() => {
-      expect(screen.getByTestId('arena-ide')).toBeTruthy();
+      expect(screen.getByTestId('arena-ide')).toBeInTheDocument();
     });
     expect(screen.getByTestId('ide-title').textContent).toBe('FizzBuzz Budget');
     expect(screen.getByTestId('ide-lang').textContent).toBe('javascript');
@@ -589,13 +576,13 @@ describe('ArenaScreen', () => {
 
   it('renders Run Tests and Submit buttons in desktop header', async () => {
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
     await act(async () => {
       fireEvent.click(screen.getByText('Start Challenge'));
     });
     await waitFor(() => {
-      expect(screen.getByText('Run Tests')).toBeTruthy();
-      expect(screen.getByText('Submit')).toBeTruthy();
+      expect(screen.getByText('Run Tests')).toBeInTheDocument();
+      expect(screen.getByText('Submit')).toBeInTheDocument();
     });
   });
 
@@ -606,23 +593,23 @@ describe('ArenaScreen', () => {
       testCases: '[{"input":"1","expectedOutput":"1"},{"input":"2","expectedOutput":"2"}]',
     });
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
     await act(async () => {
       fireEvent.click(screen.getByText('Start Challenge'));
     });
     await waitFor(() => {
-      expect(screen.getByText('Run Tests (2 public)')).toBeTruthy();
-      expect(screen.getByText('Submit (5 tests)')).toBeTruthy();
+      expect(screen.getByText('Run Tests (2 public)')).toBeInTheDocument();
+      expect(screen.getByText('Submit (5 tests)')).toBeInTheDocument();
     });
   });
 
   it('Run Tests button triggers handleRun and sets test results', async () => {
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
     await act(async () => {
       fireEvent.click(screen.getByText('Start Challenge'));
     });
-    await waitFor(() => expect(screen.getByText('Run Tests')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Run Tests')).toBeInTheDocument());
     await act(async () => {
       fireEvent.click(screen.getByText('Run Tests'));
     });
@@ -655,9 +642,9 @@ describe('ArenaScreen', () => {
     });
 
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
     await act(async () => { fireEvent.click(screen.getByText('Start Challenge')); });
-    await waitFor(() => expect(screen.getByText('Run Tests')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Run Tests')).toBeInTheDocument());
     await act(async () => { fireEvent.click(screen.getByText('Run Tests')); });
     await waitFor(() => {
       const results = screen.queryByTestId('ide-results');
@@ -670,9 +657,9 @@ describe('ArenaScreen', () => {
 
   it('Submit button triggers handleSubmit', async () => {
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
     await act(async () => { fireEvent.click(screen.getByText('Start Challenge')); });
-    await waitFor(() => expect(screen.getByText('Submit')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Submit')).toBeInTheDocument());
     await act(async () => { fireEvent.click(screen.getByText('Submit')); });
     // After submit, test results are passed to IDE with isSubmission=true
     await waitFor(() => {
@@ -683,52 +670,52 @@ describe('ArenaScreen', () => {
 
   it('shows success overlay after passed submission', async () => {
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
     await act(async () => { fireEvent.click(screen.getByText('Start Challenge')); });
-    await waitFor(() => expect(screen.getByText('Submit')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Submit')).toBeInTheDocument());
     await act(async () => { fireEvent.click(screen.getByText('Submit')); });
     await waitFor(() => {
-      expect(screen.getByText('Challenge Passed!')).toBeTruthy();
+      expect(screen.getByText('Challenge Passed!')).toBeInTheDocument();
     });
     // Check share buttons
-    expect(screen.getByText('LinkedIn')).toBeTruthy();
-    expect(screen.getByText('X / Twitter')).toBeTruthy();
-    expect(screen.getByText('Copy Link')).toBeTruthy();
+    expect(screen.getByText('LinkedIn')).toBeInTheDocument();
+    expect(screen.getByText('X / Twitter')).toBeInTheDocument();
+    expect(screen.getByText('Copy Link')).toBeInTheDocument();
   });
 
   it('shows rank stats in success overlay', async () => {
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
     await act(async () => { fireEvent.click(screen.getByText('Start Challenge')); });
-    await waitFor(() => expect(screen.getByText('Submit')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Submit')).toBeInTheDocument());
     await act(async () => { fireEvent.click(screen.getByText('Submit')); });
     await waitFor(() => {
-      expect(screen.getByText('Challenge Passed!')).toBeTruthy();
+      expect(screen.getByText('Challenge Passed!')).toBeInTheDocument();
     });
     // Should show rank info
     await waitFor(() => {
-      expect(screen.getByText('Your Cost')).toBeTruthy();
+      expect(screen.getByText('Your Cost')).toBeInTheDocument();
     });
   });
 
   it('success overlay "View Your Replay" navigates to Replay screen', async () => {
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
     await act(async () => { fireEvent.click(screen.getByText('Start Challenge')); });
-    await waitFor(() => expect(screen.getByText('Submit')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Submit')).toBeInTheDocument());
     await act(async () => { fireEvent.click(screen.getByText('Submit')); });
-    await waitFor(() => expect(screen.getByText('Challenge Passed!')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Challenge Passed!')).toBeInTheDocument());
     fireEvent.click(screen.getByText('View Your Replay'));
     expect(mockNavigate).toHaveBeenCalledWith('Replay', expect.objectContaining({ attemptId: expect.any(String) }));
   });
 
   it('success overlay "Back to Problems" navigates', async () => {
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
     await act(async () => { fireEvent.click(screen.getByText('Start Challenge')); });
-    await waitFor(() => expect(screen.getByText('Submit')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Submit')).toBeInTheDocument());
     await act(async () => { fireEvent.click(screen.getByText('Submit')); });
-    await waitFor(() => expect(screen.getByText('Challenge Passed!')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Challenge Passed!')).toBeInTheDocument());
     const backBtns = screen.getAllByText(/Back to Problems/);
     fireEvent.click(backBtns[backBtns.length - 1]);
     expect(mockNavigate).toHaveBeenCalledWith('Problems');
@@ -739,28 +726,28 @@ describe('ArenaScreen', () => {
     Object.assign(navigator, { clipboard: { writeText } });
 
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
     await act(async () => { fireEvent.click(screen.getByText('Start Challenge')); });
-    await waitFor(() => expect(screen.getByText('Submit')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Submit')).toBeInTheDocument());
     await act(async () => { fireEvent.click(screen.getByText('Submit')); });
-    await waitFor(() => expect(screen.getByText('Challenge Passed!')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Challenge Passed!')).toBeInTheDocument());
     await act(async () => {
       fireEvent.click(screen.getByText('Copy Link'));
     });
     expect(writeText).toHaveBeenCalled();
     await waitFor(() => {
-      expect(screen.getByText('Copied!')).toBeTruthy();
+      expect(screen.getByText('Copied!')).toBeInTheDocument();
     });
   });
 
   it('success overlay LinkedIn button opens window', async () => {
     const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null);
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
     await act(async () => { fireEvent.click(screen.getByText('Start Challenge')); });
-    await waitFor(() => expect(screen.getByText('Submit')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Submit')).toBeInTheDocument());
     await act(async () => { fireEvent.click(screen.getByText('Submit')); });
-    await waitFor(() => expect(screen.getByText('Challenge Passed!')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Challenge Passed!')).toBeInTheDocument());
     fireEvent.click(screen.getByText('LinkedIn'));
     expect(openSpy).toHaveBeenCalledWith(expect.stringContaining('linkedin.com'), '_blank', expect.any(String));
     openSpy.mockRestore();
@@ -769,11 +756,11 @@ describe('ArenaScreen', () => {
   it('success overlay X / Twitter button opens window', async () => {
     const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null);
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
     await act(async () => { fireEvent.click(screen.getByText('Start Challenge')); });
-    await waitFor(() => expect(screen.getByText('Submit')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Submit')).toBeInTheDocument());
     await act(async () => { fireEvent.click(screen.getByText('Submit')); });
-    await waitFor(() => expect(screen.getByText('Challenge Passed!')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Challenge Passed!')).toBeInTheDocument());
     fireEvent.click(screen.getByText('X / Twitter'));
     expect(openSpy).toHaveBeenCalledWith(expect.stringContaining('twitter.com'), '_blank', expect.any(String));
     openSpy.mockRestore();
@@ -801,9 +788,9 @@ describe('ArenaScreen', () => {
     });
 
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
     await act(async () => { fireEvent.click(screen.getByText('Start Challenge')); });
-    await waitFor(() => expect(screen.getByText('Submit')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Submit')).toBeInTheDocument());
     await act(async () => { fireEvent.click(screen.getByText('Submit')); });
     await waitFor(() => {
       const results = screen.queryByTestId('ide-results');
@@ -819,7 +806,7 @@ describe('ArenaScreen', () => {
     // onRunTests check: if (!attempt?.id) return ...
     // This is implicitly tested since ArenaIDE isn't rendered until attempt exists
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
     // No IDE rendered yet, so no tests to run
     expect(screen.queryByTestId('arena-ide')).toBeNull();
   });
@@ -828,16 +815,16 @@ describe('ArenaScreen', () => {
 
   it('onRestart resets to pre-attempt screen', async () => {
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
     await act(async () => { fireEvent.click(screen.getByText('Start Challenge')); });
-    await waitFor(() => expect(screen.getByTestId('arena-ide')).toBeTruthy());
+    await waitFor(() => expect(screen.getByTestId('arena-ide')).toBeInTheDocument());
     // Click restart in the mock IDE
     await act(async () => {
       fireEvent.click(screen.getByTestId('ide-restart'));
     });
     // Should be back to pre-attempt screen
     await waitFor(() => {
-      expect(screen.getByText('Start Challenge')).toBeTruthy();
+      expect(screen.getByText('Start Challenge')).toBeInTheDocument();
     });
   });
 
@@ -863,12 +850,12 @@ describe('ArenaScreen', () => {
     });
 
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
     await act(async () => { fireEvent.click(screen.getByText('Start Challenge')); });
     await waitFor(() => {
-      expect(screen.getByTestId('arena-ide')).toBeTruthy();
+      expect(screen.getByTestId('arena-ide')).toBeInTheDocument();
       // Timer should be visible — check for time format like "1:30" or "1:29"
-      expect(screen.getByText(/1:\d{2}/)).toBeTruthy();
+      expect(screen.getByText(/1:\d{2}/)).toBeInTheDocument();
     });
   });
 
@@ -893,10 +880,10 @@ describe('ArenaScreen', () => {
     });
 
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
     await act(async () => { fireEvent.click(screen.getByText('Start Challenge')); });
     await waitFor(() => {
-      expect(screen.getByTestId('arena-ide')).toBeTruthy();
+      expect(screen.getByTestId('arena-ide')).toBeInTheDocument();
     });
     // Check that the expired prop is true
     await waitFor(() => {
@@ -908,23 +895,23 @@ describe('ArenaScreen', () => {
 
   it('shows budget progress bar with "no limit" when maxCost is null', async () => {
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
     await act(async () => { fireEvent.click(screen.getByText('Start Challenge')); });
     await waitFor(() => {
-      expect(screen.getByText('no limit')).toBeTruthy();
+      expect(screen.getByText('no limit')).toBeInTheDocument();
     });
   });
 
   it('shows budget progress bar with limits when maxCost is set', async () => {
     globalThis.fetch = mockFetchForChallenge({ ...challengeData, maxCost: 100000 });
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
     await act(async () => { fireEvent.click(screen.getByText('Start Challenge')); });
     await waitFor(() => {
-      expect(screen.getByTestId('arena-ide')).toBeTruthy();
+      expect(screen.getByTestId('arena-ide')).toBeInTheDocument();
     });
     // With maxCost=100000, formatCost(100000) = $10.00
-    expect(screen.getByText('$10.00')).toBeTruthy();
+    expect(screen.getByText('$10.00')).toBeInTheDocument();
   });
 
   /* ─── Mobile header ────────────────────────────────────────────── */
@@ -932,12 +919,12 @@ describe('ArenaScreen', () => {
   it('renders mobile header when isMobile is true', async () => {
     isMobileReturn = true;
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
     await act(async () => { fireEvent.click(screen.getByText('Start Challenge')); });
     await waitFor(() => {
       // Mobile header has Run and Submit buttons with shorter text
-      expect(screen.getByText('Run')).toBeTruthy();
-      expect(screen.getByText('Submit')).toBeTruthy();
+      expect(screen.getByText('Run')).toBeInTheDocument();
+      expect(screen.getByText('Submit')).toBeInTheDocument();
     });
   });
 
@@ -959,7 +946,7 @@ describe('ArenaScreen', () => {
     });
 
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('FizzBuzz Budget')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('FizzBuzz Budget')).toBeInTheDocument());
     // Past attempts are fetched in a separate useEffect after challenge loads
     await waitFor(() => {
       expect(globalThis.fetch).toHaveBeenCalledWith(expect.stringContaining('/api/attempts'));
@@ -985,36 +972,36 @@ describe('ArenaScreen', () => {
   it('shows correct wall clock format for minutes only', async () => {
     globalThis.fetch = mockFetchForChallenge({ ...challengeData, wallClockLimit: 120 });
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('2m time limit')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('2m time limit')).toBeInTheDocument());
   });
 
   it('shows correct wall clock format for seconds only', async () => {
     globalThis.fetch = mockFetchForChallenge({ ...challengeData, wallClockLimit: 45 });
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('45s time limit')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('45s time limit')).toBeInTheDocument());
   });
 
   it('shows correct wall clock format for minutes and seconds', async () => {
     globalThis.fetch = mockFetchForChallenge({ ...challengeData, wallClockLimit: 90 });
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('1m 30s time limit')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('1m 30s time limit')).toBeInTheDocument());
   });
 
   /* ─── onRunCode (Piston execute) ───────────────────────────────── */
 
   it('onRunCode calls /api/execute with correct language mapping', async () => {
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
     await act(async () => { fireEvent.click(screen.getByText('Start Challenge')); });
-    await waitFor(() => expect(screen.getByTestId('arena-ide')).toBeTruthy());
+    await waitFor(() => expect(screen.getByTestId('arena-ide')).toBeInTheDocument());
     // The onRunCode callback is passed to ArenaIDE; it's tested via the ArenaIDE mock
   });
 
   it('onRunCode calls /api/execute and returns stdout/stderr/exitCode', async () => {
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
     await act(async () => { fireEvent.click(screen.getByText('Start Challenge')); });
-    await waitFor(() => expect(screen.getByTestId('arena-ide')).toBeTruthy());
+    await waitFor(() => expect(screen.getByTestId('arena-ide')).toBeInTheDocument());
 
     // capturedOnRunCode was captured from the ArenaIDE mock
     expect(capturedOnRunCode).not.toBeNull();
@@ -1030,9 +1017,9 @@ describe('ArenaScreen', () => {
 
   it('onRunCode falls back to javascript for unknown language', async () => {
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
     await act(async () => { fireEvent.click(screen.getByText('Start Challenge')); });
-    await waitFor(() => expect(screen.getByTestId('arena-ide')).toBeTruthy());
+    await waitFor(() => expect(screen.getByTestId('arena-ide')).toBeInTheDocument());
 
     expect(capturedOnRunCode).not.toBeNull();
     await capturedOnRunCode!('code', 'brainfuck');
@@ -1067,9 +1054,9 @@ describe('ArenaScreen', () => {
     });
 
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
     await act(async () => { fireEvent.click(screen.getByText('Start Challenge')); });
-    await waitFor(() => expect(screen.getByTestId('arena-ide')).toBeTruthy());
+    await waitFor(() => expect(screen.getByTestId('arena-ide')).toBeInTheDocument());
 
     expect(capturedOnRunCode).not.toBeNull();
     const result = await capturedOnRunCode!('while(true){}', 'javascript');
@@ -1089,7 +1076,7 @@ describe('ArenaScreen', () => {
 
     render(<ArenaScreen />);
     await waitFor(() => {
-      expect(screen.getByText('FizzBuzz Budget')).toBeTruthy();
+      expect(screen.getByText('FizzBuzz Budget')).toBeInTheDocument();
     });
     // Should not crash — credits default to 0
   });
@@ -1098,12 +1085,12 @@ describe('ArenaScreen', () => {
 
   it('onDismissResults clears test results', async () => {
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
     await act(async () => { fireEvent.click(screen.getByText('Start Challenge')); });
-    await waitFor(() => expect(screen.getByText('Run Tests')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Run Tests')).toBeInTheDocument());
     // Run tests first to get results
     await act(async () => { fireEvent.click(screen.getByText('Run Tests')); });
-    await waitFor(() => expect(screen.getByTestId('ide-results')).toBeTruthy());
+    await waitFor(() => expect(screen.getByTestId('ide-results')).toBeInTheDocument());
     // Dismiss results
     await act(async () => { fireEvent.click(screen.getByTestId('ide-dismiss')); });
     await waitFor(() => {
@@ -1115,9 +1102,9 @@ describe('ArenaScreen', () => {
 
   it('onAttemptUpdate updates attempt state', async () => {
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
     await act(async () => { fireEvent.click(screen.getByText('Start Challenge')); });
-    await waitFor(() => expect(screen.getByTestId('arena-ide')).toBeTruthy());
+    await waitFor(() => expect(screen.getByTestId('arena-ide')).toBeInTheDocument());
     await act(async () => {
       fireEvent.click(screen.getByTestId('ide-update-attempt'));
     });
@@ -1129,11 +1116,11 @@ describe('ArenaScreen', () => {
 
   it('See How #1 button navigates to top solver replay', async () => {
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
     await act(async () => { fireEvent.click(screen.getByText('Start Challenge')); });
-    await waitFor(() => expect(screen.getByText('Submit')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Submit')).toBeInTheDocument());
     await act(async () => { fireEvent.click(screen.getByText('Submit')); });
-    await waitFor(() => expect(screen.getByText('Challenge Passed!')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Challenge Passed!')).toBeInTheDocument());
     await act(async () => {
       fireEvent.click(screen.getByText('See How #1 Solved This'));
     });
@@ -1153,11 +1140,11 @@ describe('ArenaScreen', () => {
     });
 
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
     await act(async () => { fireEvent.click(screen.getByText('Start Challenge')); });
-    await waitFor(() => expect(screen.getByText('Submit')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Submit')).toBeInTheDocument());
     await act(async () => { fireEvent.click(screen.getByText('Submit')); });
-    await waitFor(() => expect(screen.getByText('Challenge Passed!')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Challenge Passed!')).toBeInTheDocument());
     await act(async () => {
       fireEvent.click(screen.getByText('See How #1 Solved This'));
     });
@@ -1170,12 +1157,12 @@ describe('ArenaScreen', () => {
 
   it('Up Next link appears after successful submission', async () => {
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
     await act(async () => { fireEvent.click(screen.getByText('Start Challenge')); });
-    await waitFor(() => expect(screen.getByText('Submit')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Submit')).toBeInTheDocument());
     await act(async () => { fireEvent.click(screen.getByText('Submit')); });
     await waitFor(() => {
-      expect(screen.getByText('Up Next')).toBeTruthy();
+      expect(screen.getByText('Up Next')).toBeInTheDocument();
     });
   });
 
@@ -1207,9 +1194,9 @@ describe('ArenaScreen', () => {
 
   it('onExpire callback marks screen as expired', async () => {
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
     await act(async () => { fireEvent.click(screen.getByText('Start Challenge')); });
-    await waitFor(() => expect(screen.getByTestId('arena-ide')).toBeTruthy());
+    await waitFor(() => expect(screen.getByTestId('arena-ide')).toBeInTheDocument());
     // Trigger expire through mock IDE
     await act(async () => {
       fireEvent.click(screen.getByTestId('ide-expire'));
@@ -1223,9 +1210,9 @@ describe('ArenaScreen', () => {
 
   it('desktop header back button navigates to Problems', async () => {
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
     await act(async () => { fireEvent.click(screen.getByText('Start Challenge')); });
-    await waitFor(() => expect(screen.getByTestId('arena-ide')).toBeTruthy());
+    await waitFor(() => expect(screen.getByTestId('arena-ide')).toBeInTheDocument());
     // Find the "← Back" button in the desktop header
     const backBtn = screen.getByText(/Back$/);
     fireEvent.click(backBtn);
@@ -1256,9 +1243,9 @@ describe('ArenaScreen', () => {
     });
 
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
     await act(async () => { fireEvent.click(screen.getByText('Start Challenge')); });
-    await waitFor(() => expect(screen.getByText('Submit')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Submit')).toBeInTheDocument());
     await act(async () => { fireEvent.click(screen.getByText('Submit')); });
     await waitFor(() => {
       const results = screen.queryByTestId('ide-results');
@@ -1299,12 +1286,12 @@ describe('ArenaScreen', () => {
     });
 
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
     await act(async () => { fireEvent.click(screen.getByText('Start Challenge')); });
-    await waitFor(() => expect(screen.getByText('Submit')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Submit')).toBeInTheDocument());
     await act(async () => { fireEvent.click(screen.getByText('Submit')); });
     // Submit completes — attempt state updated with new attempt data
-    await waitFor(() => expect(screen.queryByTestId('ide-results')).toBeTruthy());
+    await waitFor(() => expect(screen.queryByTestId('ide-results')).toBeInTheDocument());
   });
 
   /* ─── onRunCode (Piston execute) — actually invoked ──────────── */
@@ -1315,9 +1302,9 @@ describe('ArenaScreen', () => {
     // We cannot call the prop directly from the mock — but we verify
     // that the fetch mock for /api/execute is properly set up.
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
     await act(async () => { fireEvent.click(screen.getByText('Start Challenge')); });
-    await waitFor(() => expect(screen.getByTestId('arena-ide')).toBeTruthy());
+    await waitFor(() => expect(screen.getByTestId('arena-ide')).toBeInTheDocument());
     // The IDE is rendered — onRunCode is passed as a prop
   });
 
@@ -1368,11 +1355,11 @@ describe('ArenaScreen', () => {
     });
 
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
     await act(async () => { fireEvent.click(screen.getByText('Start Challenge')); });
-    await waitFor(() => expect(screen.getByText('Submit')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Submit')).toBeInTheDocument());
     await act(async () => { fireEvent.click(screen.getByText('Submit')); });
-    await waitFor(() => expect(screen.getByText('Challenge Passed!')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Challenge Passed!')).toBeInTheDocument());
     // The "Up Next" link should point to the closest difficulty in same category
     // hard (idx 3) has dist 1, easy (idx 1) has dist 1+5=6, so hard-one wins
     const tryNextLink = screen.getByText('Up Next');
@@ -1430,11 +1417,11 @@ describe('ArenaScreen', () => {
     });
 
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
     await act(async () => { fireEvent.click(screen.getByText('Start Challenge')); });
-    await waitFor(() => expect(screen.getByText('Submit')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Submit')).toBeInTheDocument());
     await act(async () => { fireEvent.click(screen.getByText('Submit')); });
-    await waitFor(() => expect(screen.getByText('Challenge Passed!')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Challenge Passed!')).toBeInTheDocument());
 
     // nextChallenge should be null, so link href falls back to /challenges
     const tryNextLink = screen.getByText('Up Next');
@@ -1449,7 +1436,7 @@ describe('ArenaScreen', () => {
     });
   });
 
-  it('Up Next catch block redirects to /challenges when fallback fetch fails (line 1164)', async () => {
+  it('redirects to challenges list when Up Next fallback fetch fails', async () => {
     let challengesFetchCount = 0;
     globalThis.fetch = vi.fn().mockImplementation((url: string, opts?: any) => {
       if (url.includes('/api/challenges/')) return Promise.resolve({ ok: true, json: () => Promise.resolve(challengeData) });
@@ -1488,11 +1475,11 @@ describe('ArenaScreen', () => {
     (window as any).location = { ...originalLocation, href: 'http://localhost/' };
 
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
     await act(async () => { fireEvent.click(screen.getByText('Start Challenge')); });
-    await waitFor(() => expect(screen.getByText('Submit')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Submit')).toBeInTheDocument());
     await act(async () => { fireEvent.click(screen.getByText('Submit')); });
-    await waitFor(() => expect(screen.getByText('Challenge Passed!')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Challenge Passed!')).toBeInTheDocument());
 
     const tryNextLink = screen.getByText('Up Next');
     await act(async () => { fireEvent.click(tryNextLink); });
@@ -1510,11 +1497,11 @@ describe('ArenaScreen', () => {
 
   it('View Your Replay button navigates to Replay screen', async () => {
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
     await act(async () => { fireEvent.click(screen.getByText('Start Challenge')); });
-    await waitFor(() => expect(screen.getByText('Submit')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Submit')).toBeInTheDocument());
     await act(async () => { fireEvent.click(screen.getByText('Submit')); });
-    await waitFor(() => expect(screen.getByText('Challenge Passed!')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Challenge Passed!')).toBeInTheDocument());
     await act(async () => {
       fireEvent.click(screen.getByText('View Your Replay'));
     });
@@ -1525,11 +1512,11 @@ describe('ArenaScreen', () => {
 
   it('Back to Problems in success overlay navigates away', async () => {
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
     await act(async () => { fireEvent.click(screen.getByText('Start Challenge')); });
-    await waitFor(() => expect(screen.getByText('Submit')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Submit')).toBeInTheDocument());
     await act(async () => { fireEvent.click(screen.getByText('Submit')); });
-    await waitFor(() => expect(screen.getByText('Challenge Passed!')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Challenge Passed!')).toBeInTheDocument());
     // There are multiple "Back to Problems" buttons, find the one in the overlay
     const btcButtons = screen.getAllByText('Back to Problems');
     const overlayBtn = btcButtons[btcButtons.length - 1]; // last one is in overlay
@@ -1542,11 +1529,11 @@ describe('ArenaScreen', () => {
   it('Copy Link button copies share URL to clipboard', async () => {
     Object.assign(navigator, { clipboard: { writeText: vi.fn().mockResolvedValue(undefined) } });
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
     await act(async () => { fireEvent.click(screen.getByText('Start Challenge')); });
-    await waitFor(() => expect(screen.getByText('Submit')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Submit')).toBeInTheDocument());
     await act(async () => { fireEvent.click(screen.getByText('Submit')); });
-    await waitFor(() => expect(screen.getByText('Challenge Passed!')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Challenge Passed!')).toBeInTheDocument());
     await act(async () => {
       fireEvent.click(screen.getByText('Copy Link'));
     });
@@ -1554,7 +1541,7 @@ describe('ArenaScreen', () => {
       expect(navigator.clipboard.writeText).toHaveBeenCalledWith(expect.stringContaining('/share/att-1'));
     });
     await waitFor(() => {
-      expect(screen.getByText('Copied!')).toBeTruthy();
+      expect(screen.getByText('Copied!')).toBeInTheDocument();
     });
   });
 
@@ -1563,9 +1550,9 @@ describe('ArenaScreen', () => {
   it('mobile header back arrow navigates to Problems', async () => {
     isMobileReturn = true;
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
     await act(async () => { fireEvent.click(screen.getByText('Start Challenge')); });
-    await waitFor(() => expect(screen.getByText('Run')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Run')).toBeInTheDocument());
     // Find the left-arrow button (←) in mobile header
     const arrowButton = screen.getByText('←');
     fireEvent.click(arrowButton);
@@ -1581,11 +1568,11 @@ describe('ArenaScreen', () => {
       testCases: 'INVALID JSON',
     });
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
     await act(async () => { fireEvent.click(screen.getByText('Start Challenge')); });
     // When JSON.parse fails, it catches and falls back to 'Run Tests'
     await waitFor(() => {
-      expect(screen.getByText('Run Tests')).toBeTruthy();
+      expect(screen.getByText('Run Tests')).toBeInTheDocument();
     });
   });
 
@@ -1596,11 +1583,11 @@ describe('ArenaScreen', () => {
       testCases: 'INVALID JSON',
     });
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
     await act(async () => { fireEvent.click(screen.getByText('Start Challenge')); });
     // When JSON.parse fails, it catches and falls back to 'Submit'
     await waitFor(() => {
-      expect(screen.getByText('Submit')).toBeTruthy();
+      expect(screen.getByText('Submit')).toBeInTheDocument();
     });
   });
 
@@ -1670,11 +1657,11 @@ describe('ArenaScreen', () => {
     });
 
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
     await act(async () => { fireEvent.click(screen.getByText('Start Challenge')); });
-    await waitFor(() => expect(screen.getByText('Submit')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Submit')).toBeInTheDocument());
     await act(async () => { fireEvent.click(screen.getByText('Submit')); });
-    await waitFor(() => expect(screen.getByText('Challenge Passed!')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Challenge Passed!')).toBeInTheDocument());
     await act(async () => {
       fireEvent.click(screen.getByText('See How #1 Solved This'));
     });
@@ -1709,9 +1696,9 @@ describe('ArenaScreen', () => {
     });
 
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
     await act(async () => { fireEvent.click(screen.getByText('Start Challenge')); });
-    await waitFor(() => expect(screen.getByText('Submit')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Submit')).toBeInTheDocument());
     await act(async () => { fireEvent.click(screen.getByText('Submit')); });
     await waitFor(() => {
       const results = screen.queryByTestId('ide-results');
@@ -1722,7 +1709,7 @@ describe('ArenaScreen', () => {
 
   /* ─── Branch coverage: leaderboard "See How #1" error paths ───── */
 
-  it('handles "See How #1 Solved This" when leaderboard fetch returns non-ok (line 1128)', async () => {
+  it('dismisses overlay when See How #1 leaderboard fetch fails', async () => {
     // Submit successfully first to trigger success overlay
     globalThis.fetch = vi.fn().mockImplementation((url: string, opts?: any) => {
       if (url.includes('/api/challenges/')) return Promise.resolve({ ok: true, json: () => Promise.resolve(challengeData) });
@@ -1751,11 +1738,11 @@ describe('ArenaScreen', () => {
     });
 
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
     await act(async () => { fireEvent.click(screen.getByText('Start Challenge')); });
-    await waitFor(() => expect(screen.getByText('Submit')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Submit')).toBeInTheDocument());
     await act(async () => { fireEvent.click(screen.getByText('Submit')); });
-    await waitFor(() => expect(screen.getByText('Challenge Passed!')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Challenge Passed!')).toBeInTheDocument());
 
     // Click "See How #1 Solved This" — leaderboard returns non-ok
     await act(async () => { fireEvent.click(screen.getByText('See How #1 Solved This')); });
@@ -1764,7 +1751,7 @@ describe('ArenaScreen', () => {
     expect(mockNavigate).not.toHaveBeenCalledWith('Replay', expect.anything());
   });
 
-  it('handles "See How #1 Solved This" when entries are empty (line 1130-1131)', async () => {
+  it('dismisses overlay when See How #1 returns empty entries', async () => {
     globalThis.fetch = vi.fn().mockImplementation((url: string, opts?: any) => {
       if (url.includes('/api/challenges/')) return Promise.resolve({ ok: true, json: () => Promise.resolve(challengeData) });
       if (url === '/api/profile') return Promise.resolve({ ok: true, json: () => Promise.resolve(profileData) });
@@ -1796,18 +1783,18 @@ describe('ArenaScreen', () => {
     });
 
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
     await act(async () => { fireEvent.click(screen.getByText('Start Challenge')); });
-    await waitFor(() => expect(screen.getByText('Submit')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Submit')).toBeInTheDocument());
     await act(async () => { fireEvent.click(screen.getByText('Submit')); });
-    await waitFor(() => expect(screen.getByText('Challenge Passed!')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Challenge Passed!')).toBeInTheDocument());
 
     await act(async () => { fireEvent.click(screen.getByText('See How #1 Solved This')); });
     await waitFor(() => expect(screen.queryByText('Challenge Passed!')).toBeNull());
     expect(mockNavigate).not.toHaveBeenCalledWith('Replay', expect.anything());
   });
 
-  it('handles "See How #1 Solved This" when fetch throws (line 1137-1139)', async () => {
+  it('shows toast when See How #1 fetch throws network error', async () => {
     let callCount = 0;
     globalThis.fetch = vi.fn().mockImplementation((url: string, opts?: any) => {
       if (url.includes('/api/challenges/')) return Promise.resolve({ ok: true, json: () => Promise.resolve(challengeData) });
@@ -1841,11 +1828,11 @@ describe('ArenaScreen', () => {
     });
 
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
     await act(async () => { fireEvent.click(screen.getByText('Start Challenge')); });
-    await waitFor(() => expect(screen.getByText('Submit')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Submit')).toBeInTheDocument());
     await act(async () => { fireEvent.click(screen.getByText('Submit')); });
-    await waitFor(() => expect(screen.getByText('Challenge Passed!')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Challenge Passed!')).toBeInTheDocument());
 
     await act(async () => { fireEvent.click(screen.getByText('See How #1 Solved This')); });
     await waitFor(() => {
@@ -1855,24 +1842,24 @@ describe('ArenaScreen', () => {
 
   /* ─── Branch coverage: hiddenTestCount JSON parse catch (line 858) ─ */
 
-  it('shows plain "Run Tests" when testCases JSON is malformed (line 858 catch)', async () => {
+  it('shows plain "Run Tests" when testCases JSON is malformed', async () => {
     const malformedChallenge = { ...challengeData, hiddenTestCount: 3, testCases: '{invalid json' };
     globalThis.fetch = mockFetchForChallenge(malformedChallenge);
 
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
     await act(async () => { fireEvent.click(screen.getByText('Start Challenge')); });
     await waitFor(() => {
       // Should show plain "Run Tests" (not "Run Tests (X public)")
-      expect(screen.getByText('Run Tests')).toBeTruthy();
+      expect(screen.getByText('Run Tests')).toBeInTheDocument();
       // And "Submit" (not "Submit (X tests)")
-      expect(screen.getByText('Submit')).toBeTruthy();
+      expect(screen.getByText('Submit')).toBeInTheDocument();
     });
   });
 
   /* ─── Branch coverage: costLimitReached (line 627) ────────────── */
 
-  it('renders with costLimitReached=true when totalCost >= maxCost (line 627)', async () => {
+  it('renders budget-exceeded state when total cost exceeds max cost', async () => {
     const costLimitChallenge = { ...challengeData, maxCost: 100 };
     globalThis.fetch = vi.fn().mockImplementation((url: string, opts?: any) => {
       if (url.includes('/api/challenges/')) return Promise.resolve({ ok: true, json: () => Promise.resolve(costLimitChallenge) });
@@ -1892,18 +1879,18 @@ describe('ArenaScreen', () => {
     });
 
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
     await act(async () => { fireEvent.click(screen.getByText('Start Challenge')); });
     // Should render the budget progress bar with over-budget state
     await waitFor(() => {
-      expect(screen.getByText('Run Tests')).toBeTruthy();
-      expect(screen.getByText('Submit')).toBeTruthy();
+      expect(screen.getByText('Run Tests')).toBeInTheDocument();
+      expect(screen.getByText('Submit')).toBeInTheDocument();
     });
   });
 
   /* ─── Branch coverage: timer urgency states (lines 629-632) ───── */
 
-  it('shows critical timer state when timeLeft <= 30 (line 631)', async () => {
+  it('shows critical timer state when 30 seconds or less remain', async () => {
     const timedChallenge = { ...challengeData, wallClockLimit: 35 };
     globalThis.fetch = vi.fn().mockImplementation((url: string, opts?: any) => {
       if (url.includes('/api/challenges/')) return Promise.resolve({ ok: true, json: () => Promise.resolve(timedChallenge) });
@@ -1925,15 +1912,15 @@ describe('ArenaScreen', () => {
     });
 
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
     await act(async () => { fireEvent.click(screen.getByText('Start Challenge')); });
     // Timer should be rendered (0:25 or similar)
     await waitFor(() => {
-      expect(screen.getByText(/0:\d{2}/)).toBeTruthy();
+      expect(screen.getByText(/0:\d{2}/)).toBeInTheDocument();
     });
   });
 
-  it('shows warning timer state when timeLeft <= 120 (line 632)', async () => {
+  it('shows warning timer state when two minutes or less remain', async () => {
     const timedChallenge = { ...challengeData, wallClockLimit: 180 };
     globalThis.fetch = vi.fn().mockImplementation((url: string, opts?: any) => {
       if (url.includes('/api/challenges/')) return Promise.resolve({ ok: true, json: () => Promise.resolve(timedChallenge) });
@@ -1955,16 +1942,16 @@ describe('ArenaScreen', () => {
     });
 
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
     await act(async () => { fireEvent.click(screen.getByText('Start Challenge')); });
     await waitFor(() => {
-      expect(screen.getByText(/1:\d{2}/)).toBeTruthy();
+      expect(screen.getByText(/1:\d{2}/)).toBeInTheDocument();
     });
   });
 
   /* ─── Branch coverage: "Up Next" with no nextChallenge (line 1151) ─ */
 
-  it('navigates to /challenges when no same-category challenges exist (line 1164)', async () => {
+  it('recommends cross-category challenge in Up Next when same-category is empty', async () => {
     // Need to mock window.location.href since jsdom doesn't support full navigation
     const locationSpy = vi.spyOn(window, 'location', 'get').mockReturnValue({
       ...window.location,
@@ -2005,11 +1992,11 @@ describe('ArenaScreen', () => {
     });
 
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
     await act(async () => { fireEvent.click(screen.getByText('Start Challenge')); });
-    await waitFor(() => expect(screen.getByText('Submit')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Submit')).toBeInTheDocument());
     await act(async () => { fireEvent.click(screen.getByText('Submit')); });
-    await waitFor(() => expect(screen.getByText('Challenge Passed!')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Challenge Passed!')).toBeInTheDocument());
 
     // Cross-category fallback: should recommend other-1 from debugging category
     const link = screen.getByText('Up Next');
@@ -2020,7 +2007,7 @@ describe('ArenaScreen', () => {
 
   /* ─── Branch coverage: success overlay without topCost (line 1000) ─ */
 
-  it('does not show "Top Solver" when topCost is null (line 1000)', async () => {
+  it('hides Top Solver section when topCost is null', async () => {
     globalThis.fetch = vi.fn().mockImplementation((url: string, opts?: any) => {
       if (url.includes('/api/challenges/')) return Promise.resolve({ ok: true, json: () => Promise.resolve(challengeData) });
       if (url === '/api/profile') return Promise.resolve({ ok: true, json: () => Promise.resolve(profileData) });
@@ -2049,11 +2036,11 @@ describe('ArenaScreen', () => {
     });
 
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
     await act(async () => { fireEvent.click(screen.getByText('Start Challenge')); });
-    await waitFor(() => expect(screen.getByText('Submit')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Submit')).toBeInTheDocument());
     await act(async () => { fireEvent.click(screen.getByText('Submit')); });
-    await waitFor(() => expect(screen.getByText('Challenge Passed!')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Challenge Passed!')).toBeInTheDocument());
 
     // "Top Solver" label should not appear when topCost is null
     await waitFor(() => {
@@ -2065,15 +2052,15 @@ describe('ArenaScreen', () => {
 
   it('shows "Try Again" button in success overlay for personal attempts', async () => {
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
     await act(async () => { fireEvent.click(screen.getByText('Start Challenge')); });
-    await waitFor(() => expect(screen.getByText('Submit')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Submit')).toBeInTheDocument());
     await act(async () => { fireEvent.click(screen.getByText('Submit')); });
     await waitFor(() => {
-      expect(screen.getByText('Challenge Passed!')).toBeTruthy();
+      expect(screen.getByText('Challenge Passed!')).toBeInTheDocument();
     });
     // Should show Try Again button (attempt has no assessmentSessionId)
-    expect(screen.getByText(/Try Again/)).toBeTruthy();
+    expect(screen.getByText(/Try Again/)).toBeInTheDocument();
   });
 
   it('hides "Try Again" button in success overlay for assessment attempts', async () => {
@@ -2111,12 +2098,12 @@ describe('ArenaScreen', () => {
     globalThis.fetch = fetchMock;
 
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
     await act(async () => { fireEvent.click(screen.getByText('Start Challenge')); });
-    await waitFor(() => expect(screen.getByText('Submit')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Submit')).toBeInTheDocument());
     await act(async () => { fireEvent.click(screen.getByText('Submit')); });
     await waitFor(() => {
-      expect(screen.getByText('Challenge Passed!')).toBeTruthy();
+      expect(screen.getByText('Challenge Passed!')).toBeInTheDocument();
     });
     // Should NOT show Try Again button for assessment attempts
     expect(screen.queryByText(/Try Again/)).toBeNull();
@@ -2145,28 +2132,28 @@ describe('ArenaScreen', () => {
     globalThis.fetch = fetchMock;
 
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
     await act(async () => { fireEvent.click(screen.getByText('Start Challenge')); });
-    await waitFor(() => expect(screen.getByTestId('arena-ide')).toBeTruthy());
+    await waitFor(() => expect(screen.getByTestId('arena-ide')).toBeInTheDocument());
     // ArenaIDE mock renders a "Restart" button only if onRestart is passed
     expect(screen.queryByTestId('ide-restart')).toBeNull();
   });
 
   it('"Try Again" button resets state and returns to pre-attempt screen', async () => {
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
     await act(async () => { fireEvent.click(screen.getByText('Start Challenge')); });
-    await waitFor(() => expect(screen.getByText('Submit')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Submit')).toBeInTheDocument());
     await act(async () => { fireEvent.click(screen.getByText('Submit')); });
     await waitFor(() => {
-      expect(screen.getByText('Challenge Passed!')).toBeTruthy();
+      expect(screen.getByText('Challenge Passed!')).toBeInTheDocument();
     });
     // Click Try Again
     await act(async () => { fireEvent.click(screen.getByText(/Try Again/)); });
     // Should return to pre-attempt screen
     await waitFor(() => {
       expect(screen.queryByText('Challenge Passed!')).toBeNull();
-      expect(screen.getByText('Start Challenge')).toBeTruthy();
+      expect(screen.getByText('Start Challenge')).toBeInTheDocument();
     });
   });
 
@@ -2202,10 +2189,10 @@ describe('ArenaScreen', () => {
     render(<ArenaScreen />);
     // Should show personal best cost (500 hundredths = $0.05)
     await waitFor(() => {
-      expect(screen.getByText(/Your best:/)).toBeTruthy();
+      expect(screen.getByText(/Your best:/)).toBeInTheDocument();
     });
     // Button should say "Try Again" instead of "Start Challenge"
-    expect(screen.getByText('Try Again')).toBeTruthy();
+    expect(screen.getByText('Try Again')).toBeInTheDocument();
   });
 
   it('shows previous attempts count when no passed attempts exist', async () => {
@@ -2229,7 +2216,7 @@ describe('ArenaScreen', () => {
 
     render(<ArenaScreen />);
     await waitFor(() => {
-      expect(screen.getByText('1 previous attempt')).toBeTruthy();
+      expect(screen.getByText('1 previous attempt')).toBeInTheDocument();
     });
   });
 
@@ -2265,7 +2252,7 @@ describe('ArenaScreen', () => {
     render(<ArenaScreen />);
     // Should auto-resume: skip pre-attempt screen, go straight to IDE
     await waitFor(() => {
-      expect(screen.getByTestId('arena-ide')).toBeTruthy();
+      expect(screen.getByTestId('arena-ide')).toBeInTheDocument();
     });
     // Should NOT show "Start Challenge" button
     expect(screen.queryByText('Start Challenge')).toBeNull();
@@ -2308,11 +2295,11 @@ describe('ArenaScreen', () => {
     });
 
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
     await act(async () => { fireEvent.click(screen.getByText('Start Challenge')); });
-    await waitFor(() => expect(screen.getByText('Submit')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Submit')).toBeInTheDocument());
     await act(async () => { fireEvent.click(screen.getByText('Submit')); });
-    await waitFor(() => expect(screen.getByText('Challenge Passed!')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Challenge Passed!')).toBeInTheDocument());
 
     const link = screen.getByText('Up Next');
     expect(link.closest('a')?.getAttribute('href')).toBe('/arena/unsolved-one');
@@ -2353,11 +2340,11 @@ describe('ArenaScreen', () => {
     });
 
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
     await act(async () => { fireEvent.click(screen.getByText('Start Challenge')); });
-    await waitFor(() => expect(screen.getByText('Submit')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Submit')).toBeInTheDocument());
     await act(async () => { fireEvent.click(screen.getByText('Submit')); });
-    await waitFor(() => expect(screen.getByText('Challenge Passed!')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Challenge Passed!')).toBeInTheDocument());
 
     const link = screen.getByText('Up Next');
     expect(link.closest('a')?.getAttribute('href')).toBe('/arena/other-cat-unsolved');
@@ -2398,15 +2385,15 @@ describe('ArenaScreen', () => {
     });
 
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
     await act(async () => { fireEvent.click(screen.getByText('Start Challenge')); });
-    await waitFor(() => expect(screen.getByText('Submit')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Submit')).toBeInTheDocument());
     await act(async () => { fireEvent.click(screen.getByText('Submit')); });
-    await waitFor(() => expect(screen.getByText('Challenge Passed!')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Challenge Passed!')).toBeInTheDocument());
 
     await waitFor(() => {
-      expect(screen.getByText('All Challenges Completed!')).toBeTruthy();
-      expect(screen.getByText('Champion')).toBeTruthy();
+      expect(screen.getByText('All Challenges Completed!')).toBeInTheDocument();
+      expect(screen.getByText('Champion')).toBeInTheDocument();
     });
     // Link should point to /challenges (browse page)
     expect(screen.getByText('All Challenges Completed!').closest('a')?.getAttribute('href')).toBe('/challenges');

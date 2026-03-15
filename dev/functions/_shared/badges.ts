@@ -5,6 +5,7 @@
 import { eq, and, sql } from 'drizzle-orm';
 import type { Db } from './db';
 import { badges, profiles, attempts, challenges, notifications } from '../../drizzle/schema.d1';
+import { computeAFI, computeRadarFromCosts, CERTIFICATION_THRESHOLDS } from './scoring';
 
 export interface BadgeDef {
   type: string;
@@ -103,6 +104,24 @@ export const BADGE_DEFS: Record<string, BadgeDef> = {
     title: 'Daily Warrior',
     description: 'Completed 10 daily challenges',
     icon: '⚔️',
+  },
+  ai_fluent: {
+    type: 'ai_fluent',
+    title: 'AI-Fluent',
+    description: 'Passed 10+ challenges with AFI 400+',
+    icon: '\uD83E\uDD49',
+  },
+  ai_fluent_pro: {
+    type: 'ai_fluent_pro',
+    title: 'AI-Fluent Pro',
+    description: 'Passed 25+ challenges across 3+ categories with AFI 550+',
+    icon: '\uD83E\uDD48',
+  },
+  ai_fluent_expert: {
+    type: 'ai_fluent_expert',
+    title: 'AI-Fluent Expert',
+    description: 'Passed 50+ challenges across all categories with AFI 700+',
+    icon: '\uD83E\uDD47',
   },
 };
 
@@ -296,6 +315,37 @@ export async function checkAndAwardBadges(db: Db, userId: string): Promise<strin
       /* istanbul ignore next -- @preserve */
       if (await awardBadgeIfNew(db, userId, badgeType, existingBadges)) {
         awarded.push(badgeType);
+      }
+    }
+  }
+
+  // AI Fluency certifications — require radar data computation
+  const certBadgeTypes = CERTIFICATION_THRESHOLDS.map((c) => c.type);
+  const hasAllCerts = certBadgeTypes.every((b) => existingBadges.has(b));
+  if (solveCount >= 10 && !hasAllCerts) {
+    const [globalAvgs, userAvgs] = await Promise.all([
+      db.select({ category: challenges.category, avgCost: sql<number>`AVG(${attempts.totalCost})` })
+        .from(attempts)
+        .innerJoin(challenges, eq(attempts.challengeId, challenges.id))
+        .where(eq(attempts.status, 'passed'))
+        .groupBy(challenges.category),
+      db.select({ category: challenges.category, avgCost: sql<number>`AVG(${attempts.totalCost})` })
+        .from(attempts)
+        .innerJoin(challenges, eq(attempts.challengeId, challenges.id))
+        .where(and(eq(attempts.userId, userId), eq(attempts.status, 'passed')))
+        .groupBy(challenges.category),
+    ]);
+
+    const radar = computeRadarFromCosts(globalAvgs, userAvgs);
+    const afi = computeAFI(radar);
+    const solvedCats = new Set(userAvgs.map((u) => u.category));
+
+    for (const cert of CERTIFICATION_THRESHOLDS) {
+      /* istanbul ignore next -- @preserve */
+      if (solveCount >= cert.minSolves && solvedCats.size >= cert.minCategories && afi.score >= cert.minAFI) {
+        if (await awardBadgeIfNew(db, userId, cert.type, existingBadges)) {
+          awarded.push(cert.type);
+        }
       }
     }
   }

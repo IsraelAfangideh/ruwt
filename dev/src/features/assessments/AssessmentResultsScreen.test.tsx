@@ -17,21 +17,8 @@ vi.mock('@/shared/ui/Badge', () => ({
 vi.mock('@/features/profile/AIProfileRadar', () => ({
   AIProfileRadar: () => <div data-testid="ai-radar" />,
 }));
-vi.mock('@/shared/theme', () => ({
-  useColors: () => ({
-    bg: '#fff', text: '#000', textMuted: '#888', accent: '#c9a962', border: '#ccc',
-    borderStrong: '#999', card: '#fff', muted: '#f5f5f5', error: '#f00', errorBg: '#fee',
-    success: '#0a0', successBg: '#efe', primary: '#000', primaryForeground: '#fff',
-    secondary: '#eee', secondaryForeground: '#000', destructive: '#f00',
-    textSubtle: '#aaa', bgElevated: '#fafafa', accentBg: '#ffe',
-  }),
-}));
-vi.mock('@/shared/theme/tokens', () => ({
-  spacing: { xs: 4, sm: 8, md: 16, lg: 24, xl: 32, '2xl': 48 },
-  fontSizes: { xs: 12, sm: 14, md: 16, lg: 18, xl: 20, '2xl': 24, '3xl': 30, '4xl': 36 },
-  fontFamily: { display: 'serif', body: 'sans-serif' },
-  radii: { sm: 4, md: 8, lg: 12, xl: 16, full: 9999 },
-}));
+vi.mock('@/shared/theme', async () => (await import('@/shared/test/helpers')).mockTheme());
+vi.mock('@/shared/theme/tokens', async () => (await import('@/shared/test/helpers')).mockTokens());
 
 const ok = (data: any) => ({ ok: true, json: () => Promise.resolve(data) });
 const fail = () => ({ ok: false, json: () => Promise.resolve({}) });
@@ -99,14 +86,14 @@ describe('AssessmentResultsScreen', () => {
   it('renders "Assessment Results" title', async () => {
     render(<AssessmentResultsScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Assessment Results')).toBeTruthy();
+      expect(screen.getByText('Assessment Results')).toBeInTheDocument();
     });
   });
 
   it('shows company name when companyName is set and no logo', async () => {
     render(<AssessmentResultsScreen />);
     await waitFor(() => {
-      expect(screen.getByText('TestCorp')).toBeTruthy();
+      expect(screen.getByText('TestCorp')).toBeInTheDocument();
     });
   });
 
@@ -118,7 +105,7 @@ describe('AssessmentResultsScreen', () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(ok(noCompanyData)));
     render(<AssessmentResultsScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Ruwt')).toBeTruthy();
+      expect(screen.getByText('Ruwt')).toBeInTheDocument();
     });
   });
 
@@ -139,10 +126,10 @@ describe('AssessmentResultsScreen', () => {
   it('renders summary cards: challenges passed, cost, tokens', async () => {
     render(<AssessmentResultsScreen />);
     await waitFor(() => {
-      expect(screen.getByText('4/5')).toBeTruthy();
-      expect(screen.getByText('Challenges Passed')).toBeTruthy();
-      expect(screen.getByText('Total AI Cost')).toBeTruthy();
-      expect(screen.getByText('Total Tokens')).toBeTruthy();
+      expect(screen.getByText('4/5')).toBeInTheDocument();
+      expect(screen.getByText('Challenges Passed')).toBeInTheDocument();
+      expect(screen.getByText('Total AI Cost')).toBeInTheDocument();
+      expect(screen.getByText('Total Tokens')).toBeInTheDocument();
     });
   });
 
@@ -155,7 +142,7 @@ describe('AssessmentResultsScreen', () => {
     render(<AssessmentResultsScreen />);
     await waitFor(() => {
       // 50 / 10000 = 0.005 which is < 0.01 so uses 4 decimal places
-      expect(screen.getByText('$0.0050')).toBeTruthy();
+      expect(screen.getByText('$0.0050')).toBeInTheDocument();
     });
   });
 
@@ -163,7 +150,7 @@ describe('AssessmentResultsScreen', () => {
     render(<AssessmentResultsScreen />);
     await waitFor(() => {
       // 5000 / 10000 = 0.50 which is >= 0.01 so uses 2 decimal places
-      expect(screen.getByText('$0.50')).toBeTruthy();
+      expect(screen.getByText('$0.50')).toBeInTheDocument();
     });
   });
 
@@ -175,7 +162,7 @@ describe('AssessmentResultsScreen', () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(ok(bigTokenData)));
     render(<AssessmentResultsScreen />);
     await waitFor(() => {
-      expect(screen.getByText('12,345')).toBeTruthy();
+      expect(screen.getByText('12,345')).toBeInTheDocument();
     });
   });
 
@@ -187,7 +174,7 @@ describe('AssessmentResultsScreen', () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(ok(nullNameData)));
     render(<AssessmentResultsScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Candidate')).toBeTruthy();
+      expect(screen.getByText('Candidate')).toBeInTheDocument();
     });
   });
 
@@ -199,7 +186,7 @@ describe('AssessmentResultsScreen', () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(ok(withChallenge)));
     render(<AssessmentResultsScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Challenge Breakdown')).toBeTruthy();
+      expect(screen.getByText('Challenge Breakdown')).toBeInTheDocument();
     });
   });
 
@@ -211,8 +198,8 @@ describe('AssessmentResultsScreen', () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(ok(withChallenge)));
     render(<AssessmentResultsScreen />);
     await waitFor(() => {
-      expect(screen.getByText('FizzBuzz Pro')).toBeTruthy();
-      expect(screen.getByText('easy')).toBeTruthy();
+      expect(screen.getByText('FizzBuzz Pro')).toBeInTheDocument();
+      expect(screen.getByText('easy')).toBeInTheDocument();
     });
   });
 
@@ -224,7 +211,7 @@ describe('AssessmentResultsScreen', () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(ok(withChallenge)));
     render(<AssessmentResultsScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Prompt Efficiency')).toBeTruthy();
+      expect(screen.getByText('Prompt Efficiency')).toBeInTheDocument();
     });
   });
 
@@ -236,7 +223,7 @@ describe('AssessmentResultsScreen', () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(ok(withChallenge)));
     render(<AssessmentResultsScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Model Selection')).toBeTruthy();
+      expect(screen.getByText('Model Selection')).toBeInTheDocument();
     });
   });
 
@@ -248,7 +235,7 @@ describe('AssessmentResultsScreen', () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(ok(withChallenge)));
     render(<AssessmentResultsScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Iterative Debugging')).toBeTruthy();
+      expect(screen.getByText('Iterative Debugging')).toBeInTheDocument();
     });
   });
 
@@ -260,7 +247,7 @@ describe('AssessmentResultsScreen', () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(ok(withChallenge)));
     render(<AssessmentResultsScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Practice')).toBeTruthy();
+      expect(screen.getByText('Practice')).toBeInTheDocument();
     });
   });
 
@@ -272,7 +259,7 @@ describe('AssessmentResultsScreen', () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(ok(withChallenge)));
     render(<AssessmentResultsScreen />);
     await waitFor(() => {
-      expect(screen.getByText('PASSED')).toBeTruthy();
+      expect(screen.getByText('PASSED')).toBeInTheDocument();
     });
   });
 
@@ -284,7 +271,7 @@ describe('AssessmentResultsScreen', () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(ok(withChallenge)));
     render(<AssessmentResultsScreen />);
     await waitFor(() => {
-      expect(screen.getByText('FAILED')).toBeTruthy();
+      expect(screen.getByText('FAILED')).toBeInTheDocument();
     });
   });
 
@@ -296,7 +283,7 @@ describe('AssessmentResultsScreen', () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(ok(withChallenge)));
     render(<AssessmentResultsScreen />);
     await waitFor(() => {
-      expect(screen.getByText('SKIPPED')).toBeTruthy();
+      expect(screen.getByText('SKIPPED')).toBeInTheDocument();
     });
   });
 
@@ -308,10 +295,10 @@ describe('AssessmentResultsScreen', () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(ok(withChallenge)));
     render(<AssessmentResultsScreen />);
     await waitFor(() => {
-      expect(screen.getByText('3/3')).toBeTruthy();
-      expect(screen.getByText('Tests')).toBeTruthy();
-      expect(screen.getByText('Cost')).toBeTruthy();
-      expect(screen.getByText('Tokens')).toBeTruthy();
+      expect(screen.getByText('3/3')).toBeInTheDocument();
+      expect(screen.getByText('Tests')).toBeInTheDocument();
+      expect(screen.getByText('Cost')).toBeInTheDocument();
+      expect(screen.getByText('Tokens')).toBeInTheDocument();
     });
   });
 
@@ -323,10 +310,10 @@ describe('AssessmentResultsScreen', () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(ok(withChallenge)));
     render(<AssessmentResultsScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Models Used:')).toBeTruthy();
+      expect(screen.getByText('Models Used:')).toBeInTheDocument();
       // Model names get stripped of @cf/meta/ prefix
-      expect(screen.getByText(/llama-3.3-70b/)).toBeTruthy();
-      expect(screen.getByText(/llama-3.1-8b/)).toBeTruthy();
+      expect(screen.getByText(/llama-3.3-70b/)).toBeInTheDocument();
+      expect(screen.getByText(/llama-3.1-8b/)).toBeInTheDocument();
     });
   });
 
@@ -338,7 +325,7 @@ describe('AssessmentResultsScreen', () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(ok(withChallenge)));
     const { container } = render(<AssessmentResultsScreen />);
     await waitFor(() => {
-      expect(screen.getByText('AI Profile')).toBeTruthy();
+      expect(screen.getByText('AI Fluency Profile')).toBeInTheDocument();
       expect(container.querySelector('[data-testid="ai-radar"]')).not.toBeNull();
     });
   });
@@ -346,7 +333,7 @@ describe('AssessmentResultsScreen', () => {
   it('shows "Powered by Ruwt" footer when company name exists', async () => {
     render(<AssessmentResultsScreen />);
     await waitFor(() => {
-      expect(screen.getByText(/Powered by Ruwt/)).toBeTruthy();
+      expect(screen.getByText(/Powered by Ruwt/)).toBeInTheDocument();
     });
   });
 
@@ -358,7 +345,7 @@ describe('AssessmentResultsScreen', () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(ok(noCompanyData)));
     render(<AssessmentResultsScreen />);
     await waitFor(() => {
-      expect(screen.getByText(/AI-Efficiency Assessment/)).toBeTruthy();
+      expect(screen.getByText(/AI-Efficiency Assessment/)).toBeInTheDocument();
     });
   });
 
@@ -366,7 +353,7 @@ describe('AssessmentResultsScreen', () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('Network error')));
     render(<AssessmentResultsScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Network error')).toBeTruthy();
+      expect(screen.getByText('Network error')).toBeInTheDocument();
     });
   });
 
@@ -374,7 +361,7 @@ describe('AssessmentResultsScreen', () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue('string error'));
     render(<AssessmentResultsScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Failed to load results')).toBeTruthy();
+      expect(screen.getByText('Failed to load results')).toBeInTheDocument();
     });
   });
 
@@ -382,7 +369,7 @@ describe('AssessmentResultsScreen', () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: () => Promise.resolve(null) }));
     render(<AssessmentResultsScreen />);
     await waitFor(() => {
-      expect(screen.getByText('No data')).toBeTruthy();
+      expect(screen.getByText('No data')).toBeInTheDocument();
     });
   });
 
@@ -401,11 +388,11 @@ describe('AssessmentResultsScreen', () => {
     render(<AssessmentResultsScreen />);
     await waitFor(() => {
       // "1 call" (singular) vs "2 calls" (plural)
-      expect(screen.getByText(/1 call \u00B7/)).toBeTruthy();
+      expect(screen.getByText(/1 call \u00B7/)).toBeInTheDocument();
     });
   });
 
-  it('classifies model as micro tier when name does not match premium/mid/budget patterns (line 186)', async () => {
+  it('classifies unrecognized model names as micro tier', async () => {
     const microTierResult = {
       ...mockChallengeResult,
       modelUsage: {
@@ -420,7 +407,7 @@ describe('AssessmentResultsScreen', () => {
     render(<AssessmentResultsScreen />);
     await waitFor(() => {
       // The micro tier model should appear in model usage section
-      expect(screen.getByText(/qwen1.5-0.5b/)).toBeTruthy();
+      expect(screen.getByText(/qwen1.5-0.5b/)).toBeInTheDocument();
     });
   });
 
@@ -433,7 +420,7 @@ describe('AssessmentResultsScreen', () => {
     render(<AssessmentResultsScreen />);
     await waitFor(() => {
       // inputTokens (800) + outputTokens (500) = 1300 → 1,300
-      expect(screen.getByText('1,300')).toBeTruthy();
+      expect(screen.getByText('1,300')).toBeInTheDocument();
     });
   });
 });

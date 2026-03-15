@@ -6,6 +6,7 @@
 import { eq, and, sql, desc } from 'drizzle-orm';
 import { getDb } from '../../_shared/db';
 import { getUser } from '../../_shared/auth';
+import { computeAFI, computeRadarFromCosts, determineCertification } from '../../_shared/scoring';
 import { profiles, attempts, challenges, badges, follows } from '../../../drizzle/schema.d1';
 
 export async function onRequestGet(context: { request: Request; env: Env; params: { username: string } }) {
@@ -122,10 +123,6 @@ export async function onRequestGet(context: { request: Request; env: Env; params
     `);
 
     // Radar chart: per-category avg cost relative to global avg
-    const categories = ['model_selection', 'prompt_efficiency', 'iterative_debugging', 'multi_model_strategy', 'real_world'];
-    const radarKeys = ['modelSelection', 'promptEfficiency', 'debugging', 'multiModel', 'realWorld'];
-
-    // Global and user avg cost per category (independent queries)
     const [globalAvgs, userAvgs] = await Promise.all([
       db
         .select({
@@ -147,21 +144,15 @@ export async function onRequestGet(context: { request: Request; env: Env; params
         .groupBy(challenges.category),
     ]);
 
-    const globalMap = Object.fromEntries(globalAvgs.map((g) => [g.category, Number(g.avgCost)]));
-    const userMap = Object.fromEntries(userAvgs.map((u) => [u.category, Number(u.avgCost)]));
+    const radar = computeRadarFromCosts(globalAvgs, userAvgs);
 
-    const radar: Record<string, number> = {};
-    categories.forEach((cat, i) => {
-      const globalAvg = globalMap[cat];
-      const userAvg = userMap[cat];
-      if (globalAvg && userAvg) {
-        // Score 0-100: 100 means user is much cheaper than average, 0 means much more expensive
-        const ratio = globalAvg / userAvg; // >1 = user is cheaper
-        radar[radarKeys[i]] = Math.min(100, Math.max(0, Math.round(ratio * 50)));
-      } else {
-        radar[radarKeys[i]] = 0; // No data for this category
-      }
-    });
+    // Compute AI Fluency Index from radar data
+    const afi = computeAFI(radar);
+
+    // Determine certification level
+    const solvedCount = Number(stats?.solved || 0);
+    const solvedCategories = new Set(userAvgs.map((u) => u.category));
+    const certification = determineCertification(solvedCount, solvedCategories.size, afi.score);
 
     return Response.json({
       user: {
@@ -172,12 +163,18 @@ export async function onRequestGet(context: { request: Request; env: Env; params
         createdAt: profile.createdAt,
       },
       stats: {
-        solved: Number(stats?.solved || 0),
+        solved: solvedCount,
         avgCost: stats?.avgCost != null ? Math.round(Number(stats.avgCost)) : 0,
         globalRank,
         followers: Number(followerCount?.count || 0),
         following: Number(followingCount?.count || 0),
       },
+      afi: {
+        score: afi.score,
+        tier: afi.tier,
+        label: afi.label,
+      },
+      certification,
       isFollowing,
       badges: userBadges,
       similarSolvers,

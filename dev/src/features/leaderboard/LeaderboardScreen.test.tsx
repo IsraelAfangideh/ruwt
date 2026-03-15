@@ -49,21 +49,8 @@ vi.mock('@/shared/lib/DashboardDataContext', () => ({
     refreshAll: vi.fn(),
   }),
 }));
-vi.mock('@/shared/theme', () => ({
-  useColors: () => ({
-    bg: '#fff', text: '#000', textMuted: '#888', accent: '#c9a962', border: '#ccc',
-    borderStrong: '#999', card: '#fff', muted: '#f5f5f5', error: '#f00', errorBg: '#fee',
-    success: '#0a0', successBg: '#efe', primary: '#000', primaryForeground: '#fff',
-    secondary: '#eee', secondaryForeground: '#000', destructive: '#f00',
-    textSubtle: '#aaa', bgElevated: '#fafafa', accentBg: '#ffe',
-  }),
-}));
-vi.mock('@/shared/theme/tokens', () => ({
-  spacing: { xs: 4, sm: 8, md: 16, lg: 24, xl: 32, '2xl': 48 },
-  fontSizes: { xs: 12, sm: 14, md: 16, lg: 18, xl: 20, '2xl': 24, '3xl': 30, '4xl': 36 },
-  fontFamily: { display: 'serif', body: 'sans-serif' },
-  radii: { sm: 4, md: 8, lg: 12, xl: 16, full: 9999 },
-}));
+vi.mock('@/shared/theme', async () => (await import('@/shared/test/helpers')).mockTheme());
+vi.mock('@/shared/theme/tokens', async () => (await import('@/shared/test/helpers')).mockTokens());
 
 vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
   ok: true,
@@ -149,7 +136,7 @@ describe('LeaderboardScreen', () => {
     setupFetch();
     mockDashboardState = { ...mockDashboardState, leaderboard: { data: [], status: 'loading', lastFetchedAt: 0 } };
     const { container } = render(<LeaderboardScreen />);
-    expect(container.querySelector('[data-testid="skeleton-table"]')).toBeTruthy();
+    expect(container.querySelector('[data-testid="skeleton-table"]')).toBeInTheDocument();
   });
 
   it('shows loading state when auth is loading (redirect handled by useAuthGuard)', async () => {
@@ -157,7 +144,7 @@ describe('LeaderboardScreen', () => {
     setupFetch();
     const { container } = render(<LeaderboardScreen />);
     // Should show loading spinner since authLoading is true
-    expect(container.querySelector('[data-testid="skeleton-table"]')).toBeTruthy();
+    expect(container.querySelector('[data-testid="skeleton-table"]')).toBeInTheDocument();
   });
 
   it('renders leaderboard title after loading', async () => {
@@ -194,7 +181,7 @@ describe('LeaderboardScreen', () => {
       expect(screen.getAllByText('Open').length).toBeGreaterThanOrEqual(1);
     });
     expect(screen.getAllByText('Unlimited').length).toBeGreaterThanOrEqual(1);
-    expect(screen.getByText(/Open: Cloudflare models only/)).toBeTruthy();
+    expect(screen.getByText(/Open: Cloudflare models only/)).toBeInTheDocument();
   });
 
   it('shows empty state message when no entries for this week', async () => {
@@ -203,14 +190,14 @@ describe('LeaderboardScreen', () => {
     await waitFor(() => {
       expect(screen.getAllByText(/No solves this week/).length).toBeGreaterThanOrEqual(1);
     });
-    expect(screen.getByText(/Be the first to claim/)).toBeTruthy();
+    expect(screen.getByText(/Be the first to claim/)).toBeInTheDocument();
   });
 
   it('shows Browse Problems button in empty state', async () => {
     setupFetch();
     render(<LeaderboardScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Browse Problems')).toBeTruthy();
+      expect(screen.getByText('Browse Problems')).toBeInTheDocument();
     });
   });
 
@@ -218,7 +205,7 @@ describe('LeaderboardScreen', () => {
     setupFetch();
     render(<LeaderboardScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Browse Problems')).toBeTruthy();
+      expect(screen.getByText('Browse Problems')).toBeInTheDocument();
     });
     fireEvent.click(screen.getByText('Browse Problems'));
     expect(mockNavigate).toHaveBeenCalledWith('Problems');
@@ -228,7 +215,7 @@ describe('LeaderboardScreen', () => {
     setupFetch();
     const { container } = render(<LeaderboardScreen />);
     await waitFor(() => {
-      expect(container.querySelector('[data-testid="activity-feed"]')).toBeTruthy();
+      expect(container.querySelector('[data-testid="activity-feed"]')).toBeInTheDocument();
     });
   });
 
@@ -247,19 +234,19 @@ describe('LeaderboardScreen', () => {
     setupFetch({ leaderboardEntries: globalEntries });
     render(<LeaderboardScreen />);
     await waitFor(() => {
-      expect(screen.getByText('#')).toBeTruthy();
+      expect(screen.getByText('#')).toBeInTheDocument();
     });
-    expect(screen.getByText('User')).toBeTruthy();
-    expect(screen.getByText('Solved')).toBeTruthy();
-    expect(screen.getByText('Avg Cost')).toBeTruthy();
-    expect(screen.getByText('Total Cost')).toBeTruthy();
+    expect(screen.getByText('User')).toBeInTheDocument();
+    expect(screen.getByText('Solved')).toBeInTheDocument();
+    expect(screen.getByText('Avg Cost')).toBeInTheDocument();
+    expect(screen.getByText('Total Cost')).toBeInTheDocument();
   });
 
   it('shows dashes for users without stats', async () => {
     setupFetch({ leaderboardEntries: globalEntries });
     render(<LeaderboardScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Dave')).toBeTruthy();
+      expect(screen.getByText('Dave')).toBeInTheDocument();
     });
     const dashes = screen.getAllByText('-');
     expect(dashes.length).toBeGreaterThanOrEqual(3);
@@ -329,7 +316,7 @@ describe('LeaderboardScreen', () => {
     });
     fireEvent.click(screen.getAllByText('By Challenge')[0]);
     await waitFor(() => {
-      expect(screen.getByText('Select a challenge...')).toBeTruthy();
+      expect(screen.getByText('Select a challenge...')).toBeInTheDocument();
     });
   });
 
@@ -339,7 +326,7 @@ describe('LeaderboardScreen', () => {
     await waitFor(() => expect(screen.getAllByText('Alice').length).toBeGreaterThanOrEqual(1));
     // Switch to challenge tab
     fireEvent.click(screen.getAllByText('By Challenge')[0]);
-    await waitFor(() => expect(screen.getByText('Select a challenge...')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Select a challenge...')).toBeInTheDocument());
     // Switch back to global tab
     fireEvent.click(screen.getAllByText('Global')[0]);
     await waitFor(() => expect(screen.getAllByText('Alice').length).toBeGreaterThanOrEqual(1));
@@ -349,16 +336,16 @@ describe('LeaderboardScreen', () => {
     setupFetch({ leaderboardEntries: globalEntries, seasons: mockSeasons });
     render(<LeaderboardScreen />);
     await waitFor(() => {
-      expect(screen.getByText(/Season 1/)).toBeTruthy();
+      expect(screen.getByText(/Season 1/)).toBeInTheDocument();
     });
-    expect(screen.getByText(/Season 2.*Current/)).toBeTruthy();
+    expect(screen.getByText(/Season 2.*Current/)).toBeInTheDocument();
   });
 
   it('changes season filter when season is selected', async () => {
     setupFetch({ leaderboardEntries: globalEntries, seasons: mockSeasons });
     const { container } = render(<LeaderboardScreen />);
     await waitFor(() => {
-      expect(screen.getByText(/Season 1/)).toBeTruthy();
+      expect(screen.getByText(/Season 1/)).toBeInTheDocument();
     });
     const select = container.querySelectorAll('select')[0];
     if (select) {
@@ -373,7 +360,7 @@ describe('LeaderboardScreen', () => {
     setupFetch({ leaderboardEntries: globalEntries, seasons: mockSeasons });
     const { container } = render(<LeaderboardScreen />);
     await waitFor(() => {
-      expect(screen.getByText(/Season 1/)).toBeTruthy();
+      expect(screen.getByText(/Season 1/)).toBeInTheDocument();
     });
     const select = container.querySelectorAll('select')[0];
     if (select) {
@@ -389,25 +376,25 @@ describe('LeaderboardScreen', () => {
     setupFetch({ leaderboardEntries: [], challenges: mockChallenges });
     render(<LeaderboardScreen />);
     await waitFor(() => {
-      expect(screen.getByText('By Challenge')).toBeTruthy();
+      expect(screen.getByText('By Challenge')).toBeInTheDocument();
     });
     fireEvent.click(screen.getByText('By Challenge'));
     await waitFor(() => {
-      expect(screen.getByText('Select a challenge...')).toBeTruthy();
+      expect(screen.getByText('Select a challenge...')).toBeInTheDocument();
     });
-    expect(screen.getByText(/FizzBuzz Budget/)).toBeTruthy();
-    expect(screen.getByText(/Cache Buster/)).toBeTruthy();
+    expect(screen.getByText(/FizzBuzz Budget/)).toBeInTheDocument();
+    expect(screen.getByText(/Cache Buster/)).toBeInTheDocument();
   });
 
   it('fetches challenge leaderboard when a challenge is selected', async () => {
     setupFetch({ leaderboardEntries: [], challenges: mockChallenges, challengeEntries });
     const { container } = render(<LeaderboardScreen />);
     await waitFor(() => {
-      expect(screen.getByText('By Challenge')).toBeTruthy();
+      expect(screen.getByText('By Challenge')).toBeInTheDocument();
     });
     fireEvent.click(screen.getByText('By Challenge'));
     await waitFor(() => {
-      expect(screen.getByText('Select a challenge...')).toBeTruthy();
+      expect(screen.getByText('Select a challenge...')).toBeInTheDocument();
     });
     const selects = container.querySelectorAll('select');
     const challengeSelect = selects[selects.length - 1];
@@ -422,9 +409,9 @@ describe('LeaderboardScreen', () => {
   it('clears challenge entries when empty value selected in challenge dropdown', async () => {
     setupFetch({ leaderboardEntries: [], challenges: mockChallenges, challengeEntries });
     const { container } = render(<LeaderboardScreen />);
-    await waitFor(() => expect(screen.getByText('By Challenge')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('By Challenge')).toBeInTheDocument());
     fireEvent.click(screen.getByText('By Challenge'));
-    await waitFor(() => expect(screen.getByText('Select a challenge...')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Select a challenge...')).toBeInTheDocument());
     const selects = container.querySelectorAll('select');
     const challengeSelect = selects[selects.length - 1];
     expect(challengeSelect).toBeTruthy();
@@ -440,21 +427,21 @@ describe('LeaderboardScreen', () => {
     setupFetch({ leaderboardEntries: [], challenges: mockChallenges, challengeEntries: [] });
     const { container } = render(<LeaderboardScreen />);
     await waitFor(() => {
-      expect(screen.getByText('By Challenge')).toBeTruthy();
+      expect(screen.getByText('By Challenge')).toBeInTheDocument();
     });
     fireEvent.click(screen.getByText('By Challenge'));
     await waitFor(() => {
-      expect(screen.getByText('Select a challenge...')).toBeTruthy();
+      expect(screen.getByText('Select a challenge...')).toBeInTheDocument();
     });
     const selects = container.querySelectorAll('select');
     const challengeSelect = selects[selects.length - 1];
     if (challengeSelect) {
       fireEvent.change(challengeSelect, { target: { value: 'c1' } });
       await waitFor(() => {
-        expect(screen.getByText('Nobody has solved this challenge yet.')).toBeTruthy();
+        expect(screen.getByText('Nobody has solved this challenge yet.')).toBeInTheDocument();
       });
-      expect(screen.getByText('Be the first!')).toBeTruthy();
-      expect(screen.getByText('Try This Challenge')).toBeTruthy();
+      expect(screen.getByText('Be the first!')).toBeInTheDocument();
+      expect(screen.getByText('Try This Challenge')).toBeInTheDocument();
     }
   });
 
@@ -462,7 +449,7 @@ describe('LeaderboardScreen', () => {
     setupFetch({ leaderboardEntries: [], challenges: mockChallenges, challengeEntries });
     const { container } = render(<LeaderboardScreen />);
     await waitFor(() => {
-      expect(screen.getByText('By Challenge')).toBeTruthy();
+      expect(screen.getByText('By Challenge')).toBeInTheDocument();
     });
     fireEvent.click(screen.getByText('By Challenge'));
     const selects = container.querySelectorAll('select');
@@ -470,9 +457,9 @@ describe('LeaderboardScreen', () => {
     if (challengeSelect) {
       fireEvent.change(challengeSelect, { target: { value: 'c1' } });
       await waitFor(() => {
-        expect(screen.getByText('\uD83E\uDD47')).toBeTruthy();
-        expect(screen.getByText('\uD83E\uDD48')).toBeTruthy();
-        expect(screen.getByText('\uD83E\uDD49')).toBeTruthy();
+        expect(screen.getByText('\uD83E\uDD47')).toBeInTheDocument();
+        expect(screen.getByText('\uD83E\uDD48')).toBeInTheDocument();
+        expect(screen.getByText('\uD83E\uDD49')).toBeInTheDocument();
       });
     }
   });
@@ -481,7 +468,7 @@ describe('LeaderboardScreen', () => {
     setupFetch({ leaderboardEntries: [], challenges: mockChallenges, challengeEntries });
     const { container } = render(<LeaderboardScreen />);
     await waitFor(() => {
-      expect(screen.getByText('By Challenge')).toBeTruthy();
+      expect(screen.getByText('By Challenge')).toBeInTheDocument();
     });
     fireEvent.click(screen.getByText('By Challenge'));
     const selects = container.querySelectorAll('select');
@@ -489,9 +476,9 @@ describe('LeaderboardScreen', () => {
     if (challengeSelect) {
       fireEvent.change(challengeSelect, { target: { value: 'c1' } });
       await waitFor(() => {
-        expect(screen.getByText('1 token')).toBeTruthy();
-        expect(screen.getByText('250 tokens')).toBeTruthy();
-        expect(screen.getByText('500 tokens')).toBeTruthy();
+        expect(screen.getByText('1 token')).toBeInTheDocument();
+        expect(screen.getByText('250 tokens')).toBeInTheDocument();
+        expect(screen.getByText('500 tokens')).toBeInTheDocument();
       });
     }
   });
@@ -500,7 +487,7 @@ describe('LeaderboardScreen', () => {
     setupFetch({ leaderboardEntries: [], challenges: mockChallenges, challengeEntries });
     const { container } = render(<LeaderboardScreen />);
     await waitFor(() => {
-      expect(screen.getByText('By Challenge')).toBeTruthy();
+      expect(screen.getByText('By Challenge')).toBeInTheDocument();
     });
     fireEvent.click(screen.getByText('By Challenge'));
     const selects = container.querySelectorAll('select');
@@ -518,7 +505,7 @@ describe('LeaderboardScreen', () => {
     setupFetch({ leaderboardEntries: [], challenges: mockChallenges, challengeEntries });
     const { container } = render(<LeaderboardScreen />);
     await waitFor(() => {
-      expect(screen.getByText('By Challenge')).toBeTruthy();
+      expect(screen.getByText('By Challenge')).toBeInTheDocument();
     });
     fireEvent.click(screen.getByText('By Challenge'));
     const selects = container.querySelectorAll('select');
@@ -531,7 +518,7 @@ describe('LeaderboardScreen', () => {
       });
       fireEvent.click(screen.getAllByText('Replay')[0]);
       await waitFor(() => {
-        expect(container.querySelector('[data-testid="replay-viewer"]')).toBeTruthy();
+        expect(container.querySelector('[data-testid="replay-viewer"]')).toBeInTheDocument();
       });
     }
   });
@@ -539,7 +526,7 @@ describe('LeaderboardScreen', () => {
   it('closes ReplayViewer when Close button is clicked', async () => {
     setupFetch({ leaderboardEntries: [], challenges: mockChallenges, challengeEntries });
     const { container } = render(<LeaderboardScreen />);
-    await waitFor(() => expect(screen.getByText('By Challenge')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('By Challenge')).toBeInTheDocument());
     fireEvent.click(screen.getByText('By Challenge'));
     const selects = container.querySelectorAll('select');
     const challengeSelect = selects[selects.length - 1];
@@ -548,7 +535,7 @@ describe('LeaderboardScreen', () => {
     await waitFor(() => expect(screen.getAllByText('Replay').length).toBeGreaterThan(0));
     // Open replay viewer
     fireEvent.click(screen.getAllByText('Replay')[0]);
-    await waitFor(() => expect(container.querySelector('[data-testid="replay-viewer"]')).toBeTruthy());
+    await waitFor(() => expect(container.querySelector('[data-testid="replay-viewer"]')).toBeInTheDocument());
     // Close replay viewer (covers line 402: setReplayAttemptId(null))
     fireEvent.click(screen.getByText('Close'));
     await waitFor(() => expect(container.querySelector('[data-testid="replay-viewer"]')).toBeNull());
@@ -568,7 +555,7 @@ describe('LeaderboardScreen', () => {
   it('navigates to PublicProfile when clicking a user with username in challenge entries', async () => {
     setupFetch({ leaderboardEntries: [], challenges: mockChallenges, challengeEntries });
     const { container } = render(<LeaderboardScreen />);
-    await waitFor(() => expect(screen.getByText('By Challenge')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('By Challenge')).toBeInTheDocument());
     fireEvent.click(screen.getByText('By Challenge'));
     const selects = container.querySelectorAll('select');
     const challengeSelect = selects[selects.length - 1];
@@ -585,10 +572,10 @@ describe('LeaderboardScreen', () => {
     setupFetch({ leaderboardEntries: [], challenges: mockChallenges, challengeEntries });
     const { container } = render(<LeaderboardScreen />);
     await waitFor(() => {
-      expect(screen.getByText('By Challenge')).toBeTruthy();
+      expect(screen.getByText('By Challenge')).toBeInTheDocument();
     });
     fireEvent.click(screen.getByText('By Challenge'));
-    await waitFor(() => expect(screen.getByText('Select a challenge...')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Select a challenge...')).toBeInTheDocument());
     const selects = container.querySelectorAll('select');
     const challengeSelect = selects[selects.length - 1];
     if (challengeSelect) {
@@ -607,7 +594,7 @@ describe('LeaderboardScreen', () => {
     setupFetch({ leaderboardEntries: [], challenges: mockChallenges, challengeEntries });
     const { container } = render(<LeaderboardScreen />);
     await waitFor(() => {
-      expect(screen.getByText('By Challenge')).toBeTruthy();
+      expect(screen.getByText('By Challenge')).toBeInTheDocument();
     });
     fireEvent.click(screen.getByText('By Challenge'));
     const selects = container.querySelectorAll('select');
@@ -626,7 +613,7 @@ describe('LeaderboardScreen', () => {
     setupFetch({ leaderboardEntries: [] });
     render(<LeaderboardScreen />);
     await waitFor(() => {
-      expect(screen.getByText(/No solves this week/)).toBeTruthy();
+      expect(screen.getByText(/No solves this week/)).toBeInTheDocument();
     });
     fireEvent.click(screen.getAllByText('This Month')[0]);
     await waitFor(() => {
@@ -640,19 +627,19 @@ describe('LeaderboardScreen', () => {
     await waitFor(() => {
       expect(screen.getAllByText('Alice').length).toBeGreaterThanOrEqual(1);
     });
-    expect(container.querySelector('[data-testid="activity-feed"]')).toBeTruthy();
+    expect(container.querySelector('[data-testid="activity-feed"]')).toBeInTheDocument();
   });
 
   it('navigates to Arena for Try This Challenge on challenge empty state', async () => {
     setupFetch({ leaderboardEntries: [], challenges: mockChallenges, challengeEntries: [] });
     const { container } = render(<LeaderboardScreen />);
-    await waitFor(() => expect(screen.getByText('By Challenge')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('By Challenge')).toBeInTheDocument());
     fireEvent.click(screen.getByText('By Challenge'));
     const selects = container.querySelectorAll('select');
     const challengeSelect = selects[selects.length - 1];
     if (challengeSelect) {
       fireEvent.change(challengeSelect, { target: { value: 'c1' } });
-      await waitFor(() => expect(screen.getByText('Try This Challenge')).toBeTruthy());
+      await waitFor(() => expect(screen.getByText('Try This Challenge')).toBeInTheDocument());
       fireEvent.click(screen.getByText('Try This Challenge'));
       expect(mockNavigate).toHaveBeenCalledWith('Arena', { challengeId: 'c1' });
     }
@@ -684,7 +671,7 @@ describe('LeaderboardScreen', () => {
   it('handles division toggle on global tab with season selected', async () => {
     setupFetch({ leaderboardEntries: globalEntries, seasons: mockSeasons });
     const { container } = render(<LeaderboardScreen />);
-    await waitFor(() => expect(screen.getByText(/Season 1/)).toBeTruthy());
+    await waitFor(() => expect(screen.getByText(/Season 1/)).toBeInTheDocument());
     // Select a season first
     const select = container.querySelectorAll('select')[0];
     expect(select).toBeTruthy();

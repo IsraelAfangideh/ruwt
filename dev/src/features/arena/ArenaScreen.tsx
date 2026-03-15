@@ -1126,6 +1126,21 @@ export function ArenaScreen() {
                 </span>
               )}
 
+              {/* AFI dimension context */}
+              {challenge?.category && (
+                <span style={{ fontSize: 12, color: arena.textMuted, textAlign: 'center' }}>
+                  This solve builds your{' '}
+                  <span style={{ color: arena.accent, fontWeight: 600 }}>
+                    {/* istanbul ignore next -- @preserve */ challenge.category === 'model_selection' ? 'Model Selection'
+                    : /* istanbul ignore next -- @preserve */ challenge.category === 'prompt_efficiency' ? 'Prompt Efficiency'
+                    : /* istanbul ignore next -- @preserve */ challenge.category === 'iterative_debugging' ? 'Debugging'
+                    : /* istanbul ignore next -- @preserve */ challenge.category === 'multi_model_strategy' ? 'Multi-Model Strategy'
+                    : 'AI Fluency'}
+                  </span>
+                  {' '}score
+                </span>
+              )}
+
               {/* Rank comparison stats */}
               <div style={{
                 display: 'flex',

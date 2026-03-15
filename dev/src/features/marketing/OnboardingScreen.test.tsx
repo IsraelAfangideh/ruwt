@@ -26,21 +26,8 @@ vi.mock('@/shared/ui/Badge', () => ({
 vi.mock('@/shared/ui/Button', () => ({
   Button: ({ children, onPress, ...props }: any) => <button onClick={onPress} {...props}>{children}</button>,
 }));
-vi.mock('@/shared/theme', () => ({
-  useColors: () => ({
-    bg: '#fff', text: '#000', textMuted: '#888', accent: '#c9a962', border: '#ccc',
-    borderStrong: '#999', card: '#fff', muted: '#f5f5f5', error: '#f00', errorBg: '#fee',
-    success: '#0a0', successBg: '#efe', primary: '#000', primaryForeground: '#fff',
-    secondary: '#eee', secondaryForeground: '#000', destructive: '#f00',
-    textSubtle: '#aaa', bgElevated: '#fafafa', accentBg: '#ffe',
-  }),
-}));
-vi.mock('@/shared/theme/tokens', () => ({
-  spacing: { xs: 4, sm: 8, md: 16, lg: 24, xl: 32, '2xl': 48 },
-  fontSizes: { xs: 12, sm: 14, md: 16, lg: 18, xl: 20, '2xl': 24, '3xl': 30, '4xl': 36 },
-  fontFamily: { display: 'serif', body: 'sans-serif' },
-  radii: { sm: 4, md: 8, lg: 12, xl: 16, full: 9999 },
-}));
+vi.mock('@/shared/theme', async () => (await import('@/shared/test/helpers')).mockTheme());
+vi.mock('@/shared/theme/tokens', async () => (await import('@/shared/test/helpers')).mockTokens());
 
 // Mock fetch: onboardingCompleted = 0 so user stays on onboarding
 const mockFetch = vi.fn().mockResolvedValue({
@@ -102,16 +89,16 @@ describe('OnboardingScreen', () => {
   it('renders flow cards on step 1', async () => {
     render(<OnboardingScreen />);
     await waitFor(() => {
-      expect(screen.getAllByText('Pick a Challenge').length).toBeGreaterThanOrEqual(1);
-      expect(screen.getAllByText('Solve with AI').length).toBeGreaterThanOrEqual(1);
-      expect(screen.getAllByText('Rank by Efficiency').length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText('Solve Challenges').length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText('Build Your AFI').length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText('Earn Certification').length).toBeGreaterThanOrEqual(1);
     });
   });
 
   it('renders the AI budget tip card', async () => {
     render(<OnboardingScreen />);
     await waitFor(() => {
-      expect(screen.getAllByText(/Your AI budget matters/).length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText(/Your model choices shape your AFI/).length).toBeGreaterThanOrEqual(1);
     });
   });
 
@@ -317,7 +304,7 @@ describe('OnboardingScreen', () => {
     expect(screen.queryByText('Back')).toBeNull();
   });
 
-  it('continues onboarding when profile fetch returns res.ok=false (line 46)', async () => {
+  it('continues onboarding when profile fetch returns non-ok', async () => {
     mockFetch.mockResolvedValueOnce({
       ok: false,
       json: () => Promise.resolve({}),

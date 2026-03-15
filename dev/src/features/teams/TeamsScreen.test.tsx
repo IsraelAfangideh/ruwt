@@ -51,21 +51,8 @@ vi.mock('@/shared/lib/stripe', () => ({
     features: ['SSO integration', 'Dedicated support'],
   },
 }));
-vi.mock('@/shared/theme', () => ({
-  useColors: () => ({
-    bg: '#fff', text: '#000', textMuted: '#888', accent: '#c9a962', border: '#ccc',
-    borderStrong: '#999', card: '#fff', muted: '#f5f5f5', error: '#f00', errorBg: '#fee',
-    success: '#0a0', successBg: '#efe', primary: '#000', primaryForeground: '#fff',
-    secondary: '#eee', secondaryForeground: '#000', destructive: '#f00',
-    textSubtle: '#aaa', bgElevated: '#fafafa', accentBg: '#ffe',
-  }),
-}));
-vi.mock('@/shared/theme/tokens', () => ({
-  spacing: { xs: 4, sm: 8, md: 16, lg: 24, xl: 32, '2xl': 48 },
-  fontSizes: { xs: 12, sm: 14, md: 16, lg: 18, xl: 20, '2xl': 24, '3xl': 30, '4xl': 36 },
-  fontFamily: { display: 'serif', body: 'sans-serif' },
-  radii: { sm: 4, md: 8, lg: 12, xl: 16, full: 9999 },
-}));
+vi.mock('@/shared/theme', async () => (await import('@/shared/test/helpers')).mockTheme());
+vi.mock('@/shared/theme/tokens', async () => (await import('@/shared/test/helpers')).mockTokens());
 
 const ok = (data: any) => ({ ok: true, json: () => Promise.resolve(data) });
 const fail = (data: any) => ({ ok: false, json: () => Promise.resolve(data) });
@@ -83,34 +70,34 @@ describe('TeamsScreen', () => {
 
   it('renders the hero section headline', () => {
     render(<TeamsScreen />);
-    expect(screen.getByText(/AI-Fluent/)).toBeTruthy();
+    expect(screen.getAllByText(/AI Fluency/).length).toBeGreaterThanOrEqual(1);
   });
 
-  it('renders For Hiring Teams badge', () => {
+  it('renders For Engineering Teams badge', () => {
     render(<TeamsScreen />);
-    expect(screen.getByText('For Hiring Teams')).toBeTruthy();
+    expect(screen.getByText('For Engineering Teams')).toBeInTheDocument();
   });
 
   it('renders FAQ section with all questions', () => {
     render(<TeamsScreen />);
-    expect(screen.getByText(/different from a take-home/)).toBeTruthy();
-    expect(screen.getByText(/candidate has never used AI/)).toBeTruthy();
-    expect(screen.getByText(/Can candidates cheat/)).toBeTruthy();
-    expect(screen.getByText(/How long does an assessment take/)).toBeTruthy();
+    expect(screen.getByText(/different from a take-home/)).toBeInTheDocument();
+    expect(screen.getByText(/candidate has never used AI/)).toBeInTheDocument();
+    expect(screen.getByText(/Can candidates cheat/)).toBeInTheDocument();
+    expect(screen.getByText(/How long does an assessment take/)).toBeInTheDocument();
   });
 
   it('expands FAQ answer when question is clicked', () => {
     render(<TeamsScreen />);
     const question = screen.getByText(/different from a take-home/);
     fireEvent.click(question);
-    expect(screen.getByText(/tracks every AI interaction/)).toBeTruthy();
+    expect(screen.getByText(/tracks every AI interaction/)).toBeInTheDocument();
   });
 
   it('collapses FAQ answer when same question is clicked again', () => {
     render(<TeamsScreen />);
     const question = screen.getByText(/different from a take-home/);
     fireEvent.click(question);
-    expect(screen.getByText(/tracks every AI interaction/)).toBeTruthy();
+    expect(screen.getByText(/tracks every AI interaction/)).toBeInTheDocument();
     fireEvent.click(question);
     expect(screen.queryByText(/tracks every AI interaction/)).toBeNull();
   });
@@ -125,15 +112,15 @@ describe('TeamsScreen', () => {
 
   it('renders comparison table rows', () => {
     render(<TeamsScreen />);
-    expect(screen.getByText('Measures AI usage')).toBeTruthy();
-    expect(screen.getByText('Real cost tracking')).toBeTruthy();
-    expect(screen.getByText('Full session replay')).toBeTruthy();
+    expect(screen.getByText('Measures AI usage')).toBeInTheDocument();
+    expect(screen.getByText('Real cost tracking')).toBeInTheDocument();
+    expect(screen.getByText('Full session replay')).toBeInTheDocument();
   });
 
   it('renders pricing section with subscription plans', () => {
     render(<TeamsScreen />);
-    expect(screen.getByText('Simple, Flat-Rate Pricing')).toBeTruthy();
-    expect(screen.getByText('$200/month')).toBeTruthy();
+    expect(screen.getByText('Simple, Flat-Rate Pricing')).toBeInTheDocument();
+    expect(screen.getByText('$200/month')).toBeInTheDocument();
     // Features are rendered with checkmark prefix; may appear in comparison table too
     expect(screen.getAllByText(/Unlimited assessments/).length).toBeGreaterThanOrEqual(1);
   });
@@ -147,71 +134,71 @@ describe('TeamsScreen', () => {
 
   it('renders the three-step flow section', () => {
     render(<TeamsScreen />);
-    expect(screen.getByText('Three Steps. Real Data.')).toBeTruthy();
-    expect(screen.getByText('Build Your Assessment')).toBeTruthy();
-    expect(screen.getByText('Send the Link')).toBeTruthy();
+    expect(screen.getByText('Three Steps. Real Data.')).toBeInTheDocument();
+    expect(screen.getByText('Build Your Assessment')).toBeInTheDocument();
+    expect(screen.getByText('Send the Link')).toBeInTheDocument();
     expect(screen.getAllByText('Compare Candidates').length).toBeGreaterThanOrEqual(1);
   });
 
   it('renders Why Teams Switch to Ruwt trust section', () => {
     render(<TeamsScreen />);
-    expect(screen.getByText('Why Teams Switch to Ruwt')).toBeTruthy();
-    expect(screen.getByText('Real AI, Real Cost')).toBeTruthy();
-    expect(screen.getByText('Objective Comparison')).toBeTruthy();
-    expect(screen.getByText('Full Session Replay')).toBeTruthy();
-    expect(screen.getByText('Tamper-Proof Tracking')).toBeTruthy();
+    expect(screen.getByText('Why Teams Switch to Ruwt')).toBeInTheDocument();
+    expect(screen.getByText('Real AI, Real Cost')).toBeInTheDocument();
+    expect(screen.getByText('Objective Comparison')).toBeInTheDocument();
+    expect(screen.getByText('Full Session Replay')).toBeInTheDocument();
+    expect(screen.getByText('Tamper-Proof Tracking')).toBeInTheDocument();
   });
 
   it('renders candidate comparison section', () => {
     render(<TeamsScreen />);
-    expect(screen.getByText('See What You Get')).toBeTruthy();
-    expect(screen.getByText('Candidate A')).toBeTruthy();
+    expect(screen.getByText('See What You Get')).toBeInTheDocument();
+    expect(screen.getByText('Candidate A')).toBeInTheDocument();
     expect(screen.getAllByText(/Passed 5\/5/).length).toBeGreaterThanOrEqual(1);
   });
 
   it('renders problem section', () => {
     render(<TeamsScreen />);
-    expect(screen.getByText(/Every Engineer Says They Use AI/)).toBeTruthy();
-    expect(screen.getByText(/Take-homes show the answer/)).toBeTruthy();
-    expect(screen.getByText(/HackerRank tests algorithms/)).toBeTruthy();
+    expect(screen.getByText(/Every Engineer Says They Use AI/)).toBeInTheDocument();
+    expect(screen.getByText(/Take-homes show the answer/)).toBeInTheDocument();
+    expect(screen.getByText(/HackerRank tests algorithms/)).toBeInTheDocument();
   });
 
   it('renders hero stats', () => {
     render(<TeamsScreen />);
     expect(screen.getAllByText('5 min').length).toBeGreaterThanOrEqual(1);
-    expect(screen.getByText('SETUP')).toBeTruthy();
-    expect(screen.getByText('5 axes')).toBeTruthy();
+    expect(screen.getByText('SETUP')).toBeInTheDocument();
+    expect(screen.getAllByText('0-850').length).toBeGreaterThanOrEqual(1);
   });
 
   it('shows Sign in and Get Started for logged-out users', () => {
     render(<TeamsScreen />);
-    expect(screen.getByText('Sign in')).toBeTruthy();
-    expect(screen.getByText('Get Started')).toBeTruthy();
+    expect(screen.getByText('Sign in')).toBeInTheDocument();
+    expect(screen.getByText('Get Started')).toBeInTheDocument();
   });
 
   it('shows Dashboard button for logged-in users', async () => {
     mockUser = { id: 'u1' };
     render(<TeamsScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Dashboard')).toBeTruthy();
+      expect(screen.getByText('Dashboard')).toBeInTheDocument();
     });
   });
 
   it('navigates to Dashboard when header Dashboard button is clicked (logged in, line 210)', async () => {
     mockUser = { id: 'u1' };
     render(<TeamsScreen />);
-    await waitFor(() => expect(screen.getByText('Dashboard')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Dashboard')).toBeInTheDocument());
     fireEvent.click(screen.getByText('Dashboard'));
     expect(mockNavigate).toHaveBeenCalledWith('Dashboard');
   });
 
-  it('navigates to Login when header Sign in button is clicked (line 213)', () => {
+  it('navigates to Login when header Sign In is clicked', () => {
     render(<TeamsScreen />);
     fireEvent.click(screen.getByText('Sign in'));
     expect(mockNavigate).toHaveBeenCalledWith('Login');
   });
 
-  it('navigates to Register when header Get Started button is clicked (line 214)', () => {
+  it('navigates to Register when header Get Started is clicked', () => {
     render(<TeamsScreen />);
     fireEvent.click(screen.getByText('Get Started'));
     expect(mockNavigate).toHaveBeenCalledWith('Register');
@@ -229,7 +216,7 @@ describe('TeamsScreen', () => {
       Promise.resolve(ok({ trial: {}, orgId: 'org1' }))
     ));
     render(<TeamsScreen />);
-    await waitFor(() => expect(screen.getByText('Dashboard')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Dashboard')).toBeInTheDocument());
     fireEvent.click(screen.getAllByText('Start Free Trial')[0]);
     await waitFor(() => {
       expect(mockNavigate).toHaveBeenCalledWith('AssessmentBuilder', {});
@@ -243,7 +230,7 @@ describe('TeamsScreen', () => {
       Promise.resolve(fail({ error: 'Trial already used', code: 'TRIAL_NOT_ELIGIBLE' }))
     ));
     render(<TeamsScreen />);
-    await waitFor(() => expect(screen.getByText('Dashboard')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Dashboard')).toBeInTheDocument());
     fireEvent.click(screen.getAllByText('Start Free Trial')[0]);
     await waitFor(() => {
       expect(mockNavigate).toHaveBeenCalledWith('AssessmentBuilder', {});
@@ -256,10 +243,10 @@ describe('TeamsScreen', () => {
       Promise.resolve(fail({ error: 'Profile not found', code: 'TRIAL_NOT_ELIGIBLE' }))
     ));
     render(<TeamsScreen />);
-    await waitFor(() => expect(screen.getByText('Dashboard')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Dashboard')).toBeInTheDocument());
     fireEvent.click(screen.getAllByText('Start Free Trial')[0]);
     await waitFor(() => {
-      expect(screen.getByText('Profile not found')).toBeTruthy();
+      expect(screen.getByText('Profile not found')).toBeInTheDocument();
     });
     // Should NOT navigate to AssessmentBuilder
     expect(mockNavigate).not.toHaveBeenCalledWith('AssessmentBuilder', {});
@@ -375,7 +362,7 @@ describe('TeamsScreen', () => {
 
   it('renders cross-link to developer challenges', () => {
     render(<TeamsScreen />);
-    expect(screen.getByText(/Developer\? Practice free challenges/)).toBeTruthy();
+    expect(screen.getByText(/Developer\? Practice free challenges/)).toBeInTheDocument();
   });
 
   it('navigates to Landing when logo is clicked', () => {
@@ -386,12 +373,12 @@ describe('TeamsScreen', () => {
 
   it('renders footer with copyright', () => {
     render(<TeamsScreen />);
-    expect(screen.getByText(/All rights reserved/)).toBeTruthy();
+    expect(screen.getByText(/All rights reserved/)).toBeInTheDocument();
   });
 
   it('renders final CTA section', () => {
     render(<TeamsScreen />);
-    expect(screen.getByText('Stop Guessing. Start Measuring.')).toBeTruthy();
+    expect(screen.getByText('One Score. Every Engineer.')).toBeInTheDocument();
     expect(screen.getAllByText('Start Free Trial').length).toBeGreaterThanOrEqual(2);
   });
 
@@ -402,7 +389,7 @@ describe('TeamsScreen', () => {
 
   it('renders Contact Us button for enterprise tier', () => {
     render(<TeamsScreen />);
-    expect(screen.getByText('Contact Us')).toBeTruthy();
+    expect(screen.getByText('Contact Us')).toBeInTheDocument();
   });
 
   it('opens demo form when Contact Us is clicked', () => {
@@ -431,7 +418,7 @@ describe('TeamsScreen', () => {
     expect(demoButtons.length).toBeGreaterThanOrEqual(2); // hero + final CTA
   });
 
-  it('opens demo form when final CTA Book a Demo is clicked (line 498)', () => {
+  it('opens demo form when final CTA Book a Demo is clicked', () => {
     render(<TeamsScreen />);
     const demoButtons = screen.getAllByText('Book a Demo');
     // The last Book a Demo should be in the final CTA
@@ -484,7 +471,7 @@ describe('TeamsScreen', () => {
     });
   });
 
-  it('fills optional Team Size and Message fields in demo form (lines 181-182)', async () => {
+  it('submits demo form with optional Team Size and Message fields', async () => {
     vi.stubGlobal('fetch', vi.fn().mockImplementation(() => Promise.resolve(ok({}))));
     render(<TeamsScreen />);
     const demoButtons = screen.getAllByText('Book a Demo');

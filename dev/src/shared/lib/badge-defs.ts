@@ -25,4 +25,7 @@ export const BADGE_DEFS: Record<string, BadgeDef> = {
   twenty_five_solves: { type: 'twenty_five_solves', title: 'Quarter Century', description: 'Solved 25 challenges', icon: '🏆' },
   fifty_solves: { type: 'fifty_solves', title: 'Half Century', description: 'Solved 50 challenges', icon: '🏆' },
   daily_warrior: { type: 'daily_warrior', title: 'Daily Warrior', description: 'Completed 10 daily challenges', icon: '⚔️' },
+  ai_fluent: { type: 'ai_fluent', title: 'AI-Fluent', description: 'Passed 10+ challenges with AFI 400+', icon: '\uD83E\uDD49' },
+  ai_fluent_pro: { type: 'ai_fluent_pro', title: 'AI-Fluent Pro', description: 'Passed 25+ challenges across 3+ categories with AFI 550+', icon: '\uD83E\uDD48' },
+  ai_fluent_expert: { type: 'ai_fluent_expert', title: 'AI-Fluent Expert', description: 'Passed 50+ challenges across all categories with AFI 700+', icon: '\uD83E\uDD47' },
 };

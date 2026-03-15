@@ -48,17 +48,17 @@ export function LandingScreen() {
         <View style={styles.heroInner}>
           <Badge variant="secondary" style={{ alignSelf: 'center' }}>Now in Beta</Badge>
           <Text style={styles.heroTitle} accessibilityRole="heading">
-            Prove You Can Use AI{'\n'}
-            <Text style={{ color: '#c9a962' }}>Better Than Anyone</Text>
+            What's Your{'\n'}
+            <Text style={{ color: '#c9a962' }}>AI Fluency Index?</Text>
           </Text>
           <Text style={styles.heroSub}>
-            Solve coding challenges using real AI models. The twist:{'\n'}you're ranked by how efficiently you use them.
+            Solve real coding challenges with real AI models. Get scored on how efficiently you use them — model selection, prompt strategy, cost.{'\n'}Your AFI is the number that proves it.
           </Text>
 
           {/* Stats row */}
           <View style={[styles.statsRow, isMobile && styles.statsRowMobile]}>
             {[
-              { value: '100+', label: 'Challenges' },
+              { value: '0-850', label: 'AFI Score' },
               { value: '15', label: 'AI Models' },
               { value: '5', label: 'Cost Tiers' },
               { value: 'Free', label: 'To Start' },
@@ -77,7 +77,7 @@ export function LandingScreen() {
               style={{ backgroundColor: '#c9a962' }}
               textStyle={{ color: '#1a1816' }}
             >
-              Start Free Practice
+              Find Your Score
             </Button>
             <Button
               variant="outline"
@@ -95,13 +95,13 @@ export function LandingScreen() {
         </View>
       </View>
 
-      {/* ─── Hiring strip — immediately visible ─── */}
+      {/* ─── Teams strip — immediately visible ─── */}
       <View style={[styles.hiringStrip, { borderBottomColor: c.border }]}>
         <View style={styles.hiringStripInner}>
           <Text style={[styles.hiringStripText, { color: c.text }]}>
-            Hiring engineers?{' '}
+            Engineering teams:{' '}
             <Text style={{ color: c.accent, fontWeight: '700' }}>
-              Assess their AI fluency with real coding challenges.
+              Measure your team's AFI. Benchmark candidates.
             </Text>
           </Text>
           <Button
@@ -175,11 +175,11 @@ export function LandingScreen() {
         </Card>
       </View>
 
-      {/* ─── Three Skills ─── */}
+      {/* ─── What Your AFI Measures ─── */}
       <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: c.text }]} accessibilityRole="heading">Three Skills That Matter</Text>
+        <Text style={[styles.sectionTitle, { color: c.text }]} accessibilityRole="heading">What Your AFI Measures</Text>
         <Text style={[styles.sectionSub, { color: c.textMuted }]}>
-          We measure the AI skills that predict real-world engineering efficiency.
+          Five dimensions of AI fluency, scored 0-850. The skills that separate the top 5% from everyone else.
         </Text>
         <View style={styles.cards}>
           {[
@@ -197,6 +197,16 @@ export function LandingScreen() {
               icon: '\u{1F41B}',
               title: 'Iterative Debugging',
               desc: "Real engineering tickets. Diagnose and fix bugs cheaply — don't burn tokens asking for full rewrites.",
+            },
+            {
+              icon: '\u{1F504}',
+              title: 'Multi-Model Strategy',
+              desc: 'Switch between cheap and premium models mid-challenge. Use micro for boilerplate, reasoning for the hard parts.',
+            },
+            {
+              icon: '\u{23F1}',
+              title: 'Speed',
+              desc: 'Wall-clock efficiency. Fast solvers with low cost rank highest. Deliberate speed, not rushed guessing.',
             },
           ].map((item) => (
             <Card key={item.icon} style={styles.card}>
@@ -221,14 +231,42 @@ export function LandingScreen() {
         <FeaturedReplay />
       </View>
 
-      {/* ─── How It Works ─── */}
-      <View style={[styles.section, styles.sectionAlt, { backgroundColor: c.muted + '40' }]}>
-        <Text style={[styles.sectionTitle, { color: c.text }]} accessibilityRole="heading">How It Works</Text>
+      {/* ─── Certification Tiers ─── */}
+      <View style={styles.section}>
+        <Text style={[styles.sectionTitle, { color: c.text }]} accessibilityRole="heading">Get Certified</Text>
+        <Text style={[styles.sectionSub, { color: c.textMuted }]}>
+          Earn AI-Fluent certification badges. Put them on your LinkedIn. Let your AFI speak for itself.
+        </Text>
         <View style={styles.cards}>
           {[
-            { step: '1', title: 'Pick a Challenge', desc: 'Browse 100+ challenges across model selection, prompt efficiency, debugging, and multi-model strategy. Choose timed or untimed.' },
-            { step: '2', title: 'Solve with AI', desc: 'Use the Arena IDE with 15 real AI models across 5 tiers. Switch between Micro, Budget, Mid, Premium, and Reasoning strategically.' },
-            { step: '3', title: 'Climb the Leaderboard', desc: "Submit your solution. You're ranked by cost efficiency — solve it correctly with the least spend." },
+            { icon: '\uD83E\uDD49', title: 'AI-Fluent', afi: '400+', req: '10+ challenges', desc: 'You can use AI effectively. Solid foundation in model selection and prompting.' },
+            { icon: '\uD83E\uDD48', title: 'AI-Fluent Pro', afi: '550+', req: '25+ across 3 categories', desc: 'Versatile AI operator. Efficient across multiple problem domains.' },
+            { icon: '\uD83E\uDD47', title: 'AI-Fluent Expert', afi: '700+', req: '50+ across all categories', desc: 'Top 5%. Exceptional efficiency across every dimension of AI-assisted engineering.' },
+          ].map((tier) => (
+            <Card key={tier.title} style={styles.card}>
+              <CardHeader>
+                <View style={[styles.iconCircle, { backgroundColor: c.accentBg }]}>
+                  <Text style={{ fontSize: 24 }}>{tier.icon}</Text>
+                </View>
+                <CardTitle>{tier.title}</CardTitle>
+                <CardDescription>
+                  AFI {tier.afi} {'\u00B7'} {tier.req}
+                </CardDescription>
+                <CardDescription>{tier.desc}</CardDescription>
+              </CardHeader>
+            </Card>
+          ))}
+        </View>
+      </View>
+
+      {/* ─── How Scoring Works ─── */}
+      <View style={[styles.section, styles.sectionAlt, { backgroundColor: c.muted + '40' }]}>
+        <Text style={[styles.sectionTitle, { color: c.text }]} accessibilityRole="heading">How Scoring Works</Text>
+        <View style={styles.cards}>
+          {[
+            { step: '1', title: 'Solve Challenges', desc: 'Pick from 100+ real engineering challenges. Use the Arena IDE with 15 AI models across 5 cost tiers. Choose your models strategically.' },
+            { step: '2', title: 'Build Your AFI', desc: 'Every solve contributes to your AI Fluency Index (0-850). Cheap, fast, correct solutions push your score higher. Wasteful prompting pulls it down.' },
+            { step: '3', title: 'Earn Certification', desc: 'Hit AFI milestones to earn AI-Fluent Verified badges — Bronze (400+), Silver (550+), Gold (700+). Share on LinkedIn. Prove it to hiring teams.' },
           ].map((item) => (
             <Card key={item.step} style={styles.card}>
               <CardHeader>
@@ -297,22 +335,22 @@ export function LandingScreen() {
         </Card>
       </View>
 
-      {/* ─── For Hiring Teams ─── */}
+      {/* ─── For Teams ─── */}
       <View style={[styles.section, { backgroundColor: '#1a1816', paddingVertical: spacing['2xl'] }]}>
         <View style={styles.hiringSection}>
-          <Badge variant="secondary" style={{ alignSelf: 'center' }}>For Hiring Teams</Badge>
+          <Badge variant="secondary" style={{ alignSelf: 'center' }}>For Teams</Badge>
           <Text style={[styles.hiringSectionTitle, { color: '#f5f3f0' }]}>
-            Your Candidates Claim They're AI-Fluent.{'\n'}
-            <Text style={{ color: '#c9a962' }}>Now You Can Verify It.</Text>
+            Measure Your Team's{'\n'}
+            <Text style={{ color: '#c9a962' }}>AI Fluency.</Text>
           </Text>
           <Text style={[styles.hiringSectionSub, { color: '#9a938a' }]}>
-            Send candidates the same challenges your developers solve here. Get objective data on their AI efficiency — which models they pick, how they prompt, what they spend.
+            Benchmark your existing team. Assess candidates. Every engineer gets an AFI score — objective, comparable, backed by real AI usage data. Know who's efficient and who needs upskilling.
           </Text>
           <View style={styles.hiringStats}>
             {[
-              { value: '5 min', label: 'Setup' },
+              { value: '0-850', label: 'AFI Score' },
               { value: '100+', label: 'Challenges' },
-              { value: '5-axis', label: 'AI Profile' },
+              { value: '3-tier', label: 'Certification' },
             ].map((s) => (
               <View key={s.label} style={styles.hiringStat}>
                 <Text style={{ fontSize: fontSizes.xl, fontWeight: '700', color: '#c9a962', fontFamily: fontFamily.body }}>{s.value}</Text>
@@ -327,7 +365,7 @@ export function LandingScreen() {
               style={{ backgroundColor: '#c9a962' }}
               textStyle={{ color: '#1a1816', fontWeight: '700' }}
             >
-              Explore Assessments
+              Benchmark Your Team
             </Button>
             <Button
               variant="outline"
@@ -336,7 +374,7 @@ export function LandingScreen() {
               style={{ borderColor: 'rgba(232,228,223,0.25)' }}
               textStyle={{ color: '#f5f3f0' }}
             >
-              Book a Demo
+              Assess Candidates
             </Button>
           </View>
         </View>
@@ -344,9 +382,9 @@ export function LandingScreen() {
 
       {/* ─── Final CTA ─── */}
       <View style={[styles.ctaSection, { backgroundColor: '#1a1816' }]}>
-        <Text style={styles.ctaTitle}>Ready to prove your AI skills?</Text>
+        <Text style={styles.ctaTitle}>What will your AFI be?</Text>
         <Text style={styles.ctaSub}>
-          Free unlimited practice. 100+ challenges. 15 AI models. No credit card required.
+          100+ challenges. 15 AI models. One score that proves how well you use them. Free to start.
         </Text>
         <View style={styles.heroCtas}>
           <Button
@@ -355,7 +393,7 @@ export function LandingScreen() {
             style={{ backgroundColor: '#c9a962' }}
             textStyle={{ color: '#1a1816' }}
           >
-            Get Started Free
+            Find Your Score
           </Button>
           <Button
             size="lg"
@@ -364,7 +402,7 @@ export function LandingScreen() {
             style={{ borderColor: 'rgba(232,228,223,0.25)' }}
             textStyle={{ color: '#f5f3f0' }}
           >
-            Book a Demo
+            Benchmark Your Team
           </Button>
         </View>
       </View>

@@ -39,21 +39,8 @@ vi.mock('@/shared/hooks/useWindowWidth', () => ({
   useWindowWidth: () => mockWidth(),
 }));
 vi.mock('@/shared/hooks/useDocumentMeta', () => ({ useDocumentMeta: () => {} }));
-vi.mock('@/shared/theme', () => ({
-  useColors: () => ({
-    bg: '#fff', text: '#000', textMuted: '#888', accent: '#c9a962', border: '#ccc',
-    borderStrong: '#999', card: '#fff', muted: '#f5f5f5', error: '#f00', errorBg: '#fee',
-    success: '#0a0', successBg: '#efe', primary: '#000', primaryForeground: '#fff',
-    secondary: '#eee', secondaryForeground: '#000', destructive: '#f00',
-    textSubtle: '#aaa', bgElevated: '#fafafa', accentBg: '#ffe',
-  }),
-}));
-vi.mock('@/shared/theme/tokens', () => ({
-  spacing: { xs: 4, sm: 8, md: 16, lg: 24, xl: 32, '2xl': 48 },
-  fontSizes: { xs: 12, sm: 14, md: 16, lg: 18, xl: 20, '2xl': 24, '3xl': 30, '4xl': 36 },
-  fontFamily: { display: 'serif', body: 'sans-serif' },
-  radii: { sm: 4, md: 8, lg: 12, xl: 16, full: 9999 },
-}));
+vi.mock('@/shared/theme', async () => (await import('@/shared/test/helpers')).mockTheme());
+vi.mock('@/shared/theme/tokens', async () => (await import('@/shared/test/helpers')).mockTokens());
 
 const { LandingScreen } = await import('./LandingScreen');
 
@@ -72,13 +59,12 @@ describe('LandingScreen', () => {
 
   it('renders hero section with CTA', () => {
     render(<LandingScreen />);
-    expect(screen.getAllByText(/Prove You Can Use AI/).length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText(/Better Than Anyone/).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText(/AI Fluency Index/).length).toBeGreaterThanOrEqual(1);
   });
 
   it('renders stats row', () => {
     render(<LandingScreen />);
-    expect(screen.getAllByText('100+').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('0-850').length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText('15').length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText('Free').length).toBeGreaterThanOrEqual(1);
   });
@@ -95,9 +81,9 @@ describe('LandingScreen', () => {
   });
 
   /* ── Hero CTAs ─────────────────────────────────────────────────── */
-  it('renders Start Free Practice button', () => {
+  it('renders Find Your Score button', () => {
     render(<LandingScreen />);
-    expect(screen.getAllByText('Start Free Practice').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('Find Your Score').length).toBeGreaterThanOrEqual(1);
   });
 
   it('renders Try a Challenge CTA', () => {
@@ -111,20 +97,20 @@ describe('LandingScreen', () => {
     expect(screen.getAllByText('The Arena IDE').length).toBeGreaterThanOrEqual(1);
   });
 
-  it('renders Three Skills That Matter section', () => {
+  it('renders What Your AFI Measures section', () => {
     render(<LandingScreen />);
-    expect(screen.getAllByText('Three Skills That Matter').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('What Your AFI Measures').length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText('Model Selection').length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText('Prompt Efficiency').length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText('Iterative Debugging').length).toBeGreaterThanOrEqual(1);
   });
 
-  it('renders How It Works section', () => {
+  it('renders How Scoring Works section', () => {
     render(<LandingScreen />);
-    expect(screen.getAllByText('How It Works').length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText('Pick a Challenge').length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText('Solve with AI').length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText('Climb the Leaderboard').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('How Scoring Works').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('Solve Challenges').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('Build Your AFI').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('Earn Certification').length).toBeGreaterThanOrEqual(1);
   });
 
   it('renders Built on Trust section', () => {
@@ -136,10 +122,10 @@ describe('LandingScreen', () => {
     expect(screen.getAllByText('Real Leaderboard').length).toBeGreaterThanOrEqual(1);
   });
 
-  it('renders For Hiring Teams section', () => {
+  it('renders For Teams section', () => {
     render(<LandingScreen />);
-    expect(screen.getAllByText('For Hiring Teams').length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText(/AI-Fluent/).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('For Teams').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText(/AI Fluency/).length).toBeGreaterThanOrEqual(1);
   });
 
   it('renders Daily Challenge CTA section', () => {
@@ -161,9 +147,9 @@ describe('LandingScreen', () => {
 
   it('renders final CTA section', () => {
     render(<LandingScreen />);
-    expect(screen.getAllByText(/Ready to prove your AI skills/).length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText('Get Started Free').length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText('Book a Demo').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText(/What will your AFI be/).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('Find Your Score').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('Benchmark Your Team').length).toBeGreaterThanOrEqual(1);
   });
 
   it('renders footer with copyright', () => {
@@ -184,9 +170,9 @@ describe('LandingScreen', () => {
     expect(mockNavigate).toHaveBeenCalledWith('Register');
   });
 
-  it('navigates to Register when Start Free Practice is clicked', () => {
+  it('navigates to Register when Find Your Score is clicked', () => {
     render(<LandingScreen />);
-    fireEvent.click(screen.getByText('Start Free Practice'));
+    fireEvent.click(screen.getAllByText('Find Your Score')[0]);
     expect(mockNavigate).toHaveBeenCalledWith('Register');
   });
 
@@ -196,9 +182,9 @@ describe('LandingScreen', () => {
     expect(mockNavigate).toHaveBeenCalledWith('GuestArena', { challengeId: 'fizzbuzz-budget' });
   });
 
-  it('navigates to Teams when Book a Demo is clicked', () => {
+  it('navigates to Teams when Benchmark Your Team is clicked', () => {
     render(<LandingScreen />);
-    fireEvent.click(screen.getAllByText('Book a Demo')[0]);
+    fireEvent.click(screen.getAllByText('Benchmark Your Team')[0]);
     expect(mockNavigate).toHaveBeenCalledWith('Hiring');
   });
 
@@ -250,9 +236,9 @@ describe('LandingScreen', () => {
     expect(mockNavigate).toHaveBeenCalledWith('Register');
   });
 
-  it('navigates to Register when "Get Started Free" is clicked', () => {
+  it('navigates to Register when "Find Your Score" CTA is clicked', () => {
     render(<LandingScreen />);
-    fireEvent.click(screen.getByText('Get Started Free'));
+    fireEvent.click(screen.getAllByText('Find Your Score')[1]);
     expect(mockNavigate).toHaveBeenCalledWith('Register');
   });
 
@@ -267,7 +253,7 @@ describe('LandingScreen', () => {
 
   it('navigates to Hiring when For Teams is clicked', () => {
     render(<LandingScreen />);
-    fireEvent.click(screen.getByText('For Teams'));
+    fireEvent.click(screen.getAllByText('For Teams')[0]);
     expect(mockNavigate).toHaveBeenCalledWith('Hiring');
   });
 
@@ -277,16 +263,16 @@ describe('LandingScreen', () => {
     expect(mockNavigate).toHaveBeenCalledWith('Problems');
   });
 
-  it('navigates to Hiring when Explore Assessments is clicked', () => {
+  it('navigates to Hiring when Benchmark Your Team is clicked in teams section', () => {
     render(<LandingScreen />);
-    fireEvent.click(screen.getByText('Explore Assessments'));
+    fireEvent.click(screen.getByText('Assess Candidates'));
     expect(mockNavigate).toHaveBeenCalledWith('Hiring');
   });
 
-  it('navigates to Hiring from second Book a Demo button', () => {
+  it('navigates to Hiring from Benchmark Your Team in final CTA', () => {
     render(<LandingScreen />);
-    const bookDemoButtons = screen.getAllByText('Book a Demo');
-    fireEvent.click(bookDemoButtons[bookDemoButtons.length - 1]);
+    const buttons = screen.getAllByText('Benchmark Your Team');
+    fireEvent.click(buttons[buttons.length - 1]);
     expect(mockNavigate).toHaveBeenCalledWith('Hiring');
   });
 });
