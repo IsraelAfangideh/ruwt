@@ -9,19 +9,8 @@ vi.mock('@/shared/ui/Badge', () => ({
 vi.mock('@/shared/ui/Button', () => ({
   Button: ({ children, onPress, ...props }: any) => <button onClick={onPress} {...props}>{children}</button>,
 }));
-vi.mock('@/shared/theme', () => ({
-  useColors: () => ({
-    text: '#000', textMuted: '#888', accent: '#c9a962', border: '#ccc',
-    borderStrong: '#aaa', primary: '#000', primaryForeground: '#fff',
-    secondary: '#eee', secondaryForeground: '#333', success: '#5a8a5a',
-    destructive: '#b06060',
-  }),
-}));
-vi.mock('@/shared/theme/tokens', () => ({
-  spacing: { xs: 4, sm: 8, md: 16, lg: 24 },
-  fontSizes: { xs: 12, sm: 14, md: 16 },
-  fontFamily: { body: 'sans-serif' },
-}));
+vi.mock('@/shared/theme', async () => (await import('@/shared/test/helpers')).mockTheme());
+vi.mock('@/shared/theme/tokens', async () => (await import('@/shared/test/helpers')).mockTokens());
 
 const invites = [
   {
@@ -56,7 +45,7 @@ describe('InviteManagementTable', () => {
   it('shows loading indicator initially', () => {
     vi.spyOn(global, 'fetch').mockReturnValue(new Promise(() => {}));
     render(<InviteManagementTable assessmentId="a1" />);
-    expect(screen.getByRole('progressbar')).toBeTruthy();
+    expect(screen.getByRole('progressbar')).toBeInTheDocument();
   });
 
   it('shows empty state when no invites', async () => {
@@ -66,7 +55,7 @@ describe('InviteManagementTable', () => {
     } as Response);
 
     render(<InviteManagementTable assessmentId="a1" />);
-    await waitFor(() => expect(screen.getByText(/No invites generated/)).toBeTruthy());
+    await waitFor(() => expect(screen.getByText(/No invites generated/)).toBeInTheDocument());
   });
 
   it('renders invite rows when data is loaded', async () => {
@@ -76,8 +65,8 @@ describe('InviteManagementTable', () => {
     } as Response);
 
     render(<InviteManagementTable assessmentId="a1" />);
-    await waitFor(() => expect(screen.getByText('alice@test.com')).toBeTruthy());
-    expect(screen.getByText('bob@test.com')).toBeTruthy();
+    await waitFor(() => expect(screen.getByText('alice@test.com')).toBeInTheDocument());
+    expect(screen.getByText('bob@test.com')).toBeInTheDocument();
   });
 
   it('shows Candidate Invites count in header', async () => {
@@ -87,7 +76,7 @@ describe('InviteManagementTable', () => {
     } as Response);
 
     render(<InviteManagementTable assessmentId="a1" />);
-    await waitFor(() => expect(screen.getByText('Candidate Invites (2)')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Candidate Invites (2)')).toBeInTheDocument());
   });
 
   it('shows status badges for invites', async () => {
@@ -98,8 +87,8 @@ describe('InviteManagementTable', () => {
 
     render(<InviteManagementTable assessmentId="a1" />);
     await waitFor(() => {
-      expect(screen.getByText('Pending')).toBeTruthy();
-      expect(screen.getByText('Completed')).toBeTruthy();
+      expect(screen.getByText('Pending')).toBeInTheDocument();
+      expect(screen.getByText('Completed')).toBeInTheDocument();
     });
   });
 
@@ -124,7 +113,7 @@ describe('InviteManagementTable', () => {
 
     render(<InviteManagementTable assessmentId="a1" />);
     await waitFor(() => {
-      expect(screen.getByText('Remind')).toBeTruthy();
+      expect(screen.getByText('Remind')).toBeInTheDocument();
     });
   });
 
@@ -135,7 +124,7 @@ describe('InviteManagementTable', () => {
     } as Response);
 
     render(<InviteManagementTable assessmentId="a1" />);
-    await waitFor(() => expect(screen.getByText(/Remind All Pending/)).toBeTruthy());
+    await waitFor(() => expect(screen.getByText(/Remind All Pending/)).toBeInTheDocument());
   });
 
   it('shows table headers', async () => {
@@ -146,11 +135,11 @@ describe('InviteManagementTable', () => {
 
     render(<InviteManagementTable assessmentId="a1" />);
     await waitFor(() => {
-      expect(screen.getByText('Email')).toBeTruthy();
-      expect(screen.getByText('Status')).toBeTruthy();
-      expect(screen.getByText('Created')).toBeTruthy();
-      expect(screen.getByText('Expires')).toBeTruthy();
-      expect(screen.getByText('Actions')).toBeTruthy();
+      expect(screen.getByText('Email')).toBeInTheDocument();
+      expect(screen.getByText('Status')).toBeInTheDocument();
+      expect(screen.getByText('Created')).toBeInTheDocument();
+      expect(screen.getByText('Expires')).toBeInTheDocument();
+      expect(screen.getByText('Actions')).toBeInTheDocument();
     });
   });
 
@@ -164,7 +153,7 @@ describe('InviteManagementTable', () => {
     } as Response);
 
     render(<InviteManagementTable assessmentId="a1" />);
-    await waitFor(() => expect(screen.getByText('(no email)')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('(no email)')).toBeInTheDocument());
   });
 
   it('does not show Remind for invites without email', async () => {
@@ -177,7 +166,7 @@ describe('InviteManagementTable', () => {
     } as Response);
 
     render(<InviteManagementTable assessmentId="a1" />);
-    await waitFor(() => expect(screen.getByText('(no email)')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('(no email)')).toBeInTheDocument());
     expect(screen.queryByText('Remind')).toBeNull();
   });
 
@@ -189,7 +178,7 @@ describe('InviteManagementTable', () => {
     } as Response);
 
     render(<InviteManagementTable assessmentId="a1" />);
-    await waitFor(() => expect(screen.getByText('bob@test.com')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('bob@test.com')).toBeInTheDocument());
     expect(screen.queryByText('Remind')).toBeNull();
   });
 
@@ -202,7 +191,7 @@ describe('InviteManagementTable', () => {
 
     render(<InviteManagementTable assessmentId="a1" />);
     await waitFor(() => {
-      expect(screen.getByText('\u2014')).toBeTruthy();
+      expect(screen.getByText('\u2014')).toBeInTheDocument();
     });
   });
 
@@ -224,7 +213,7 @@ describe('InviteManagementTable', () => {
       expect(mockClipboard.writeText).toHaveBeenCalledWith(expect.stringContaining('/assess/tok1'));
     });
     await waitFor(() => {
-      expect(screen.getByText('Copied!')).toBeTruthy();
+      expect(screen.getByText('Copied!')).toBeInTheDocument();
     });
   });
 
@@ -236,7 +225,7 @@ describe('InviteManagementTable', () => {
 
     render(<InviteManagementTable assessmentId="a1" />);
     await waitFor(() => {
-      expect(screen.getByText('Remind')).toBeTruthy();
+      expect(screen.getByText('Remind')).toBeInTheDocument();
     });
     fireEvent.click(screen.getByText('Remind'));
     await waitFor(() => {
@@ -254,7 +243,7 @@ describe('InviteManagementTable', () => {
 
     render(<InviteManagementTable assessmentId="a1" />);
     await waitFor(() => {
-      expect(screen.getByText(/Remind All Pending/)).toBeTruthy();
+      expect(screen.getByText(/Remind All Pending/)).toBeInTheDocument();
     });
     fireEvent.click(screen.getByText(/Remind All Pending/));
     await waitFor(() => {
@@ -273,7 +262,7 @@ describe('InviteManagementTable', () => {
     } as Response);
 
     render(<InviteManagementTable assessmentId="a1" />);
-    await waitFor(() => expect(screen.getByText('bob@test.com')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('bob@test.com')).toBeInTheDocument());
     expect(screen.queryByText(/Remind All Pending/)).toBeNull();
   });
 
@@ -297,7 +286,7 @@ describe('InviteManagementTable', () => {
 
     render(<InviteManagementTable assessmentId="a1" />);
     await waitFor(() => {
-      expect(screen.getByText('Remind All Pending (1)')).toBeTruthy();
+      expect(screen.getByText('Remind All Pending (1)')).toBeInTheDocument();
     });
   });
 });

@@ -33,21 +33,8 @@ vi.mock('@/shared/ui/Button', () => ({
     <button onClick={onPress} {...props}>{children}</button>
   ),
 }));
-vi.mock('@/shared/theme', () => ({
-  useColors: () => ({
-    bg: '#fff', text: '#000', textMuted: '#888', accent: '#c9a962', border: '#ccc',
-    borderStrong: '#999', card: '#fff', muted: '#f5f5f5', error: '#f00', errorBg: '#fee',
-    success: '#0a0', successBg: '#efe', primary: '#000', primaryForeground: '#fff',
-    secondary: '#eee', secondaryForeground: '#000', destructive: '#f00',
-    textSubtle: '#aaa', bgElevated: '#fafafa', accentBg: '#ffe',
-  }),
-}));
-vi.mock('@/shared/theme/tokens', () => ({
-  spacing: { xs: 4, sm: 8, md: 16, lg: 24, xl: 32, '2xl': 48 },
-  fontSizes: { xs: 12, sm: 14, md: 16, lg: 18, xl: 20, '2xl': 24, '3xl': 30, '4xl': 36 },
-  fontFamily: { display: 'serif', body: 'sans-serif' },
-  radii: { sm: 4, md: 8, lg: 12, xl: 16, full: 9999 },
-}));
+vi.mock('@/shared/theme', async () => (await import('@/shared/test/helpers')).mockTheme());
+vi.mock('@/shared/theme/tokens', async () => (await import('@/shared/test/helpers')).mockTokens());
 
 const ok = (data: any) => ({ ok: true, json: () => Promise.resolve(data) });
 const fail = (data: any) => ({ ok: false, json: () => Promise.resolve(data) });
@@ -88,7 +75,7 @@ describe('AssessmentListScreen', () => {
 
   it('renders loading state initially', () => {
     const { container } = render(<AssessmentListScreen />);
-    expect(container.querySelector('[data-testid="skeleton-card-grid"]')).toBeTruthy();
+    expect(container.querySelector('[data-testid="skeleton-card-grid"]')).toBeInTheDocument();
   });
 
   it('redirects to Login when user is not authenticated', async () => {
@@ -112,10 +99,10 @@ describe('AssessmentListScreen', () => {
     });
     render(<AssessmentListScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Frontend Assessment')).toBeTruthy();
-      expect(screen.getByText(/5 challenges/)).toBeTruthy();
-      expect(screen.getByText(/3 invited/)).toBeTruthy();
-      expect(screen.getByText(/1 completed/)).toBeTruthy();
+      expect(screen.getByText('Frontend Assessment')).toBeInTheDocument();
+      expect(screen.getByText(/5 challenges/)).toBeInTheDocument();
+      expect(screen.getByText(/3 invited/)).toBeInTheDocument();
+      expect(screen.getByText(/1 completed/)).toBeInTheDocument();
     });
   });
 
@@ -125,27 +112,27 @@ describe('AssessmentListScreen', () => {
     });
     render(<AssessmentListScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Get started in 3 steps')).toBeTruthy();
-      expect(screen.getByText(/Create Your First Assessment/)).toBeTruthy();
+      expect(screen.getByText('Get started in 3 steps')).toBeInTheDocument();
+      expect(screen.getByText(/Create Your First Assessment/)).toBeInTheDocument();
     });
   });
 
-  it('navigates to AssessmentBuilder when Create Your First Assessment is clicked (line 262)', async () => {
+  it('navigates to AssessmentBuilder when Create Your First Assessment is clicked', async () => {
     setupFetch({
       '/api/assessments': ok([]),
     });
     render(<AssessmentListScreen />);
-    await waitFor(() => expect(screen.getByText(/Create Your First Assessment/)).toBeTruthy());
+    await waitFor(() => expect(screen.getByText(/Create Your First Assessment/)).toBeInTheDocument());
     fireEvent.click(screen.getByText(/Create Your First Assessment/));
     expect(mockNavigate).toHaveBeenCalledWith('AssessmentBuilder', {});
   });
 
-  it('navigates to AssessmentBuilder when template link is clicked (line 267)', async () => {
+  it('navigates to AssessmentBuilder when template link is clicked', async () => {
     setupFetch({
       '/api/assessments': ok([]),
     });
     render(<AssessmentListScreen />);
-    await waitFor(() => expect(screen.getByText(/template/)).toBeTruthy());
+    await waitFor(() => expect(screen.getByText(/template/)).toBeInTheDocument());
     fireEvent.click(screen.getByText(/template/));
     expect(mockNavigate).toHaveBeenCalledWith('AssessmentBuilder', {});
   });
@@ -172,9 +159,9 @@ describe('AssessmentListScreen', () => {
     });
     render(<AssessmentListScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Acme Team')).toBeTruthy();
-      expect(screen.getByText(/owner/)).toBeTruthy();
-      expect(screen.getByText('Manage Team')).toBeTruthy();
+      expect(screen.getByText('Acme Team')).toBeInTheDocument();
+      expect(screen.getByText(/owner/)).toBeInTheDocument();
+      expect(screen.getByText('Manage Team')).toBeInTheDocument();
     });
   });
 
@@ -184,7 +171,7 @@ describe('AssessmentListScreen', () => {
     });
     render(<AssessmentListScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Create Team')).toBeTruthy();
+      expect(screen.getByText('Create Team')).toBeInTheDocument();
     });
   });
 
@@ -193,7 +180,7 @@ describe('AssessmentListScreen', () => {
       '/api/orgs': ok([{ id: 'org1', name: 'Acme', role: 'admin' }]),
     });
     render(<AssessmentListScreen />);
-    await waitFor(() => expect(screen.getByText('Manage Team')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Manage Team')).toBeInTheDocument());
     fireEvent.click(screen.getByText('Manage Team'));
     expect(mockNavigate).toHaveBeenCalledWith('OrgManagement', { orgId: 'org1' });
   });
@@ -204,8 +191,8 @@ describe('AssessmentListScreen', () => {
     });
     render(<AssessmentListScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Edit')).toBeTruthy();
-      expect(screen.getByText('Results')).toBeTruthy();
+      expect(screen.getByText('Edit')).toBeInTheDocument();
+      expect(screen.getByText('Results')).toBeInTheDocument();
     });
   });
 
@@ -214,7 +201,7 @@ describe('AssessmentListScreen', () => {
       '/api/assessments': ok([mockActiveAssessment]),
     });
     render(<AssessmentListScreen />);
-    await waitFor(() => expect(screen.getByText('Edit')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Edit')).toBeInTheDocument());
     fireEvent.click(screen.getByText('Edit'));
     expect(mockNavigate).toHaveBeenCalledWith('AssessmentBuilder', { assessmentId: 'a1' });
   });
@@ -224,7 +211,7 @@ describe('AssessmentListScreen', () => {
       '/api/assessments': ok([mockActiveAssessment]),
     });
     render(<AssessmentListScreen />);
-    await waitFor(() => expect(screen.getByText('Results')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Results')).toBeInTheDocument());
     fireEvent.click(screen.getByText('Results'));
     expect(mockNavigate).toHaveBeenCalledWith('AssessmentResultsDashboard', { assessmentId: 'a1' });
   });
@@ -235,7 +222,7 @@ describe('AssessmentListScreen', () => {
     });
     render(<AssessmentListScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Generate Invite Link')).toBeTruthy();
+      expect(screen.getByText('Generate Invite Link')).toBeInTheDocument();
     });
   });
 
@@ -248,10 +235,10 @@ describe('AssessmentListScreen', () => {
       '/api/assessments/a1/invites': ok({ url: 'https://ruwt.dev/inv/xyz' }),
     });
     render(<AssessmentListScreen />);
-    await waitFor(() => expect(screen.getByText('Generate Invite Link')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Generate Invite Link')).toBeInTheDocument());
     fireEvent.click(screen.getByText('Generate Invite Link'));
     await waitFor(() => {
-      expect(screen.getByText('https://ruwt.dev/inv/xyz')).toBeTruthy();
+      expect(screen.getByText('https://ruwt.dev/inv/xyz')).toBeInTheDocument();
     });
   });
 
@@ -261,10 +248,10 @@ describe('AssessmentListScreen', () => {
       '/api/assessments/a1/invites': fail({ error: 'No subscription' }),
     });
     render(<AssessmentListScreen />);
-    await waitFor(() => expect(screen.getByText('Generate Invite Link')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Generate Invite Link')).toBeInTheDocument());
     fireEvent.click(screen.getByText('Generate Invite Link'));
     await waitFor(() => {
-      expect(screen.getByText('No subscription')).toBeTruthy();
+      expect(screen.getByText('No subscription')).toBeInTheDocument();
     });
   });
 
@@ -274,7 +261,7 @@ describe('AssessmentListScreen', () => {
     });
     render(<AssessmentListScreen />);
     await waitFor(() => {
-      expect(screen.getByText(/Activate this assessment/)).toBeTruthy();
+      expect(screen.getByText(/Activate this assessment/)).toBeInTheDocument();
     });
   });
 
@@ -284,7 +271,7 @@ describe('AssessmentListScreen', () => {
     });
     render(<AssessmentListScreen />);
     await waitFor(() => {
-      expect(screen.getByText('TestCorp')).toBeTruthy();
+      expect(screen.getByText('TestCorp')).toBeInTheDocument();
     });
   });
 
@@ -293,7 +280,7 @@ describe('AssessmentListScreen', () => {
       '/api/assessments': ok([mockActiveAssessment]),
     });
     render(<AssessmentListScreen />);
-    await waitFor(() => expect(screen.getByText('Duplicate')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Duplicate')).toBeInTheDocument());
   });
 
   it('formats time correctly for hours and minutes', async () => {
@@ -304,7 +291,7 @@ describe('AssessmentListScreen', () => {
     });
     render(<AssessmentListScreen />);
     await waitFor(() => {
-      expect(screen.getByText(/1h 30m/)).toBeTruthy();
+      expect(screen.getByText(/1h 30m/)).toBeInTheDocument();
     });
   });
 
@@ -314,8 +301,8 @@ describe('AssessmentListScreen', () => {
     });
     render(<AssessmentListScreen />);
     await waitFor(() => {
-      expect(screen.getByText('active')).toBeTruthy();
-      expect(screen.getByText('draft')).toBeTruthy();
+      expect(screen.getByText('active')).toBeInTheDocument();
+      expect(screen.getByText('draft')).toBeInTheDocument();
     });
   });
 
@@ -325,9 +312,9 @@ describe('AssessmentListScreen', () => {
       '/api/assessments/a1/invites': fail({ error: 'Some error' }),
     });
     render(<AssessmentListScreen />);
-    await waitFor(() => expect(screen.getByText('Generate Invite Link')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Generate Invite Link')).toBeInTheDocument());
     fireEvent.click(screen.getByText('Generate Invite Link'));
-    await waitFor(() => expect(screen.getByText('Some error')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Some error')).toBeInTheDocument());
     // Click the dismiss X
     fireEvent.click(screen.getByText('\u2715'));
     await waitFor(() => expect(screen.queryByText('Some error')).toBeNull());
@@ -338,7 +325,7 @@ describe('AssessmentListScreen', () => {
       '/api/assessments': ok([]),
     });
     render(<AssessmentListScreen />);
-    await waitFor(() => expect(screen.getByText('Get started in 3 steps')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Get started in 3 steps')).toBeInTheDocument());
     // Click the "Build Assessment" button in the empty state card
     const btns = screen.getAllByText('Build Assessment');
     // The last one is in the empty state card
@@ -346,7 +333,7 @@ describe('AssessmentListScreen', () => {
     expect(mockNavigate).toHaveBeenCalledWith('AssessmentBuilder', {});
   });
 
-  it('copies existing invite link when clicked again (line 285)', async () => {
+  it('copies existing invite link to clipboard on second click', async () => {
     Object.assign(navigator, {
       clipboard: { writeText: vi.fn().mockResolvedValue(undefined) },
     });
@@ -355,14 +342,14 @@ describe('AssessmentListScreen', () => {
       '/api/assessments/a1/invites': ok({ url: 'https://ruwt.dev/inv/abc' }),
     });
     render(<AssessmentListScreen />);
-    await waitFor(() => expect(screen.getByText('Generate Invite Link')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Generate Invite Link')).toBeInTheDocument());
     // Generate the invite link first
     fireEvent.click(screen.getByText('Generate Invite Link'));
-    await waitFor(() => expect(screen.getByText('https://ruwt.dev/inv/abc')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('https://ruwt.dev/inv/abc')).toBeInTheDocument());
     // Now click on the link row to copy it again
     fireEvent.click(screen.getByText('https://ruwt.dev/inv/abc'));
     // Should show "Copied!"
-    await waitFor(() => expect(screen.getByText('Copied!')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Copied!')).toBeInTheDocument());
   });
 
   it('handles invite link generation for already cached link', async () => {
@@ -374,10 +361,10 @@ describe('AssessmentListScreen', () => {
       '/api/assessments/a1/invites': ok({ url: 'https://ruwt.dev/inv/abc' }),
     });
     render(<AssessmentListScreen />);
-    await waitFor(() => expect(screen.getByText('Generate Invite Link')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Generate Invite Link')).toBeInTheDocument());
     // Generate invite link
     fireEvent.click(screen.getByText('Generate Invite Link'));
-    await waitFor(() => expect(screen.getByText('https://ruwt.dev/inv/abc')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('https://ruwt.dev/inv/abc')).toBeInTheDocument());
     // Now click "Generate Invite Link" - but since it's already cached, the Pressable with URL shows
     // The Generate Invite Link button is now replaced by the link row
     // Click the link row to re-copy
@@ -399,12 +386,12 @@ describe('AssessmentListScreen', () => {
     });
     vi.stubGlobal('fetch', fn);
     render(<AssessmentListScreen />);
-    await waitFor(() => expect(screen.getByText('Generate Invite Link')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Generate Invite Link')).toBeInTheDocument());
     fireEvent.click(screen.getByText('Generate Invite Link'));
-    await waitFor(() => expect(screen.getByText('Failed to generate invite')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Failed to generate invite')).toBeInTheDocument());
   });
 
-  it('duplicates an assessment and navigates to builder (line 341)', async () => {
+  it('duplicates an assessment and navigates to builder', async () => {
     const originalAssessment = {
       title: 'Frontend Assessment',
       description: 'Test skills',
@@ -441,7 +428,7 @@ describe('AssessmentListScreen', () => {
     });
     vi.stubGlobal('fetch', fetchImpl);
     render(<AssessmentListScreen />);
-    await waitFor(() => expect(screen.getByText('Duplicate')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Duplicate')).toBeInTheDocument());
     fireEvent.click(screen.getByText('Duplicate'));
     await waitFor(() => {
       expect(mockNavigate).toHaveBeenCalledWith('AssessmentBuilder', { assessmentId: 'new-a1' });
@@ -459,11 +446,11 @@ describe('AssessmentListScreen', () => {
     });
     vi.stubGlobal('fetch', fetchImpl);
     render(<AssessmentListScreen />);
-    await waitFor(() => expect(screen.getByText('Duplicate')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Duplicate')).toBeInTheDocument());
     fireEvent.click(screen.getByText('Duplicate'));
     // The early return skips setDuplicating(null), so button stays as "..."
     await waitFor(() => {
-      expect(screen.getByText('...')).toBeTruthy();
+      expect(screen.getByText('...')).toBeInTheDocument();
     });
     // Verify the fetch for the original assessment was called
     expect(fetchImpl).toHaveBeenCalledWith('/api/assessments/a1');
@@ -483,11 +470,11 @@ describe('AssessmentListScreen', () => {
     });
     vi.stubGlobal('fetch', fetchImpl);
     render(<AssessmentListScreen />);
-    await waitFor(() => expect(screen.getByText('Duplicate')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Duplicate')).toBeInTheDocument());
     fireEvent.click(screen.getByText('Duplicate'));
     // The early return on createRes.ok=false skips setDuplicating(null)
     await waitFor(() => {
-      expect(screen.getByText('...')).toBeTruthy();
+      expect(screen.getByText('...')).toBeInTheDocument();
     });
   });
 
@@ -505,7 +492,7 @@ describe('AssessmentListScreen', () => {
     });
     vi.stubGlobal('fetch', fetchImpl);
     render(<AssessmentListScreen />);
-    await waitFor(() => expect(screen.getByText('Duplicate')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Duplicate')).toBeInTheDocument());
     fireEvent.click(screen.getByText('Duplicate'));
     await waitFor(() => {
       expect(mockNavigate).toHaveBeenCalledWith('AssessmentBuilder', { assessmentId: 'new-a2' });
@@ -523,7 +510,7 @@ describe('AssessmentListScreen', () => {
     });
     render(<AssessmentListScreen />);
     await waitFor(() => {
-      expect(screen.getByText(/30m/)).toBeTruthy();
+      expect(screen.getByText(/30m/)).toBeInTheDocument();
     });
   });
 
@@ -535,7 +522,7 @@ describe('AssessmentListScreen', () => {
     });
     render(<AssessmentListScreen />);
     await waitFor(() => {
-      expect(screen.getByText('archived')).toBeTruthy();
+      expect(screen.getByText('archived')).toBeInTheDocument();
     });
   });
 
@@ -555,12 +542,12 @@ describe('AssessmentListScreen', () => {
       '/api/orgs': ok([]),
     });
     render(<AssessmentListScreen />);
-    await waitFor(() => expect(screen.getByText('Create Team')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Create Team')).toBeInTheDocument());
     fireEvent.click(screen.getByText('Create Team'));
     expect(mockNavigate).toHaveBeenCalledWith('OrgManagement', {});
   });
 
-  it('handles fetch rejection for assessments (line 49 catch)', async () => {
+  it('renders empty state when assessments fetch rejects', async () => {
     const fn = vi.fn().mockImplementation((url: string) => {
       if (url === '/api/assessments') return Promise.reject(new Error('fail'));
       if (url === '/api/orgs') return Promise.resolve(ok([]));
@@ -570,11 +557,11 @@ describe('AssessmentListScreen', () => {
     render(<AssessmentListScreen />);
     // Should still render dashboard layout (catches error, assessments stay empty)
     await waitFor(() => {
-      expect(screen.getByText('Get started in 3 steps')).toBeTruthy();
+      expect(screen.getByText('Get started in 3 steps')).toBeInTheDocument();
     });
   });
 
-  it('handles fetch rejection for orgs (line 50 catch)', async () => {
+  it('hides org banner when orgs fetch rejects', async () => {
     const fn = vi.fn().mockImplementation((url: string) => {
       if (url === '/api/assessments') return Promise.resolve(ok([]));
       if (url === '/api/orgs') return Promise.reject(new Error('fail'));
@@ -583,13 +570,13 @@ describe('AssessmentListScreen', () => {
     vi.stubGlobal('fetch', fn);
     render(<AssessmentListScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Get started in 3 steps')).toBeTruthy();
+      expect(screen.getByText('Get started in 3 steps')).toBeInTheDocument();
     });
     // No org banner should be shown
     expect(screen.queryByText('Manage Team')).toBeNull();
   });
 
-  it('uses cached invite link on second handleInvite call (lines 72-74)', async () => {
+  it('reuses cached invite link on subsequent invite generation', async () => {
     Object.assign(navigator, {
       clipboard: { writeText: vi.fn().mockResolvedValue(undefined) },
     });
@@ -598,10 +585,10 @@ describe('AssessmentListScreen', () => {
       '/api/assessments/a1/invites': ok({ url: 'https://ruwt.dev/inv/cached' }),
     });
     render(<AssessmentListScreen />);
-    await waitFor(() => expect(screen.getByText('Generate Invite Link')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Generate Invite Link')).toBeInTheDocument());
     // First click: generates the invite link
     fireEvent.click(screen.getByText('Generate Invite Link'));
-    await waitFor(() => expect(screen.getByText('https://ruwt.dev/inv/cached')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('https://ruwt.dev/inv/cached')).toBeInTheDocument());
     // The URL is now displayed as a Pressable. The handleInvite for this assessment
     // would use the cached path. But the Generate Invite Link button is now replaced.
     // To trigger the cached path, we need to click the invite link area.

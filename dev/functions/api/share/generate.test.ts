@@ -118,7 +118,7 @@ describe('POST /api/share/generate', () => {
     expect(res.status).toBe(500);
   });
 
-  it('returns rank=0 when rank query returns empty (line 67 fallback)', async () => {
+  it('returns rank zero when leaderboard rank query is empty', async () => {
     mockGetUser.mockResolvedValue(FAKE_USER);
     const attempt = { id: 'att-1', userId: FAKE_USER.id, status: 'passed', challengeId: 'ch-1', totalCost: 500, passedTests: 5, totalTests: 5 };
     const challenge = { title: 'T', difficulty: 'easy', category: 'c' };
@@ -141,7 +141,7 @@ describe('POST /api/share/generate', () => {
     expect(json.rank).toBe(0);
   });
 
-  it('returns challenge=null when challenge not found (line 79)', async () => {
+  it('returns null challenge when challenge record is not found', async () => {
     mockGetUser.mockResolvedValue(FAKE_USER);
     const attempt = { id: 'att-1', userId: FAKE_USER.id, status: 'passed', challengeId: 'ch-missing', totalCost: 500, passedTests: 5, totalTests: 5 };
 

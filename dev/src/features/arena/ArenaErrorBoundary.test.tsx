@@ -37,7 +37,7 @@ describe('ArenaErrorBoundary', () => {
         <GoodChild />
       </ArenaErrorBoundary>
     );
-    expect(screen.getByText('Working child')).toBeTruthy();
+    expect(screen.getByText('Working child')).toBeInTheDocument();
   });
 
   it('renders error UI when child throws', () => {
@@ -46,9 +46,9 @@ describe('ArenaErrorBoundary', () => {
         <ThrowingChild />
       </ArenaErrorBoundary>
     );
-    expect(screen.getByText('Something went wrong')).toBeTruthy();
-    expect(screen.getByText(/arena IDE encountered an error/)).toBeTruthy();
-    expect(screen.getByText('Reload IDE')).toBeTruthy();
+    expect(screen.getByText('Something went wrong')).toBeInTheDocument();
+    expect(screen.getByText(/arena IDE encountered an error/)).toBeInTheDocument();
+    expect(screen.getByText('Reload IDE')).toBeInTheDocument();
   });
 
   it('resets error state when Reload IDE is clicked', () => {
@@ -57,12 +57,12 @@ describe('ArenaErrorBoundary', () => {
         <ThrowingChild />
       </ArenaErrorBoundary>
     );
-    expect(screen.getByText('Something went wrong')).toBeTruthy();
+    expect(screen.getByText('Something went wrong')).toBeInTheDocument();
 
     // Click reload. Since ThrowingChild always throws, it will re-catch.
     // But the state should have been reset momentarily.
     fireEvent.click(screen.getByText('Reload IDE'));
     // It re-renders children (ThrowingChild throws again, so error UI reappears)
-    expect(screen.getByText('Something went wrong')).toBeTruthy();
+    expect(screen.getByText('Something went wrong')).toBeInTheDocument();
   });
 });

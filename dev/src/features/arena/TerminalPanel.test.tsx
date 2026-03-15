@@ -154,7 +154,7 @@ describe('TerminalPanel', () => {
     expect(() => ref.current?.focus()).not.toThrow();
   });
 
-  it('focuses terminal when container div is clicked (line 236)', () => {
+  it('focuses terminal when container div is clicked', () => {
     const { container } = render(<TerminalPanel {...defaultProps} />);
     // Click the outer div
     const div = container.firstChild as HTMLElement;
@@ -164,7 +164,7 @@ describe('TerminalPanel', () => {
     if (appDiv) fireEvent.click(appDiv);
   });
 
-  it('initializes terminal, shell, and enters ruwt mode on mount (lines 49-156)', () => {
+  it('initializes terminal, shell, and enters ruwt mode on mount', () => {
     render(<TerminalPanel {...defaultProps} />);
     // RuwtTUI.enter should have been called (auto-enter ruwt mode on startup)
     expect(mockTuiEnter).toHaveBeenCalled();
@@ -172,7 +172,7 @@ describe('TerminalPanel', () => {
     expect(capturedOnDataCallback).not.toBeNull();
   });
 
-  it('routes input to RuwtTUI in ruwt mode (lines 160-161)', () => {
+  it('routes keyboard input to RuwtTUI in ruwt mode', () => {
     render(<TerminalPanel {...defaultProps} />);
     expect(capturedOnDataCallback).not.toBeNull();
     // Component starts in ruwt mode, so input goes to TUI
@@ -183,7 +183,7 @@ describe('TerminalPanel', () => {
     expect(mockShellHandleInput).not.toHaveBeenCalled();
   });
 
-  it('routes input to shell after exiting ruwt mode (lines 96-99, 162-163)', () => {
+  it('routes keyboard input to shell after exiting ruwt mode', () => {
     render(<TerminalPanel {...defaultProps} />);
     expect(capturedTuiOnExit).not.toBeNull();
     // Trigger onExit to switch to shell mode
@@ -197,7 +197,7 @@ describe('TerminalPanel', () => {
     expect(mockShellHandleInput).toHaveBeenCalledWith('ls');
   });
 
-  it('handles resize events (lines 170-172)', async () => {
+  it('handles terminal resize events', async () => {
     vi.useFakeTimers();
     const { container } = render(<TerminalPanel {...defaultProps} />);
 
@@ -243,7 +243,7 @@ describe('TerminalPanel', () => {
     expect(container.firstChild).toBeTruthy();
   });
 
-  it('RuwtTUI onCodeApplied callback forwards to prop (line 101)', () => {
+  it('forwards RuwtTUI onCodeApplied callback to parent prop', () => {
     const onCodeApplied = vi.fn();
     render(<TerminalPanel {...defaultProps} onCodeApplied={onCodeApplied} />);
     expect(capturedTuiOpts).not.toBeNull();
@@ -253,7 +253,7 @@ describe('TerminalPanel', () => {
     expect(onCodeApplied).toHaveBeenCalledWith('const x = 1;');
   });
 
-  it('RuwtTUI onRunTests callback forwards to prop (line 102)', () => {
+  it('forwards RuwtTUI onRunTests callback to parent prop', () => {
     const onRunTests = vi.fn().mockResolvedValue({ passed: true, passedTests: 1, totalTests: 1 });
     render(<TerminalPanel {...defaultProps} onRunTests={onRunTests} />);
     expect(capturedTuiOpts).not.toBeNull();
@@ -263,7 +263,7 @@ describe('TerminalPanel', () => {
     expect(onRunTests).toHaveBeenCalledWith('arg1', 'arg2');
   });
 
-  it('RuwtTUI isExpired callback forwards to prop (line 103)', () => {
+  it('forwards RuwtTUI isExpired callback to parent prop', () => {
     const isExpired = vi.fn().mockReturnValue(true);
     render(<TerminalPanel {...defaultProps} isExpired={isExpired} />);
     expect(capturedTuiOpts).not.toBeNull();
@@ -272,7 +272,7 @@ describe('TerminalPanel', () => {
     expect(result).toBe(true);
   });
 
-  it('VirtualShell onRunCode callback forwards to shellCallbacks (line 149)', () => {
+  it('forwards VirtualShell onRunCode callback to shellCallbacks', () => {
     render(<TerminalPanel {...defaultProps} />);
     expect(capturedShellCallbacks).not.toBeNull();
     act(() => {
@@ -281,7 +281,7 @@ describe('TerminalPanel', () => {
     expect(defaultProps.shellCallbacks.onRunCode).toHaveBeenCalledWith('code-arg');
   });
 
-  it('VirtualShell onRunTests callback forwards to shellCallbacks (line 150)', () => {
+  it('forwards VirtualShell onRunTests callback to shellCallbacks', () => {
     render(<TerminalPanel {...defaultProps} />);
     expect(capturedShellCallbacks).not.toBeNull();
     act(() => {
@@ -290,7 +290,7 @@ describe('TerminalPanel', () => {
     expect(defaultProps.shellCallbacks.onRunTests).toHaveBeenCalledWith('test-arg');
   });
 
-  it('VirtualShell onEnterRuwt callback re-enters ruwt mode (line 151)', () => {
+  it('re-enters ruwt mode when VirtualShell onEnterRuwt fires', () => {
     render(<TerminalPanel {...defaultProps} />);
     expect(capturedShellCallbacks).not.toBeNull();
     // First, exit ruwt mode
@@ -305,7 +305,7 @@ describe('TerminalPanel', () => {
     expect(mockTuiEnter).toHaveBeenCalled();
   });
 
-  it('RuwtTUI streamChat callback forwards to prop (line 93)', () => {
+  it('forwards RuwtTUI streamChat callback to parent prop', () => {
     const streamChat = vi.fn();
     render(<TerminalPanel {...defaultProps} streamChat={streamChat} />);
     expect(capturedTuiOpts).not.toBeNull();
@@ -315,7 +315,7 @@ describe('TerminalPanel', () => {
     expect(streamChat).toHaveBeenCalledWith('msg1', 'msg2');
   });
 
-  it('RuwtTUI abort callback forwards to prop (line 94)', () => {
+  it('forwards RuwtTUI abort callback to parent prop', () => {
     const abortChat = vi.fn();
     render(<TerminalPanel {...defaultProps} abortChat={abortChat} />);
     expect(capturedTuiOpts).not.toBeNull();
@@ -325,7 +325,7 @@ describe('TerminalPanel', () => {
     expect(abortChat).toHaveBeenCalled();
   });
 
-  it('onWriteParsed captures terminal output for accessible transcript (lines 154-169)', () => {
+  it('captures terminal output for accessible transcript via onWriteParsed', () => {
     const { container } = render(<TerminalPanel {...defaultProps} />);
     expect(capturedOnWriteParsedCallback).not.toBeNull();
     // Trigger the onWriteParsed callback to update the transcript
@@ -338,7 +338,7 @@ describe('TerminalPanel', () => {
     expect(logRegion!.textContent).toContain('Terminal line');
   });
 
-  it('renders accessible terminal region with ARIA attributes (lines 236-265)', () => {
+  it('renders accessible terminal region with ARIA attributes', () => {
     const { container } = render(<TerminalPanel {...defaultProps} />);
     // Check the terminal region
     const region = container.querySelector('[role="region"]');
@@ -352,7 +352,7 @@ describe('TerminalPanel', () => {
     expect(log!.getAttribute('aria-live')).toBe('polite');
   });
 
-  it('does not duplicate identical consecutive transcript lines (line 167)', () => {
+  it('deduplicates identical consecutive transcript lines', () => {
     const { container } = render(<TerminalPanel {...defaultProps} />);
     expect(capturedOnWriteParsedCallback).not.toBeNull();
     // Trigger onWriteParsed twice — same line content each time
@@ -364,7 +364,7 @@ describe('TerminalPanel', () => {
     expect(logRegion!.querySelectorAll('div').length).toBeLessThanOrEqual(5);
   });
 
-  it('handles onRunTests being undefined (line 108)', () => {
+  it('handles onRunTests being undefined without throwing', () => {
     render(<TerminalPanel {...defaultProps} onRunTests={undefined} />);
     expect(capturedTuiOpts).not.toBeNull();
     // Calling onRunTests via optional chaining should not throw
@@ -377,7 +377,7 @@ describe('TerminalPanel', () => {
     expect(() => unmount()).not.toThrow();
   });
 
-  it('RuwtTUI onModelChange callback forwards to prop (line 121)', () => {
+  it('forwards RuwtTUI onModelChange callback to parent prop', () => {
     const onModelChange = vi.fn();
     render(<TerminalPanel {...defaultProps} onModelChange={onModelChange} currentModelId="model-1" />);
     expect(capturedTuiOpts).not.toBeNull();
@@ -387,21 +387,21 @@ describe('TerminalPanel', () => {
     expect(onModelChange).toHaveBeenCalledWith('premium', 'new-model');
   });
 
-  it('RuwtTUI getCurrentModelId returns default when currentModelId is undefined (line 122)', () => {
+  it('returns default model ID when currentModelId is undefined', () => {
     render(<TerminalPanel {...defaultProps} currentModelId={undefined} />);
     expect(capturedTuiOpts).not.toBeNull();
     const result = capturedTuiOpts!.getCurrentModelId();
     expect(result).toBe('@cf/meta/llama-3.1-8b-instruct');
   });
 
-  it('RuwtTUI getCurrentModelId returns currentModelId when set (line 122)', () => {
+  it('returns provided currentModelId from getCurrentModelId', () => {
     render(<TerminalPanel {...defaultProps} currentModelId="my-model" />);
     expect(capturedTuiOpts).not.toBeNull();
     const result = capturedTuiOpts!.getCurrentModelId();
     expect(result).toBe('my-model');
   });
 
-  it('handles onModelChange being undefined (line 121)', () => {
+  it('handles onModelChange being undefined without throwing', () => {
     render(<TerminalPanel {...defaultProps} onModelChange={undefined} />);
     expect(capturedTuiOpts).not.toBeNull();
     // Calling onModelChange via optional chaining should not throw

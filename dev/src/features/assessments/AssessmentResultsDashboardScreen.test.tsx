@@ -51,21 +51,8 @@ vi.mock('@/features/assessments/VerdictBadge', () => ({
 vi.mock('@/features/assessments/InviteManagementTable', () => ({
   InviteManagementTable: () => <div data-testid="invite-table" />,
 }));
-vi.mock('@/shared/theme', () => ({
-  useColors: () => ({
-    bg: '#fff', text: '#000', textMuted: '#888', accent: '#c9a962', border: '#ccc',
-    borderStrong: '#999', card: '#fff', muted: '#f5f5f5', error: '#f00', errorBg: '#fee',
-    success: '#0a0', successBg: '#efe', primary: '#000', primaryForeground: '#fff',
-    secondary: '#eee', secondaryForeground: '#000', destructive: '#f00',
-    textSubtle: '#aaa', bgElevated: '#fafafa', accentBg: '#ffe',
-  }),
-}));
-vi.mock('@/shared/theme/tokens', () => ({
-  spacing: { xs: 4, sm: 8, md: 16, lg: 24, xl: 32, '2xl': 48 },
-  fontSizes: { xs: 12, sm: 14, md: 16, lg: 18, xl: 20, '2xl': 24, '3xl': 30, '4xl': 36 },
-  fontFamily: { display: 'serif', body: 'sans-serif' },
-  radii: { sm: 4, md: 8, lg: 12, xl: 16, full: 9999 },
-}));
+vi.mock('@/shared/theme', async () => (await import('@/shared/test/helpers')).mockTheme());
+vi.mock('@/shared/theme/tokens', async () => (await import('@/shared/test/helpers')).mockTokens());
 
 const ok = (data: any) => ({ ok: true, json: () => Promise.resolve(data) });
 
@@ -138,7 +125,7 @@ describe('AssessmentResultsDashboardScreen', () => {
 
   it('renders loading state initially', () => {
     const { container } = render(<AssessmentResultsDashboardScreen />);
-    expect(container.querySelector('[data-testid="skeleton-table"]')).toBeTruthy();
+    expect(container.querySelector('[data-testid="skeleton-table"]')).toBeInTheDocument();
   });
 
   it('redirects to Login when user is not authenticated', async () => {
@@ -159,14 +146,14 @@ describe('AssessmentResultsDashboardScreen', () => {
   it('renders "Assessment Results" title', async () => {
     render(<AssessmentResultsDashboardScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Assessment Results')).toBeTruthy();
+      expect(screen.getByText('Assessment Results')).toBeInTheDocument();
     });
   });
 
   it('shows candidate count in subtitle', async () => {
     render(<AssessmentResultsDashboardScreen />);
     await waitFor(() => {
-      expect(screen.getByText(/2 candidates have taken this assessment/)).toBeTruthy();
+      expect(screen.getByText(/2 candidates have taken this assessment/)).toBeInTheDocument();
     });
   });
 
@@ -179,20 +166,20 @@ describe('AssessmentResultsDashboardScreen', () => {
     });
     render(<AssessmentResultsDashboardScreen />);
     await waitFor(() => {
-      expect(screen.getByText(/1 candidate have taken this assessment/)).toBeTruthy();
+      expect(screen.getByText(/1 candidate have taken this assessment/)).toBeInTheDocument();
     });
   });
 
   it('renders "Back to Assessments" button', async () => {
     render(<AssessmentResultsDashboardScreen />);
     await waitFor(() => {
-      expect(screen.getByText(/Back to Assessments/)).toBeTruthy();
+      expect(screen.getByText(/Back to Assessments/)).toBeInTheDocument();
     });
   });
 
   it('navigates to Assessments when back button is clicked', async () => {
     render(<AssessmentResultsDashboardScreen />);
-    await waitFor(() => expect(screen.getByText(/Back to Assessments/)).toBeTruthy());
+    await waitFor(() => expect(screen.getByText(/Back to Assessments/)).toBeInTheDocument());
     fireEvent.click(screen.getByText(/Back to Assessments/));
     expect(mockNavigate).toHaveBeenCalledWith('Assessments');
   });
@@ -206,38 +193,38 @@ describe('AssessmentResultsDashboardScreen', () => {
     });
     render(<AssessmentResultsDashboardScreen />);
     await waitFor(() => {
-      expect(screen.getByText('No Results Yet')).toBeTruthy();
-      expect(screen.getByText('Invite candidates to take this assessment.')).toBeTruthy();
+      expect(screen.getByText('No Results Yet')).toBeInTheDocument();
+      expect(screen.getByText('Invite candidates to take this assessment.')).toBeInTheDocument();
     });
   });
 
   it('renders candidate name in results table', async () => {
     render(<AssessmentResultsDashboardScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Alice Smith')).toBeTruthy();
+      expect(screen.getByText('Alice Smith')).toBeInTheDocument();
     });
   });
 
   it('shows email when candidate name is null', async () => {
     render(<AssessmentResultsDashboardScreen />);
     await waitFor(() => {
-      expect(screen.getByText('bob@test.com')).toBeTruthy();
+      expect(screen.getByText('bob@test.com')).toBeInTheDocument();
     });
   });
 
   it('renders session status badges', async () => {
     render(<AssessmentResultsDashboardScreen />);
     await waitFor(() => {
-      expect(screen.getByText('completed')).toBeTruthy();
-      expect(screen.getByText('in_progress')).toBeTruthy();
+      expect(screen.getByText('completed')).toBeInTheDocument();
+      expect(screen.getByText('in_progress')).toBeInTheDocument();
     });
   });
 
   it('renders challenges passed counts', async () => {
     render(<AssessmentResultsDashboardScreen />);
     await waitFor(() => {
-      expect(screen.getByText('4/5')).toBeTruthy();
-      expect(screen.getByText('2/5')).toBeTruthy();
+      expect(screen.getByText('4/5')).toBeInTheDocument();
+      expect(screen.getByText('2/5')).toBeInTheDocument();
     });
   });
 
@@ -254,8 +241,8 @@ describe('AssessmentResultsDashboardScreen', () => {
   it('renders token counts', async () => {
     render(<AssessmentResultsDashboardScreen />);
     await waitFor(() => {
-      expect(screen.getByText('1,500')).toBeTruthy();
-      expect(screen.getByText('900')).toBeTruthy();
+      expect(screen.getByText('1,500')).toBeInTheDocument();
+      expect(screen.getByText('900')).toBeInTheDocument();
     });
   });
 
@@ -274,7 +261,7 @@ describe('AssessmentResultsDashboardScreen', () => {
   it('renders Export CSV button when results exist', async () => {
     render(<AssessmentResultsDashboardScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Export CSV')).toBeTruthy();
+      expect(screen.getByText('Export CSV')).toBeInTheDocument();
     });
   });
 
@@ -287,7 +274,7 @@ describe('AssessmentResultsDashboardScreen', () => {
     });
     render(<AssessmentResultsDashboardScreen />);
     await waitFor(() => {
-      expect(screen.getByText('No Results Yet')).toBeTruthy();
+      expect(screen.getByText('No Results Yet')).toBeInTheDocument();
     });
     expect(screen.queryByText('Export CSV')).toBeNull();
   });
@@ -295,7 +282,7 @@ describe('AssessmentResultsDashboardScreen', () => {
   it('renders Compare Candidates button when 2+ results', async () => {
     render(<AssessmentResultsDashboardScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Compare Candidates')).toBeTruthy();
+      expect(screen.getByText('Compare Candidates')).toBeInTheDocument();
     });
   });
 
@@ -308,23 +295,23 @@ describe('AssessmentResultsDashboardScreen', () => {
     });
     render(<AssessmentResultsDashboardScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Alice Smith')).toBeTruthy();
+      expect(screen.getByText('Alice Smith')).toBeInTheDocument();
     });
     expect(screen.queryByText('Compare Candidates')).toBeNull();
   });
 
   it('toggles comparison view when Compare Candidates is clicked', async () => {
     render(<AssessmentResultsDashboardScreen />);
-    await waitFor(() => expect(screen.getByText('Compare Candidates')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Compare Candidates')).toBeInTheDocument());
     fireEvent.click(screen.getByText('Compare Candidates'));
     await waitFor(() => {
-      expect(screen.getByText('Hide Comparison')).toBeTruthy();
+      expect(screen.getByText('Hide Comparison')).toBeInTheDocument();
     });
   });
 
   it('renders comparison view component when toggled on', async () => {
     const { container } = render(<AssessmentResultsDashboardScreen />);
-    await waitFor(() => expect(screen.getByText('Compare Candidates')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Compare Candidates')).toBeInTheDocument());
     fireEvent.click(screen.getByText('Compare Candidates'));
     await waitFor(() => {
       expect(container.querySelector('[data-testid="comparison-view"]')).not.toBeNull();
@@ -334,14 +321,14 @@ describe('AssessmentResultsDashboardScreen', () => {
   it('renders Results and Invites tabs', async () => {
     render(<AssessmentResultsDashboardScreen />);
     await waitFor(() => {
-      expect(screen.getByText(/Results \(/)).toBeTruthy();
-      expect(screen.getByText('Invites')).toBeTruthy();
+      expect(screen.getByText(/Results \(/)).toBeInTheDocument();
+      expect(screen.getByText('Invites')).toBeInTheDocument();
     });
   });
 
   it('shows invite management table when Invites tab is clicked', async () => {
     const { container } = render(<AssessmentResultsDashboardScreen />);
-    await waitFor(() => expect(screen.getByText('Invites')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Invites')).toBeInTheDocument());
     fireEvent.click(screen.getByText('Invites'));
     await waitFor(() => {
       expect(container.querySelector('[data-testid="invite-table"]')).not.toBeNull();
@@ -359,28 +346,28 @@ describe('AssessmentResultsDashboardScreen', () => {
     render(<AssessmentResultsDashboardScreen />);
     await waitFor(() => {
       // mockCandidate1: completedAt - startedAt = 1h = 60m = "1h 0m"
-      expect(screen.getByText('1h 0m')).toBeTruthy();
+      expect(screen.getByText('1h 0m')).toBeInTheDocument();
     });
   });
 
   it('shows - for duration when session is not completed', async () => {
     render(<AssessmentResultsDashboardScreen />);
     await waitFor(() => {
-      expect(screen.getByText('-')).toBeTruthy();
+      expect(screen.getByText('-')).toBeInTheDocument();
     });
   });
 
   it('renders Signals column header', async () => {
     render(<AssessmentResultsDashboardScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Signals')).toBeTruthy();
+      expect(screen.getByText('Signals')).toBeInTheDocument();
     });
   });
 
   it('renders Actions column header', async () => {
     render(<AssessmentResultsDashboardScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Actions')).toBeTruthy();
+      expect(screen.getByText('Actions')).toBeInTheDocument();
     });
   });
 
@@ -388,7 +375,7 @@ describe('AssessmentResultsDashboardScreen', () => {
     render(<AssessmentResultsDashboardScreen />);
     await waitFor(() => {
       // mockInsightsData for s1 has 1 green flag and 1 yellow flag
-      expect(screen.getByText('Alice Smith')).toBeTruthy();
+      expect(screen.getByText('Alice Smith')).toBeInTheDocument();
     });
   });
 
@@ -411,7 +398,7 @@ describe('AssessmentResultsDashboardScreen', () => {
     });
 
     render(<AssessmentResultsDashboardScreen />);
-    await waitFor(() => expect(screen.getByText('Export CSV')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Export CSV')).toBeInTheDocument());
     fireEvent.click(screen.getByText('Export CSV'));
     expect(mockClick).toHaveBeenCalled();
     expect(mockRevokeObjectURL).toHaveBeenCalledWith(mockUrl);
@@ -448,14 +435,14 @@ describe('AssessmentResultsDashboardScreen', () => {
     });
     const { container } = render(<AssessmentResultsDashboardScreen />);
     await waitFor(() => {
-      expect(screen.getByText(/Verdict/)).toBeTruthy();
+      expect(screen.getByText(/Verdict/)).toBeInTheDocument();
       expect(container.querySelector('[data-testid="verdict-badge"]')).not.toBeNull();
     });
   });
 
   it('expands row to show insights when clicked', async () => {
     const { container } = render(<AssessmentResultsDashboardScreen />);
-    await waitFor(() => expect(screen.getByText('Alice Smith')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Alice Smith')).toBeInTheDocument());
     fireEvent.click(screen.getByText('Alice Smith'));
     await waitFor(() => {
       expect(container.querySelector('[data-testid="insights-panel"]')).not.toBeNull();
@@ -464,7 +451,7 @@ describe('AssessmentResultsDashboardScreen', () => {
 
   it('collapses expanded row when clicked again', async () => {
     const { container } = render(<AssessmentResultsDashboardScreen />);
-    await waitFor(() => expect(screen.getByText('Alice Smith')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Alice Smith')).toBeInTheDocument());
     fireEvent.click(screen.getByText('Alice Smith'));
     await waitFor(() => {
       expect(container.querySelector('[data-testid="insights-panel"]')).not.toBeNull();
@@ -484,52 +471,52 @@ describe('AssessmentResultsDashboardScreen', () => {
       '/api/assessments/test-assessment-123': ok({ passThreshold: null, categoryWeights: null }),
     });
     const { container } = render(<AssessmentResultsDashboardScreen />);
-    await waitFor(() => expect(screen.getByText('bob@test.com')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('bob@test.com')).toBeInTheDocument());
     fireEvent.click(screen.getByText('bob@test.com'));
     await waitFor(() => {
-      expect(screen.getByText('AI Profile')).toBeTruthy();
+      expect(screen.getByText('AI Profile')).toBeInTheDocument();
       expect(container.querySelector('[data-testid="ai-radar"]')).not.toBeNull();
     });
   });
 
   it('renders challenge breakdown in expanded row when attempts exist', async () => {
     render(<AssessmentResultsDashboardScreen />);
-    await waitFor(() => expect(screen.getByText('Alice Smith')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Alice Smith')).toBeInTheDocument());
     fireEvent.click(screen.getByText('Alice Smith'));
     await waitFor(() => {
-      expect(screen.getByText('Challenge Breakdown')).toBeTruthy();
-      expect(screen.getByText('FizzBuzz')).toBeTruthy();
+      expect(screen.getByText('Challenge Breakdown')).toBeInTheDocument();
+      expect(screen.getByText('FizzBuzz')).toBeInTheDocument();
     });
   });
 
   it('renders model usage badges in expanded attempt', async () => {
     render(<AssessmentResultsDashboardScreen />);
-    await waitFor(() => expect(screen.getByText('Alice Smith')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Alice Smith')).toBeInTheDocument());
     fireEvent.click(screen.getByText('Alice Smith'));
     await waitFor(() => {
-      expect(screen.getByText(/Llama 70B/)).toBeTruthy();
+      expect(screen.getByText(/Llama 70B/)).toBeInTheDocument();
     });
   });
 
   it('renders View Replay link in expanded attempt', async () => {
     render(<AssessmentResultsDashboardScreen />);
-    await waitFor(() => expect(screen.getByText('Alice Smith')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Alice Smith')).toBeInTheDocument());
     fireEvent.click(screen.getByText('Alice Smith'));
     await waitFor(() => {
-      expect(screen.getByText('View Replay')).toBeTruthy();
+      expect(screen.getByText('View Replay')).toBeInTheDocument();
     });
   });
 
   it('navigates to Replay when View Replay is clicked', async () => {
     render(<AssessmentResultsDashboardScreen />);
-    await waitFor(() => expect(screen.getByText('Alice Smith')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Alice Smith')).toBeInTheDocument());
     fireEvent.click(screen.getByText('Alice Smith'));
-    await waitFor(() => expect(screen.getByText('View Replay')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('View Replay')).toBeInTheDocument());
     fireEvent.click(screen.getByText('View Replay'));
     expect(mockNavigate).toHaveBeenCalledWith('Replay', { attemptId: 'att1' });
   });
 
-  /* ── categoryWeights parsing (line 147) ──────────────────────────── */
+  /* ── categoryWeights parsing from assessment data ──────────────────────────── */
   it('parses categoryWeights from assessment data', async () => {
     setupFetch({
       '/api/assessments/test-assessment-123/results': ok([mockCandidate1]),
@@ -542,11 +529,11 @@ describe('AssessmentResultsDashboardScreen', () => {
     });
     render(<AssessmentResultsDashboardScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Alice Smith')).toBeTruthy();
+      expect(screen.getByText('Alice Smith')).toBeInTheDocument();
     });
   });
 
-  /* ── formatDuration for <60 minutes (line 169) ───────────────────── */
+  /* ── formatDuration renders short sessions in minutes ───────────────────── */
   it('renders short duration in minutes format', async () => {
     const shortSession = {
       ...mockCandidate1,
@@ -560,17 +547,17 @@ describe('AssessmentResultsDashboardScreen', () => {
     });
     render(<AssessmentResultsDashboardScreen />);
     await waitFor(() => {
-      expect(screen.getByText('25m')).toBeTruthy();
+      expect(screen.getByText('25m')).toBeInTheDocument();
     });
   });
 
-  /* ── handleSort: toggling sort direction and changing sort key (lines 174-179) ── */
+  /* ── handleSort: toggles direction and switches sort key ── */
   it('sorts by candidate name when Candidate header is clicked and toggles direction', async () => {
     render(<AssessmentResultsDashboardScreen />);
-    await waitFor(() => expect(screen.getByText('Alice Smith')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Alice Smith')).toBeInTheDocument());
     // Default sort is by 'cost', so the Cost header has the ▲ indicator.
     // The SortHeader text is: "Cost ▲" (ascending by cost)
-    expect(screen.getByText(/Cost.*\u25B2/)).toBeTruthy();
+    expect(screen.getByText(/Cost.*\u25B2/)).toBeInTheDocument();
 
     // Click "Candidate" header - find the parent Pressable element and click it
     const candidateText = screen.getByText('Candidate');
@@ -580,42 +567,42 @@ describe('AssessmentResultsDashboardScreen', () => {
     // After clicking Candidate, sort changes to 'name' ascending
     // The Candidate header should now show ▲
     await waitFor(() => {
-      expect(screen.getByText(/Candidate.*\u25B2/)).toBeTruthy();
+      expect(screen.getByText(/Candidate.*\u25B2/)).toBeInTheDocument();
     });
 
     // Click Candidate header again to toggle direction to descending
     fireEvent.click(screen.getByText(/Candidate.*\u25B2/));
     await waitFor(() => {
-      expect(screen.getByText(/Candidate.*\u25BC/)).toBeTruthy();
+      expect(screen.getByText(/Candidate.*\u25BC/)).toBeInTheDocument();
     });
   });
 
   it('sorts by status when Status header is clicked', async () => {
     render(<AssessmentResultsDashboardScreen />);
-    await waitFor(() => expect(screen.getByText('Alice Smith')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Alice Smith')).toBeInTheDocument());
     fireEvent.click(screen.getByText('Status'));
-    expect(screen.getByText('Alice Smith')).toBeTruthy();
+    expect(screen.getByText('Alice Smith')).toBeInTheDocument();
   });
 
   it('sorts by passed when Passed header is clicked', async () => {
     render(<AssessmentResultsDashboardScreen />);
-    await waitFor(() => expect(screen.getByText('Alice Smith')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Alice Smith')).toBeInTheDocument());
     fireEvent.click(screen.getByText('Passed'));
-    expect(screen.getByText('Alice Smith')).toBeTruthy();
+    expect(screen.getByText('Alice Smith')).toBeInTheDocument();
   });
 
   it('sorts by tokens when Tokens header is clicked', async () => {
     render(<AssessmentResultsDashboardScreen />);
-    await waitFor(() => expect(screen.getByText('Alice Smith')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Alice Smith')).toBeInTheDocument());
     fireEvent.click(screen.getByText('Tokens'));
-    expect(screen.getByText('Alice Smith')).toBeTruthy();
+    expect(screen.getByText('Alice Smith')).toBeInTheDocument();
   });
 
   it('sorts by time when Time header is clicked', async () => {
     render(<AssessmentResultsDashboardScreen />);
-    await waitFor(() => expect(screen.getByText('Alice Smith')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Alice Smith')).toBeInTheDocument());
     fireEvent.click(screen.getByText('Time'));
-    expect(screen.getByText('Alice Smith')).toBeTruthy();
+    expect(screen.getByText('Alice Smith')).toBeInTheDocument();
   });
 
   it('sorts by verdict when Verdict header is clicked (passThreshold enabled)', async () => {
@@ -629,12 +616,12 @@ describe('AssessmentResultsDashboardScreen', () => {
       }),
     });
     render(<AssessmentResultsDashboardScreen />);
-    await waitFor(() => expect(screen.getByText(/Verdict/)).toBeTruthy());
+    await waitFor(() => expect(screen.getByText(/Verdict/)).toBeInTheDocument());
     fireEvent.click(screen.getByText(/Verdict/));
-    expect(screen.getByText('Alice Smith')).toBeTruthy();
+    expect(screen.getByText('Alice Smith')).toBeInTheDocument();
   });
 
-  /* ── Verdict filter click (lines 190, 361) ────────────────────────── */
+  /* ── verdict filter hides non-matching candidates ────────────────────────── */
   it('filters results by verdict when filter button is clicked', async () => {
     setupFetch({
       '/api/assessments/test-assessment-123/results': ok([mockCandidate1, mockCandidate2]),
@@ -662,7 +649,7 @@ describe('AssessmentResultsDashboardScreen', () => {
     });
   });
 
-  /* ── getRowBg: different backgrounds for pass/partial/fail (lines 225-227) ── */
+  /* ── getRowBg: applies different backgrounds for pass/partial/fail ── */
   it('renders green row background for candidate who passed all challenges', async () => {
     const perfectCandidate = {
       session: { id: 's-perf', status: 'completed', totalCost: 4000, totalTokens: 1200, startedAt: '2026-01-01T00:00:00Z', completedAt: '2026-01-01T00:30:00Z', shareToken: null },
@@ -686,26 +673,26 @@ describe('AssessmentResultsDashboardScreen', () => {
     });
     render(<AssessmentResultsDashboardScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Perfect Pat')).toBeTruthy();
-      expect(screen.getByText('Zero Zach')).toBeTruthy();
-      expect(screen.getByText('5/5')).toBeTruthy();
-      expect(screen.getByText('0/5')).toBeTruthy();
+      expect(screen.getByText('Perfect Pat')).toBeInTheDocument();
+      expect(screen.getByText('Zero Zach')).toBeInTheDocument();
+      expect(screen.getByText('5/5')).toBeInTheDocument();
+      expect(screen.getByText('0/5')).toBeInTheDocument();
     });
   });
 
-  /* ── Tab switching back to results (line 327) ────────────────────── */
+  /* ── switches back to results tab after viewing invites ────────────────────── */
   it('switches back to results tab after viewing invites', async () => {
     render(<AssessmentResultsDashboardScreen />);
-    await waitFor(() => expect(screen.getByText('Invites')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Invites')).toBeInTheDocument());
     // Switch to invites
     fireEvent.click(screen.getByText('Invites'));
     await waitFor(() => expect(screen.queryByText('Alice Smith')).toBeNull());
     // Switch back to results
     fireEvent.click(screen.getByText(/Results \(/));
-    await waitFor(() => expect(screen.getByText('Alice Smith')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Alice Smith')).toBeInTheDocument());
   });
 
-  /* ── Share token link click (lines 492-493) ──────────────────────── */
+  /* ── opens share results link in new tab ──────────────────────── */
   it('opens share results link in new tab when View Results is clicked', async () => {
     const mockOpen = vi.fn();
     vi.stubGlobal('open', mockOpen);

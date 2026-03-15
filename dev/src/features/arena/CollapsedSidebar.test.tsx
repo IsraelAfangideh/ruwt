@@ -29,14 +29,14 @@ const defaultProps = {
 describe('CollapsedSidebar', () => {
   it('renders collapsed sidebar container', () => {
     render(<CollapsedSidebar {...defaultProps} />);
-    expect(screen.getByTestId('collapsed-sidebar')).toBeTruthy();
+    expect(screen.getByTestId('collapsed-sidebar')).toBeInTheDocument();
   });
 
   it('renders tab buttons for each tab', () => {
     render(<CollapsedSidebar {...defaultProps} />);
-    expect(screen.getByLabelText('Expand Description')).toBeTruthy();
-    expect(screen.getByLabelText('Expand AI Chat')).toBeTruthy();
-    expect(screen.getByLabelText('Expand Discussion')).toBeTruthy();
+    expect(screen.getByLabelText('Expand Description')).toBeInTheDocument();
+    expect(screen.getByLabelText('Expand AI Chat')).toBeInTheDocument();
+    expect(screen.getByLabelText('Expand Discussion')).toBeInTheDocument();
   });
 
   it('calls onExpandTab with correct tab when clicked', () => {
@@ -48,7 +48,7 @@ describe('CollapsedSidebar', () => {
 
   it('shows unread dot when hasUnreadChat is true', () => {
     render(<CollapsedSidebar {...defaultProps} hasUnreadChat={true} />);
-    expect(screen.getByTestId('collapsed-unread-dot')).toBeTruthy();
+    expect(screen.getByTestId('collapsed-unread-dot')).toBeInTheDocument();
   });
 
   it('does not show unread dot when hasUnreadChat is false', () => {
@@ -58,7 +58,7 @@ describe('CollapsedSidebar', () => {
 
   it('renders position toggle button', () => {
     render(<CollapsedSidebar {...defaultProps} />);
-    expect(screen.getByLabelText('Move sidebar to right')).toBeTruthy();
+    expect(screen.getByLabelText('Move sidebar to right')).toBeInTheDocument();
   });
 
   it('calls onTogglePosition when position button clicked', () => {
@@ -70,12 +70,12 @@ describe('CollapsedSidebar', () => {
 
   it('shows "Move sidebar to left" when position is right', () => {
     render(<CollapsedSidebar {...defaultProps} sidebarPosition="right" />);
-    expect(screen.getByLabelText('Move sidebar to left')).toBeTruthy();
+    expect(screen.getByLabelText('Move sidebar to left')).toBeInTheDocument();
   });
 
   it('renders results tab when included', () => {
     render(<CollapsedSidebar {...defaultProps} tabs={['description', 'chat', 'discussion', 'results']} />);
-    expect(screen.getByLabelText('Expand Results')).toBeTruthy();
+    expect(screen.getByLabelText('Expand Results')).toBeInTheDocument();
   });
 
   it('hover interactions do not crash', () => {

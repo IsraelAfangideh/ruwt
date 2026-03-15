@@ -24,18 +24,9 @@ vi.mock('@/shared/lib/supabase/client', () => ({
   }),
 }));
 
-vi.mock('@/shared/theme', () => ({
-  useColors: () => ({
-    text: '#000', textMuted: '#888', accent: '#c9a962', border: '#ccc',
-    card: '#fff', destructive: '#b06060', mutedForeground: '#555',
-  }),
-}));
+vi.mock('@/shared/theme', async () => (await import('@/shared/test/helpers')).mockTheme());
 
-vi.mock('@/shared/theme/tokens', () => ({
-  spacing: { xs: 4, sm: 8, md: 16 },
-  fontSizes: { xs: 12, sm: 14 },
-  fontFamily: { body: 'sans-serif' },
-}));
+vi.mock('@/shared/theme/tokens', async () => (await import('@/shared/test/helpers')).mockTokens());
 
 vi.mock('@/shared/ui/Avatar', () => ({
   Avatar: ({ fallback }: any) => <span data-testid="avatar">{fallback}</span>,
@@ -79,30 +70,30 @@ describe('UserNav', () => {
 
   it('renders user avatar with correct initials', () => {
     render(<UserNav user={mockUser} />);
-    expect(screen.getByText('TU')).toBeTruthy();
+    expect(screen.getByText('TU')).toBeInTheDocument();
   });
 
   it('uses first letter of email when no name', () => {
     const emailUser = { id: '2', email: 'alice@ruwt.dev', user_metadata: {} } as any;
     render(<UserNav user={emailUser} />);
-    expect(screen.getByText('A')).toBeTruthy();
+    expect(screen.getByText('A')).toBeInTheDocument();
   });
 
   it('falls back to ? when no email', () => {
     const noEmailUser = { id: '3', user_metadata: {} } as any;
     render(<UserNav user={noEmailUser} />);
-    expect(screen.getByText('?')).toBeTruthy();
+    expect(screen.getByText('?')).toBeInTheDocument();
   });
 
   it('opens dropdown menu on click', () => {
     render(<UserNav user={mockUser} />);
     fireEvent.click(screen.getByTestId('avatar'));
-    expect(screen.getByText('Test User')).toBeTruthy();
-    expect(screen.getByText('test@ruwt.dev')).toBeTruthy();
-    expect(screen.getByText('Profile')).toBeTruthy();
-    expect(screen.getByText('Bookmarks')).toBeTruthy();
-    expect(screen.getByText('Settings')).toBeTruthy();
-    expect(screen.getByText('Sign out')).toBeTruthy();
+    expect(screen.getByText('Test User')).toBeInTheDocument();
+    expect(screen.getByText('test@ruwt.dev')).toBeInTheDocument();
+    expect(screen.getByText('Profile')).toBeInTheDocument();
+    expect(screen.getByText('Bookmarks')).toBeInTheDocument();
+    expect(screen.getByText('Settings')).toBeInTheDocument();
+    expect(screen.getByText('Sign out')).toBeInTheDocument();
   });
 
   it('hides mode indicator and org settings for org members in practice mode', () => {
@@ -126,8 +117,8 @@ describe('UserNav', () => {
     };
     render(<UserNav user={mockUser} />);
     fireEvent.click(screen.getByTestId('avatar'));
-    expect(screen.getByText('Acme Corp')).toBeTruthy();
-    expect(screen.getByText('Org Settings')).toBeTruthy();
+    expect(screen.getByText('Acme Corp')).toBeInTheDocument();
+    expect(screen.getByText('Org Settings')).toBeInTheDocument();
   });
 
   it('hides org settings for non-org members', () => {
@@ -169,22 +160,22 @@ describe('UserNav', () => {
   it('closes menu when overlay is clicked', () => {
     const { container } = render(<UserNav user={mockUser} />);
     fireEvent.click(screen.getByTestId('avatar'));
-    expect(screen.getByText('Profile')).toBeTruthy();
+    expect(screen.getByText('Profile')).toBeInTheDocument();
     const overlayBtn = container.querySelector('[accessibilitylabel="Close account menu"]') as HTMLElement;
     expect(overlayBtn).not.toBeNull();
     fireEvent.click(overlayBtn);
     expect(screen.queryByText('Profile')).toBeNull();
   });
 
-  it('closes menu on Escape key press (line 21)', () => {
+  it('closes menu on Escape key press', () => {
     render(<UserNav user={mockUser} />);
     fireEvent.click(screen.getByTestId('avatar'));
-    expect(screen.getByText('Profile')).toBeTruthy();
+    expect(screen.getByText('Profile')).toBeInTheDocument();
     fireEvent.keyDown(document, { key: 'Escape' });
     expect(screen.queryByText('Profile')).toBeNull();
   });
 
-  it('ignores Escape key when menu is closed (line 21 false branch)', () => {
+  it('ignores Escape key when menu is already closed', () => {
     render(<UserNav user={mockUser} />);
     fireEvent.keyDown(document, { key: 'Escape' });
     expect(screen.queryByText('Profile')).toBeNull();

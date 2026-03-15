@@ -31,21 +31,8 @@ vi.mock('@/shared/lib/difficulty', () => ({
   getDifficultyStyle: () => ({ color: '#38bdf8', bg: 'rgba(56,189,248,0.12)', label: 'Medium' }),
 }));
 vi.mock('@/shared/hooks/useDocumentMeta', () => ({ useDocumentMeta: () => {} }));
-vi.mock('@/shared/theme', () => ({
-  useColors: () => ({
-    bg: '#fff', text: '#000', textMuted: '#888', accent: '#c9a962', border: '#ccc',
-    borderStrong: '#999', card: '#fff', muted: '#f5f5f5', error: '#f00', errorBg: '#fee',
-    success: '#0a0', successBg: '#efe', primary: '#000', primaryForeground: '#fff',
-    secondary: '#eee', secondaryForeground: '#000', destructive: '#f00',
-    textSubtle: '#aaa', bgElevated: '#fafafa', accentBg: '#ffe',
-  }),
-}));
-vi.mock('@/shared/theme/tokens', () => ({
-  spacing: { xs: 4, sm: 8, md: 16, lg: 24, xl: 32, '2xl': 48 },
-  fontSizes: { xs: 12, sm: 14, md: 16, lg: 18, xl: 20, '2xl': 24, '3xl': 30, '4xl': 36 },
-  fontFamily: { display: 'serif', body: 'sans-serif', mono: 'monospace' },
-  radii: { sm: 4, md: 8, lg: 12, xl: 16, full: 9999 },
-}));
+vi.mock('@/shared/theme', async () => (await import('@/shared/test/helpers')).mockTheme());
+vi.mock('@/shared/theme/tokens', async () => (await import('@/shared/test/helpers')).mockTokens({ mono: true }));
 
 const mockChallenge = {
   id: 'fizzbuzz-budget',
@@ -81,7 +68,7 @@ describe('GuestArenaScreen', () => {
   it('renders loading state initially', async () => {
     vi.stubGlobal('fetch', vi.fn().mockReturnValue(new Promise(() => {})));
     const { container } = render(<GuestArenaScreen />);
-    expect(container.querySelector('[data-testid="skeleton-split-pane"]')).toBeTruthy();
+    expect(container.querySelector('[data-testid="skeleton-split-pane"]')).toBeInTheDocument();
   });
 
   it('renders error when challenge not found (404)', async () => {
@@ -140,8 +127,8 @@ describe('GuestArenaScreen', () => {
     await waitFor(() => {
       expect(screen.getAllByText('FizzBuzz Budget').length).toBeGreaterThanOrEqual(1);
     });
-    expect(screen.getByText('GUEST MODE')).toBeTruthy();
-    expect(screen.getByText('Medium')).toBeTruthy();
+    expect(screen.getByText('GUEST MODE')).toBeInTheDocument();
+    expect(screen.getByText('Medium')).toBeInTheDocument();
   });
 
   it('renders header navigation button to ruwt.dev', async () => {
@@ -160,63 +147,63 @@ describe('GuestArenaScreen', () => {
     await waitFor(() => {
       expect(screen.getAllByText('FizzBuzz Budget').length).toBeGreaterThanOrEqual(1);
     });
-    expect(screen.getByText('Run Tests')).toBeTruthy();
-    expect(screen.getByText('Submit')).toBeTruthy();
+    expect(screen.getByText('Run Tests')).toBeInTheDocument();
+    expect(screen.getByText('Submit')).toBeInTheDocument();
   });
 
   it('shows signup overlay when Run Tests header button is clicked', async () => {
     render(<GuestArenaScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Run Tests')).toBeTruthy();
+      expect(screen.getByText('Run Tests')).toBeInTheDocument();
     });
     fireEvent.click(screen.getByText('Run Tests'));
     await waitFor(() => {
-      expect(screen.getByText('Sign Up to Continue')).toBeTruthy();
-      expect(screen.getByText(/Create a free account/)).toBeTruthy();
+      expect(screen.getByText('Sign Up to Continue')).toBeInTheDocument();
+      expect(screen.getByText(/Create a free account/)).toBeInTheDocument();
     });
   });
 
   it('shows signup overlay when Submit header button is clicked', async () => {
     render(<GuestArenaScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Submit')).toBeTruthy();
+      expect(screen.getByText('Submit')).toBeInTheDocument();
     });
     fireEvent.click(screen.getByText('Submit'));
     await waitFor(() => {
-      expect(screen.getByText('Sign Up to Continue')).toBeTruthy();
+      expect(screen.getByText('Sign Up to Continue')).toBeInTheDocument();
     });
   });
 
   it('stores challengeId in localStorage when guest action is triggered', async () => {
     render(<GuestArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Run Tests')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Run Tests')).toBeInTheDocument());
     fireEvent.click(screen.getByText('Run Tests'));
     expect(localStorage.getItem('ruwt_pending_challenge')).toBe('fizzbuzz-budget');
   });
 
   it('navigates to Register when Sign Up Free is clicked in overlay', async () => {
     render(<GuestArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Run Tests')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Run Tests')).toBeInTheDocument());
     fireEvent.click(screen.getByText('Run Tests'));
-    await waitFor(() => expect(screen.getByText('Sign Up Free')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Sign Up Free')).toBeInTheDocument());
     fireEvent.click(screen.getByText('Sign Up Free'));
     expect(mockNavigate).toHaveBeenCalledWith('Register');
   });
 
   it('navigates to Login when Sign In is clicked in overlay', async () => {
     render(<GuestArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Run Tests')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Run Tests')).toBeInTheDocument());
     fireEvent.click(screen.getByText('Run Tests'));
-    await waitFor(() => expect(screen.getByText(/Already have an account/)).toBeTruthy());
+    await waitFor(() => expect(screen.getByText(/Already have an account/)).toBeInTheDocument());
     fireEvent.click(screen.getByText(/Already have an account/));
     expect(mockNavigate).toHaveBeenCalledWith('Login');
   });
 
   it('dismisses signup overlay when Continue exploring is clicked', async () => {
     render(<GuestArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Run Tests')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Run Tests')).toBeInTheDocument());
     fireEvent.click(screen.getByText('Run Tests'));
-    await waitFor(() => expect(screen.getByText('Continue exploring')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Continue exploring')).toBeInTheDocument());
     fireEvent.click(screen.getByText('Continue exploring'));
     await waitFor(() => expect(screen.queryByText('Sign Up to Continue')).toBeNull());
   });
@@ -230,10 +217,10 @@ describe('GuestArenaScreen', () => {
 
   it('onRunTests callback shows signup overlay and returns failed result', async () => {
     render(<GuestArenaScreen />);
-    await waitFor(() => expect(screen.getByTestId('run-tests-cb')).toBeTruthy());
+    await waitFor(() => expect(screen.getByTestId('run-tests-cb')).toBeInTheDocument());
     fireEvent.click(screen.getByTestId('run-tests-cb'));
     await waitFor(() => {
-      expect(screen.getByText('Sign Up to Continue')).toBeTruthy();
+      expect(screen.getByText('Sign Up to Continue')).toBeInTheDocument();
     });
   });
 
@@ -246,7 +233,7 @@ describe('GuestArenaScreen', () => {
     });
     vi.stubGlobal('fetch', fetchFn);
     render(<GuestArenaScreen />);
-    await waitFor(() => expect(screen.getByTestId('run-code-cb')).toBeTruthy());
+    await waitFor(() => expect(screen.getByTestId('run-code-cb')).toBeInTheDocument());
     fireEvent.click(screen.getByTestId('run-code-cb'));
     await waitFor(() => {
       const calls = fetchFn.mock.calls;
@@ -276,7 +263,7 @@ describe('GuestArenaScreen', () => {
     });
     vi.stubGlobal('fetch', fetchFn);
     render(<GuestArenaScreen />);
-    await waitFor(() => expect(screen.getByTestId('run-code-cb')).toBeTruthy());
+    await waitFor(() => expect(screen.getByTestId('run-code-cb')).toBeInTheDocument());
     fireEvent.click(screen.getByTestId('run-code-cb'));
     await waitFor(() => {
       const calls = fetchFn.mock.calls;
@@ -293,14 +280,14 @@ describe('GuestArenaScreen', () => {
     });
     vi.stubGlobal('fetch', fetchFn);
     render(<GuestArenaScreen />);
-    await waitFor(() => expect(screen.getByTestId('run-code-cb')).toBeTruthy());
+    await waitFor(() => expect(screen.getByTestId('run-code-cb')).toBeInTheDocument());
     fireEvent.click(screen.getByTestId('run-code-cb'));
     await waitFor(() => {
       expect(fetchFn.mock.calls.some((c: any) => c[0]?.includes('/api/execute'))).toBeTruthy();
     });
   });
 
-  it('shows error when challengeId is empty (lines 38-41)', async () => {
+  it('shows error when challengeId is empty', async () => {
     mockChallengeId = '';
     render(<GuestArenaScreen />);
     await waitFor(() => {
@@ -308,7 +295,7 @@ describe('GuestArenaScreen', () => {
     });
   });
 
-  it('onRunCode returns exitCode 0 when code is undefined and signal is falsy (line 87)', async () => {
+  it('onRunCode returns exit code 0 when response has no exit code or signal', async () => {
     const fetchFn = vi.fn().mockImplementation((url: string) => {
       if (url.includes('/api/execute')) {
         return Promise.resolve({ ok: true, json: () => Promise.resolve({ run: { stdout: 'ok', stderr: '' } }) });
@@ -317,14 +304,14 @@ describe('GuestArenaScreen', () => {
     });
     vi.stubGlobal('fetch', fetchFn);
     render(<GuestArenaScreen />);
-    await waitFor(() => expect(screen.getByTestId('run-code-cb')).toBeTruthy());
+    await waitFor(() => expect(screen.getByTestId('run-code-cb')).toBeInTheDocument());
     fireEvent.click(screen.getByTestId('run-code-cb'));
     await waitFor(() => {
       expect(fetchFn.mock.calls.some((c: any) => c[0]?.includes('/api/execute'))).toBeTruthy();
     });
   });
 
-  it('onRunCode handles empty run object in response (line 83)', async () => {
+  it('onRunCode handles empty run object in execute response', async () => {
     const fetchFn = vi.fn().mockImplementation((url: string) => {
       if (url.includes('/api/execute')) {
         return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
@@ -333,7 +320,7 @@ describe('GuestArenaScreen', () => {
     });
     vi.stubGlobal('fetch', fetchFn);
     render(<GuestArenaScreen />);
-    await waitFor(() => expect(screen.getByTestId('run-code-cb')).toBeTruthy());
+    await waitFor(() => expect(screen.getByTestId('run-code-cb')).toBeInTheDocument());
     fireEvent.click(screen.getByTestId('run-code-cb'));
     await waitFor(() => {
       expect(fetchFn.mock.calls.some((c: any) => c[0]?.includes('/api/execute'))).toBeTruthy();

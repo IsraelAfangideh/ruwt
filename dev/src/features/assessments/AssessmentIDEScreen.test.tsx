@@ -105,21 +105,8 @@ vi.mock('@/features/assessments/AssessmentChatPanel', () => ({
 vi.mock('@/features/assessments/AssessmentDocumentPanel', () => ({
   AssessmentDocumentPanel: () => <div data-testid="document-panel">Document Panel</div>,
 }));
-vi.mock('@/shared/theme', () => ({
-  useColors: () => ({
-    bg: '#fff', text: '#000', textMuted: '#888', accent: '#c9a962', border: '#ccc',
-    borderStrong: '#999', card: '#fff', muted: '#f5f5f5', error: '#f00', errorBg: '#fee',
-    success: '#0a0', successBg: '#efe', primary: '#000', primaryForeground: '#fff',
-    secondary: '#eee', secondaryForeground: '#000', destructive: '#f00',
-    textSubtle: '#aaa', bgElevated: '#fafafa', accentBg: '#ffe', bgWarm: '#faf8f5',
-  }),
-}));
-vi.mock('@/shared/theme/tokens', () => ({
-  spacing: { xs: 4, sm: 8, md: 16, lg: 24, xl: 32, '2xl': 48 },
-  fontSizes: { xs: 12, sm: 14, md: 16, lg: 18, xl: 20, '2xl': 24, '3xl': 30, '4xl': 36 },
-  fontFamily: { display: 'serif', body: 'sans-serif' },
-  radii: { sm: 4, md: 8, lg: 12, xl: 16, full: 9999 },
-}));
+vi.mock('@/shared/theme', async () => (await import('@/shared/test/helpers')).mockTheme());
+vi.mock('@/shared/theme/tokens', async () => (await import('@/shared/test/helpers')).mockTokens());
 
 const { AssessmentIDEScreen } = await import('./AssessmentIDEScreen');
 
@@ -140,7 +127,7 @@ describe('AssessmentIDEScreen', () => {
   it('renders loading skeleton when loading', () => {
     mockState.current = { ...mockState.current, loading: true };
     render(<AssessmentIDEScreen />);
-    expect(screen.getByTestId('skeleton-form')).toBeTruthy();
+    expect(screen.getByTestId('skeleton-form')).toBeInTheDocument();
   });
 
   it('returns null when no user', () => {
@@ -151,13 +138,13 @@ describe('AssessmentIDEScreen', () => {
 
   it('renders header with title', () => {
     render(<AssessmentIDEScreen />);
-    expect(screen.getByTestId('ide-header')).toBeTruthy();
-    expect(screen.getByText('My Assessment')).toBeTruthy();
+    expect(screen.getByTestId('ide-header')).toBeInTheDocument();
+    expect(screen.getByText('My Assessment')).toBeInTheDocument();
   });
 
   it('renders action bar', () => {
     render(<AssessmentIDEScreen />);
-    expect(screen.getByTestId('action-bar')).toBeTruthy();
+    expect(screen.getByTestId('action-bar')).toBeInTheDocument();
   });
 
   it('calls handleSave when action bar Save is clicked', () => {
@@ -171,22 +158,22 @@ describe('AssessmentIDEScreen', () => {
   describe('desktop layout', () => {
     it('renders resizable panel group', () => {
       render(<AssessmentIDEScreen />);
-      expect(screen.getByTestId('panel-group')).toBeTruthy();
+      expect(screen.getByTestId('panel-group')).toBeInTheDocument();
     });
 
     it('renders chat panel', () => {
       render(<AssessmentIDEScreen />);
-      expect(screen.getByTestId('chat-panel')).toBeTruthy();
+      expect(screen.getByTestId('chat-panel')).toBeInTheDocument();
     });
 
     it('renders document panel', () => {
       render(<AssessmentIDEScreen />);
-      expect(screen.getByTestId('document-panel')).toBeTruthy();
+      expect(screen.getByTestId('document-panel')).toBeInTheDocument();
     });
 
     it('renders resize bar', () => {
       render(<AssessmentIDEScreen />);
-      expect(screen.getByTestId('panel-resize-bar')).toBeTruthy();
+      expect(screen.getByTestId('panel-resize-bar')).toBeInTheDocument();
     });
 
     it('does not show mobile tab bar', () => {
@@ -203,29 +190,29 @@ describe('AssessmentIDEScreen', () => {
 
     it('renders mobile tab bar', () => {
       render(<AssessmentIDEScreen />);
-      expect(screen.getByText('Chat')).toBeTruthy();
-      expect(screen.getByText('Document')).toBeTruthy();
+      expect(screen.getByText('Chat')).toBeInTheDocument();
+      expect(screen.getByText('Document')).toBeInTheDocument();
     });
 
     it('shows chat panel by default', () => {
       render(<AssessmentIDEScreen />);
-      expect(screen.getByTestId('chat-panel')).toBeTruthy();
+      expect(screen.getByTestId('chat-panel')).toBeInTheDocument();
       expect(screen.queryByTestId('document-panel')).toBeNull();
     });
 
     it('switches to document panel when Document tab is clicked', () => {
       render(<AssessmentIDEScreen />);
       fireEvent.click(screen.getByText('Document'));
-      expect(screen.getByTestId('document-panel')).toBeTruthy();
+      expect(screen.getByTestId('document-panel')).toBeInTheDocument();
       expect(screen.queryByTestId('chat-panel')).toBeNull();
     });
 
     it('switches back to chat panel when Chat tab is clicked', () => {
       render(<AssessmentIDEScreen />);
       fireEvent.click(screen.getByText('Document'));
-      expect(screen.getByTestId('document-panel')).toBeTruthy();
+      expect(screen.getByTestId('document-panel')).toBeInTheDocument();
       fireEvent.click(screen.getByText('Chat'));
-      expect(screen.getByTestId('chat-panel')).toBeTruthy();
+      expect(screen.getByTestId('chat-panel')).toBeInTheDocument();
     });
 
     it('does not render panel group in mobile', () => {
@@ -239,11 +226,11 @@ describe('AssessmentIDEScreen', () => {
       mockIsMobile.current = true;
       render(<AssessmentIDEScreen />);
       fireEvent.click(screen.getByText('Document'));
-      expect(screen.getByTestId('document-panel')).toBeTruthy();
+      expect(screen.getByTestId('document-panel')).toBeInTheDocument();
       act(() => {
         window.dispatchEvent(new KeyboardEvent('keydown', { key: 'l', metaKey: true }));
       });
-      expect(screen.getByTestId('chat-panel')).toBeTruthy();
+      expect(screen.getByTestId('chat-panel')).toBeInTheDocument();
     });
 
     it('Ctrl+L switches to chat tab on mobile', () => {
@@ -253,13 +240,13 @@ describe('AssessmentIDEScreen', () => {
       act(() => {
         window.dispatchEvent(new KeyboardEvent('keydown', { key: 'l', ctrlKey: true }));
       });
-      expect(screen.getByTestId('chat-panel')).toBeTruthy();
+      expect(screen.getByTestId('chat-panel')).toBeInTheDocument();
     });
   });
 
   it('passes status to header', () => {
     mockState.current = { ...mockState.current, status: 'active' };
     render(<AssessmentIDEScreen />);
-    expect(screen.getByText('active')).toBeTruthy();
+    expect(screen.getByText('active')).toBeInTheDocument();
   });
 });

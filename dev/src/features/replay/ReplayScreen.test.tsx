@@ -17,21 +17,8 @@ vi.mock('@/shared/lib/ai/pricing', () => ({
   tierColor: () => '#ccc',
   formatCostFromHundredths: (c: number) => `$${(c / 10000).toFixed(4)}`,
 }));
-vi.mock('@/shared/theme', () => ({
-  useColors: () => ({
-    bg: '#fff', text: '#000', textMuted: '#888', accent: '#c9a962', border: '#ccc',
-    borderStrong: '#999', card: '#fff', muted: '#f5f5f5', error: '#f00', errorBg: '#fee',
-    success: '#0a0', successBg: '#efe', primary: '#000', primaryForeground: '#fff',
-    secondary: '#eee', secondaryForeground: '#000', destructive: '#f00',
-    textSubtle: '#aaa', bgElevated: '#fafafa', accentBg: '#ffe',
-  }),
-}));
-vi.mock('@/shared/theme/tokens', () => ({
-  spacing: { xs: 4, sm: 8, md: 16, lg: 24, xl: 32, '2xl': 48 },
-  fontSizes: { xs: 12, sm: 14, md: 16, lg: 18, xl: 20, '2xl': 24, '3xl': 30, '4xl': 36 },
-  fontFamily: { display: 'serif', body: 'sans-serif', mono: 'monospace' },
-  radii: { sm: 4, md: 8, lg: 12, xl: 16, full: 9999 },
-}));
+vi.mock('@/shared/theme', async () => (await import('@/shared/test/helpers')).mockTheme());
+vi.mock('@/shared/theme/tokens', async () => (await import('@/shared/test/helpers')).mockTokens({ mono: true }));
 
 const mockReplayData = {
   attempt: { id: 'test-attempt-123', status: 'passed', totalCost: 5000, inputTokens: 1000, outputTokens: 500, submittedAt: '2026-01-01T00:00:00Z', createdAt: '2026-01-01T00:00:00Z' },
@@ -55,7 +42,7 @@ describe('ReplayScreen', () => {
     vi.stubGlobal('fetch', vi.fn().mockReturnValue(new Promise(() => {})));
     const { ReplayScreen } = await import('./ReplayScreen');
     const { container } = render(<ReplayScreen />);
-    expect(container.querySelector('[data-testid="skeleton-split-pane"]')).toBeTruthy();
+    expect(container.querySelector('[data-testid="skeleton-split-pane"]')).toBeInTheDocument();
   });
 
   it('renders replay data after loading', async () => {
@@ -102,7 +89,7 @@ describe('ReplayScreen', () => {
     const { ReplayScreen } = await import('./ReplayScreen');
     render(<ReplayScreen />);
     await waitFor(() => {
-      expect(screen.getByText(/TestUser's Replay/)).toBeTruthy();
+      expect(screen.getByText(/TestUser's Replay/)).toBeInTheDocument();
     });
   });
 
@@ -114,7 +101,7 @@ describe('ReplayScreen', () => {
     const { ReplayScreen } = await import('./ReplayScreen');
     render(<ReplayScreen />);
     await waitFor(() => {
-      expect(screen.getByText(/FizzBuzz Budget \(medium\)/)).toBeTruthy();
+      expect(screen.getByText(/FizzBuzz Budget \(medium\)/)).toBeInTheDocument();
     });
   });
 
@@ -126,11 +113,11 @@ describe('ReplayScreen', () => {
     const { ReplayScreen } = await import('./ReplayScreen');
     render(<ReplayScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Copy Link')).toBeTruthy();
+      expect(screen.getByText('Copy Link')).toBeInTheDocument();
     });
-    expect(screen.getByText('Twitter')).toBeTruthy();
-    expect(screen.getByText('LinkedIn')).toBeTruthy();
-    expect(screen.getByText('Embed')).toBeTruthy();
+    expect(screen.getByText('Twitter')).toBeInTheDocument();
+    expect(screen.getByText('LinkedIn')).toBeInTheDocument();
+    expect(screen.getByText('Embed')).toBeInTheDocument();
   });
 
   it('copies link to clipboard when Copy Link is clicked', async () => {
@@ -143,11 +130,11 @@ describe('ReplayScreen', () => {
     const { ReplayScreen } = await import('./ReplayScreen');
     render(<ReplayScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Copy Link')).toBeTruthy();
+      expect(screen.getByText('Copy Link')).toBeInTheDocument();
     });
     fireEvent.click(screen.getByText('Copy Link'));
     await waitFor(() => {
-      expect(screen.getByText('Copied!')).toBeTruthy();
+      expect(screen.getByText('Copied!')).toBeInTheDocument();
     });
   });
 
@@ -161,7 +148,7 @@ describe('ReplayScreen', () => {
     const { ReplayScreen } = await import('./ReplayScreen');
     render(<ReplayScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Twitter')).toBeTruthy();
+      expect(screen.getByText('Twitter')).toBeInTheDocument();
     });
     fireEvent.click(screen.getByText('Twitter'));
     expect(mockOpen).toHaveBeenCalledWith(expect.stringContaining('twitter.com/intent/tweet'), '_blank');
@@ -177,7 +164,7 @@ describe('ReplayScreen', () => {
     const { ReplayScreen } = await import('./ReplayScreen');
     render(<ReplayScreen />);
     await waitFor(() => {
-      expect(screen.getByText('LinkedIn')).toBeTruthy();
+      expect(screen.getByText('LinkedIn')).toBeInTheDocument();
     });
     fireEvent.click(screen.getByText('LinkedIn'));
     expect(mockOpen).toHaveBeenCalledWith(expect.stringContaining('linkedin.com/sharing'), '_blank');
@@ -193,7 +180,7 @@ describe('ReplayScreen', () => {
     const { ReplayScreen } = await import('./ReplayScreen');
     render(<ReplayScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Embed')).toBeTruthy();
+      expect(screen.getByText('Embed')).toBeInTheDocument();
     });
     fireEvent.click(screen.getByText('Embed'));
     await waitFor(() => {
@@ -209,9 +196,9 @@ describe('ReplayScreen', () => {
     const { ReplayScreen } = await import('./ReplayScreen');
     render(<ReplayScreen />);
     await waitFor(() => {
-      expect(screen.getByText('USER')).toBeTruthy();
+      expect(screen.getByText('USER')).toBeInTheDocument();
     });
-    expect(screen.getByText('AI')).toBeTruthy();
+    expect(screen.getByText('AI')).toBeInTheDocument();
   });
 
   it('renders model name in AI message', async () => {
@@ -234,7 +221,7 @@ describe('ReplayScreen', () => {
     const { ReplayScreen } = await import('./ReplayScreen');
     render(<ReplayScreen />);
     await waitFor(() => {
-      expect(screen.getByText(/\$0\.0500/)).toBeTruthy();
+      expect(screen.getByText(/\$0\.0500/)).toBeInTheDocument();
     });
   });
 
@@ -246,7 +233,7 @@ describe('ReplayScreen', () => {
     const { ReplayScreen } = await import('./ReplayScreen');
     render(<ReplayScreen />);
     await waitFor(() => {
-      expect(screen.getByText(/Solved in 2 messages using 1 model/)).toBeTruthy();
+      expect(screen.getByText(/Solved in 2 messages using 1 model/)).toBeInTheDocument();
     });
   });
 
@@ -258,7 +245,7 @@ describe('ReplayScreen', () => {
     const { ReplayScreen } = await import('./ReplayScreen');
     render(<ReplayScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Try This Challenge')).toBeTruthy();
+      expect(screen.getByText('Try This Challenge')).toBeInTheDocument();
     });
   });
 
@@ -270,7 +257,7 @@ describe('ReplayScreen', () => {
     const { ReplayScreen } = await import('./ReplayScreen');
     render(<ReplayScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Back to Challenges')).toBeTruthy();
+      expect(screen.getByText('Back to Challenges')).toBeInTheDocument();
     });
   });
 
@@ -282,9 +269,9 @@ describe('ReplayScreen', () => {
     const { ReplayScreen } = await import('./ReplayScreen');
     render(<ReplayScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Not found')).toBeTruthy();
+      expect(screen.getByText('Not found')).toBeInTheDocument();
     });
-    expect(screen.getByText('Back to Challenges')).toBeTruthy();
+    expect(screen.getByText('Back to Challenges')).toBeInTheDocument();
   });
 
   it('shows "No messages recorded" when messages array is empty', async () => {
@@ -298,7 +285,7 @@ describe('ReplayScreen', () => {
     const { ReplayScreen } = await import('./ReplayScreen');
     render(<ReplayScreen />);
     await waitFor(() => {
-      expect(screen.getByText('No messages recorded for this attempt.')).toBeTruthy();
+      expect(screen.getByText('No messages recorded for this attempt.')).toBeInTheDocument();
     });
   });
 
@@ -314,7 +301,7 @@ describe('ReplayScreen', () => {
     const { ReplayScreen } = await import('./ReplayScreen');
     render(<ReplayScreen />);
     await waitFor(() => {
-      expect(screen.getByText(/\.\.\.$/)).toBeTruthy();
+      expect(screen.getByText(/\.\.\.$/)).toBeInTheDocument();
     });
   });
 
@@ -329,7 +316,7 @@ describe('ReplayScreen', () => {
     const { ReplayScreen } = await import('./ReplayScreen');
     render(<ReplayScreen />);
     await waitFor(() => {
-      expect(screen.getByText(/using 2 models/)).toBeTruthy();
+      expect(screen.getByText(/using 2 models/)).toBeInTheDocument();
     });
   });
 
@@ -339,7 +326,7 @@ describe('ReplayScreen', () => {
     const { ReplayScreen } = await import('./ReplayScreen');
     render(<ReplayScreen />);
     await waitFor(() => {
-      expect(screen.getByText('No attempt ID provided')).toBeTruthy();
+      expect(screen.getByText('No attempt ID provided')).toBeInTheDocument();
     });
   });
 
@@ -351,7 +338,7 @@ describe('ReplayScreen', () => {
     const { ReplayScreen } = await import('./ReplayScreen');
     render(<ReplayScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Failed to load replay')).toBeTruthy();
+      expect(screen.getByText('Failed to load replay')).toBeInTheDocument();
     });
   });
 
@@ -360,7 +347,7 @@ describe('ReplayScreen', () => {
     const { ReplayScreen } = await import('./ReplayScreen');
     render(<ReplayScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Failed to load replay')).toBeTruthy();
+      expect(screen.getByText('Failed to load replay')).toBeInTheDocument();
     });
   });
 
@@ -372,7 +359,7 @@ describe('ReplayScreen', () => {
     const { ReplayScreen } = await import('./ReplayScreen');
     render(<ReplayScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Try This Challenge')).toBeTruthy();
+      expect(screen.getByText('Try This Challenge')).toBeInTheDocument();
     });
     fireEvent.click(screen.getByText('Try This Challenge'));
     expect(mockNavigate).toHaveBeenCalledWith('Arena', { challengeId: 'FizzBuzz Budget' });
@@ -386,7 +373,7 @@ describe('ReplayScreen', () => {
     const { ReplayScreen } = await import('./ReplayScreen');
     render(<ReplayScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Back to Challenges')).toBeTruthy();
+      expect(screen.getByText('Back to Challenges')).toBeInTheDocument();
     });
     fireEvent.click(screen.getByText('Back to Challenges'));
     expect(mockNavigate).toHaveBeenCalledWith('Problems');
@@ -400,7 +387,7 @@ describe('ReplayScreen', () => {
     const { ReplayScreen } = await import('./ReplayScreen');
     render(<ReplayScreen />);
     await waitFor(() => {
-      expect(screen.getByText('\u00D7')).toBeTruthy();
+      expect(screen.getByText('\u00D7')).toBeInTheDocument();
     });
     fireEvent.click(screen.getByText('\u00D7'));
     expect(mockGoBack).toHaveBeenCalled();
@@ -416,12 +403,12 @@ describe('ReplayScreen', () => {
     render(<ReplayScreen />);
     await waitFor(() => {
       // Embed mode renders summary and messages but no header/share buttons
-      expect(screen.getByText(/solved "FizzBuzz Budget"/)).toBeTruthy();
+      expect(screen.getByText(/solved "FizzBuzz Budget"/)).toBeInTheDocument();
     });
     // Embed mode should NOT have the share buttons
     expect(screen.queryByText('Copy Link')).toBeNull();
     // But should have "View on" text
-    expect(screen.getByText(/View on/)).toBeTruthy();
+    expect(screen.getByText(/View on/)).toBeInTheDocument();
     // Restore URL
     window.history.replaceState({}, '', '/replay/test-attempt-123');
   });
@@ -439,12 +426,12 @@ describe('ReplayScreen', () => {
     const { ReplayScreen } = await import('./ReplayScreen');
     render(<ReplayScreen />);
     await waitFor(() => {
-      expect(screen.getByText('USER')).toBeTruthy();
-      expect(screen.getByText('Test question')).toBeTruthy();
+      expect(screen.getByText('USER')).toBeInTheDocument();
+      expect(screen.getByText('Test question')).toBeInTheDocument();
     });
   });
 
-  it('opens ruwt.dev link in embed mode when clicked (line 173)', async () => {
+  it('opens ruwt.dev link in new tab when clicked in embed mode', async () => {
     window.history.replaceState({}, '', '/replay/test-attempt-123?embed=1');
     const mockOpen = vi.fn();
     vi.stubGlobal('open', mockOpen);
@@ -455,7 +442,7 @@ describe('ReplayScreen', () => {
     const { ReplayScreen } = await import('./ReplayScreen');
     render(<ReplayScreen />);
     await waitFor(() => {
-      expect(screen.getByText('ruwt.dev')).toBeTruthy();
+      expect(screen.getByText('ruwt.dev')).toBeInTheDocument();
     });
     fireEvent.click(screen.getByText('ruwt.dev'));
     expect(mockOpen).toHaveBeenCalledWith(expect.stringContaining('/replay/'), '_blank');
@@ -470,23 +457,23 @@ describe('ReplayScreen', () => {
     const { ReplayScreen } = await import('./ReplayScreen');
     render(<ReplayScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Not found')).toBeTruthy();
+      expect(screen.getByText('Not found')).toBeInTheDocument();
     });
     fireEvent.click(screen.getByText('Back to Challenges'));
     expect(mockNavigate).toHaveBeenCalledWith('Problems');
   });
 
-  it('shows error when attemptId is empty string (line 65)', async () => {
+  it('shows error when attemptId is empty string', async () => {
     mockRouteParams = { attemptId: '' };
     vi.stubGlobal('fetch', vi.fn());
     const { ReplayScreen } = await import('./ReplayScreen');
     render(<ReplayScreen />);
     await waitFor(() => {
-      expect(screen.getByText('No attempt ID provided')).toBeTruthy();
+      expect(screen.getByText('No attempt ID provided')).toBeInTheDocument();
     });
   });
 
-  it('renders fallback model name when model is unknown (lines 225-227)', async () => {
+  it('renders model ID suffix as fallback when model is unrecognized', async () => {
     vi.mock('@/shared/lib/ai/pricing', () => ({
       getModelById: (id: string) => {
         if (id === 'unknown-model') return null;
@@ -506,11 +493,11 @@ describe('ReplayScreen', () => {
     render(<ReplayScreen />);
     await waitFor(() => {
       // When getModelById returns null, should use modelId.split('/').pop() as fallback
-      expect(screen.getByText('unknown-model')).toBeTruthy();
+      expect(screen.getByText('unknown-model')).toBeInTheDocument();
     });
   });
 
-  it('renders singular "token" for single token count (line 254)', async () => {
+  it('renders singular "token" label for single token count', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
       ok: true,
       json: () => Promise.resolve({
@@ -523,7 +510,7 @@ describe('ReplayScreen', () => {
     const { ReplayScreen } = await import('./ReplayScreen');
     render(<ReplayScreen />);
     await waitFor(() => {
-      expect(screen.getByText(/1 token$/)).toBeTruthy();
+      expect(screen.getByText(/1 token$/)).toBeInTheDocument();
     });
   });
 });

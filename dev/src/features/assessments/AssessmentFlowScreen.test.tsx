@@ -29,21 +29,8 @@ vi.mock('@/shared/ui/Button', () => ({
 vi.mock('@/shared/ui/Badge', () => ({
   Badge: ({ children }: any) => <span>{children}</span>,
 }));
-vi.mock('@/shared/theme', () => ({
-  useColors: () => ({
-    bg: '#fff', text: '#000', textMuted: '#888', accent: '#c9a962', border: '#ccc',
-    borderStrong: '#999', card: '#fff', muted: '#f5f5f5', error: '#f00', errorBg: '#fee',
-    success: '#0a0', successBg: '#efe', primary: '#000', primaryForeground: '#fff',
-    secondary: '#eee', secondaryForeground: '#000', destructive: '#f00',
-    textSubtle: '#aaa', bgElevated: '#fafafa', accentBg: '#ffe',
-  }),
-}));
-vi.mock('@/shared/theme/tokens', () => ({
-  spacing: { xs: 4, sm: 8, md: 16, lg: 24, xl: 32, '2xl': 48 },
-  fontSizes: { xs: 12, sm: 14, md: 16, lg: 18, xl: 20, '2xl': 24, '3xl': 30, '4xl': 36 },
-  fontFamily: { display: 'serif', body: 'sans-serif', mono: 'monospace' },
-  radii: { sm: 4, md: 8, lg: 12, xl: 16, full: 9999 },
-}));
+vi.mock('@/shared/theme', async () => (await import('@/shared/test/helpers')).mockTheme());
+vi.mock('@/shared/theme/tokens', async () => (await import('@/shared/test/helpers')).mockTokens({ mono: true }));
 
 const ok = (data: any) => ({ ok: true, json: () => Promise.resolve(data) });
 const fail = (data: any = {}) => ({ ok: false, json: () => Promise.resolve(data) });
@@ -93,7 +80,7 @@ describe('AssessmentFlowScreen', () => {
   it('renders loading state initially', () => {
     vi.stubGlobal('fetch', vi.fn().mockReturnValue(new Promise(() => {})));
     render(<AssessmentFlowScreen />);
-    expect(screen.getByText('Loading assessment...')).toBeTruthy();
+    expect(screen.getByText('Loading assessment...')).toBeInTheDocument();
   });
 
   it('renders error when session load fails', async () => {
@@ -103,7 +90,7 @@ describe('AssessmentFlowScreen', () => {
     });
     render(<AssessmentFlowScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Failed to load assessment session')).toBeTruthy();
+      expect(screen.getByText('Failed to load assessment session')).toBeInTheDocument();
     });
   });
 
@@ -131,14 +118,14 @@ describe('AssessmentFlowScreen', () => {
   it('shows progress text "Challenge 1 of 3"', async () => {
     render(<AssessmentFlowScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Challenge 1 of 3')).toBeTruthy();
+      expect(screen.getByText('Challenge 1 of 3')).toBeInTheDocument();
     });
   });
 
   it('renders progress bar and challenge progress', async () => {
     render(<AssessmentFlowScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Challenge 1 of 3')).toBeTruthy();
+      expect(screen.getByText('Challenge 1 of 3')).toBeInTheDocument();
       expect(screen.getAllByText('FizzBuzz').length).toBeGreaterThanOrEqual(1);
     });
   });
@@ -163,8 +150,8 @@ describe('AssessmentFlowScreen', () => {
     });
     render(<AssessmentFlowScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Assessment Complete')).toBeTruthy();
-      expect(screen.getByText('Your results have been submitted.')).toBeTruthy();
+      expect(screen.getByText('Assessment Complete')).toBeInTheDocument();
+      expect(screen.getByText('Your results have been submitted.')).toBeInTheDocument();
     });
   });
 
@@ -179,8 +166,8 @@ describe('AssessmentFlowScreen', () => {
     });
     render(<AssessmentFlowScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Assessment Expired')).toBeTruthy();
-      expect(screen.getByText('The time limit has been reached.')).toBeTruthy();
+      expect(screen.getByText('Assessment Expired')).toBeInTheDocument();
+      expect(screen.getByText('The time limit has been reached.')).toBeInTheDocument();
     });
   });
 
@@ -195,7 +182,7 @@ describe('AssessmentFlowScreen', () => {
     });
     render(<AssessmentFlowScreen />);
     await waitFor(() => {
-      expect(screen.getByText('View Results')).toBeTruthy();
+      expect(screen.getByText('View Results')).toBeInTheDocument();
     });
   });
 
@@ -209,7 +196,7 @@ describe('AssessmentFlowScreen', () => {
       '/api/dashboard': ok(mockDashboardData),
     });
     render(<AssessmentFlowScreen />);
-    await waitFor(() => expect(screen.getByText('View Results')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('View Results')).toBeInTheDocument());
     fireEvent.click(screen.getByText('View Results'));
     expect(mockNavigate).toHaveBeenCalledWith('AssessmentResults', { shareToken: 'share-xyz' });
   });
@@ -226,7 +213,7 @@ describe('AssessmentFlowScreen', () => {
     });
     render(<AssessmentFlowScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Missing data')).toBeTruthy();
+      expect(screen.getByText('Missing data')).toBeInTheDocument();
     });
   });
 
@@ -234,7 +221,7 @@ describe('AssessmentFlowScreen', () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('Network offline')));
     render(<AssessmentFlowScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Network offline')).toBeTruthy();
+      expect(screen.getByText('Network offline')).toBeInTheDocument();
     });
   });
 
@@ -242,7 +229,7 @@ describe('AssessmentFlowScreen', () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue('something'));
     render(<AssessmentFlowScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Something went wrong')).toBeTruthy();
+      expect(screen.getByText('Something went wrong')).toBeInTheDocument();
     });
   });
 
@@ -265,12 +252,12 @@ describe('AssessmentFlowScreen', () => {
     });
     render(<AssessmentFlowScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Assessment Complete')).toBeTruthy();
+      expect(screen.getByText('Assessment Complete')).toBeInTheDocument();
     });
     expect(screen.queryByText('View Results')).toBeNull();
   });
 
-  it('sets attempt from currentAttempt data (line 64)', async () => {
+  it('initializes attempt state from session currentAttempt', async () => {
     // Ensures line 64: setAttempt(data.currentAttempt) is covered
     render(<AssessmentFlowScreen />);
     await waitFor(() => {
@@ -281,7 +268,7 @@ describe('AssessmentFlowScreen', () => {
     expect(btn).toBeTruthy();
   });
 
-  it('handles dashboard fetch failure gracefully (line 68-76)', async () => {
+  it('renders challenges when dashboard fetch fails', async () => {
     setupFetch({
       '/api/assess/test-session-123': ok(mockSessionData),
       '/api/dashboard': { ok: false, json: () => Promise.resolve({}) },
@@ -324,7 +311,7 @@ describe('AssessmentFlowScreen', () => {
       '/api/submissions': ok({ success: true, passedTests: 3, totalTests: 3, results: [{ name: 'test1', passed: true }] }),
     });
     render(<AssessmentFlowScreen />);
-    await waitFor(() => expect(screen.getByTestId('run-tests-btn')).toBeTruthy());
+    await waitFor(() => expect(screen.getByTestId('run-tests-btn')).toBeInTheDocument());
     fireEvent.click(screen.getByTestId('run-tests-btn'));
     await waitFor(() => {
       const calls = fetchFn.mock.calls;
@@ -346,7 +333,7 @@ describe('AssessmentFlowScreen', () => {
     render(<AssessmentFlowScreen />);
     await waitFor(() => {
       // Should show error state since attempt is null
-      expect(screen.getByText('Missing data')).toBeTruthy();
+      expect(screen.getByText('Missing data')).toBeInTheDocument();
     });
   });
 
@@ -360,7 +347,7 @@ describe('AssessmentFlowScreen', () => {
       '/api/submissions': fail({ error: 'Rate limited' }),
     });
     render(<AssessmentFlowScreen />);
-    await waitFor(() => expect(screen.getByTestId('run-tests-btn')).toBeTruthy());
+    await waitFor(() => expect(screen.getByTestId('run-tests-btn')).toBeInTheDocument());
     fireEvent.click(screen.getByTestId('run-tests-btn'));
     await waitFor(() => {
       const calls = fetchFn.mock.calls;
@@ -379,12 +366,12 @@ describe('AssessmentFlowScreen', () => {
       '/api/assess/test-session-123/next': ok({ challenge: nextChallenge, attempt: { id: 'att2', status: 'in_progress' }, challengeIndex: 1 }),
     });
     render(<AssessmentFlowScreen />);
-    await waitFor(() => expect(screen.getByTestId('run-tests-btn')).toBeTruthy());
+    await waitFor(() => expect(screen.getByTestId('run-tests-btn')).toBeInTheDocument());
     // Run tests to pass the challenge
     fireEvent.click(screen.getByTestId('run-tests-btn'));
     await waitFor(() => {
       // After successful submit, "Next Challenge" button should appear (not last challenge)
-      expect(screen.queryByText(/Next Challenge/)).toBeTruthy();
+      expect(screen.queryByText(/Next Challenge/)).toBeInTheDocument();
     });
     // Click Next Challenge
     fireEvent.click(screen.getByText(/Next Challenge/));
@@ -406,11 +393,11 @@ describe('AssessmentFlowScreen', () => {
       '/api/assess/test-session-123/complete': ok({ session: { shareToken: 'final-share' } }),
     });
     render(<AssessmentFlowScreen />);
-    await waitFor(() => expect(screen.getByTestId('run-tests-btn')).toBeTruthy());
+    await waitFor(() => expect(screen.getByTestId('run-tests-btn')).toBeInTheDocument());
     // Run tests to pass the last challenge
     fireEvent.click(screen.getByTestId('run-tests-btn'));
     await waitFor(() => {
-      expect(screen.getByText('Complete Assessment')).toBeTruthy();
+      expect(screen.getByText('Complete Assessment')).toBeInTheDocument();
     });
     // Click Complete Assessment
     fireEvent.click(screen.getByText('Complete Assessment'));
@@ -432,32 +419,32 @@ describe('AssessmentFlowScreen', () => {
     await waitFor(() => expect(screen.getAllByText('FizzBuzz').length).toBeGreaterThanOrEqual(1));
     // Wait for the timer to expire
     await waitFor(() => {
-      expect(screen.getByText('Assessment Expired')).toBeTruthy();
+      expect(screen.getByText('Assessment Expired')).toBeInTheDocument();
     }, { timeout: 3000 });
   });
 
   it('onAttemptUpdate updates attempt state', async () => {
     render(<AssessmentFlowScreen />);
-    await waitFor(() => expect(screen.getByTestId('update-attempt-btn')).toBeTruthy());
+    await waitFor(() => expect(screen.getByTestId('update-attempt-btn')).toBeInTheDocument());
     fireEvent.click(screen.getByTestId('update-attempt-btn'));
     // Should not throw - just updates internal state
   });
 
   it('onDismissResults clears test results', async () => {
     render(<AssessmentFlowScreen />);
-    await waitFor(() => expect(screen.getByTestId('dismiss-btn')).toBeTruthy());
+    await waitFor(() => expect(screen.getByTestId('dismiss-btn')).toBeInTheDocument());
     fireEvent.click(screen.getByTestId('dismiss-btn'));
     // Should not throw
   });
 
-  it('onRunCode calls /api/execute and returns result (lines 286-298)', async () => {
+  it('onRunCode sends code to execution API and receives output', async () => {
     const fetchFn = setupFetch({
       '/api/assess/test-session-123': ok(mockSessionData),
       '/api/dashboard': ok(mockDashboardData),
       '/api/execute': ok({ run: { stdout: 'hello', stderr: '', code: 0 } }),
     });
     render(<AssessmentFlowScreen />);
-    await waitFor(() => expect(screen.getByTestId('run-code-btn')).toBeTruthy());
+    await waitFor(() => expect(screen.getByTestId('run-code-btn')).toBeInTheDocument());
     fireEvent.click(screen.getByTestId('run-code-btn'));
     await waitFor(() => {
       const calls = fetchFn.mock.calls;
@@ -489,9 +476,9 @@ describe('AssessmentFlowScreen', () => {
       '/api/assess/test-session-123/next': fail({}),
     });
     render(<AssessmentFlowScreen />);
-    await waitFor(() => expect(screen.getByTestId('run-tests-btn')).toBeTruthy());
+    await waitFor(() => expect(screen.getByTestId('run-tests-btn')).toBeInTheDocument());
     fireEvent.click(screen.getByTestId('run-tests-btn'));
-    await waitFor(() => expect(screen.queryByText(/Next Challenge/)).toBeTruthy());
+    await waitFor(() => expect(screen.queryByText(/Next Challenge/)).toBeInTheDocument());
     fireEvent.click(screen.getByText(/Next Challenge/));
     // Should not crash - still shows original challenge
     await waitFor(() => {
@@ -506,9 +493,9 @@ describe('AssessmentFlowScreen', () => {
       '/api/submissions': ok({ success: true, passedTests: 3, totalTests: 3, results: [] }),
     });
     render(<AssessmentFlowScreen />);
-    await waitFor(() => expect(screen.getByTestId('run-tests-btn')).toBeTruthy());
+    await waitFor(() => expect(screen.getByTestId('run-tests-btn')).toBeInTheDocument());
     fireEvent.click(screen.getByTestId('run-tests-btn'));
-    await waitFor(() => expect(screen.queryByText(/Next Challenge/)).toBeTruthy());
+    await waitFor(() => expect(screen.queryByText(/Next Challenge/)).toBeInTheDocument());
     // Now make fetch throw for the /next call
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('network')));
     fireEvent.click(screen.getByText(/Next Challenge/));
@@ -518,7 +505,7 @@ describe('AssessmentFlowScreen', () => {
     });
   });
 
-  it('countdown timer formats time correctly (lines 96-98)', async () => {
+  it('countdown timer displays remaining time in MM:SS format', async () => {
     // Set expiry far in the future so timer shows formatted value
     const farFuture = {
       ...mockSessionData,
@@ -540,9 +527,9 @@ describe('AssessmentFlowScreen', () => {
 
   it('onCodeChange updates code state', async () => {
     render(<AssessmentFlowScreen />);
-    await waitFor(() => expect(screen.getByTestId('code-change-btn')).toBeTruthy());
+    await waitFor(() => expect(screen.getByTestId('code-change-btn')).toBeInTheDocument());
     fireEvent.click(screen.getByTestId('code-change-btn'));
-    expect(screen.getByTestId('arena-ide')).toBeTruthy();
+    expect(screen.getByTestId('arena-ide')).toBeInTheDocument();
   });
 
   it('handleComplete handles missing shareToken gracefully', async () => {
@@ -557,14 +544,14 @@ describe('AssessmentFlowScreen', () => {
       '/api/assess/test-session-123/complete': ok({ session: {} }),
     });
     render(<AssessmentFlowScreen />);
-    await waitFor(() => expect(screen.getByTestId('run-tests-btn')).toBeTruthy());
+    await waitFor(() => expect(screen.getByTestId('run-tests-btn')).toBeInTheDocument());
     fireEvent.click(screen.getByTestId('run-tests-btn'));
     await waitFor(() => {
-      expect(screen.getByText('Complete Assessment')).toBeTruthy();
+      expect(screen.getByText('Complete Assessment')).toBeInTheDocument();
     });
     fireEvent.click(screen.getByText('Complete Assessment'));
     await waitFor(() => {
-      expect(screen.getByText('Assessment Complete')).toBeTruthy();
+      expect(screen.getByText('Assessment Complete')).toBeInTheDocument();
     });
   });
 

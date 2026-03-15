@@ -22,19 +22,9 @@ vi.mock('@react-navigation/native', () => ({
   useNavigation: () => ({ navigate: mockNavigate }),
 }));
 
-vi.mock('@/shared/theme', () => ({
-  useColors: () => ({
-    bg: '#fff', text: '#000', textMuted: '#888', textSubtle: '#aaa', accent: '#c9a962',
-    border: '#ccc', card: '#fff', destructive: '#b06060', muted: '#ddd',
-  }),
-}));
+vi.mock('@/shared/theme', async () => (await import('@/shared/test/helpers')).mockTheme());
 
-vi.mock('@/shared/theme/tokens', () => ({
-  spacing: { xs: 4, sm: 8, md: 16, lg: 24, xl: 32 },
-  fontSizes: { xs: 12, sm: 14, md: 16, lg: 18 },
-  fontFamily: { body: 'sans-serif' },
-  radii: { sm: 4, md: 8, lg: 12, xl: 16, full: 9999 },
-}));
+vi.mock('@/shared/theme/tokens', async () => (await import('@/shared/test/helpers')).mockTokens());
 
 vi.mock('@/shared/lib/ai/pricing', () => ({
   getModelById: (id: string) => id === 'model-a' ? { displayName: 'Model A', tier: 'budget' } : undefined,
@@ -53,7 +43,7 @@ describe('ReplayViewer', () => {
   it('shows loading state initially', () => {
     vi.spyOn(global, 'fetch').mockReturnValue(new Promise(() => {}));
     const { container } = render(<ReplayViewer attemptId="att-1" onClose={mockOnClose} />);
-    expect(screen.getByText('Loading Replay...')).toBeTruthy();
+    expect(screen.getByText('Loading Replay...')).toBeInTheDocument();
     // Skeleton renders with testID which maps to testid attr in this mock context
     expect(container.querySelector('[testid="skeleton-split-pane"]')).not.toBeNull();
   });
@@ -65,7 +55,7 @@ describe('ReplayViewer', () => {
     } as Response);
 
     render(<ReplayViewer attemptId="att-1" onClose={mockOnClose} />);
-    await waitFor(() => expect(screen.getByText('Not found')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Not found')).toBeInTheDocument());
   });
 
   it('shows default error when API returns no error message', async () => {
@@ -75,7 +65,7 @@ describe('ReplayViewer', () => {
     } as unknown as Response);
 
     render(<ReplayViewer attemptId="att-1" onClose={mockOnClose} />);
-    await waitFor(() => expect(screen.getByText('Failed to load replay')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Failed to load replay')).toBeInTheDocument());
   });
 
   it('renders replay data when loaded', async () => {
@@ -94,10 +84,10 @@ describe('ReplayViewer', () => {
     } as Response);
 
     render(<ReplayViewer attemptId="att-1" onClose={mockOnClose} />);
-    await waitFor(() => expect(screen.getByText("Alice's Replay")).toBeTruthy());
-    expect(screen.getByText('Debounce (easy)')).toBeTruthy();
-    expect(screen.getByText('Help me')).toBeTruthy();
-    expect(screen.getByText('Here is code')).toBeTruthy();
+    await waitFor(() => expect(screen.getByText("Alice's Replay")).toBeInTheDocument());
+    expect(screen.getByText('Debounce (easy)')).toBeInTheDocument();
+    expect(screen.getByText('Help me')).toBeInTheDocument();
+    expect(screen.getByText('Here is code')).toBeInTheDocument();
   });
 
   it('calls onClose when close button is clicked', async () => {
@@ -113,7 +103,7 @@ describe('ReplayViewer', () => {
     } as Response);
 
     render(<ReplayViewer attemptId="att-1" onClose={mockOnClose} />);
-    await waitFor(() => expect(screen.getByText("Bob's Replay")).toBeTruthy());
+    await waitFor(() => expect(screen.getByText("Bob's Replay")).toBeInTheDocument());
 
     // Click close button (the × character)
     fireEvent.click(screen.getByText('\u00D7'));
@@ -133,10 +123,10 @@ describe('ReplayViewer', () => {
     } as Response);
 
     render(<ReplayViewer attemptId="att-1" onClose={mockOnClose} />);
-    await waitFor(() => expect(screen.getByText(/No messages recorded/)).toBeTruthy());
+    await waitFor(() => expect(screen.getByText(/No messages recorded/)).toBeInTheDocument());
   });
 
-  it('handleShare copies share text to clipboard (lines 50-61)', async () => {
+  it('copies share URL and challenge details to clipboard', async () => {
     const writeTextMock = vi.fn().mockResolvedValue(undefined);
     Object.assign(navigator, { clipboard: { writeText: writeTextMock } });
 
@@ -152,7 +142,7 @@ describe('ReplayViewer', () => {
     } as Response);
 
     render(<ReplayViewer attemptId="att-1" onClose={mockOnClose} />);
-    await waitFor(() => expect(screen.getByText("Alice's Replay")).toBeTruthy());
+    await waitFor(() => expect(screen.getByText("Alice's Replay")).toBeInTheDocument());
 
     // Click the Share button
     fireEvent.click(screen.getByText('Share'));
@@ -163,10 +153,10 @@ describe('ReplayViewer', () => {
       expect(shareText).toContain('/replay/att-1');
     });
     // Should show "Copied!" after sharing
-    await waitFor(() => expect(screen.getByText('Copied!')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Copied!')).toBeInTheDocument());
   });
 
-  it('handleShare does nothing when no data (line 51)', async () => {
+  it('does nothing on share click when replay data is still loading', async () => {
     vi.spyOn(global, 'fetch').mockReturnValue(new Promise(() => {}));
     render(<ReplayViewer attemptId="att-1" onClose={mockOnClose} />);
     // Data is still loading, Share button exists but data is null
@@ -174,10 +164,10 @@ describe('ReplayViewer', () => {
     // Click - should do nothing since data is null
     fireEvent.click(shareBtn);
     // Still shows "Share" (not "Copied!")
-    expect(screen.getByText('Share')).toBeTruthy();
+    expect(screen.getByText('Share')).toBeInTheDocument();
   });
 
-  it('handleShare handles clipboard failure gracefully (line 61)', async () => {
+  it('handles clipboard write failure gracefully on share', async () => {
     Object.assign(navigator, { clipboard: { writeText: vi.fn().mockRejectedValue(new Error('denied')) } });
 
     vi.spyOn(global, 'fetch').mockResolvedValue({
@@ -192,21 +182,21 @@ describe('ReplayViewer', () => {
     } as Response);
 
     render(<ReplayViewer attemptId="att-1" onClose={mockOnClose} />);
-    await waitFor(() => expect(screen.getByText("Bob's Replay")).toBeTruthy());
+    await waitFor(() => expect(screen.getByText("Bob's Replay")).toBeInTheDocument());
     // Click Share - clipboard will fail
     fireEvent.click(screen.getByText('Share'));
     // Should not crash, "Share" should still be visible
-    await waitFor(() => expect(screen.getByText('Share')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Share')).toBeInTheDocument());
   });
 
-  it('shows error when fetch throws an exception (line 75-76)', async () => {
+  it('shows load failure error when fetch throws exception', async () => {
     vi.spyOn(global, 'fetch').mockRejectedValue(new Error('Network fail'));
 
     render(<ReplayViewer attemptId="att-1" onClose={mockOnClose} />);
-    await waitFor(() => expect(screen.getByText('Failed to load replay')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Failed to load replay')).toBeInTheDocument());
   });
 
-  it('navigates to full replay when Full replay button is clicked (line 105)', async () => {
+  it('navigates to full replay screen when Full replay button is clicked', async () => {
     vi.spyOn(global, 'fetch').mockResolvedValue({
       ok: true,
       json: async () => ({
@@ -219,7 +209,7 @@ describe('ReplayViewer', () => {
     } as Response);
 
     render(<ReplayViewer attemptId="att-1" onClose={mockOnClose} />);
-    await waitFor(() => expect(screen.getByText("Bob's Replay")).toBeTruthy());
+    await waitFor(() => expect(screen.getByText("Bob's Replay")).toBeInTheDocument());
     fireEvent.click(screen.getByText('Full replay'));
     expect(mockOnClose).toHaveBeenCalled();
     expect(mockNavigate).toHaveBeenCalledWith('Replay', { attemptId: 'att-1' });
@@ -240,9 +230,9 @@ describe('ReplayViewer', () => {
     } as Response);
 
     render(<ReplayViewer attemptId="att-1" onClose={mockOnClose} />);
-    await waitFor(() => expect(screen.getByText("Alice's Replay")).toBeTruthy());
+    await waitFor(() => expect(screen.getByText("Alice's Replay")).toBeInTheDocument());
     // Unknown model should show the last part of the model ID
-    expect(screen.getByText('model')).toBeTruthy();
+    expect(screen.getByText('model')).toBeInTheDocument();
   });
 
   it('truncates long messages to 2000 characters', async () => {
@@ -261,7 +251,7 @@ describe('ReplayViewer', () => {
     } as Response);
 
     render(<ReplayViewer attemptId="att-1" onClose={mockOnClose} />);
-    await waitFor(() => expect(screen.getByText("Alice's Replay")).toBeTruthy());
+    await waitFor(() => expect(screen.getByText("Alice's Replay")).toBeInTheDocument());
     // Message should be truncated with ...
     const msgEl = screen.getByText(/aaa\.\.\.$/);
     expect(msgEl).toBeTruthy();
@@ -282,7 +272,7 @@ describe('ReplayViewer', () => {
     } as Response);
 
     render(<ReplayViewer attemptId="att-1" onClose={mockOnClose} />);
-    await waitFor(() => expect(screen.getByText("Alice's Replay")).toBeTruthy());
+    await waitFor(() => expect(screen.getByText("Alice's Replay")).toBeInTheDocument());
     // Should show cost and token count (may appear in both summary and message)
     expect(screen.getAllByText(/\$0\.0500/).length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText(/300/).length).toBeGreaterThanOrEqual(1); // 100 + 200 tokens
@@ -303,10 +293,10 @@ describe('ReplayViewer', () => {
     } as Response);
 
     render(<ReplayViewer attemptId="att-1" onClose={mockOnClose} />);
-    await waitFor(() => expect(screen.getByText("Alice's Replay")).toBeTruthy());
+    await waitFor(() => expect(screen.getByText("Alice's Replay")).toBeInTheDocument());
     // Should show "USER" badge
-    expect(screen.getByText('USER')).toBeTruthy();
-    expect(screen.getByText('help me')).toBeTruthy();
+    expect(screen.getByText('USER')).toBeInTheDocument();
+    expect(screen.getByText('help me')).toBeInTheDocument();
   });
 
   it('renders messages with multiple models in summary', async () => {
@@ -322,11 +312,11 @@ describe('ReplayViewer', () => {
     } as Response);
 
     render(<ReplayViewer attemptId="att-1" onClose={mockOnClose} />);
-    await waitFor(() => expect(screen.getByText("Alice's Replay")).toBeTruthy());
+    await waitFor(() => expect(screen.getByText("Alice's Replay")).toBeInTheDocument());
     // Summary should say "2 models"
-    expect(screen.getByText(/2 models/)).toBeTruthy();
+    expect(screen.getByText(/2 models/)).toBeInTheDocument();
     // Should show Model A and the unknown model
-    expect(screen.getByText('Model A')).toBeTruthy();
-    expect(screen.getByText('xyz')).toBeTruthy();
+    expect(screen.getByText('Model A')).toBeInTheDocument();
+    expect(screen.getByText('xyz')).toBeInTheDocument();
   });
 });

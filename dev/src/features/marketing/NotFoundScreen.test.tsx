@@ -17,25 +17,12 @@ vi.mock('@/shared/ui/Button', () => ({
   Button: ({ children, onPress, ...props }: any) => <button onClick={onPress} {...props}>{children}</button>,
 }));
 
-vi.mock('@/shared/theme', () => ({
-  useColors: () => ({
-    bg: '#fff', text: '#000', textMuted: '#888', accent: '#gold', border: '#ccc',
-    borderStrong: '#999', card: '#fff', muted: '#f5f5f5',
-    primary: '#000', primaryForeground: '#fff', secondary: '#eee',
-    secondaryForeground: '#000', destructive: '#f00',
-  }),
-}));
+vi.mock('@/shared/theme', async () => (await import('@/shared/test/helpers')).mockTheme());
+vi.mock('@/shared/theme/tokens', async () => (await import('@/shared/test/helpers')).mockTokens());
 
 const mockIsDesktopFn = vi.fn(() => false);
 vi.mock('@/shared/hooks/useWindowWidth', () => ({
   useIsDesktop: () => mockIsDesktopFn(),
-}));
-
-vi.mock('@/shared/theme/tokens', () => ({
-  spacing: { xs: 4, sm: 8, md: 16, lg: 24, xl: 32, '2xl': 48 },
-  fontSizes: { xs: 12, sm: 14, md: 16, lg: 18, xl: 20, '2xl': 24, '3xl': 30, '4xl': 36 },
-  fontFamily: { display: 'serif', body: 'sans-serif' },
-  radii: { sm: 4, md: 8, lg: 12, xl: 16, full: 9999 },
 }));
 
 /* ── Lazy import AFTER mocks are set up ──────────────────────────── */
@@ -51,9 +38,9 @@ describe('NotFoundScreen', () => {
 
   it('renders 404 code and page-not-found messaging', () => {
     render(<NotFoundScreen />);
-    expect(screen.getByText('404')).toBeTruthy();
-    expect(screen.getByText('Page not found')).toBeTruthy();
-    expect(screen.getByText(/doesn't exist or has been moved/)).toBeTruthy();
+    expect(screen.getByText('404')).toBeInTheDocument();
+    expect(screen.getByText('Page not found')).toBeInTheDocument();
+    expect(screen.getByText(/doesn't exist or has been moved/)).toBeInTheDocument();
   });
 
   it('renders all navigation link text', () => {

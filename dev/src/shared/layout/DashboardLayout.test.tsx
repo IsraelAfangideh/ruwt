@@ -11,26 +11,17 @@ vi.mock('@react-navigation/native', () => ({
   useRoute: () => ({ name: 'Dashboard' }),
 }));
 
-vi.mock('@/shared/theme', () => ({
-  useColors: () => ({
-    bg: '#fff', text: '#000', textMuted: '#888', accent: '#c9a962',
-    border: '#ccc', borderStrong: '#aaa', primary: '#000',
-    primaryForeground: '#fff', secondary: '#eee', secondaryForeground: '#333',
-    muted: '#ddd', card: '#fff', error: '#f00', accentBg: '#fef8e8', textSubtle: '#aaa',
-    mutedForeground: '#555', destructive: '#b06060',
-  }),
-  useTheme: () => ({
-    mode: 'light',
-    setMode: vi.fn(),
-    colors: {
-      bg: '#fff', text: '#000', textMuted: '#888', accent: '#c9a962',
-      border: '#ccc', borderStrong: '#aaa', primary: '#000',
-      primaryForeground: '#fff', secondary: '#eee', secondaryForeground: '#333',
-      muted: '#ddd', card: '#fff', error: '#f00', accentBg: '#fef8e8', textSubtle: '#aaa',
-    },
-    isDark: false,
-  }),
-}));
+vi.mock('@/shared/theme', async () => {
+  const { mockTheme, MOCK_COLORS } = await import('@/shared/test/helpers');
+  return mockTheme({
+    useTheme: () => ({
+      mode: 'light',
+      setMode: vi.fn(),
+      colors: { ...MOCK_COLORS },
+      isDark: false,
+    }),
+  });
+});
 
 vi.mock('@/shared/lib/supabase/client', () => ({
   createClient: () => ({ auth: { signOut: vi.fn() } }),
@@ -119,7 +110,7 @@ describe('DashboardLayout', () => {
         <span>Dashboard Content</span>
       </DashboardLayout>
     );
-    expect(screen.getByText('Dashboard Content')).toBeTruthy();
+    expect(screen.getByText('Dashboard Content')).toBeInTheDocument();
   });
 
   it('renders the Ruwt.dev logo', () => {
@@ -128,8 +119,8 @@ describe('DashboardLayout', () => {
         <span>Content</span>
       </DashboardLayout>
     );
-    expect(screen.getByText('R')).toBeTruthy();
-    expect(screen.getByText('.dev')).toBeTruthy();
+    expect(screen.getByText('R')).toBeInTheDocument();
+    expect(screen.getByText('.dev')).toBeInTheDocument();
   });
 
   it('renders navigation items', () => {
@@ -138,8 +129,8 @@ describe('DashboardLayout', () => {
         <span>Content</span>
       </DashboardLayout>
     );
-    expect(screen.getByText('Problems')).toBeTruthy();
-    expect(screen.getByText('Discuss')).toBeTruthy();
+    expect(screen.getByText('Problems')).toBeInTheDocument();
+    expect(screen.getByText('Discuss')).toBeInTheDocument();
   });
 
   it('navigates to Problems when logo is clicked', () => {
@@ -167,7 +158,7 @@ describe('DashboardLayout', () => {
         <span>Content</span>
       </DashboardLayout>
     );
-    expect(screen.getByText('Content')).toBeTruthy();
+    expect(screen.getByText('Content')).toBeInTheDocument();
   });
 
   /* ── Org gating tests ───────────────────────────────────────── */
@@ -179,9 +170,9 @@ describe('DashboardLayout', () => {
       </DashboardLayout>
     );
 
-    expect(screen.getByText('Team Account Required')).toBeTruthy();
+    expect(screen.getByText('Team Account Required')).toBeInTheDocument();
     expect(screen.queryByText('Protected Content')).toBeNull();
-    expect(screen.getByText('Upgrade to Teams')).toBeTruthy();
+    expect(screen.getByText('Upgrade to Teams')).toBeInTheDocument();
   });
 
   it('renders children when requireOrg is true and user is org member', () => {
@@ -198,7 +189,7 @@ describe('DashboardLayout', () => {
       </DashboardLayout>
     );
 
-    expect(screen.getByText('Protected Content')).toBeTruthy();
+    expect(screen.getByText('Protected Content')).toBeInTheDocument();
     expect(screen.queryByText('Team Account Required')).toBeNull();
   });
 
@@ -234,7 +225,7 @@ describe('DashboardLayout', () => {
       </DashboardLayout>
     );
 
-    expect(screen.getByText('Open Content')).toBeTruthy();
+    expect(screen.getByText('Open Content')).toBeInTheDocument();
     expect(screen.queryByText('Team Account Required')).toBeNull();
   });
 
@@ -265,7 +256,7 @@ describe('DashboardLayout', () => {
       </DashboardLayout>
     );
 
-    expect(screen.getByText('Dashboard Content')).toBeTruthy();
+    expect(screen.getByText('Dashboard Content')).toBeInTheDocument();
   });
 
   it('does not show content skeleton for requireOrg pages during prefetch', () => {
@@ -292,9 +283,9 @@ describe('DashboardLayout', () => {
     );
 
     // Header elements should always be visible
-    expect(screen.getByText('R')).toBeTruthy();
-    expect(screen.getByText('.dev')).toBeTruthy();
-    expect(screen.getByText('Problems')).toBeTruthy();
+    expect(screen.getByText('R')).toBeInTheDocument();
+    expect(screen.getByText('.dev')).toBeInTheDocument();
+    expect(screen.getByText('Problems')).toBeInTheDocument();
   });
 
   it('shows trial banner for team accounts with trial', () => {
@@ -311,6 +302,6 @@ describe('DashboardLayout', () => {
       </DashboardLayout>
     );
 
-    expect(screen.getByTestId('trial-banner')).toBeTruthy();
+    expect(screen.getByTestId('trial-banner')).toBeInTheDocument();
   });
 });

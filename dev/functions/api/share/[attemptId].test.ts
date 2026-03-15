@@ -101,7 +101,7 @@ describe('GET /api/share/:attemptId (public)', () => {
     expect(res.status).toBe(500);
   });
 
-  it('returns rank=0 when rank query returns empty (line 79 fallback)', async () => {
+  it('returns rank zero when leaderboard rank query is empty', async () => {
     const attempt = { id: 'att-1', status: 'passed', totalCost: 500, passedTests: 5, totalTests: 5, userId: 'u-1', challengeId: 'ch-1', submittedAt: '2024-01-01' };
     const challenge = { id: 'ch-1', title: 'FizzBuzz', difficulty: 'easy', category: 'prompt_efficiency', language: 'javascript' };
     const solver = { name: 'Alice', username: 'alice', avatarUrl: null };
@@ -125,7 +125,7 @@ describe('GET /api/share/:attemptId (public)', () => {
     expect(json.rank).toBe(0);
   });
 
-  it('returns solver=null when profile not found (line 81 false branch)', async () => {
+  it('returns null solver when user profile is not found', async () => {
     const attempt = { id: 'att-1', status: 'passed', totalCost: 500, passedTests: 5, totalTests: 5, userId: 'u-1', challengeId: 'ch-1', submittedAt: '2024-01-01' };
     const challenge = { id: 'ch-1', title: 'FizzBuzz', difficulty: 'easy', category: 'prompt_efficiency', language: 'javascript' };
 
@@ -148,7 +148,7 @@ describe('GET /api/share/:attemptId (public)', () => {
     expect(json.solver).toBeNull();
   });
 
-  it('returns challenge=null when challenge not found (line 80)', async () => {
+  it('returns null challenge when challenge record is not found', async () => {
     const attempt = { id: 'att-1', status: 'passed', totalCost: 500, passedTests: 5, totalTests: 5, userId: 'u-1', challengeId: 'ch-missing', submittedAt: '2024-01-01' };
 
     let selectCall = 0;

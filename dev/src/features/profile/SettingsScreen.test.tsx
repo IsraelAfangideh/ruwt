@@ -30,21 +30,8 @@ const mockShowToast = vi.fn();
 vi.mock('@/shared/ui/Toast', () => ({
   useToast: () => ({ showToast: mockShowToast }),
 }));
-vi.mock('@/shared/theme', () => ({
-  useColors: () => ({
-    bg: '#fff', text: '#000', textMuted: '#888', accent: '#c9a962', border: '#ccc',
-    borderStrong: '#999', card: '#fff', muted: '#f5f5f5', error: '#f00', errorBg: '#fee',
-    success: '#0a0', successBg: '#efe', primary: '#000', primaryForeground: '#fff',
-    secondary: '#eee', secondaryForeground: '#000', destructive: '#f00',
-    textSubtle: '#aaa', bgElevated: '#fafafa', accentBg: '#ffe',
-  }),
-}));
-vi.mock('@/shared/theme/tokens', () => ({
-  spacing: { xs: 4, sm: 8, md: 16, lg: 24, xl: 32, '2xl': 48 },
-  fontSizes: { xs: 12, sm: 14, md: 16, lg: 18, xl: 20, '2xl': 24, '3xl': 30, '4xl': 36 },
-  fontFamily: { display: 'serif', body: 'sans-serif' },
-  radii: { sm: 4, md: 8, lg: 12, xl: 16, full: 9999 },
-}));
+vi.mock('@/shared/theme', async () => (await import('@/shared/test/helpers')).mockTheme());
+vi.mock('@/shared/theme/tokens', async () => (await import('@/shared/test/helpers')).mockTokens());
 
 vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
   ok: true,
@@ -83,9 +70,9 @@ describe('SettingsScreen', () => {
   it('shows Practice card for individual account', async () => {
     render(<SettingsScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Practice')).toBeTruthy();
+      expect(screen.getByText('Practice')).toBeInTheDocument();
     });
-    expect(screen.getByText(/Free unlimited practice/)).toBeTruthy();
+    expect(screen.getByText(/Free unlimited practice/)).toBeInTheDocument();
   });
 
   it('shows Hiring Subscription card for team account', async () => {
@@ -95,7 +82,7 @@ describe('SettingsScreen', () => {
     }));
     render(<SettingsScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Hiring Subscription')).toBeTruthy();
+      expect(screen.getByText('Hiring Subscription')).toBeInTheDocument();
     });
   });
 
@@ -106,7 +93,7 @@ describe('SettingsScreen', () => {
     }));
     render(<SettingsScreen />);
     await waitFor(() => {
-      expect(screen.getByText(/Subscribe — \$200\/mo/)).toBeTruthy();
+      expect(screen.getByText(/Subscribe — \$200\/mo/)).toBeInTheDocument();
     });
   });
 
@@ -117,9 +104,9 @@ describe('SettingsScreen', () => {
     }));
     render(<SettingsScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Resubscribe')).toBeTruthy();
+      expect(screen.getByText('Resubscribe')).toBeInTheDocument();
     });
-    expect(screen.getByText(/Your subscription has been canceled/)).toBeTruthy();
+    expect(screen.getByText(/Your subscription has been canceled/)).toBeInTheDocument();
   });
 
   it('shows Manage Billing button for active team subscription', async () => {
@@ -129,9 +116,9 @@ describe('SettingsScreen', () => {
     }));
     render(<SettingsScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Manage Billing')).toBeTruthy();
+      expect(screen.getByText('Manage Billing')).toBeInTheDocument();
     });
-    expect(screen.getByText(/Active monthly subscription/)).toBeTruthy();
+    expect(screen.getByText(/Active monthly subscription/)).toBeInTheDocument();
   });
 
   it('shows annual plan text for active annual subscription', async () => {
@@ -141,7 +128,7 @@ describe('SettingsScreen', () => {
     }));
     render(<SettingsScreen />);
     await waitFor(() => {
-      expect(screen.getByText(/Active annual subscription/)).toBeTruthy();
+      expect(screen.getByText(/Active annual subscription/)).toBeInTheDocument();
     });
   });
 
@@ -152,23 +139,23 @@ describe('SettingsScreen', () => {
     }));
     render(<SettingsScreen />);
     await waitFor(() => {
-      expect(screen.getByText(/Your payment is past due/)).toBeTruthy();
+      expect(screen.getByText(/Your payment is past due/)).toBeInTheDocument();
     });
-    expect(screen.getByText('Manage Billing')).toBeTruthy();
+    expect(screen.getByText('Manage Billing')).toBeInTheDocument();
   });
 
   it('shows newsletter toggle as subscribed when newsletterSubscribed is 1', async () => {
     render(<SettingsScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Daily newsletter')).toBeTruthy();
+      expect(screen.getByText('Daily newsletter')).toBeInTheDocument();
     });
-    expect(screen.getByText(/Platform updates and dev links/)).toBeTruthy();
+    expect(screen.getByText(/Platform updates and dev links/)).toBeInTheDocument();
   });
 
   it('sends PATCH when newsletter toggle is clicked', async () => {
     render(<SettingsScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Daily newsletter')).toBeTruthy();
+      expect(screen.getByText('Daily newsletter')).toBeInTheDocument();
     });
     // Click the toggle row (the Pressable wrapping Daily newsletter)
     fireEvent.click(screen.getByText('Daily newsletter'));
@@ -194,7 +181,7 @@ describe('SettingsScreen', () => {
     }));
     render(<SettingsScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Daily newsletter')).toBeTruthy();
+      expect(screen.getByText('Daily newsletter')).toBeInTheDocument();
     });
     fireEvent.click(screen.getByText('Daily newsletter'));
     // After revert, the toggle should still show subscribed state (no visible change in DOM test)
@@ -208,23 +195,23 @@ describe('SettingsScreen', () => {
   it('shows Account card with user email', async () => {
     render(<SettingsScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Account')).toBeTruthy();
+      expect(screen.getByText('Account')).toBeInTheDocument();
     });
-    expect(screen.getByText(/test@test.com/)).toBeTruthy();
+    expect(screen.getByText(/test@test.com/)).toBeInTheDocument();
   });
 
   it('shows success banner when URL has purchased=true', async () => {
     window.history.replaceState({}, '', '/settings?purchased=true');
     render(<SettingsScreen />);
     await waitFor(() => {
-      expect(screen.getByText(/Purchase successful/)).toBeTruthy();
+      expect(screen.getByText(/Purchase successful/)).toBeInTheDocument();
     });
   });
 
   it('renders Email Preferences with newsletter hint text', async () => {
     render(<SettingsScreen />);
     await waitFor(() => {
-      expect(screen.getByText(/Control what emails you receive/)).toBeTruthy();
+      expect(screen.getByText(/Control what emails you receive/)).toBeInTheDocument();
     });
   });
 
@@ -240,7 +227,7 @@ describe('SettingsScreen', () => {
     }));
     render(<SettingsScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Daily newsletter')).toBeTruthy();
+      expect(screen.getByText('Daily newsletter')).toBeInTheDocument();
     });
     fireEvent.click(screen.getByText('Daily newsletter'));
     // After network error, the toggle should revert
@@ -275,7 +262,7 @@ describe('SettingsScreen', () => {
 
     render(<SettingsScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Manage Billing')).toBeTruthy();
+      expect(screen.getByText('Manage Billing')).toBeInTheDocument();
     });
     fireEvent.click(screen.getByText('Manage Billing'));
     await waitFor(() => {
@@ -304,7 +291,7 @@ describe('SettingsScreen', () => {
 
     render(<SettingsScreen />);
     await waitFor(() => {
-      expect(screen.getByText(/Subscribe — \$200\/mo/)).toBeTruthy();
+      expect(screen.getByText(/Subscribe — \$200\/mo/)).toBeInTheDocument();
     });
     fireEvent.click(screen.getByText(/Subscribe — \$200\/mo/));
     expect(hrefSetter).toHaveBeenCalledWith('/hiring');
@@ -317,11 +304,11 @@ describe('SettingsScreen', () => {
     render(<SettingsScreen />);
     // Should still render since it catches the error
     await waitFor(() => {
-      expect(screen.getByText('Settings')).toBeTruthy();
+      expect(screen.getByText('Settings')).toBeInTheDocument();
     });
   });
 
-  it('shows loading skeleton when auth is loading (line 78)', () => {
+  it('shows loading skeleton while auth state is resolving', () => {
     mockAuthReturn = { user: null, loading: true };
     const { container } = render(<SettingsScreen />);
     expect(container.querySelectorAll('[data-testid="skeleton"]').length).toBeGreaterThanOrEqual(1);
@@ -334,11 +321,11 @@ describe('SettingsScreen', () => {
     }));
     render(<SettingsScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Daily newsletter')).toBeTruthy();
+      expect(screen.getByText('Daily newsletter')).toBeInTheDocument();
     });
   });
 
-  it('shows toast when billing portal returns no url (line 134)', async () => {
+  it('shows error toast when billing portal response has no URL', async () => {
     vi.stubGlobal('fetch', vi.fn().mockImplementation(async (url: string) => {
       if (url.includes('/api/billing/portal')) {
         return { ok: true, json: async () => ({ error: 'No billing account found' }) } as Response;
@@ -361,7 +348,7 @@ describe('SettingsScreen', () => {
 
     render(<SettingsScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Manage Billing')).toBeTruthy();
+      expect(screen.getByText('Manage Billing')).toBeInTheDocument();
     });
     fireEvent.click(screen.getByText('Manage Billing'));
     await waitFor(() => {
@@ -373,7 +360,7 @@ describe('SettingsScreen', () => {
     Object.defineProperty(window, 'location', { value: originalLocation, writable: true });
   });
 
-  it('shows toast when billing portal fetch throws (line 135 catch)', async () => {
+  it('shows error toast when billing portal fetch throws', async () => {
     vi.stubGlobal('fetch', vi.fn().mockImplementation(async (url: string) => {
       if (url.includes('/api/billing/portal')) {
         throw new Error('Portal unavailable');
@@ -386,7 +373,7 @@ describe('SettingsScreen', () => {
 
     render(<SettingsScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Manage Billing')).toBeTruthy();
+      expect(screen.getByText('Manage Billing')).toBeInTheDocument();
     });
     await act(async () => {
       fireEvent.click(screen.getByText('Manage Billing'));
@@ -396,29 +383,29 @@ describe('SettingsScreen', () => {
     });
   });
 
-  it('shows annual plan description when subscriptionPlan is annual (line 118)', async () => {
+  it('shows annual plan description for annual subscribers', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
       ok: true,
       json: () => Promise.resolve({ accountType: 'team', newsletterSubscribed: 1, subscriptionStatus: 'active', subscriptionPlan: 'annual' }),
     }));
     render(<SettingsScreen />);
     await waitFor(() => {
-      expect(screen.getByText(/annual/i)).toBeTruthy();
+      expect(screen.getByText(/annual/i)).toBeInTheDocument();
     });
   });
 
-  it('shows canceled subscription with Resubscribe button (line 146)', async () => {
+  it('shows Resubscribe button for canceled subscriptions', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
       ok: true,
       json: () => Promise.resolve({ accountType: 'team', newsletterSubscribed: 1, subscriptionStatus: 'canceled', subscriptionPlan: 'monthly' }),
     }));
     render(<SettingsScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Resubscribe')).toBeTruthy();
+      expect(screen.getByText('Resubscribe')).toBeInTheDocument();
     });
   });
 
-  it('reverts newsletter toggle and shows toast when PATCH returns non-ok (line 66-68)', async () => {
+  it('reverts newsletter toggle and shows error when PATCH fails', async () => {
     vi.stubGlobal('fetch', vi.fn().mockImplementation((_url: string, opts?: any) => {
       if (opts?.method === 'PATCH') {
         return Promise.resolve({ ok: false } as Response);
@@ -431,7 +418,7 @@ describe('SettingsScreen', () => {
 
     render(<SettingsScreen />);
     await waitFor(() => {
-      expect(screen.getByText(/newsletter/i)).toBeTruthy();
+      expect(screen.getByText(/newsletter/i)).toBeInTheDocument();
     });
 
     // Toggle newsletter — should revert after PATCH fails
@@ -444,7 +431,7 @@ describe('SettingsScreen', () => {
     });
   });
 
-  it('reverts newsletter toggle and shows toast when PATCH throws (line 70-72)', async () => {
+  it('reverts newsletter toggle and shows error when PATCH throws', async () => {
     vi.stubGlobal('fetch', vi.fn().mockImplementation((_url: string, opts?: any) => {
       if (opts?.method === 'PATCH') {
         return Promise.reject(new Error('Network error'));
@@ -457,7 +444,7 @@ describe('SettingsScreen', () => {
 
     render(<SettingsScreen />);
     await waitFor(() => {
-      expect(screen.getByText(/newsletter/i)).toBeTruthy();
+      expect(screen.getByText(/newsletter/i)).toBeInTheDocument();
     });
 
     const toggle = screen.getByText('Daily newsletter');
@@ -468,7 +455,7 @@ describe('SettingsScreen', () => {
     });
   });
 
-  it('shows toast when profile fetch fails (line 37-38)', async () => {
+  it('shows error toast when profile fetch fails', async () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('Network error')));
 
     render(<SettingsScreen />);
@@ -477,7 +464,7 @@ describe('SettingsScreen', () => {
     });
   });
 
-  it('handles profile response with missing optional fields (line 32-35)', async () => {
+  it('renders settings with missing optional profile fields', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
       ok: true,
       json: () => Promise.resolve({ newsletterSubscribed: 0 }),
@@ -486,11 +473,11 @@ describe('SettingsScreen', () => {
     render(<SettingsScreen />);
     await waitFor(() => {
       // Should render without errors even with missing accountType, subscriptionStatus, etc.
-      expect(screen.getByText(/newsletter/i)).toBeTruthy();
+      expect(screen.getByText(/newsletter/i)).toBeInTheDocument();
     });
   });
 
-  it('handles profile fetch returning non-ok status (line 30)', async () => {
+  it('renders settings layout when profile fetch returns non-ok', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
       ok: false,
       json: () => Promise.resolve({}),
@@ -499,7 +486,7 @@ describe('SettingsScreen', () => {
     render(<SettingsScreen />);
     // Should still render the settings page (with defaults)
     await waitFor(() => {
-      expect(screen.getByTestId('dashboard-layout')).toBeTruthy();
+      expect(screen.getByTestId('dashboard-layout')).toBeInTheDocument();
     });
   });
 });

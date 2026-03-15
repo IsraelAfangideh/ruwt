@@ -9,15 +9,7 @@ vi.mock('@react-navigation/native', () => ({
 
 import { CustomChallengeReview } from './CustomChallengeReview';
 
-vi.mock('@/shared/theme', () => ({
-  useColors: () => ({
-    text: '#000', textMuted: '#888', accent: '#c9a962', border: '#ccc',
-    borderStrong: '#aaa', bg: '#fff', card: '#fff', cardForeground: '#000',
-    mutedForeground: '#555', success: '#5a8a5a', destructive: '#b06060',
-    primary: '#000', primaryForeground: '#fff', secondary: '#eee',
-    secondaryForeground: '#333',
-  }),
-}));
+vi.mock('@/shared/theme', async () => (await import('@/shared/test/helpers')).mockTheme());
 
 const challenge = {
   id: 'c1',
@@ -48,48 +40,48 @@ describe('CustomChallengeReview', () => {
 
   it('renders challenge title', () => {
     render(<CustomChallengeReview challenge={challenge} orgId="org1" onApprove={mockOnApprove} onDelete={mockOnDelete} />);
-    expect(screen.getByText('Test Challenge')).toBeTruthy();
+    expect(screen.getByText('Test Challenge')).toBeInTheDocument();
   });
 
   it('renders AI Generated badge', () => {
     render(<CustomChallengeReview challenge={challenge} orgId="org1" onApprove={mockOnApprove} onDelete={mockOnDelete} />);
-    expect(screen.getByText('AI Generated')).toBeTruthy();
+    expect(screen.getByText('AI Generated')).toBeInTheDocument();
   });
 
   it('renders difficulty badge', () => {
     render(<CustomChallengeReview challenge={challenge} orgId="org1" onApprove={mockOnApprove} onDelete={mockOnDelete} />);
-    expect(screen.getByText('EASY')).toBeTruthy();
+    expect(screen.getByText('EASY')).toBeInTheDocument();
   });
 
   it('renders DRAFT status badge', () => {
     render(<CustomChallengeReview challenge={challenge} orgId="org1" onApprove={mockOnApprove} onDelete={mockOnDelete} />);
-    expect(screen.getByText('DRAFT')).toBeTruthy();
+    expect(screen.getByText('DRAFT')).toBeInTheDocument();
   });
 
   it('renders skill tested description', () => {
     render(<CustomChallengeReview challenge={challenge} orgId="org1" onApprove={mockOnApprove} onDelete={mockOnDelete} />);
-    expect(screen.getByText('Math operations')).toBeTruthy();
+    expect(screen.getByText('Math operations')).toBeInTheDocument();
   });
 
   it('renders description section', () => {
     render(<CustomChallengeReview challenge={challenge} orgId="org1" onApprove={mockOnApprove} onDelete={mockOnDelete} />);
-    expect(screen.getByText('Build a function that adds two numbers')).toBeTruthy();
+    expect(screen.getByText('Build a function that adds two numbers')).toBeInTheDocument();
   });
 
   it('renders starter code', () => {
     render(<CustomChallengeReview challenge={challenge} orgId="org1" onApprove={mockOnApprove} onDelete={mockOnDelete} />);
-    expect(screen.getByText(/Starter Code/)).toBeTruthy();
+    expect(screen.getByText(/Starter Code/)).toBeInTheDocument();
   });
 
   it('renders test case counts', () => {
     render(<CustomChallengeReview challenge={challenge} orgId="org1" onApprove={mockOnApprove} onDelete={mockOnDelete} />);
-    expect(screen.getByText(/1 visible, 1 hidden/)).toBeTruthy();
+    expect(screen.getByText(/1 visible, 1 hidden/)).toBeInTheDocument();
   });
 
   it('renders approve and delete buttons for draft challenges', () => {
     render(<CustomChallengeReview challenge={challenge} orgId="org1" onApprove={mockOnApprove} onDelete={mockOnDelete} />);
-    expect(screen.getByText('Approve Challenge')).toBeTruthy();
-    expect(screen.getByText('Delete Draft')).toBeTruthy();
+    expect(screen.getByText('Approve Challenge')).toBeInTheDocument();
+    expect(screen.getByText('Delete Draft')).toBeInTheDocument();
   });
 
   it('hides approve/delete buttons for active challenges', () => {
@@ -110,7 +102,7 @@ describe('CustomChallengeReview', () => {
     render(<CustomChallengeReview challenge={challenge} orgId="org1" onApprove={mockOnApprove} onDelete={mockOnDelete} />);
     fireEvent.click(screen.getByText('Delete Draft'));
     expect(mockOnDelete).not.toHaveBeenCalled();
-    expect(screen.getByText('Confirm Delete')).toBeTruthy();
+    expect(screen.getByText('Confirm Delete')).toBeInTheDocument();
     fireEvent.click(screen.getByText('Confirm Delete'));
     await waitFor(() => expect(mockOnDelete).toHaveBeenCalledWith('c1'));
   });
@@ -118,18 +110,18 @@ describe('CustomChallengeReview', () => {
   it('shows Expand/Collapse in compact mode', () => {
     render(<CustomChallengeReview challenge={challenge} orgId="org1" onApprove={mockOnApprove} onDelete={mockOnDelete} compact />);
     // compact starts collapsed
-    expect(screen.getByText(/Expand/)).toBeTruthy();
+    expect(screen.getByText(/Expand/)).toBeInTheDocument();
   });
 
   it('toggles expanded state in compact mode', () => {
     render(<CustomChallengeReview challenge={challenge} orgId="org1" onApprove={mockOnApprove} onDelete={mockOnDelete} compact />);
     fireEvent.click(screen.getByText(/Expand/));
-    expect(screen.getByText(/Collapse/)).toBeTruthy();
+    expect(screen.getByText(/Collapse/)).toBeInTheDocument();
   });
 
   it('renders Try Challenge button when starterCode exists', () => {
     render(<CustomChallengeReview challenge={challenge} orgId="org1" onApprove={mockOnApprove} onDelete={mockOnDelete} />);
-    expect(screen.getByText('Try Challenge')).toBeTruthy();
+    expect(screen.getByText('Try Challenge')).toBeInTheDocument();
   });
 
   it('navigates to Arena when Try Challenge is clicked', () => {
@@ -145,17 +137,17 @@ describe('CustomChallengeReview', () => {
 
   it('shows APPROVED for active status', () => {
     render(<CustomChallengeReview challenge={{ ...challenge, status: 'active' }} orgId="org1" onApprove={mockOnApprove} onDelete={mockOnDelete} />);
-    expect(screen.getByText('APPROVED')).toBeTruthy();
+    expect(screen.getByText('APPROVED')).toBeInTheDocument();
   });
 
   it('shows ARCHIVED for archived status', () => {
     render(<CustomChallengeReview challenge={{ ...challenge, status: 'archived' }} orgId="org1" onApprove={mockOnApprove} onDelete={mockOnDelete} />);
-    expect(screen.getByText('ARCHIVED')).toBeTruthy();
+    expect(screen.getByText('ARCHIVED')).toBeInTheDocument();
   });
 
   it('uses fallback color for unknown difficulty', () => {
     render(<CustomChallengeReview challenge={{ ...challenge, difficulty: 'insane' }} orgId="org1" onApprove={mockOnApprove} onDelete={mockOnDelete} />);
-    expect(screen.getByText('INSANE')).toBeTruthy();
+    expect(screen.getByText('INSANE')).toBeInTheDocument();
   });
 
   it('does not show skillTested when null', () => {
@@ -184,7 +176,7 @@ describe('CustomChallengeReview', () => {
       onApprove={mockOnApprove}
       onDelete={mockOnDelete}
     />);
-    expect(screen.getByText('+2 more test cases not shown')).toBeTruthy();
+    expect(screen.getByText('+2 more test cases not shown')).toBeInTheDocument();
   });
 
   it('shows singular "test case" when exactly 6 test cases', () => {
@@ -198,17 +190,17 @@ describe('CustomChallengeReview', () => {
       onApprove={mockOnApprove}
       onDelete={mockOnDelete}
     />);
-    expect(screen.getByText('+1 more test case not shown')).toBeTruthy();
+    expect(screen.getByText('+1 more test case not shown')).toBeInTheDocument();
   });
 
   it('cancels delete confirmation when Cancel is clicked', () => {
     render(<CustomChallengeReview challenge={challenge} orgId="org1" onApprove={mockOnApprove} onDelete={mockOnDelete} />);
     fireEvent.click(screen.getByText('Delete Draft'));
-    expect(screen.getByText('Confirm Delete')).toBeTruthy();
+    expect(screen.getByText('Confirm Delete')).toBeInTheDocument();
     // Click Cancel to dismiss
     fireEvent.click(screen.getByLabelText('Cancel delete'));
     // Should show Delete Draft again
-    expect(screen.getByText('Delete Draft')).toBeTruthy();
+    expect(screen.getByText('Delete Draft')).toBeInTheDocument();
   });
 
   it('handles hiddenTestCases being null', () => {
@@ -218,7 +210,7 @@ describe('CustomChallengeReview', () => {
       onApprove={mockOnApprove}
       onDelete={mockOnDelete}
     />);
-    expect(screen.getByText(/1 visible, 0 hidden/)).toBeTruthy();
+    expect(screen.getByText(/1 visible, 0 hidden/)).toBeInTheDocument();
   });
 
   it('handles invalid testCases JSON gracefully', () => {
@@ -229,6 +221,6 @@ describe('CustomChallengeReview', () => {
       onDelete={mockOnDelete}
     />);
     // Should still render (testCases defaults to empty array on parse error)
-    expect(screen.getByText(/0 visible/)).toBeTruthy();
+    expect(screen.getByText(/0 visible/)).toBeInTheDocument();
   });
 });

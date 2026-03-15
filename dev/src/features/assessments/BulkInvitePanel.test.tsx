@@ -3,15 +3,7 @@ import { describe, it, expect, vi, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { BulkInvitePanel } from './BulkInvitePanel';
 
-vi.mock('@/shared/theme', () => ({
-  useColors: () => ({
-    text: '#000', textMuted: '#888', textSubtle: '#aaa', accent: '#c9a962',
-    border: '#ccc', borderStrong: '#aaa', bg: '#fff', bgWarm: '#f5f3f0',
-    primary: '#000', primaryForeground: '#fff', secondary: '#eee', secondaryForeground: '#333',
-    card: '#fff', cardForeground: '#000', mutedForeground: '#555',
-    success: '#5a8a5a', destructive: '#b06060',
-  }),
-}));
+vi.mock('@/shared/theme', async () => (await import('@/shared/test/helpers')).mockTheme());
 
 function getEmailInput(): HTMLTextAreaElement | HTMLInputElement {
   // react-native-web renders multiline TextInput as <textarea>
@@ -32,62 +24,62 @@ describe('BulkInvitePanel', () => {
 
   it('renders the panel with label and hint', () => {
     render(<BulkInvitePanel assessmentId="a1" onInvitesSent={mockOnInvitesSent} />);
-    expect(screen.getByText('Bulk Invite Candidates')).toBeTruthy();
-    expect(screen.getByText(/Paste email addresses/)).toBeTruthy();
+    expect(screen.getByText('Bulk Invite Candidates')).toBeInTheDocument();
+    expect(screen.getByText(/Paste email addresses/)).toBeInTheDocument();
   });
 
   it('shows 0 valid emails initially', () => {
     render(<BulkInvitePanel assessmentId="a1" onInvitesSent={mockOnInvitesSent} />);
-    expect(screen.getByText('0 valid emails detected')).toBeTruthy();
+    expect(screen.getByText('0 valid emails detected')).toBeInTheDocument();
   });
 
   it('detects valid emails as they are typed', () => {
     render(<BulkInvitePanel assessmentId="a1" onInvitesSent={mockOnInvitesSent} />);
     const input = getEmailInput();
     fireEvent.change(input, { target: { value: 'alice@test.com, bob@test.com, notanemail' } });
-    expect(screen.getByText('2 valid emails detected')).toBeTruthy();
+    expect(screen.getByText('2 valid emails detected')).toBeInTheDocument();
   });
 
   it('shows singular "email" for 1 valid email', () => {
     render(<BulkInvitePanel assessmentId="a1" onInvitesSent={mockOnInvitesSent} />);
     const input = getEmailInput();
     fireEvent.change(input, { target: { value: 'alice@test.com' } });
-    expect(screen.getByText('1 valid email detected')).toBeTruthy();
+    expect(screen.getByText('1 valid email detected')).toBeInTheDocument();
   });
 
   it('parses semicolon-separated emails', () => {
     render(<BulkInvitePanel assessmentId="a1" onInvitesSent={mockOnInvitesSent} />);
     const input = getEmailInput();
     fireEvent.change(input, { target: { value: 'a@b.com;c@d.com;e@f.com' } });
-    expect(screen.getByText('3 valid emails detected')).toBeTruthy();
+    expect(screen.getByText('3 valid emails detected')).toBeInTheDocument();
   });
 
   it('parses newline-separated emails', () => {
     render(<BulkInvitePanel assessmentId="a1" onInvitesSent={mockOnInvitesSent} />);
     const input = getEmailInput();
     fireEvent.change(input, { target: { value: 'a@b.com\nc@d.com\ne@f.com' } });
-    expect(screen.getByText('3 valid emails detected')).toBeTruthy();
+    expect(screen.getByText('3 valid emails detected')).toBeInTheDocument();
   });
 
   it('filters out invalid emails from the count', () => {
     render(<BulkInvitePanel assessmentId="a1" onInvitesSent={mockOnInvitesSent} />);
     const input = getEmailInput();
     fireEvent.change(input, { target: { value: 'valid@test.com, not-an-email, @bad.com, also-bad, another@valid.org' } });
-    expect(screen.getByText('2 valid emails detected')).toBeTruthy();
+    expect(screen.getByText('2 valid emails detected')).toBeInTheDocument();
   });
 
   it('shows button text with correct email count', () => {
     render(<BulkInvitePanel assessmentId="a1" onInvitesSent={mockOnInvitesSent} />);
     const input = getEmailInput();
     fireEvent.change(input, { target: { value: 'alice@test.com, bob@test.com' } });
-    expect(screen.getByText('Send 2 Invites')).toBeTruthy();
+    expect(screen.getByText('Send 2 Invites')).toBeInTheDocument();
   });
 
   it('shows singular "Invite" for 1 email', () => {
     render(<BulkInvitePanel assessmentId="a1" onInvitesSent={mockOnInvitesSent} />);
     const input = getEmailInput();
     fireEvent.change(input, { target: { value: 'alice@test.com' } });
-    expect(screen.getByText('Send 1 Invite')).toBeTruthy();
+    expect(screen.getByText('Send 1 Invite')).toBeInTheDocument();
   });
 
   it('sends invites and shows results on success', async () => {
@@ -105,8 +97,8 @@ describe('BulkInvitePanel', () => {
     const input = getEmailInput();
     fireEvent.change(input, { target: { value: 'alice@test.com\nbob@test.com' } });
     fireEvent.click(screen.getByText(/Send 2 Invite/));
-    await waitFor(() => expect(screen.getByText(/2 invites created/)).toBeTruthy());
-    expect(screen.getByText(/1 email sent/)).toBeTruthy();
+    await waitFor(() => expect(screen.getByText(/2 invites created/)).toBeInTheDocument());
+    expect(screen.getByText(/1 email sent/)).toBeInTheDocument();
     expect(mockOnInvitesSent).toHaveBeenCalled();
   });
 
@@ -125,8 +117,8 @@ describe('BulkInvitePanel', () => {
     const input = getEmailInput();
     fireEvent.change(input, { target: { value: 'alice@test.com\nbob@test.com' } });
     fireEvent.click(screen.getByText(/Send 2 Invite/));
-    await waitFor(() => expect(screen.getByText(/1 invite created/)).toBeTruthy());
-    expect(screen.getByText(/1 failed/)).toBeTruthy();
+    await waitFor(() => expect(screen.getByText(/1 invite created/)).toBeInTheDocument());
+    expect(screen.getByText(/1 failed/)).toBeInTheDocument();
   });
 
   it('shows error message on API failure', async () => {
@@ -139,7 +131,7 @@ describe('BulkInvitePanel', () => {
     const input = getEmailInput();
     fireEvent.change(input, { target: { value: 'alice@test.com' } });
     fireEvent.click(screen.getByText(/Send 1 Invite/));
-    await waitFor(() => expect(screen.getByText('Unauthorized')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Unauthorized')).toBeInTheDocument());
   });
 
   it('shows generic error when API returns no error message', async () => {
@@ -152,7 +144,7 @@ describe('BulkInvitePanel', () => {
     const input = getEmailInput();
     fireEvent.change(input, { target: { value: 'alice@test.com' } });
     fireEvent.click(screen.getByText(/Send 1 Invite/));
-    await waitFor(() => expect(screen.getByText('Failed to create invites')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Failed to create invites')).toBeInTheDocument());
   });
 
   it('shows network error on fetch exception', async () => {
@@ -162,7 +154,7 @@ describe('BulkInvitePanel', () => {
     const input = getEmailInput();
     fireEvent.change(input, { target: { value: 'alice@test.com' } });
     fireEvent.click(screen.getByText(/Send 1 Invite/));
-    await waitFor(() => expect(screen.getByText('Network error')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Network error')).toBeInTheDocument());
   });
 
   it('does not send when no valid emails', async () => {
@@ -199,12 +191,12 @@ describe('BulkInvitePanel', () => {
     const input = getEmailInput();
     fireEvent.change(input, { target: { value: 'alice@test.com' } });
     fireEvent.click(screen.getByText(/Send 1 Invite/));
-    await waitFor(() => expect(screen.getByText('Sending Invites...')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Sending Invites...')).toBeInTheDocument());
   });
 
   it('renders Upload CSV button', () => {
     render(<BulkInvitePanel assessmentId="a1" onInvitesSent={mockOnInvitesSent} />);
-    expect(screen.getByText('Upload CSV')).toBeTruthy();
+    expect(screen.getByText('Upload CSV')).toBeInTheDocument();
   });
 
   it('triggers file input when Upload CSV is clicked', () => {
@@ -243,7 +235,7 @@ describe('BulkInvitePanel', () => {
     }
 
     await waitFor(() => {
-      expect(screen.getByText('2 valid emails detected')).toBeTruthy();
+      expect(screen.getByText('2 valid emails detected')).toBeInTheDocument();
     });
   });
 
@@ -275,7 +267,7 @@ describe('BulkInvitePanel', () => {
     }
 
     await waitFor(() => {
-      expect(screen.getByText('2 valid emails detected')).toBeTruthy();
+      expect(screen.getByText('2 valid emails detected')).toBeInTheDocument();
     });
   });
 
@@ -302,6 +294,6 @@ describe('BulkInvitePanel', () => {
     }
 
     // Should still show 0 emails
-    expect(screen.getByText('0 valid emails detected')).toBeTruthy();
+    expect(screen.getByText('0 valid emails detected')).toBeInTheDocument();
   });
 });

@@ -14,20 +14,9 @@ vi.mock('react-native', () => ({
   StyleSheet: { create: (s: any) => s },
 }));
 
-vi.mock('@/shared/theme', () => ({
-  useColors: () => ({
-    text: '#000', textMuted: '#888', accent: '#c9a962', border: '#ccc',
-    borderStrong: '#aaa', bgWarm: '#f5f3f0', bg: '#fff',
-    primary: '#000', primaryForeground: '#fff',
-  }),
-}));
+vi.mock('@/shared/theme', async () => (await import('@/shared/test/helpers')).mockTheme());
 
-vi.mock('@/shared/theme/tokens', () => ({
-  spacing: { xs: 4, sm: 8, md: 16, lg: 24 },
-  fontSizes: { xs: 12, sm: 14, md: 16, lg: 18 },
-  fontFamily: { body: 'sans-serif' },
-  radii: { md: 8 },
-}));
+vi.mock('@/shared/theme/tokens', async () => (await import('@/shared/test/helpers')).mockTokens());
 
 vi.mock('@/shared/ui/Input', () => ({
   Input: ({ value, onChangeText, placeholder }: any) => (
@@ -56,13 +45,13 @@ describe('PassThresholdEditor', () => {
 
   it('renders the section label and hint', () => {
     render(<PassThresholdEditor value={null} onChange={mockOnChange} />);
-    expect(screen.getByText('Auto-Grading Thresholds (optional)')).toBeTruthy();
-    expect(screen.getByText(/Automatically classify candidates/)).toBeTruthy();
+    expect(screen.getByText('Auto-Grading Thresholds (optional)')).toBeInTheDocument();
+    expect(screen.getByText(/Automatically classify candidates/)).toBeInTheDocument();
   });
 
   it('shows enabled state with default threshold when value is null', () => {
     render(<PassThresholdEditor value={null} onChange={mockOnChange} />);
-    expect(screen.getByText('Auto-grading enabled')).toBeTruthy();
+    expect(screen.getByText('Auto-grading enabled')).toBeInTheDocument();
   });
 
   it('calls onChange(null) to disable when toggle is clicked on enabled state', () => {
@@ -74,7 +63,7 @@ describe('PassThresholdEditor', () => {
   it('calls onChange with DEFAULT_THRESHOLD when enabling from disabled state', () => {
     const disabled = { enabled: false, mode: 'all_dimensions' as const, dimensions: {} };
     render(<PassThresholdEditor value={disabled} onChange={mockOnChange} />);
-    expect(screen.getByText('Auto-grading disabled')).toBeTruthy();
+    expect(screen.getByText('Auto-grading disabled')).toBeInTheDocument();
     fireEvent.click(screen.getByText('Auto-grading disabled'));
     expect(mockOnChange).toHaveBeenCalledWith(
       expect.objectContaining({ enabled: true, mode: 'all_dimensions' })
@@ -88,11 +77,11 @@ describe('PassThresholdEditor', () => {
       dimensions: { modelSelection: 50, promptEfficiency: 50, debugging: 50, strategy: 50, speed: 50 },
     };
     render(<PassThresholdEditor value={threshold} onChange={mockOnChange} />);
-    expect(screen.getByText('Model Selection')).toBeTruthy();
-    expect(screen.getByText('Prompt Efficiency')).toBeTruthy();
-    expect(screen.getByText('Debugging')).toBeTruthy();
-    expect(screen.getByText('Strategy')).toBeTruthy();
-    expect(screen.getByText('Speed')).toBeTruthy();
+    expect(screen.getByText('Model Selection')).toBeInTheDocument();
+    expect(screen.getByText('Prompt Efficiency')).toBeInTheDocument();
+    expect(screen.getByText('Debugging')).toBeInTheDocument();
+    expect(screen.getByText('Strategy')).toBeInTheDocument();
+    expect(screen.getByText('Speed')).toBeInTheDocument();
   });
 
   it('renders mode selector buttons', () => {
@@ -102,8 +91,8 @@ describe('PassThresholdEditor', () => {
       dimensions: { modelSelection: 50, promptEfficiency: 50, debugging: 50, strategy: 50, speed: 50 },
     };
     render(<PassThresholdEditor value={threshold} onChange={mockOnChange} />);
-    expect(screen.getByText('All dimensions above threshold')).toBeTruthy();
-    expect(screen.getByText('Weighted average above minimum')).toBeTruthy();
+    expect(screen.getByText('All dimensions above threshold')).toBeInTheDocument();
+    expect(screen.getByText('Weighted average above minimum')).toBeInTheDocument();
   });
 
   it('switches mode to weighted_average when clicked', () => {
@@ -141,7 +130,7 @@ describe('PassThresholdEditor', () => {
       dimensions: { modelSelection: 50, promptEfficiency: 50, debugging: 50, strategy: 50, speed: 50 },
     };
     render(<PassThresholdEditor value={threshold} onChange={mockOnChange} />);
-    expect(screen.getByText('Minimum Overall Score')).toBeTruthy();
+    expect(screen.getByText('Minimum Overall Score')).toBeInTheDocument();
   });
 
   it('does not show Minimum Overall Score in all_dimensions mode', () => {
@@ -208,10 +197,10 @@ describe('PassThresholdEditor', () => {
       dimensions: { modelSelection: 50, promptEfficiency: 50, debugging: 50, strategy: 50, speed: 50 },
     };
     render(<PassThresholdEditor value={threshold} onChange={mockOnChange} />);
-    expect(screen.getByText(/PASS/)).toBeTruthy();
-    expect(screen.getByText(/every dimension meets or exceeds/)).toBeTruthy();
-    expect(screen.getByText(/FAIL/)).toBeTruthy();
-    expect(screen.getByText(/20\+ points below/)).toBeTruthy();
+    expect(screen.getByText(/PASS/)).toBeInTheDocument();
+    expect(screen.getByText(/every dimension meets or exceeds/)).toBeInTheDocument();
+    expect(screen.getByText(/FAIL/)).toBeInTheDocument();
+    expect(screen.getByText(/20\+ points below/)).toBeInTheDocument();
   });
 
   it('renders explainer text for weighted_average mode', () => {
@@ -223,8 +212,8 @@ describe('PassThresholdEditor', () => {
     };
     render(<PassThresholdEditor value={threshold} onChange={mockOnChange} />);
     expect(screen.getAllByText(/weighted average/).length).toBeGreaterThanOrEqual(2);
-    expect(screen.getByText(/How scoring works/)).toBeTruthy();
-    expect(screen.getByText(/< 40/)).toBeTruthy();
+    expect(screen.getByText(/How scoring works/)).toBeInTheDocument();
+    expect(screen.getByText(/< 40/)).toBeInTheDocument();
   });
 
   it('does not render dimension inputs when disabled', () => {

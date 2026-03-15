@@ -28,21 +28,8 @@ vi.mock('@/features/assessments/InviteManagementTable', () => ({
     return <div data-testid="invite-table" />;
   },
 }));
-vi.mock('@/shared/theme', () => ({
-  useColors: () => ({
-    bg: '#fff', text: '#000', textMuted: '#888', accent: '#c9a962', border: '#ccc',
-    borderStrong: '#999', card: '#fff', muted: '#f5f5f5', error: '#f00', errorBg: '#fee',
-    success: '#0a0', successBg: '#efe', primary: '#000', primaryForeground: '#fff',
-    secondary: '#eee', secondaryForeground: '#000', destructive: '#f00',
-    textSubtle: '#aaa', bgElevated: '#fafafa', accentBg: '#ffe', bgWarm: '#faf8f5',
-  }),
-}));
-vi.mock('@/shared/theme/tokens', () => ({
-  spacing: { xs: 4, sm: 8, md: 16, lg: 24, xl: 32, '2xl': 48 },
-  fontSizes: { xs: 12, sm: 14, md: 16, lg: 18, xl: 20, '2xl': 24, '3xl': 30, '4xl': 36 },
-  fontFamily: { display: 'serif', body: 'sans-serif' },
-  radii: { sm: 4, md: 8, lg: 12, xl: 16, full: 9999 },
-}));
+vi.mock('@/shared/theme', async () => (await import('@/shared/test/helpers')).mockTheme());
+vi.mock('@/shared/theme/tokens', async () => (await import('@/shared/test/helpers')).mockTokens());
 
 const { AssessmentInviteSection } = await import('./AssessmentInviteSection');
 
@@ -66,12 +53,12 @@ describe('AssessmentInviteSection', () => {
 
   it('renders Distribution label', () => {
     render(<AssessmentInviteSection {...baseProps} />);
-    expect(screen.getByText('Distribution')).toBeTruthy();
+    expect(screen.getByText('Distribution')).toBeInTheDocument();
   });
 
   it('shows Generate Invite Link button when no inviteLink', () => {
     render(<AssessmentInviteSection {...baseProps} />);
-    expect(screen.getByText('Generate Invite Link')).toBeTruthy();
+    expect(screen.getByText('Generate Invite Link')).toBeInTheDocument();
   });
 
   it('calls onGenerateInvite when Generate Invite Link is clicked', () => {
@@ -83,7 +70,7 @@ describe('AssessmentInviteSection', () => {
 
   it('shows Generating... text when generatingInvite is true', () => {
     render(<AssessmentInviteSection {...baseProps} generatingInvite={true} />);
-    expect(screen.getByText('Generating...')).toBeTruthy();
+    expect(screen.getByText('Generating...')).toBeInTheDocument();
   });
 
   it('disables button when generatingInvite is true', () => {
@@ -102,17 +89,17 @@ describe('AssessmentInviteSection', () => {
 
   it('shows invite link when present', () => {
     render(<AssessmentInviteSection {...baseProps} inviteLink="https://ruwt.dev/invite/abc" />);
-    expect(screen.getByText('https://ruwt.dev/invite/abc')).toBeTruthy();
+    expect(screen.getByText('https://ruwt.dev/invite/abc')).toBeInTheDocument();
   });
 
   it('shows Candidate Invite Link label', () => {
     render(<AssessmentInviteSection {...baseProps} inviteLink="https://ruwt.dev/invite/abc" />);
-    expect(screen.getByText('Candidate Invite Link:')).toBeTruthy();
+    expect(screen.getByText('Candidate Invite Link:')).toBeInTheDocument();
   });
 
   it('shows Copy to Clipboard button when invite link exists', () => {
     render(<AssessmentInviteSection {...baseProps} inviteLink="https://ruwt.dev/invite/abc" />);
-    expect(screen.getByText('Copy to Clipboard')).toBeTruthy();
+    expect(screen.getByText('Copy to Clipboard')).toBeInTheDocument();
   });
 
   it('calls onCopyInviteLink when Copy button is clicked', () => {
@@ -124,17 +111,17 @@ describe('AssessmentInviteSection', () => {
 
   it('shows Copied! when copied is true', () => {
     render(<AssessmentInviteSection {...baseProps} inviteLink="https://ruwt.dev/invite/abc" copied={true} />);
-    expect(screen.getByText('Copied!')).toBeTruthy();
+    expect(screen.getByText('Copied!')).toBeInTheDocument();
   });
 
   it('shows share hint text when invite link exists', () => {
     render(<AssessmentInviteSection {...baseProps} inviteLink="https://ruwt.dev/invite/abc" />);
-    expect(screen.getByText(/Share this link with your candidate/)).toBeTruthy();
+    expect(screen.getByText(/Share this link with your candidate/)).toBeInTheDocument();
   });
 
   it('renders BulkInvitePanel', () => {
     render(<AssessmentInviteSection {...baseProps} />);
-    expect(screen.getByTestId('bulk-invite')).toBeTruthy();
+    expect(screen.getByTestId('bulk-invite')).toBeInTheDocument();
   });
 
   it('passes assessmentId and onInvitesSent to BulkInvitePanel', () => {
@@ -146,7 +133,7 @@ describe('AssessmentInviteSection', () => {
 
   it('renders InviteManagementTable', () => {
     render(<AssessmentInviteSection {...baseProps} />);
-    expect(screen.getByTestId('invite-table')).toBeTruthy();
+    expect(screen.getByTestId('invite-table')).toBeInTheDocument();
   });
 
   it('passes assessmentId and refreshKey to InviteManagementTable', () => {

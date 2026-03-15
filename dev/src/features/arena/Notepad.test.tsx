@@ -25,7 +25,7 @@ describe('Notepad', () => {
 
   it('renders placeholder text', () => {
     render(<Notepad value="" onChange={vi.fn()} />);
-    expect(screen.getByPlaceholderText(/Jot down your approach/)).toBeTruthy();
+    expect(screen.getByPlaceholderText(/Jot down your approach/)).toBeInTheDocument();
   });
 
   it('calls onChange when text is entered', () => {

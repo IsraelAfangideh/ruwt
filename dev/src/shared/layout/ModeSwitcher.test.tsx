@@ -16,18 +16,9 @@ vi.mock('@react-navigation/native', () => ({
   useNavigation: () => ({ navigate: mockNavigate }),
 }));
 
-vi.mock('@/shared/theme', () => ({
-  useColors: () => ({
-    text: '#000', textMuted: '#888', textSubtle: '#666', muted: '#ddd', border: '#ccc', card: '#fff',
-  }),
-}));
+vi.mock('@/shared/theme', async () => (await import('@/shared/test/helpers')).mockTheme());
 
-vi.mock('@/shared/theme/tokens', () => ({
-  spacing: { xs: 4, sm: 8, md: 16 },
-  fontSizes: { xs: 12, sm: 14 },
-  fontFamily: { body: 'sans-serif' },
-  radii: { sm: 4, md: 8, lg: 12 },
-}));
+vi.mock('@/shared/theme/tokens', async () => (await import('@/shared/test/helpers')).mockTokens());
 
 const mockSetMode = vi.fn();
 let mockAppMode: any = {
@@ -69,22 +60,22 @@ describe('ModeSwitcher', () => {
 
   it('renders the pill with current mode label', () => {
     render(<ModeSwitcher />);
-    expect(screen.getByTestId('mode-switcher')).toBeTruthy();
-    expect(screen.getByText('Practice')).toBeTruthy();
+    expect(screen.getByTestId('mode-switcher')).toBeInTheDocument();
+    expect(screen.getByText('Practice')).toBeInTheDocument();
   });
 
   it('shows org name when in hiring mode', () => {
     mockAppMode = { ...mockAppMode, mode: 'hiring' };
     render(<ModeSwitcher />);
-    expect(screen.getByText('Acme Corp')).toBeTruthy();
+    expect(screen.getByText('Acme Corp')).toBeInTheDocument();
   });
 
   it('opens dropdown on click', () => {
     render(<ModeSwitcher />);
     fireEvent.click(screen.getByTestId('mode-switcher'));
-    expect(screen.getByTestId('mode-dropdown')).toBeTruthy();
-    expect(screen.getByTestId('mode-option-practice')).toBeTruthy();
-    expect(screen.getByTestId('mode-option-hiring')).toBeTruthy();
+    expect(screen.getByTestId('mode-dropdown')).toBeInTheDocument();
+    expect(screen.getByTestId('mode-option-practice')).toBeInTheDocument();
+    expect(screen.getByTestId('mode-option-hiring')).toBeInTheDocument();
   });
 
   it('switches to hiring mode and navigates', () => {
@@ -115,7 +106,7 @@ describe('ModeSwitcher', () => {
   it('closes dropdown on Escape key', () => {
     render(<ModeSwitcher />);
     fireEvent.click(screen.getByTestId('mode-switcher'));
-    expect(screen.getByTestId('mode-dropdown')).toBeTruthy();
+    expect(screen.getByTestId('mode-dropdown')).toBeInTheDocument();
     fireEvent.keyDown(document, { key: 'Escape' });
     expect(screen.queryByTestId('mode-dropdown')).toBeNull();
   });
@@ -123,7 +114,7 @@ describe('ModeSwitcher', () => {
   it('closes dropdown when overlay is clicked', () => {
     const { container } = render(<ModeSwitcher />);
     fireEvent.click(screen.getByTestId('mode-switcher'));
-    expect(screen.getByTestId('mode-dropdown')).toBeTruthy();
+    expect(screen.getByTestId('mode-dropdown')).toBeInTheDocument();
     const overlay = container.querySelector('[accessibilitylabel="Close mode switcher"]') as HTMLElement;
     expect(overlay).not.toBeNull();
     fireEvent.click(overlay);

@@ -13,18 +13,8 @@ vi.mock('@/shared/layout/DashboardLayout', () => ({
   DashboardLayout: ({ children }: any) => <div data-testid="dashboard-layout">{children}</div>,
 }));
 vi.mock('@/shared/hooks/useDocumentMeta', () => ({ useDocumentMeta: () => {} }));
-vi.mock('@/shared/theme', () => ({
-  useColors: () => ({
-    bg: '#fff', text: '#000', textMuted: '#888', accent: '#c9a962', border: '#ccc',
-    card: '#fff', background: '#fff', muted: '#f5f5f5',
-  }),
-}));
-vi.mock('@/shared/theme/tokens', () => ({
-  spacing: { xs: 4, sm: 8, md: 16, lg: 24, xl: 32, '2xl': 48 },
-  fontSizes: { xs: 12, sm: 14, md: 16, lg: 18, xl: 20, xxl: 24, '2xl': 24, '3xl': 30, '4xl': 36 },
-  fontFamily: { display: 'serif', body: 'sans-serif', mono: 'monospace' },
-  radii: { sm: 4, md: 8, lg: 12, xl: 16, full: 9999 },
-}));
+vi.mock('@/shared/theme', async () => (await import('@/shared/test/helpers')).mockTheme());
+vi.mock('@/shared/theme/tokens', async () => (await import('@/shared/test/helpers')).mockTokens({ mono: true }));
 vi.mock('@/shared/lib/ai/pricing', () => ({
   tierColor: (tier: string) => {
     const map: Record<string, string> = { reasoning: '#a78bfa', premium: '#da8ee7', mid: '#f59e0b', budget: '#22c55e', micro: '#94a3b8' };
@@ -79,37 +69,37 @@ describe('ModelScreen', () => {
     setupFetch();
     render(<ModelScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Alpha Model')).toBeTruthy();
+      expect(screen.getByText('Alpha Model')).toBeInTheDocument();
     });
-    expect(screen.getByText('A premium model for advanced tasks')).toBeTruthy();
-    expect(screen.getByText('Premium')).toBeTruthy();
+    expect(screen.getByText('A premium model for advanced tasks')).toBeInTheDocument();
+    expect(screen.getByText('Premium')).toBeInTheDocument();
   });
 
   it('shows pricing info with input and output costs', async () => {
     setupFetch();
     render(<ModelScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Pricing')).toBeTruthy();
+      expect(screen.getByText('Pricing')).toBeInTheDocument();
     });
-    expect(screen.getByText('Input')).toBeTruthy();
-    expect(screen.getByText('Output')).toBeTruthy();
-    expect(screen.getByText('$3.00/M tokens')).toBeTruthy();
-    expect(screen.getByText('$6.00/M tokens')).toBeTruthy();
+    expect(screen.getByText('Input')).toBeInTheDocument();
+    expect(screen.getByText('Output')).toBeInTheDocument();
+    expect(screen.getByText('$3.00/M tokens')).toBeInTheDocument();
+    expect(screen.getByText('$6.00/M tokens')).toBeInTheDocument();
   });
 
   it('shows stat cards with correct values', async () => {
     setupFetch();
     render(<ModelScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Times Used')).toBeTruthy();
+      expect(screen.getByText('Times Used')).toBeInTheDocument();
     });
-    expect(screen.getByText('42')).toBeTruthy();
-    expect(screen.getByText('Total Messages')).toBeTruthy();
-    expect(screen.getByText('200')).toBeTruthy();
-    expect(screen.getByText('Avg Cost / Msg')).toBeTruthy();
-    expect(screen.getByText('$0.05')).toBeTruthy();
-    expect(screen.getByText('Win Rate')).toBeTruthy();
-    expect(screen.getByText('75%')).toBeTruthy();
+    expect(screen.getByText('42')).toBeInTheDocument();
+    expect(screen.getByText('Total Messages')).toBeInTheDocument();
+    expect(screen.getByText('200')).toBeInTheDocument();
+    expect(screen.getByText('Avg Cost / Msg')).toBeInTheDocument();
+    expect(screen.getByText('$0.05')).toBeInTheDocument();
+    expect(screen.getByText('Win Rate')).toBeInTheDocument();
+    expect(screen.getByText('75%')).toBeInTheDocument();
   });
 
   it('formats very small average cost with 4 decimals', async () => {
@@ -120,7 +110,7 @@ describe('ModelScreen', () => {
     setupFetch(data);
     render(<ModelScreen />);
     await waitFor(() => {
-      expect(screen.getByText('$0.0050')).toBeTruthy();
+      expect(screen.getByText('$0.0050')).toBeInTheDocument();
     });
   });
 
@@ -128,7 +118,7 @@ describe('ModelScreen', () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('Network error')));
     render(<ModelScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Model not found.')).toBeTruthy();
+      expect(screen.getByText('Model not found.')).toBeInTheDocument();
     });
   });
 
@@ -136,7 +126,7 @@ describe('ModelScreen', () => {
     setupFetch(null, false);
     render(<ModelScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Model not found.')).toBeTruthy();
+      expect(screen.getByText('Model not found.')).toBeInTheDocument();
     });
   });
 
@@ -144,16 +134,16 @@ describe('ModelScreen', () => {
     setupFetch();
     render(<ModelScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Model ID')).toBeTruthy();
+      expect(screen.getByText('Model ID')).toBeInTheDocument();
     });
-    expect(screen.getByText('model-a')).toBeTruthy();
+    expect(screen.getByText('model-a')).toBeInTheDocument();
   });
 
   it('shows Usage Stats section title', async () => {
     setupFetch();
     render(<ModelScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Usage Stats')).toBeTruthy();
+      expect(screen.getByText('Usage Stats')).toBeInTheDocument();
     });
   });
 

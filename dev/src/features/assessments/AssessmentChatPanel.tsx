@@ -65,54 +65,30 @@ export function AssessmentChatPanel({
   const inputRef = useRef<any>(null);
   const msgIdRef = useRef(0);
 
-  /* istanbul ignore next -- @preserve */
   const handleToolResult = useCallback((tool: string, result: any) => {
-    /* istanbul ignore next -- @preserve */
     if (!result.success) return;
     // Fire toast using existing label map
-    /* istanbul ignore next -- @preserve */
     const labelFn = TOOL_SUCCESS_LABELS[tool];
-    /* istanbul ignore next -- @preserve */
     if (labelFn) showToast(labelFn(result.result), 'success');
-    /* istanbul ignore next -- @preserve */
     switch (tool) {
-      /* istanbul ignore next -- @preserve */
       case 'select_challenges':
-      /* istanbul ignore next -- @preserve */
       case 'remove_challenges':
-        /* istanbul ignore next -- @preserve */
         onChallengesChanged();
-        /* istanbul ignore next -- @preserve */
         break;
-      /* istanbul ignore next -- @preserve */
       case 'set_weights':
-        /* istanbul ignore next -- @preserve */
         onWeightsChanged(result.result);
-        /* istanbul ignore next -- @preserve */
         break;
-      /* istanbul ignore next -- @preserve */
       case 'set_branding':
-        /* istanbul ignore next -- @preserve */
         onBrandingChanged(result.result);
-        /* istanbul ignore next -- @preserve */
         break;
-      /* istanbul ignore next -- @preserve */
       case 'set_time_limit':
-        /* istanbul ignore next -- @preserve */
         onTimeLimitChanged(result.result.minutes);
-        /* istanbul ignore next -- @preserve */
         break;
-      /* istanbul ignore next -- @preserve */
       case 'set_pass_threshold':
-        /* istanbul ignore next -- @preserve */
         onThresholdChanged(result.result);
-        /* istanbul ignore next -- @preserve */
         break;
-      /* istanbul ignore next -- @preserve */
       case 'create_custom_challenge':
-        /* istanbul ignore next -- @preserve */
         onCustomChallengeCreated();
-        /* istanbul ignore next -- @preserve */
         break;
     }
   }, [onChallengesChanged, onWeightsChanged, onBrandingChanged, onTimeLimitChanged, onThresholdChanged, onCustomChallengeCreated, showToast]);
@@ -158,15 +134,11 @@ export function AssessmentChatPanel({
     setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
   }, [messages]);
 
-  /* istanbul ignore next -- @preserve */
   const handleSend = useCallback(() => {
-    /* istanbul ignore next -- @preserve */
     const text = input.trim();
     /* istanbul ignore next -- @preserve */
     if (!text || streaming) return;
-    /* istanbul ignore next -- @preserve */
     setInput('');
-    /* istanbul ignore next -- @preserve */
     sendMessage(text);
   }, [input, streaming, sendMessage]);
 
@@ -182,13 +154,10 @@ export function AssessmentChatPanel({
     sendMessage(`I applied the ${template.name} template with ${template.challengeTitles.length} challenges and a ${template.timeLimitMinutes}-minute limit. Review it and make any improvements directly — swap challenges, adjust weights, or change the time limit as you see fit.`);
   }, [onApplyTemplate, sendMessage]);
 
-  /* istanbul ignore next -- @preserve */
+  /* istanbul ignore next -- @preserve: RNW onKeyPress nativeEvent not reachable via testing-library */
   const handleKeyPress = useCallback((e: any) => {
-    /* istanbul ignore next -- @preserve */
     if (e.nativeEvent.key === 'Enter' && !e.nativeEvent.shiftKey) {
-      /* istanbul ignore next -- @preserve */
       e.preventDefault();
-      /* istanbul ignore next -- @preserve */
       handleSend();
     }
   }, [handleSend]);

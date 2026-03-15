@@ -32,21 +32,8 @@ vi.mock('@/shared/ui/Button', () => ({
 }));
 vi.mock('@/shared/ui/Avatar', () => ({ Avatar: () => <div data-testid="avatar" /> }));
 vi.mock('@/shared/hooks/useDocumentMeta', () => ({ useDocumentMeta: () => {} }));
-vi.mock('@/shared/theme', () => ({
-  useColors: () => ({
-    bg: '#fff', text: '#000', textMuted: '#888', accent: '#c9a962', border: '#ccc',
-    borderStrong: '#999', card: '#fff', muted: '#f5f5f5', error: '#f00', errorBg: '#fee',
-    success: '#0a0', successBg: '#efe', primary: '#000', primaryForeground: '#fff',
-    secondary: '#eee', secondaryForeground: '#000', destructive: '#f00',
-    textSubtle: '#aaa', bgElevated: '#fafafa', accentBg: '#ffe',
-  }),
-}));
-vi.mock('@/shared/theme/tokens', () => ({
-  spacing: { xs: 4, sm: 8, md: 16, lg: 24, xl: 32, '2xl': 48 },
-  fontSizes: { xs: 12, sm: 14, md: 16, lg: 18, xl: 20, '2xl': 24, '3xl': 30, '4xl': 36 },
-  fontFamily: { display: 'serif', body: 'sans-serif' },
-  radii: { sm: 4, md: 8, lg: 12, xl: 16, full: 9999 },
-}));
+vi.mock('@/shared/theme', async () => (await import('@/shared/test/helpers')).mockTheme());
+vi.mock('@/shared/theme/tokens', async () => (await import('@/shared/test/helpers')).mockTokens());
 
 const mockDailyData = {
   date: '2026-02-28',
@@ -93,7 +80,7 @@ describe('DailyChallengeScreen', () => {
     });
   });
 
-  it('redirects to Login when user is not authenticated (lines 52-53)', async () => {
+  it('redirects to Login when user is not authenticated', async () => {
     mockGetUser.mockResolvedValueOnce({ data: { user: null } });
     render(<DailyChallengeScreen />);
     await waitFor(() => {
@@ -104,30 +91,30 @@ describe('DailyChallengeScreen', () => {
     });
   });
 
-  it('renders countdown timer from secondsUntilNext and starts interval (line 73)', async () => {
+  it('renders countdown timer and decrements it every second', async () => {
     render(<DailyChallengeScreen />);
     await waitFor(() => {
       // The countdown should render from secondsUntilNext=3600 = 1h 0m 0s
-      expect(screen.getByText(/1h 0m 0s/)).toBeTruthy();
+      expect(screen.getByText(/1h 0m 0s/)).toBeInTheDocument();
     });
     // The countdown interval (line 73) is running, which calls setCountdown(prev => Math.max(0, prev - 1)).
     // After a real second passes, it will decrement. We verify the interval fires:
     await waitFor(() => {
       // After at least 1s, the countdown should have changed
-      expect(screen.getByText(/0h 59m/)).toBeTruthy();
+      expect(screen.getByText(/0h 59m/)).toBeInTheDocument();
     }, { timeout: 3000 });
   });
 
-  it('navigates to Arena when Start Today\'s Challenge is clicked (line 124)', async () => {
+  it('navigates to Arena when Start Today\'s Challenge is clicked', async () => {
     render(<DailyChallengeScreen />);
     await waitFor(() => {
-      expect(screen.getByText("Start Today's Challenge")).toBeTruthy();
+      expect(screen.getByText("Start Today's Challenge")).toBeInTheDocument();
     }, { timeout: 3000 });
     fireEvent.click(screen.getByText("Start Today's Challenge"));
     expect(mockNavigate).toHaveBeenCalledWith('Arena', { challengeId: 'dc1' });
   });
 
-  it('handles fetch returning res.ok=false gracefully (line 58)', async () => {
+  it('renders layout when fetch returns non-ok response', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
       ok: false,
       json: () => Promise.resolve({ error: 'Server error' }),
@@ -138,7 +125,7 @@ describe('DailyChallengeScreen', () => {
     });
   });
 
-  it('handles fetch network error in catch block (line 63)', async () => {
+  it('renders layout when fetch throws network error', async () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('Network error')));
     const { container } = render(<DailyChallengeScreen />);
     await waitFor(() => {
@@ -146,7 +133,7 @@ describe('DailyChallengeScreen', () => {
     });
   });
 
-  it('renders "No daily challenge available" when challenge is null (lines 166-170)', async () => {
+  it('shows "No daily challenge available" when challenge is null', async () => {
     const noChallenge = { ...mockDailyData, challenge: null, leaderboard: [] };
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
       ok: true,
@@ -154,18 +141,18 @@ describe('DailyChallengeScreen', () => {
     }));
     render(<DailyChallengeScreen />);
     await waitFor(() => {
-      expect(screen.getByText('No daily challenge available.')).toBeTruthy();
+      expect(screen.getByText('No daily challenge available.')).toBeInTheDocument();
     });
   });
 
-  it('renders category badge when challenge has a category (line 114)', async () => {
+  it('renders category badge when challenge has a category', async () => {
     render(<DailyChallengeScreen />);
     await waitFor(() => {
-      expect(screen.getByText('prompt efficiency')).toBeTruthy();
+      expect(screen.getByText('prompt efficiency')).toBeInTheDocument();
     });
   });
 
-  it('does not render category badge when category is null (line 114)', async () => {
+  it('hides category badge when challenge category is null', async () => {
     const noCat = { ...mockDailyData, challenge: { ...mockDailyData.challenge, category: null } };
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
       ok: true,
@@ -173,13 +160,13 @@ describe('DailyChallengeScreen', () => {
     }));
     render(<DailyChallengeScreen />);
     await waitFor(() => {
-      expect(screen.getByText('easy')).toBeTruthy();
+      expect(screen.getByText('easy')).toBeInTheDocument();
     });
     // Category badge should not appear
     expect(screen.queryByText('prompt efficiency')).toBeNull();
   });
 
-  it('formats cost with toFixed(2) for costs >= $0.01 (line 87)', async () => {
+  it('formats leaderboard cost with two decimal places for costs above one cent', async () => {
     const highCost = {
       ...mockDailyData,
       leaderboard: [
@@ -192,11 +179,11 @@ describe('DailyChallengeScreen', () => {
     }));
     render(<DailyChallengeScreen />);
     await waitFor(() => {
-      expect(screen.getByText('$15.00')).toBeTruthy();
+      expect(screen.getByText('$15.00')).toBeInTheDocument();
     });
   });
 
-  it('formats cost with toFixed(4) for costs < $0.01 (line 87)', async () => {
+  it('formats leaderboard cost with four decimal places for sub-cent costs', async () => {
     const lowCost = {
       ...mockDailyData,
       leaderboard: [
@@ -209,11 +196,11 @@ describe('DailyChallengeScreen', () => {
     }));
     render(<DailyChallengeScreen />);
     await waitFor(() => {
-      expect(screen.getByText('$0.0050')).toBeTruthy();
+      expect(screen.getByText('$0.0050')).toBeInTheDocument();
     });
   });
 
-  it('renders #N for leaderboard ranks > 3 instead of medals (line 151-152)', async () => {
+  it('renders numeric rank for leaderboard positions beyond third place', async () => {
     const ranked = {
       ...mockDailyData,
       leaderboard: [
@@ -227,11 +214,11 @@ describe('DailyChallengeScreen', () => {
     }));
     render(<DailyChallengeScreen />);
     await waitFor(() => {
-      expect(screen.getByText('#5')).toBeTruthy();
+      expect(screen.getByText('#5')).toBeInTheDocument();
     });
   });
 
-  it('renders empty leaderboard message when no entries (line 139-146)', async () => {
+  it('shows "Be the first to solve" when leaderboard is empty', async () => {
     const empty = { ...mockDailyData, leaderboard: [] };
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
       ok: true,
@@ -239,11 +226,11 @@ describe('DailyChallengeScreen', () => {
     }));
     render(<DailyChallengeScreen />);
     await waitFor(() => {
-      expect(screen.getByText(/Be the first to solve/)).toBeTruthy();
+      expect(screen.getByText(/Be the first to solve/)).toBeInTheDocument();
     });
   });
 
-  it('does not start countdown interval when secondsUntilNext is 0 (line 71)', async () => {
+  it('shows zero countdown without starting interval when secondsUntilNext is 0', async () => {
     const noCountdown = { ...mockDailyData, secondsUntilNext: 0 };
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
       ok: true,
@@ -251,11 +238,11 @@ describe('DailyChallengeScreen', () => {
     }));
     render(<DailyChallengeScreen />);
     await waitFor(() => {
-      expect(screen.getByText(/0h 0m 0s/)).toBeTruthy();
+      expect(screen.getByText(/0h 0m 0s/)).toBeInTheDocument();
     });
   });
 
-  it('returns null when user is null after loading (line 98)', async () => {
+  it('redirects to Login when user is null after loading', async () => {
     mockGetUser.mockResolvedValueOnce({ data: { user: null } });
     render(<DailyChallengeScreen />);
     await waitFor(() => {

@@ -23,32 +23,32 @@ describe('PlanApproval', () => {
 
   it('renders Plan header', () => {
     render(<PlanApproval planText={threeSteps} onAccept={mockOnAccept} onReject={mockOnReject} />);
-    expect(screen.getByText('Plan')).toBeTruthy();
+    expect(screen.getByText('Plan')).toBeInTheDocument();
   });
 
   it('renders parsed numbered steps', () => {
     render(<PlanApproval planText={threeSteps} onAccept={mockOnAccept} onReject={mockOnReject} />);
-    expect(screen.getByText('Step one')).toBeTruthy();
-    expect(screen.getByText('Step two')).toBeTruthy();
-    expect(screen.getByText('Step three')).toBeTruthy();
-    expect(screen.getByText('1')).toBeTruthy();
-    expect(screen.getByText('2')).toBeTruthy();
-    expect(screen.getByText('3')).toBeTruthy();
+    expect(screen.getByText('Step one')).toBeInTheDocument();
+    expect(screen.getByText('Step two')).toBeInTheDocument();
+    expect(screen.getByText('Step three')).toBeInTheDocument();
+    expect(screen.getByText('1')).toBeInTheDocument();
+    expect(screen.getByText('2')).toBeInTheDocument();
+    expect(screen.getByText('3')).toBeInTheDocument();
   });
 
   it('renders raw text when no numbered steps are found', () => {
     render(<PlanApproval planText="Just some plain text without numbers" onAccept={mockOnAccept} onReject={mockOnReject} />);
-    expect(screen.getByText('Just some plain text without numbers')).toBeTruthy();
+    expect(screen.getByText('Just some plain text without numbers')).toBeInTheDocument();
   });
 
   it('renders Accept & Execute button', () => {
     render(<PlanApproval planText={threeSteps} onAccept={mockOnAccept} onReject={mockOnReject} />);
-    expect(screen.getByText('Accept & Execute')).toBeTruthy();
+    expect(screen.getByText('Accept & Execute')).toBeInTheDocument();
   });
 
   it('renders Reject button', () => {
     render(<PlanApproval planText={threeSteps} onAccept={mockOnAccept} onReject={mockOnReject} />);
-    expect(screen.getByText('Reject')).toBeTruthy();
+    expect(screen.getByText('Reject')).toBeInTheDocument();
   });
 
   it('calls onAccept when Accept is clicked', () => {
@@ -75,8 +75,8 @@ describe('PlanApproval', () => {
     const mixed = `1) Do first
 2. Do second`;
     render(<PlanApproval planText={mixed} onAccept={mockOnAccept} onReject={mockOnReject} />);
-    expect(screen.getByText('Do first')).toBeTruthy();
-    expect(screen.getByText('Do second')).toBeTruthy();
+    expect(screen.getByText('Do first')).toBeInTheDocument();
+    expect(screen.getByText('Do second')).toBeInTheDocument();
   });
 });
 

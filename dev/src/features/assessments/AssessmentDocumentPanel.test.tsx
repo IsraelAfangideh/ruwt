@@ -45,21 +45,8 @@ vi.mock('@/shared/ui/Input', () => ({
     <input aria-label={label} value={value || ''} onChange={(e: any) => onChangeText?.(e.target.value)} {...props} />
   ),
 }));
-vi.mock('@/shared/theme', () => ({
-  useColors: () => ({
-    bg: '#fff', text: '#000', textMuted: '#888', accent: '#c9a962', border: '#ccc',
-    borderStrong: '#999', card: '#fff', muted: '#f5f5f5', error: '#f00', errorBg: '#fee',
-    success: '#0a0', successBg: '#efe', primary: '#000', primaryForeground: '#fff',
-    secondary: '#eee', secondaryForeground: '#000', destructive: '#f00',
-    textSubtle: '#aaa', bgElevated: '#fafafa', accentBg: '#ffe', bgWarm: '#faf8f5',
-  }),
-}));
-vi.mock('@/shared/theme/tokens', () => ({
-  spacing: { xs: 4, sm: 8, md: 16, lg: 24, xl: 32, '2xl': 48 },
-  fontSizes: { xs: 12, sm: 14, md: 16, lg: 18, xl: 20, '2xl': 24, '3xl': 30, '4xl': 36 },
-  fontFamily: { display: 'serif', body: 'sans-serif' },
-  radii: { sm: 4, md: 8, lg: 12, xl: 16, full: 9999 },
-}));
+vi.mock('@/shared/theme', async () => (await import('@/shared/test/helpers')).mockTheme());
+vi.mock('@/shared/theme/tokens', async () => (await import('@/shared/test/helpers')).mockTokens());
 
 const { AssessmentDocumentPanel } = await import('./AssessmentDocumentPanel');
 
@@ -118,8 +105,8 @@ describe('AssessmentDocumentPanel', () => {
 
   it('renders empty state when no title and no challenges selected', () => {
     render(<AssessmentDocumentPanel {...baseProps} />);
-    expect(screen.getByText('Your assessment will appear here')).toBeTruthy();
-    expect(screen.getByText(/Use the AI chat/)).toBeTruthy();
+    expect(screen.getByText('Your assessment will appear here')).toBeInTheDocument();
+    expect(screen.getByText(/Use the AI chat/)).toBeInTheDocument();
   });
 
   it('does not render empty state when title is set', () => {
@@ -134,12 +121,12 @@ describe('AssessmentDocumentPanel', () => {
 
   it('renders title input', () => {
     render(<AssessmentDocumentPanel {...baseProps} />);
-    expect(screen.getByLabelText('Title')).toBeTruthy();
+    expect(screen.getByLabelText('Title')).toBeInTheDocument();
   });
 
   it('shows "Title required" when title is empty', () => {
     render(<AssessmentDocumentPanel {...baseProps} title="" />);
-    expect(screen.getByText('Title required')).toBeTruthy();
+    expect(screen.getByText('Title required')).toBeInTheDocument();
   });
 
   it('hides "Title required" when title is set', () => {
@@ -149,7 +136,7 @@ describe('AssessmentDocumentPanel', () => {
 
   it('renders description input', () => {
     render(<AssessmentDocumentPanel {...baseProps} />);
-    expect(screen.getByLabelText('Description (optional)')).toBeTruthy();
+    expect(screen.getByLabelText('Description (optional)')).toBeInTheDocument();
   });
 
   it('calls setTitle when title input changes', () => {
@@ -168,7 +155,7 @@ describe('AssessmentDocumentPanel', () => {
 
   it('renders AssessmentChallengeList', () => {
     render(<AssessmentDocumentPanel {...baseProps} />);
-    expect(screen.getByTestId('challenge-list')).toBeTruthy();
+    expect(screen.getByTestId('challenge-list')).toBeInTheDocument();
   });
 
   it('passes correct props to AssessmentChallengeList', () => {
@@ -180,7 +167,7 @@ describe('AssessmentDocumentPanel', () => {
 
   it('renders AssessmentAdvancedSection', () => {
     render(<AssessmentDocumentPanel {...baseProps} />);
-    expect(screen.getByTestId('advanced-section')).toBeTruthy();
+    expect(screen.getByTestId('advanced-section')).toBeInTheDocument();
   });
 
   it('passes branding props to AssessmentAdvancedSection', () => {
@@ -195,7 +182,7 @@ describe('AssessmentDocumentPanel', () => {
 
   it('renders InviteSection when assessment is active', () => {
     render(<AssessmentDocumentPanel {...baseProps} assessmentId="a1" status="active" />);
-    expect(screen.getByTestId('invite-section')).toBeTruthy();
+    expect(screen.getByTestId('invite-section')).toBeInTheDocument();
   });
 
   it('does not render InviteSection when assessmentId is undefined', () => {
@@ -216,8 +203,8 @@ describe('AssessmentDocumentPanel', () => {
 
   it('renders custom challenge review for draft custom challenges', () => {
     render(<AssessmentDocumentPanel {...baseProps} customChallenges={[DRAFT_CUSTOM_CHALLENGE]} orgId="org1" />);
-    expect(screen.getByText('Draft Custom')).toBeTruthy();
-    expect(screen.getByText(/pending review/)).toBeTruthy();
+    expect(screen.getByText('Draft Custom')).toBeInTheDocument();
+    expect(screen.getByText(/pending review/)).toBeInTheDocument();
   });
 
   it('does not render custom challenge review when orgId is null', () => {

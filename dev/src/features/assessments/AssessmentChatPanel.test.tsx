@@ -2,32 +2,42 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 
-const { mockSendMessage, mockClearHistory, mockAbort, mockMessages, mockStreaming, mockStreamingStatus } = vi.hoisted(() => ({
+const { mockSendMessage, mockClearHistory, mockAbort, mockMessages, mockStreaming, mockStreamingStatus, capturedOnToolResult, mockShowToast } = vi.hoisted(() => ({
   mockSendMessage: vi.fn(),
   mockClearHistory: vi.fn(),
   mockAbort: vi.fn(),
   mockMessages: { current: [] as any[] },
   mockStreaming: { current: false },
   mockStreamingStatus: { current: '' },
+  capturedOnToolResult: { current: null as ((tool: string, result: any) => void) | null },
+  mockShowToast: vi.fn(),
 }));
 
 vi.mock('@/features/assessments/useAssessmentAgent', () => ({
-  useAssessmentAgent: () => ({
-    messages: mockMessages.current,
-    sendMessage: mockSendMessage,
-    streaming: mockStreaming.current,
-    streamingStatus: mockStreamingStatus.current,
-    clearHistory: mockClearHistory,
-    abort: mockAbort,
-  }),
+  useAssessmentAgent: (opts: any) => {
+    capturedOnToolResult.current = opts.onToolResult;
+    return {
+      messages: mockMessages.current,
+      sendMessage: mockSendMessage,
+      streaming: mockStreaming.current,
+      streamingStatus: mockStreamingStatus.current,
+      clearHistory: mockClearHistory,
+      abort: mockAbort,
+    };
+  },
   TOOL_SUCCESS_LABELS: {
     select_challenges: (r: any) => `Added ${r?.added ?? 0} challenges`,
     set_weights: () => 'Score weights updated',
+    remove_challenges: () => 'Challenges removed',
+    set_branding: () => 'Branding updated',
+    set_time_limit: () => 'Time limit updated',
+    set_pass_threshold: () => 'Pass threshold updated',
+    create_custom_challenge: () => 'Custom challenge created',
   },
 }));
 
 vi.mock('@/shared/ui/Toast', () => ({
-  useToast: () => ({ showToast: vi.fn() }),
+  useToast: () => ({ showToast: mockShowToast }),
 }));
 
 vi.mock('@/features/arena/ChatMarkdown', () => ({
@@ -55,21 +65,8 @@ vi.mock('@/shared/ui/Button', () => ({
 vi.mock('@/shared/ui/Badge', () => ({
   Badge: ({ children, ...props }: any) => <span {...props}>{children}</span>,
 }));
-vi.mock('@/shared/theme', () => ({
-  useColors: () => ({
-    bg: '#fff', text: '#000', textMuted: '#888', accent: '#c9a962', border: '#ccc',
-    borderStrong: '#999', card: '#fff', muted: '#f5f5f5', error: '#f00', errorBg: '#fee',
-    success: '#0a0', successBg: '#efe', primary: '#000', primaryForeground: '#fff',
-    secondary: '#eee', secondaryForeground: '#000', destructive: '#f00',
-    textSubtle: '#aaa', bgElevated: '#fafafa', accentBg: '#ffe', bgWarm: '#faf8f5',
-  }),
-}));
-vi.mock('@/shared/theme/tokens', () => ({
-  spacing: { xs: 4, sm: 8, md: 16, lg: 24, xl: 32, '2xl': 48 },
-  fontSizes: { xs: 12, sm: 14, md: 16, lg: 18, xl: 20, '2xl': 24, '3xl': 30, '4xl': 36 },
-  fontFamily: { display: 'serif', body: 'sans-serif' },
-  radii: { sm: 4, md: 8, lg: 12, xl: 16, full: 9999 },
-}));
+vi.mock('@/shared/theme', async () => (await import('@/shared/test/helpers')).mockTheme());
+vi.mock('@/shared/theme/tokens', async () => (await import('@/shared/test/helpers')).mockTokens());
 
 const { AssessmentChatPanel, extractQuickReplies } = await import('./AssessmentChatPanel');
 
@@ -96,25 +93,25 @@ describe('AssessmentChatPanel', () => {
 
   it('renders AI Assistant header', () => {
     render(<AssessmentChatPanel {...baseProps} />);
-    expect(screen.getByText('AI Assistant')).toBeTruthy();
+    expect(screen.getByText('AI Assistant')).toBeInTheDocument();
   });
 
   it('shows BETA badge', () => {
     render(<AssessmentChatPanel {...baseProps} />);
-    expect(screen.getByText('BETA')).toBeTruthy();
+    expect(screen.getByText('BETA')).toBeInTheDocument();
   });
 
   it('renders empty state with title and description', () => {
     render(<AssessmentChatPanel {...baseProps} />);
-    expect(screen.getByText('Build your assessment with AI')).toBeTruthy();
-    expect(screen.getByText(/Paste a job description/)).toBeTruthy();
+    expect(screen.getByText('Build your assessment with AI')).toBeInTheDocument();
+    expect(screen.getByText(/Paste a job description/)).toBeInTheDocument();
   });
 
   it('renders suggested prompts in empty state', () => {
     render(<AssessmentChatPanel {...baseProps} />);
-    expect(screen.getByText('Analyze a job description')).toBeTruthy();
-    expect(screen.getByText('Suggest challenges for a role')).toBeTruthy();
-    expect(screen.getByText('Create a custom challenge')).toBeTruthy();
+    expect(screen.getByText('Analyze a job description')).toBeInTheDocument();
+    expect(screen.getByText('Suggest challenges for a role')).toBeInTheDocument();
+    expect(screen.getByText('Create a custom challenge')).toBeInTheDocument();
   });
 
   it('does not show assessment-requiring prompts when no assessmentId', () => {
@@ -124,13 +121,13 @@ describe('AssessmentChatPanel', () => {
 
   it('shows assessment-requiring prompts when assessmentId exists', () => {
     render(<AssessmentChatPanel {...baseProps} assessmentId="a1" />);
-    expect(screen.getByText('Optimize score weights')).toBeTruthy();
+    expect(screen.getByText('Optimize score weights')).toBeInTheDocument();
   });
 
   it('renders template buttons when not editing', () => {
     render(<AssessmentChatPanel {...baseProps} isEditing={false} />);
-    expect(screen.getByText('Quick Start')).toBeTruthy();
-    expect(screen.getByText('Frontend Developer')).toBeTruthy();
+    expect(screen.getByText('Quick Start')).toBeInTheDocument();
+    expect(screen.getByText('Frontend Developer')).toBeInTheDocument();
   });
 
   it('does not render template buttons when editing', () => {
@@ -160,7 +157,7 @@ describe('AssessmentChatPanel', () => {
 
   it('renders Send button', () => {
     render(<AssessmentChatPanel {...baseProps} />);
-    expect(screen.getByText('Send')).toBeTruthy();
+    expect(screen.getByText('Send')).toBeInTheDocument();
   });
 
   it('disables Send button when input is empty', () => {
@@ -172,7 +169,7 @@ describe('AssessmentChatPanel', () => {
   it('renders Stop button when streaming', () => {
     mockStreaming.current = true;
     render(<AssessmentChatPanel {...baseProps} />);
-    expect(screen.getByText('Stop')).toBeTruthy();
+    expect(screen.getByText('Stop')).toBeInTheDocument();
     expect(screen.queryByText('Send')).toBeNull();
   });
 
@@ -189,10 +186,10 @@ describe('AssessmentChatPanel', () => {
       { role: 'assistant', content: 'I can help with that!' },
     ];
     render(<AssessmentChatPanel {...baseProps} />);
-    expect(screen.getByText('Help me build an assessment')).toBeTruthy();
-    expect(screen.getByText('I can help with that!')).toBeTruthy();
-    expect(screen.getByText('You')).toBeTruthy();
-    expect(screen.getByText('AI')).toBeTruthy();
+    expect(screen.getByText('Help me build an assessment')).toBeInTheDocument();
+    expect(screen.getByText('I can help with that!')).toBeInTheDocument();
+    expect(screen.getByText('You')).toBeInTheDocument();
+    expect(screen.getByText('AI')).toBeInTheDocument();
   });
 
   it('renders system messages with appropriate prefixes', () => {
@@ -200,7 +197,7 @@ describe('AssessmentChatPanel', () => {
       { role: 'system', content: 'Added 3 challenges', systemType: 'tool_result' },
     ];
     render(<AssessmentChatPanel {...baseProps} />);
-    expect(screen.getByText(/Added 3 challenges/)).toBeTruthy();
+    expect(screen.getByText(/Added 3 challenges/)).toBeInTheDocument();
   });
 
   it('renders system error messages', () => {
@@ -208,7 +205,7 @@ describe('AssessmentChatPanel', () => {
       { role: 'system', content: 'Failed to add challenges', systemType: 'tool_error' },
     ];
     render(<AssessmentChatPanel {...baseProps} />);
-    expect(screen.getByText(/Failed to add challenges/)).toBeTruthy();
+    expect(screen.getByText(/Failed to add challenges/)).toBeInTheDocument();
   });
 
   it('renders assessment_created system messages', () => {
@@ -216,14 +213,14 @@ describe('AssessmentChatPanel', () => {
       { role: 'system', content: 'Assessment created', systemType: 'assessment_created' },
     ];
     render(<AssessmentChatPanel {...baseProps} />);
-    expect(screen.getByText(/Assessment created/)).toBeTruthy();
+    expect(screen.getByText(/Assessment created/)).toBeInTheDocument();
   });
 
   it('shows streaming indicator when streaming', () => {
     mockStreaming.current = true;
     mockStreamingStatus.current = 'Thinking...';
     render(<AssessmentChatPanel {...baseProps} />);
-    expect(screen.getByText('Thinking...')).toBeTruthy();
+    expect(screen.getByText('Thinking...')).toBeInTheDocument();
   });
 
   it('does not show streaming indicator when not streaming', () => {
@@ -236,7 +233,7 @@ describe('AssessmentChatPanel', () => {
   it('shows Clear button when messages exist', () => {
     mockMessages.current = [{ role: 'user', content: 'Hello' }];
     render(<AssessmentChatPanel {...baseProps} />);
-    expect(screen.getByText('Clear')).toBeTruthy();
+    expect(screen.getByText('Clear')).toBeInTheDocument();
   });
 
   it('does not show Clear button when messages are empty', () => {
@@ -248,8 +245,8 @@ describe('AssessmentChatPanel', () => {
     mockMessages.current = [{ role: 'user', content: 'Hello' }];
     render(<AssessmentChatPanel {...baseProps} />);
     fireEvent.click(screen.getByText('Clear'));
-    expect(screen.getByText('Confirm')).toBeTruthy();
-    expect(screen.getByText('Cancel')).toBeTruthy();
+    expect(screen.getByText('Confirm')).toBeInTheDocument();
+    expect(screen.getByText('Cancel')).toBeInTheDocument();
   });
 
   it('calls clearHistory on Confirm click', () => {
@@ -266,12 +263,12 @@ describe('AssessmentChatPanel', () => {
     fireEvent.click(screen.getByText('Clear'));
     fireEvent.click(screen.getByLabelText('Cancel clear'));
     // Should go back to showing Clear button
-    expect(screen.getByText('Clear')).toBeTruthy();
+    expect(screen.getByText('Clear')).toBeInTheDocument();
   });
 
   it('renders the input placeholder', () => {
     render(<AssessmentChatPanel {...baseProps} />);
-    expect(screen.getByPlaceholderText('Describe the role or paste a job description...')).toBeTruthy();
+    expect(screen.getByPlaceholderText('Describe the role or paste a job description...')).toBeInTheDocument();
   });
 
   it('hides empty state when messages exist', () => {
@@ -285,8 +282,8 @@ describe('AssessmentChatPanel', () => {
       { role: 'assistant', content: 'Option A: Add more challenges\nOption B: Keep current set' },
     ];
     render(<AssessmentChatPanel {...baseProps} />);
-    expect(screen.getByText('Option A')).toBeTruthy();
-    expect(screen.getByText('Option B')).toBeTruthy();
+    expect(screen.getByText('Option A')).toBeInTheDocument();
+    expect(screen.getByText('Option B')).toBeInTheDocument();
   });
 
   it('sends quick-reply message when chip is clicked', () => {
@@ -303,7 +300,7 @@ describe('AssessmentChatPanel', () => {
       { role: 'assistant', content: 'I recommend swapping challenge X for Y. Want me to apply this?' },
     ];
     render(<AssessmentChatPanel {...baseProps} />);
-    expect(screen.getByText('Apply all')).toBeTruthy();
+    expect(screen.getByText('Apply all')).toBeInTheDocument();
   });
 
   it('does not render quick-reply buttons when streaming', () => {
@@ -355,5 +352,127 @@ describe('extractQuickReplies', () => {
   it('deduplicates repeated options', () => {
     const content = 'Option A: first mention\nSome text\nOption A: repeated mention';
     expect(extractQuickReplies(content)).toEqual(['Option A']);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// handleToolResult: exercises the switch statement routing tool results
+// ---------------------------------------------------------------------------
+
+describe('handleToolResult (via captured callback)', () => {
+  function renderAndCapture(props = baseProps) {
+    render(<AssessmentChatPanel {...props} />);
+    const fn = capturedOnToolResult.current!;
+    expect(fn).toBeTruthy();
+    return fn;
+  }
+
+  it('ignores tool results with success=false', () => {
+    const onChallengesChanged = vi.fn();
+    const fn = renderAndCapture({ ...baseProps, onChallengesChanged });
+    fn('select_challenges', { success: false, result: {} });
+    expect(onChallengesChanged).not.toHaveBeenCalled();
+    expect(mockShowToast).not.toHaveBeenCalled();
+  });
+
+  it('calls onChallengesChanged for select_challenges', () => {
+    const onChallengesChanged = vi.fn();
+    const fn = renderAndCapture({ ...baseProps, onChallengesChanged });
+    fn('select_challenges', { success: true, result: { added: 3 } });
+    expect(onChallengesChanged).toHaveBeenCalled();
+    expect(mockShowToast).toHaveBeenCalledWith('Added 3 challenges', 'success');
+  });
+
+  it('calls onChallengesChanged for remove_challenges', () => {
+    const onChallengesChanged = vi.fn();
+    const fn = renderAndCapture({ ...baseProps, onChallengesChanged });
+    fn('remove_challenges', { success: true, result: {} });
+    expect(onChallengesChanged).toHaveBeenCalled();
+  });
+
+  it('calls onWeightsChanged for set_weights', () => {
+    const onWeightsChanged = vi.fn();
+    const fn = renderAndCapture({ ...baseProps, onWeightsChanged });
+    const weights = { modelSelection: 30, promptEfficiency: 20 };
+    fn('set_weights', { success: true, result: weights });
+    expect(onWeightsChanged).toHaveBeenCalledWith(weights);
+  });
+
+  it('calls onBrandingChanged for set_branding', () => {
+    const onBrandingChanged = vi.fn();
+    const fn = renderAndCapture({ ...baseProps, onBrandingChanged });
+    const branding = { companyName: 'Ruwt', welcomeMessage: 'Hello' };
+    fn('set_branding', { success: true, result: branding });
+    expect(onBrandingChanged).toHaveBeenCalledWith(branding);
+  });
+
+  it('calls onTimeLimitChanged for set_time_limit', () => {
+    const onTimeLimitChanged = vi.fn();
+    const fn = renderAndCapture({ ...baseProps, onTimeLimitChanged });
+    fn('set_time_limit', { success: true, result: { minutes: 45 } });
+    expect(onTimeLimitChanged).toHaveBeenCalledWith(45);
+  });
+
+  it('calls onThresholdChanged for set_pass_threshold', () => {
+    const onThresholdChanged = vi.fn();
+    const fn = renderAndCapture({ ...baseProps, onThresholdChanged });
+    const threshold = { type: 'percentage', value: 70 };
+    fn('set_pass_threshold', { success: true, result: threshold });
+    expect(onThresholdChanged).toHaveBeenCalledWith(threshold);
+  });
+
+  it('calls onCustomChallengeCreated for create_custom_challenge', () => {
+    const onCustomChallengeCreated = vi.fn();
+    const fn = renderAndCapture({ ...baseProps, onCustomChallengeCreated });
+    fn('create_custom_challenge', { success: true, result: {} });
+    expect(onCustomChallengeCreated).toHaveBeenCalled();
+  });
+
+  it('shows toast for known tools', () => {
+    const fn = renderAndCapture();
+    fn('set_weights', { success: true, result: {} });
+    expect(mockShowToast).toHaveBeenCalledWith('Score weights updated', 'success');
+  });
+
+  it('does not show toast for unknown tools (no labelFn)', () => {
+    const fn = renderAndCapture();
+    mockShowToast.mockClear();
+    fn('unknown_tool', { success: true, result: {} });
+    expect(mockShowToast).not.toHaveBeenCalled();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// handleSend: type text then click Send
+// ---------------------------------------------------------------------------
+
+describe('handleSend', () => {
+  it('Send button is disabled when input is empty', () => {
+    render(<AssessmentChatPanel {...baseProps} />);
+    const sendBtn = screen.getByText('Send').closest('button');
+    expect(sendBtn?.disabled).toBe(true);
+  });
+
+  it('Send button is enabled when text is typed', () => {
+    render(<AssessmentChatPanel {...baseProps} />);
+    const input = screen.getByPlaceholderText('Describe the role or paste a job description...');
+    fireEvent.change(input, { target: { value: 'Hello world' } });
+    const sendBtn = screen.getByText('Send').closest('button');
+    expect(sendBtn?.disabled).toBe(false);
+  });
+
+  it('calls sendMessage when Send clicked with text', () => {
+    render(<AssessmentChatPanel {...baseProps} />);
+    const input = screen.getByPlaceholderText('Describe the role or paste a job description...');
+    fireEvent.change(input, { target: { value: 'Build assessment' } });
+    fireEvent.click(screen.getByText('Send'));
+    expect(mockSendMessage).toHaveBeenCalledWith('Build assessment');
+  });
+
+  it('does not send when streaming (Stop button shown instead)', () => {
+    mockStreaming.current = true;
+    render(<AssessmentChatPanel {...baseProps} />);
+    expect(screen.queryByText('Send')).toBeNull();
+    expect(screen.getByText('Stop')).toBeInTheDocument();
   });
 });

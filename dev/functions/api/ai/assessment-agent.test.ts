@@ -5,7 +5,7 @@
  * tool call execution loop, conversation persistence, and error handling.
  */
 import { describe, it, expect, vi, beforeEach, type Mock } from 'vitest';
-import { onRequestPost } from './assessment-agent';
+import { onRequestPost, onRequestDelete } from './assessment-agent';
 
 // ---------------------------------------------------------------------------
 // Mocks
@@ -1124,5 +1124,262 @@ describe('POST /api/ai/assessment-agent', () => {
     const errorEvents = events.filter((e: any) => e.type === 'error');
     expect(errorEvents.length).toBeGreaterThan(0);
     expect((errorEvents[0] as any).message).toContain('Cloudflare AI error');
+  });
+
+  // ------------------------------------------------------------------
+  // Forbidden assessment (ownership check)
+  // ------------------------------------------------------------------
+
+  it('returns 403 when assessment belongs to different user', async () => {
+    (getUser as Mock).mockResolvedValue(TEST_USER);
+    mockDb.selectResults.push([]); // catalog
+    // Assessment owned by a different user
+    mockDb.selectResults.push([{
+      id: 'asmt-1',
+      title: 'Other User Assessment',
+      description: null,
+      timeLimit: 3600,
+      categoryWeights: null,
+      companyName: null,
+      welcomeMessage: null,
+      createdBy: 'other-user-id',
+    }]);
+
+    const res = await onRequestPost(
+      makeContext(validBody({ assessmentId: 'asmt-1' }))
+    );
+
+    expect(res.status).toBe(403);
+    const json = await res.json() as any;
+    expect(json.error).toBe('Forbidden');
+  });
+
+  // ------------------------------------------------------------------
+  // Message truncation
+  // ------------------------------------------------------------------
+
+  it('truncates messages when exceeding MAX_CONVERSATION_MESSAGES', async () => {
+    (getUser as Mock).mockResolvedValue(TEST_USER);
+    mockDb.selectResults.push([]); // catalog
+
+    // Create 25 messages (over the 20 limit)
+    const manyMessages = Array.from({ length: 25 }, (_, i) => ({
+      role: i % 2 === 0 ? 'user' : 'assistant',
+      content: `Message ${i}`,
+    }));
+
+    mockCFAI([
+      { ok: true, body: { result: { response: 'Handled truncated messages.' } } },
+    ]);
+
+    const res = await onRequestPost(makeContext({ messages: manyMessages }));
+    expect(res.status).toBe(200);
+    const events = await readSSEEvents(res);
+    const doneEvent = events.find((e: any) => e.type === 'done');
+    expect(doneEvent).toBeDefined();
+
+    // Verify that the fetch was called with truncated messages
+    const fetchMock = globalThis.fetch as Mock;
+    const body = JSON.parse(fetchMock.mock.calls[0][1].body);
+    // messages should be system + last 20 user/assistant messages = 21 total
+    expect(body.messages.length).toBe(21);
+  });
+
+  // ------------------------------------------------------------------
+  // Auto-create assessment
+  // ------------------------------------------------------------------
+
+  it('auto-creates draft assessment when tool needs one and assessmentId is null', async () => {
+    (getUser as Mock).mockResolvedValue(TEST_USER);
+    mockDb.selectResults.push([]); // catalog
+
+    (executeToolCall as Mock).mockResolvedValue({
+      tool: 'select_challenges',
+      success: true,
+      result: { added: 2 },
+    });
+
+    // Tool call that requires assessment
+    mockCFAI([
+      {
+        ok: true,
+        body: {
+          result: {
+            response: '',
+            tool_calls: [
+              { name: 'select_challenges', arguments: { challengeIds: ['ch-1'] } },
+            ],
+          },
+        },
+      },
+      { ok: true, body: { result: { response: 'Assessment created and challenges added.' } } },
+    ]);
+
+    const res = await onRequestPost(makeContext(validBody({ assessmentId: null })));
+    const events = await readSSEEvents(res);
+
+    const createdEvent = events.find((e: any) => e.type === 'assessment_created');
+    expect(createdEvent).toBeDefined();
+    expect((createdEvent as any).assessmentId).toBeDefined();
+
+    // Verify assessment was inserted
+    expect(mockDb.insertedValues.length).toBeGreaterThanOrEqual(1);
+    const assessmentInsert = mockDb.insertedValues.find((v: any) => v.title);
+    expect(assessmentInsert).toBeDefined();
+    expect(assessmentInsert.status).toBe('draft');
+  });
+
+  // ------------------------------------------------------------------
+  // Tool call with arguments as object (not string)
+  // ------------------------------------------------------------------
+
+  it('handles tool_calls with arguments as object (not string)', async () => {
+    (getUser as Mock).mockResolvedValue(TEST_USER);
+    mockDb.selectResults.push([]); // catalog
+
+    (executeToolCall as Mock).mockResolvedValue({
+      tool: 'search_challenges',
+      success: true,
+      result: { count: 1 },
+    });
+
+    mockCFAI([
+      {
+        ok: true,
+        body: {
+          result: {
+            response: '',
+            tool_calls: [
+              { name: 'search_challenges', arguments: { category: 'debugging' } },
+            ],
+          },
+        },
+      },
+      { ok: true, body: { result: { response: 'Found it.' } } },
+    ]);
+
+    const res = await onRequestPost(makeContext(validBody()));
+    const events = await readSSEEvents(res);
+
+    const toolCalls = events.filter((e: any) => e.type === 'tool_call');
+    expect(toolCalls).toHaveLength(1);
+    expect((toolCalls[0] as any).params).toEqual({ category: 'debugging' });
+  });
+
+  // ------------------------------------------------------------------
+  // Choices format with boolean content
+  // ------------------------------------------------------------------
+
+  it('handles choices format with boolean content', async () => {
+    (getUser as Mock).mockResolvedValue(TEST_USER);
+    mockDb.selectResults.push([]); // catalog
+
+    mockCFAI([
+      {
+        ok: true,
+        body: {
+          result: {
+            choices: [{ message: { content: true } }],
+          },
+        },
+      },
+    ]);
+
+    const res = await onRequestPost(makeContext(validBody()));
+    const events = await readSSEEvents(res);
+
+    const chunks = events.filter((e: any) => e.type === 'chunk');
+    expect(chunks.length).toBeGreaterThan(0);
+    expect((chunks[0] as any).content).toContain('true');
+  });
+
+  // ------------------------------------------------------------------
+  // normalizeToolName identity (name not in map)
+  // ------------------------------------------------------------------
+
+  it('passes through tool names not in normalization map', async () => {
+    (getUser as Mock).mockResolvedValue(TEST_USER);
+    mockDb.selectResults.push([]); // catalog
+
+    (executeToolCall as Mock).mockResolvedValue({
+      tool: 'search_challenges',
+      success: true,
+      result: {},
+    });
+
+    // Model uses the correct tool name — no normalization needed
+    mockCFAI([
+      {
+        ok: true,
+        body: {
+          result: {
+            response: '',
+            tool_calls: [
+              { name: 'search_challenges', arguments: {} },
+            ],
+          },
+        },
+      },
+      { ok: true, body: { result: { response: 'Done.' } } },
+    ]);
+
+    const res = await onRequestPost(makeContext(validBody()));
+    const events = await readSSEEvents(res);
+    const toolCalls = events.filter((e: any) => e.type === 'tool_call');
+    expect(toolCalls).toHaveLength(1);
+    expect((toolCalls[0] as any).tool).toBe('search_challenges');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Tests: DELETE /api/ai/assessment-agent
+// ---------------------------------------------------------------------------
+
+describe('DELETE /api/ai/assessment-agent', () => {
+  function makeDeleteCtx(params = '') {
+    return {
+      request: new Request(`https://ruwt.dev/api/ai/assessment-agent${params}`, { method: 'DELETE' }),
+      env: makeEnv() as any,
+    };
+  }
+
+  it('returns 401 when not authenticated', async () => {
+    (getUser as Mock).mockResolvedValue(null);
+    const res = await onRequestDelete(makeDeleteCtx('?conversationId=conv-1'));
+    expect(res.status).toBe(401);
+    const json = await res.json() as any;
+    expect(json.error).toBe('Unauthorized');
+  });
+
+  it('returns 400 when conversationId is missing', async () => {
+    (getUser as Mock).mockResolvedValue(TEST_USER);
+    const res = await onRequestDelete(makeDeleteCtx());
+    expect(res.status).toBe(400);
+    const json = await res.json() as any;
+    expect(json.error).toBe('Missing conversationId');
+  });
+
+  it('deletes conversation and returns ok', async () => {
+    (getUser as Mock).mockResolvedValue(TEST_USER);
+    mockDb = createMockDb();
+    (getDb as Mock).mockReturnValue(mockDb);
+    // Need to add delete mock
+    mockDb.delete = vi.fn().mockReturnValue({
+      where: vi.fn().mockResolvedValue(undefined),
+    });
+
+    const res = await onRequestDelete(makeDeleteCtx('?conversationId=conv-123'));
+    expect(res.status).toBe(200);
+    const json = await res.json() as any;
+    expect(json.ok).toBe(true);
+    expect(mockDb.delete).toHaveBeenCalled();
+  });
+
+  it('returns 500 on unexpected error', async () => {
+    (getUser as Mock).mockRejectedValue(new Error('Auth crashed'));
+    const res = await onRequestDelete(makeDeleteCtx('?conversationId=conv-1'));
+    expect(res.status).toBe(500);
+    const json = await res.json() as any;
+    expect(json.error).toBe('Internal error');
   });
 });

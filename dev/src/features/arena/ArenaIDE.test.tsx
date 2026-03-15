@@ -320,8 +320,8 @@ describe('ArenaIDE', () => {
 
   it('renders Description and AI Chat tabs', () => {
     renderIDE();
-    expect(screen.getByText('Description')).toBeTruthy();
-    expect(screen.getByText('AI Chat')).toBeTruthy();
+    expect(screen.getByText('Description')).toBeInTheDocument();
+    expect(screen.getByText('AI Chat')).toBeInTheDocument();
   });
 
   it('renders the challenge description content', () => {
@@ -333,7 +333,7 @@ describe('ArenaIDE', () => {
     renderIDE();
     // Monaco is lazy-loaded via Suspense; wait for it
     await waitFor(() => {
-      expect(screen.getByTestId('monaco-editor')).toBeTruthy();
+      expect(screen.getByTestId('monaco-editor')).toBeInTheDocument();
     });
     const editor = screen.getByTestId('monaco-editor') as HTMLTextAreaElement;
     expect(editor.value).toBe('function solve() {}');
@@ -341,7 +341,7 @@ describe('ArenaIDE', () => {
 
   it('renders terminal panel', () => {
     renderIDE();
-    expect(screen.getByTestId('terminal-panel')).toBeTruthy();
+    expect(screen.getByTestId('terminal-panel')).toBeInTheDocument();
   });
 
   /* ─── Tab switching ────────────────────────────────────────────── */
@@ -350,7 +350,7 @@ describe('ArenaIDE', () => {
     renderIDE();
     fireEvent.click(screen.getByText('AI Chat'));
     // Mode selector and chat input should be visible
-    expect(screen.getByTestId('mode-selector')).toBeTruthy();
+    expect(screen.getByTestId('mode-selector')).toBeInTheDocument();
   });
 
   it('switches back to Description tab', () => {
@@ -358,7 +358,7 @@ describe('ArenaIDE', () => {
     fireEvent.click(screen.getByText('AI Chat'));
     fireEvent.click(screen.getByText('Description'));
     // Description content should be visible again
-    expect(screen.getByText(/Build something cool/)).toBeTruthy();
+    expect(screen.getByText(/Build something cool/)).toBeInTheDocument();
   });
 
   it('clears unread dot when switching to chat tab', () => {
@@ -379,16 +379,16 @@ describe('ArenaIDE', () => {
     renderIDE({
       challenge: { ...challenge, hiddenTestCount: 5 },
     });
-    expect(screen.getByText(/5 hidden tests/)).toBeTruthy();
+    expect(screen.getByText(/5 hidden tests/)).toBeInTheDocument();
   });
 
   it('shows constraints section when maxCost or wallClockLimit set', () => {
     renderIDE({
       challenge: { ...challenge, maxCost: 50000, wallClockLimit: 300 },
     });
-    expect(screen.getByText('Constraints')).toBeTruthy();
-    expect(screen.getByText(/Time limit/)).toBeTruthy();
-    expect(screen.getByText(/Max cost/)).toBeTruthy();
+    expect(screen.getByText('Constraints')).toBeInTheDocument();
+    expect(screen.getByText(/Time limit/)).toBeInTheDocument();
+    expect(screen.getByText(/Max cost/)).toBeInTheDocument();
   });
 
   it('does not show constraints section when no limits', () => {
@@ -400,7 +400,7 @@ describe('ArenaIDE', () => {
 
   it('shows "No past attempts" when empty', () => {
     renderIDE({ pastAttempts: [] });
-    expect(screen.getByText(/No past attempts/)).toBeTruthy();
+    expect(screen.getByText(/No past attempts/)).toBeInTheDocument();
   });
 
   it('renders past attempts with status, cost, and time ago', () => {
@@ -420,12 +420,12 @@ describe('ArenaIDE', () => {
       },
     ];
     renderIDE({ pastAttempts });
-    expect(screen.getByText('passed')).toBeTruthy();
-    expect(screen.getByText('failed')).toBeTruthy();
-    expect(screen.getByText('2/2 passed')).toBeTruthy();
-    expect(screen.getByText('0/2 passed')).toBeTruthy();
-    expect(screen.getByText(/1h ago/)).toBeTruthy();
-    expect(screen.getByText(/2d ago/)).toBeTruthy();
+    expect(screen.getByText('passed')).toBeInTheDocument();
+    expect(screen.getByText('failed')).toBeInTheDocument();
+    expect(screen.getByText('2/2 passed')).toBeInTheDocument();
+    expect(screen.getByText('0/2 passed')).toBeInTheDocument();
+    expect(screen.getByText(/1h ago/)).toBeInTheDocument();
+    expect(screen.getByText(/2d ago/)).toBeInTheDocument();
   });
 
   it('shows "just now" for recent past attempts', () => {
@@ -435,7 +435,7 @@ describe('ArenaIDE', () => {
       createdAt: new Date().toISOString(), submittedAt: null,
     }];
     renderIDE({ pastAttempts });
-    expect(screen.getByText('just now')).toBeTruthy();
+    expect(screen.getByText('just now')).toBeInTheDocument();
   });
 
   it('shows minutes ago for recent past attempts', () => {
@@ -446,20 +446,20 @@ describe('ArenaIDE', () => {
       submittedAt: null,
     }];
     renderIDE({ pastAttempts });
-    expect(screen.getByText(/5m ago/)).toBeTruthy();
+    expect(screen.getByText(/5m ago/)).toBeInTheDocument();
   });
 
   /* ─── Notepad (Your Notes) ────────────────────────────────────── */
 
   it('shows "Your Notes" collapsible section', () => {
     renderIDE();
-    expect(screen.getByText('Your Notes')).toBeTruthy();
+    expect(screen.getByText('Your Notes')).toBeInTheDocument();
   });
 
   it('expands notepad when clicking "Your Notes"', () => {
     renderIDE();
     fireEvent.click(screen.getByText('Your Notes'));
-    expect(screen.getByPlaceholderText(/Jot down your approach/)).toBeTruthy();
+    expect(screen.getByPlaceholderText(/Jot down your approach/)).toBeInTheDocument();
   });
 
   it('notepad content persists via onNotepadChange', () => {
@@ -490,7 +490,7 @@ describe('ArenaIDE', () => {
     });
     fireEvent.click(screen.getByText('AI Chat'));
     // Total tokens (100+200=300) should appear somewhere
-    expect(screen.getByText(/300/)).toBeTruthy();
+    expect(screen.getByText(/300/)).toBeInTheDocument();
   });
 
   it('does not show token count when 0', () => {
@@ -505,7 +505,7 @@ describe('ArenaIDE', () => {
   it('renders guest mode placeholder in chat textarea', () => {
     renderIDE({ guestMode: true });
     fireEvent.click(screen.getByText('AI Chat'));
-    expect(screen.getByPlaceholderText('Sign up to chat with AI')).toBeTruthy();
+    expect(screen.getByPlaceholderText('Sign up to chat with AI')).toBeInTheDocument();
   });
 
   it('disables send button in guest mode', () => {
@@ -524,9 +524,9 @@ describe('ArenaIDE', () => {
   it('shows chat prompt suggestions when no messages', () => {
     renderIDE();
     fireEvent.click(screen.getByText('AI Chat'));
-    expect(screen.getByText('Write the solution')).toBeTruthy();
-    expect(screen.getByText("What's the most efficient approach?")).toBeTruthy();
-    expect(screen.getByText('Fix the failing tests')).toBeTruthy();
+    expect(screen.getByText('Write the solution')).toBeInTheDocument();
+    expect(screen.getByText("What's the most efficient approach?")).toBeInTheDocument();
+    expect(screen.getByText('Fix the failing tests')).toBeInTheDocument();
   });
 
   it('clicking a prompt suggestion populates chat input', () => {
@@ -540,13 +540,13 @@ describe('ArenaIDE', () => {
   it('shows budget info in empty chat state when maxCost set', () => {
     renderIDE({ challenge: { ...challenge, maxCost: 50000 } });
     fireEvent.click(screen.getByText('AI Chat'));
-    expect(screen.getByText(/Budget:/)).toBeTruthy();
+    expect(screen.getByText(/Budget:/)).toBeInTheDocument();
   });
 
   it('shows leaderboard info in empty chat state when no budget', () => {
     renderIDE();
     fireEvent.click(screen.getByText('AI Chat'));
-    expect(screen.getByText(/Costs tracked for leaderboard/)).toBeTruthy();
+    expect(screen.getByText(/Costs tracked for leaderboard/)).toBeInTheDocument();
   });
 
   /* ─── Model tier selector ──────────────────────────────────────── */
@@ -554,11 +554,11 @@ describe('ArenaIDE', () => {
   it('renders all 5 tier buttons', () => {
     renderIDE();
     fireEvent.click(screen.getByText('AI Chat'));
-    expect(screen.getByText('Micro')).toBeTruthy();
-    expect(screen.getByText('Budget')).toBeTruthy();
-    expect(screen.getByText('Mid')).toBeTruthy();
-    expect(screen.getByText('Premium')).toBeTruthy();
-    expect(screen.getByText('Reasoning')).toBeTruthy();
+    expect(screen.getByText('Micro')).toBeInTheDocument();
+    expect(screen.getByText('Budget')).toBeInTheDocument();
+    expect(screen.getByText('Mid')).toBeInTheDocument();
+    expect(screen.getByText('Premium')).toBeInTheDocument();
+    expect(screen.getByText('Reasoning')).toBeInTheDocument();
   });
 
   it('selects a different tier on click', () => {
@@ -577,7 +577,7 @@ describe('ArenaIDE', () => {
     // Now click Mid again to open dropdown
     fireEvent.click(screen.getByText('Mid'));
     // Dropdown should show model options
-    expect(screen.getByText('Mid Model 2')).toBeTruthy();
+    expect(screen.getByText('Mid Model 2')).toBeInTheDocument();
   });
 
   it('selects model from dropdown', () => {
@@ -612,7 +612,7 @@ describe('ArenaIDE', () => {
     fireEvent.click(screen.getByText('AI Chat'));
     const textarea = screen.getByPlaceholderText(/Ask about this problem/) as HTMLTextAreaElement;
     fireEvent.change(textarea, { target: { value: 'Help me' } });
-    expect(screen.getByText(/\$0\.01 est/)).toBeTruthy();
+    expect(screen.getByText(/\$0\.01 est/)).toBeInTheDocument();
   });
 
   it('Enter key sends message (calls streamChat)', async () => {
@@ -625,7 +625,7 @@ describe('ArenaIDE', () => {
       expect(mockStreamChat).toHaveBeenCalled();
     });
     // User message should appear
-    expect(screen.getByText('Help me solve this')).toBeTruthy();
+    expect(screen.getByText('Help me solve this')).toBeInTheDocument();
   });
 
   it('Shift+Enter does not send message', () => {
@@ -660,7 +660,7 @@ describe('ArenaIDE', () => {
   it('shows expiry overlay and disables chat after dismissing overlay', async () => {
     renderIDE({ isExpired: true });
     // When isExpired=true, the expiry overlay is shown
-    await waitFor(() => expect(screen.getByTestId('expiry-overlay')).toBeTruthy());
+    await waitFor(() => expect(screen.getByTestId('expiry-overlay')).toBeInTheDocument());
     // Chat is NOT disabled while overlay is visible (chatDisabled = isExpired && !showExpiryOverlay)
     // After dismissing the overlay, chat becomes disabled
     fireEvent.click(screen.getByTestId('expiry-review'));
@@ -673,13 +673,13 @@ describe('ArenaIDE', () => {
   it('shows expiry overlay when isExpired is set', async () => {
     renderIDE({ isExpired: true });
     await waitFor(() => {
-      expect(screen.getByTestId('expiry-overlay')).toBeTruthy();
+      expect(screen.getByTestId('expiry-overlay')).toBeInTheDocument();
     });
   });
 
   it('dismisses expiry overlay on review', async () => {
     renderIDE({ isExpired: true });
-    await waitFor(() => expect(screen.getByTestId('expiry-overlay')).toBeTruthy());
+    await waitFor(() => expect(screen.getByTestId('expiry-overlay')).toBeInTheDocument());
     fireEvent.click(screen.getByTestId('expiry-review'));
     await waitFor(() => {
       expect(screen.queryByTestId('expiry-overlay')).toBeNull();
@@ -689,7 +689,7 @@ describe('ArenaIDE', () => {
   it('calls onRestart when clicking restart in expiry overlay', async () => {
     const onRestart = vi.fn();
     renderIDE({ isExpired: true, onRestart });
-    await waitFor(() => expect(screen.getByTestId('expiry-overlay')).toBeTruthy());
+    await waitFor(() => expect(screen.getByTestId('expiry-overlay')).toBeInTheDocument());
     fireEvent.click(screen.getByTestId('expiry-restart'));
     expect(onRestart).toHaveBeenCalled();
   });
@@ -735,7 +735,7 @@ describe('ArenaIDE', () => {
     // but handleStopChat sets abortedByUserRef and clears state
     // Verify the partial streaming message was saved
     await waitFor(() => {
-      expect(screen.getByText(/\[stopped\]/)).toBeTruthy();
+      expect(screen.getByText(/\[stopped\]/)).toBeInTheDocument();
     });
   });
 
@@ -757,7 +757,7 @@ describe('ArenaIDE', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText('AI response here')).toBeTruthy();
+      expect(screen.getByText('AI response here')).toBeInTheDocument();
     });
   });
 
@@ -776,7 +776,7 @@ describe('ArenaIDE', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText(/Rate limit exceeded/)).toBeTruthy();
+      expect(screen.getByText(/Rate limit exceeded/)).toBeInTheDocument();
     });
   });
 
@@ -796,7 +796,7 @@ describe('ArenaIDE', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText(/Time limit reached/)).toBeTruthy();
+      expect(screen.getByText(/Time limit reached/)).toBeInTheDocument();
     });
     expect(onExpire).toHaveBeenCalled();
   });
@@ -816,7 +816,7 @@ describe('ArenaIDE', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText(/Cost limit reached/)).toBeTruthy();
+      expect(screen.getByText(/Cost limit reached/)).toBeInTheDocument();
     });
   });
 
@@ -836,8 +836,8 @@ describe('ArenaIDE', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId('thinking-block')).toBeTruthy();
-      expect(screen.getByText(/Let me think about this/)).toBeTruthy();
+      expect(screen.getByTestId('thinking-block')).toBeInTheDocument();
+      expect(screen.getByText(/Let me think about this/)).toBeInTheDocument();
     });
   });
 
@@ -861,14 +861,14 @@ describe('ArenaIDE', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText('Copy')).toBeTruthy();
+      expect(screen.getByText('Copy')).toBeInTheDocument();
     });
     await act(async () => {
       fireEvent.click(screen.getByText('Copy'));
     });
     expect(writeText).toHaveBeenCalledWith('Copy this text');
     await waitFor(() => {
-      expect(screen.getByText('Copied!')).toBeTruthy();
+      expect(screen.getByText('Copied!')).toBeInTheDocument();
     });
   });
 
@@ -889,12 +889,12 @@ describe('ArenaIDE', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText('Clear')).toBeTruthy();
+      expect(screen.getByText('Clear')).toBeInTheDocument();
     });
     fireEvent.click(screen.getByText('Clear'));
     // Messages should be gone, prompt suggestions should reappear
     await waitFor(() => {
-      expect(screen.getByText('Write the solution')).toBeTruthy();
+      expect(screen.getByText('Write the solution')).toBeInTheDocument();
     });
   });
 
@@ -915,7 +915,7 @@ describe('ArenaIDE', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText(/Retry/)).toBeTruthy();
+      expect(screen.getByText(/Retry/)).toBeInTheDocument();
     });
   });
 
@@ -939,7 +939,7 @@ describe('ArenaIDE', () => {
   it('renders results bar when testResults provided', () => {
     const results = { passed: true, passedTests: 1, totalTests: 1, isSubmission: false };
     renderIDE({ testResults: results });
-    expect(screen.getByTestId('results-bar')).toBeTruthy();
+    expect(screen.getByTestId('results-bar')).toBeInTheDocument();
   });
 
   it('does not render results bar when testResults is null', () => {
@@ -990,7 +990,7 @@ describe('ArenaIDE', () => {
     isMobileReturn = true;
     renderIDE();
     // Mobile floating bar should show "Editor" and description/chat panel toggle
-    expect(screen.getByText('Editor')).toBeTruthy();
+    expect(screen.getByText('Editor')).toBeInTheDocument();
   });
 
   it('switches between sidebar and editor panels on mobile', async () => {
@@ -998,7 +998,7 @@ describe('ArenaIDE', () => {
     renderIDE();
     // Initially shows editor panel
     await waitFor(() => {
-      expect(screen.getByTestId('monaco-editor')).toBeTruthy();
+      expect(screen.getByTestId('monaco-editor')).toBeInTheDocument();
     });
     // On mobile, the floating bar has Description/AI Chat button
     // Use the mobile floating bar button for the sidebar panel
@@ -1017,14 +1017,14 @@ describe('ArenaIDE', () => {
 
   it('shows nudge banner when no messages and code is starter code', () => {
     renderIDE({ code: '// your code here', challenge: { ...challenge, starterCode: null } });
-    expect(screen.getByText(/Start by asking the AI/)).toBeTruthy();
+    expect(screen.getByText(/Start by asking the AI/)).toBeInTheDocument();
   });
 
   it('nudge "Open Chat" button switches to chat tab', () => {
     renderIDE({ code: '// your code here', challenge: { ...challenge, starterCode: null } });
     fireEvent.click(screen.getByText('Open Chat'));
     // Should switch to chat tab
-    expect(screen.getByTestId('mode-selector')).toBeTruthy();
+    expect(screen.getByTestId('mode-selector')).toBeInTheDocument();
   });
 
   it('nudge dismiss button hides the nudge', () => {
@@ -1073,7 +1073,7 @@ describe('ArenaIDE', () => {
     });
     // Should switch to chat tab
     await waitFor(() => {
-      expect(screen.getByTestId('mode-selector')).toBeTruthy();
+      expect(screen.getByTestId('mode-selector')).toBeInTheDocument();
     });
   });
 
@@ -1083,7 +1083,7 @@ describe('ArenaIDE', () => {
       window.dispatchEvent(new KeyboardEvent('keydown', { key: 'l', ctrlKey: true }));
     });
     await waitFor(() => {
-      expect(screen.getByTestId('mode-selector')).toBeTruthy();
+      expect(screen.getByTestId('mode-selector')).toBeInTheDocument();
     });
   });
 
@@ -1138,7 +1138,7 @@ describe('ArenaIDE', () => {
     });
     fireEvent.click(screen.getByText('AI Chat'));
     // Token display: "30 tok · $0.0050"
-    expect(screen.getByText(/\$0\.0050/)).toBeTruthy();
+    expect(screen.getByText(/\$0\.0050/)).toBeInTheDocument();
   });
 
   it('formatCost renders larger values with 2 decimals', async () => {
@@ -1146,7 +1146,7 @@ describe('ArenaIDE', () => {
       attempt: { ...attempt, totalCost: 50000, inputTokens: 500, outputTokens: 500 },
     });
     fireEvent.click(screen.getByText('AI Chat'));
-    expect(screen.getByText(/\$5\.00/)).toBeTruthy();
+    expect(screen.getByText(/\$5\.00/)).toBeInTheDocument();
   });
 
   /* ─── formatTime helper ────────────────────────────────────────── */
@@ -1155,7 +1155,7 @@ describe('ArenaIDE', () => {
     renderIDE({
       challenge: { ...challenge, wallClockLimit: 125 }, // 2:05
     });
-    expect(screen.getByText(/2:05/)).toBeTruthy();
+    expect(screen.getByText(/2:05/)).toBeInTheDocument();
   });
 
   /* ─── Scroll to bottom button ──────────────────────────────────── */
@@ -1197,7 +1197,7 @@ describe('ArenaIDE', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText(/1 message queued/)).toBeTruthy();
+      expect(screen.getByText(/1 message queued/)).toBeInTheDocument();
     });
   });
 
@@ -1237,7 +1237,7 @@ describe('ArenaIDE', () => {
 
     // Now rerender with expired — overlay appears
     rerender(<ArenaIDE {...defaultProps} isExpired={true} />);
-    await waitFor(() => expect(screen.getByTestId('expiry-overlay')).toBeTruthy());
+    await waitFor(() => expect(screen.getByTestId('expiry-overlay')).toBeInTheDocument());
 
     // Dismiss the overlay
     fireEvent.click(screen.getByTestId('expiry-review'));
@@ -1365,7 +1365,7 @@ describe('ArenaIDE', () => {
     // The Suspense fallback shows "Loading editor..."
     // Since our mock loads synchronously, we just verify the mock editor renders
     renderIDE();
-    expect(screen.getByTestId('monaco-editor')).toBeTruthy();
+    expect(screen.getByTestId('monaco-editor')).toBeInTheDocument();
   });
 
   /* ─── Message cost line ────────────────────────────────────────── */
@@ -1385,7 +1385,7 @@ describe('ArenaIDE', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText(/75/)).toBeTruthy(); // tokens
+      expect(screen.getByText(/75/)).toBeInTheDocument(); // tokens
     });
   });
 
@@ -1400,13 +1400,13 @@ describe('ArenaIDE', () => {
   it('handles challenge with invalid testCases JSON gracefully', () => {
     renderIDE({ challenge: { ...challenge, testCases: 'invalid json' } });
     // Should not crash — the try/catch handles this
-    expect(screen.getByText('Description')).toBeTruthy();
+    expect(screen.getByText('Description')).toBeInTheDocument();
   });
 
   it('renders with no attempt (null attempt)', () => {
     renderIDE({ attempt: null });
     // Should still render — attempt is optional
-    expect(screen.getByText('Description')).toBeTruthy();
+    expect(screen.getByText('Description')).toBeInTheDocument();
   });
 
   it('handles attempt with 0 tokens gracefully', () => {
@@ -1433,7 +1433,7 @@ describe('ArenaIDE', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText('You')).toBeTruthy();
+      expect(screen.getByText('You')).toBeInTheDocument();
       expect(screen.getAllByText('AI').length).toBeGreaterThan(0);
     });
   });
@@ -1456,7 +1456,7 @@ describe('ArenaIDE', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId('expiry-overlay')).toBeTruthy();
+      expect(screen.getByTestId('expiry-overlay')).toBeInTheDocument();
     });
     expect(onExpire).toHaveBeenCalled();
   });
@@ -1481,7 +1481,7 @@ describe('ArenaIDE', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText('Now responding')).toBeTruthy();
+      expect(screen.getByText('Now responding')).toBeInTheDocument();
     });
   });
 
@@ -1520,7 +1520,7 @@ describe('ArenaIDE', () => {
   it('sendMessage adds time constraint message when expired and overlay dismissed', async () => {
     renderIDE({ isExpired: true });
     // Dismiss the expiry overlay first
-    await waitFor(() => expect(screen.getByTestId('expiry-overlay')).toBeTruthy());
+    await waitFor(() => expect(screen.getByTestId('expiry-overlay')).toBeInTheDocument());
     fireEvent.click(screen.getByTestId('expiry-review'));
     await waitFor(() => expect(screen.queryByTestId('expiry-overlay')).toBeNull());
 
@@ -1548,7 +1548,7 @@ describe('ArenaIDE', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText(/Cost limit reached/)).toBeTruthy();
+      expect(screen.getByText(/Cost limit reached/)).toBeInTheDocument();
     });
 
     // Now try to send another message — should be blocked
@@ -1608,7 +1608,7 @@ describe('ArenaIDE', () => {
       fireEvent.keyDown(textarea, { key: 'Enter', shiftKey: false });
     });
 
-    await waitFor(() => expect(screen.getByText('Response')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Response')).toBeInTheDocument());
 
     // Find the chat scroll container and simulate scroll
     const chatScroll = document.querySelector('div[style*="overflow-y: auto"][style*="padding: 12px 14px"]');
@@ -1620,7 +1620,7 @@ describe('ArenaIDE', () => {
       fireEvent.scroll(chatScroll);
       // Scroll button should appear since scrollHeight - scrollTop - clientHeight > 100
       await waitFor(() => {
-        expect(screen.getByTestId('scroll-to-bottom')).toBeTruthy();
+        expect(screen.getByTestId('scroll-to-bottom')).toBeInTheDocument();
       });
     }
   });
@@ -1641,7 +1641,7 @@ describe('ArenaIDE', () => {
       fireEvent.keyDown(textarea, { key: 'Enter', shiftKey: false });
     });
 
-    await waitFor(() => expect(screen.getByText('Response')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Response')).toBeInTheDocument());
 
     // Make the scroll button appear
     const chatScroll = document.querySelector('div[style*="overflow-y: auto"][style*="padding: 12px 14px"]');
@@ -1652,7 +1652,7 @@ describe('ArenaIDE', () => {
       Object.defineProperty(chatScroll, 'scrollTo', { value: vi.fn() });
       fireEvent.scroll(chatScroll);
 
-      await waitFor(() => expect(screen.getByTestId('scroll-to-bottom')).toBeTruthy());
+      await waitFor(() => expect(screen.getByTestId('scroll-to-bottom')).toBeInTheDocument());
       fireEvent.click(screen.getByTestId('scroll-to-bottom'));
       // After clicking, it should hide
       await waitFor(() => expect(screen.queryByTestId('scroll-to-bottom')).toBeNull());
@@ -1690,7 +1690,7 @@ describe('ArenaIDE', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText('Sent via button')).toBeTruthy();
+      expect(screen.getByText('Sent via button')).toBeInTheDocument();
     });
   });
 
@@ -1722,7 +1722,7 @@ describe('ArenaIDE', () => {
     renderIDE({ code: '// your code here', challenge: { ...challenge, starterCode: null } });
     fireEvent.click(screen.getByText('Open Chat'));
     // Should switch to sidebar panel with chat visible
-    expect(screen.getByTestId('mode-selector')).toBeTruthy();
+    expect(screen.getByTestId('mode-selector')).toBeInTheDocument();
   });
 
   /* ─── ResultsBar Ask AI on mobile ──────────────────────────────── */
@@ -1733,7 +1733,7 @@ describe('ArenaIDE', () => {
     renderIDE({ testResults: results });
     fireEvent.click(screen.getByTestId('ask-ai'));
     // Should switch to chat tab in sidebar mode
-    expect(screen.getByTestId('mode-selector')).toBeTruthy();
+    expect(screen.getByTestId('mode-selector')).toBeInTheDocument();
   });
 
   /* ─── Prompt suggestion hover effects ──────────────────────────── */
@@ -1781,19 +1781,19 @@ describe('ArenaIDE', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText(/Show more/)).toBeTruthy();
+      expect(screen.getByText(/Show more/)).toBeInTheDocument();
     });
 
     // Click Show more
     fireEvent.click(screen.getByText(/Show more/));
     await waitFor(() => {
-      expect(screen.getByText(/Show less/)).toBeTruthy();
+      expect(screen.getByText(/Show less/)).toBeInTheDocument();
     });
 
     // Click Show less
     fireEvent.click(screen.getByText(/Show less/));
     await waitFor(() => {
-      expect(screen.getByText(/Show more/)).toBeTruthy();
+      expect(screen.getByText(/Show more/)).toBeInTheDocument();
     });
   });
 
@@ -1820,7 +1820,7 @@ describe('ArenaIDE', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText('First response')).toBeTruthy();
+      expect(screen.getByText('First response')).toBeInTheDocument();
     });
 
     // Click retry
@@ -1831,7 +1831,7 @@ describe('ArenaIDE', () => {
 
     // After retry, the original message should be re-sent
     await waitFor(() => {
-      expect(screen.getByText('Retried response')).toBeTruthy();
+      expect(screen.getByText('Retried response')).toBeInTheDocument();
     });
   });
 
@@ -1855,12 +1855,12 @@ describe('ArenaIDE', () => {
     // Actually clear button only appears when messages.filter(m => m.role !== 'system').length > 0
     // The user message was added, so clear should be visible
     await waitFor(() => {
-      expect(screen.getByText('Clear')).toBeTruthy();
+      expect(screen.getByText('Clear')).toBeInTheDocument();
     });
     fireEvent.click(screen.getByText('Clear'));
     // After clearing, prompt suggestions should reappear
     await waitFor(() => {
-      expect(screen.getByText('Write the solution')).toBeTruthy();
+      expect(screen.getByText('Write the solution')).toBeInTheDocument();
     });
   });
 
@@ -1874,7 +1874,7 @@ describe('ArenaIDE', () => {
     });
     // Should switch to chat tab in sidebar mode
     await waitFor(() => {
-      expect(screen.getByTestId('mode-selector')).toBeTruthy();
+      expect(screen.getByTestId('mode-selector')).toBeInTheDocument();
     });
   });
 
@@ -1919,7 +1919,7 @@ describe('ArenaIDE', () => {
   it('sendMessage shows expired constraint when sending after overlay dismissed', async () => {
     // Use the internal mechanism: set isExpired=true, dismiss overlay, then try to send
     renderIDE({ isExpired: true });
-    await waitFor(() => expect(screen.getByTestId('expiry-overlay')).toBeTruthy());
+    await waitFor(() => expect(screen.getByTestId('expiry-overlay')).toBeInTheDocument());
     // Dismiss overlay
     fireEvent.click(screen.getByTestId('expiry-review'));
     await waitFor(() => expect(screen.queryByTestId('expiry-overlay')).toBeNull());
@@ -2052,7 +2052,7 @@ describe('ArenaIDE', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText(/Test run error: Execution timeout/)).toBeTruthy();
+      expect(screen.getByText(/Test run error: Execution timeout/)).toBeInTheDocument();
     });
 
     mockApplyCodeFromResponse.mockReturnValue({ applied: false, needsApplyModel: false, newCode: '', message: '' });
@@ -2099,7 +2099,7 @@ describe('ArenaIDE', () => {
 
     await waitFor(() => {
       expect(thinkingCalled).toBe(true);
-      expect(screen.getByText('Final answer')).toBeTruthy();
+      expect(screen.getByText('Final answer')).toBeInTheDocument();
     });
   });
 
@@ -2140,12 +2140,12 @@ describe('ArenaIDE', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText('AI response')).toBeTruthy();
+      expect(screen.getByText('AI response')).toBeInTheDocument();
     });
 
     // The cost line should show the token count
     await waitFor(() => {
-      expect(screen.getByText(/150/)).toBeTruthy();
+      expect(screen.getByText(/150/)).toBeInTheDocument();
     });
   });
 
@@ -2169,7 +2169,7 @@ describe('ArenaIDE', () => {
     // After code is applied, the toast should flash
     await waitFor(() => {
       // The checkmark toast appears briefly
-      expect(container.querySelector('[style*="background"]')).toBeTruthy();
+      expect(container.querySelector('[style*="background"]')).toBeInTheDocument();
     });
 
     mockApplyCodeFromResponse.mockReturnValue({ applied: false, needsApplyModel: false, newCode: '', message: '' });
@@ -2205,7 +2205,7 @@ describe('ArenaIDE', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText('Here is a code change')).toBeTruthy();
+      expect(screen.getByText('Here is a code change')).toBeInTheDocument();
     });
 
     mockApplyCodeFromResponse.mockReturnValue({ applied: false, needsApplyModel: false, newCode: '', message: '' });
@@ -2244,7 +2244,7 @@ describe('ArenaIDE', () => {
 
     // The "1 message queued" indicator should show
     await waitFor(() => {
-      expect(screen.getByText(/1 message.*queued/)).toBeTruthy();
+      expect(screen.getByText(/1 message.*queued/)).toBeInTheDocument();
     });
   });
 
@@ -2252,7 +2252,7 @@ describe('ArenaIDE', () => {
 
   it('sendMessage adds expired constraint message when expired and overlay dismissed', async () => {
     renderIDE({ isExpired: true });
-    await waitFor(() => expect(screen.getByTestId('expiry-overlay')).toBeTruthy());
+    await waitFor(() => expect(screen.getByTestId('expiry-overlay')).toBeInTheDocument());
     // Dismiss overlay
     fireEvent.click(screen.getByTestId('expiry-review'));
     await waitFor(() => expect(screen.queryByTestId('expiry-overlay')).toBeNull());
@@ -2312,7 +2312,7 @@ describe('ArenaIDE', () => {
 
     await waitFor(() => {
       expect(onExpire).toHaveBeenCalled();
-      expect(screen.getByTestId('expiry-overlay')).toBeTruthy();
+      expect(screen.getByTestId('expiry-overlay')).toBeInTheDocument();
     });
   });
 
@@ -2347,7 +2347,7 @@ describe('ArenaIDE', () => {
     fireEvent.click(screen.getByText('AI Chat'));
 
     await waitFor(() => {
-      expect(screen.getByText('Unread response')).toBeTruthy();
+      expect(screen.getByText('Unread response')).toBeInTheDocument();
     });
   });
 
@@ -2365,7 +2365,7 @@ describe('ArenaIDE', () => {
 
     // After clicking, the editor panel should be visible
     await waitFor(() => {
-      expect(screen.getByTestId('monaco-editor')).toBeTruthy();
+      expect(screen.getByTestId('monaco-editor')).toBeInTheDocument();
     });
   });
 
@@ -2394,7 +2394,7 @@ describe('ArenaIDE', () => {
 
     // Wait for Stop button to appear (■ with title="Stop generating")
     await waitFor(() => {
-      expect(screen.getByTitle('Stop generating')).toBeTruthy();
+      expect(screen.getByTitle('Stop generating')).toBeInTheDocument();
     });
 
     // Click Stop — sets abortedByUserRef, saves partial + [stopped]
@@ -2409,7 +2409,7 @@ describe('ArenaIDE', () => {
 
     // The [stopped] marker from handleStopChat should be present
     await waitFor(() => {
-      expect(screen.getByText(/stopped/)).toBeTruthy();
+      expect(screen.getByText(/stopped/)).toBeInTheDocument();
     });
 
     // Verify there's only ONE assistant message (from handleStopChat), not a duplicate from onDone
@@ -2432,7 +2432,7 @@ describe('ArenaIDE', () => {
   it('terminal drag handle starts resize on mousedown', async () => {
     renderIDE();
     // The vertical resize bar should exist between editor and terminal (mocked as PanelResizeBar)
-    expect(screen.getByTestId('resize-bar-vertical')).toBeTruthy();
+    expect(screen.getByTestId('resize-bar-vertical')).toBeInTheDocument();
   });
 
   /* ─── handleTerminalCodeApplied flashes toast ──────────────────── */
@@ -2440,7 +2440,7 @@ describe('ArenaIDE', () => {
   it('renders terminal panel with code applied callback', () => {
     renderIDE();
     // Terminal panel is rendered with onCodeApplied prop
-    expect(screen.getByTestId('terminal-panel')).toBeTruthy();
+    expect(screen.getByTestId('terminal-panel')).toBeInTheDocument();
   });
 
   /* ─── Ctrl+L keyboard shortcut (non-Mac) ────────────────────────── */
@@ -2452,7 +2452,7 @@ describe('ArenaIDE', () => {
     });
     // Should switch to chat tab
     await waitFor(() => {
-      expect(screen.getByPlaceholderText(/Ask about this problem/)).toBeTruthy();
+      expect(screen.getByPlaceholderText(/Ask about this problem/)).toBeInTheDocument();
     });
   });
 
@@ -2473,7 +2473,7 @@ describe('ArenaIDE', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText(/Request failed: Internal server error/)).toBeTruthy();
+      expect(screen.getByText(/Request failed: Internal server error/)).toBeInTheDocument();
     });
   });
 
@@ -2498,7 +2498,7 @@ describe('ArenaIDE', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText(/test/)).toBeTruthy();
+      expect(screen.getByText(/test/)).toBeInTheDocument();
     });
 
     mockApplyCodeFromResponse.mockReturnValue({ applied: false, needsApplyModel: false, newCode: '', message: '' });
@@ -2512,11 +2512,11 @@ describe('ArenaIDE', () => {
     });
     // Description tab is default — should show hidden test count info
     await waitFor(() => {
-      expect(screen.getByText(/5 hidden/)).toBeTruthy();
+      expect(screen.getByText(/5 hidden/)).toBeInTheDocument();
     });
   });
 
-  /* ─── Paste prevention on Monaco editor (lines 1502-1504) ──────── */
+  /* ─── paste prevention on Monaco editor ──────── */
 
   it('prevents paste events on the Monaco editor DOM node and shows toast', async () => {
     vi.useFakeTimers();
@@ -2535,11 +2535,11 @@ describe('ArenaIDE', () => {
     expect(mockEvent.preventDefault).toHaveBeenCalled();
     expect(mockEvent.stopPropagation).toHaveBeenCalled();
     // PasteBlockedToast visible=true (line 131)
-    expect(screen.getByText(/No pasting in the Arena/)).toBeTruthy();
+    expect(screen.getByText(/No pasting in the Arena/)).toBeInTheDocument();
     vi.useRealTimers();
   });
 
-  /* ─── handleLineClick calls editor methods including focus (line 1049) ── */
+  /* ─── handleLineClick navigates editor to line and focuses ── */
 
   it('handleLineClick navigates editor to line and calls focus', async () => {
     vi.useFakeTimers();
@@ -2564,7 +2564,7 @@ describe('ArenaIDE', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText('See line 5 for the issue')).toBeTruthy();
+      expect(screen.getByText('See line 5 for the issue')).toBeInTheDocument();
     });
 
     // The renderMarkdown mock captured the handleLineClick callback
@@ -2610,11 +2610,11 @@ describe('ArenaIDE', () => {
 
     // Editor should now be visible
     await waitFor(() => {
-      expect(screen.getByTestId('monaco-editor')).toBeTruthy();
+      expect(screen.getByTestId('monaco-editor')).toBeInTheDocument();
     });
   });
 
-  /* ─── ApplyFailureToast shown when apply model verification fails (line 1501) ── */
+  /* ─── ApplyFailureToast shown when apply model verification fails ── */
 
   it('shows ApplyFailureToast when apply model returns verified=false', async () => {
     const { callApplyModel } = await import('@/features/arena/lib/apply-model');
@@ -2646,7 +2646,7 @@ describe('ArenaIDE', () => {
 
     // Wait for the apply failure toast to appear
     await waitFor(() => {
-      expect(screen.getByText(/Code apply failed/)).toBeTruthy();
+      expect(screen.getByText(/Code apply failed/)).toBeInTheDocument();
     });
 
     // Dismiss the toast by clicking the close button
@@ -2661,15 +2661,15 @@ describe('ArenaIDE', () => {
     mockApplyCodeFromResponse.mockReturnValue({ applied: false, needsApplyModel: false, newCode: '', message: '' });
   });
 
-  /* ─── TerminalPanel receives isExpired prop (line 1604) ──────── */
+  /* ─── TerminalPanel receives isExpired prop ──────── */
 
   it('passes isExpired function prop to TerminalPanel', () => {
     renderIDE({ isExpired: true });
     // TerminalPanel is mocked — just verify it renders with the expected props
-    expect(screen.getByTestId('terminal-panel')).toBeTruthy();
+    expect(screen.getByTestId('terminal-panel')).toBeInTheDocument();
   });
 
-  /* ─── workspace files included in AI context (lines 729-732) ──── */
+  /* ─── workspace files included in AI chat context ──── */
 
   it('includes workspace files in AI chat context when extra files exist', async () => {
     // Configure VFS to return workspace files alongside the solution file

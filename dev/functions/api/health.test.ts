@@ -160,7 +160,7 @@ describe('GET /api/health (public)', () => {
     }
   });
 
-  it('returns 0 challenges when D1 row is null (line 30)', async () => {
+  it('reports zero challenges when D1 count query returns null', async () => {
     globalThis.fetch = vi.fn().mockImplementation((url: string) => {
       if (typeof url === 'string' && url.includes('piston')) {
         return Promise.resolve(new Response(JSON.stringify({ run: { stdout: '42\n' } }), { status: 200 }));
@@ -183,7 +183,7 @@ describe('GET /api/health (public)', () => {
     expect(json.checks.d1.detail).toBe('0 challenges');
   });
 
-  it('handles Supabase non-200 response (line 39)', async () => {
+  it('reports Supabase failure on non-200 response', async () => {
     globalThis.fetch = vi.fn().mockImplementation((url: string) => {
       if (typeof url === 'string' && url.includes('supabase')) {
         return Promise.resolve(new Response('Service Unavailable', { status: 503 }));
@@ -204,7 +204,7 @@ describe('GET /api/health (public)', () => {
     expect(json.checks.supabase.error).toContain('HTTP 503');
   });
 
-  it('uses fallback Piston URL when env var is not set (line 62)', async () => {
+  it('uses default Piston URL when PISTON_API_URL is not set', async () => {
     const fetchSpy = vi.fn().mockImplementation((url: string) => {
       if (typeof url === 'string' && url.includes('ruwt-exec.fly.dev')) {
         return Promise.resolve(new Response(JSON.stringify({ run: { stdout: '42\n' } }), { status: 200 }));
@@ -223,7 +223,7 @@ describe('GET /api/health (public)', () => {
     expect(pistonCall?.[0]).toContain('ruwt-exec.fly.dev');
   });
 
-  it('handles non-Error exception in timedCheck (line 98)', async () => {
+  it('handles non-Error thrown value in health check', async () => {
     globalThis.fetch = vi.fn().mockImplementation((url: string) => {
       if (typeof url === 'string' && url.includes('supabase')) {
         return Promise.reject('string error'); // non-Error throw
@@ -244,7 +244,7 @@ describe('GET /api/health (public)', () => {
     expect(json.checks.supabase.error).toBe('string error');
   });
 
-  it('handles Piston non-200 response (line 72)', async () => {
+  it('reports Piston failure on non-200 response', async () => {
     globalThis.fetch = vi.fn().mockImplementation((url: string) => {
       if (typeof url === 'string' && url.includes('supabase')) {
         return Promise.resolve(new Response('OK', { status: 200 }));

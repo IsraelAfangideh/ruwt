@@ -9,18 +9,9 @@ vi.mock('react-native', () => ({
   StyleSheet: { create: (s: any) => s },
 }));
 
-vi.mock('@/shared/theme', () => ({
-  useColors: () => ({
-    success: '#5a8a5a',
-    destructive: '#b06060',
-    accent: '#c9a962',
-  }),
-}));
+vi.mock('@/shared/theme', async () => (await import('@/shared/test/helpers')).mockTheme());
 
-vi.mock('@/shared/theme/tokens', () => ({
-  fontSizes: { xs: 12 },
-  spacing: { xs: 4, sm: 8 },
-}));
+vi.mock('@/shared/theme/tokens', async () => (await import('@/shared/test/helpers')).mockTokens());
 
 describe('VerdictBadge', () => {
   afterEach(() => cleanup());
@@ -32,27 +23,27 @@ describe('VerdictBadge', () => {
 
   it('renders PASS label for pass verdict', () => {
     render(<VerdictBadge verdict="pass" />);
-    expect(screen.getByText('PASS')).toBeTruthy();
+    expect(screen.getByText('PASS')).toBeInTheDocument();
   });
 
   it('renders FAIL label for fail verdict', () => {
     render(<VerdictBadge verdict="fail" />);
-    expect(screen.getByText('FAIL')).toBeTruthy();
+    expect(screen.getByText('FAIL')).toBeInTheDocument();
   });
 
   it('renders REVIEW label for review verdict', () => {
     render(<VerdictBadge verdict="review" />);
-    expect(screen.getByText('REVIEW')).toBeTruthy();
+    expect(screen.getByText('REVIEW')).toBeInTheDocument();
   });
 
   it('supports sm size variant', () => {
     render(<VerdictBadge verdict="pass" size="sm" />);
-    expect(screen.getByText('PASS')).toBeTruthy();
+    expect(screen.getByText('PASS')).toBeInTheDocument();
   });
 
   it('defaults to md size', () => {
     render(<VerdictBadge verdict="fail" />);
-    expect(screen.getByText('FAIL')).toBeTruthy();
+    expect(screen.getByText('FAIL')).toBeInTheDocument();
   });
 });
 

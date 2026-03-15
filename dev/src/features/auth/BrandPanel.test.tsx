@@ -6,20 +6,20 @@ import { BrandPanel } from './BrandPanel';
 describe('BrandPanel', () => {
   it('renders the Ruwt logo text', () => {
     render(<BrandPanel />);
-    expect(screen.getByText('Ruwt')).toBeTruthy();
+    expect(screen.getByText('Ruwt')).toBeInTheDocument();
   });
 
   it('renders the tagline', () => {
     render(<BrandPanel />);
-    expect(screen.getByText(/Prove you can use AI/)).toBeTruthy();
-    expect(screen.getByText('better than anyone')).toBeTruthy();
+    expect(screen.getByText(/Prove you can use AI/)).toBeInTheDocument();
+    expect(screen.getByText('better than anyone')).toBeInTheDocument();
   });
 
   it('renders all three feature items', () => {
     render(<BrandPanel />);
-    expect(screen.getByText('60+ real-world challenges')).toBeTruthy();
-    expect(screen.getByText('15 AI models across 5 tiers')).toBeTruthy();
-    expect(screen.getByText(/Free to practice/)).toBeTruthy();
+    expect(screen.getByText('60+ real-world challenges')).toBeInTheDocument();
+    expect(screen.getByText('15 AI models across 5 tiers')).toBeInTheDocument();
+    expect(screen.getByText(/Free to practice/)).toBeInTheDocument();
   });
 
   it('renders checkmark icons for each feature', () => {

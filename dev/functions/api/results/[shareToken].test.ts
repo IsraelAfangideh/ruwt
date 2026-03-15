@@ -130,7 +130,7 @@ describe('GET /api/results/:shareToken (public)', () => {
     expect(res.status).toBe(500);
   });
 
-  it('returns not_attempted for challenges with no matching attempt (line 102)', async () => {
+  it('returns not_attempted status for challenges without submissions', async () => {
     const session = { id: 'sess-1', assessmentId: 'assess-1', userId: 'u-1', shareToken: 'tok-1', status: 'completed', totalCost: 0, totalTokens: 0, startedAt: 't', completedAt: 't' };
     const assessment = { id: 'assess-1', title: 'Test', description: 'Desc', companyName: null, companyLogoUrl: null };
     const candidate = { name: 'Bob', avatarUrl: null };
@@ -161,7 +161,7 @@ describe('GET /api/results/:shareToken (public)', () => {
     expect(json.challengeResults[0].modelUsage).toEqual({});
   });
 
-  it('returns empty aiCalls when attempt has no AI calls (line 87 ?? fallback)', async () => {
+  it('returns empty modelUsage when attempt has no AI calls', async () => {
     const session = { id: 'sess-1', assessmentId: 'assess-1', userId: 'u-1', shareToken: 'tok-1', status: 'completed', totalCost: 100, totalTokens: 50, startedAt: 't', completedAt: 't' };
     const assessment = { id: 'assess-1', title: 'Test', description: 'Desc', companyName: 'Co', companyLogoUrl: null };
     const candidate = { name: 'Carol', avatarUrl: null };
@@ -190,7 +190,7 @@ describe('GET /api/results/:shareToken (public)', () => {
     expect(json.challengeResults[0].modelUsage).toEqual({});
   });
 
-  it('returns null assessment when assessment record is missing (lines 115-122)', async () => {
+  it('returns null assessment when assessment record is missing', async () => {
     const session = { id: 'sess-1', assessmentId: 'assess-1', userId: 'u-1', shareToken: 'tok-1', status: 'completed', totalCost: 0, totalTokens: 0, startedAt: 't', completedAt: 't' };
 
     let selectCall = 0;
@@ -213,7 +213,7 @@ describe('GET /api/results/:shareToken (public)', () => {
     expect(json.candidate.name).toBe('Dan');
   });
 
-  it('aggregates model usage across multiple AI calls for same model (lines 91-98)', async () => {
+  it('aggregates token and cost totals across duplicate model AI calls', async () => {
     const session = { id: 'sess-1', assessmentId: 'assess-1', userId: 'u-1', shareToken: 'tok-1', status: 'completed', totalCost: 500, totalTokens: 300, startedAt: 't', completedAt: 't' };
     const assessment = { id: 'assess-1', title: 'T', description: 'D', companyName: null, companyLogoUrl: null };
     const candidate = { name: 'Eve', avatarUrl: null };

@@ -36,22 +36,8 @@ vi.mock('@/shared/lib/difficulty', () => ({
   getDifficultyStyle: () => ({ color: '#38bdf8', bg: 'rgba(56,189,248,0.12)', label: 'Medium' }),
 }));
 vi.mock('@/shared/hooks/useDocumentMeta', () => ({ useDocumentMeta: () => {} }));
-vi.mock('@/shared/theme', () => ({
-  useColors: () => ({
-    bg: '#fff', text: '#000', textMuted: '#888', accent: '#c9a962', border: '#ccc',
-    borderStrong: '#999', card: '#fff', muted: '#f5f5f5', error: '#f00', errorBg: '#fee',
-    success: '#0a0', successBg: '#efe', primary: '#000', primaryForeground: '#fff',
-    secondary: '#eee', secondaryForeground: '#000', destructive: '#f00',
-    textSubtle: '#aaa', bgElevated: '#fafafa', accentBg: '#ffe',
-  }),
-  useTheme: () => ({ isDark: false }),
-}));
-vi.mock('@/shared/theme/tokens', () => ({
-  spacing: { xs: 4, sm: 8, md: 16, lg: 24, xl: 32, '2xl': 48 },
-  fontSizes: { xs: 12, sm: 14, md: 16, lg: 18, xl: 20, '2xl': 24, '3xl': 30, '4xl': 36 },
-  fontFamily: { display: 'serif', body: 'sans-serif' },
-  radii: { sm: 4, md: 8, lg: 12, xl: 16, full: 9999 },
-}));
+vi.mock('@/shared/theme', async () => (await import('@/shared/test/helpers')).mockTheme({ useTheme: () => ({ isDark: false }) }));
+vi.mock('@/shared/theme/tokens', async () => (await import('@/shared/test/helpers')).mockTokens());
 
 const mockChallenges = [
   { id: 'c1', title: 'FizzBuzz Budget', description: 'Budget aware fizzbuzz', difficulty: 'easy', category: 'prompt_efficiency', tier: 'onboarding', sortOrder: 1, language: 'javascript', userStatus: null, skillTested: 'prompt writing', stats: { solvers: 5 }, maxCost: 100 },
@@ -94,7 +80,7 @@ describe('ChallengesScreen', () => {
     };
     const { container } = render(<ChallengesScreen />);
     // Should render DashboardLayout with loading indicator inside
-    expect(container.querySelector('[data-testid="dashboard-layout"]')).toBeTruthy();
+    expect(container.querySelector('[data-testid="dashboard-layout"]')).toBeInTheDocument();
   });
 
   it('renders title after loading', () => {
@@ -133,7 +119,7 @@ describe('ChallengesScreen', () => {
     await waitFor(() => {
       expect(container.querySelectorAll('[data-testid="challenge-card"]').length).toBe(1);
     });
-    expect(screen.getByText('FizzBuzz Budget')).toBeTruthy();
+    expect(screen.getByText('FizzBuzz Budget')).toBeInTheDocument();
   });
 
   it('filters by skill tested in search', async () => {
@@ -152,7 +138,7 @@ describe('ChallengesScreen', () => {
     const input = container.querySelector('input[placeholder="Search challenges..."]') as HTMLInputElement;
     fireEvent.change(input, { target: { value: 'FizzBuzz' } });
     // The clear button (x) should appear
-    expect(screen.getByText('\u2715')).toBeTruthy();
+    expect(screen.getByText('\u2715')).toBeInTheDocument();
   });
 
   it('clears search when clear button is clicked', async () => {
@@ -171,7 +157,7 @@ describe('ChallengesScreen', () => {
     await waitFor(() => {
       expect(container.querySelectorAll('[data-testid="challenge-card"]').length).toBe(1);
     });
-    expect(screen.getByText('Python Parser')).toBeTruthy();
+    expect(screen.getByText('Python Parser')).toBeInTheDocument();
   });
 
   it('filters by difficulty when Easy is clicked', async () => {
@@ -198,15 +184,15 @@ describe('ChallengesScreen', () => {
     const input = container.querySelector('input[placeholder="Search challenges..."]') as HTMLInputElement;
     fireEvent.change(input, { target: { value: 'nonexistent challenge xyz' } });
     await waitFor(() => {
-      expect(screen.getByText('No Challenges Found')).toBeTruthy();
+      expect(screen.getByText('No Challenges Found')).toBeInTheDocument();
     });
-    expect(screen.getByText('Try adjusting your filters or search query.')).toBeTruthy();
-    expect(screen.getByText('Clear all filters')).toBeTruthy();
+    expect(screen.getByText('Try adjusting your filters or search query.')).toBeInTheDocument();
+    expect(screen.getByText('Clear all filters')).toBeInTheDocument();
   });
 
   it('shows Showing X challenges count', () => {
     render(<ChallengesScreen />);
-    expect(screen.getByText(/Showing 4 challenges/)).toBeTruthy();
+    expect(screen.getByText(/Showing 4 challenges/)).toBeInTheDocument();
   });
 
   it('shows "(filtered)" text when filters are active', async () => {
@@ -214,7 +200,7 @@ describe('ChallengesScreen', () => {
     expect(container.querySelectorAll('[data-testid="challenge-card"]').length).toBe(5);
     fireEvent.click(screen.getAllByText('Python')[0]);
     await waitFor(() => {
-      expect(screen.getByText(/filtered/)).toBeTruthy();
+      expect(screen.getByText(/filtered/)).toBeInTheDocument();
     });
   });
 
@@ -223,7 +209,7 @@ describe('ChallengesScreen', () => {
     expect(container.querySelectorAll('[data-testid="challenge-card"]').length).toBe(5);
     fireEvent.click(screen.getAllByText('Python')[0]);
     await waitFor(() => {
-      expect(screen.getByText('Clear filters')).toBeTruthy();
+      expect(screen.getByText('Clear filters')).toBeInTheDocument();
     });
   });
 
@@ -282,25 +268,25 @@ describe('ChallengesScreen', () => {
 
   it('renders tier sections in default sort', () => {
     render(<ChallengesScreen />);
-    expect(screen.getByText('Getting Started')).toBeTruthy();
-    expect(screen.getByText('Core Challenges')).toBeTruthy();
-    expect(screen.getByText('Headline Challenges')).toBeTruthy();
+    expect(screen.getByText('Getting Started')).toBeInTheDocument();
+    expect(screen.getByText('Core Challenges')).toBeInTheDocument();
+    expect(screen.getByText('Headline Challenges')).toBeInTheDocument();
   });
 
   it('renders "Where LLMs Struggle" section for returning users with hard/impossible challenges', () => {
     // c2 is passed (solvedCount>0), c4 is impossible/unsolved
     render(<ChallengesScreen />);
-    expect(screen.getByText('Where LLMs Struggle')).toBeTruthy();
+    expect(screen.getByText('Where LLMs Struggle')).toBeInTheDocument();
   });
 
   it('renders Sort button', () => {
     render(<ChallengesScreen />);
-    expect(screen.getByText(/Sort: Default/)).toBeTruthy();
+    expect(screen.getByText(/Sort: Default/)).toBeInTheDocument();
   });
 
   it('renders subtitle text', () => {
     render(<ChallengesScreen />);
-    expect(screen.getByText(/Real engineering problems/)).toBeTruthy();
+    expect(screen.getByText(/Real engineering problems/)).toBeInTheDocument();
   });
 
   it('handles empty challenges gracefully', () => {
@@ -309,72 +295,72 @@ describe('ChallengesScreen', () => {
       dailyChallenge: { data: null, status: 'loaded', lastFetchedAt: Date.now() },
     };
     render(<ChallengesScreen />);
-    expect(screen.getByText('No Challenges Found')).toBeTruthy();
-    expect(screen.getByText('Check back later for new challenges.')).toBeTruthy();
+    expect(screen.getByText('No Challenges Found')).toBeInTheDocument();
+    expect(screen.getByText('Check back later for new challenges.')).toBeInTheDocument();
   });
 
   it('opens sort menu when Sort button is clicked', async () => {
     render(<ChallengesScreen />);
-    expect(screen.getByText(/Sort: Default/)).toBeTruthy();
+    expect(screen.getByText(/Sort: Default/)).toBeInTheDocument();
     // Click to open sort menu
     fireEvent.click(screen.getByText(/Sort: Default/));
     await waitFor(() => {
-      expect(screen.getByText('Difficulty')).toBeTruthy();
-      expect(screen.getByText('Most Solved')).toBeTruthy();
-      expect(screen.getByText('Lowest Cost')).toBeTruthy();
+      expect(screen.getByText('Difficulty')).toBeInTheDocument();
+      expect(screen.getByText('Most Solved')).toBeInTheDocument();
+      expect(screen.getByText('Lowest Cost')).toBeInTheDocument();
     });
   });
 
   it('sorts by difficulty when Difficulty option is selected', async () => {
     render(<ChallengesScreen />);
-    expect(screen.getByText(/Sort: Default/)).toBeTruthy();
+    expect(screen.getByText(/Sort: Default/)).toBeInTheDocument();
     fireEvent.click(screen.getByText(/Sort: Default/));
     await waitFor(() => {
-      expect(screen.getByText('Difficulty')).toBeTruthy();
+      expect(screen.getByText('Difficulty')).toBeInTheDocument();
     });
     fireEvent.click(screen.getByText('Difficulty'));
     await waitFor(() => {
-      expect(screen.getByText(/Sort: Difficulty/)).toBeTruthy();
+      expect(screen.getByText(/Sort: Difficulty/)).toBeInTheDocument();
     });
   });
 
   it('sorts by popularity when Most Solved option is selected', async () => {
     render(<ChallengesScreen />);
-    expect(screen.getByText(/Sort: Default/)).toBeTruthy();
+    expect(screen.getByText(/Sort: Default/)).toBeInTheDocument();
     fireEvent.click(screen.getByText(/Sort: Default/));
     await waitFor(() => {
-      expect(screen.getByText('Most Solved')).toBeTruthy();
+      expect(screen.getByText('Most Solved')).toBeInTheDocument();
     });
     fireEvent.click(screen.getByText('Most Solved'));
     await waitFor(() => {
-      expect(screen.getByText(/Sort: Most Solved/)).toBeTruthy();
+      expect(screen.getByText(/Sort: Most Solved/)).toBeInTheDocument();
     });
   });
 
   it('sorts by cost when Lowest Cost option is selected', async () => {
     render(<ChallengesScreen />);
-    expect(screen.getByText(/Sort: Default/)).toBeTruthy();
+    expect(screen.getByText(/Sort: Default/)).toBeInTheDocument();
     fireEvent.click(screen.getByText(/Sort: Default/));
     await waitFor(() => {
-      expect(screen.getByText('Lowest Cost')).toBeTruthy();
+      expect(screen.getByText('Lowest Cost')).toBeInTheDocument();
     });
     fireEvent.click(screen.getByText('Lowest Cost'));
     await waitFor(() => {
-      expect(screen.getByText(/Sort: Lowest Cost/)).toBeTruthy();
+      expect(screen.getByText(/Sort: Lowest Cost/)).toBeInTheDocument();
     });
   });
 
   it('toggles sort direction when clicking the same sort option again', async () => {
     render(<ChallengesScreen />);
-    expect(screen.getByText(/Sort: Default/)).toBeTruthy();
+    expect(screen.getByText(/Sort: Default/)).toBeInTheDocument();
     // Select difficulty sort
     const sortBtn = screen.getByTestId('sort-button');
     fireEvent.click(sortBtn);
-    await waitFor(() => expect(screen.getByText('Difficulty')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Difficulty')).toBeInTheDocument());
     fireEvent.click(screen.getByText('Difficulty'));
     await waitFor(() => {
       // Should show ascending arrow
-      expect(screen.getByText(/Sort: Difficulty ↑/)).toBeTruthy();
+      expect(screen.getByText(/Sort: Difficulty ↑/)).toBeInTheDocument();
     });
     // Click sort button again to open menu
     fireEvent.click(sortBtn);
@@ -389,16 +375,16 @@ describe('ChallengesScreen', () => {
     fireEvent.click(menuItems[menuItems.length - 1]);
     await waitFor(() => {
       // Should show descending arrow now
-      expect(screen.getByText(/Sort: Difficulty ↓/)).toBeTruthy();
+      expect(screen.getByText(/Sort: Difficulty ↓/)).toBeInTheDocument();
     });
   });
 
   it('closes sort menu when backdrop is clicked', async () => {
     render(<ChallengesScreen />);
-    expect(screen.getByText(/Sort: Default/)).toBeTruthy();
+    expect(screen.getByText(/Sort: Default/)).toBeInTheDocument();
     fireEvent.click(screen.getByText(/Sort: Default/));
     await waitFor(() => {
-      expect(screen.getByText('Difficulty')).toBeTruthy();
+      expect(screen.getByText('Difficulty')).toBeInTheDocument();
     });
     // Close by clicking sort button again (toggles off)
     fireEvent.click(screen.getByText(/Sort: Default/));
@@ -415,7 +401,7 @@ describe('ChallengesScreen', () => {
     const input = container.querySelector('input[placeholder="Search challenges..."]') as HTMLInputElement;
     fireEvent.change(input, { target: { value: 'nonexistent challenge xyz' } });
     await waitFor(() => {
-      expect(screen.getByText('No Challenges Found')).toBeTruthy();
+      expect(screen.getByText('No Challenges Found')).toBeInTheDocument();
     });
     // Click "Clear all filters" in empty state
     fireEvent.click(screen.getByText('Clear all filters'));
@@ -425,19 +411,19 @@ describe('ChallengesScreen', () => {
   it('reads initial tab from URL params', () => {
     window.history.replaceState({}, '', '?tab=real_world');
     render(<ChallengesScreen />);
-    expect(screen.getByText(/Showing/)).toBeTruthy();
+    expect(screen.getByText(/Showing/)).toBeInTheDocument();
   });
 
   it('reads initial lang from URL params', () => {
     window.history.replaceState({}, '', '?lang=python');
     render(<ChallengesScreen />);
-    expect(screen.getByText(/Showing/)).toBeTruthy();
+    expect(screen.getByText(/Showing/)).toBeInTheDocument();
   });
 
   it('reads initial difficulty from URL params', () => {
     window.history.replaceState({}, '', '?difficulty=hard');
     render(<ChallengesScreen />);
-    expect(screen.getByText(/Showing/)).toBeTruthy();
+    expect(screen.getByText(/Showing/)).toBeInTheDocument();
   });
 
   it('shows back-to-top button when more than 12 challenges', () => {
@@ -453,7 +439,7 @@ describe('ChallengesScreen', () => {
     };
     vi.stubGlobal('scrollTo', vi.fn());
     render(<ChallengesScreen />);
-    expect(screen.getByText(/Back to top/)).toBeTruthy();
+    expect(screen.getByText(/Back to top/)).toBeInTheDocument();
     fireEvent.click(screen.getByText(/Back to top/));
     expect(window.scrollTo).toHaveBeenCalled();
   });
@@ -474,10 +460,10 @@ describe('ChallengesScreen', () => {
       dailyChallenge: { data: null, status: 'error', lastFetchedAt: Date.now() },
     };
     render(<ChallengesScreen />);
-    expect(screen.getByText('Engineering Challenges')).toBeTruthy();
+    expect(screen.getByText('Engineering Challenges')).toBeInTheDocument();
   });
 
-  it('sorts LLM Struggle challenges by solver count when multiple exist (line 247)', async () => {
+  it('sorts LLM Struggle challenges by ascending solver count', async () => {
     // Need 2+ hard/impossible unsolved challenges + at least 1 solved to enable the section
     const extendedChallenges = [
       ...mockChallenges,
@@ -489,13 +475,13 @@ describe('ChallengesScreen', () => {
     };
     render(<ChallengesScreen />);
     // "Where LLMs Struggle" section should appear with multiple challenges sorted
-    expect(screen.getByText('Where LLMs Struggle')).toBeTruthy();
+    expect(screen.getByText('Where LLMs Struggle')).toBeInTheDocument();
     // Both hard/impossible unsolved challenges should appear (may appear in multiple sections)
     expect(screen.getAllByText('Impossible Maze').length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText('Hard Unsolved').length).toBeGreaterThanOrEqual(1);
   });
 
-  it('clicking total stat sets statusFilter to all (line 321)', async () => {
+  it('resets status filter when total stat is clicked', async () => {
     const { container } = render(<ChallengesScreen />);
     expect(container.querySelectorAll('[data-testid="challenge-card"]').length).toBe(5);
     // First filter to something specific
@@ -508,13 +494,13 @@ describe('ChallengesScreen', () => {
     expect(container.querySelectorAll('[data-testid="challenge-card"]').length).toBe(5);
   });
 
-  it('closes sort menu when sort backdrop is clicked (line 600)', async () => {
+  it('closes sort menu when backdrop overlay is clicked', async () => {
     render(<ChallengesScreen />);
-    expect(screen.getByText(/Sort: Default/)).toBeTruthy();
+    expect(screen.getByText(/Sort: Default/)).toBeInTheDocument();
     // Open sort menu
     fireEvent.click(screen.getByText(/Sort: Default/));
     await waitFor(() => {
-      expect(screen.getByText('Difficulty')).toBeTruthy();
+      expect(screen.getByText('Difficulty')).toBeInTheDocument();
     });
     // Close by clicking the sort backdrop (not the sort button)
     const backdrop = screen.getByLabelText('Close sort menu');
@@ -526,10 +512,10 @@ describe('ChallengesScreen', () => {
 
   it('renders flat list when sort is not default', async () => {
     render(<ChallengesScreen />);
-    expect(screen.getByText(/Sort: Default/)).toBeTruthy();
+    expect(screen.getByText(/Sort: Default/)).toBeInTheDocument();
     // Switch to difficulty sort
     fireEvent.click(screen.getByText(/Sort: Default/));
-    await waitFor(() => expect(screen.getByText('Difficulty')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Difficulty')).toBeInTheDocument());
     fireEvent.click(screen.getByText('Difficulty'));
     await waitFor(() => {
       // Tier section headers should not be present in flat list mode

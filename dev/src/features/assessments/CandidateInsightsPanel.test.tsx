@@ -9,22 +9,9 @@ vi.mock('react-native', () => ({
   StyleSheet: { create: (s: any) => s },
 }));
 
-vi.mock('@/shared/theme', () => ({
-  useColors: () => ({
-    text: '#000', textMuted: '#888', accent: '#c9a962',
-    border: '#ccc', borderStrong: '#aaa', card: '#fff',
-    success: '#5a8a5a', destructive: '#b06060',
-    cardForeground: '#000', mutedForeground: '#555',
-    muted: '#ddd', successBg: '#f0fff0', errorBg: '#fff0f0', accentBg: '#fef8e8',
-  }),
-}));
+vi.mock('@/shared/theme', async () => (await import('@/shared/test/helpers')).mockTheme());
 
-vi.mock('@/shared/theme/tokens', () => ({
-  spacing: { xs: 4, sm: 8, md: 16, lg: 24 },
-  fontSizes: { xs: 12, sm: 14, md: 16 },
-  fontFamily: { body: 'sans-serif' },
-  radii: { xl: 16, full: 9999 },
-}));
+vi.mock('@/shared/theme/tokens', async () => (await import('@/shared/test/helpers')).mockTokens());
 
 vi.mock('@/features/profile/AIProfileRadar', () => ({
   AIProfileRadar: () => <div data-testid="radar">Radar</div>,
@@ -55,8 +42,8 @@ describe('CandidateInsightsPanel', () => {
   it('renders radar chart when profile is provided', () => {
     const profile = { modelSelection: 80, promptEfficiency: 60, debugging: 90, strategy: 50, speed: 70 };
     render(<CandidateInsightsPanel {...baseProps} profile={profile} />);
-    expect(screen.getByText('AI Profile')).toBeTruthy();
-    expect(screen.getByTestId('radar')).toBeTruthy();
+    expect(screen.getByText('AI Profile')).toBeInTheDocument();
+    expect(screen.getByTestId('radar')).toBeInTheDocument();
   });
 
   it('does not render radar when profile is absent', () => {
@@ -67,10 +54,10 @@ describe('CandidateInsightsPanel', () => {
   it('renders signal flags', () => {
     const flags = { green: ['Fast learner'], red: ['Overspender'], yellow: ['Inconsistent'] };
     render(<CandidateInsightsPanel {...baseProps} flags={flags} />);
-    expect(screen.getByText('Signals')).toBeTruthy();
-    expect(screen.getByText('Fast learner')).toBeTruthy();
-    expect(screen.getByText('Overspender')).toBeTruthy();
-    expect(screen.getByText('Inconsistent')).toBeTruthy();
+    expect(screen.getByText('Signals')).toBeInTheDocument();
+    expect(screen.getByText('Fast learner')).toBeInTheDocument();
+    expect(screen.getByText('Overspender')).toBeInTheDocument();
+    expect(screen.getByText('Inconsistent')).toBeInTheDocument();
   });
 
   it('does not render Signals heading when no flags', () => {
@@ -83,8 +70,8 @@ describe('CandidateInsightsPanel', () => {
       { type: 'cost', severity: 'green' as const, narrative: 'Used budget models efficiently', challengeIndex: -1, timestamp: '' },
     ];
     render(<CandidateInsightsPanel {...baseProps} insights={insights} />);
-    expect(screen.getByText('Behavioral Insights')).toBeTruthy();
-    expect(screen.getByText('Used budget models efficiently')).toBeTruthy();
+    expect(screen.getByText('Behavioral Insights')).toBeInTheDocument();
+    expect(screen.getByText('Used budget models efficiently')).toBeInTheDocument();
   });
 
   it('renders comparative bars', () => {
@@ -92,14 +79,14 @@ describe('CandidateInsightsPanel', () => {
       { metric: 'AI Cost', candidateValue: 500, medianValue: 1000, percentile: 80, narrative: 'Cheaper than most' },
     ];
     render(<CandidateInsightsPanel {...baseProps} comparatives={comparatives} />);
-    expect(screen.getByText('vs. Candidate Pool')).toBeTruthy();
-    expect(screen.getByText('AI Cost')).toBeTruthy();
+    expect(screen.getByText('vs. Candidate Pool')).toBeInTheDocument();
+    expect(screen.getByText('AI Cost')).toBeInTheDocument();
   });
 
   it('renders highlight reel when highlights are present', () => {
     const highlights = [{ timestamp: '', type: 'pass' as const, narrative: 'Solved', challengeIndex: 0 }];
     render(<CandidateInsightsPanel {...baseProps} highlights={highlights} />);
-    expect(screen.getByTestId('highlight-reel')).toBeTruthy();
+    expect(screen.getByTestId('highlight-reel')).toBeInTheDocument();
   });
 
   it('does not render highlight reel when highlights are empty', () => {
@@ -112,7 +99,7 @@ describe('CandidateInsightsPanel', () => {
     expect(screen.queryByText('vs. Candidate Pool')).toBeNull();
   });
 
-  it('filters out yellow insights scoped to a specific challenge (line 58)', () => {
+  it('excludes challenge-scoped yellow insights from global panel', () => {
     const insights = [
       { type: 'cost', severity: 'yellow' as const, narrative: 'Challenge-scoped yellow', challengeIndex: 0, timestamp: '' },
       { type: 'cost', severity: 'yellow' as const, narrative: 'Global yellow', challengeIndex: -1, timestamp: '' },
@@ -121,62 +108,62 @@ describe('CandidateInsightsPanel', () => {
     ];
     render(<CandidateInsightsPanel {...baseProps} insights={insights} />);
     expect(screen.queryByText('Challenge-scoped yellow')).toBeNull();
-    expect(screen.getByText('Global yellow')).toBeTruthy();
-    expect(screen.getByText('Red stays regardless')).toBeTruthy();
-    expect(screen.getByText('Green stays regardless')).toBeTruthy();
+    expect(screen.getByText('Global yellow')).toBeInTheDocument();
+    expect(screen.getByText('Red stays regardless')).toBeInTheDocument();
+    expect(screen.getByText('Green stays regardless')).toBeInTheDocument();
   });
 
-  it('renders yellow severity insight with dot and narrative (line 103)', () => {
+  it('renders yellow severity insight with dot and narrative', () => {
     const insights = [
       { type: 'test', severity: 'yellow' as const, narrative: 'Yellow insight', challengeIndex: -1, timestamp: '' },
     ];
     render(<CandidateInsightsPanel {...baseProps} insights={insights} />);
-    expect(screen.getByText('Yellow insight')).toBeTruthy();
-    expect(screen.getByText('Behavioral Insights')).toBeTruthy();
+    expect(screen.getByText('Yellow insight')).toBeInTheDocument();
+    expect(screen.getByText('Behavioral Insights')).toBeInTheDocument();
   });
 
-  it('renders red severity insight with dot and narrative (line 103)', () => {
+  it('renders red severity insight with dot and narrative', () => {
     const insights = [
       { type: 'cost', severity: 'red' as const, narrative: 'Red insight', challengeIndex: -1, timestamp: '' },
     ];
     render(<CandidateInsightsPanel {...baseProps} insights={insights} />);
-    expect(screen.getByText('Red insight')).toBeTruthy();
-    expect(screen.getByText('Behavioral Insights')).toBeTruthy();
+    expect(screen.getByText('Red insight')).toBeInTheDocument();
+    expect(screen.getByText('Behavioral Insights')).toBeInTheDocument();
   });
 
-  it('displays Token Usage metric with locale formatted value (line 127)', () => {
+  it('displays Token Usage metric with locale-formatted value', () => {
     const comparatives = [
       { metric: 'Token Usage', candidateValue: 5000, medianValue: 4000, percentile: 60, narrative: 'Average tokens' },
     ];
     render(<CandidateInsightsPanel {...baseProps} comparatives={comparatives} />);
-    expect(screen.getByText('Token Usage')).toBeTruthy();
+    expect(screen.getByText('Token Usage')).toBeInTheDocument();
   });
 
-  it('displays Speed metric formatted in minutes (line 128)', () => {
+  it('displays Speed metric formatted in minutes', () => {
     const comparatives = [
       { metric: 'Speed', candidateValue: 180000, medianValue: 120000, percentile: 70, narrative: 'Fast' },
     ];
     render(<CandidateInsightsPanel {...baseProps} comparatives={comparatives} />);
-    expect(screen.getByText('Speed')).toBeTruthy();
+    expect(screen.getByText('Speed')).toBeInTheDocument();
   });
 
-  it('displays undefined displayValue for Speed when candidateValue is 0 (line 128-129)', () => {
+  it('omits display value for Speed when candidate value is zero', () => {
     const comparatives = [
       { metric: 'Speed', candidateValue: 0, medianValue: 100, percentile: 10, narrative: 'Slow' },
     ];
     render(<CandidateInsightsPanel {...baseProps} comparatives={comparatives} />);
-    expect(screen.getByText('Speed')).toBeTruthy();
+    expect(screen.getByText('Speed')).toBeInTheDocument();
   });
 
-  it('displays undefined displayValue for unknown metric type (line 129)', () => {
+  it('omits display value for unknown metric types', () => {
     const comparatives = [
       { metric: 'Unknown Metric', candidateValue: 42, medianValue: 50, percentile: 30, narrative: 'Some metric' },
     ];
     render(<CandidateInsightsPanel {...baseProps} comparatives={comparatives} />);
-    expect(screen.getByText('Unknown Metric')).toBeTruthy();
+    expect(screen.getByText('Unknown Metric')).toBeInTheDocument();
   });
 
-  it('limits narrative insights to at most 4 (line 59)', () => {
+  it('limits narrative insights to a maximum of four', () => {
     const insights = Array.from({ length: 6 }, (_, i) => ({
       type: 'cost',
       severity: 'green' as const,
@@ -185,8 +172,8 @@ describe('CandidateInsightsPanel', () => {
       timestamp: '',
     }));
     render(<CandidateInsightsPanel {...baseProps} insights={insights} />);
-    expect(screen.getByText('Insight number 1')).toBeTruthy();
-    expect(screen.getByText('Insight number 4')).toBeTruthy();
+    expect(screen.getByText('Insight number 1')).toBeInTheDocument();
+    expect(screen.getByText('Insight number 4')).toBeInTheDocument();
     expect(screen.queryByText('Insight number 5')).toBeNull();
   });
 

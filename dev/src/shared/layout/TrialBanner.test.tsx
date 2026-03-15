@@ -9,12 +9,7 @@ vi.mock('@react-navigation/native', () => ({
   useNavigation: () => ({ navigate: mockNavigate }),
 }));
 
-vi.mock('@/shared/theme', () => ({
-  useColors: () => ({
-    bg: '#fff', text: '#000', textMuted: '#888', accent: '#c9a962',
-    border: '#ccc', destructive: '#b06060',
-  }),
-}));
+vi.mock('@/shared/theme', async () => (await import('@/shared/test/helpers')).mockTheme());
 
 const activeTrial: TrialInfo = {
   isActive: true,
@@ -29,16 +24,16 @@ describe('TrialBanner', () => {
   it('renders active trial with days remaining and counters', () => {
     render(<TrialBanner trial={activeTrial} />);
 
-    expect(screen.getByText(/20 days remaining/)).toBeTruthy();
-    expect(screen.getByText('0/1 assessments')).toBeTruthy();
-    expect(screen.getByText('1/3 invites')).toBeTruthy();
-    expect(screen.getByText('Subscribe')).toBeTruthy();
+    expect(screen.getByText(/20 days remaining/)).toBeInTheDocument();
+    expect(screen.getByText('0/1 assessments')).toBeInTheDocument();
+    expect(screen.getByText('1/3 invites')).toBeInTheDocument();
+    expect(screen.getByText('Subscribe')).toBeInTheDocument();
   });
 
   it('renders singular "day" for 1 day remaining', () => {
     render(<TrialBanner trial={{ ...activeTrial, daysRemaining: 1 }} />);
 
-    expect(screen.getByText(/1 day remaining/)).toBeTruthy();
+    expect(screen.getByText(/1 day remaining/)).toBeInTheDocument();
   });
 
   it('renders expired state', () => {
@@ -50,7 +45,7 @@ describe('TrialBanner', () => {
 
     render(<TrialBanner trial={expiredTrial} />);
 
-    expect(screen.getByText(/Trial expired/)).toBeTruthy();
+    expect(screen.getByText(/Trial expired/)).toBeInTheDocument();
   });
 
   it('does not render when subscription is active', () => {
@@ -72,7 +67,7 @@ describe('TrialBanner', () => {
   it('shows warning styling when 7 or fewer days remain', () => {
     render(<TrialBanner trial={{ ...activeTrial, daysRemaining: 5 }} />);
 
-    expect(screen.getByText(/5 days remaining/)).toBeTruthy();
+    expect(screen.getByText(/5 days remaining/)).toBeInTheDocument();
   });
 
   it('shows assessments at limit in different color', () => {
@@ -82,7 +77,7 @@ describe('TrialBanner', () => {
       />,
     );
 
-    expect(screen.getByText('1/1 assessments')).toBeTruthy();
+    expect(screen.getByText('1/1 assessments')).toBeInTheDocument();
   });
 
   it('shows invites at limit in different color', () => {
@@ -92,6 +87,6 @@ describe('TrialBanner', () => {
       />,
     );
 
-    expect(screen.getByText('3/3 invites')).toBeTruthy();
+    expect(screen.getByText('3/3 invites')).toBeInTheDocument();
   });
 });

@@ -591,7 +591,7 @@ describe('PATCH /api/profile', () => {
   // all parsed values are undefined (edge case where schema passes but
   // updates object is empty). This covers the Object.keys check.
   // -----------------------------------------------------------------------
-  it('returns 400 when parsed fields result in empty updates object (line 137)', async () => {
+  it('returns 400 when update body has no valid fields after parsing', async () => {
     mockGetUser.mockResolvedValue({ id: 'user-1' });
 
     // Zod .refine checks that at least one field is defined, so this hits 400 via refine

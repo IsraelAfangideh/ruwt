@@ -3,14 +3,7 @@ import { describe, it, expect, vi, afterEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import { ActivityFeed } from './ActivityFeed';
 
-vi.mock('@/shared/theme', () => ({
-  useColors: () => ({
-    text: '#000',
-    textMuted: '#888',
-    accent: '#c9a962',
-    border: '#ccc',
-  }),
-}));
+vi.mock('@/shared/theme', async () => (await import('@/shared/test/helpers')).mockTheme());
 
 vi.mock('@/shared/lib/ai/pricing', () => ({
   formatCostFromHundredths: (v: number) => `$${(v / 10000).toFixed(4)}`,
@@ -60,10 +53,10 @@ describe('ActivityFeed', () => {
     } as Response);
 
     render(<ActivityFeed />);
-    await waitFor(() => expect(screen.getByText('alice')).toBeTruthy());
-    expect(screen.getByText('Debounce')).toBeTruthy();
-    expect(screen.getByText('bob')).toBeTruthy();
-    expect(screen.getByText('Cache')).toBeTruthy();
+    await waitFor(() => expect(screen.getByText('alice')).toBeInTheDocument());
+    expect(screen.getByText('Debounce')).toBeInTheDocument();
+    expect(screen.getByText('bob')).toBeInTheDocument();
+    expect(screen.getByText('Cache')).toBeInTheDocument();
   });
 
   it('uses custom heading when provided', async () => {
@@ -76,7 +69,7 @@ describe('ActivityFeed', () => {
     } as Response);
 
     render(<ActivityFeed heading="Live Feed" />);
-    await waitFor(() => expect(screen.getByText('Live Feed')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Live Feed')).toBeInTheDocument());
   });
 
   it('uses default heading "Recent Solves" when no heading provided', async () => {
@@ -89,7 +82,7 @@ describe('ActivityFeed', () => {
     } as Response);
 
     render(<ActivityFeed />);
-    await waitFor(() => expect(screen.getByText('Recent Solves')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Recent Solves')).toBeInTheDocument());
   });
 
   it('calls fetch with limit parameter', async () => {
@@ -124,7 +117,7 @@ describe('ActivityFeed', () => {
     } as Response);
 
     render(<ActivityFeed />);
-    await waitFor(() => expect(screen.getByText('5m ago')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('5m ago')).toBeInTheDocument());
   });
 
   it('shows "Xh ago" for timestamps a few hours old', async () => {
@@ -140,7 +133,7 @@ describe('ActivityFeed', () => {
     } as Response);
 
     render(<ActivityFeed />);
-    await waitFor(() => expect(screen.getByText('3h ago')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('3h ago')).toBeInTheDocument());
   });
 
   it('shows "Xd ago" for timestamps days old', async () => {
@@ -156,6 +149,6 @@ describe('ActivityFeed', () => {
     } as Response);
 
     render(<ActivityFeed />);
-    await waitFor(() => expect(screen.getByText('2d ago')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('2d ago')).toBeInTheDocument());
   });
 });

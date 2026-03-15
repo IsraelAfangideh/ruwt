@@ -21,29 +21,29 @@ describe('ExpiryOverlay', () => {
 
   it('renders "Time\'s Up!" heading', () => {
     render(<ExpiryOverlay totalTokens={500} totalCost={1000} isMobile={false} onReview={mockOnReview} />);
-    expect(screen.getByText("Time's Up!")).toBeTruthy();
+    expect(screen.getByText("Time's Up!")).toBeInTheDocument();
   });
 
   it('renders token count', () => {
     render(<ExpiryOverlay totalTokens={1500} totalCost={1000} isMobile={false} onReview={mockOnReview} />);
-    expect(screen.getByText('1,500')).toBeTruthy();
-    expect(screen.getByText('tokens used')).toBeTruthy();
+    expect(screen.getByText('1,500')).toBeInTheDocument();
+    expect(screen.getByText('tokens used')).toBeInTheDocument();
   });
 
   it('renders formatted cost', () => {
     render(<ExpiryOverlay totalTokens={0} totalCost={50000} isMobile={false} onReview={mockOnReview} />);
-    expect(screen.getByText('$5.00')).toBeTruthy();
-    expect(screen.getByText('cost')).toBeTruthy();
+    expect(screen.getByText('$5.00')).toBeInTheDocument();
+    expect(screen.getByText('cost')).toBeInTheDocument();
   });
 
   it('formats small costs with more decimal places', () => {
     render(<ExpiryOverlay totalTokens={0} totalCost={50} isMobile={false} onReview={mockOnReview} />);
-    expect(screen.getByText('$0.0050')).toBeTruthy();
+    expect(screen.getByText('$0.0050')).toBeInTheDocument();
   });
 
   it('renders Review Code button', () => {
     render(<ExpiryOverlay totalTokens={0} totalCost={0} isMobile={false} onReview={mockOnReview} />);
-    expect(screen.getByText('Review Code')).toBeTruthy();
+    expect(screen.getByText('Review Code')).toBeInTheDocument();
   });
 
   it('calls onReview when Review Code is clicked', () => {
@@ -54,7 +54,7 @@ describe('ExpiryOverlay', () => {
 
   it('renders Start New Attempt button when onRestart provided', () => {
     render(<ExpiryOverlay totalTokens={0} totalCost={0} isMobile={false} onReview={mockOnReview} onRestart={mockOnRestart} />);
-    expect(screen.getByText('Start New Attempt')).toBeTruthy();
+    expect(screen.getByText('Start New Attempt')).toBeInTheDocument();
   });
 
   it('does not render Start New Attempt when onRestart is not provided', () => {
@@ -70,17 +70,17 @@ describe('ExpiryOverlay', () => {
 
   it('renders in mobile layout', () => {
     render(<ExpiryOverlay totalTokens={100} totalCost={500} isMobile={true} onReview={mockOnReview} onRestart={mockOnRestart} />);
-    expect(screen.getByText("Time's Up!")).toBeTruthy();
-    expect(screen.getByText('Review Code')).toBeTruthy();
-    expect(screen.getByText('Start New Attempt')).toBeTruthy();
+    expect(screen.getByText("Time's Up!")).toBeInTheDocument();
+    expect(screen.getByText('Review Code')).toBeInTheDocument();
+    expect(screen.getByText('Start New Attempt')).toBeInTheDocument();
   });
 
   it('renders "solved it" heading and Submit button when onSubmit is provided', () => {
     const mockOnSubmit = vi.fn();
     render(<ExpiryOverlay totalTokens={200} totalCost={300} isMobile={false} onReview={mockOnReview} onSubmit={mockOnSubmit} />);
-    expect(screen.getByText("Time's Up — But You Solved It!")).toBeTruthy();
-    expect(screen.getByText('All tests passed. Submit now to lock in your score.')).toBeTruthy();
-    expect(screen.getByText('Submit Solution')).toBeTruthy();
+    expect(screen.getByText("Time's Up — But You Solved It!")).toBeInTheDocument();
+    expect(screen.getByText('All tests passed. Submit now to lock in your score.')).toBeInTheDocument();
+    expect(screen.getByText('Submit Solution')).toBeInTheDocument();
   });
 
   it('calls onSubmit when Submit Solution is clicked', () => {
@@ -99,9 +99,9 @@ describe('ExpiryOverlay', () => {
   it('renders mobile layout with onSubmit', () => {
     const mockOnSubmit = vi.fn();
     render(<ExpiryOverlay totalTokens={100} totalCost={200} isMobile={true} onReview={mockOnReview} onSubmit={mockOnSubmit} onRestart={mockOnRestart} />);
-    expect(screen.getByText("Time's Up — But You Solved It!")).toBeTruthy();
-    expect(screen.getByText('Submit Solution')).toBeTruthy();
-    expect(screen.getByText('Review Code')).toBeTruthy();
-    expect(screen.getByText('Start New Attempt')).toBeTruthy();
+    expect(screen.getByText("Time's Up — But You Solved It!")).toBeInTheDocument();
+    expect(screen.getByText('Submit Solution')).toBeInTheDocument();
+    expect(screen.getByText('Review Code')).toBeInTheDocument();
+    expect(screen.getByText('Start New Attempt')).toBeInTheDocument();
   });
 });

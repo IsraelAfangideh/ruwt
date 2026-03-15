@@ -29,14 +29,14 @@ describe('ThemeToggle', () => {
     mockMode = 'dark';
     render(<ThemeToggle />);
     // The sun symbol is shown in dark mode
-    expect(screen.getByText('\u2600')).toBeTruthy();
+    expect(screen.getByText('\u2600')).toBeInTheDocument();
   });
 
   it('renders moon icon when in light mode', () => {
     mockMode = 'light';
     render(<ThemeToggle />);
     // The moon symbol is shown in light mode
-    expect(screen.getByText('\u263D')).toBeTruthy();
+    expect(screen.getByText('\u263D')).toBeInTheDocument();
   });
 
   it('calls setMode with light when toggling from dark', () => {

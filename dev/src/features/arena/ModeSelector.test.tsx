@@ -16,18 +16,18 @@ describe('ModeSelector', () => {
 
   it('renders all 4 mode buttons', () => {
     render(<ModeSelector mode="agent" onModeChange={mockOnModeChange} />);
-    expect(screen.getByText('Agent')).toBeTruthy();
-    expect(screen.getByText('Plan')).toBeTruthy();
-    expect(screen.getByText('Debug')).toBeTruthy();
-    expect(screen.getByText('Ask')).toBeTruthy();
+    expect(screen.getByText('Agent')).toBeInTheDocument();
+    expect(screen.getByText('Plan')).toBeInTheDocument();
+    expect(screen.getByText('Debug')).toBeInTheDocument();
+    expect(screen.getByText('Ask')).toBeInTheDocument();
   });
 
   it('renders subtitles for each mode', () => {
     render(<ModeSelector mode="agent" onModeChange={mockOnModeChange} />);
-    expect(screen.getByText('Writes & tests code')).toBeTruthy();
-    expect(screen.getByText('Plans before coding')).toBeTruthy();
-    expect(screen.getByText('Fixes failing tests')).toBeTruthy();
-    expect(screen.getByText('Answers questions')).toBeTruthy();
+    expect(screen.getByText('Writes & tests code')).toBeInTheDocument();
+    expect(screen.getByText('Plans before coding')).toBeInTheDocument();
+    expect(screen.getByText('Fixes failing tests')).toBeInTheDocument();
+    expect(screen.getByText('Answers questions')).toBeInTheDocument();
   });
 
   it('calls onModeChange when a mode button is clicked', () => {

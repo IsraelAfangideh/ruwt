@@ -4,6 +4,7 @@ import { mkdirSync } from 'fs';
 import { resolve } from 'path';
 import * as matchers from 'vitest-axe/matchers';
 import 'vitest-axe/extend-expect';
+import '@testing-library/jest-dom/vitest';
 
 // Extend expect with a11y matchers (toHaveNoViolations)
 expect.extend(matchers);

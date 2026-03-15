@@ -194,7 +194,7 @@ describe('GET /api/daily-challenge', () => {
     expect(json.leaderboard).toEqual([]);
   });
 
-  it('auto-seeds with no active season (seasonId null) (line 64)', async () => {
+  it('auto-seeds daily challenge with null seasonId when no season is active', async () => {
     const allChallenges = [
       { id: 'ch-1', difficulty: 'easy', title: 'E1', description: 'D', category: 'c' },
     ];
@@ -219,7 +219,7 @@ describe('GET /api/daily-challenge', () => {
     expect(json.challenge).toBeDefined();
   });
 
-  it('auto-seeds with medium pool when no easy/sprint challenges exist (line 46)', async () => {
+  it('falls back to medium difficulty pool when no easy challenges exist', async () => {
     const allChallenges = [
       { id: 'ch-1', difficulty: 'medium', title: 'M1', description: 'D', category: 'c' },
       { id: 'ch-2', difficulty: 'medium', title: 'M2', description: 'D', category: 'c' },
@@ -243,7 +243,7 @@ describe('GET /api/daily-challenge', () => {
     expect(db.insert).toHaveBeenCalled();
   });
 
-  it('includes null difficulty challenges in eligible pool (line 39)', async () => {
+  it('includes challenges with null difficulty in eligible selection pool', async () => {
     const allChallenges = [
       { id: 'ch-1', difficulty: null, title: 'Null Difficulty', description: 'D', category: 'c' },
     ];
@@ -267,7 +267,7 @@ describe('GET /api/daily-challenge', () => {
     expect(db.insert).toHaveBeenCalled();
   });
 
-  it('skips recently used challenges and falls back to full eligible pool (line 41)', async () => {
+  it('falls back to full eligible pool when all challenges were recently used', async () => {
     const allChallenges = [
       { id: 'ch-1', difficulty: 'easy', title: 'E1', description: 'D', category: 'c' },
       { id: 'ch-2', difficulty: 'easy', title: 'E2', description: 'D', category: 'c' },

@@ -777,7 +777,7 @@ describe('useAssessmentIDEState', () => {
     });
   });
 
-  describe('handleSave: existing assessment PUT failure (line 323)', () => {
+  describe('handleSave: existing assessment PUT failure', () => {
     it('sets saveError when existing assessment PUT returns not ok', async () => {
       mockRoute.params = { assessmentId: 'a1' };
       fetchFn = setupFetch({
@@ -798,7 +798,7 @@ describe('useAssessmentIDEState', () => {
     });
   });
 
-  describe('handleSave: new assessment branding PUT failure (line 343)', () => {
+  describe('handleSave: new assessment branding PUT failure', () => {
     it('sets saveError when branding PUT on new assessment fails', async () => {
       fetchFn = setupFetch({
         '/api/challenges': ok(CHALLENGES),
@@ -824,7 +824,7 @@ describe('useAssessmentIDEState', () => {
     });
   });
 
-  describe('handleSave: branding fields companyLogoUrl and welcomeMessage (lines 297-298)', () => {
+  describe('handleSave: includes companyLogoUrl and welcomeMessage in branding PUT', () => {
     it('includes companyLogoUrl and welcomeMessage in branding PUT', async () => {
       mockRoute.params = { assessmentId: 'a1' };
       fetchFn = setupFetch({
@@ -852,7 +852,7 @@ describe('useAssessmentIDEState', () => {
     });
   });
 
-  describe('init: fetch catches returning null (lines 210-212)', () => {
+  describe('init: handles fetch rejections gracefully', () => {
     it('handles fetch rejection for challenges gracefully', async () => {
       fetchFn = setupFetch({});
       fetchFn.mockImplementation((url: string) => {
@@ -891,7 +891,7 @@ describe('useAssessmentIDEState', () => {
     });
   });
 
-  describe('handleAgentChallengesChanged: early return without assessmentId (line 431)', () => {
+  describe('handleAgentChallengesChanged: skips fetch when assessmentId is missing', () => {
     it('returns early when assessmentIdRef.current is null', async () => {
       // No assessmentId route param, and no save has been done
       const { result } = renderHook(() => useAssessmentIDEState());
@@ -904,7 +904,7 @@ describe('useAssessmentIDEState', () => {
     });
   });
 
-  describe('handleActivate: error catch with non-Error (line 389)', () => {
+  describe('handleActivate: sets generic error on non-Error throw', () => {
     it('sets activateError with generic message on non-Error throw', async () => {
       mockRoute.params = { assessmentId: 'a1' };
       fetchFn = setupFetch({
@@ -922,7 +922,7 @@ describe('useAssessmentIDEState', () => {
     });
   });
 
-  describe('handleGenerateInvite: json parse catch (line 405)', () => {
+  describe('handleGenerateInvite: handles invalid JSON response', () => {
     it('handles invite response where json() rejects', async () => {
       mockRoute.params = { assessmentId: 'a1' };
       fetchFn = setupFetch({

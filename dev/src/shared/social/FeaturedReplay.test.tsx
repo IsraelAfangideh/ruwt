@@ -9,20 +9,9 @@ vi.mock('react-native', () => ({
   StyleSheet: { create: (s: any) => s },
 }));
 
-vi.mock('@/shared/theme', () => ({
-  useColors: () => ({
-    text: '#000', textMuted: '#888', accent: '#c9a962', success: '#5a8a5a',
-    card: '#fff', border: '#ccc', borderStrong: '#aaa', muted: '#ddd',
-    cardForeground: '#000', mutedForeground: '#555',
-  }),
-}));
+vi.mock('@/shared/theme', async () => (await import('@/shared/test/helpers')).mockTheme());
 
-vi.mock('@/shared/theme/tokens', () => ({
-  spacing: { xs: 4, sm: 8, md: 16, lg: 24 },
-  fontSizes: { xs: 12, sm: 14, md: 16, lg: 18 },
-  fontFamily: { body: 'sans-serif' },
-  radii: { xl: 16 },
-}));
+vi.mock('@/shared/theme/tokens', async () => (await import('@/shared/test/helpers')).mockTokens());
 
 vi.mock('@/shared/lib/ai/pricing', () => ({
   getModelById: (id: string) => id === 'test-model' ? { displayName: 'TestModel', tier: 'budget' } : undefined,
@@ -42,8 +31,8 @@ describe('FeaturedReplay', () => {
     render(<FeaturedReplay />);
     await waitFor(() => expect(global.fetch).toHaveBeenCalled());
 
-    expect(screen.getByText('EXAMPLE STRATEGY')).toBeTruthy();
-    expect(screen.getByText(/How a Top Solver Spent/)).toBeTruthy();
+    expect(screen.getByText('EXAMPLE STRATEGY')).toBeInTheDocument();
+    expect(screen.getByText(/How a Top Solver Spent/)).toBeInTheDocument();
   });
 
   it('renders live data when API returns messages', async () => {
@@ -60,7 +49,7 @@ describe('FeaturedReplay', () => {
     } as Response);
 
     render(<FeaturedReplay />);
-    await waitFor(() => expect(screen.getByText('REAL STRATEGY')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('REAL STRATEGY')).toBeInTheDocument());
   });
 
   it('renders USER and AI role pills', async () => {
@@ -69,8 +58,8 @@ describe('FeaturedReplay', () => {
     render(<FeaturedReplay />);
     await waitFor(() => expect(global.fetch).toHaveBeenCalled());
 
-    expect(screen.getByText('USER')).toBeTruthy();
-    expect(screen.getByText('AI')).toBeTruthy();
+    expect(screen.getByText('USER')).toBeInTheDocument();
+    expect(screen.getByText('AI')).toBeInTheDocument();
   });
 
   it('renders insight text', async () => {
@@ -79,6 +68,6 @@ describe('FeaturedReplay', () => {
     render(<FeaturedReplay />);
     await waitFor(() => expect(global.fetch).toHaveBeenCalled());
 
-    expect(screen.getByText(/Key insight/)).toBeTruthy();
+    expect(screen.getByText(/Key insight/)).toBeInTheDocument();
   });
 });

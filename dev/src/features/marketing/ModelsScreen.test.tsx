@@ -13,18 +13,8 @@ vi.mock('@/shared/layout/DashboardLayout', () => ({
   DashboardLayout: ({ children }: any) => <div data-testid="dashboard-layout">{children}</div>,
 }));
 vi.mock('@/shared/hooks/useDocumentMeta', () => ({ useDocumentMeta: () => {} }));
-vi.mock('@/shared/theme', () => ({
-  useColors: () => ({
-    bg: '#fff', text: '#000', textMuted: '#888', accent: '#c9a962', border: '#ccc',
-    card: '#fff', background: '#fff', muted: '#f5f5f5',
-  }),
-}));
-vi.mock('@/shared/theme/tokens', () => ({
-  spacing: { xs: 4, sm: 8, md: 16, lg: 24, xl: 32, '2xl': 48 },
-  fontSizes: { xs: 12, sm: 14, md: 16, lg: 18, xl: 20, xxl: 24, '2xl': 24, '3xl': 30, '4xl': 36 },
-  fontFamily: { display: 'serif', body: 'sans-serif' },
-  radii: { sm: 4, md: 8, lg: 12, xl: 16, full: 9999 },
-}));
+vi.mock('@/shared/theme', async () => (await import('@/shared/test/helpers')).mockTheme());
+vi.mock('@/shared/theme/tokens', async () => (await import('@/shared/test/helpers')).mockTokens());
 vi.mock('@/shared/lib/ai/pricing', () => ({
   tierColor: (tier: string) => {
     const map: Record<string, string> = { reasoning: '#a78bfa', premium: '#da8ee7', mid: '#f59e0b', budget: '#22c55e', micro: '#94a3b8' };
@@ -66,10 +56,10 @@ describe('ModelsScreen', () => {
     setupFetch();
     render(<ModelsScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Alpha Model')).toBeTruthy();
+      expect(screen.getByText('Alpha Model')).toBeInTheDocument();
     });
-    expect(screen.getByText('Beta Model')).toBeTruthy();
-    expect(screen.getByText('Gamma Model')).toBeTruthy();
+    expect(screen.getByText('Beta Model')).toBeInTheDocument();
+    expect(screen.getByText('Gamma Model')).toBeInTheDocument();
   });
 
   it('shows tier badges on model cards', async () => {
@@ -87,35 +77,35 @@ describe('ModelsScreen', () => {
     setupFetch();
     render(<ModelsScreen />);
     await waitFor(() => {
-      expect(screen.getByText('$$$')).toBeTruthy();
+      expect(screen.getByText('$$$')).toBeInTheDocument();
     });
-    expect(screen.getByText('$')).toBeTruthy();
-    expect(screen.getByText('$$$$$')).toBeTruthy();
+    expect(screen.getByText('$')).toBeInTheDocument();
+    expect(screen.getByText('$$$$$')).toBeInTheDocument();
   });
 
   it('shows stats (uses, msgs) on model cards', async () => {
     setupFetch();
     render(<ModelsScreen />);
     await waitFor(() => {
-      expect(screen.getByText('42')).toBeTruthy();
+      expect(screen.getByText('42')).toBeInTheDocument();
     });
-    expect(screen.getByText('200')).toBeTruthy();
-    expect(screen.getByText('100')).toBeTruthy();
-    expect(screen.getByText('800')).toBeTruthy();
+    expect(screen.getByText('200')).toBeInTheDocument();
+    expect(screen.getByText('100')).toBeInTheDocument();
+    expect(screen.getByText('800')).toBeInTheDocument();
   });
 
   it('filters by tier when filter chip is clicked', async () => {
     setupFetch();
     render(<ModelsScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Alpha Model')).toBeTruthy();
+      expect(screen.getByText('Alpha Model')).toBeInTheDocument();
     });
     // Click the Budget filter chip
     const budgetChips = screen.getAllByText('Budget');
     // First one is the filter chip, others may be tier badges
     fireEvent.click(budgetChips[0]);
     await waitFor(() => {
-      expect(screen.getByText('Beta Model')).toBeTruthy();
+      expect(screen.getByText('Beta Model')).toBeInTheDocument();
     });
     expect(screen.queryByText('Alpha Model')).toBeNull();
     expect(screen.queryByText('Gamma Model')).toBeNull();
@@ -125,7 +115,7 @@ describe('ModelsScreen', () => {
     setupFetch();
     render(<ModelsScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Alpha Model')).toBeTruthy();
+      expect(screen.getByText('Alpha Model')).toBeInTheDocument();
     });
     // Filter by budget
     fireEvent.click(screen.getAllByText('Budget')[0]);
@@ -135,17 +125,17 @@ describe('ModelsScreen', () => {
     // Click All to reset
     fireEvent.click(screen.getByText('All'));
     await waitFor(() => {
-      expect(screen.getByText('Alpha Model')).toBeTruthy();
+      expect(screen.getByText('Alpha Model')).toBeInTheDocument();
     });
-    expect(screen.getByText('Beta Model')).toBeTruthy();
-    expect(screen.getByText('Gamma Model')).toBeTruthy();
+    expect(screen.getByText('Beta Model')).toBeInTheDocument();
+    expect(screen.getByText('Gamma Model')).toBeInTheDocument();
   });
 
   it('navigates to model detail on card click', async () => {
     setupFetch();
     render(<ModelsScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Alpha Model')).toBeTruthy();
+      expect(screen.getByText('Alpha Model')).toBeInTheDocument();
     });
     fireEvent.click(screen.getByTestId('model-card-Alpha Model'));
     expect(mockNavigate).toHaveBeenCalledWith('ModelDetail', { modelId: 'model-a' });
@@ -155,12 +145,12 @@ describe('ModelsScreen', () => {
     setupFetch();
     render(<ModelsScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Alpha Model')).toBeTruthy();
+      expect(screen.getByText('Alpha Model')).toBeInTheDocument();
     });
     // Filter by micro - none of the mock models are micro tier
     fireEvent.click(screen.getByText('Micro'));
     await waitFor(() => {
-      expect(screen.getByText('No models found.')).toBeTruthy();
+      expect(screen.getByText('No models found.')).toBeInTheDocument();
     });
   });
 
@@ -168,7 +158,7 @@ describe('ModelsScreen', () => {
     setupFetch([]);
     render(<ModelsScreen />);
     await waitFor(() => {
-      expect(screen.getByText('No models found.')).toBeTruthy();
+      expect(screen.getByText('No models found.')).toBeInTheDocument();
     });
   });
 
@@ -176,7 +166,7 @@ describe('ModelsScreen', () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('Network error')));
     render(<ModelsScreen />);
     await waitFor(() => {
-      expect(screen.getByText('No models found.')).toBeTruthy();
+      expect(screen.getByText('No models found.')).toBeInTheDocument();
     });
   });
 
@@ -184,7 +174,7 @@ describe('ModelsScreen', () => {
     setupFetch([], false);
     render(<ModelsScreen />);
     await waitFor(() => {
-      expect(screen.getByText('No models found.')).toBeTruthy();
+      expect(screen.getByText('No models found.')).toBeInTheDocument();
     });
   });
 
@@ -192,31 +182,31 @@ describe('ModelsScreen', () => {
     setupFetch();
     render(<ModelsScreen />);
     await waitFor(() => {
-      expect(screen.getByText('AI Models')).toBeTruthy();
+      expect(screen.getByText('AI Models')).toBeInTheDocument();
     });
-    expect(screen.getByText('Browse the models powering ruwt.dev challenges')).toBeTruthy();
+    expect(screen.getByText('Browse the models powering ruwt.dev challenges')).toBeInTheDocument();
   });
 
   it('renders all tier filter chips', async () => {
     setupFetch();
     render(<ModelsScreen />);
     await waitFor(() => {
-      expect(screen.getByText('All')).toBeTruthy();
+      expect(screen.getByText('All')).toBeInTheDocument();
     });
     expect(screen.getAllByText('Reasoning').length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText('Premium').length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText('Mid').length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText('Budget').length).toBeGreaterThanOrEqual(1);
-    expect(screen.getByText('Micro')).toBeTruthy();
+    expect(screen.getByText('Micro')).toBeInTheDocument();
   });
 
   it('renders model descriptions', async () => {
     setupFetch();
     render(<ModelsScreen />);
     await waitFor(() => {
-      expect(screen.getByText('A premium model')).toBeTruthy();
+      expect(screen.getByText('A premium model')).toBeInTheDocument();
     });
-    expect(screen.getByText('A budget model')).toBeTruthy();
-    expect(screen.getByText('A reasoning model')).toBeTruthy();
+    expect(screen.getByText('A budget model')).toBeInTheDocument();
+    expect(screen.getByText('A reasoning model')).toBeInTheDocument();
   });
 });

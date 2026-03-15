@@ -2,15 +2,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 
-vi.mock('@/shared/theme', () => ({
-  useColors: () => ({
-    text: '#000', textMuted: '#888', accent: '#c9a962', border: '#ccc',
-  }),
-}));
-vi.mock('@/shared/theme/tokens', () => ({
-  spacing: { xs: 4, sm: 8, md: 16, lg: 24, xl: 32 },
-  fontSizes: { xs: 12, sm: 14, md: 16 },
-}));
+vi.mock('@/shared/theme', async () => (await import('@/shared/test/helpers')).mockTheme());
+vi.mock('@/shared/theme/tokens', async () => (await import('@/shared/test/helpers')).mockTokens());
 
 const { ReactionBar } = await import('./ReactionBar');
 
@@ -28,12 +21,12 @@ describe('ReactionBar', () => {
         userReaction={null}
       />,
     );
-    expect(screen.getByTestId('reaction-thumbs_up')).toBeTruthy();
-    expect(screen.getByTestId('reaction-fire')).toBeTruthy();
-    expect(screen.getByTestId('reaction-brain')).toBeTruthy();
-    expect(screen.getByTestId('reaction-heart')).toBeTruthy();
-    expect(screen.getByTestId('reaction-eyes')).toBeTruthy();
-    expect(screen.getByTestId('reaction-rocket')).toBeTruthy();
+    expect(screen.getByTestId('reaction-thumbs_up')).toBeInTheDocument();
+    expect(screen.getByTestId('reaction-fire')).toBeInTheDocument();
+    expect(screen.getByTestId('reaction-brain')).toBeInTheDocument();
+    expect(screen.getByTestId('reaction-heart')).toBeInTheDocument();
+    expect(screen.getByTestId('reaction-eyes')).toBeInTheDocument();
+    expect(screen.getByTestId('reaction-rocket')).toBeInTheDocument();
   });
 
   it('shows count for reactions with counts', () => {
@@ -45,8 +38,8 @@ describe('ReactionBar', () => {
         userReaction={null}
       />,
     );
-    expect(screen.getByText('5')).toBeTruthy();
-    expect(screen.getByText('2')).toBeTruthy();
+    expect(screen.getByText('5')).toBeInTheDocument();
+    expect(screen.getByText('2')).toBeInTheDocument();
   });
 
   it('does not show count for reactions with zero', () => {
@@ -80,7 +73,7 @@ describe('ReactionBar', () => {
 
     // Optimistic update should show count immediately
     await waitFor(() => {
-      expect(screen.getByText('1')).toBeTruthy();
+      expect(screen.getByText('1')).toBeInTheDocument();
     });
 
     // Verify POST was made
@@ -105,7 +98,7 @@ describe('ReactionBar', () => {
       />,
     );
 
-    expect(screen.getByText('1')).toBeTruthy();
+    expect(screen.getByText('1')).toBeInTheDocument();
     fireEvent.click(screen.getByTestId('reaction-fire'));
 
     // Optimistic: count should be removed
@@ -126,7 +119,7 @@ describe('ReactionBar', () => {
     // The active button should have accent-based background color
     const activeButton = screen.getByTestId('reaction-thumbs_up');
     expect(activeButton).toBeTruthy();
-    expect(screen.getByText('3')).toBeTruthy();
+    expect(screen.getByText('3')).toBeInTheDocument();
   });
 
   it('switches reaction from one emoji to another', async () => {
@@ -154,7 +147,7 @@ describe('ReactionBar', () => {
 
     // Optimistic: fire removed, brain added
     await waitFor(() => {
-      expect(screen.getByText('1')).toBeTruthy(); // brain has 1
+      expect(screen.getByText('1')).toBeInTheDocument(); // brain has 1
     });
 
     // Should have made 2 fetch calls (remove old, add new)
@@ -180,7 +173,7 @@ describe('ReactionBar', () => {
     // Optimistic: 3 momentarily
     // After error: reverts to 2
     await waitFor(() => {
-      expect(screen.getByText('2')).toBeTruthy();
+      expect(screen.getByText('2')).toBeInTheDocument();
     });
   });
 
@@ -218,11 +211,11 @@ describe('ReactionBar', () => {
       />,
     );
     // Check that emoji characters are rendered
-    expect(screen.getByText('\u{1F44D}')).toBeTruthy(); // thumbs up
-    expect(screen.getByText('\u{1F525}')).toBeTruthy(); // fire
-    expect(screen.getByText('\u{1F9E0}')).toBeTruthy(); // brain
-    expect(screen.getByText('\u{2764}\u{FE0F}')).toBeTruthy(); // heart
-    expect(screen.getByText('\u{1F440}')).toBeTruthy(); // eyes
-    expect(screen.getByText('\u{1F680}')).toBeTruthy(); // rocket
+    expect(screen.getByText('\u{1F44D}')).toBeInTheDocument(); // thumbs up
+    expect(screen.getByText('\u{1F525}')).toBeInTheDocument(); // fire
+    expect(screen.getByText('\u{1F9E0}')).toBeInTheDocument(); // brain
+    expect(screen.getByText('\u{2764}\u{FE0F}')).toBeInTheDocument(); // heart
+    expect(screen.getByText('\u{1F440}')).toBeInTheDocument(); // eyes
+    expect(screen.getByText('\u{1F680}')).toBeInTheDocument(); // rocket
   });
 });

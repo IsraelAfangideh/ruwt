@@ -9,22 +9,9 @@ vi.mock('react-native', () => ({
   StyleSheet: { create: (s: any) => s },
 }));
 
-vi.mock('@/shared/theme', () => ({
-  useColors: () => ({
-    accent: '#c9a962',
-    textMuted: '#888',
-    card: '#fff',
-    border: '#ccc',
-    borderStrong: '#aaa',
-  }),
-}));
+vi.mock('@/shared/theme', async () => (await import('@/shared/test/helpers')).mockTheme());
 
-vi.mock('@/shared/theme/tokens', () => ({
-  spacing: { xs: 4, sm: 8, md: 16, lg: 24 },
-  fontSizes: { xs: 12, sm: 14, md: 16, '2xl': 24 },
-  fontFamily: { body: 'sans-serif' },
-  radii: { xl: 16 },
-}));
+vi.mock('@/shared/theme/tokens', async () => (await import('@/shared/test/helpers')).mockTokens());
 
 vi.mock('@/shared/lib/ai/pricing', () => ({
   formatCostFromHundredths: (v: number) => `$${(v / 10000).toFixed(2)}`,
@@ -59,11 +46,11 @@ describe('PlatformStats', () => {
     } as Response);
 
     render(<PlatformStats />);
-    await waitFor(() => expect(screen.getByText('60+')).toBeTruthy());
-    expect(screen.getByText('Challenges')).toBeTruthy();
-    expect(screen.getByText('200')).toBeTruthy();
-    expect(screen.getByText('Challenges Solved')).toBeTruthy();
-    expect(screen.getByText('Avg Solve Cost')).toBeTruthy();
+    await waitFor(() => expect(screen.getByText('60+')).toBeInTheDocument());
+    expect(screen.getByText('Challenges')).toBeInTheDocument();
+    expect(screen.getByText('200')).toBeInTheDocument();
+    expect(screen.getByText('Challenges Solved')).toBeInTheDocument();
+    expect(screen.getByText('Avg Solve Cost')).toBeInTheDocument();
   });
 
   it('shows "Challenge Solved" (singular) when only 1 solve', async () => {
@@ -79,7 +66,7 @@ describe('PlatformStats', () => {
     } as Response);
 
     render(<PlatformStats />);
-    await waitFor(() => expect(screen.getByText('Challenge Solved')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Challenge Solved')).toBeInTheDocument());
   });
 
   it('shows "Free to try" when avgSolveCost is 0', async () => {
@@ -95,7 +82,7 @@ describe('PlatformStats', () => {
     } as Response);
 
     render(<PlatformStats />);
-    await waitFor(() => expect(screen.getByText('Free to try')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Free to try')).toBeInTheDocument());
   });
 
   it('handles fetch failure gracefully', async () => {

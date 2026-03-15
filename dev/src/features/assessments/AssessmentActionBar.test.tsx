@@ -7,21 +7,8 @@ vi.mock('@/shared/ui/Button', () => ({
     <button onClick={onPress} disabled={disabled} {...props}>{children}</button>
   ),
 }));
-vi.mock('@/shared/theme', () => ({
-  useColors: () => ({
-    bg: '#fff', text: '#000', textMuted: '#888', accent: '#c9a962', border: '#ccc',
-    borderStrong: '#999', card: '#fff', muted: '#f5f5f5', error: '#f00', errorBg: '#fee',
-    success: '#0a0', successBg: '#efe', primary: '#000', primaryForeground: '#fff',
-    secondary: '#eee', secondaryForeground: '#000', destructive: '#f00',
-    textSubtle: '#aaa', bgElevated: '#fafafa', accentBg: '#ffe', bgWarm: '#faf8f5',
-  }),
-}));
-vi.mock('@/shared/theme/tokens', () => ({
-  spacing: { xs: 4, sm: 8, md: 16, lg: 24, xl: 32, '2xl': 48 },
-  fontSizes: { xs: 12, sm: 14, md: 16, lg: 18, xl: 20, '2xl': 24, '3xl': 30, '4xl': 36 },
-  fontFamily: { display: 'serif', body: 'sans-serif' },
-  radii: { sm: 4, md: 8, lg: 12, xl: 16, full: 9999 },
-}));
+vi.mock('@/shared/theme', async () => (await import('@/shared/test/helpers')).mockTheme());
+vi.mock('@/shared/theme/tokens', async () => (await import('@/shared/test/helpers')).mockTokens());
 
 const { AssessmentActionBar } = await import('./AssessmentActionBar');
 
@@ -49,23 +36,23 @@ describe('AssessmentActionBar', () => {
 
   it('renders Save Draft button', () => {
     render(<AssessmentActionBar {...baseProps} />);
-    expect(screen.getByText('Save Draft')).toBeTruthy();
+    expect(screen.getByText('Save Draft')).toBeInTheDocument();
   });
 
   it('shows Saving... text when saving', () => {
     render(<AssessmentActionBar {...baseProps} saving={true} />);
-    expect(screen.getByText('Saving...')).toBeTruthy();
+    expect(screen.getByText('Saving...')).toBeInTheDocument();
   });
 
   it('shows Saved text on save success', () => {
     render(<AssessmentActionBar {...baseProps} saveSuccess={true} />);
-    expect(screen.getByText('\u2713 Saved')).toBeTruthy();
+    expect(screen.getByText('\u2713 Saved')).toBeInTheDocument();
   });
 
   it('shows Error text on save error', () => {
     render(<AssessmentActionBar {...baseProps} saveError="Something went wrong" />);
-    expect(screen.getByText('\u2717 Error')).toBeTruthy();
-    expect(screen.getByText('Something went wrong')).toBeTruthy();
+    expect(screen.getByText('\u2717 Error')).toBeInTheDocument();
+    expect(screen.getByText('Something went wrong')).toBeInTheDocument();
   });
 
   it('disables Save Draft when title is empty', () => {
@@ -87,7 +74,7 @@ describe('AssessmentActionBar', () => {
 
   it('shows "Weights must = 100" when weights are wrong and title exists', () => {
     render(<AssessmentActionBar {...baseProps} weightSum={80} />);
-    expect(screen.getByText('Weights must = 100')).toBeTruthy();
+    expect(screen.getByText('Weights must = 100')).toBeInTheDocument();
   });
 
   it('disables Save Draft when weightSum is NaN', () => {
@@ -105,7 +92,7 @@ describe('AssessmentActionBar', () => {
 
   it('shows Activate button for draft with assessmentId', () => {
     render(<AssessmentActionBar {...baseProps} />);
-    expect(screen.getByText('Activate')).toBeTruthy();
+    expect(screen.getByText('Activate')).toBeInTheDocument();
   });
 
   it('does not show Activate button when no assessmentId', () => {
@@ -127,8 +114,8 @@ describe('AssessmentActionBar', () => {
 
   it('shows Confirm Activate and Cancel when confirmActivate is true', () => {
     render(<AssessmentActionBar {...baseProps} confirmActivate={true} />);
-    expect(screen.getByText('Confirm Activate')).toBeTruthy();
-    expect(screen.getByText('Cancel')).toBeTruthy();
+    expect(screen.getByText('Confirm Activate')).toBeInTheDocument();
+    expect(screen.getByText('Cancel')).toBeInTheDocument();
   });
 
   it('calls onActivate and resets confirm on Confirm Activate click', () => {
@@ -149,17 +136,17 @@ describe('AssessmentActionBar', () => {
 
   it('shows Activating... when activating', () => {
     render(<AssessmentActionBar {...baseProps} confirmActivate={true} activating={true} />);
-    expect(screen.getByText('Activating...')).toBeTruthy();
+    expect(screen.getByText('Activating...')).toBeInTheDocument();
   });
 
   it('shows activateError when present', () => {
     render(<AssessmentActionBar {...baseProps} activateError="Activation failed" />);
-    expect(screen.getByText('Activation failed')).toBeTruthy();
+    expect(screen.getByText('Activation failed')).toBeInTheDocument();
   });
 
   it('shows inviteError when present', () => {
     render(<AssessmentActionBar {...baseProps} inviteError="Invite generation failed" />);
-    expect(screen.getByText('Invite generation failed')).toBeTruthy();
+    expect(screen.getByText('Invite generation failed')).toBeInTheDocument();
   });
 
   it('does not show validation message when saving', () => {

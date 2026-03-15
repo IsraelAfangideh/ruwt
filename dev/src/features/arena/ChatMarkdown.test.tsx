@@ -20,17 +20,17 @@ vi.mock('@/shared/theme/colors', () => ({
 describe('CodeBlock', () => {
   it('renders code content', () => {
     render(<CodeBlock lang="javascript" code="const x = 1;" />);
-    expect(screen.getByText('const x = 1;')).toBeTruthy();
+    expect(screen.getByText('const x = 1;')).toBeInTheDocument();
   });
 
   it('renders language label', () => {
     render(<CodeBlock lang="typescript" code="const y = 2;" />);
-    expect(screen.getByText('typescript')).toBeTruthy();
+    expect(screen.getByText('typescript')).toBeInTheDocument();
   });
 
   it('renders copy button', () => {
     render(<CodeBlock lang="js" code="code" />);
-    expect(screen.getByText('Copy')).toBeTruthy();
+    expect(screen.getByText('Copy')).toBeInTheDocument();
   });
 
   it('copies code to clipboard on click', async () => {
@@ -135,7 +135,7 @@ describe('renderInline', () => {
     expect(onLineClick).toHaveBeenCalledWith(42);
   });
 
-  it('triggers onLineClick via Enter keydown on line reference (line 120)', () => {
+  it('triggers onLineClick when Enter is pressed on a line reference', () => {
     const onLineClick = vi.fn();
     const nodes = renderInline('See line 42 for details', onLineClick);
     const { container } = render(<div>{nodes}</div>);
@@ -145,7 +145,7 @@ describe('renderInline', () => {
     expect(onLineClick).toHaveBeenCalledWith(42);
   });
 
-  it('triggers onLineClick via Space keydown on line reference (line 120)', () => {
+  it('triggers onLineClick when Space is pressed on a line reference', () => {
     const onLineClick = vi.fn();
     const nodes = renderInline('See line 42 for details', onLineClick);
     const { container } = render(<div>{nodes}</div>);
@@ -176,7 +176,7 @@ describe('renderInline', () => {
 describe('ThinkingBlock', () => {
   it('renders thinking content with toggle', () => {
     render(<ThinkingBlock text="Analyzing the problem..." />);
-    expect(screen.getByText(/Thinking/)).toBeTruthy();
+    expect(screen.getByText(/Thinking/)).toBeInTheDocument();
   });
 
   it('shows line count when not streaming', () => {
@@ -184,12 +184,12 @@ describe('ThinkingBlock', () => {
 Line 2
 Line 3`;
     render(<ThinkingBlock text={multiline} />);
-    expect(screen.getByText(/3 line/)).toBeTruthy();
+    expect(screen.getByText(/3 line/)).toBeInTheDocument();
   });
 
   it('shows "Thinking..." when streaming', () => {
     render(<ThinkingBlock text="Working on it..." isStreaming />);
-    expect(screen.getByText('Thinking...')).toBeTruthy();
+    expect(screen.getByText('Thinking...')).toBeInTheDocument();
   });
 
   it('starts collapsed when not streaming', () => {

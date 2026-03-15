@@ -118,15 +118,15 @@ describe('App', () => {
 
     const { getByText } = render(<ErrorFallback />);
 
-    expect(getByText('Something went wrong')).toBeTruthy();
-    expect(getByText(/unexpected error/i)).toBeTruthy();
+    expect(getByText('Something went wrong')).toBeInTheDocument();
+    expect(getByText(/unexpected error/i)).toBeInTheDocument();
 
     const button = getByText('Reload');
     expect(button).toBeTruthy();
     expect(button.tagName).toBe('BUTTON');
   });
 
-  it('ErrorFallback reload button calls window.location.reload (line 30)', () => {
+  it('ErrorFallback reload button triggers page reload', () => {
     render(<App />);
 
     expect(capturedFallback).toBeDefined();

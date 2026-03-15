@@ -212,7 +212,7 @@ describe('AppNavigator', () => {
     expect(mockUnsubscribeFn).toHaveBeenCalled();
   });
 
-  /* ── lazyWithRetry auto-retry on chunk load failure (lines 23-31) ── */
+  /* ── lazyWithRetry handles chunk load failure with retry logic ── */
   it('handles chunk load failure with sessionStorage retry logic', async () => {
     // The lazyWithRetry function is tested indirectly through the screens.
     // Since all screens are mocked, they load successfully.
@@ -255,9 +255,9 @@ describe('AppNavigator', () => {
     const { getByText } = render(<AppNavigator />);
 
     // The error boundary should catch the throw and render the error UI
-    expect(getByText('Something went wrong')).toBeTruthy();
-    expect(getByText('A new version may have been deployed. Reload to continue.')).toBeTruthy();
-    expect(getByText('Reload')).toBeTruthy();
+    expect(getByText('Something went wrong')).toBeInTheDocument();
+    expect(getByText('A new version may have been deployed. Reload to continue.')).toBeInTheDocument();
+    expect(getByText('Reload')).toBeInTheDocument();
 
     consoleSpy.mockRestore();
   });

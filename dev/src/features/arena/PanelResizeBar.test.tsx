@@ -49,14 +49,14 @@ describe('PanelResizeBar', () => {
     const handle = screen.getByTestId('resize-handle-horizontal');
     expect(screen.queryByTestId('resize-indicator')).toBeNull();
     fireEvent.mouseEnter(handle);
-    expect(screen.getByTestId('resize-indicator')).toBeTruthy();
+    expect(screen.getByTestId('resize-indicator')).toBeInTheDocument();
   });
 
   it('hides indicator on mouse leave', () => {
     render(<PanelResizeBar direction="horizontal" />);
     const handle = screen.getByTestId('resize-handle-horizontal');
     fireEvent.mouseEnter(handle);
-    expect(screen.getByTestId('resize-indicator')).toBeTruthy();
+    expect(screen.getByTestId('resize-indicator')).toBeInTheDocument();
     fireEvent.mouseLeave(handle);
     expect(screen.queryByTestId('resize-indicator')).toBeNull();
   });

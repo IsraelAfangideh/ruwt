@@ -35,25 +35,12 @@ vi.mock('@/shared/ui/Input', () => ({
     <input aria-label={label} onChange={(e: any) => onChangeText?.(e.target.value)} {...props} />
   ),
 }));
-vi.mock('@/shared/theme', () => ({
-  useColors: () => ({
-    bg: '#fff', text: '#000', textMuted: '#888', accent: '#c9a962', border: '#ccc',
-    borderStrong: '#999', card: '#fff', muted: '#f5f5f5', error: '#f00', errorBg: '#fee',
-    success: '#0a0', successBg: '#efe', primary: '#000', primaryForeground: '#fff',
-    secondary: '#eee', secondaryForeground: '#000', destructive: '#f00',
-    textSubtle: '#aaa', bgElevated: '#fafafa', accentBg: '#ffe',
-  }),
-}));
+vi.mock('@/shared/theme', async () => (await import('@/shared/test/helpers')).mockTheme());
 const mockShowToast = vi.fn();
 vi.mock('@/shared/ui/Toast', () => ({
   useToast: () => ({ showToast: mockShowToast }),
 }));
-vi.mock('@/shared/theme/tokens', () => ({
-  spacing: { xs: 4, sm: 8, md: 16, lg: 24, xl: 32, '2xl': 48 },
-  fontSizes: { xs: 12, sm: 14, md: 16, lg: 18, xl: 20, '2xl': 24, '3xl': 30, '4xl': 36 },
-  fontFamily: { display: 'serif', body: 'sans-serif' },
-  radii: { sm: 4, md: 8, lg: 12, xl: 16, full: 9999 },
-}));
+vi.mock('@/shared/theme/tokens', async () => (await import('@/shared/test/helpers')).mockTokens());
 
 const ok = (data: any) => ({ ok: true, json: () => Promise.resolve(data) });
 const fail = (data: any) => ({ ok: false, json: () => Promise.resolve(data) });
@@ -107,7 +94,7 @@ describe('OrgManagementScreen', () => {
     mockAuthReturn = { user: { id: 'u1' }, loading: false };
     // No fetch responses set up, so dataLoading stays true
     const { container } = render(<OrgManagementScreen />);
-    expect(container.querySelector('[data-testid="skeleton-table"]')).toBeTruthy();
+    expect(container.querySelector('[data-testid="skeleton-table"]')).toBeInTheDocument();
   });
 
   it('renders nothing when user is not authenticated', () => {
@@ -121,16 +108,16 @@ describe('OrgManagementScreen', () => {
     setupFetch({ '/api/orgs': ok([]) });
     render(<OrgManagementScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Create Your Team')).toBeTruthy();
-      expect(screen.getByText(/Set up an organization/)).toBeTruthy();
-      expect(screen.getByText('Create Organization')).toBeTruthy();
+      expect(screen.getByText('Create Your Team')).toBeInTheDocument();
+      expect(screen.getByText(/Set up an organization/)).toBeInTheDocument();
+      expect(screen.getByText('Create Organization')).toBeInTheDocument();
     });
   });
 
   it('creates organization when form is submitted', async () => {
     const fn = setupFetch({ '/api/orgs': ok([]) });
     render(<OrgManagementScreen />);
-    await waitFor(() => expect(screen.getByText('Create Organization')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Create Organization')).toBeInTheDocument());
     const input = screen.getByDisplayValue('');
     fireEvent.change(input, { target: { value: 'New Org' } });
     fireEvent.click(screen.getByText('Create Organization'));
@@ -150,9 +137,9 @@ describe('OrgManagementScreen', () => {
     });
     render(<OrgManagementScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Acme Corp')).toBeTruthy();
-      expect(screen.getByText(/Active/)).toBeTruthy();
-      expect(screen.getByText(/Monthly/)).toBeTruthy();
+      expect(screen.getByText('Acme Corp')).toBeInTheDocument();
+      expect(screen.getByText(/Active/)).toBeInTheDocument();
+      expect(screen.getByText(/Monthly/)).toBeInTheDocument();
     });
   });
 
@@ -163,7 +150,7 @@ describe('OrgManagementScreen', () => {
       '/api/orgs/org1/invitations': ok([]),
     });
     render(<OrgManagementScreen />);
-    await waitFor(() => expect(screen.getByText('Manage Billing')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Manage Billing')).toBeInTheDocument());
   });
 
   it('shows Resubscribe button for canceled subscription', async () => {
@@ -175,8 +162,8 @@ describe('OrgManagementScreen', () => {
     });
     render(<OrgManagementScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Canceled')).toBeTruthy();
-      expect(screen.getByText('Resubscribe')).toBeTruthy();
+      expect(screen.getByText('Canceled')).toBeInTheDocument();
+      expect(screen.getByText('Resubscribe')).toBeInTheDocument();
     });
   });
 
@@ -189,8 +176,8 @@ describe('OrgManagementScreen', () => {
     });
     render(<OrgManagementScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Payment Past Due')).toBeTruthy();
-      expect(screen.getByText('Update Payment')).toBeTruthy();
+      expect(screen.getByText('Payment Past Due')).toBeInTheDocument();
+      expect(screen.getByText('Update Payment')).toBeInTheDocument();
     });
   });
 
@@ -202,7 +189,7 @@ describe('OrgManagementScreen', () => {
       '/api/orgs/org1/invitations': ok([]),
     });
     render(<OrgManagementScreen />);
-    await waitFor(() => expect(screen.getByText('Subscribe')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Subscribe')).toBeInTheDocument());
   });
 
   it('renders team members with roles', async () => {
@@ -213,13 +200,13 @@ describe('OrgManagementScreen', () => {
     });
     render(<OrgManagementScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Owner User')).toBeTruthy();
-      expect(screen.getByText('Admin User')).toBeTruthy();
-      expect(screen.getByText('member@acme.com')).toBeTruthy();
-      expect(screen.getByText('OWNER')).toBeTruthy();
-      expect(screen.getByText('ADMIN')).toBeTruthy();
-      expect(screen.getByText('MEMBER')).toBeTruthy();
-      expect(screen.getByText(/Team Members \(3\)/)).toBeTruthy();
+      expect(screen.getByText('Owner User')).toBeInTheDocument();
+      expect(screen.getByText('Admin User')).toBeInTheDocument();
+      expect(screen.getByText('member@acme.com')).toBeInTheDocument();
+      expect(screen.getByText('OWNER')).toBeInTheDocument();
+      expect(screen.getByText('ADMIN')).toBeInTheDocument();
+      expect(screen.getByText('MEMBER')).toBeInTheDocument();
+      expect(screen.getByText(/Team Members \(3\)/)).toBeInTheDocument();
     });
   });
 
@@ -232,9 +219,9 @@ describe('OrgManagementScreen', () => {
     render(<OrgManagementScreen />);
     await waitFor(() => {
       // For admin member (u2): shows Demote and Remove
-      expect(screen.getByText('Demote')).toBeTruthy();
+      expect(screen.getByText('Demote')).toBeInTheDocument();
       // For regular member (u3): shows Make Admin and Remove
-      expect(screen.getByText('Make Admin')).toBeTruthy();
+      expect(screen.getByText('Make Admin')).toBeInTheDocument();
       // Remove should exist for non-owner members
       expect(screen.getAllByText('Remove').length).toBe(2);
     });
@@ -248,8 +235,8 @@ describe('OrgManagementScreen', () => {
     });
     render(<OrgManagementScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Organization Settings')).toBeTruthy();
-      expect(screen.getByText('Save Settings')).toBeTruthy();
+      expect(screen.getByText('Organization Settings')).toBeInTheDocument();
+      expect(screen.getByText('Save Settings')).toBeInTheDocument();
     });
   });
 
@@ -261,7 +248,7 @@ describe('OrgManagementScreen', () => {
       '/api/orgs/org1/invitations': ok([]),
     });
     render(<OrgManagementScreen />);
-    await waitFor(() => expect(screen.getByText('Acme Corp')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Acme Corp')).toBeInTheDocument());
     expect(screen.queryByText('Organization Settings')).toBeNull();
     expect(screen.queryByText('Invite Team Member')).toBeNull();
   });
@@ -274,11 +261,11 @@ describe('OrgManagementScreen', () => {
     });
     render(<OrgManagementScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Invite Team Member')).toBeTruthy();
-      expect(screen.getByText('Send Invite')).toBeTruthy();
-      expect(screen.getByText('Member')).toBeTruthy();
+      expect(screen.getByText('Invite Team Member')).toBeInTheDocument();
+      expect(screen.getByText('Send Invite')).toBeInTheDocument();
+      expect(screen.getByText('Member')).toBeInTheDocument();
       expect(screen.getAllByText('Admin').length).toBeGreaterThanOrEqual(1);
-      expect(screen.getByText('Viewer')).toBeTruthy();
+      expect(screen.getByText('Viewer')).toBeInTheDocument();
     });
   });
 
@@ -289,7 +276,7 @@ describe('OrgManagementScreen', () => {
       '/api/orgs/org1/invitations': ok([]),
     });
     render(<OrgManagementScreen />);
-    await waitFor(() => expect(screen.getByText('Send Invite')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Send Invite')).toBeInTheDocument());
     const emailInput = screen.getByPlaceholderText('colleague@company.com');
     fireEvent.change(emailInput, { target: { value: 'new@acme.com' } });
     fireEvent.click(screen.getByText('Send Invite'));
@@ -308,11 +295,11 @@ describe('OrgManagementScreen', () => {
       '/api/orgs/org1/invitations': ok([]),
     });
     render(<OrgManagementScreen />);
-    await waitFor(() => expect(screen.getByText('Send Invite')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Send Invite')).toBeInTheDocument());
     const emailInput = screen.getByPlaceholderText('colleague@company.com');
     fireEvent.change(emailInput, { target: { value: 'new@acme.com' } });
     fireEvent.click(screen.getByText('Send Invite'));
-    await waitFor(() => expect(screen.getByText('Invitation sent!')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Invitation sent!')).toBeInTheDocument());
   });
 
   it('shows invite error when invitation fails', async () => {
@@ -322,11 +309,11 @@ describe('OrgManagementScreen', () => {
       '/api/orgs/org1/invitations': fail({ error: 'Already invited' }),
     });
     render(<OrgManagementScreen />);
-    await waitFor(() => expect(screen.getByText('Send Invite')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Send Invite')).toBeInTheDocument());
     const emailInput = screen.getByPlaceholderText('colleague@company.com');
     fireEvent.change(emailInput, { target: { value: 'dup@acme.com' } });
     fireEvent.click(screen.getByText('Send Invite'));
-    await waitFor(() => expect(screen.getByText('Already invited')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Already invited')).toBeInTheDocument());
   });
 
   it('renders pending invitations when they exist', async () => {
@@ -337,9 +324,9 @@ describe('OrgManagementScreen', () => {
     });
     render(<OrgManagementScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Pending Invitations')).toBeTruthy();
-      expect(screen.getByText('invited@acme.com')).toBeTruthy();
-      expect(screen.getByText('Revoke')).toBeTruthy();
+      expect(screen.getByText('Pending Invitations')).toBeInTheDocument();
+      expect(screen.getByText('invited@acme.com')).toBeInTheDocument();
+      expect(screen.getByText('Revoke')).toBeInTheDocument();
     });
   });
 
@@ -350,7 +337,7 @@ describe('OrgManagementScreen', () => {
       '/api/orgs/org1/invitations': ok(mockInvitations),
     });
     render(<OrgManagementScreen />);
-    await waitFor(() => expect(screen.getByText('Revoke')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Revoke')).toBeInTheDocument());
     fireEvent.click(screen.getByText('Revoke'));
     await waitFor(() => {
       expect(fn).toHaveBeenCalledWith('/api/orgs/org1/invitations', expect.objectContaining({
@@ -367,7 +354,7 @@ describe('OrgManagementScreen', () => {
       '/api/orgs/org1/invitations': ok([]),
     });
     render(<OrgManagementScreen />);
-    await waitFor(() => expect(screen.getByText('Save Settings')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Save Settings')).toBeInTheDocument());
     fireEvent.click(screen.getByText('Save Settings'));
     await waitFor(() => {
       expect(fn).toHaveBeenCalledWith('/api/orgs/org1', expect.objectContaining({ method: 'PUT' }));
@@ -381,7 +368,7 @@ describe('OrgManagementScreen', () => {
       '/api/orgs/org1/invitations': ok([]),
     });
     render(<OrgManagementScreen />);
-    await waitFor(() => expect(screen.getByText('Make Admin')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Make Admin')).toBeInTheDocument());
     fireEvent.click(screen.getByText('Make Admin'));
     await waitFor(() => {
       expect(fn).toHaveBeenCalledWith('/api/orgs/org1/members', expect.objectContaining({
@@ -391,14 +378,14 @@ describe('OrgManagementScreen', () => {
     });
   });
 
-  it('calls handleChangeRole to demote admin when Demote is clicked (line 392)', async () => {
+  it('demotes admin to member when Demote button is clicked', async () => {
     const fn = setupFetch({
       '/api/orgs': ok([mockOrg]),
       '/api/orgs/org1/members': ok(mockMembers),
       '/api/orgs/org1/invitations': ok([]),
     });
     render(<OrgManagementScreen />);
-    await waitFor(() => expect(screen.getByText('Demote')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Demote')).toBeInTheDocument());
     fireEvent.click(screen.getByText('Demote'));
     await waitFor(() => {
       expect(fn).toHaveBeenCalledWith('/api/orgs/org1/members', expect.objectContaining({
@@ -432,7 +419,7 @@ describe('OrgManagementScreen', () => {
       '/api/orgs/org1/invitations': ok([]),
     });
     render(<OrgManagementScreen />);
-    await waitFor(() => expect(screen.getByText('Viewer')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Viewer')).toBeInTheDocument());
     fireEvent.click(screen.getByText('Viewer'));
     // Now send an invite to verify the role was changed
     const emailInput = screen.getByPlaceholderText('colleague@company.com');
@@ -454,7 +441,7 @@ describe('OrgManagementScreen', () => {
     });
     render(<OrgManagementScreen />);
     await waitFor(() => {
-      expect(screen.getByText(/Renews/)).toBeTruthy();
+      expect(screen.getByText(/Renews/)).toBeInTheDocument();
     });
   });
 
@@ -467,7 +454,7 @@ describe('OrgManagementScreen', () => {
     });
     render(<OrgManagementScreen />);
     await waitFor(() => {
-      expect(screen.getByText(/Access until/)).toBeTruthy();
+      expect(screen.getByText(/Access until/)).toBeInTheDocument();
     });
   });
 
@@ -486,11 +473,11 @@ describe('OrgManagementScreen', () => {
     });
     vi.stubGlobal('fetch', fn);
     render(<OrgManagementScreen />);
-    await waitFor(() => expect(screen.getByText('Send Invite')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Send Invite')).toBeInTheDocument());
     const emailInput = screen.getByPlaceholderText('colleague@company.com');
     fireEvent.change(emailInput, { target: { value: 'new@acme.com' } });
     fireEvent.click(screen.getByText('Send Invite'));
-    await waitFor(() => expect(screen.getByText('Network error')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Network error')).toBeInTheDocument());
   });
 
   it('opens billing portal when Manage Billing is clicked for active subscription', async () => {
@@ -504,7 +491,7 @@ describe('OrgManagementScreen', () => {
     delete (window as any).location;
     (window as any).location = { href: '' };
     render(<OrgManagementScreen />);
-    await waitFor(() => expect(screen.getByText('Manage Billing')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Manage Billing')).toBeInTheDocument());
     fireEvent.click(screen.getByText('Manage Billing'));
     await waitFor(() => {
       expect(window.location.href).toBe('https://billing.stripe.com/portal');
@@ -524,7 +511,7 @@ describe('OrgManagementScreen', () => {
     delete (window as any).location;
     (window as any).location = { href: '' };
     render(<OrgManagementScreen />);
-    await waitFor(() => expect(screen.getByText('Update Payment')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Update Payment')).toBeInTheDocument());
     fireEvent.click(screen.getByText('Update Payment'));
     await waitFor(() => {
       expect(window.location.href).toBe('https://billing.stripe.com/portal');
@@ -540,7 +527,7 @@ describe('OrgManagementScreen', () => {
       '/api/orgs/org1/invitations': ok([]),
     });
     render(<OrgManagementScreen />);
-    await waitFor(() => expect(screen.getByText('Subscribe')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Subscribe')).toBeInTheDocument());
     fireEvent.click(screen.getByText('Subscribe'));
     expect(mockNavigate).toHaveBeenCalledWith('Hiring');
   });
@@ -553,12 +540,12 @@ describe('OrgManagementScreen', () => {
       '/api/orgs/org1/invitations': ok([]),
     });
     render(<OrgManagementScreen />);
-    await waitFor(() => expect(screen.getByText('Resubscribe')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Resubscribe')).toBeInTheDocument());
     fireEvent.click(screen.getByText('Resubscribe'));
     expect(mockNavigate).toHaveBeenCalledWith('Hiring');
   });
 
-  it('handleSaveSettings catches fetch exception gracefully (line 133/140)', async () => {
+  it('handles save settings network failure gracefully', async () => {
     const fn = vi.fn().mockImplementation((url: string, opts?: any) => {
       if (opts?.method === 'PUT') {
         return Promise.reject(new Error('Network failure'));
@@ -572,17 +559,17 @@ describe('OrgManagementScreen', () => {
     });
     vi.stubGlobal('fetch', fn);
     render(<OrgManagementScreen />);
-    await waitFor(() => expect(screen.getByText('Save Settings')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Save Settings')).toBeInTheDocument());
     fireEvent.click(screen.getByText('Save Settings'));
     await waitFor(() => {
-      expect(screen.getByText('Save Settings')).toBeTruthy();
+      expect(screen.getByText('Save Settings')).toBeInTheDocument();
     });
   });
 
-  it('handleCreateOrg does not submit when name is empty (line 114)', async () => {
+  it('prevents org creation when name field is empty', async () => {
     const fn = setupFetch({ '/api/orgs': ok([]) });
     render(<OrgManagementScreen />);
-    await waitFor(() => expect(screen.getByText('Create Organization')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Create Organization')).toBeInTheDocument());
     fireEvent.click(screen.getByText('Create Organization'));
     const postCalls = fn.mock.calls.filter((c: any) => c[1]?.method === 'POST');
     expect(postCalls.length).toBe(0);
@@ -604,11 +591,11 @@ describe('OrgManagementScreen', () => {
     });
     render(<OrgManagementScreen />);
     await waitFor(() => {
-      expect(screen.getByText(/Free Trial/)).toBeTruthy();
-      expect(screen.getByText(/14 days left/)).toBeTruthy();
-      expect(screen.getByText(/1\/3 assessments/)).toBeTruthy();
-      expect(screen.getByText(/2\/5 invites/)).toBeTruthy();
-      expect(screen.getByText('Subscribe')).toBeTruthy();
+      expect(screen.getByText(/Free Trial/)).toBeInTheDocument();
+      expect(screen.getByText(/14 days left/)).toBeInTheDocument();
+      expect(screen.getByText(/1\/3 assessments/)).toBeInTheDocument();
+      expect(screen.getByText(/2\/5 invites/)).toBeInTheDocument();
+      expect(screen.getByText('Subscribe')).toBeInTheDocument();
     });
   });
 
@@ -627,7 +614,7 @@ describe('OrgManagementScreen', () => {
       }),
     });
     render(<OrgManagementScreen />);
-    await waitFor(() => expect(screen.getByText('Subscribe')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Subscribe')).toBeInTheDocument());
     fireEvent.click(screen.getByText('Subscribe'));
     expect(mockNavigate).toHaveBeenCalledWith('Hiring');
   });
@@ -648,8 +635,8 @@ describe('OrgManagementScreen', () => {
     });
     render(<OrgManagementScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Trial Expired')).toBeTruthy();
-      expect(screen.getByText('Subscribe')).toBeTruthy();
+      expect(screen.getByText('Trial Expired')).toBeInTheDocument();
+      expect(screen.getByText('Subscribe')).toBeInTheDocument();
     });
   });
 
@@ -668,7 +655,7 @@ describe('OrgManagementScreen', () => {
       }),
     });
     render(<OrgManagementScreen />);
-    await waitFor(() => expect(screen.getByText('Subscribe')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Subscribe')).toBeInTheDocument());
     fireEvent.click(screen.getByText('Subscribe'));
     expect(mockNavigate).toHaveBeenCalledWith('Hiring');
   });
@@ -681,7 +668,7 @@ describe('OrgManagementScreen', () => {
       '/api/billing/portal': ok({ error: 'No subscription' }),
     });
     render(<OrgManagementScreen />);
-    await waitFor(() => expect(screen.getByText('Manage Billing')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Manage Billing')).toBeInTheDocument());
     fireEvent.click(screen.getByText('Manage Billing'));
     await waitFor(() => {
       expect(mockShowToast).toHaveBeenCalledWith('No subscription', 'error');
@@ -702,7 +689,7 @@ describe('OrgManagementScreen', () => {
     });
     vi.stubGlobal('fetch', fn);
     render(<OrgManagementScreen />);
-    await waitFor(() => expect(screen.getByText('Manage Billing')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Manage Billing')).toBeInTheDocument());
     fireEvent.click(screen.getByText('Manage Billing'));
     await waitFor(() => {
       expect(mockShowToast).toHaveBeenCalledWith('Failed to open billing portal', 'error');
@@ -724,7 +711,7 @@ describe('OrgManagementScreen', () => {
     });
     vi.stubGlobal('fetch', fn);
     render(<OrgManagementScreen />);
-    await waitFor(() => expect(screen.getByText('Update Payment')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Update Payment')).toBeInTheDocument());
     fireEvent.click(screen.getByText('Update Payment'));
     await waitFor(() => {
       expect(mockShowToast).toHaveBeenCalledWith('Failed to open billing portal', 'error');
@@ -740,36 +727,36 @@ describe('OrgManagementScreen', () => {
       '/api/billing/portal': ok({ error: 'Billing error' }),
     });
     render(<OrgManagementScreen />);
-    await waitFor(() => expect(screen.getByText('Update Payment')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Update Payment')).toBeInTheDocument());
     fireEvent.click(screen.getByText('Update Payment'));
     await waitFor(() => {
       expect(mockShowToast).toHaveBeenCalledWith('Billing error', 'error');
     });
   });
 
-  it('shows create org form when /api/orgs returns non-ok (line 92)', async () => {
+  it('shows create org form when orgs API returns error', async () => {
     setupFetch({ '/api/orgs': fail({ error: 'Server error' }) });
     render(<OrgManagementScreen />);
     await waitFor(() => {
       // When fetchOrg returns early on !res.ok, org stays null, shows create form
-      expect(screen.getByText('Create Your Team')).toBeTruthy();
+      expect(screen.getByText('Create Your Team')).toBeInTheDocument();
     });
   });
 
-  it('handleCreateOrg catches fetch exception gracefully (line 122/134)', async () => {
+  it('handles create org network failure gracefully', async () => {
     const fn = vi.fn().mockImplementation((_url: string, opts?: any) => {
       if (opts?.method === 'POST') return Promise.reject(new Error('Network'));
       return Promise.resolve(ok([]));
     });
     vi.stubGlobal('fetch', fn);
     render(<OrgManagementScreen />);
-    await waitFor(() => expect(screen.getByText('Create Organization')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Create Organization')).toBeInTheDocument());
     const input = screen.getByDisplayValue('');
     fireEvent.change(input, { target: { value: 'Test Org' } });
     fireEvent.click(screen.getByText('Create Organization'));
     // Should not crash
     await waitFor(() => {
-      expect(screen.getByText('Create Organization')).toBeTruthy();
+      expect(screen.getByText('Create Organization')).toBeInTheDocument();
     });
   });
 
@@ -782,7 +769,7 @@ describe('OrgManagementScreen', () => {
     });
     render(<OrgManagementScreen />);
     await waitFor(() => {
-      expect(screen.getByText(/Annual/)).toBeTruthy();
+      expect(screen.getByText(/Annual/)).toBeInTheDocument();
     });
   });
 });

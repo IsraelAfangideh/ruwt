@@ -5,18 +5,8 @@ import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 vi.mock('@react-navigation/native', () => ({
   useNavigation: () => ({ navigate: vi.fn() }),
 }));
-vi.mock('@/shared/theme', () => ({
-  useColors: () => ({
-    text: '#000', textMuted: '#888', accent: '#c9a962', border: '#ccc',
-    card: '#fff', background: '#fff',
-  }),
-}));
-vi.mock('@/shared/theme/tokens', () => ({
-  spacing: { xs: 4, sm: 8, md: 16, lg: 24, xl: 32, '2xl': 48 },
-  fontSizes: { xs: 12, sm: 14, md: 16, lg: 18, xl: 20, xxl: 24 },
-  fontFamily: { display: 'serif', body: 'sans-serif' },
-  radii: { sm: 4, md: 8, lg: 12, xl: 16, full: 9999 },
-}));
+vi.mock('@/shared/theme', async () => (await import('@/shared/test/helpers')).mockTheme());
+vi.mock('@/shared/theme/tokens', async () => (await import('@/shared/test/helpers')).mockTokens());
 vi.mock('./ReactionBar', () => ({
   ReactionBar: () => <div data-testid="reaction-bar" />,
 }));
@@ -99,9 +89,9 @@ describe('CommentSection', () => {
     );
     // After loading, comments appear
     await waitFor(() => {
-      expect(screen.getByText('Great challenge!')).toBeTruthy();
+      expect(screen.getByText('Great challenge!')).toBeInTheDocument();
     });
-    expect(screen.getByText('I agree!')).toBeTruthy();
+    expect(screen.getByText('I agree!')).toBeInTheDocument();
   });
 
   it('shows user names', async () => {
@@ -110,9 +100,9 @@ describe('CommentSection', () => {
       <CommentSection targetType="challenge" targetId="ch1" apiPath="/api/comments/ch1" />,
     );
     await waitFor(() => {
-      expect(screen.getByText('Alice')).toBeTruthy();
+      expect(screen.getByText('Alice')).toBeInTheDocument();
     });
-    expect(screen.getByText('Bob')).toBeTruthy();
+    expect(screen.getByText('Bob')).toBeInTheDocument();
   });
 
   it('shows empty state when no comments', async () => {
@@ -121,7 +111,7 @@ describe('CommentSection', () => {
       <CommentSection targetType="challenge" targetId="ch1" apiPath="/api/comments/ch1" />,
     );
     await waitFor(() => {
-      expect(screen.getByText('No comments yet. Be the first!')).toBeTruthy();
+      expect(screen.getByText('No comments yet. Be the first!')).toBeInTheDocument();
     });
   });
 
@@ -131,9 +121,9 @@ describe('CommentSection', () => {
       <CommentSection targetType="challenge" targetId="ch1" apiPath="/api/comments/ch1" />,
     );
     await waitFor(() => {
-      expect(screen.getByTestId('comment-input')).toBeTruthy();
+      expect(screen.getByTestId('comment-input')).toBeInTheDocument();
     });
-    expect(screen.getByTestId('comment-submit')).toBeTruthy();
+    expect(screen.getByTestId('comment-submit')).toBeInTheDocument();
   });
 
   it('uses custom prompt text for input placeholder', async () => {
@@ -142,7 +132,7 @@ describe('CommentSection', () => {
       <CommentSection targetType="challenge" targetId="ch1" apiPath="/api/comments/ch1" promptText="Share your thoughts..." />,
     );
     await waitFor(() => {
-      expect(screen.getByPlaceholderText('Share your thoughts...')).toBeTruthy();
+      expect(screen.getByPlaceholderText('Share your thoughts...')).toBeInTheDocument();
     });
   });
 
@@ -152,7 +142,7 @@ describe('CommentSection', () => {
       <CommentSection targetType="challenge" targetId="ch1" apiPath="/api/comments/ch1" />,
     );
     await waitFor(() => {
-      expect(screen.getByText('Great challenge!')).toBeTruthy();
+      expect(screen.getByText('Great challenge!')).toBeInTheDocument();
     });
 
     const input = screen.getByTestId('comment-input');
@@ -160,7 +150,7 @@ describe('CommentSection', () => {
     fireEvent.click(screen.getByTestId('comment-submit'));
 
     await waitFor(() => {
-      expect(screen.getByText('My new comment')).toBeTruthy();
+      expect(screen.getByText('My new comment')).toBeInTheDocument();
     });
     // Verify POST was called
     expect(global.fetch).toHaveBeenCalledWith(
@@ -185,7 +175,7 @@ describe('CommentSection', () => {
       <CommentSection targetType="replay" targetId="r1" apiPath="/api/comments/r1" />,
     );
     await waitFor(() => {
-      expect(screen.getByText('Great challenge!')).toBeTruthy();
+      expect(screen.getByText('Great challenge!')).toBeInTheDocument();
     });
     expect(screen.queryByText('Reply')).toBeNull();
   });
@@ -200,7 +190,7 @@ describe('CommentSection', () => {
     });
     fireEvent.click(screen.getAllByText('Reply')[0]);
     await waitFor(() => {
-      expect(screen.getByPlaceholderText('Write a reply...')).toBeTruthy();
+      expect(screen.getByPlaceholderText('Write a reply...')).toBeInTheDocument();
     });
   });
 
@@ -214,7 +204,7 @@ describe('CommentSection', () => {
     });
     fireEvent.click(screen.getAllByText('Reply')[0]);
     await waitFor(() => {
-      expect(screen.getByText('Cancel')).toBeTruthy();
+      expect(screen.getByText('Cancel')).toBeInTheDocument();
     });
     // Click Cancel to close
     fireEvent.click(screen.getByText('Cancel'));
@@ -229,9 +219,9 @@ describe('CommentSection', () => {
       <CommentSection targetType="challenge" targetId="ch1" apiPath="/api/comments/ch1" />,
     );
     await waitFor(() => {
-      expect(screen.getByText('Recent')).toBeTruthy();
+      expect(screen.getByText('Recent')).toBeInTheDocument();
     });
-    expect(screen.getByText('Top')).toBeTruthy();
+    expect(screen.getByText('Top')).toBeInTheDocument();
   });
 
   it('does not show sort toggle with zero or one comment', async () => {
@@ -240,7 +230,7 @@ describe('CommentSection', () => {
       <CommentSection targetType="challenge" targetId="ch1" apiPath="/api/comments/ch1" />,
     );
     await waitFor(() => {
-      expect(screen.getByText('Great challenge!')).toBeTruthy();
+      expect(screen.getByText('Great challenge!')).toBeInTheDocument();
     });
     expect(screen.queryByText('Recent')).toBeNull();
     expect(screen.queryByText('Top')).toBeNull();
@@ -252,7 +242,7 @@ describe('CommentSection', () => {
       <CommentSection targetType="challenge" targetId="ch1" apiPath="/api/comments/ch1" />,
     );
     await waitFor(() => {
-      expect(screen.getByText('Recent')).toBeTruthy();
+      expect(screen.getByText('Recent')).toBeInTheDocument();
     });
     fireEvent.click(screen.getByText('Top'));
     await waitFor(() => {
@@ -266,7 +256,7 @@ describe('CommentSection', () => {
       <CommentSection targetType="challenge" targetId="ch1" apiPath="/api/comments/ch1" />,
     );
     await waitFor(() => {
-      expect(screen.getByText('Great challenge!')).toBeTruthy();
+      expect(screen.getByText('Great challenge!')).toBeInTheDocument();
     });
     const reactionBars = container.querySelectorAll('[data-testid="reaction-bar"]');
     expect(reactionBars.length).toBe(2);
@@ -278,7 +268,7 @@ describe('CommentSection', () => {
       <CommentSection targetType="challenge" targetId="ch1" apiPath="/api/comments/ch1" />,
     );
     await waitFor(() => {
-      expect(screen.getByText('Thanks!')).toBeTruthy();
+      expect(screen.getByText('Thanks!')).toBeInTheDocument();
     });
   });
 
@@ -288,7 +278,7 @@ describe('CommentSection', () => {
       <CommentSection targetType="challenge" targetId="ch1" apiPath="/api/comments/ch1" />,
     );
     await waitFor(() => {
-      expect(screen.getByText('$0.05')).toBeTruthy();
+      expect(screen.getByText('$0.05')).toBeInTheDocument();
     });
   });
 
@@ -308,7 +298,7 @@ describe('CommentSection', () => {
       <CommentSection targetType="challenge" targetId="ch1" apiPath="/api/comments/ch1" />,
     );
     await waitFor(() => {
-      expect(screen.getByText('Anonymous')).toBeTruthy();
+      expect(screen.getByText('Anonymous')).toBeInTheDocument();
     });
   });
 
@@ -318,7 +308,7 @@ describe('CommentSection', () => {
       <CommentSection targetType="challenge" targetId="ch1" apiPath="/api/comments/ch1" />,
     );
     await waitFor(() => {
-      expect(screen.getByText('Great challenge!')).toBeTruthy();
+      expect(screen.getByText('Great challenge!')).toBeInTheDocument();
     });
     // Click submit without typing anything
     fireEvent.click(screen.getByTestId('comment-submit'));

@@ -431,7 +431,7 @@ describe('POST /api/assess/:sessionId/complete', () => {
     expect(json.error).toBe('Internal server error');
   });
 
-  it('skips email when assessment not found in fire-and-forget (line 86)', async () => {
+  it('skips completion email when assessment record is not found', async () => {
     mockGetUser.mockResolvedValue(FAKE_USER);
 
     const session = {
@@ -478,7 +478,7 @@ describe('POST /api/assess/:sessionId/complete', () => {
     expect(mockSendEmail).not.toHaveBeenCalled();
   });
 
-  it('skips email when creator has no email address (line 93)', async () => {
+  it('skips completion email when creator has no email address', async () => {
     mockGetUser.mockResolvedValue(FAKE_USER);
 
     const session = {
@@ -527,7 +527,7 @@ describe('POST /api/assess/:sessionId/complete', () => {
     expect(mockSendEmail).not.toHaveBeenCalled();
   });
 
-  it('handles emailLogs insert failure gracefully (line 134)', async () => {
+  it('sends email even when emailLogs insert fails', async () => {
     mockGetUser.mockResolvedValue(FAKE_USER);
 
     const session = {
@@ -578,7 +578,7 @@ describe('POST /api/assess/:sessionId/complete', () => {
     expect(mockSendEmail).toHaveBeenCalled();
   });
 
-  it('uses candidate email as fallback name when displayName is missing (line 110)', async () => {
+  it('uses candidate email as fallback name in completion email', async () => {
     mockGetUser.mockResolvedValue(FAKE_USER);
 
     const session = {

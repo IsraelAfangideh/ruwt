@@ -42,33 +42,33 @@ const failingResults: TestResults = {
 describe('ResultsBar', () => {
   it('renders pass count for passing results', () => {
     render(<ResultsBar results={passingResults} />);
-    expect(screen.getByText(/3\/3 passed/)).toBeTruthy();
+    expect(screen.getByText(/3\/3 passed/)).toBeInTheDocument();
   });
 
   it('renders pass count for failing results', () => {
     render(<ResultsBar results={failingResults} />);
-    expect(screen.getByText(/1\/3 passed/)).toBeTruthy();
+    expect(screen.getByText(/1\/3 passed/)).toBeInTheDocument();
   });
 
   it('renders checkmark for passing results', () => {
     render(<ResultsBar results={passingResults} />);
-    expect(screen.getByText(/\u2713/)).toBeTruthy();
+    expect(screen.getByText(/\u2713/)).toBeInTheDocument();
   });
 
   it('renders X mark for failing results', () => {
     render(<ResultsBar results={failingResults} />);
-    expect(screen.getByText(/\u2717 1\/3/)).toBeTruthy();
+    expect(screen.getByText(/\u2717 1\/3/)).toBeInTheDocument();
   });
 
   it('shows submission badge when isSubmission is true', () => {
     const submissionResults = { ...passingResults, isSubmission: true };
     render(<ResultsBar results={submissionResults} />);
-    expect(screen.getByText(/Submitted/)).toBeTruthy();
+    expect(screen.getByText(/Submitted/)).toBeInTheDocument();
   });
 
   it('shows hidden test count hint after run tests pass', () => {
     render(<ResultsBar results={passingResults} hiddenTestCount={5} />);
-    expect(screen.getByText(/submit to run all 8 tests/)).toBeTruthy();
+    expect(screen.getByText(/submit to run all 8 tests/)).toBeInTheDocument();
   });
 
   it('toggles details expansion', () => {
@@ -77,7 +77,7 @@ describe('ResultsBar', () => {
     const toggleBtn = screen.getByText(/Details/);
     fireEvent.click(toggleBtn);
     // Now should show Hide
-    expect(screen.getByText(/Hide/)).toBeTruthy();
+    expect(screen.getByText(/Hide/)).toBeInTheDocument();
   });
 
   it('auto-expands on failure', () => {
@@ -90,7 +90,7 @@ describe('ResultsBar', () => {
 
   it('shows error message for failed tests', () => {
     render(<ResultsBar results={failingResults} />);
-    expect(screen.getByText(/Wrong answer/)).toBeTruthy();
+    expect(screen.getByText(/Wrong answer/)).toBeInTheDocument();
   });
 
   it('renders dismiss button when onDismiss is provided', () => {
@@ -104,7 +104,7 @@ describe('ResultsBar', () => {
   it('renders Ask AI for Help button on failure when onAskAI provided', () => {
     const mockAskAI = vi.fn();
     render(<ResultsBar results={failingResults} onAskAI={mockAskAI} />);
-    expect(screen.getByText('Ask AI for Help')).toBeTruthy();
+    expect(screen.getByText('Ask AI for Help')).toBeInTheDocument();
   });
 
   it('calls onAskAI with debug prompt when Ask AI is clicked', () => {
@@ -119,7 +119,7 @@ describe('ResultsBar', () => {
   it('shows encouraging message for partial pass', () => {
     const mockAskAI = vi.fn();
     render(<ResultsBar results={failingResults} onAskAI={mockAskAI} />);
-    expect(screen.getByText(/1 of 3 tests passing/)).toBeTruthy();
+    expect(screen.getByText(/1 of 3 tests passing/)).toBeInTheDocument();
   });
 
   it('shows "no tests passing" message when all fail', () => {
@@ -135,7 +135,7 @@ describe('ResultsBar', () => {
     };
     const mockAskAI = vi.fn();
     render(<ResultsBar results={allFail} onAskAI={mockAskAI} />);
-    expect(screen.getByText(/No tests passing yet/)).toBeTruthy();
+    expect(screen.getByText(/No tests passing yet/)).toBeInTheDocument();
   });
 
   it('shows hint text when provided on test results', () => {
@@ -149,6 +149,6 @@ describe('ResultsBar', () => {
       isSubmission: false,
     };
     render(<ResultsBar results={withHint} />);
-    expect(screen.getByText('Check addition')).toBeTruthy();
+    expect(screen.getByText('Check addition')).toBeInTheDocument();
   });
 });

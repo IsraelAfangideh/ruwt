@@ -162,7 +162,7 @@ describe('GET /api/og/:attemptId (public OG image)', () => {
     expect(mockCtx.free).toHaveBeenCalled();
   });
 
-  it('formats cost with 2 decimal places when >= 0.01 (line 60 false branch)', async () => {
+  it('formats OG image cost with two decimal places above one cent', async () => {
     const attempt = { id: 'att-1', status: 'passed', totalCost: 500000, passedTests: 5, totalTests: 5, userId: 'u-1', challengeId: 'ch-1' };
     const challenge = { title: 'Expensive', difficulty: 'hard', category: 'debugging' };
     const solver = { name: 'Bob' };
@@ -187,7 +187,7 @@ describe('GET /api/og/:attemptId (public OG image)', () => {
     }));
   });
 
-  it('uses fallback values when challenge is null (line 63-69)', async () => {
+  it('uses fallback title and category when challenge is not found', async () => {
     const attempt = { id: 'att-1', status: 'passed', totalCost: 100, passedTests: null, totalTests: null, userId: 'u-1', challengeId: 'ch-missing' };
 
     let selectCall = 0;

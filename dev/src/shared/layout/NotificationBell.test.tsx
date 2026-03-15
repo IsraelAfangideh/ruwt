@@ -11,19 +11,9 @@ vi.mock('react-native', () => ({
   StyleSheet: { create: (s: any) => s },
 }));
 
-vi.mock('@/shared/theme', () => ({
-  useColors: () => ({
-    text: '#000', textMuted: '#888', textSubtle: '#aaa', accent: '#c9a962',
-    border: '#ccc', card: '#fff', error: '#f00', accentBg: '#fef8e8',
-  }),
-}));
+vi.mock('@/shared/theme', async () => (await import('@/shared/test/helpers')).mockTheme());
 
-vi.mock('@/shared/theme/tokens', () => ({
-  spacing: { xs: 4, sm: 8, md: 16, lg: 24, xl: 32 },
-  fontSizes: { xs: 12, sm: 14 },
-  fontFamily: { body: 'sans-serif' },
-  radii: { lg: 12 },
-}));
+vi.mock('@/shared/theme/tokens', async () => (await import('@/shared/test/helpers')).mockTokens());
 
 const mockRefreshEndpoint = vi.fn().mockResolvedValue(undefined);
 let mockUnreadCount = 0;
@@ -63,13 +53,13 @@ describe('NotificationBell', () => {
   it('shows unread count badge when > 0', () => {
     mockUnreadCount = 5;
     render(<NotificationBell />);
-    expect(screen.getByText('5')).toBeTruthy();
+    expect(screen.getByText('5')).toBeInTheDocument();
   });
 
   it('shows 9+ when unread count exceeds 9', () => {
     mockUnreadCount = 15;
     render(<NotificationBell />);
-    expect(screen.getByText('9+')).toBeTruthy();
+    expect(screen.getByText('9+')).toBeInTheDocument();
   });
 
   it('does not show badge when unread count is 0', () => {
@@ -89,7 +79,7 @@ describe('NotificationBell', () => {
 
     const bellButtons = screen.getAllByText(/\uD83D\uDD14/);
     fireEvent.click(bellButtons[0]);
-    await waitFor(() => expect(screen.getByText('Notifications')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Notifications')).toBeInTheDocument());
   });
 
   it('shows empty state when no notifications', async () => {
@@ -103,7 +93,7 @@ describe('NotificationBell', () => {
 
     const bellButtons = screen.getAllByText(/\uD83D\uDD14/);
     fireEvent.click(bellButtons[0]);
-    await waitFor(() => expect(screen.getByText('No notifications yet')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('No notifications yet')).toBeInTheDocument());
   });
 
   it('renders notification items when present', async () => {
@@ -120,8 +110,8 @@ describe('NotificationBell', () => {
 
     const bellButtons = screen.getAllByText(/\uD83D\uDD14/);
     fireEvent.click(bellButtons[0]);
-    await waitFor(() => expect(screen.getByText('New Badge!')).toBeTruthy());
-    expect(screen.getByText('You earned Speed Demon')).toBeTruthy();
+    await waitFor(() => expect(screen.getByText('New Badge!')).toBeInTheDocument());
+    expect(screen.getByText('You earned Speed Demon')).toBeInTheDocument();
   });
 
   it('shows Mark all read button when there are unread notifications', async () => {
@@ -138,7 +128,7 @@ describe('NotificationBell', () => {
 
     const bellButtons = screen.getAllByText(/\uD83D\uDD14/);
     fireEvent.click(bellButtons[0]);
-    await waitFor(() => expect(screen.getByText('Mark all read')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Mark all read')).toBeInTheDocument());
   });
 
   it('sends mark_all_read action when Mark all read is clicked', async () => {
@@ -155,7 +145,7 @@ describe('NotificationBell', () => {
 
     const bellButtons = screen.getAllByText(/\uD83D\uDD14/);
     fireEvent.click(bellButtons[0]);
-    await waitFor(() => expect(screen.getByText('Mark all read')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Mark all read')).toBeInTheDocument());
     fireEvent.click(screen.getByText('Mark all read'));
     await waitFor(() => {
       const postCall = fetchSpy.mock.calls.find((c: any[]) => c[1]?.method === 'POST');
@@ -178,9 +168,9 @@ describe('NotificationBell', () => {
 
     const bellButtons = screen.getAllByText(/\uD83D\uDD14/);
     fireEvent.click(bellButtons[0]);
-    await waitFor(() => expect(screen.getByText('Streak Alert')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Streak Alert')).toBeInTheDocument());
     // Fire emoji for streak_reminder
-    expect(screen.getByText('\uD83D\uDD25')).toBeTruthy();
+    expect(screen.getByText('\uD83D\uDD25')).toBeInTheDocument();
   });
 
   it('shows leaderboard_change icon', async () => {
@@ -197,8 +187,8 @@ describe('NotificationBell', () => {
 
     const bellButtons = screen.getAllByText(/\uD83D\uDD14/);
     fireEvent.click(bellButtons[0]);
-    await waitFor(() => expect(screen.getByText('Rank Change')).toBeTruthy());
-    expect(screen.getByText('\uD83D\uDCCA')).toBeTruthy();
+    await waitFor(() => expect(screen.getByText('Rank Change')).toBeInTheDocument());
+    expect(screen.getByText('\uD83D\uDCCA')).toBeInTheDocument();
   });
 
   it('shows badge icon from metadata when badge_earned', async () => {
@@ -215,8 +205,8 @@ describe('NotificationBell', () => {
 
     const bellButtons = screen.getAllByText(/\uD83D\uDD14/);
     fireEvent.click(bellButtons[0]);
-    await waitFor(() => expect(screen.getByText('New Badge!')).toBeTruthy());
-    expect(screen.getByText('\u2B50')).toBeTruthy();
+    await waitFor(() => expect(screen.getByText('New Badge!')).toBeInTheDocument());
+    expect(screen.getByText('\u2B50')).toBeInTheDocument();
   });
 
   it('shows relative time for recent notifications', async () => {
@@ -233,7 +223,7 @@ describe('NotificationBell', () => {
 
     const bellButtons = screen.getAllByText(/\uD83D\uDD14/);
     fireEvent.click(bellButtons[0]);
-    await waitFor(() => expect(screen.getByText('2m')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('2m')).toBeInTheDocument());
   });
 
   it('shows "just now" for very recent notifications', async () => {
@@ -250,7 +240,7 @@ describe('NotificationBell', () => {
 
     const bellButtons = screen.getAllByText(/\uD83D\uDD14/);
     fireEvent.click(bellButtons[0]);
-    await waitFor(() => expect(screen.getByText('just now')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('just now')).toBeInTheDocument());
   });
 
   it('shows hours for notifications a few hours old', async () => {
@@ -267,7 +257,7 @@ describe('NotificationBell', () => {
 
     const bellButtons = screen.getAllByText(/\uD83D\uDD14/);
     fireEvent.click(bellButtons[0]);
-    await waitFor(() => expect(screen.getByText('3h')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('3h')).toBeInTheDocument());
   });
 
   it('shows days for old notifications', async () => {
@@ -284,7 +274,7 @@ describe('NotificationBell', () => {
 
     const bellButtons = screen.getAllByText(/\uD83D\uDD14/);
     fireEvent.click(bellButtons[0]);
-    await waitFor(() => expect(screen.getByText('2d')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('2d')).toBeInTheDocument());
   });
 
   it('shows default medal icon when badge_earned metadata is invalid JSON (catch branch)', async () => {
@@ -301,8 +291,8 @@ describe('NotificationBell', () => {
 
     const bellButtons = screen.getAllByText(/\uD83D\uDD14/);
     fireEvent.click(bellButtons[0]);
-    await waitFor(() => expect(screen.getByText('Badge!')).toBeTruthy());
-    expect(screen.getByText('\uD83C\uDFC5')).toBeTruthy(); // 🏅
+    await waitFor(() => expect(screen.getByText('Badge!')).toBeInTheDocument());
+    expect(screen.getByText('\uD83C\uDFC5')).toBeInTheDocument(); // 🏅
   });
 
   it('shows default bell icon for unknown notification type', async () => {
@@ -319,7 +309,7 @@ describe('NotificationBell', () => {
 
     const bellButtons = screen.getAllByText(/\uD83D\uDD14/);
     fireEvent.click(bellButtons[0]);
-    await waitFor(() => expect(screen.getByText('Unknown!')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Unknown!')).toBeInTheDocument());
     // The default icon 🔔 is also used by the bell button, so check that at least 2 appear
     const bellIcons = screen.getAllByText(/\uD83D\uDD14/);
     expect(bellIcons.length).toBeGreaterThanOrEqual(2);
@@ -339,8 +329,8 @@ describe('NotificationBell', () => {
 
     const bellButtons = screen.getAllByText(/\uD83D\uDD14/);
     fireEvent.click(bellButtons[0]);
-    await waitFor(() => expect(screen.getByText('Nudge!')).toBeTruthy());
-    expect(screen.getByText('\u2694\uFE0F')).toBeTruthy(); // ⚔️
+    await waitFor(() => expect(screen.getByText('Nudge!')).toBeInTheDocument());
+    expect(screen.getByText('\u2694\uFE0F')).toBeInTheDocument(); // ⚔️
   });
 
   it('closes dropdown when backdrop is clicked', async () => {
@@ -354,7 +344,7 @@ describe('NotificationBell', () => {
 
     const bellButtons = screen.getAllByText(/\uD83D\uDD14/);
     fireEvent.click(bellButtons[0]);
-    await waitFor(() => expect(screen.getByText('Notifications')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Notifications')).toBeInTheDocument());
 
     // There are multiple buttons - the backdrop is one of them. Find the backdrop (it has no text children)
     const buttons = document.querySelectorAll('button');

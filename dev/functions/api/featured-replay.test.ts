@@ -167,7 +167,7 @@ describe('GET /api/featured-replay (public)', () => {
     expect(await res.json()).toBeNull();
   });
 
-  it('uses email prefix as solver name when name is missing (line 86)', async () => {
+  it('uses email prefix as solver name when display name is missing', async () => {
     const attempt = { attemptId: 'att-1', userId: 'u1', totalCost: 100, inputTokens: 10, outputTokens: 20, submittedAt: 't', createdAt: 't', challengeTitle: 'T', challengeDifficulty: 'easy', challengeCategory: 'c' };
     const solver = { name: null, email: 'alice@test.com', avatarUrl: null };
     const msgs = [{ role: 'user', content: 'Hi', model: null, inputTokens: 5, outputTokens: 0, cost: 0, createdAt: 't', sequence: 1 }];
@@ -189,7 +189,7 @@ describe('GET /api/featured-replay (public)', () => {
     expect(json.solver.name).toBe('alice');
   });
 
-  it('uses Anonymous as solver name when solver profile is missing (line 86)', async () => {
+  it('uses Anonymous as solver name when profile record is missing', async () => {
     const attempt = { attemptId: 'att-1', userId: 'u1', totalCost: 100, inputTokens: 10, outputTokens: 20, submittedAt: 't', createdAt: 't', challengeTitle: 'T', challengeDifficulty: 'easy', challengeCategory: 'c' };
     const msgs = [{ role: 'user', content: 'Hi', model: null, inputTokens: 5, outputTokens: 0, cost: 0, createdAt: 't', sequence: 1 }];
 
@@ -210,7 +210,7 @@ describe('GET /api/featured-replay (public)', () => {
     expect(json.solver.name).toBe('Anonymous');
   });
 
-  it('correctly counts total cost from messages with null costs (line 68)', async () => {
+  it('sums total cost treating null message costs as zero', async () => {
     const attempt = { attemptId: 'att-1', userId: 'u1', totalCost: 200, inputTokens: 30, outputTokens: 40, submittedAt: 't', createdAt: 't', challengeTitle: 'T', challengeDifficulty: 'easy', challengeCategory: 'c' };
     const solver = { name: 'Bob', email: 'b@b.com', avatarUrl: null };
     const msgs = [

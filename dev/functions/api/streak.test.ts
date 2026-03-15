@@ -172,7 +172,7 @@ describe('POST /api/streak', () => {
     expect(res.status).toBe(500);
   });
 
-  it('uses fallback values when profile is null after buy_freeze (lines 85-88)', async () => {
+  it('uses fallback streak values when profile query returns empty', async () => {
     mockGetUser.mockResolvedValue(FAKE_USER);
     mockBuyStreakFreeze.mockResolvedValue({ success: true });
 

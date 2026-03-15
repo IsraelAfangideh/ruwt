@@ -65,12 +65,12 @@ describe('RadarChart', () => {
   it('handles zero values gracefully', () => {
     const zeroData = { modelSelection: 0, promptEfficiency: 0, debugging: 0, multiModel: 0, realWorld: 0 };
     const { container } = render(<RadarChart data={zeroData} />);
-    expect(container.querySelector('svg')).toBeTruthy();
+    expect(container.querySelector('svg')).toBeInTheDocument();
   });
 
   it('clamps values above 100', () => {
     const overData = { modelSelection: 150, promptEfficiency: 200, debugging: 100, multiModel: 100, realWorld: 100 };
     const { container } = render(<RadarChart data={overData} />);
-    expect(container.querySelector('svg')).toBeTruthy();
+    expect(container.querySelector('svg')).toBeInTheDocument();
   });
 });

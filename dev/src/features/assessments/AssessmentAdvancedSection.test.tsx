@@ -20,21 +20,8 @@ vi.mock('@/features/assessments/PassThresholdEditor', () => ({
     </div>
   ),
 }));
-vi.mock('@/shared/theme', () => ({
-  useColors: () => ({
-    bg: '#fff', text: '#000', textMuted: '#888', accent: '#c9a962', border: '#ccc',
-    borderStrong: '#999', card: '#fff', muted: '#f5f5f5', error: '#f00', errorBg: '#fee',
-    success: '#0a0', successBg: '#efe', primary: '#000', primaryForeground: '#fff',
-    secondary: '#eee', secondaryForeground: '#000', destructive: '#f00',
-    textSubtle: '#aaa', bgElevated: '#fafafa', accentBg: '#ffe', bgWarm: '#faf8f5',
-  }),
-}));
-vi.mock('@/shared/theme/tokens', () => ({
-  spacing: { xs: 4, sm: 8, md: 16, lg: 24, xl: 32, '2xl': 48 },
-  fontSizes: { xs: 12, sm: 14, md: 16, lg: 18, xl: 20, '2xl': 24, '3xl': 30, '4xl': 36 },
-  fontFamily: { display: 'serif', body: 'sans-serif' },
-  radii: { sm: 4, md: 8, lg: 12, xl: 16, full: 9999 },
-}));
+vi.mock('@/shared/theme', async () => (await import('@/shared/test/helpers')).mockTheme());
+vi.mock('@/shared/theme/tokens', async () => (await import('@/shared/test/helpers')).mockTokens());
 
 const { AssessmentAdvancedSection } = await import('./AssessmentAdvancedSection');
 
@@ -61,33 +48,33 @@ describe('AssessmentAdvancedSection', () => {
 
   it('renders collapsed by default', () => {
     render(<AssessmentAdvancedSection {...baseProps} />);
-    expect(screen.getByText(/Advanced Settings/)).toBeTruthy();
+    expect(screen.getByText(/Advanced Settings/)).toBeInTheDocument();
     // Content should not be visible
     expect(screen.queryByText('Score Weights')).toBeNull();
   });
 
   it('has correct accessibility label when collapsed', () => {
     render(<AssessmentAdvancedSection {...baseProps} />);
-    expect(screen.getByLabelText('Expand advanced settings')).toBeTruthy();
+    expect(screen.getByLabelText('Expand advanced settings')).toBeInTheDocument();
   });
 
   it('expands on click', () => {
     render(<AssessmentAdvancedSection {...baseProps} />);
     fireEvent.click(screen.getByLabelText('Expand advanced settings'));
-    expect(screen.getByText('Score Weights')).toBeTruthy();
-    expect(screen.getByText('Company Branding (optional)')).toBeTruthy();
+    expect(screen.getByText('Score Weights')).toBeInTheDocument();
+    expect(screen.getByText('Company Branding (optional)')).toBeInTheDocument();
   });
 
   it('has correct accessibility label when expanded', () => {
     render(<AssessmentAdvancedSection {...baseProps} />);
     fireEvent.click(screen.getByLabelText('Expand advanced settings'));
-    expect(screen.getByLabelText('Collapse advanced settings')).toBeTruthy();
+    expect(screen.getByLabelText('Collapse advanced settings')).toBeInTheDocument();
   });
 
   it('collapses on second click', () => {
     render(<AssessmentAdvancedSection {...baseProps} />);
     fireEvent.click(screen.getByLabelText('Expand advanced settings'));
-    expect(screen.getByText('Score Weights')).toBeTruthy();
+    expect(screen.getByText('Score Weights')).toBeInTheDocument();
     fireEvent.click(screen.getByLabelText('Collapse advanced settings'));
     expect(screen.queryByText('Score Weights')).toBeNull();
   });
@@ -95,7 +82,7 @@ describe('AssessmentAdvancedSection', () => {
   it('renders time limit input when expanded', () => {
     render(<AssessmentAdvancedSection {...baseProps} />);
     fireEvent.click(screen.getByLabelText('Expand advanced settings'));
-    expect(screen.getByLabelText('Time Limit (minutes)')).toBeTruthy();
+    expect(screen.getByLabelText('Time Limit (minutes)')).toBeInTheDocument();
   });
 
   it('calls onTimeLimitChange when time limit input changes', () => {
@@ -109,54 +96,54 @@ describe('AssessmentAdvancedSection', () => {
   it('shows time limit validation hint', () => {
     render(<AssessmentAdvancedSection {...baseProps} />);
     fireEvent.click(screen.getByLabelText('Expand advanced settings'));
-    expect(screen.getByText('Minimum 5 min, maximum 240 min')).toBeTruthy();
+    expect(screen.getByText('Minimum 5 min, maximum 240 min')).toBeInTheDocument();
   });
 
   it('shows invalid time limit message when below minimum', () => {
     render(<AssessmentAdvancedSection {...baseProps} timeLimitMinutes="3" />);
     fireEvent.click(screen.getByLabelText('Expand advanced settings'));
-    expect(screen.getByText('Minimum is 5 minutes')).toBeTruthy();
+    expect(screen.getByText('Minimum is 5 minutes')).toBeInTheDocument();
   });
 
   it('shows invalid time limit message when above maximum', () => {
     render(<AssessmentAdvancedSection {...baseProps} timeLimitMinutes="300" />);
     fireEvent.click(screen.getByLabelText('Expand advanced settings'));
-    expect(screen.getByText('Maximum is 240 minutes')).toBeTruthy();
+    expect(screen.getByText('Maximum is 240 minutes')).toBeInTheDocument();
   });
 
   it('shows invalid time limit message when non-numeric', () => {
     render(<AssessmentAdvancedSection {...baseProps} timeLimitMinutes="abc" />);
     fireEvent.click(screen.getByLabelText('Expand advanced settings'));
-    expect(screen.getByText('Enter a number')).toBeTruthy();
+    expect(screen.getByText('Enter a number')).toBeInTheDocument();
   });
 
   it('renders all weight fields when expanded', () => {
     render(<AssessmentAdvancedSection {...baseProps} />);
     fireEvent.click(screen.getByLabelText('Expand advanced settings'));
-    expect(screen.getByText('Model Selection')).toBeTruthy();
-    expect(screen.getByText('Prompt Efficiency')).toBeTruthy();
-    expect(screen.getByText('Debugging')).toBeTruthy();
-    expect(screen.getByText('Strategy')).toBeTruthy();
-    expect(screen.getByText('Speed')).toBeTruthy();
+    expect(screen.getByText('Model Selection')).toBeInTheDocument();
+    expect(screen.getByText('Prompt Efficiency')).toBeInTheDocument();
+    expect(screen.getByText('Debugging')).toBeInTheDocument();
+    expect(screen.getByText('Strategy')).toBeInTheDocument();
+    expect(screen.getByText('Speed')).toBeInTheDocument();
   });
 
   it('shows weight sum as 100/100 when correct', () => {
     render(<AssessmentAdvancedSection {...baseProps} weightSum={100} />);
     fireEvent.click(screen.getByLabelText('Expand advanced settings'));
-    expect(screen.getByText('100/100')).toBeTruthy();
+    expect(screen.getByText('100/100')).toBeInTheDocument();
   });
 
   it('shows weight sum warning when not 100', () => {
     render(<AssessmentAdvancedSection {...baseProps} weightSum={80} />);
     fireEvent.click(screen.getByLabelText('Expand advanced settings'));
-    expect(screen.getByText('80/100')).toBeTruthy();
-    expect(screen.getByText('Weights must sum to 100')).toBeTruthy();
+    expect(screen.getByText('80/100')).toBeInTheDocument();
+    expect(screen.getByText('Weights must sum to 100')).toBeInTheDocument();
   });
 
   it('shows dash when weightSum is NaN', () => {
     render(<AssessmentAdvancedSection {...baseProps} weightSum={NaN} />);
     fireEvent.click(screen.getByLabelText('Expand advanced settings'));
-    expect(screen.getByText('\u2014/100')).toBeTruthy();
+    expect(screen.getByText('\u2014/100')).toBeInTheDocument();
   });
 
   it('does not show weight warning when sum is 100', () => {
@@ -168,15 +155,15 @@ describe('AssessmentAdvancedSection', () => {
   it('renders PassThresholdEditor when expanded', () => {
     render(<AssessmentAdvancedSection {...baseProps} />);
     fireEvent.click(screen.getByLabelText('Expand advanced settings'));
-    expect(screen.getByTestId('pass-threshold')).toBeTruthy();
+    expect(screen.getByTestId('pass-threshold')).toBeInTheDocument();
   });
 
   it('renders company branding fields when expanded', () => {
     render(<AssessmentAdvancedSection {...baseProps} />);
     fireEvent.click(screen.getByLabelText('Expand advanced settings'));
-    expect(screen.getByLabelText('Company Name')).toBeTruthy();
-    expect(screen.getByLabelText('Company Logo URL')).toBeTruthy();
-    expect(screen.getByLabelText('Welcome Message')).toBeTruthy();
+    expect(screen.getByLabelText('Company Name')).toBeInTheDocument();
+    expect(screen.getByLabelText('Company Logo URL')).toBeInTheDocument();
+    expect(screen.getByLabelText('Welcome Message')).toBeInTheDocument();
   });
 
   it('calls onCompanyNameChange when company name changes', () => {
@@ -206,8 +193,8 @@ describe('AssessmentAdvancedSection', () => {
   it('shows logo preview when valid URL is provided', () => {
     render(<AssessmentAdvancedSection {...baseProps} companyLogoUrl="https://example.com/logo.png" />);
     fireEvent.click(screen.getByLabelText('Expand advanced settings'));
-    expect(screen.getByText('Preview')).toBeTruthy();
-    expect(screen.getByAltText('Logo preview')).toBeTruthy();
+    expect(screen.getByText('Preview')).toBeInTheDocument();
+    expect(screen.getByAltText('Logo preview')).toBeInTheDocument();
   });
 
   it('does not show logo preview when URL is empty', () => {
@@ -224,37 +211,37 @@ describe('AssessmentAdvancedSection', () => {
 
   it('shows correct toggle arrow when collapsed', () => {
     render(<AssessmentAdvancedSection {...baseProps} />);
-    expect(screen.getByText(/\u25B6/)).toBeTruthy();
+    expect(screen.getByText(/\u25B6/)).toBeInTheDocument();
   });
 
   it('shows correct toggle arrow when expanded', () => {
     render(<AssessmentAdvancedSection {...baseProps} />);
     fireEvent.click(screen.getByLabelText('Expand advanced settings'));
-    expect(screen.getByText(/\u25BC/)).toBeTruthy();
+    expect(screen.getByText(/\u25BC/)).toBeInTheDocument();
   });
 
   it('shows score weights description text', () => {
     render(<AssessmentAdvancedSection {...baseProps} />);
     fireEvent.click(screen.getByLabelText('Expand advanced settings'));
-    expect(screen.getByText(/Adjust how each dimension is weighted/)).toBeTruthy();
+    expect(screen.getByText(/Adjust how each dimension is weighted/)).toBeInTheDocument();
   });
 
   it('shows branding section description text', () => {
     render(<AssessmentAdvancedSection {...baseProps} />);
     fireEvent.click(screen.getByLabelText('Expand advanced settings'));
-    expect(screen.getByText(/Add your company details/)).toBeTruthy();
+    expect(screen.getByText(/Add your company details/)).toBeInTheDocument();
   });
 
   it('shows valid time limit hint when value is valid', () => {
     render(<AssessmentAdvancedSection {...baseProps} timeLimitMinutes="60" />);
     fireEvent.click(screen.getByLabelText('Expand advanced settings'));
-    expect(screen.getByText('Minimum 5 min, maximum 240 min')).toBeTruthy();
+    expect(screen.getByText('Minimum 5 min, maximum 240 min')).toBeInTheDocument();
   });
 
   it('no time limit error when field is empty', () => {
     render(<AssessmentAdvancedSection {...baseProps} timeLimitMinutes="" />);
     fireEvent.click(screen.getByLabelText('Expand advanced settings'));
-    expect(screen.getByText('Minimum 5 min, maximum 240 min')).toBeTruthy();
+    expect(screen.getByText('Minimum 5 min, maximum 240 min')).toBeInTheDocument();
     expect(screen.queryByText('Enter a number')).toBeNull();
   });
 
@@ -276,29 +263,29 @@ describe('AssessmentAdvancedSection', () => {
   it('shows weight bar as destructive color when sum exceeds 100', () => {
     render(<AssessmentAdvancedSection {...baseProps} weightSum={120} />);
     fireEvent.click(screen.getByLabelText('Expand advanced settings'));
-    expect(screen.getByText('120/100')).toBeTruthy();
-    expect(screen.getByText('Weights must sum to 100')).toBeTruthy();
+    expect(screen.getByText('120/100')).toBeInTheDocument();
+    expect(screen.getByText('Weights must sum to 100')).toBeInTheDocument();
   });
 
   it('shows weight bar as success color when sum is exactly 100', () => {
     render(<AssessmentAdvancedSection {...baseProps} weightSum={100} />);
     fireEvent.click(screen.getByLabelText('Expand advanced settings'));
-    expect(screen.getByText('100/100')).toBeTruthy();
+    expect(screen.getByText('100/100')).toBeInTheDocument();
     expect(screen.queryByText('Weights must sum to 100')).toBeNull();
   });
 
   it('shows dash for non-finite weight sum', () => {
     render(<AssessmentAdvancedSection {...baseProps} weightSum={NaN} />);
     fireEvent.click(screen.getByLabelText('Expand advanced settings'));
-    expect(screen.getByText('\u2014/100')).toBeTruthy();
+    expect(screen.getByText('\u2014/100')).toBeInTheDocument();
   });
 
   it('renders company branding inputs when expanded', () => {
     render(<AssessmentAdvancedSection {...baseProps} />);
     fireEvent.click(screen.getByLabelText('Expand advanced settings'));
-    expect(screen.getByLabelText('Company Name')).toBeTruthy();
-    expect(screen.getByLabelText('Company Logo URL')).toBeTruthy();
-    expect(screen.getByLabelText('Welcome Message')).toBeTruthy();
+    expect(screen.getByLabelText('Company Name')).toBeInTheDocument();
+    expect(screen.getByLabelText('Company Logo URL')).toBeInTheDocument();
+    expect(screen.getByLabelText('Welcome Message')).toBeInTheDocument();
   });
 
   it('calls onCompanyNameChange when company name input changes', () => {
@@ -312,8 +299,8 @@ describe('AssessmentAdvancedSection', () => {
   it('shows logo preview when companyLogoUrl is a valid URL', () => {
     render(<AssessmentAdvancedSection {...baseProps} companyLogoUrl="https://example.com/logo.png" />);
     fireEvent.click(screen.getByLabelText('Expand advanced settings'));
-    expect(screen.getByText('Preview')).toBeTruthy();
-    expect(screen.getByAltText('Logo preview')).toBeTruthy();
+    expect(screen.getByText('Preview')).toBeInTheDocument();
+    expect(screen.getByAltText('Logo preview')).toBeInTheDocument();
   });
 
   it('does not show logo preview for non-URL logo text', () => {

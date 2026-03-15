@@ -27,21 +27,8 @@ vi.mock('@/shared/lib/difficulty', () => ({
     { key: 'impossible', label: 'Impossible' },
   ],
 }));
-vi.mock('@/shared/theme', () => ({
-  useColors: () => ({
-    bg: '#fff', text: '#000', textMuted: '#888', accent: '#c9a962', border: '#ccc',
-    borderStrong: '#999', card: '#fff', muted: '#f5f5f5', error: '#f00', errorBg: '#fee',
-    success: '#0a0', successBg: '#efe', primary: '#000', primaryForeground: '#fff',
-    secondary: '#eee', secondaryForeground: '#000', destructive: '#f00',
-    textSubtle: '#aaa', bgElevated: '#fafafa', accentBg: '#ffe', bgWarm: '#faf8f5',
-  }),
-}));
-vi.mock('@/shared/theme/tokens', () => ({
-  spacing: { xs: 4, sm: 8, md: 16, lg: 24, xl: 32, '2xl': 48 },
-  fontSizes: { xs: 12, sm: 14, md: 16, lg: 18, xl: 20, '2xl': 24, '3xl': 30, '4xl': 36 },
-  fontFamily: { display: 'serif', body: 'sans-serif' },
-  radii: { sm: 4, md: 8, lg: 12, xl: 16, full: 9999 },
-}));
+vi.mock('@/shared/theme', async () => (await import('@/shared/test/helpers')).mockTheme());
+vi.mock('@/shared/theme/tokens', async () => (await import('@/shared/test/helpers')).mockTokens());
 
 const { AssessmentChallengeList } = await import('./AssessmentChallengeList');
 
@@ -73,19 +60,19 @@ describe('AssessmentChallengeList', () => {
 
   it('renders the section label with selected count', () => {
     render(<AssessmentChallengeList {...baseProps} selectedChallengeIds={['ch1']} />);
-    expect(screen.getByText('Challenges (1 selected)')).toBeTruthy();
+    expect(screen.getByText('Challenges (1 selected)')).toBeInTheDocument();
   });
 
   it('renders all challenges', () => {
     render(<AssessmentChallengeList {...baseProps} />);
-    expect(screen.getByText('String Formatter')).toBeTruthy();
-    expect(screen.getByText('Event Emitter')).toBeTruthy();
-    expect(screen.getByText('Data Pipeline')).toBeTruthy();
+    expect(screen.getByText('String Formatter')).toBeInTheDocument();
+    expect(screen.getByText('Event Emitter')).toBeInTheDocument();
+    expect(screen.getByText('Data Pipeline')).toBeInTheDocument();
   });
 
   it('shows total count of shown challenges', () => {
     render(<AssessmentChallengeList {...baseProps} />);
-    expect(screen.getByText('3 challenges shown')).toBeTruthy();
+    expect(screen.getByText('3 challenges shown')).toBeInTheDocument();
   });
 
   it('calls onToggle when a challenge row is clicked', () => {
@@ -110,48 +97,48 @@ describe('AssessmentChallengeList', () => {
 
   it('renders search input', () => {
     render(<AssessmentChallengeList {...baseProps} />);
-    expect(screen.getByPlaceholderText('Search challenges...')).toBeTruthy();
+    expect(screen.getByPlaceholderText('Search challenges...')).toBeInTheDocument();
   });
 
   it('filters challenges by search text', () => {
     render(<AssessmentChallengeList {...baseProps} />);
     fireEvent.change(screen.getByPlaceholderText('Search challenges...'), { target: { value: 'String' } });
-    expect(screen.getByText('String Formatter')).toBeTruthy();
+    expect(screen.getByText('String Formatter')).toBeInTheDocument();
     expect(screen.queryByText('Event Emitter')).toBeNull();
     expect(screen.queryByText('Data Pipeline')).toBeNull();
-    expect(screen.getByText('1 challenges shown')).toBeTruthy();
+    expect(screen.getByText('1 challenges shown')).toBeInTheDocument();
   });
 
   it('filters challenges by skill tested', () => {
     render(<AssessmentChallengeList {...baseProps} />);
     fireEvent.change(screen.getByPlaceholderText('Search challenges...'), { target: { value: 'Events' } });
-    expect(screen.getByText('Event Emitter')).toBeTruthy();
+    expect(screen.getByText('Event Emitter')).toBeInTheDocument();
     expect(screen.queryByText('String Formatter')).toBeNull();
   });
 
   it('renders difficulty filter pills', () => {
     render(<AssessmentChallengeList {...baseProps} />);
-    expect(screen.getByText('All Levels')).toBeTruthy();
-    expect(screen.getByText('Sprint')).toBeTruthy();
+    expect(screen.getByText('All Levels')).toBeInTheDocument();
+    expect(screen.getByText('Sprint')).toBeInTheDocument();
     // 'Easy' appears in both the filter pill and the difficulty badge on ch1
     expect(screen.getAllByText('Easy').length).toBeGreaterThanOrEqual(2);
     expect(screen.getAllByText('Medium').length).toBeGreaterThanOrEqual(2);
     expect(screen.getAllByText('Hard').length).toBeGreaterThanOrEqual(2);
-    expect(screen.getByText('Impossible')).toBeTruthy();
+    expect(screen.getByText('Impossible')).toBeInTheDocument();
   });
 
   it('filters by difficulty when pill is clicked', () => {
     render(<AssessmentChallengeList {...baseProps} />);
     // 'Easy' appears in filter pill and badge; click the first one (the filter pill)
     fireEvent.click(screen.getAllByText('Easy')[0]);
-    expect(screen.getByText('String Formatter')).toBeTruthy();
+    expect(screen.getByText('String Formatter')).toBeInTheDocument();
     expect(screen.queryByText('Event Emitter')).toBeNull();
     expect(screen.queryByText('Data Pipeline')).toBeNull();
   });
 
   it('renders category filter pills', () => {
     render(<AssessmentChallengeList {...baseProps} />);
-    expect(screen.getByText('All')).toBeTruthy();
+    expect(screen.getByText('All')).toBeInTheDocument();
     // 'Model Selection' appears in filter pill and as category label on challenge row
     expect(screen.getAllByText('Model Selection').length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText('Prompt Efficiency').length).toBeGreaterThanOrEqual(1);
@@ -161,14 +148,14 @@ describe('AssessmentChallengeList', () => {
     render(<AssessmentChallengeList {...baseProps} />);
     // Click the first 'Model Selection' (the filter pill)
     fireEvent.click(screen.getAllByText('Model Selection')[0]);
-    expect(screen.getByText('String Formatter')).toBeTruthy();
+    expect(screen.getByText('String Formatter')).toBeInTheDocument();
     expect(screen.queryByText('Event Emitter')).toBeNull();
     expect(screen.queryByText('Data Pipeline')).toBeNull();
   });
 
   it('shows Select All Visible button', () => {
     render(<AssessmentChallengeList {...baseProps} />);
-    expect(screen.getByText('Select All Visible')).toBeTruthy();
+    expect(screen.getByText('Select All Visible')).toBeInTheDocument();
   });
 
   it('calls onSelectAll with visible challenge IDs', () => {
@@ -180,7 +167,7 @@ describe('AssessmentChallengeList', () => {
 
   it('shows Clear All button when challenges are selected', () => {
     render(<AssessmentChallengeList {...baseProps} selectedChallengeIds={['ch1']} />);
-    expect(screen.getByText('Clear All')).toBeTruthy();
+    expect(screen.getByText('Clear All')).toBeInTheDocument();
   });
 
   it('does not show Clear All button when nothing is selected', () => {
@@ -197,44 +184,44 @@ describe('AssessmentChallengeList', () => {
 
   it('renders loadError when present', () => {
     render(<AssessmentChallengeList {...baseProps} loadError="Failed to load" />);
-    expect(screen.getByText('Failed to load')).toBeTruthy();
+    expect(screen.getByText('Failed to load')).toBeInTheDocument();
   });
 
   it('shows empty filter state when no challenges match filters', () => {
     render(<AssessmentChallengeList {...baseProps} />);
     fireEvent.change(screen.getByPlaceholderText('Search challenges...'), { target: { value: 'zzzzzzz' } });
-    expect(screen.getByText('No challenges match your filters')).toBeTruthy();
+    expect(screen.getByText('No challenges match your filters')).toBeInTheDocument();
   });
 
   it('shows Clear filters button when no results', () => {
     render(<AssessmentChallengeList {...baseProps} />);
     fireEvent.change(screen.getByPlaceholderText('Search challenges...'), { target: { value: 'zzzzzzz' } });
-    expect(screen.getByText('Clear filters')).toBeTruthy();
+    expect(screen.getByText('Clear filters')).toBeInTheDocument();
   });
 
   it('resets filters on Clear filters click', () => {
     render(<AssessmentChallengeList {...baseProps} />);
     fireEvent.change(screen.getByPlaceholderText('Search challenges...'), { target: { value: 'zzzzzzz' } });
     fireEvent.click(screen.getByText('Clear filters'));
-    expect(screen.getByText('String Formatter')).toBeTruthy();
-    expect(screen.getByText('3 challenges shown')).toBeTruthy();
+    expect(screen.getByText('String Formatter')).toBeInTheDocument();
+    expect(screen.getByText('3 challenges shown')).toBeInTheDocument();
   });
 
   it('renders active custom challenges', () => {
     render(<AssessmentChallengeList {...baseProps} customChallenges={CUSTOM_CHALLENGES} />);
-    expect(screen.getByText('Custom Test')).toBeTruthy();
+    expect(screen.getByText('Custom Test')).toBeInTheDocument();
     // Draft custom should not appear
     expect(screen.queryByText('Draft Custom')).toBeNull();
   });
 
   it('shows Custom badge for custom challenges', () => {
     render(<AssessmentChallengeList {...baseProps} customChallenges={CUSTOM_CHALLENGES} />);
-    expect(screen.getByText('Custom')).toBeTruthy();
+    expect(screen.getByText('Custom')).toBeInTheDocument();
   });
 
   it('shows Custom Challenges divider when both normal and custom challenges are visible', () => {
     render(<AssessmentChallengeList {...baseProps} customChallenges={CUSTOM_CHALLENGES} />);
-    expect(screen.getByText('Custom Challenges')).toBeTruthy();
+    expect(screen.getByText('Custom Challenges')).toBeInTheDocument();
   });
 
   it('does not show Custom Challenges divider when no custom challenges match', () => {
@@ -272,16 +259,16 @@ describe('AssessmentChallengeList', () => {
 
   it('renders Selected pill with count when challenges are selected', () => {
     render(<AssessmentChallengeList {...baseProps} selectedChallengeIds={['ch1', 'ch2']} />);
-    expect(screen.getByText('Selected (2)')).toBeTruthy();
+    expect(screen.getByText('Selected (2)')).toBeInTheDocument();
   });
 
   it('clicking Selected pill filters to only selected challenges', () => {
     render(<AssessmentChallengeList {...baseProps} selectedChallengeIds={['ch1']} />);
     fireEvent.click(screen.getByText('Selected (1)'));
-    expect(screen.getByText('String Formatter')).toBeTruthy();
+    expect(screen.getByText('String Formatter')).toBeInTheDocument();
     expect(screen.queryByText('Event Emitter')).toBeNull();
     expect(screen.queryByText('Data Pipeline')).toBeNull();
-    expect(screen.getByText('1 challenges shown')).toBeTruthy();
+    expect(screen.getByText('1 challenges shown')).toBeInTheDocument();
   });
 
   it('toggling Selected pill off shows all challenges again', () => {
@@ -290,21 +277,21 @@ describe('AssessmentChallengeList', () => {
     expect(screen.queryByText('Event Emitter')).toBeNull();
     // Toggle off
     fireEvent.click(screen.getByText('Selected (1)'));
-    expect(screen.getByText('Event Emitter')).toBeTruthy();
-    expect(screen.getByText('3 challenges shown')).toBeTruthy();
+    expect(screen.getByText('Event Emitter')).toBeInTheDocument();
+    expect(screen.getByText('3 challenges shown')).toBeInTheDocument();
   });
 
   it('Selected filter combines with difficulty filter', () => {
     render(<AssessmentChallengeList {...baseProps} selectedChallengeIds={['ch1', 'ch3']} />);
     // Activate Selected filter
     fireEvent.click(screen.getByText('Selected (2)'));
-    expect(screen.getByText('String Formatter')).toBeTruthy();
-    expect(screen.getByText('Data Pipeline')).toBeTruthy();
+    expect(screen.getByText('String Formatter')).toBeInTheDocument();
+    expect(screen.getByText('Data Pipeline')).toBeInTheDocument();
     expect(screen.queryByText('Event Emitter')).toBeNull();
     // Now also filter by Hard difficulty
     fireEvent.click(screen.getAllByText('Hard')[0]);
     expect(screen.queryByText('String Formatter')).toBeNull();
-    expect(screen.getByText('Data Pipeline')).toBeTruthy();
+    expect(screen.getByText('Data Pipeline')).toBeInTheDocument();
   });
 
   it('Clear filters resets Selected filter', () => {
@@ -312,9 +299,9 @@ describe('AssessmentChallengeList', () => {
     // Activate Selected filter and search to get zero results
     fireEvent.click(screen.getByText('Selected (1)'));
     fireEvent.change(screen.getByPlaceholderText('Search challenges...'), { target: { value: 'zzzzzzz' } });
-    expect(screen.getByText('No challenges match your filters')).toBeTruthy();
+    expect(screen.getByText('No challenges match your filters')).toBeInTheDocument();
     fireEvent.click(screen.getByText('Clear filters'));
     // All 3 challenges should be back
-    expect(screen.getByText('3 challenges shown')).toBeTruthy();
+    expect(screen.getByText('3 challenges shown')).toBeInTheDocument();
   });
 });

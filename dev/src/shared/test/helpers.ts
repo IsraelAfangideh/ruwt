@@ -5,6 +5,89 @@
  */
 import { vi } from 'vitest';
 
+// ── Shared Mock Return Values ───────────────────────────────────────
+// These are the standard return values used in vi.mock() calls across
+// 50+ test files. Import and spread them in your vi.mock factories
+// instead of duplicating inline.
+
+/** Standard useColors() return value — covers all color keys used by components */
+export const MOCK_COLORS = {
+  bg: '#fff', text: '#000', textMuted: '#888', accent: '#c9a962', border: '#ccc',
+  borderStrong: '#999', card: '#fff', muted: '#f5f5f5', error: '#f00', errorBg: '#fee',
+  success: '#0a0', successBg: '#efe', primary: '#000', primaryForeground: '#fff',
+  secondary: '#eee', secondaryForeground: '#000', destructive: '#f00',
+  textSubtle: '#aaa', bgElevated: '#fafafa', accentBg: '#ffe',
+  bgWarm: '#faf8f5', background: '#fff',
+  cardForeground: '#000', mutedForeground: '#555',
+} as const;
+
+/** Standard tokens mock — spacing, fontSizes, fontFamily, radii */
+export const MOCK_TOKENS = {
+  spacing: { xs: 4, sm: 8, md: 16, lg: 24, xl: 32, '2xl': 48 },
+  fontSizes: { xs: 12, sm: 14, md: 16, lg: 18, xl: 20, '2xl': 24, '3xl': 30, '4xl': 36 },
+  fontFamily: { display: 'serif', body: 'sans-serif' },
+  radii: { sm: 4, md: 8, lg: 12, xl: 16, full: 9999 },
+} as const;
+
+/** Tokens variant with mono font — used by arena/replay/assessment IDE tests */
+export const MOCK_TOKENS_WITH_MONO = {
+  ...MOCK_TOKENS,
+  fontFamily: { display: 'serif', body: 'sans-serif', mono: 'monospace' },
+} as const;
+
+/**
+ * Factory for `vi.mock('@/shared/theme', ...)` return value.
+ * Usage: `vi.mock('@/shared/theme', () => mockTheme())`
+ * Pass overrides to add extra exports like `useTheme`.
+ */
+export function mockTheme(overrides?: Record<string, unknown>) {
+  return { useColors: () => ({ ...MOCK_COLORS }), ...overrides };
+}
+
+/**
+ * Factory for `vi.mock('@/shared/theme/tokens', ...)` return value.
+ * Usage: `vi.mock('@/shared/theme/tokens', () => mockTokens())`
+ * Set `mono: true` for arena/IDE tests that need fontFamily.mono.
+ */
+export function mockTokens(opts?: { mono?: boolean }) {
+  return opts?.mono ? { ...MOCK_TOKENS_WITH_MONO } : { ...MOCK_TOKENS };
+}
+
+/** Standard navigation mock return — `{ navigate, reset, goBack }` */
+export function mockNavigation() {
+  return {
+    navigate: vi.fn(),
+    reset: vi.fn(),
+    goBack: vi.fn(),
+  };
+}
+
+/** Standard DashboardLayout mock return value for vi.mock */
+export function mockDashboardLayoutModule() {
+  return {
+    DashboardLayout: ({ children }: any) =>
+      `<div data-testid="dashboard-layout">${children}</div>`,
+  };
+}
+
+/** Standard Card component mocks */
+export function mockCardModule() {
+  return {
+    Card: ({ children, ...p }: any) => ({ ...p, children }),
+    CardContent: ({ children, ...p }: any) => ({ ...p, children }),
+    CardHeader: ({ children }: any) => ({ children }),
+    CardTitle: ({ children }: any) => ({ children }),
+    CardDescription: ({ children }: any) => ({ children }),
+  };
+}
+
+/** Standard Button component mock */
+export function mockButtonModule() {
+  return {
+    Button: ({ children, onPress, ...props }: any) => ({ children, onClick: onPress, ...props }),
+  };
+}
+
 // ── Environment / Context Factories ──────────────────────────────────
 
 /** Creates a mock Env object for Cloudflare Functions tests */

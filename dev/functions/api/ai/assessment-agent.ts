@@ -290,9 +290,7 @@ export async function onRequestPost(context: {
         .from(assessments)
         .where(eq(assessments.id, assessmentId))
         .limit(1);
-      /* istanbul ignore next -- @preserve */
       if (assessment && assessment.createdBy !== user.id) {
-        /* istanbul ignore next -- @preserve */
         return Response.json({ error: 'Forbidden' }, { status: 403 });
       }
       if (assessment) {
@@ -342,11 +340,9 @@ export async function onRequestPost(context: {
       currentAssessment: assessmentState,
       orgCustomChallenges: orgCustom,
     });
-    /* istanbul ignore next -- @preserve */
     const tools = getAssessmentAgentTools();
 
     // Build messages for the model (truncate to prevent blowing context window)
-    /* istanbul ignore next -- @preserve */
     const truncated = messages.length > MAX_CONVERSATION_MESSAGES
       ? messages.slice(-MAX_CONVERSATION_MESSAGES)
       : messages;
@@ -536,40 +532,26 @@ export async function onRequestPost(context: {
 }
 
 /** DELETE /api/ai/assessment-agent?conversationId=... — clean up a conversation */
-/* istanbul ignore next -- @preserve */
 export async function onRequestDelete(context: {
   request: Request;
   env: Env;
-/* istanbul ignore next -- @preserve */
 }): Promise<Response> {
-  /* istanbul ignore next -- @preserve */
   try {
-    /* istanbul ignore next -- @preserve */
     const user = await getUser(context.request, context.env);
-    /* istanbul ignore next -- @preserve */
     if (!user) {
-      /* istanbul ignore next -- @preserve */
       return Response.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    /* istanbul ignore next -- @preserve */
     const url = new URL(context.request.url);
-    /* istanbul ignore next -- @preserve */
     const convId = url.searchParams.get('conversationId');
-    /* istanbul ignore next -- @preserve */
     if (!convId) {
-      /* istanbul ignore next -- @preserve */
       return Response.json({ error: 'Missing conversationId' }, { status: 400 });
     }
-    /* istanbul ignore next -- @preserve */
     const db = getDb(context.env);
-    /* istanbul ignore next -- @preserve */
     await db
       .delete(agentConversations)
       .where(and(eq(agentConversations.id, convId), eq(agentConversations.userId, user.id)));
-    /* istanbul ignore next -- @preserve */
     return Response.json({ ok: true });
   } catch (err) {
-    /* istanbul ignore next -- @preserve */
     return Response.json({ error: 'Internal error' }, { status: 500 });
   }
 }
