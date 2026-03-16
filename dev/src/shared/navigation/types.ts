@@ -29,6 +29,8 @@ export type RootStackParamList = {
   Bookmarks: undefined;
   Models: undefined;
   ModelDetail: { modelId: string };
+  ProjectList: undefined;
+  IDE: undefined;
   NotFound: undefined;
 };
 
@@ -40,6 +42,7 @@ export const ALLOWED_AUTH_REDIRECTS = new Set<keyof RootStackParamList>([
   'Problems', 'Leaderboard', 'Profile', 'Settings',
   'Arena', 'DailyChallenge', 'Assessments', 'AssessmentBuilder',
   'Hiring', 'OrgManagement', 'Replay', 'Share', 'Certificate',
+  'ProjectList', 'IDE',
 ]);
 
 declare global {

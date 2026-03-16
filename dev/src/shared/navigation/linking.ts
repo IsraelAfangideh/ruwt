@@ -34,6 +34,8 @@ export const linking: LinkingOptions<ReactNavigation.RootParamList> = {
       Bookmarks: 'bookmarks',
       Models: 'models',
       ModelDetail: 'models/:modelId',
+      ProjectList: 'ide',
+      IDE: 'ide/new',
       NotFound: '*',
     },
   },
