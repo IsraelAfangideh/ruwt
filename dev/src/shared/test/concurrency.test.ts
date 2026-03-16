@@ -431,7 +431,7 @@ describe('Duplicate resource creation prevention', () => {
   it('optimistic locking detects concurrent modification', async () => {
     let serverVersion = 1;
 
-    async function updateResource(clientVersion: number, data: string) {
+    async function updateResource(clientVersion: number, _data: string) {
       await new Promise(r => setTimeout(r, 10));
       if (clientVersion !== serverVersion) {
         return { error: 'Conflict: resource was modified by another request' };
