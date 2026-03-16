@@ -188,7 +188,7 @@ vi.mock('./useEditorDecorations', () => ({
 }));
 
 vi.mock('@/shared/social/CommentSection', () => ({
-  CommentSection: (props: any) => <div data-testid="comment-section">Comments</div>,
+  CommentSection: (_props: any) => <div data-testid="comment-section">Comments</div>,
 }));
 
 import { ArenaIDE, type ArenaChallenge, type ArenaAttempt } from './ArenaIDE';

@@ -2361,8 +2361,8 @@ describe('ArenaIDE', () => {
       doneCallback?.();
     });
 
-    // Switch back to chat tab to see the message
-    fireEvent.click(screen.getByRole('tab', { name: 'AI Chat' }));
+    // Switch back to chat tab to see the message (unread dot changes accessible name)
+    fireEvent.click(screen.getByRole('tab', { name: /AI Chat/ }));
 
     await waitFor(() => {
       expect(screen.getByText('Unread response')).toBeInTheDocument();

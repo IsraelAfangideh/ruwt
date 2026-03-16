@@ -20,10 +20,8 @@ vi.mock('@/shared/hooks/useAuthGuard', () => ({
   useAuthGuard: () => authReturn,
 }));
 
-let capturedOnRunCode: any = null;
 vi.mock('@/features/arena/ArenaIDE', () => ({
   ArenaIDE: (props: any) => {
-    capturedOnRunCode = props.onRunCode || null;
     return (
       <div data-testid="arena-ide">
         <span data-testid="ide-title">{props.challenge?.title || 'IDE'}</span>
@@ -124,7 +122,6 @@ describe('ArenaScreen (dark mode + mobile)', () => {
     routeParams = { challengeId: 'test-challenge' };
     authReturn = { user: { id: 'u1', email: 'test@test.com' }, loading: false };
     isMobileReturn = true;
-    capturedOnRunCode = null;
     globalThis.fetch = mockFetchForChallenge();
     vi.spyOn(Storage.prototype, 'getItem').mockReturnValue(null);
     vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {});

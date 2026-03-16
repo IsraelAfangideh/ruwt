@@ -4,7 +4,7 @@
  * Exercises isDark branches for styling ternaries.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 
 const { mockNavigate, mockReset } = vi.hoisted(() => ({
   mockNavigate: vi.fn(),
