@@ -413,5 +413,84 @@ describe('GET /api/challenges', () => {
       const json = await res.json();
       expect(json.error).toBe('Internal server error');
     });
+
+    it('handles user progress query failing while challenge list succeeds', async () => {
+      mockGetUser.mockResolvedValue({ id: 'user-1' });
+      let callIdx = 0;
+      mockDb.select = vi.fn().mockImplementation(() => {
+        callIdx++;
+        const chain: any = {};
+        const methods = ['from', 'innerJoin', 'leftJoin', 'where', 'groupBy', 'having', 'orderBy', 'limit'];
+        for (const method of methods) { chain[method] = vi.fn().mockReturnValue(chain); }
+        if (callIdx === 1) {
+          chain.then = (resolve: any) => Promise.resolve([makeChallengeRow()]).then(resolve);
+        } else {
+          chain.then = (_resolve: any, reject: any) => Promise.reject(new Error('DB error')).catch(reject);
+        }
+        return chain;
+      });
+
+      const res = await onRequestGet(makeContext());
+      // Should return 500 since the user progress query failed
+      expect(res.status).toBe(500);
+    });
+
+    it('handles challenge row with null avgCost', async () => {
+      mockGetUser.mockResolvedValue(null);
+      queryResults = [[makeChallengeRow({ avgCost: null, solvers: 0 })]];
+
+      const res = await onRequestGet(makeContext());
+      const json = await res.json();
+
+      expect(json[0].stats.avgCost).toBeNull();
+      expect(json[0].stats.solvers).toBe(0);
+    });
+
+    it('handles challenge row with null solvers', async () => {
+      mockGetUser.mockResolvedValue(null);
+      queryResults = [[makeChallengeRow({ solvers: null })]];
+
+      const res = await onRequestGet(makeContext());
+      const json = await res.json();
+
+      expect(json[0].stats.solvers).toBe(0);
+    });
+
+    it('handles invalid language filter parameter', async () => {
+      mockGetUser.mockResolvedValue(null);
+      queryResults = [[]];
+
+      const res = await onRequestGet(makeContext({ language: '<script>' }));
+      const json = await res.json();
+
+      // Should not crash, just return empty (no matches)
+      expect(Array.isArray(json)).toBe(true);
+    });
+
+    it('handles many filter parameters simultaneously', async () => {
+      mockGetUser.mockResolvedValue(null);
+      queryResults = [[]];
+
+      const res = await onRequestGet(makeContext({
+        language: 'javascript', category: 'practice', tag: 'backend',
+      }));
+      const json = await res.json();
+
+      expect(Array.isArray(json)).toBe(true);
+    });
+
+    it('handles challenge with all null optional fields', async () => {
+      mockGetUser.mockResolvedValue(null);
+      queryResults = [[makeChallengeRow({
+        tags: null, skillTested: null, maxTokens: null, maxCost: null,
+        wallClockLimit: null, avgCost: null, solvers: null, hiddenTestCount: null,
+      })]];
+
+      const res = await onRequestGet(makeContext());
+      const json = await res.json();
+
+      expect(json[0].tags).toEqual([]);
+      expect(json[0].hiddenTestCount).toBe(0);
+    });
   });
 });

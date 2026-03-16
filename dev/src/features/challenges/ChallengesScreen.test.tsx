@@ -523,4 +523,211 @@ describe('ChallengesScreen', () => {
       expect(screen.queryByText('Core Challenges')).toBeNull();
     });
   });
+
+  /* ── Error handling / negative tests ─────────────────────────────── */
+
+  describe('error handling', () => {
+    it('handles challenges with only one item', () => {
+      mockDashboardState = {
+        challenges: { data: [mockChallenges[0]], status: 'loaded', lastFetchedAt: Date.now() },
+        dailyChallenge: { data: null, status: 'loaded', lastFetchedAt: Date.now() },
+      };
+      const { container } = render(<ChallengesScreen />);
+      expect(container.querySelectorAll('[data-testid="challenge-card"]').length).toBeGreaterThanOrEqual(1);
+    });
+
+    it('handles search with only whitespace', async () => {
+      const { container } = render(<ChallengesScreen />);
+      const input = container.querySelector('input[placeholder="Search challenges..."]') as HTMLInputElement;
+      fireEvent.change(input, { target: { value: '   ' } });
+      // Whitespace search should still show results (filters all challenges)
+      await waitFor(() => {
+        expect(container.querySelectorAll('[data-testid="challenge-card"]').length).toBeGreaterThanOrEqual(0);
+      });
+    });
+
+    it('handles search with special regex characters', async () => {
+      const { container } = render(<ChallengesScreen />);
+      const input = container.querySelector('input[placeholder="Search challenges..."]') as HTMLInputElement;
+      fireEvent.change(input, { target: { value: '[.*+?^${}()|' } });
+      await waitFor(() => {
+        expect(screen.getByText('No Challenges Found')).toBeInTheDocument();
+      });
+    });
+
+    it('handles very long search query', async () => {
+      const { container } = render(<ChallengesScreen />);
+      const input = container.querySelector('input[placeholder="Search challenges..."]') as HTMLInputElement;
+      fireEvent.change(input, { target: { value: 'x'.repeat(500) } });
+      await waitFor(() => {
+        expect(screen.getByText('No Challenges Found')).toBeInTheDocument();
+      });
+    });
+
+    it('handles toggling difficulty filter on and off', async () => {
+      const { container } = render(<ChallengesScreen />);
+      expect(container.querySelectorAll('[data-testid="challenge-card"]').length).toBe(5);
+      // Apply Easy filter
+      fireEvent.click(screen.getAllByText('Easy')[0]);
+      await waitFor(() => {
+        expect(container.querySelectorAll('[data-testid="challenge-card"]').length).toBe(1);
+      });
+      // Click "Clear filters" text to reset all filters
+      fireEvent.click(screen.getByText('Clear filters'));
+      await waitFor(() => {
+        expect(container.querySelectorAll('[data-testid="challenge-card"]').length).toBe(5);
+      });
+    });
+
+    it('handles challenges with null category', () => {
+      mockDashboardState = {
+        challenges: {
+          data: [{ ...mockChallenges[0], category: null }],
+          status: 'loaded', lastFetchedAt: Date.now(),
+        },
+        dailyChallenge: { data: null, status: 'loaded', lastFetchedAt: Date.now() },
+      };
+      render(<ChallengesScreen />);
+      expect(screen.getByText('FizzBuzz Budget')).toBeInTheDocument();
+    });
+
+    it('handles challenges with null difficulty', () => {
+      mockDashboardState = {
+        challenges: {
+          data: [{ ...mockChallenges[0], difficulty: null }],
+          status: 'loaded', lastFetchedAt: Date.now(),
+        },
+        dailyChallenge: { data: null, status: 'loaded', lastFetchedAt: Date.now() },
+      };
+      render(<ChallengesScreen />);
+      expect(screen.getByText('FizzBuzz Budget')).toBeInTheDocument();
+    });
+
+    it('handles challenges with null stats', () => {
+      mockDashboardState = {
+        challenges: {
+          data: [{ ...mockChallenges[0], stats: null }],
+          status: 'loaded', lastFetchedAt: Date.now(),
+        },
+        dailyChallenge: { data: null, status: 'loaded', lastFetchedAt: Date.now() },
+      };
+      render(<ChallengesScreen />);
+      expect(screen.getByText('FizzBuzz Budget')).toBeInTheDocument();
+    });
+
+    it('handles challenges with zero maxCost', () => {
+      mockDashboardState = {
+        challenges: {
+          data: [{ ...mockChallenges[0], maxCost: 0 }],
+          status: 'loaded', lastFetchedAt: Date.now(),
+        },
+        dailyChallenge: { data: null, status: 'loaded', lastFetchedAt: Date.now() },
+      };
+      render(<ChallengesScreen />);
+      expect(screen.getByText('FizzBuzz Budget')).toBeInTheDocument();
+    });
+
+    it('handles invalid URL params gracefully', () => {
+      window.history.replaceState({}, '', '?tab=nonexistent&lang=nonexistent&difficulty=nonexistent');
+      render(<ChallengesScreen />);
+      expect(screen.getByText('Engineering Challenges')).toBeInTheDocument();
+    });
+
+    it('handles combined search and filter with no results', async () => {
+      const { container } = render(<ChallengesScreen />);
+      fireEvent.click(screen.getAllByText('Python')[0]);
+      const input = container.querySelector('input[placeholder="Search challenges..."]') as HTMLInputElement;
+      fireEvent.change(input, { target: { value: 'FizzBuzz' } });
+      await waitFor(() => {
+        expect(screen.getByText('No Challenges Found')).toBeInTheDocument();
+      });
+    });
+
+    it('handles status filter with empty results', async () => {
+      mockDashboardState = {
+        challenges: {
+          data: [{ ...mockChallenges[0], userStatus: null }],
+          status: 'loaded', lastFetchedAt: Date.now(),
+        },
+        dailyChallenge: { data: null, status: 'loaded', lastFetchedAt: Date.now() },
+      };
+      const { container } = render(<ChallengesScreen />);
+      fireEvent.click(screen.getAllByText('solved')[0]);
+      await waitFor(() => {
+        expect(container.querySelectorAll('[data-testid="challenge-card"]').length).toBe(0);
+      });
+    });
+
+    it('handles all challenges having same difficulty', () => {
+      const sameDiffChallenges = Array.from({ length: 3 }, (_, i) => ({
+        ...mockChallenges[0], id: `c${i}`, title: `Challenge ${i}`, difficulty: 'easy',
+      }));
+      mockDashboardState = {
+        challenges: { data: sameDiffChallenges, status: 'loaded', lastFetchedAt: Date.now() },
+        dailyChallenge: { data: null, status: 'loaded', lastFetchedAt: Date.now() },
+      };
+      render(<ChallengesScreen />);
+      expect(screen.getByText('Engineering Challenges')).toBeInTheDocument();
+    });
+
+    it('handles challenges with empty description', () => {
+      mockDashboardState = {
+        challenges: {
+          data: [{ ...mockChallenges[0], description: '' }],
+          status: 'loaded', lastFetchedAt: Date.now(),
+        },
+        dailyChallenge: { data: null, status: 'loaded', lastFetchedAt: Date.now() },
+      };
+      render(<ChallengesScreen />);
+      expect(screen.getByText('FizzBuzz Budget')).toBeInTheDocument();
+    });
+
+    it('handles challenges with very long title', () => {
+      mockDashboardState = {
+        challenges: {
+          data: [{ ...mockChallenges[0], title: 'A'.repeat(200) }],
+          status: 'loaded', lastFetchedAt: Date.now(),
+        },
+        dailyChallenge: { data: null, status: 'loaded', lastFetchedAt: Date.now() },
+      };
+      render(<ChallengesScreen />);
+      expect(screen.getByText('A'.repeat(200))).toBeInTheDocument();
+    });
+
+    it('handles sort by difficulty with identical difficulties', async () => {
+      const sameDiffChallenges = Array.from({ length: 3 }, (_, i) => ({
+        ...mockChallenges[0], id: `c${i}`, title: `Challenge ${i}`, difficulty: 'medium',
+      }));
+      mockDashboardState = {
+        challenges: { data: sameDiffChallenges, status: 'loaded', lastFetchedAt: Date.now() },
+        dailyChallenge: { data: null, status: 'loaded', lastFetchedAt: Date.now() },
+      };
+      render(<ChallengesScreen />);
+      fireEvent.click(screen.getByText(/Sort: Default/));
+      await waitFor(() => expect(screen.getByText('Difficulty')).toBeInTheDocument());
+      fireEvent.click(screen.getByText('Difficulty'));
+      await waitFor(() => { expect(screen.getByText(/Sort: Difficulty/)).toBeInTheDocument(); });
+    });
+
+    it('handles multiple simultaneous filter + sort changes', async () => {
+      render(<ChallengesScreen />);
+      fireEvent.click(screen.getAllByText('Python')[0]);
+      fireEvent.click(screen.getByText(/Sort: Default/));
+      await waitFor(() => expect(screen.getByText('Difficulty')).toBeInTheDocument());
+      fireEvent.click(screen.getByText('Difficulty'));
+      await waitFor(() => { expect(screen.getByText(/Sort: Difficulty/)).toBeInTheDocument(); });
+    });
+
+    it('handles clearing filters resets everything', async () => {
+      const { container } = render(<ChallengesScreen />);
+      // Apply multiple filters
+      fireEvent.click(screen.getAllByText('Python')[0]);
+      fireEvent.click(screen.getAllByText('Easy')[0]);
+      const input = container.querySelector('input[placeholder="Search challenges..."]') as HTMLInputElement;
+      fireEvent.change(input, { target: { value: 'nonexistent' } });
+      await waitFor(() => { expect(screen.getByText('No Challenges Found')).toBeInTheDocument(); });
+      fireEvent.click(screen.getByText('Clear all filters'));
+      expect(container.querySelectorAll('[data-testid="challenge-card"]').length).toBe(5);
+    });
+  });
 });

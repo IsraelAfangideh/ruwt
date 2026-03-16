@@ -120,4 +120,16 @@ describe('ModeSwitcher', () => {
     fireEvent.click(overlay);
     expect(screen.queryByTestId('mode-dropdown')).toBeNull();
   });
+
+  it('shows "Hiring" fallback when orgInfo has no name', () => {
+    mockAppMode = {
+      ...mockAppMode,
+      canAccessHiringMode: true,
+      isOrgMember: true,
+      orgInfo: { id: 'o', name: null as any, role: 'admin', subscriptionStatus: 'active', subscriptionPlan: null, subscriptionEndsAt: null, trial: null },
+    };
+    render(<ModeSwitcher />);
+    fireEvent.click(screen.getByTestId('mode-switcher'));
+    expect(screen.getByText('Hiring')).toBeInTheDocument();
+  });
 });

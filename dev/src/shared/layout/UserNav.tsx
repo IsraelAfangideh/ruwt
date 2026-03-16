@@ -55,7 +55,7 @@ export function UserNav({ user }: UserNavProps) {
         <>
           <Pressable style={styles.overlay} onPress={() => setOpen(false)} accessibilityLabel="Close account menu">{null}</Pressable>
           <View style={[styles.menu, { backgroundColor: c.card, borderColor: c.border }]} accessibilityRole="menu">
-            <Text style={[styles.menuName, { color: c.text }]}>{(() => { /* istanbul ignore next -- @preserve */ return user.user_metadata?.name || 'User'; })()}</Text>
+            <Text style={[styles.menuName, { color: c.text }]}>{(() => { return user.user_metadata?.name || 'User'; })()}</Text>
             <Text style={[styles.menuEmail, { color: c.mutedForeground }]} numberOfLines={1}>{user.email}</Text>
             {mode === 'hiring' && isOrgMember && orgInfo && (
               <Text style={[styles.menuMode, { color: c.textMuted }]} testID="user-nav-mode">

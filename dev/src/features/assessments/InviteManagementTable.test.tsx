@@ -289,4 +289,34 @@ describe('InviteManagementTable', () => {
       expect(screen.getByText('Remind All Pending (1)')).toBeInTheDocument();
     });
   });
+
+  it('shows error message when remind fails', async () => {
+    const fetchSpy = vi.spyOn(global, 'fetch')
+      .mockResolvedValueOnce({ ok: true, json: async () => invites } as Response)
+      .mockResolvedValueOnce({ ok: false, json: async () => ({ error: 'fail' }) } as Response);
+
+    render(<InviteManagementTable assessmentId="a1" />);
+    await waitFor(() => expect(screen.getByText('Remind')).toBeInTheDocument());
+    fireEvent.click(screen.getByText('Remind'));
+    await waitFor(() => {
+      expect(screen.getByText('Failed to send reminder')).toBeInTheDocument();
+    });
+    fetchSpy.mockRestore();
+  });
+
+  it('shows expiring-soon styling for invites near expiry', async () => {
+    const soonExpiring = [{
+      ...invites[0],
+      expiresAt: new Date(Date.now() + 12 * 60 * 60 * 1000).toISOString(),
+    }];
+    vi.spyOn(global, 'fetch').mockResolvedValue({
+      ok: true,
+      json: async () => soonExpiring,
+    } as Response);
+
+    render(<InviteManagementTable assessmentId="a1" />);
+    await waitFor(() => {
+      expect(screen.getByText('alice@test.com')).toBeInTheDocument();
+    });
+  });
 });

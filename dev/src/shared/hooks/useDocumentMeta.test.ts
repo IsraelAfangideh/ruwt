@@ -159,6 +159,48 @@ describe('useDocumentMeta', () => {
     expect(document.title).toBe('Page 2 | Ruwt');
   });
 
+  // ─── OG Image ─────────────────────────────────────────────────────
+
+  it('creates og:image meta tag when ogImage is provided and tag does not exist', () => {
+    // Ensure no og:image meta exists initially
+    const existing = document.querySelector('meta[property="og:image"]');
+    if (existing) existing.remove();
+
+    const { unmount } = renderHook(() =>
+      useDocumentMeta({ ogImage: 'https://ruwt.dev/api/og/afi/alice' })
+    );
+
+    const ogMeta = document.querySelector('meta[property="og:image"]') as HTMLMetaElement;
+    expect(ogMeta).not.toBeNull();
+    expect(ogMeta.getAttribute('content')).toBe('https://ruwt.dev/api/og/afi/alice');
+
+    // Cleanup should reset to default
+    unmount();
+    const afterUnmount = document.querySelector('meta[property="og:image"]') as HTMLMetaElement;
+    expect(afterUnmount?.getAttribute('content')).toBe(`${SITE}/og-image.png`);
+
+    // Clean up for next tests
+    afterUnmount?.remove();
+  });
+
+  it('reuses existing og:image meta tag when it already exists', () => {
+    // Create an og:image tag first
+    const ogMeta = document.createElement('meta');
+    ogMeta.setAttribute('property', 'og:image');
+    ogMeta.setAttribute('content', 'https://old-image.png');
+    document.head.appendChild(ogMeta);
+
+    renderHook(() =>
+      useDocumentMeta({ ogImage: 'https://ruwt.dev/api/og/new' })
+    );
+
+    const found = document.querySelector('meta[property="og:image"]') as HTMLMetaElement;
+    expect(found.getAttribute('content')).toBe('https://ruwt.dev/api/og/new');
+
+    // Clean up
+    found.remove();
+  });
+
   // ─── Missing DOM elements ──────────────────────────────────────────
 
   it('does not crash when meta description element is missing', () => {

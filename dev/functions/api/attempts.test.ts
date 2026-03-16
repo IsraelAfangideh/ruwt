@@ -726,3 +726,84 @@ describe('GET /api/attempts', () => {
     expect(json.error).toBe('Internal server error');
   });
 });
+
+/* ── Additional error-path tests for attempts ────────────────────── */
+
+describe('POST /api/attempts — additional error paths', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockEnsureProfile.mockResolvedValue(undefined);
+  });
+
+  it('returns 401 when not authenticated', async () => {
+    mockGetUser.mockResolvedValue(null);
+    const res = await onRequestPost(makePostContext({ challengeId: 'ch-1' }));
+    expect(res.status).toBe(401);
+  });
+
+  it('returns 400 when challengeId is missing', async () => {
+    mockGetUser.mockResolvedValue(FAKE_USER);
+    const res = await onRequestPost(makePostContext({}));
+    expect(res.status).toBe(400);
+  });
+
+  it('returns 400 for malformed JSON body', async () => {
+    mockGetUser.mockResolvedValue(FAKE_USER);
+    const ctx = {
+      request: new Request('https://ruwt.dev/api/attempts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: 'not json',
+      }),
+      env: makeEnv(),
+    };
+    const res = await onRequestPost(ctx);
+    expect(res.status).toBe(400);
+  });
+
+  it('returns 400 when challengeId is empty string', async () => {
+    mockGetUser.mockResolvedValue(FAKE_USER);
+    const res = await onRequestPost(makePostContext({ challengeId: '' }));
+    expect(res.status).toBe(400);
+  });
+
+  it('returns 400 when body is null', async () => {
+    mockGetUser.mockResolvedValue(FAKE_USER);
+    const ctx = {
+      request: new Request('https://ruwt.dev/api/attempts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: 'null',
+      }),
+      env: makeEnv(),
+    };
+    const res = await onRequestPost(ctx);
+    expect(res.status).toBe(400);
+  });
+
+  it('returns 500 when getDb throws', async () => {
+    mockGetUser.mockResolvedValue(FAKE_USER);
+    mockGetDb.mockImplementation(() => { throw new Error('DB unavailable'); });
+    const res = await onRequestPost(makePostContext({ challengeId: 'ch-1' }));
+    expect(res.status).toBe(500);
+  });
+});
+
+describe('GET /api/attempts — additional error paths', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('returns 401 when not authenticated (GET)', async () => {
+    mockGetUser.mockResolvedValue(null);
+    const res = await onRequestGet(makeGetContext());
+    expect(res.status).toBe(401);
+  });
+
+  it('returns 500 when getDb throws (GET)', async () => {
+    mockGetUser.mockResolvedValue(FAKE_USER);
+    mockGetDb.mockImplementation(() => { throw new Error('DB unavailable'); });
+    const res = await onRequestGet(makeGetContext());
+    expect(res.status).toBe(500);
+  });
+});

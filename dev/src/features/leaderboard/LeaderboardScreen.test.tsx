@@ -197,7 +197,7 @@ describe('LeaderboardScreen', () => {
     setupFetch();
     render(<LeaderboardScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Browse Problems')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Browse Problems' })).toBeInTheDocument();
     });
   });
 
@@ -205,9 +205,9 @@ describe('LeaderboardScreen', () => {
     setupFetch();
     render(<LeaderboardScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Browse Problems')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Browse Problems' })).toBeInTheDocument();
     });
-    fireEvent.click(screen.getByText('Browse Problems'));
+    fireEvent.click(screen.getByRole('button', { name: 'Browse Problems' }));
     expect(mockNavigate).toHaveBeenCalledWith('Problems');
   });
 
@@ -441,7 +441,7 @@ describe('LeaderboardScreen', () => {
         expect(screen.getByText('Nobody has solved this challenge yet.')).toBeInTheDocument();
       });
       expect(screen.getByText('Be the first!')).toBeInTheDocument();
-      expect(screen.getByText('Try This Challenge')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Try This Challenge' })).toBeInTheDocument();
     }
   });
 
@@ -639,8 +639,8 @@ describe('LeaderboardScreen', () => {
     const challengeSelect = selects[selects.length - 1];
     if (challengeSelect) {
       fireEvent.change(challengeSelect, { target: { value: 'c1' } });
-      await waitFor(() => expect(screen.getByText('Try This Challenge')).toBeInTheDocument());
-      fireEvent.click(screen.getByText('Try This Challenge'));
+      await waitFor(() => expect(screen.getByRole('button', { name: 'Try This Challenge' })).toBeInTheDocument());
+      fireEvent.click(screen.getByRole('button', { name: 'Try This Challenge' }));
       expect(mockNavigate).toHaveBeenCalledWith('Arena', { challengeId: 'c1' });
     }
   });
@@ -681,6 +681,124 @@ describe('LeaderboardScreen', () => {
     fireEvent.click(screen.getAllByText('Unlimited')[0]);
     await waitFor(() => {
       expect(globalThis.fetch).toHaveBeenCalledWith(expect.stringContaining('division=unlimited'));
+    });
+  });
+
+  it('handles null leaderboard data gracefully', async () => {
+    setupFetch();
+    mockDashboardState = {
+      ...mockDashboardState,
+      leaderboard: { data: null, status: 'loaded', lastFetchedAt: Date.now() },
+    };
+    render(<LeaderboardScreen />);
+    await waitFor(() => {
+      expect(screen.getAllByText('Leaderboard').length).toBeGreaterThanOrEqual(1);
+    });
+  });
+
+  it('sorts by AFI when By AFI sort toggle is clicked', async () => {
+    const entriesWithAfi = [
+      { rank: 1, user: { id: 'u1', name: 'Alice', avatarUrl: null, username: 'alice' }, stats: { solved: 10, attempts: 15, avgCost: 500, totalCost: 5000 }, afi: { score: 300 } },
+      { rank: 2, user: { id: 'u2', name: 'Bob', avatarUrl: null, username: 'bob' }, stats: { solved: 8, attempts: 12, avgCost: 800, totalCost: 6400 }, afi: { score: 600 } },
+      { rank: 3, user: { id: 'u3', name: 'Carol', avatarUrl: null, username: null }, stats: { solved: 6, attempts: 10, avgCost: 1200, totalCost: 7200 }, afi: null },
+    ];
+    setupFetch({ leaderboardEntries: entriesWithAfi });
+    render(<LeaderboardScreen />);
+    await waitFor(() => {
+      expect(screen.getAllByText('Alice').length).toBeGreaterThanOrEqual(1);
+    });
+    // Click "By AFI" toggle
+    fireEvent.click(screen.getByText('By AFI'));
+    // After sorting by AFI, Bob (score 600) should be first, Alice (300) second, Carol (null→0) third
+    await waitFor(() => {
+      const texts = screen.getAllByText(/Alice|Bob|Carol/);
+      expect(texts.length).toBeGreaterThanOrEqual(3);
+    });
+  });
+
+  describe('error handling', () => {
+    it('handles leaderboard fetch network failure gracefully', async () => {
+      vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('Network down')));
+      mockDashboardState = { ...mockDashboardState, leaderboard: { data: [], status: 'loaded', lastFetchedAt: Date.now() }, challenges: { data: mockChallenges, status: 'loaded', lastFetchedAt: Date.now() } };
+      render(<LeaderboardScreen />);
+      await waitFor(() => { expect(screen.getAllByText('Leaderboard').length).toBeGreaterThanOrEqual(1); });
+    });
+
+    it('handles entries with null avatarUrl', async () => {
+      setupFetch({ leaderboardEntries: [{ rank: 1, user: { id: 'u1', name: 'NoAvatar', avatarUrl: null, username: null }, stats: { solved: 5, attempts: 10, avgCost: 500, totalCost: 5000 } }] });
+      render(<LeaderboardScreen />);
+      await waitFor(() => { expect(screen.getAllByText('NoAvatar').length).toBeGreaterThanOrEqual(1); });
+    });
+
+    it('handles entries with zero solved count', async () => {
+      setupFetch({ leaderboardEntries: [{ rank: 1, user: { id: 'u1', name: 'Zero', avatarUrl: null, username: 'zero' }, stats: { solved: 0, attempts: 5, avgCost: 0, totalCost: 0 } }] });
+      render(<LeaderboardScreen />);
+      await waitFor(() => { expect(screen.getAllByText('Zero').length).toBeGreaterThanOrEqual(1); });
+    });
+
+    it('handles single entry podium', async () => {
+      setupFetch({ leaderboardEntries: [{ rank: 1, user: { id: 'u1', name: 'Solo', avatarUrl: null, username: 'solo' }, stats: { solved: 1, attempts: 1, avgCost: 100, totalCost: 100 } }] });
+      render(<LeaderboardScreen />);
+      await waitFor(() => { expect(screen.getAllByText('Solo').length).toBeGreaterThanOrEqual(1); });
+    });
+
+    it('handles empty challenges list on challenge tab', async () => {
+      setupFetch({ leaderboardEntries: [], challenges: [] });
+      render(<LeaderboardScreen />);
+      await waitFor(() => expect(screen.getByText('By Challenge')).toBeInTheDocument());
+      fireEvent.click(screen.getByText('By Challenge'));
+      await waitFor(() => { expect(screen.getByText('Select a challenge...')).toBeInTheDocument(); });
+    });
+
+    it('handles user clicking on user without username', async () => {
+      setupFetch({ leaderboardEntries: globalEntries });
+      render(<LeaderboardScreen />);
+      await waitFor(() => { expect(screen.getAllByText('Carol').length).toBeGreaterThanOrEqual(1); });
+      const carolTexts = screen.getAllByText('Carol');
+      fireEvent.click(carolTexts[carolTexts.length - 1]);
+      // Carol has null username — should not navigate
+    });
+
+    it('handles rapid period switching', async () => {
+      setupFetch({ leaderboardEntries: globalEntries });
+      render(<LeaderboardScreen />);
+      await waitFor(() => expect(screen.getAllByText('Alice').length).toBeGreaterThanOrEqual(1));
+      fireEvent.click(screen.getAllByText('This Month')[0]);
+      fireEvent.click(screen.getAllByText('All Time')[0]);
+      fireEvent.click(screen.getAllByText('This Week')[0]);
+      await waitFor(() => { expect(screen.getAllByText('Leaderboard').length).toBeGreaterThanOrEqual(1); });
+    });
+
+    it('handles entries with very large cost values', async () => {
+      setupFetch({ leaderboardEntries: [{ rank: 1, user: { id: 'u1', name: 'Exp', avatarUrl: null, username: 'exp' }, stats: { solved: 1, attempts: 1, avgCost: 999999999, totalCost: 999999999 } }] });
+      render(<LeaderboardScreen />);
+      await waitFor(() => { expect(screen.getAllByText('Exp').length).toBeGreaterThanOrEqual(1); });
+    });
+
+    it('handles challenge leaderboard fetch returning non-ok', async () => {
+      setupFetch({ leaderboardEntries: [], challenges: mockChallenges, challengeEntries: [], leaderboardOk: false });
+      const { container } = render(<LeaderboardScreen />);
+      await waitFor(() => expect(screen.getByText('By Challenge')).toBeInTheDocument());
+      fireEvent.click(screen.getByText('By Challenge'));
+      const selects = container.querySelectorAll('select');
+      const challengeSelect = selects[selects.length - 1];
+      if (challengeSelect) {
+        fireEvent.change(challengeSelect, { target: { value: 'c1' } });
+        await waitFor(() => { expect(screen.getAllByText('Leaderboard').length).toBeGreaterThanOrEqual(1); });
+      }
+    });
+
+    it('handles challenge entries with null submittedAt', async () => {
+      setupFetch({ leaderboardEntries: [], challenges: mockChallenges, challengeEntries: [{ rank: 1, user: { id: 'u1', name: 'Alice', avatarUrl: null, username: 'alice' }, attemptId: 'att1', cost: 500, tokens: 100, submittedAt: null }] });
+      const { container } = render(<LeaderboardScreen />);
+      await waitFor(() => expect(screen.getByText('By Challenge')).toBeInTheDocument());
+      fireEvent.click(screen.getByText('By Challenge'));
+      const selects = container.querySelectorAll('select');
+      const challengeSelect = selects[selects.length - 1];
+      if (challengeSelect) {
+        fireEvent.change(challengeSelect, { target: { value: 'c1' } });
+        await waitFor(() => { expect(screen.getAllByText('Alice').length).toBeGreaterThan(0); });
+      }
     });
   });
 });

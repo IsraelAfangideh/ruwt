@@ -31,7 +31,7 @@ vi.mock('@/shared/ui/Button', () => ({
   ),
 }));
 vi.mock('@/shared/lib/ai/pricing', () => ({
-  getModelById: (id: string) => id ? ({ name: 'Test Model', displayName: 'Llama 70B', tier: 'free' }) : null,
+  getModelById: (id: string) => id && id !== 'unknown-model' ? ({ name: 'Test Model', displayName: 'Llama 70B', tier: 'free' }) : null,
   tierColor: () => '#ccc',
   formatCostFromHundredths: (h: number) => { const d = h / 10000; return d < 0.01 ? `$${d.toFixed(4)}` : `$${d.toFixed(2)}`; },
 }));
@@ -690,6 +690,36 @@ describe('AssessmentResultsDashboardScreen', () => {
     // Switch back to results
     fireEvent.click(screen.getByText(/Results \(/));
     await waitFor(() => expect(screen.getByText('Alice Smith')).toBeInTheDocument());
+  });
+
+  /* ── renders failed attempt styling in expanded row ──────────────────────── */
+  it('renders failed attempt badge with destructive color in expanded row', async () => {
+    const candidateWithFailedAttempt = {
+      session: { id: 's-fail', status: 'completed', totalCost: 8000, totalTokens: 2000, startedAt: '2026-01-01T00:00:00Z', completedAt: '2026-01-01T01:30:00Z', shareToken: null },
+      candidate: { id: 'c-fail', name: 'Failing Fred', email: 'fred@test.com', avatarUrl: null },
+      challengesPassed: 1,
+      totalChallenges: 3,
+      attempts: [
+        {
+          attemptId: 'att-fail', challengeId: 'ch2', challengeTitle: 'Hard Problem', status: 'failed',
+          totalCost: 5000, inputTokens: 800, outputTokens: 500, passedTests: 1, totalTests: 5,
+          modelUsage: { 'unknown-model': { calls: 3, cost: 4000, tokens: 1200 } },
+        },
+      ],
+    };
+    setupFetch({
+      '/api/assessments/test-assessment-123/results': ok([candidateWithFailedAttempt]),
+      '/api/assessments/test-assessment-123/analytics': ok({ profiles: {} }),
+      '/api/assessments/test-assessment-123/insights': ok({}),
+      '/api/assessments/test-assessment-123': ok({ passThreshold: null, categoryWeights: null }),
+    });
+    render(<AssessmentResultsDashboardScreen />);
+    await waitFor(() => expect(screen.getByText('Failing Fred')).toBeInTheDocument());
+    fireEvent.click(screen.getByText('Failing Fred'));
+    await waitFor(() => {
+      expect(screen.getByText('Hard Problem')).toBeInTheDocument();
+      expect(screen.getByText(/failed/)).toBeInTheDocument();
+    });
   });
 
   /* ── opens share results link in new tab ──────────────────────── */

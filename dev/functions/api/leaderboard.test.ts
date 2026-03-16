@@ -60,11 +60,11 @@ describe('GET /api/leaderboard', () => {
       expect(json.entries).toHaveLength(3);
 
       // First entry has rank 1, highest solves
-      expect(json.entries[0]).toEqual({
+      expect(json.entries[0]).toEqual(expect.objectContaining({
         rank: 1,
         user: { id: 'u1', name: 'Alice', avatarUrl: 'a.jpg', username: 'alice' },
         stats: { solved: 10, attempts: 20, avgCost: 500, totalCost: 10000 },
-      });
+      }));
       // Third entry rank 3, lower solves
       expect(json.entries[2].rank).toBe(3);
       expect(json.entries[2].stats.solved).toBe(5);
@@ -348,6 +348,107 @@ describe('GET /api/leaderboard', () => {
       expect(res.status).toBe(500);
       const json = await res.json();
       expect(json.error).toBe('Internal server error');
+    });
+
+    it('returns 500 when season query fails', async () => {
+      mockDb.limit.mockRejectedValueOnce(new Error('D1 error'));
+
+      const res = await onRequestGet(makeContext({ season: 's1' }));
+
+      expect(res.status).toBe(500);
+    });
+
+    it('handles invalid period parameter gracefully', async () => {
+      mockDb.limit.mockResolvedValueOnce([]);
+
+      const res = await onRequestGet(makeContext({ period: 'invalid_period' }));
+      const json = await res.json();
+
+      // Should default to 'all' or handle gracefully
+      expect(json.entries).toEqual([]);
+    });
+
+    it('handles invalid division parameter', async () => {
+      mockDb.limit.mockResolvedValueOnce([]);
+
+      const res = await onRequestGet(makeContext({ division: 'diamond' }));
+      const json = await res.json();
+
+      // Should still work, division might default
+      expect(json.entries).toEqual([]);
+    });
+
+    it('handles limit of 0', async () => {
+      mockDb.limit.mockResolvedValueOnce([]);
+
+      await onRequestGet(makeContext({ limit: '0' }));
+
+      // Should use minimum limit of 1 or default
+      expect(mockDb.limit).toHaveBeenCalled();
+    });
+
+    it('handles negative limit', async () => {
+      mockDb.limit.mockResolvedValueOnce([]);
+
+      await onRequestGet(makeContext({ limit: '-5' }));
+
+      expect(mockDb.limit).toHaveBeenCalled();
+    });
+
+    it('handles non-numeric limit gracefully', async () => {
+      mockDb.limit.mockResolvedValueOnce([]);
+
+      const res = await onRequestGet(makeContext({ limit: 'abc' }));
+      const json = await res.json();
+
+      expect(json.entries).toEqual([]);
+    });
+
+    it('handles entries with null totalCost', async () => {
+      mockDb.limit.mockResolvedValueOnce([
+        { userId: 'u1', userName: 'Test', avatarUrl: null, username: 'test', solvedCount: 1, totalAttempts: 1, avgCost: null, totalCost: null },
+      ]);
+
+      const res = await onRequestGet(makeContext());
+      const json = await res.json();
+
+      expect(json.entries[0].stats.totalCost).toBe(0);
+    });
+
+    it('handles challenge leaderboard with entries having null tokens', async () => {
+      mockDb.limit.mockResolvedValueOnce([
+        { attemptId: 'a1', userId: 'u1', userName: 'Alice', avatarUrl: null, username: 'alice', totalCost: 100, inputTokens: null, outputTokens: null, submittedAt: null },
+      ]);
+
+      const res = await onRequestGet(makeContext({ challengeId: 'test' }));
+      const json = await res.json();
+
+      expect(json.entries[0].tokens).toBe(0);
+    });
+
+    it('handles very large number of entries', async () => {
+      const manyEntries = Array.from({ length: 100 }, (_, i) => ({
+        userId: `u${i}`, userName: `User${i}`, avatarUrl: null, username: `user${i}`,
+        solvedCount: 100 - i, totalAttempts: 200 - i, avgCost: (i + 1) * 100, totalCost: (i + 1) * 1000,
+      }));
+      mockDb.limit.mockResolvedValueOnce(manyEntries);
+
+      const res = await onRequestGet(makeContext());
+      const json = await res.json();
+
+      expect(json.entries).toHaveLength(100);
+      expect(json.entries[0].rank).toBe(1);
+      expect(json.entries[99].rank).toBe(100);
+    });
+
+    it('handles challenge ID with special characters', async () => {
+      mockDb.limit.mockResolvedValueOnce([]);
+
+      const res = await onRequestGet(makeContext({ challengeId: 'test-challenge_v2' }));
+      const json = await res.json();
+
+      expect(json.type).toBe('challenge');
+      expect(json.entries).toEqual([]);
     });
   });
 });

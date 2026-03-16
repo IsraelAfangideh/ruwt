@@ -195,3 +195,47 @@ describe('POST /api/streak', () => {
     expect(json.freezeCost).toBe(5000);
   });
 });
+
+describe('streak — additional error paths', () => {
+  beforeEach(() => { vi.clearAllMocks(); mockEnsureProfile.mockResolvedValue(undefined); });
+
+  it('GET returns 401 when not authenticated', async () => {
+    mockGetUser.mockResolvedValue(null);
+    const res = await onRequestGet({ request: new Request('https://ruwt.dev/api/streak'), env: { DB: {}, VITE_SUPABASE_URL: 'u', VITE_SUPABASE_ANON_KEY: 'k' } as Env });
+    expect(res.status).toBe(401);
+  });
+
+  it('POST returns 401 when not authenticated', async () => {
+    mockGetUser.mockResolvedValue(null);
+    const res = await onRequestPost({
+      request: new Request('https://ruwt.dev/api/streak', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'buy_freeze' }) }),
+      env: { DB: {}, VITE_SUPABASE_URL: 'u', VITE_SUPABASE_ANON_KEY: 'k' } as Env,
+    });
+    expect(res.status).toBe(401);
+  });
+
+  it('POST returns 400 for missing action', async () => {
+    mockGetUser.mockResolvedValue(FAKE_USER);
+    const res = await onRequestPost({
+      request: new Request('https://ruwt.dev/api/streak', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) }),
+      env: { DB: {}, VITE_SUPABASE_URL: 'u', VITE_SUPABASE_ANON_KEY: 'k' } as Env,
+    });
+    expect(res.status).toBe(400);
+  });
+
+  it('GET returns 500 when DB throws', async () => {
+    mockGetUser.mockResolvedValue(FAKE_USER);
+    mockGetDb.mockImplementation(() => { throw new Error('DB down'); });
+    const res = await onRequestGet({ request: new Request('https://ruwt.dev/api/streak'), env: { DB: {}, VITE_SUPABASE_URL: 'u', VITE_SUPABASE_ANON_KEY: 'k' } as Env });
+    expect(res.status).toBe(500);
+  });
+
+  it('POST returns error for malformed JSON body', async () => {
+    mockGetUser.mockResolvedValue(FAKE_USER);
+    const res = await onRequestPost({
+      request: new Request('https://ruwt.dev/api/streak', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: 'not json' }),
+      env: { DB: {}, VITE_SUPABASE_URL: 'u', VITE_SUPABASE_ANON_KEY: 'k' } as Env,
+    });
+    expect([400, 500]).toContain(res.status);
+  });
+});

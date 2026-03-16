@@ -245,6 +245,10 @@ vi.mock('./useEditorDecorations', () => ({
   useEditorDecorations: () => ({ showDiffDecorations: vi.fn(), clearDecorations: vi.fn() }),
 }));
 
+vi.mock('@/shared/social/CommentSection', () => ({
+  CommentSection: (props: any) => <div data-testid="comment-section" data-target-id={props.targetId}>Comments</div>,
+}));
+
 /* ── Import component after all mocks ──────────────────────────── */
 
 import { ArenaIDE, type ArenaChallenge, type ArenaAttempt, type PastAttempt } from './ArenaIDE';
@@ -365,6 +369,20 @@ describe('ArenaIDE', () => {
     renderIDE();
     fireEvent.click(screen.getByText('AI Chat'));
     // The unread dot should not be visible after clicking
+  });
+
+  it('switches to Discussion tab and shows CommentSection', () => {
+    renderIDE();
+    fireEvent.click(screen.getByText('Discussion'));
+    expect(screen.getByTestId('comment-section')).toBeInTheDocument();
+  });
+
+  it('switches from Discussion back to Description tab', () => {
+    renderIDE();
+    fireEvent.click(screen.getByText('Discussion'));
+    expect(screen.getByTestId('comment-section')).toBeInTheDocument();
+    fireEvent.click(screen.getByText('Description'));
+    expect(screen.getByText(/Build something cool/)).toBeInTheDocument();
   });
 
   /* ─── Description panel ────────────────────────────────────────── */

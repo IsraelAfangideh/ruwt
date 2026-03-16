@@ -582,9 +582,9 @@ export function AssessmentResultsDashboardScreen() {
                               <Badge
                                 variant="outline"
                                 /* istanbul ignore next -- @preserve */
-                                style={{ borderColor: /* istanbul ignore next -- @preserve */ a.status === 'passed' ? c.success : c.destructive }}
+                                style={{ borderColor: a.status === 'passed' ? c.success : c.destructive }}
                               >
-                                <Text style={{ fontSize: 10, color: /* istanbul ignore next -- @preserve */ a.status === 'passed' ? c.success : c.destructive }}>
+                                <Text style={{ fontSize: 10, color: a.status === 'passed' ? c.success : c.destructive }}>
                                   {a.status} ({a.passedTests}/{a.totalTests})
                                 </Text>
                               </Badge>
@@ -597,8 +597,8 @@ export function AssessmentResultsDashboardScreen() {
                                 {Object.entries(a.modelUsage).map(([modelId, usage]) => {
                                   const mi = getModelById(modelId);
                                   return (
-                                    <View key={modelId} style={[styles.modelUsageBadge, { borderColor: /* istanbul ignore next -- @preserve */ mi ? tierColor(mi.tier) : c.border }]}>
-                                      <Text style={{ fontSize: 10, color: /* istanbul ignore next -- @preserve */ mi ? tierColor(mi.tier) : c.textMuted }}>
+                                    <View key={modelId} style={[styles.modelUsageBadge, { borderColor: mi ? tierColor(mi.tier) : c.border }]}>
+                                      <Text style={{ fontSize: 10, color: mi ? tierColor(mi.tier) : c.textMuted }}>
                                         {/* istanbul ignore next -- @preserve */ (() => /* istanbul ignore next -- @preserve */ mi?.displayName || modelId.split('/').pop())()} {'\u00B7'} {usage.calls}x {'\u00B7'} {formatCostFromHundredths(usage.cost)}
                                       </Text>
                                     </View>

@@ -291,3 +291,66 @@ describe('POST /api/reactions', () => {
     expect(res.status).toBe(500);
   });
 });
+
+describe('reactions — additional error paths', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockGetDb.mockReturnValue({});
+  });
+
+  it('returns 401 when not authenticated', async () => {
+    mockGetUser.mockResolvedValue(null);
+    const res = await onRequestPost(makeCtx({ targetType: 'challenge_comment', targetId: 'cc-1', emoji: 'heart' }));
+    expect(res.status).toBe(401);
+  });
+
+  it('returns error when targetType is missing', async () => {
+    mockGetUser.mockResolvedValue(FAKE_USER);
+    const res = await onRequestPost(makeCtx({ targetId: 'cc-1', emoji: 'heart' }));
+    expect([400, 500]).toContain(res.status);
+  });
+
+  it('returns error when targetId is missing', async () => {
+    mockGetUser.mockResolvedValue(FAKE_USER);
+    const res = await onRequestPost(makeCtx({ targetType: 'challenge_comment', emoji: 'heart' }));
+    expect([400, 500]).toContain(res.status);
+  });
+
+  it('returns error when emoji is missing', async () => {
+    mockGetUser.mockResolvedValue(FAKE_USER);
+    const res = await onRequestPost(makeCtx({ targetType: 'challenge_comment', targetId: 'cc-1' }));
+    expect([400, 500]).toContain(res.status);
+  });
+
+  it('returns error for malformed JSON body', async () => {
+    mockGetUser.mockResolvedValue(FAKE_USER);
+    const ctx = {
+      request: new Request('https://ruwt.dev/api/reactions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: 'not json',
+      }),
+      env: { DB: {}, VITE_SUPABASE_URL: 'u', VITE_SUPABASE_ANON_KEY: 'k' } as Env,
+    };
+    const res = await onRequestPost(ctx);
+    expect([400, 500]).toContain(res.status);
+  });
+
+  it('returns error for empty body', async () => {
+    mockGetUser.mockResolvedValue(FAKE_USER);
+    const res = await onRequestPost(makeCtx({}));
+    expect([400, 500]).toContain(res.status);
+  });
+
+  it('returns error for invalid targetType', async () => {
+    mockGetUser.mockResolvedValue(FAKE_USER);
+    const res = await onRequestPost(makeCtx({ targetType: 'invalid', targetId: 'cc-1', emoji: 'heart' }));
+    expect([400, 500]).toContain(res.status);
+  });
+
+  it('returns error when all fields are empty strings', async () => {
+    mockGetUser.mockResolvedValue(FAKE_USER);
+    const res = await onRequestPost(makeCtx({ targetType: '', targetId: '', emoji: '' }));
+    expect([400, 500]).toContain(res.status);
+  });
+});

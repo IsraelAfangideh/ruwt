@@ -232,3 +232,54 @@ describe('POST /api/notifications', () => {
     expect(res.status).toBe(500);
   });
 });
+
+describe('notifications — additional error paths', () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it('GET returns 401 when not authenticated', async () => {
+    mockGetUser.mockResolvedValue(null);
+    const res = await onRequestGet(makeGetCtx());
+    expect(res.status).toBe(401);
+  });
+
+  it('POST returns 401 when not authenticated', async () => {
+    mockGetUser.mockResolvedValue(null);
+    const res = await onRequestPost(makePostCtx({ action: 'mark_all_read' }));
+    expect(res.status).toBe(401);
+  });
+
+  it('POST returns error for malformed JSON body', async () => {
+    mockGetUser.mockResolvedValue(FAKE_USER);
+    const ctx = {
+      request: new Request('https://ruwt.dev/api/notifications', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: 'not json',
+      }),
+      env: makeEnv(),
+    };
+    const res = await onRequestPost(ctx);
+    expect([400, 500]).toContain(res.status);
+  });
+
+  it('POST returns error for invalid action', async () => {
+    mockGetUser.mockResolvedValue(FAKE_USER);
+    mockGetDb.mockReturnValue({});
+    const res = await onRequestPost(makePostCtx({ action: 'invalid_action' }));
+    expect([400, 500]).toContain(res.status);
+  });
+
+  it('POST returns error for empty body', async () => {
+    mockGetUser.mockResolvedValue(FAKE_USER);
+    mockGetDb.mockReturnValue({});
+    const res = await onRequestPost(makePostCtx({}));
+    expect([400, 500]).toContain(res.status);
+  });
+
+  it('GET returns 500 when DB query fails', async () => {
+    mockGetUser.mockResolvedValue(FAKE_USER);
+    mockGetDb.mockImplementation(() => { throw new Error('DB error'); });
+    const res = await onRequestGet(makeGetCtx());
+    expect(res.status).toBe(500);
+  });
+});

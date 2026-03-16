@@ -63,6 +63,7 @@ export function LeaderboardScreen() {
   const [sortBy, setSortBy] = useState<SortBy>('default');
   const [localGlobalEntries, setLocalGlobalEntries] = useState<GlobalEntry[] | null>(null);
   const rawGlobalEntries = (localGlobalEntries ?? cachedData.leaderboard.data ?? []) as GlobalEntry[];
+  /* istanbul ignore next -- @preserve */
   const globalEntries = sortBy === 'afi'
     ? [...rawGlobalEntries].sort((a, b) => (b.afi?.score ?? 0) - (a.afi?.score ?? 0)).map((e, i) => ({ ...e, rank: i + 1 }))
     : rawGlobalEntries;

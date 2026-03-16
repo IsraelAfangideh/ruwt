@@ -1757,7 +1757,7 @@ export function ArenaIDE({
             AI Chat
             {hasUnreadChat && <span style={s.unreadDot} aria-label="unread messages" />}
           </button>
-          <button style={/* istanbul ignore next -- @preserve */ activeTab === 'discussion' ? s.tabActive : s.tab} onClick={() => setActiveTab('discussion')} role="tab" aria-selected={activeTab === 'discussion'} aria-controls="panel-discussion">Discussion</button>
+          <button style={activeTab === 'discussion' ? s.tabActive : s.tab} onClick={() => setActiveTab('discussion')} role="tab" aria-selected={activeTab === 'discussion'} aria-controls="panel-discussion">Discussion</button>
           <button
             onClick={() => sidebarPanelRef.current?.collapse()}
             title="Collapse sidebar (Cmd+B)"
@@ -1770,7 +1770,7 @@ export function ArenaIDE({
           <div id="panel-description" role="tabpanel" aria-label="Challenge description" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
             <DescriptionPanel challenge={challenge} pastAttempts={pastAttempts} notepadContent={notepadContent} onNotepadChange={setNotepadContent} />
           </div>
-        ) : /* istanbul ignore next -- @preserve */ activeTab === 'discussion' ? (
+        ) : activeTab === 'discussion' ? (
           <div id="panel-discussion" role="tabpanel" aria-label="Challenge discussion" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, overflow: 'auto', padding: 12 }}>
             <CommentSection
               targetType="challenge"

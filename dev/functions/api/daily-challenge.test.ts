@@ -290,3 +290,19 @@ describe('GET /api/daily-challenge', () => {
     expect(db.insert).toHaveBeenCalled();
   });
 });
+
+describe('daily-challenge — additional error paths', () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it('returns 500 when DB throws', async () => {
+    mockGetDb.mockImplementation(() => { throw new Error('D1 error'); });
+    const res = await onRequestGet(makeContext());
+    expect(res.status).toBe(500);
+  });
+
+  it('returns 500 when getDb returns null', async () => {
+    mockGetDb.mockReturnValue(null);
+    const res = await onRequestGet(makeContext());
+    expect(res.status).toBe(500);
+  });
+});

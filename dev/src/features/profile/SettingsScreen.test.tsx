@@ -104,7 +104,7 @@ describe('SettingsScreen', () => {
     }));
     render(<SettingsScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Resubscribe')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Resubscribe' })).toBeInTheDocument();
     });
     expect(screen.getByText(/Your subscription has been canceled/)).toBeInTheDocument();
   });
@@ -116,7 +116,7 @@ describe('SettingsScreen', () => {
     }));
     render(<SettingsScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Manage Billing')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Manage Billing' })).toBeInTheDocument();
     });
     expect(screen.getByText(/Active monthly subscription/)).toBeInTheDocument();
   });
@@ -141,7 +141,7 @@ describe('SettingsScreen', () => {
     await waitFor(() => {
       expect(screen.getByText(/Your payment is past due/)).toBeInTheDocument();
     });
-    expect(screen.getByText('Manage Billing')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Manage Billing' })).toBeInTheDocument();
   });
 
   it('shows newsletter toggle as subscribed when newsletterSubscribed is 1', async () => {
@@ -262,9 +262,9 @@ describe('SettingsScreen', () => {
 
     render(<SettingsScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Manage Billing')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Manage Billing' })).toBeInTheDocument();
     });
-    fireEvent.click(screen.getByText('Manage Billing'));
+    fireEvent.click(screen.getByRole('button', { name: 'Manage Billing' }));
     await waitFor(() => {
       expect(hrefSetter).toHaveBeenCalledWith('https://billing.stripe.com/portal');
     });
@@ -348,9 +348,9 @@ describe('SettingsScreen', () => {
 
     render(<SettingsScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Manage Billing')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Manage Billing' })).toBeInTheDocument();
     });
-    fireEvent.click(screen.getByText('Manage Billing'));
+    fireEvent.click(screen.getByRole('button', { name: 'Manage Billing' }));
     await waitFor(() => {
       expect(mockShowToast).toHaveBeenCalledWith('No billing account found', 'error');
     });
@@ -373,10 +373,10 @@ describe('SettingsScreen', () => {
 
     render(<SettingsScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Manage Billing')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Manage Billing' })).toBeInTheDocument();
     });
     await act(async () => {
-      fireEvent.click(screen.getByText('Manage Billing'));
+      fireEvent.click(screen.getByRole('button', { name: 'Manage Billing' }));
     });
     await waitFor(() => {
       expect(mockShowToast).toHaveBeenCalledWith('Failed to open billing portal', 'error');
@@ -401,7 +401,7 @@ describe('SettingsScreen', () => {
     }));
     render(<SettingsScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Resubscribe')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Resubscribe' })).toBeInTheDocument();
     });
   });
 
@@ -487,6 +487,112 @@ describe('SettingsScreen', () => {
     // Should still render the settings page (with defaults)
     await waitFor(() => {
       expect(screen.getByTestId('dashboard-layout')).toBeInTheDocument();
+    });
+  });
+
+  /* ── Error handling / negative tests ─────────────────────────────── */
+
+  describe('error handling', () => {
+    it('handles profile fetch returning malformed JSON', async () => {
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.reject(new Error('Invalid JSON')),
+      }));
+      render(<SettingsScreen />);
+      await waitFor(() => {
+        expect(screen.getByText('Settings')).toBeInTheDocument();
+      });
+    });
+
+    it('handles profile fetch with 500 status', async () => {
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+        ok: false,
+        status: 500,
+        json: () => Promise.resolve({ error: 'Server error' }),
+      }));
+      render(<SettingsScreen />);
+      await waitFor(() => {
+        expect(screen.getByTestId('dashboard-layout')).toBeInTheDocument();
+      });
+    });
+
+    it('handles multiple rapid newsletter toggle clicks', async () => {
+      render(<SettingsScreen />);
+      await waitFor(() => {
+        expect(screen.getByText('Daily newsletter')).toBeInTheDocument();
+      });
+      fireEvent.click(screen.getByText('Daily newsletter'));
+      fireEvent.click(screen.getByText('Daily newsletter'));
+      // Should not crash from rapid toggling
+      expect(screen.getByText('Daily newsletter')).toBeInTheDocument();
+    });
+
+    it('handles profile with null subscription fields', async () => {
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ accountType: null, newsletterSubscribed: null, subscriptionStatus: null, subscriptionPlan: null }),
+      }));
+      render(<SettingsScreen />);
+      await waitFor(() => {
+        expect(screen.getByText('Settings')).toBeInTheDocument();
+      });
+    });
+
+    it('handles billing portal returning non-ok response', async () => {
+      vi.stubGlobal('fetch', vi.fn().mockImplementation(async (url: string) => {
+        if (url.includes('/api/billing/portal')) {
+          return { ok: false, json: async () => ({ error: 'Billing error' }) } as Response;
+        }
+        return {
+          ok: true,
+          json: async () => ({ accountType: 'team', newsletterSubscribed: 1, subscriptionStatus: 'active', subscriptionPlan: 'monthly' }),
+        } as Response;
+      }));
+      render(<SettingsScreen />);
+      await waitFor(() => {
+        expect(screen.getByText('Manage Billing')).toBeInTheDocument();
+      });
+      await act(async () => {
+        fireEvent.click(screen.getByText('Manage Billing'));
+      });
+      await waitFor(() => {
+        expect(mockShowToast).toHaveBeenCalled();
+      });
+    });
+
+    it('shows settings with unknown account type', async () => {
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ accountType: 'unknown', newsletterSubscribed: 1, subscriptionStatus: 'none', subscriptionPlan: null }),
+      }));
+      render(<SettingsScreen />);
+      await waitFor(() => {
+        expect(screen.getByText('Settings')).toBeInTheDocument();
+      });
+    });
+
+    it('handles email display with long email address', async () => {
+      mockAuthReturn = { user: { id: 'u1', email: 'very-long-email-address-that-goes-on-and-on@extremely-long-domain-name.com' }, loading: false };
+      render(<SettingsScreen />);
+      await waitFor(() => {
+        expect(screen.getByText('Account')).toBeInTheDocument();
+      });
+      expect(screen.getByText(/very-long-email/)).toBeInTheDocument();
+    });
+
+    it('handles missing user email gracefully', async () => {
+      mockAuthReturn = { user: { id: 'u1', email: '' }, loading: false };
+      render(<SettingsScreen />);
+      await waitFor(() => {
+        expect(screen.getByText('Settings')).toBeInTheDocument();
+      });
+    });
+
+    it('shows dashboard layout even when user is null (redirect)', () => {
+      mockAuthReturn = { user: null, loading: false };
+      const { container } = render(<SettingsScreen />);
+      // When user is null, should show skeleton (waiting for redirect)
+      expect(container.querySelectorAll('div').length).toBeGreaterThan(0);
     });
   });
 });

@@ -84,7 +84,7 @@ export function ModeSwitcher() {
               accessibilityRole="menuitem"
               testID="mode-option-hiring"
             >
-              <Text style={[styles.optionText, { color: c.text }]}>{(() => { /* istanbul ignore next -- @preserve */ return orgInfo?.name ?? 'Hiring'; })()}</Text>
+              <Text style={[styles.optionText, { color: c.text }]}>{(() => { return orgInfo?.name ?? 'Hiring'; })()}</Text>
               <Text style={[styles.optionSub, { color: c.textMuted }]}>Manage assessments and candidates</Text>
             </Pressable>
           </View>

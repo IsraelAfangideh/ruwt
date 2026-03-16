@@ -367,7 +367,7 @@ export function ProfileScreen() {
               </View>
             ) : (
               <Pressable onPress={() => setEditingBio(true)}>
-                <Text style={[styles.usernameDisplay, { color: /* istanbul ignore next -- @preserve */ bio ? c.text : c.accent }]}>
+                <Text style={[styles.usernameDisplay, { color: bio ? c.text : c.accent }]}>
                   {bio || 'Add a bio'}
                 </Text>
               </Pressable>

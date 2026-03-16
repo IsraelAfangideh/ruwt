@@ -232,7 +232,7 @@ describe('LandingScreen', () => {
 
   it('navigates to Register when "Try This Challenge" is clicked', () => {
     render(<LandingScreen />);
-    fireEvent.click(screen.getByText('Try This Challenge'));
+    fireEvent.click(screen.getByRole('button', { name: 'Try This Challenge' }));
     expect(mockNavigate).toHaveBeenCalledWith('Register');
   });
 
@@ -274,5 +274,31 @@ describe('LandingScreen', () => {
     const buttons = screen.getAllByText('Benchmark Your Team');
     fireEvent.click(buttons[buttons.length - 1]);
     expect(mockNavigate).toHaveBeenCalledWith('Hiring');
+  });
+
+  describe('error handling', () => {
+    it('handles getUser returning undefined data', async () => {
+      mockGetUser.mockResolvedValue({ data: { user: undefined } });
+      render(<LandingScreen />);
+      expect(screen.getByText('Get Started')).toBeInTheDocument();
+    });
+
+    it('renders sign-up CTA when user is not logged in', async () => {
+      mockGetUser.mockResolvedValue({ data: { user: null } });
+      render(<LandingScreen />);
+      expect(screen.getByText('Get Started')).toBeInTheDocument();
+    });
+
+    it('handles getUser returning empty object', async () => {
+      mockGetUser.mockResolvedValue({});
+      render(<LandingScreen />);
+      expect(screen.getByText('Get Started')).toBeInTheDocument();
+    });
+
+    it('handles getUser returning data with null user', async () => {
+      mockGetUser.mockResolvedValue({ data: { user: null } });
+      render(<LandingScreen />);
+      expect(screen.getByText('Get Started')).toBeInTheDocument();
+    });
   });
 });

@@ -418,5 +418,76 @@ describe('POST /api/checkout', () => {
       expect(res.status).toBe(500);
       expect(json.error).toBe('Internal server error');
     });
+
+    it('returns 401 when user is not authenticated', async () => {
+      mockGetUser.mockResolvedValue(null);
+      const ctx = makeContext({ packageId: 'credits-5000' });
+      const res = await onRequestPost(ctx);
+      expect(res.status).toBe(401);
+    });
+
+    it('returns 400 for malformed JSON body', async () => {
+      mockGetUser.mockResolvedValue(FAKE_USER);
+      const ctx = {
+        request: new Request('https://ruwt.dev/api/checkout', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: 'not json',
+        }),
+        env: makeEnv(),
+      };
+      const res = await onRequestPost(ctx);
+      expect(res.status).toBe(400);
+    });
+
+    it('returns 400 when body is empty object', async () => {
+      mockGetUser.mockResolvedValue(FAKE_USER);
+      const ctx = makeContext({});
+      const res = await onRequestPost(ctx);
+      expect(res.status).toBe(400);
+    });
+
+    it('returns 400 when packageId is not a string', async () => {
+      mockGetUser.mockResolvedValue(FAKE_USER);
+      const ctx = makeContext({ packageId: 123 } as any);
+      const res = await onRequestPost(ctx);
+      expect(res.status).toBe(400);
+    });
+
+    it('returns error when body is null', async () => {
+      mockGetUser.mockResolvedValue(FAKE_USER);
+      const ctx = {
+        request: new Request('https://ruwt.dev/api/checkout', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: 'null',
+        }),
+        env: makeEnv(),
+      };
+      const res = await onRequestPost(ctx);
+      expect([400, 500]).toContain(res.status);
+    });
+
+    it('handles Stripe API failure', async () => {
+      mockGetUser.mockResolvedValue(FAKE_USER);
+      mockGetUserOrg.mockResolvedValue({ org: { id: 'org-1', stripeCustomerId: 'cus_test' }, role: 'admin' });
+      mockFetch.mockRejectedValue(new Error('Stripe unavailable'));
+      const ctx = makeContext({ planId: 'plan-monthly' });
+      const res = await onRequestPost(ctx);
+      expect([400, 500]).toContain(res.status);
+    });
+
+    it('handles Stripe returning non-ok response', async () => {
+      mockGetUser.mockResolvedValue(FAKE_USER);
+      mockGetUserOrg.mockResolvedValue({ org: { id: 'org-1', stripeCustomerId: 'cus_test' }, role: 'admin' });
+      mockFetch.mockResolvedValue({
+        ok: false,
+        status: 402,
+        text: () => Promise.resolve('Payment required'),
+      });
+      const ctx = makeContext({ planId: 'plan-monthly' });
+      const res = await onRequestPost(ctx);
+      expect([400, 500]).toContain(res.status);
+    });
   });
 });

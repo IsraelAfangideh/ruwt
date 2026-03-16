@@ -98,10 +98,8 @@ export function ChallengesScreen() {
   const [dailyCountdown, setDailyCountdown] = useState(0);
   const c = useColors();
   const { isDark } = useTheme();
-  /* istanbul ignore next -- @preserve */
   const activePillText = isDark ? '#0f0e0d' : '#ffffff';
   const isMobile = useIsMobile();
-  /* istanbul ignore next -- @preserve */
   const gridStyle = isMobile ? styles.gridMobile : styles.grid;
 
   // Initialize daily countdown when dailyChallenge data becomes available

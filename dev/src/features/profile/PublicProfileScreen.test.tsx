@@ -255,4 +255,61 @@ describe('PublicProfileScreen', () => {
     });
     expect(screen.getByText('Alice')).toBeInTheDocument();
   });
+
+  describe('error handling', () => {
+    it('shows error when fetch returns 404', async () => {
+      setupFetch({ ok: false, status: 404, json: () => Promise.resolve({ error: 'User not found' }) });
+      render(<PublicProfileScreen />);
+      await waitFor(() => { expect(screen.getByText(/not found|error/i)).toBeInTheDocument(); });
+    });
+
+    it('shows error when fetch returns 500', async () => {
+      setupFetch({ ok: false, status: 500, json: () => Promise.resolve({ error: 'Server error' }) });
+      render(<PublicProfileScreen />);
+      await waitFor(() => { expect(screen.getByText(/error/i)).toBeInTheDocument(); });
+    });
+
+    it('shows error when fetch throws network error', async () => {
+      vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('Network down')));
+      render(<PublicProfileScreen />);
+      await waitFor(() => { expect(screen.getByText(/error|failed/i)).toBeInTheDocument(); });
+    });
+
+    it('shows loading state while fetching', async () => {
+      vi.stubGlobal('fetch', vi.fn().mockReturnValue(new Promise(() => {})));
+      const { container } = render(<PublicProfileScreen />);
+      // Should render something while loading
+      expect(container.querySelectorAll('div').length).toBeGreaterThan(0);
+    });
+
+    it('handles fetch returning malformed JSON', async () => {
+      setupFetch({ ok: true, json: () => Promise.reject(new Error('bad json')) });
+      render(<PublicProfileScreen />);
+      await waitFor(() => { expect(screen.getByText(/error|failed/i)).toBeInTheDocument(); });
+    });
+
+    it('handles profile with null name', async () => {
+      setupFetch({
+        ok: true,
+        json: () => Promise.resolve({ ...mockProfileData, name: null }),
+      });
+      render(<PublicProfileScreen />);
+      await waitFor(() => { expect(screen.getByTestId('avatar')).toBeInTheDocument(); });
+    });
+
+    it('handles profile with null avatarUrl', async () => {
+      setupFetch({
+        ok: true,
+        json: () => Promise.resolve({ ...mockProfileData, avatarUrl: null }),
+      });
+      render(<PublicProfileScreen />);
+      await waitFor(() => { expect(screen.getByTestId('avatar')).toBeInTheDocument(); });
+    });
+
+    it('handles fetch returning non-200 with parseable error', async () => {
+      setupFetch({ ok: false, status: 403, json: () => Promise.resolve({ error: 'Forbidden' }) });
+      render(<PublicProfileScreen />);
+      await waitFor(() => { expect(screen.getByText(/error|forbidden/i)).toBeInTheDocument(); });
+    });
+  });
 });

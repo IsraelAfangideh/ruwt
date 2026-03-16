@@ -81,4 +81,33 @@ describe('GET /api/badges', () => {
     const res = await onRequestGet(makeCtx());
     expect(res.status).toBe(500);
   });
+
+  it('returns 401 when user is not authenticated', async () => {
+    mockGetUser.mockResolvedValue(null);
+    const res = await onRequestGet(makeCtx());
+    expect(res.status).toBe(401);
+  });
+
+  it('returns 500 when ensureProfile throws', async () => {
+    mockGetUser.mockResolvedValue(FAKE_USER);
+    mockEnsureProfile.mockRejectedValue(new Error('Profile service down'));
+    const res = await onRequestGet(makeCtx());
+    expect(res.status).toBe(500);
+  });
+
+  it('returns 500 when DB query rejects', async () => {
+    mockGetUser.mockResolvedValue(FAKE_USER);
+    const chain = {
+      from: vi.fn().mockReturnValue({ where: vi.fn().mockReturnValue({ orderBy: vi.fn().mockRejectedValue(new Error('D1 error')) }) }),
+    };
+    mockGetDb.mockReturnValue({ select: vi.fn().mockReturnValue(chain) });
+    const res = await onRequestGet(makeCtx());
+    expect(res.status).toBe(500);
+  });
+
+  it('returns 401 when getUser returns undefined', async () => {
+    mockGetUser.mockResolvedValue(undefined);
+    const res = await onRequestGet(makeCtx());
+    expect(res.status).toBe(401);
+  });
 });

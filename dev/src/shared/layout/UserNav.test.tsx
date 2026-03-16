@@ -194,4 +194,11 @@ describe('UserNav', () => {
     fireEvent.click(screen.getByText('Org Settings'));
     expect(mockNavigate).toHaveBeenCalledWith('OrgManagement', {});
   });
+
+  it('shows "User" fallback when user_metadata.name is missing', () => {
+    const noNameUser = { id: 'user-1', email: 'test@ruwt.dev', user_metadata: {} } as any;
+    render(<UserNav user={noNameUser} />);
+    fireEvent.click(screen.getByTestId('avatar'));
+    expect(screen.getByText('User')).toBeInTheDocument();
+  });
 });

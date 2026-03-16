@@ -172,41 +172,41 @@ describe('TeamsScreen', () => {
 
   it('shows Sign in and Get Started for logged-out users', () => {
     render(<TeamsScreen />);
-    expect(screen.getByText('Sign in')).toBeInTheDocument();
-    expect(screen.getByText('Get Started')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Sign in' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Get Started' })).toBeInTheDocument();
   });
 
   it('shows Dashboard button for logged-in users', async () => {
     mockUser = { id: 'u1' };
     render(<TeamsScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Dashboard')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Dashboard' })).toBeInTheDocument();
     });
   });
 
   it('navigates to Dashboard when header Dashboard button is clicked (logged in, line 210)', async () => {
     mockUser = { id: 'u1' };
     render(<TeamsScreen />);
-    await waitFor(() => expect(screen.getByText('Dashboard')).toBeInTheDocument());
-    fireEvent.click(screen.getByText('Dashboard'));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Dashboard' })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: 'Dashboard' }));
     expect(mockNavigate).toHaveBeenCalledWith('Dashboard');
   });
 
   it('navigates to Login when header Sign In is clicked', () => {
     render(<TeamsScreen />);
-    fireEvent.click(screen.getByText('Sign in'));
+    fireEvent.click(screen.getByRole('button', { name: 'Sign in' }));
     expect(mockNavigate).toHaveBeenCalledWith('Login');
   });
 
   it('navigates to Register when header Get Started is clicked', () => {
     render(<TeamsScreen />);
-    fireEvent.click(screen.getByText('Get Started'));
+    fireEvent.click(screen.getByRole('button', { name: 'Get Started' }));
     expect(mockNavigate).toHaveBeenCalledWith('Register');
   });
 
   it('navigates to Register when Start Free Trial is clicked (not logged in)', () => {
     render(<TeamsScreen />);
-    fireEvent.click(screen.getAllByText('Start Free Trial')[0]);
+    fireEvent.click(screen.getAllByRole('button', { name: 'Start Free Trial' })[0]);
     expect(mockNavigate).toHaveBeenCalledWith('Register');
   });
 
@@ -216,8 +216,8 @@ describe('TeamsScreen', () => {
       Promise.resolve(ok({ trial: {}, orgId: 'org1' }))
     ));
     render(<TeamsScreen />);
-    await waitFor(() => expect(screen.getByText('Dashboard')).toBeInTheDocument());
-    fireEvent.click(screen.getAllByText('Start Free Trial')[0]);
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Dashboard' })).toBeInTheDocument());
+    fireEvent.click(screen.getAllByRole('button', { name: 'Start Free Trial' })[0]);
     await waitFor(() => {
       expect(mockNavigate).toHaveBeenCalledWith('AssessmentBuilder', {});
     });
@@ -230,8 +230,8 @@ describe('TeamsScreen', () => {
       Promise.resolve(fail({ error: 'Trial already used', code: 'TRIAL_NOT_ELIGIBLE' }))
     ));
     render(<TeamsScreen />);
-    await waitFor(() => expect(screen.getByText('Dashboard')).toBeInTheDocument());
-    fireEvent.click(screen.getAllByText('Start Free Trial')[0]);
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Dashboard' })).toBeInTheDocument());
+    fireEvent.click(screen.getAllByRole('button', { name: 'Start Free Trial' })[0]);
     await waitFor(() => {
       expect(mockNavigate).toHaveBeenCalledWith('AssessmentBuilder', {});
     });
@@ -243,8 +243,8 @@ describe('TeamsScreen', () => {
       Promise.resolve(fail({ error: 'Profile not found', code: 'TRIAL_NOT_ELIGIBLE' }))
     ));
     render(<TeamsScreen />);
-    await waitFor(() => expect(screen.getByText('Dashboard')).toBeInTheDocument());
-    fireEvent.click(screen.getAllByText('Start Free Trial')[0]);
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Dashboard' })).toBeInTheDocument());
+    fireEvent.click(screen.getAllByRole('button', { name: 'Start Free Trial' })[0]);
     await waitFor(() => {
       expect(screen.getByText('Profile not found')).toBeInTheDocument();
     });
@@ -254,12 +254,12 @@ describe('TeamsScreen', () => {
 
   it('renders Book a Demo button', () => {
     render(<TeamsScreen />);
-    expect(screen.getAllByText('Book a Demo').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByRole('button', { name: 'Book a Demo' }).length).toBeGreaterThanOrEqual(1);
   });
 
   it('shows demo form when Book a Demo is clicked', () => {
     render(<TeamsScreen />);
-    const demoButtons = screen.getAllByText('Book a Demo');
+    const demoButtons = screen.getAllByRole('button', { name: 'Book a Demo' });
     fireEvent.click(demoButtons[0]);
     expect(screen.getAllByPlaceholderText('Jane Smith').length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByPlaceholderText('jane@company.com').length).toBeGreaterThanOrEqual(1);
@@ -269,7 +269,7 @@ describe('TeamsScreen', () => {
   it('submits demo form and shows success', async () => {
     vi.stubGlobal('fetch', vi.fn().mockImplementation(() => Promise.resolve(ok({}))));
     render(<TeamsScreen />);
-    const demoButtons = screen.getAllByText('Book a Demo');
+    const demoButtons = screen.getAllByRole('button', { name: 'Book a Demo' });
     fireEvent.click(demoButtons[0]);
     // Fill all duplicated form instances
     screen.getAllByPlaceholderText('Jane Smith').forEach((el) =>
@@ -281,7 +281,7 @@ describe('TeamsScreen', () => {
     screen.getAllByPlaceholderText('Acme Corp').forEach((el) =>
       fireEvent.change(el, { target: { value: 'Acme' } })
     );
-    const requestButtons = screen.getAllByText('Request Demo');
+    const requestButtons = screen.getAllByRole('button', { name: 'Request Demo' });
     fireEvent.click(requestButtons[0]);
     await waitFor(() => {
       expect(screen.getAllByText("We'll be in touch!").length).toBeGreaterThanOrEqual(1);
@@ -293,7 +293,7 @@ describe('TeamsScreen', () => {
       Promise.resolve(fail({ error: 'Server error' }))
     ));
     render(<TeamsScreen />);
-    const demoButtons = screen.getAllByText('Book a Demo');
+    const demoButtons = screen.getAllByRole('button', { name: 'Book a Demo' });
     fireEvent.click(demoButtons[0]);
     screen.getAllByPlaceholderText('Jane Smith').forEach((el) =>
       fireEvent.change(el, { target: { value: 'Jane' } })
@@ -304,7 +304,7 @@ describe('TeamsScreen', () => {
     screen.getAllByPlaceholderText('Acme Corp').forEach((el) =>
       fireEvent.change(el, { target: { value: 'Acme' } })
     );
-    const requestButtons = screen.getAllByText('Request Demo');
+    const requestButtons = screen.getAllByRole('button', { name: 'Request Demo' });
     fireEvent.click(requestButtons[0]);
     await waitFor(() => {
       expect(screen.getAllByText('Server error').length).toBeGreaterThanOrEqual(1);
@@ -314,7 +314,7 @@ describe('TeamsScreen', () => {
   it('shows demo error on network failure', async () => {
     vi.stubGlobal('fetch', vi.fn().mockImplementation(() => Promise.reject(new Error('Network'))));
     render(<TeamsScreen />);
-    const demoButtons = screen.getAllByText('Book a Demo');
+    const demoButtons = screen.getAllByRole('button', { name: 'Book a Demo' });
     fireEvent.click(demoButtons[0]);
     screen.getAllByPlaceholderText('Jane Smith').forEach((el) =>
       fireEvent.change(el, { target: { value: 'Jane' } })
@@ -325,7 +325,7 @@ describe('TeamsScreen', () => {
     screen.getAllByPlaceholderText('Acme Corp').forEach((el) =>
       fireEvent.change(el, { target: { value: 'Acme' } })
     );
-    const requestButtons = screen.getAllByText('Request Demo');
+    const requestButtons = screen.getAllByRole('button', { name: 'Request Demo' });
     fireEvent.click(requestButtons[0]);
     await waitFor(() => {
       expect(screen.getAllByText(/Something went wrong/).length).toBeGreaterThanOrEqual(1);
@@ -340,7 +340,7 @@ describe('TeamsScreen', () => {
     delete (window as any).location;
     (window as any).location = { href: '' };
     render(<TeamsScreen />);
-    const subscribeButtons = screen.getAllByText('Subscribe');
+    const subscribeButtons = screen.getAllByRole('button', { name: 'Subscribe' });
     fireEvent.click(subscribeButtons[0]);
     await waitFor(() => {
       expect(window.location.href).toBe('https://stripe.com/checkout');
@@ -353,7 +353,7 @@ describe('TeamsScreen', () => {
       Promise.resolve(ok({ error: 'Unauthorized' }))
     ));
     render(<TeamsScreen />);
-    const subscribeButtons = screen.getAllByText('Subscribe');
+    const subscribeButtons = screen.getAllByRole('button', { name: 'Subscribe' });
     fireEvent.click(subscribeButtons[0]);
     await waitFor(() => {
       expect(mockNavigate).toHaveBeenCalledWith('Register');
@@ -379,7 +379,7 @@ describe('TeamsScreen', () => {
   it('renders final CTA section', () => {
     render(<TeamsScreen />);
     expect(screen.getByText('One Score. Every Engineer.')).toBeInTheDocument();
-    expect(screen.getAllByText('Start Free Trial').length).toBeGreaterThanOrEqual(2);
+    expect(screen.getAllByRole('button', { name: 'Start Free Trial' }).length).toBeGreaterThanOrEqual(2);
   });
 
   it('renders guarantee text', () => {
@@ -389,12 +389,12 @@ describe('TeamsScreen', () => {
 
   it('renders Contact Us button for enterprise tier', () => {
     render(<TeamsScreen />);
-    expect(screen.getByText('Contact Us')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Contact Us' })).toBeInTheDocument();
   });
 
   it('opens demo form when Contact Us is clicked', () => {
     render(<TeamsScreen />);
-    fireEvent.click(screen.getByText('Contact Us'));
+    fireEvent.click(screen.getByRole('button', { name: 'Contact Us' }));
     // Demo form should appear
     expect(screen.getAllByPlaceholderText('Jane Smith').length).toBeGreaterThanOrEqual(1);
   });
@@ -406,7 +406,7 @@ describe('TeamsScreen', () => {
 
   it('navigates to Register when final CTA button is clicked (not logged in)', () => {
     render(<TeamsScreen />);
-    const ctaButtons = screen.getAllByText('Start Free Trial');
+    const ctaButtons = screen.getAllByRole('button', { name: 'Start Free Trial' });
     fireEvent.click(ctaButtons[ctaButtons.length - 1]);
     expect(mockNavigate).toHaveBeenCalledWith('Register');
   });
@@ -414,13 +414,13 @@ describe('TeamsScreen', () => {
   it('shows Book a Demo button in final CTA when not submitted and form not shown', () => {
     render(<TeamsScreen />);
     // The final CTA section has a Book a Demo button
-    const demoButtons = screen.getAllByText('Book a Demo');
+    const demoButtons = screen.getAllByRole('button', { name: 'Book a Demo' });
     expect(demoButtons.length).toBeGreaterThanOrEqual(2); // hero + final CTA
   });
 
   it('opens demo form when final CTA Book a Demo is clicked', () => {
     render(<TeamsScreen />);
-    const demoButtons = screen.getAllByText('Book a Demo');
+    const demoButtons = screen.getAllByRole('button', { name: 'Book a Demo' });
     // The last Book a Demo should be in the final CTA
     fireEvent.click(demoButtons[demoButtons.length - 1]);
     expect(screen.getAllByPlaceholderText('Jane Smith').length).toBeGreaterThanOrEqual(1);
@@ -429,7 +429,7 @@ describe('TeamsScreen', () => {
   it('shows "Demo requested!" badge after demo form submission in final CTA', async () => {
     vi.stubGlobal('fetch', vi.fn().mockImplementation(() => Promise.resolve(ok({}))));
     render(<TeamsScreen />);
-    const demoButtons = screen.getAllByText('Book a Demo');
+    const demoButtons = screen.getAllByRole('button', { name: 'Book a Demo' });
     fireEvent.click(demoButtons[0]);
     screen.getAllByPlaceholderText('Jane Smith').forEach((el) =>
       fireEvent.change(el, { target: { value: 'Jane' } })
@@ -440,7 +440,7 @@ describe('TeamsScreen', () => {
     screen.getAllByPlaceholderText('Acme Corp').forEach((el) =>
       fireEvent.change(el, { target: { value: 'Acme' } })
     );
-    const requestButtons = screen.getAllByText('Request Demo');
+    const requestButtons = screen.getAllByRole('button', { name: 'Request Demo' });
     fireEvent.click(requestButtons[0]);
     await waitFor(() => {
       expect(screen.getAllByText('Demo requested!').length).toBeGreaterThanOrEqual(1);
@@ -459,7 +459,7 @@ describe('TeamsScreen', () => {
     );
     vi.stubGlobal('fetch', mockFetch);
     render(<TeamsScreen />);
-    const subscribeButtons = screen.getAllByText('Subscribe');
+    const subscribeButtons = screen.getAllByRole('button', { name: 'Subscribe' });
     await act(async () => {
       fireEvent.click(subscribeButtons[0]);
     });
@@ -467,14 +467,14 @@ describe('TeamsScreen', () => {
     expect(mockFetch).toHaveBeenCalledWith('/api/checkout', expect.anything());
     // Button resets (not stuck on Loading)
     await waitFor(() => {
-      expect(screen.getAllByText('Subscribe').length).toBeGreaterThan(0);
+      expect(screen.getAllByRole('button', { name: 'Subscribe' }).length).toBeGreaterThan(0);
     });
   });
 
   it('submits demo form with optional Team Size and Message fields', async () => {
     vi.stubGlobal('fetch', vi.fn().mockImplementation(() => Promise.resolve(ok({}))));
     render(<TeamsScreen />);
-    const demoButtons = screen.getAllByText('Book a Demo');
+    const demoButtons = screen.getAllByRole('button', { name: 'Book a Demo' });
     fireEvent.click(demoButtons[0]);
     // Fill all required fields
     screen.getAllByPlaceholderText('Jane Smith').forEach((el) =>
@@ -493,7 +493,7 @@ describe('TeamsScreen', () => {
     screen.getAllByPlaceholderText('Tell us about your hiring needs...').forEach((el) =>
       fireEvent.change(el, { target: { value: 'We need AI assessment for our team' } })
     );
-    const requestButtons = screen.getAllByText('Request Demo');
+    const requestButtons = screen.getAllByRole('button', { name: 'Request Demo' });
     fireEvent.click(requestButtons[0]);
     await waitFor(() => {
       expect(screen.getAllByText("We'll be in touch!").length).toBeGreaterThanOrEqual(1);
@@ -505,7 +505,7 @@ describe('TeamsScreen', () => {
       Promise.resolve({ ok: false, json: () => Promise.reject(new Error('parse error')) })
     ));
     render(<TeamsScreen />);
-    const demoButtons = screen.getAllByText('Book a Demo');
+    const demoButtons = screen.getAllByRole('button', { name: 'Book a Demo' });
     fireEvent.click(demoButtons[0]);
     screen.getAllByPlaceholderText('Jane Smith').forEach((el) =>
       fireEvent.change(el, { target: { value: 'Jane' } })
@@ -516,10 +516,173 @@ describe('TeamsScreen', () => {
     screen.getAllByPlaceholderText('Acme Corp').forEach((el) =>
       fireEvent.change(el, { target: { value: 'Acme' } })
     );
-    const requestButtons = screen.getAllByText('Request Demo');
+    const requestButtons = screen.getAllByRole('button', { name: 'Request Demo' });
     fireEvent.click(requestButtons[0]);
     await waitFor(() => {
       expect(screen.getAllByText(/Something went wrong/).length).toBeGreaterThanOrEqual(1);
+    });
+  });
+
+  /* ── Error handling / negative tests ─────────────────────────────── */
+
+  describe('error handling', () => {
+    it('handles trial start network failure (logged in)', async () => {
+      mockUser = { id: 'u1' };
+      vi.stubGlobal('fetch', vi.fn().mockImplementation(() => Promise.reject(new Error('Network down'))));
+      render(<TeamsScreen />);
+      await waitFor(() => expect(screen.getByText('Dashboard')).toBeInTheDocument());
+      fireEvent.click(screen.getAllByRole('button', { name: 'Start Free Trial' })[0]);
+      await waitFor(() => {
+        expect(screen.getAllByText(/Something went wrong|Network/).length).toBeGreaterThanOrEqual(1);
+      });
+    });
+
+    it('handles trial start with malformed JSON response', async () => {
+      mockUser = { id: 'u1' };
+      let trialCalled = false;
+      vi.stubGlobal('fetch', vi.fn().mockImplementation((url: string) => {
+        if (typeof url === 'string' && url.includes('/api/trial/start')) {
+          trialCalled = true;
+          return Promise.resolve({ ok: true, json: () => Promise.reject(new Error('bad json')) });
+        }
+        return Promise.resolve(ok({}));
+      }));
+      render(<TeamsScreen />);
+      await waitFor(() => expect(screen.getByText('Dashboard')).toBeInTheDocument());
+      fireEvent.click(screen.getAllByRole('button', { name: 'Start Free Trial' })[0]);
+      await waitFor(() => {
+        expect(trialCalled).toBe(true);
+      });
+    });
+
+    it('handles checkout with network failure', async () => {
+      vi.stubGlobal('fetch', vi.fn().mockImplementation(() => Promise.reject(new Error('Network'))));
+      render(<TeamsScreen />);
+      const subscribeButtons = screen.getAllByRole('button', { name: 'Subscribe' });
+      await act(async () => { fireEvent.click(subscribeButtons[0]); });
+      // Should not crash, button should reset
+      await waitFor(() => {
+        expect(screen.getAllByRole('button', { name: 'Subscribe' }).length).toBeGreaterThan(0);
+      });
+    });
+
+    it('handles checkout with malformed JSON response', async () => {
+      vi.stubGlobal('fetch', vi.fn().mockImplementation(() =>
+        Promise.resolve({ ok: true, json: () => Promise.reject(new Error('bad json')) })
+      ));
+      render(<TeamsScreen />);
+      const subscribeButtons = screen.getAllByRole('button', { name: 'Subscribe' });
+      await act(async () => { fireEvent.click(subscribeButtons[0]); });
+      await waitFor(() => {
+        expect(screen.getAllByRole('button', { name: 'Subscribe' }).length).toBeGreaterThan(0);
+      });
+    });
+
+    it('handles demo form with empty required fields', async () => {
+      render(<TeamsScreen />);
+      const demoButtons = screen.getAllByRole('button', { name: 'Book a Demo' });
+      fireEvent.click(demoButtons[0]);
+      // Don't fill anything, just click submit
+      const requestButtons = screen.getAllByRole('button', { name: 'Request Demo' });
+      fireEvent.click(requestButtons[0]);
+      // Should not crash — form might validate client-side or server-side
+      expect(screen.getAllByRole('button', { name: 'Request Demo' }).length).toBeGreaterThanOrEqual(1);
+    });
+
+    it('handles demo form with invalid email format', async () => {
+      vi.stubGlobal('fetch', vi.fn().mockImplementation(() => Promise.resolve(ok({}))));
+      render(<TeamsScreen />);
+      const demoButtons = screen.getAllByRole('button', { name: 'Book a Demo' });
+      fireEvent.click(demoButtons[0]);
+      screen.getAllByPlaceholderText('Jane Smith').forEach((el) =>
+        fireEvent.change(el, { target: { value: 'Jane' } })
+      );
+      screen.getAllByPlaceholderText('jane@company.com').forEach((el) =>
+        fireEvent.change(el, { target: { value: 'not-an-email' } })
+      );
+      screen.getAllByPlaceholderText('Acme Corp').forEach((el) =>
+        fireEvent.change(el, { target: { value: 'Acme' } })
+      );
+      const requestButtons = screen.getAllByRole('button', { name: 'Request Demo' });
+      fireEvent.click(requestButtons[0]);
+      // The form submits (server-side validation handles email format)
+      await waitFor(() => {
+        expect(fetch).toHaveBeenCalled();
+      });
+    });
+
+    it('handles trial start with server 500 error', async () => {
+      mockUser = { id: 'u1' };
+      vi.stubGlobal('fetch', vi.fn().mockImplementation(() =>
+        Promise.resolve(fail({ error: 'Internal server error' }))
+      ));
+      render(<TeamsScreen />);
+      await waitFor(() => expect(screen.getByText('Dashboard')).toBeInTheDocument());
+      fireEvent.click(screen.getAllByRole('button', { name: 'Start Free Trial' })[0]);
+      await waitFor(() => {
+        expect(screen.getAllByText(/Internal server error/).length).toBeGreaterThanOrEqual(1);
+      });
+    });
+
+    it('handles double-click on Subscribe button', async () => {
+      let callCount = 0;
+      vi.stubGlobal('fetch', vi.fn().mockImplementation(() => {
+        callCount++;
+        return Promise.resolve(ok({ url: 'https://stripe.com/checkout' }));
+      }));
+      const originalLocation = window.location;
+      delete (window as any).location;
+      (window as any).location = { href: '' };
+      render(<TeamsScreen />);
+      const subscribeButtons = screen.getAllByRole('button', { name: 'Subscribe' });
+      fireEvent.click(subscribeButtons[0]);
+      fireEvent.click(subscribeButtons[0]);
+      await waitFor(() => {
+        expect(callCount).toBeGreaterThanOrEqual(1);
+      });
+      Object.defineProperty(window, 'location', { value: originalLocation, writable: true });
+    });
+
+    it('handles checkout response with no url field', async () => {
+      vi.stubGlobal('fetch', vi.fn().mockImplementation(() =>
+        Promise.resolve(ok({}))
+      ));
+      render(<TeamsScreen />);
+      const subscribeButtons = screen.getAllByRole('button', { name: 'Subscribe' });
+      await act(async () => { fireEvent.click(subscribeButtons[0]); });
+      await waitFor(() => {
+        // No URL means redirect to Register for unauthorized
+        expect(screen.getAllByRole('button', { name: 'Subscribe' }).length).toBeGreaterThan(0);
+      });
+    });
+
+    it('handles trial start when user becomes null unexpectedly', async () => {
+      mockUser = null;
+      render(<TeamsScreen />);
+      // Not logged in, Start Free Trial should go to Register
+      fireEvent.click(screen.getAllByRole('button', { name: 'Start Free Trial' })[0]);
+      expect(mockNavigate).toHaveBeenCalledWith('Register');
+    });
+
+    it('handles demo form submission with very long input', async () => {
+      vi.stubGlobal('fetch', vi.fn().mockImplementation(() => Promise.resolve(ok({}))));
+      render(<TeamsScreen />);
+      const demoButtons = screen.getAllByRole('button', { name: 'Book a Demo' });
+      fireEvent.click(demoButtons[0]);
+      screen.getAllByPlaceholderText('Jane Smith').forEach((el) =>
+        fireEvent.change(el, { target: { value: 'A'.repeat(500) } })
+      );
+      screen.getAllByPlaceholderText('jane@company.com').forEach((el) =>
+        fireEvent.change(el, { target: { value: 'a@b.com' } })
+      );
+      screen.getAllByPlaceholderText('Acme Corp').forEach((el) =>
+        fireEvent.change(el, { target: { value: 'Corp' } })
+      );
+      const requestButtons = screen.getAllByRole('button', { name: 'Request Demo' });
+      fireEvent.click(requestButtons[0]);
+      await waitFor(() => {
+        expect(fetch).toHaveBeenCalled();
+      });
     });
   });
 });

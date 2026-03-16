@@ -1648,3 +1648,90 @@ describe('GET /api/submissions', () => {
     expect(json.error).toBe('Internal server error');
   });
 });
+
+/* ── Additional error-path tests for submissions ─────────────────── */
+
+describe('POST /api/submissions — additional error paths', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockCheckAndAwardBadges.mockResolvedValue(undefined);
+    mockUpdateStreak.mockResolvedValue(undefined);
+    mockCreateCompetitiveNudges.mockResolvedValue(undefined);
+    mockCreateNewUserNearRankNotifications.mockResolvedValue(undefined);
+    mockSendEmail.mockResolvedValue(undefined);
+  });
+
+  it('returns 401 when user is not authenticated', async () => {
+    mockGetUser.mockResolvedValue(null);
+    const res = await onRequestPost(makePostContext({ attemptId: 'att-1', code: 'x' }));
+    expect(res.status).toBe(401);
+  });
+
+  it('returns 400 when attemptId is missing', async () => {
+    mockGetUser.mockResolvedValue(FAKE_USER);
+    const res = await onRequestPost(makePostContext({ code: 'x' }));
+    expect(res.status).toBe(400);
+  });
+
+  it('returns 400 when code is missing', async () => {
+    mockGetUser.mockResolvedValue(FAKE_USER);
+    const res = await onRequestPost(makePostContext({ attemptId: 'att-1' }));
+    expect(res.status).toBe(400);
+  });
+
+  it('returns 400 for malformed JSON body', async () => {
+    mockGetUser.mockResolvedValue(FAKE_USER);
+    const ctx = {
+      request: new Request('https://ruwt.dev/api/submissions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: 'not json',
+      }),
+      env: makeEnv(),
+    };
+    const res = await onRequestPost(ctx);
+    expect(res.status).toBe(400);
+  });
+
+  it('returns 400 when attemptId is empty string', async () => {
+    mockGetUser.mockResolvedValue(FAKE_USER);
+    const res = await onRequestPost(makePostContext({ attemptId: '', code: 'x' }));
+    expect(res.status).toBe(400);
+  });
+
+  it('returns 400 when code is empty string', async () => {
+    mockGetUser.mockResolvedValue(FAKE_USER);
+    const res = await onRequestPost(makePostContext({ attemptId: 'att-1', code: '' }));
+    expect(res.status).toBe(400);
+  });
+
+  it('returns 400 when body has extra unexpected fields only', async () => {
+    mockGetUser.mockResolvedValue(FAKE_USER);
+    const res = await onRequestPost(makePostContext({ foo: 'bar', baz: 123 }));
+    expect(res.status).toBe(400);
+  });
+});
+
+describe('GET /api/submissions — additional error paths', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('returns 401 when user is not authenticated (GET)', async () => {
+    mockGetUser.mockResolvedValue(null);
+    const res = await onRequestGet(makeGetContext());
+    expect(res.status).toBe(401);
+  });
+
+  it('returns 400 when attemptId param is missing', async () => {
+    mockGetUser.mockResolvedValue(FAKE_USER);
+    const res = await onRequestGet(makeGetContext());
+    expect(res.status).toBe(400);
+  });
+
+  it('returns 400 when attemptId param is empty', async () => {
+    mockGetUser.mockResolvedValue(FAKE_USER);
+    const res = await onRequestGet(makeGetContext('attemptId='));
+    expect(res.status).toBe(400);
+  });
+});

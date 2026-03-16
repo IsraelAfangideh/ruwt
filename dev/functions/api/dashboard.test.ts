@@ -651,4 +651,41 @@ describe('GET /api/dashboard', () => {
     const json = await res.json();
     expect(json.error).toBe('Internal server error');
   });
+
+  it('returns 500 when ensureProfile throws', async () => {
+    mockGetUser.mockResolvedValue({ id: 'u1' });
+    mockEnsureProfile.mockRejectedValue(new Error('Profile service down'));
+    const res = await onRequestGet(makeContext());
+    expect(res.status).toBe(500);
+  });
+
+  it('returns 500 when DB query throws during dashboard fetch', async () => {
+    mockGetUser.mockResolvedValue({ id: 'u1' });
+    mockEnsureProfile.mockResolvedValue(undefined);
+    resetMockDb();
+    mockDb.limit = vi.fn().mockRejectedValue(new Error('D1 timeout'));
+    const res = await onRequestGet(makeContext());
+    expect(res.status).toBe(500);
+  });
+
+  it('returns 401 when getUser resolves to undefined', async () => {
+    mockGetUser.mockResolvedValue(undefined);
+    const res = await onRequestGet(makeContext());
+    expect(res.status).toBe(401);
+  });
+
+  it('returns 500 when getUser throws with non-Error value', async () => {
+    mockGetUser.mockRejectedValue('string rejection');
+    const res = await onRequestGet(makeContext());
+    expect(res.status).toBe(500);
+  });
+
+  it('returns 500 when DB reset fails during dashboard queries', async () => {
+    mockGetUser.mockResolvedValue({ id: 'u1' });
+    mockEnsureProfile.mockResolvedValue(undefined);
+    resetMockDb();
+    mockDb.limit = vi.fn().mockRejectedValue(new Error('D1 connection reset'));
+    const res = await onRequestGet(makeContext());
+    expect(res.status).toBe(500);
+  });
 });

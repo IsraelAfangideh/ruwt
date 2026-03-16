@@ -10,7 +10,7 @@ import { vi } from 'vitest';
 // 50+ test files. Import and spread them in your vi.mock factories
 // instead of duplicating inline.
 
-/** Standard useColors() return value — covers all color keys used by components */
+/** Standard useColors() return value — covers all color keys used by components (light mode) */
 export const MOCK_COLORS = {
   bg: '#fff', text: '#000', textMuted: '#888', accent: '#c9a962', border: '#ccc',
   borderStrong: '#999', card: '#fff', muted: '#f5f5f5', error: '#f00', errorBg: '#fee',
@@ -19,6 +19,17 @@ export const MOCK_COLORS = {
   textSubtle: '#aaa', bgElevated: '#fafafa', accentBg: '#ffe',
   bgWarm: '#faf8f5', background: '#fff',
   cardForeground: '#000', mutedForeground: '#555',
+} as const;
+
+/** Dark-mode useColors() return value — distinct from MOCK_COLORS so both branches are exercised */
+export const MOCK_DARK_COLORS = {
+  bg: '#0f0e0d', text: '#e8e4df', textMuted: '#a8a198', accent: '#c9a962', border: '#252220',
+  borderStrong: '#383430', card: '#252220', muted: '#252220', error: '#c87878', errorBg: '#331a1a',
+  success: '#7ab87a', successBg: '#1a331a', primary: '#e8e4df', primaryForeground: '#0f0e0d',
+  secondary: '#252220', secondaryForeground: '#e8e4df', destructive: '#c87878',
+  textSubtle: '#96908a', bgElevated: '#252220', accentBg: '#332b1a',
+  bgWarm: '#1a1816', background: '#0f0e0d',
+  cardForeground: '#e8e4df', mutedForeground: '#9a938a',
 } as const;
 
 /** Standard tokens mock — spacing, fontSizes, fontFamily, radii */
@@ -42,6 +53,14 @@ export const MOCK_TOKENS_WITH_MONO = {
  */
 export function mockTheme(overrides?: Record<string, unknown>) {
   return { useColors: () => ({ ...MOCK_COLORS }), ...overrides };
+}
+
+/**
+ * Factory for dark-mode theme mock.
+ * Usage: `vi.mock('@/shared/theme', () => mockDarkTheme())`
+ */
+export function mockDarkTheme(overrides?: Record<string, unknown>) {
+  return { useColors: () => ({ ...MOCK_DARK_COLORS }), useTheme: () => ({ isDark: true, mode: 'dark' as const, colors: { ...MOCK_DARK_COLORS }, setMode: vi.fn() }), ...overrides };
 }
 
 /**

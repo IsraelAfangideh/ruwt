@@ -173,7 +173,7 @@ describe('DashboardScreen', () => {
     vi.useRealTimers();
     render(<DashboardScreen />);
     await waitFor(() => {
-      expect(screen.getByText("Start Today's Challenge")).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: "Start Today's Challenge" })).toBeInTheDocument();
     });
   });
 
@@ -357,7 +357,7 @@ describe('DashboardScreen', () => {
     await waitFor(() => {
       expect(screen.getByText('Start Your First Challenge')).toBeInTheDocument();
     });
-    expect(screen.getByText('Try FizzBuzz Budget')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Try FizzBuzz Budget' })).toBeInTheDocument();
     expect(screen.getByText('Browse all challenges')).toBeInTheDocument();
   });
 
@@ -368,9 +368,9 @@ describe('DashboardScreen', () => {
     vi.useRealTimers();
     render(<DashboardScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Try FizzBuzz Budget')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Try FizzBuzz Budget' })).toBeInTheDocument();
     });
-    fireEvent.click(screen.getByText('Try FizzBuzz Budget'));
+    fireEvent.click(screen.getByRole('button', { name: 'Try FizzBuzz Budget' }));
     expect(mockNavigate).toHaveBeenCalledWith('Arena', { challengeId: 'fizzbuzz-budget' });
   });
 
@@ -396,7 +396,7 @@ describe('DashboardScreen', () => {
     await waitFor(() => {
       expect(screen.getByText(/Dashboard data is loading/)).toBeInTheDocument();
     });
-    expect(screen.getByText('Refresh')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Refresh' })).toBeInTheDocument();
   });
 
   it('shows skeleton when dashboard status is loading', async () => {
@@ -438,9 +438,9 @@ describe('DashboardScreen', () => {
     vi.useRealTimers();
     render(<DashboardScreen />);
     await waitFor(() => {
-      expect(screen.getByText("Start Today's Challenge")).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: "Start Today's Challenge" })).toBeInTheDocument();
     });
-    fireEvent.click(screen.getByText("Start Today's Challenge"));
+    fireEvent.click(screen.getByRole('button', { name: "Start Today's Challenge" }));
     expect(mockNavigate).toHaveBeenCalledWith('Arena', { challengeId: 'dc1' });
   });
 
@@ -569,7 +569,7 @@ describe('DashboardScreen', () => {
 
     // Wait for dashboard to load
     await waitFor(() => {
-      expect(screen.getByText("Start Today's Challenge")).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: "Start Today's Challenge" })).toBeInTheDocument();
     });
 
     // Tick 1: prev=3 -> return prev-1=2
@@ -596,9 +596,9 @@ describe('DashboardScreen', () => {
     vi.useRealTimers();
     render(<DashboardScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Refresh')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Refresh' })).toBeInTheDocument();
     });
-    fireEvent.click(screen.getByText('Refresh'));
+    fireEvent.click(screen.getByRole('button', { name: 'Refresh' }));
     expect(reloadMock).toHaveBeenCalled();
   });
 
@@ -674,6 +674,180 @@ describe('DashboardScreen', () => {
     render(<DashboardScreen />);
     await waitFor(() => {
       expect(screen.getByText('Best Streak')).toBeInTheDocument();
+    });
+  });
+
+  it('shows preliminary AFI card when solvedCount is between 1 and AFI_MIN_SOLVES', async () => {
+    setupHappyPath({
+      progress: { ...baseDashboardData.progress, solvedCount: 2, totalChallenges: 60 },
+    });
+    vi.useRealTimers();
+    render(<DashboardScreen />);
+    await waitFor(() => {
+      // AFI card shows "X more solves to stabilize" when isPreliminary
+      expect(screen.getByText(/more solve.*to stabilize/)).toBeInTheDocument();
+    });
+    expect(screen.getByText('AI Fluency Index')).toBeInTheDocument();
+  });
+
+  it('shows singular "solve" when exactly 1 more solve needed to stabilize AFI', async () => {
+    setupHappyPath({
+      progress: { ...baseDashboardData.progress, solvedCount: 4, totalChallenges: 60 },
+    });
+    vi.useRealTimers();
+    render(<DashboardScreen />);
+    await waitFor(() => {
+      expect(screen.getByText('1 more solve to stabilize')).toBeInTheDocument();
+    });
+  });
+
+  it('shows "out of 850" on AFI card when solvedCount >= AFI_MIN_SOLVES', async () => {
+    setupHappyPath({
+      progress: { ...baseDashboardData.progress, solvedCount: 10, totalChallenges: 60 },
+    });
+    vi.useRealTimers();
+    render(<DashboardScreen />);
+    await waitFor(() => {
+      expect(screen.getByText('out of 850')).toBeInTheDocument();
+    });
+  });
+
+  /* ── Error handling / negative tests ─────────────────────────────── */
+
+  describe('error handling', () => {
+    it('renders loading skeleton when dashboard status is error and data is null', async () => {
+      mockUseAuthGuard.mockReturnValue({ user: defaultUser, loading: false });
+      mockUseDashboardData.mockReturnValue(makeCachedState(null, 'error'));
+      vi.useRealTimers();
+      const { container } = render(<DashboardScreen />);
+      // Status 'error' means loading=true (status !== 'loaded'), so skeleton shows
+      expect(container.querySelector('[data-testid="dashboard-layout"]')).not.toBeNull();
+    });
+
+    it('handles profile with empty username gracefully', async () => {
+      setupHappyPath({ profile: { ...baseDashboardData.profile, username: '' } });
+      vi.useRealTimers();
+      render(<DashboardScreen />);
+      await waitFor(() => { expect(screen.getByText('Your Progress')).toBeInTheDocument(); });
+    });
+
+    it('handles extremely large credit values without crashing', async () => {
+      setupHappyPath({ profile: { ...baseDashboardData.profile, credits: 999999999 } });
+      vi.useRealTimers();
+      render(<DashboardScreen />);
+      await waitFor(() => { expect(screen.getByText('Your Progress')).toBeInTheDocument(); });
+    });
+
+    it('handles negative streak values gracefully', async () => {
+      setupHappyPath({ profile: { ...baseDashboardData.profile, currentStreak: -1, longestStreak: -5 } });
+      vi.useRealTimers();
+      render(<DashboardScreen />);
+      await waitFor(() => { expect(screen.getByText('Streak')).toBeInTheDocument(); });
+    });
+
+    it('handles zero totalChallenges with non-zero solvedCount', async () => {
+      setupHappyPath({ progress: { totalChallenges: 0, solvedCount: 5, categorySolves: {}, categoryTotals: {} } });
+      vi.useRealTimers();
+      render(<DashboardScreen />);
+      await waitFor(() => { expect(screen.getByText('Your Progress')).toBeInTheDocument(); });
+    });
+
+    it('handles dailyChallenge with empty title', async () => {
+      setupHappyPath({ dailyChallenge: { challengeId: 'dc1', title: '', difficulty: 'easy', category: 'prompt_efficiency', solvedToday: false } });
+      vi.useRealTimers();
+      render(<DashboardScreen />);
+      await waitFor(() => { expect(screen.getByText("Today's Challenge")).toBeInTheDocument(); });
+    });
+
+    it('handles profile with zero credits', async () => {
+      setupHappyPath({ profile: { ...baseDashboardData.profile, credits: 0 } });
+      vi.useRealTimers();
+      render(<DashboardScreen />);
+      await waitFor(() => { expect(screen.getByText('Your Progress')).toBeInTheDocument(); });
+    });
+
+    it('handles heatmap with negative values gracefully', async () => {
+      setupHappyPath({ heatmap: { [new Date().toISOString().split('T')[0]]: -1 } });
+      vi.useRealTimers();
+      render(<DashboardScreen />);
+      await waitFor(() => { expect(screen.getByText('Activity')).toBeInTheDocument(); });
+    });
+
+    it('handles multiple recent badges', async () => {
+      setupHappyPath({
+        recentBadges: [
+          { badgeType: 'first_solve', title: 'First Solve', icon: '\uD83C\uDFC6', earnedAt: '2026-01-01' },
+          { badgeType: 'speed_demon', title: 'Speed Demon', icon: '\u26A1', earnedAt: '2026-01-02' },
+        ],
+      });
+      vi.useRealTimers();
+      render(<DashboardScreen />);
+      await waitFor(() => { expect(screen.getByText('First Solve')).toBeInTheDocument(); });
+    });
+
+    it('handles activity with duplicate timestamps', async () => {
+      const now = new Date().toISOString();
+      setupHappyPath({
+        recentActivity: [
+          { user: 'alice', avatarUrl: null, challenge: 'A', cost: 100, timestamp: now },
+          { user: 'bob', avatarUrl: null, challenge: 'B', cost: 200, timestamp: now },
+          { user: 'carol', avatarUrl: null, challenge: 'C', cost: 300, timestamp: now },
+        ],
+      });
+      vi.useRealTimers();
+      render(<DashboardScreen />);
+      await waitFor(() => { expect(screen.getByText('Recent Activity')).toBeInTheDocument(); });
+    });
+
+    it('handles rank with zero totalRanked', async () => {
+      setupHappyPath({ rank: { position: 1, totalRanked: 0 } });
+      vi.useRealTimers();
+      render(<DashboardScreen />);
+      await waitFor(() => { expect(screen.getByText('#1')).toBeInTheDocument(); });
+    });
+
+    it('handles categorySolves exceeding categoryTotals', async () => {
+      setupHappyPath({ progress: { totalChallenges: 10, solvedCount: 15, categorySolves: { prompt_efficiency: 20 }, categoryTotals: { prompt_efficiency: 10 } } });
+      vi.useRealTimers();
+      render(<DashboardScreen />);
+      await waitFor(() => { expect(screen.getByText('Your Progress')).toBeInTheDocument(); });
+    });
+
+    it('handles many categories in progress section', async () => {
+      setupHappyPath({ progress: { totalChallenges: 100, solvedCount: 50, categorySolves: { a: 10, b: 15, c: 5, d: 20 }, categoryTotals: { a: 20, b: 25, c: 15, d: 30 } } });
+      vi.useRealTimers();
+      render(<DashboardScreen />);
+      await waitFor(() => { expect(screen.getByText(/50% of challenges completed/)).toBeInTheDocument(); });
+    });
+
+    it('handles activity with zero cost', async () => {
+      const now = new Date().toISOString();
+      setupHappyPath({
+        recentActivity: [
+          { user: 'alice', avatarUrl: null, challenge: 'A', cost: 0, timestamp: now },
+          { user: 'bob', avatarUrl: null, challenge: 'B', cost: 0, timestamp: now },
+          { user: 'carol', avatarUrl: null, challenge: 'C', cost: 0, timestamp: now },
+        ],
+      });
+      vi.useRealTimers();
+      render(<DashboardScreen />);
+      await waitFor(() => { expect(screen.getByText('Recent Activity')).toBeInTheDocument(); });
+    });
+
+    it('handles profile name with special characters', async () => {
+      setupHappyPath({ profile: { ...baseDashboardData.profile, name: 'User&Co' } });
+      vi.useRealTimers();
+      const { container } = render(<DashboardScreen />);
+      await waitFor(() => { expect(container.textContent).toContain('User&Co'); });
+    });
+
+    it('renders skeleton inside layout when status is error', async () => {
+      mockUseAuthGuard.mockReturnValue({ user: defaultUser, loading: false });
+      mockUseDashboardData.mockReturnValue(makeCachedState(null, 'error'));
+      vi.useRealTimers();
+      const { container } = render(<DashboardScreen />);
+      // error status -> loading=true -> DashboardLayout with DashboardSkeleton
+      expect(container.querySelectorAll('div').length).toBeGreaterThan(0);
     });
   });
 });

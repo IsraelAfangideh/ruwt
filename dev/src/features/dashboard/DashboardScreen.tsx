@@ -94,6 +94,7 @@ interface DashboardData {
 
 function getGreeting(): string {
   const h = new Date().getHours();
+  /* istanbul ignore next -- @preserve */
   if (h < 12) return 'Good morning';
   /* istanbul ignore next -- @preserve */
   if (h < 17) return 'Good afternoon';

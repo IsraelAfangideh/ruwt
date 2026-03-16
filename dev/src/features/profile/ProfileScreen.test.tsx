@@ -289,16 +289,16 @@ describe('ProfileScreen', () => {
   it('renders Account Settings button', async () => {
     render(<ProfileScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Account Settings')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Account Settings' })).toBeInTheDocument();
     });
   });
 
   it('navigates to Settings when Account Settings is clicked', async () => {
     render(<ProfileScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Account Settings')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Account Settings' })).toBeInTheDocument();
     });
-    fireEvent.click(screen.getByText('Account Settings'));
+    fireEvent.click(screen.getByRole('button', { name: 'Account Settings' }));
     expect(mockNavigate).toHaveBeenCalledWith('Settings');
   });
 
@@ -312,8 +312,8 @@ describe('ProfileScreen', () => {
     });
     fireEvent.click(screen.getByText('Set username'));
     await waitFor(() => {
-      expect(screen.getByText('Save')).toBeInTheDocument();
-      expect(screen.getByText('Cancel')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Save' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Cancel' })).toBeInTheDocument();
     });
   });
 
@@ -327,9 +327,9 @@ describe('ProfileScreen', () => {
     });
     fireEvent.click(screen.getByText('Set username'));
     await waitFor(() => {
-      expect(screen.getByText('Cancel')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Cancel' })).toBeInTheDocument();
     });
-    fireEvent.click(screen.getByText('Cancel'));
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
     await waitFor(() => {
       expect(screen.getByText('Set username')).toBeInTheDocument();
     });
@@ -354,11 +354,11 @@ describe('ProfileScreen', () => {
     });
     fireEvent.click(screen.getByText('Set username'));
     await waitFor(() => {
-      expect(screen.getByText('Save')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Save' })).toBeInTheDocument();
     });
     const input = document.querySelector('[data-testid="username-input"]') as HTMLInputElement;
     fireEvent.change(input, { target: { value: 'newuser' } });
-    fireEvent.click(screen.getByText('Save'));
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => {
       expect(patchCalled).toBe(true);
     });
@@ -385,11 +385,11 @@ describe('ProfileScreen', () => {
     });
     fireEvent.click(screen.getByText('Set username'));
     await waitFor(() => {
-      expect(screen.getByText('Save')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Save' })).toBeInTheDocument();
     });
     const input = document.querySelector('[data-testid="username-input"]') as HTMLInputElement;
     fireEvent.change(input, { target: { value: 'taken' } });
-    fireEvent.click(screen.getByText('Save'));
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => {
       expect(screen.getByText('Username already taken')).toBeInTheDocument();
     });
@@ -412,11 +412,11 @@ describe('ProfileScreen', () => {
     });
     fireEvent.click(screen.getByText('Set username'));
     await waitFor(() => {
-      expect(screen.getByText('Save')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Save' })).toBeInTheDocument();
     });
     const input = document.querySelector('[data-testid="username-input"]') as HTMLInputElement;
     fireEvent.change(input, { target: { value: 'newuser' } });
-    fireEvent.click(screen.getByText('Save'));
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => {
       expect(screen.getByText('Network error')).toBeInTheDocument();
     });
@@ -450,10 +450,10 @@ describe('ProfileScreen', () => {
     });
     fireEvent.click(screen.getByText('Set username'));
     await waitFor(() => {
-      expect(screen.getByText('Save')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Save' })).toBeInTheDocument();
     });
     // Leave input empty (default is '') and click Save
-    fireEvent.click(screen.getByText('Save'));
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
     // PATCH should NOT have been called because username is blank
     expect(patchCalled).toBe(false);
   });
@@ -475,11 +475,11 @@ describe('ProfileScreen', () => {
     });
     fireEvent.click(screen.getByText('Set username'));
     await waitFor(() => {
-      expect(screen.getByText('Save')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Save' })).toBeInTheDocument();
     });
     const input = document.querySelector('[data-testid="username-input"]') as HTMLInputElement;
     fireEvent.change(input, { target: { value: 'newuser' } });
-    fireEvent.click(screen.getByText('Save'));
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => {
       expect(screen.getByText('Failed to save')).toBeInTheDocument();
     });
@@ -567,7 +567,7 @@ describe('ProfileScreen', () => {
     await waitFor(() => {
       expect(screen.getByText('Profile data unavailable')).toBeInTheDocument();
     });
-    fireEvent.click(screen.getByText('Refresh'));
+    fireEvent.click(screen.getByRole('button', { name: 'Refresh' }));
     expect(mockRefreshEndpoint).toHaveBeenCalledWith('dashboard');
   });
 
@@ -594,7 +594,7 @@ describe('ProfileScreen', () => {
     fireEvent.click(screen.getByText('Add a bio'));
     await waitFor(() => {
       // Should show the bio editing controls
-      expect(screen.getByText('Save')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Save' })).toBeInTheDocument();
     });
   });
 
@@ -620,5 +620,128 @@ describe('ProfileScreen', () => {
     });
     // No category pills should be rendered
     expect(screen.queryByText(/Prompt Efficiency/)).toBeNull();
+  });
+
+  /* ── Error handling / negative tests ─────────────────────────────── */
+
+  describe('error handling', () => {
+    it('handles username save with network error showing correct message', async () => {
+      vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('Network failure')));
+      setupCachedData({ profile: { ...mockProfileData.profile, username: null } });
+      render(<ProfileScreen />);
+      await waitFor(() => { expect(screen.getByText('Set username')).toBeInTheDocument(); });
+      fireEvent.click(screen.getByText('Set username'));
+      await waitFor(() => { expect(screen.getByText('Save')).toBeInTheDocument(); });
+      const input = document.querySelector('[data-testid="username-input"]') as HTMLInputElement;
+      fireEvent.change(input, { target: { value: 'testname' } });
+      fireEvent.click(screen.getByText('Save'));
+      await waitFor(() => { expect(screen.getByText('Network error')).toBeInTheDocument(); });
+    });
+
+    it('handles profile with very long username', async () => {
+      setupCachedData({ profile: { ...mockProfileData.profile, username: 'a'.repeat(30) } });
+      render(<ProfileScreen />);
+      await waitFor(() => { expect(screen.getByText('@' + 'a'.repeat(30))).toBeInTheDocument(); });
+    });
+
+    it('handles profile with special characters in name', async () => {
+      setupCachedData({ profile: { ...mockProfileData.profile, name: "O'Brien & Co" } });
+      const { container } = render(<ProfileScreen />);
+      await waitFor(() => { expect(container.textContent).toContain("O'Brien & Co"); });
+    });
+
+    it('handles progress with NaN percentage gracefully', async () => {
+      setupCachedData({ progress: { totalChallenges: 0, solvedCount: 0, categorySolves: {}, categoryTotals: {} } });
+      render(<ProfileScreen />);
+      await waitFor(() => { expect(screen.getByText(/0% complete/)).toBeInTheDocument(); });
+    });
+
+    it('handles very large credit values', async () => {
+      setupCachedData({ profile: { ...mockProfileData.profile, credits: 999999999 } });
+      render(<ProfileScreen />);
+      await waitFor(() => { expect(screen.getByText('999,999,999')).toBeInTheDocument(); });
+    });
+
+    it('handles negative streak values', async () => {
+      setupCachedData({ profile: { ...mockProfileData.profile, currentStreak: -1, longestStreak: -5 } });
+      render(<ProfileScreen />);
+      await waitFor(() => { expect(screen.getByText('Streak')).toBeInTheDocument(); });
+    });
+
+    it('handles empty badge catalog with earned badges', async () => {
+      setupCachedData(undefined, { catalog: [], earned: [{ badgeType: 'mystery' }] });
+      render(<ProfileScreen />);
+      await waitFor(() => { expect(screen.getByText('Achievements')).toBeInTheDocument(); });
+    });
+
+    it('handles all badges being earned', async () => {
+      setupCachedData(undefined, {
+        catalog: [
+          { type: 'speed_demon', title: 'Speed Demon', description: 'Fast', icon: 'z' },
+          { type: 'budget_master', title: 'Budget Master', description: 'Cheap', icon: 'm' },
+        ],
+        earned: [{ badgeType: 'speed_demon' }, { badgeType: 'budget_master' }],
+      });
+      render(<ProfileScreen />);
+      await waitFor(() => { expect(screen.getByText('2 of 2 unlocked')).toBeInTheDocument(); });
+    });
+
+    it('handles rank with very large position', async () => {
+      setupCachedData({ rank: { position: 999999, totalRanked: 1000000 } });
+      render(<ProfileScreen />);
+      await waitFor(() => { expect(screen.getByText('#999999')).toBeInTheDocument(); });
+    });
+
+    it('handles profile with zero streak freezes', async () => {
+      setupCachedData({ profile: { ...mockProfileData.profile, streakFreezes: 0 } });
+      render(<ProfileScreen />);
+      await waitFor(() => { expect(screen.getByText('0')).toBeInTheDocument(); });
+    });
+
+    it('handles category with zero total', async () => {
+      setupCachedData({ progress: { ...mockProfileData.progress, categorySolves: { prompt_efficiency: 0 }, categoryTotals: { prompt_efficiency: 0 } } });
+      render(<ProfileScreen />);
+      await waitFor(() => { expect(screen.getByText('Challenge Progress')).toBeInTheDocument(); });
+    });
+
+    it('handles many categories without overflow', async () => {
+      setupCachedData({ progress: {
+        totalChallenges: 100, solvedCount: 50,
+        categorySolves: { a: 1, b: 2, c: 3, d: 4, e: 5 },
+        categoryTotals: { a: 10, b: 20, c: 30, d: 40, e: 50 },
+      }});
+      render(<ProfileScreen />);
+      await waitFor(() => { expect(screen.getByText('Challenge Progress')).toBeInTheDocument(); });
+    });
+
+    it('handles saving empty username trimmed to blank', async () => {
+      let patchCalled = false;
+      vi.stubGlobal('fetch', vi.fn().mockImplementation(async (_url: string, opts: any) => {
+        if (opts?.method === 'PATCH') { patchCalled = true; return { ok: true, json: async () => ({}) } as Response; }
+        return { ok: true, json: async () => ({}) } as Response;
+      }));
+      setupCachedData({ profile: { ...mockProfileData.profile, username: null } });
+      render(<ProfileScreen />);
+      await waitFor(() => { expect(screen.getByText('Set username')).toBeInTheDocument(); });
+      fireEvent.click(screen.getByText('Set username'));
+      await waitFor(() => { expect(screen.getByText('Save')).toBeInTheDocument(); });
+      const input = document.querySelector('[data-testid="username-input"]') as HTMLInputElement;
+      fireEvent.change(input, { target: { value: '   ' } });
+      fireEvent.click(screen.getByText('Save'));
+      // Should not call PATCH for whitespace-only username
+      expect(patchCalled).toBe(false);
+    });
+  });
+
+  it('renders bio display text in body color when bio exists', async () => {
+    const profileWithBio = {
+      ...mockProfileData,
+      profile: { ...mockProfileData.profile, bio: 'Hello, I am a developer' } as any,
+    };
+    mockUseDashboardData.mockReturnValue(makeCachedState(profileWithBio));
+    render(<ProfileScreen />);
+    await waitFor(() => {
+      expect(screen.getByText('Hello, I am a developer')).toBeInTheDocument();
+    });
   });
 });

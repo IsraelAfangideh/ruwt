@@ -153,7 +153,7 @@ export function InviteManagementTable({ assessmentId, refreshKey }: Props) {
       {remindResult && (
         <Text style={{
           fontSize: fontSizes.xs,
-          color: /* istanbul ignore next -- @preserve */ remindResult.type === 'success' ? c.success : c.destructive,
+          color: remindResult.type === 'success' ? c.success : c.destructive,
           marginBottom: spacing.xs,
           fontWeight: '600',
         }}>
@@ -216,7 +216,7 @@ export function InviteManagementTable({ assessmentId, refreshKey }: Props) {
             <Text
               style={[
                 styles.cellDate,
-                { color: /* istanbul ignore next -- @preserve */ isExpiringSoon ? c.destructive : c.textMuted },
+                { color: isExpiringSoon ? c.destructive : c.textMuted },
               ]}
             >
               {inv.expiresAt ? new Date(inv.expiresAt).toLocaleDateString() : '—'}

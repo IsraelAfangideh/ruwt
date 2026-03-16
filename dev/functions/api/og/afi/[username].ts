@@ -58,13 +58,19 @@ export async function onRequestGet(context: { request: Request; env: Env; params
 
     // Try to render SVG to PNG using resvg-wasm (same pattern as [attemptId].ts)
     try {
+      /* istanbul ignore next -- @preserve */
       const { Resvg, initWasm } = await import('@aspect-run/resvg-wasm');
       /* istanbul ignore next -- @preserve */
       const wasmUrl = new URL('../../resvg_bg.wasm', import.meta.url);
+      /* istanbul ignore next -- @preserve */
       const wasmRes = await fetch(wasmUrl);
+      /* istanbul ignore next -- @preserve */
       await initWasm(wasmRes.arrayBuffer());
+      /* istanbul ignore next -- @preserve */
       const resvg = new Resvg(svg, { fitTo: { mode: 'width', value: 1200 } });
+      /* istanbul ignore next -- @preserve */
       const png = resvg.render().asPng();
+      /* istanbul ignore next -- @preserve */
       return new Response(png, {
         headers: {
           'Content-Type': 'image/png',

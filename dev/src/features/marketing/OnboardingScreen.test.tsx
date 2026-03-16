@@ -109,7 +109,7 @@ describe('OnboardingScreen', () => {
       expect(screen.getAllByText('Next').length).toBeGreaterThanOrEqual(1);
     });
 
-    fireEvent.click(screen.getByText('Next'));
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
 
     await waitFor(() => {
       expect(screen.getAllByText('Your First Challenge').length).toBeGreaterThanOrEqual(1);
@@ -122,7 +122,7 @@ describe('OnboardingScreen', () => {
       expect(screen.getAllByText('Next').length).toBeGreaterThanOrEqual(1);
     });
 
-    fireEvent.click(screen.getByText('Next'));
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
 
     await waitFor(() => {
       expect(screen.getAllByText('FizzBuzz Budget').length).toBeGreaterThanOrEqual(1);
@@ -138,7 +138,7 @@ describe('OnboardingScreen', () => {
       expect(screen.getAllByText('Next').length).toBeGreaterThanOrEqual(1);
     });
 
-    fireEvent.click(screen.getByText('Next'));
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
 
     await waitFor(() => {
       expect(screen.getAllByText('Quick Tips').length).toBeGreaterThanOrEqual(1);
@@ -151,10 +151,10 @@ describe('OnboardingScreen', () => {
       expect(screen.getAllByText('Next').length).toBeGreaterThanOrEqual(1);
     });
 
-    fireEvent.click(screen.getByText('Next'));
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
 
     await waitFor(() => {
-      expect(screen.getAllByText('Start Challenge').length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByRole('button', { name: 'Start Challenge' }).length).toBeGreaterThanOrEqual(1);
     });
   });
 
@@ -164,7 +164,7 @@ describe('OnboardingScreen', () => {
       expect(screen.getAllByText('Next').length).toBeGreaterThanOrEqual(1);
     });
 
-    fireEvent.click(screen.getByText('Next'));
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
 
     await waitFor(() => {
       expect(screen.getAllByText('Back').length).toBeGreaterThanOrEqual(1);
@@ -178,13 +178,13 @@ describe('OnboardingScreen', () => {
       expect(screen.getAllByText('Next').length).toBeGreaterThanOrEqual(1);
     });
 
-    fireEvent.click(screen.getByText('Next'));
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
 
     await waitFor(() => {
       expect(screen.getAllByText('Back').length).toBeGreaterThanOrEqual(1);
     });
 
-    fireEvent.click(screen.getByText('Back'));
+    fireEvent.click(screen.getByRole('button', { name: 'Back' }));
 
     await waitFor(() => {
       expect(screen.getAllByText(/Welcome to ruwt.dev/).length).toBeGreaterThanOrEqual(1);
@@ -197,14 +197,14 @@ describe('OnboardingScreen', () => {
       expect(screen.getAllByText('Next').length).toBeGreaterThanOrEqual(1);
     });
 
-    fireEvent.click(screen.getByText('Next'));
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
 
     await waitFor(() => {
-      expect(screen.getAllByText('Start Challenge').length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByRole('button', { name: 'Start Challenge' }).length).toBeGreaterThanOrEqual(1);
     });
 
     await act(async () => {
-      fireEvent.click(screen.getByText('Start Challenge'));
+      fireEvent.click(screen.getByRole('button', { name: 'Start Challenge' }));
     });
 
     expect(mockNavigate).toHaveBeenCalledWith('Arena', { challengeId: 'fizzbuzz-budget' });
@@ -216,7 +216,7 @@ describe('OnboardingScreen', () => {
       expect(screen.getAllByText('Next').length).toBeGreaterThanOrEqual(1);
     });
 
-    fireEvent.click(screen.getByText('Next'));
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
 
     await waitFor(() => {
       expect(screen.getAllByText(/I'll explore on my own/).length).toBeGreaterThanOrEqual(1);
@@ -242,10 +242,10 @@ describe('OnboardingScreen', () => {
     });
 
     // Go to step 2
-    fireEvent.click(screen.getByText('Next'));
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
 
     await waitFor(() => {
-      expect(screen.getAllByText('Start Challenge').length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByRole('button', { name: 'Start Challenge' }).length).toBeGreaterThanOrEqual(1);
     });
 
     // Step 2 does not have a "Next" button, it has "Start Challenge"
@@ -320,4 +320,40 @@ describe('OnboardingScreen', () => {
     expect(mockReset).not.toHaveBeenCalled();
   });
 
+  describe('error handling', () => {
+    it('handles fetch failure during onboarding PATCH', async () => {
+      vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('Network')));
+      render(<OnboardingScreen />);
+      await waitFor(() => {
+        expect(screen.getAllByText(/Welcome to ruwt.dev/).length).toBeGreaterThanOrEqual(1);
+      });
+    });
+
+    it('handles PATCH returning non-ok during goal selection', async () => {
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, json: () => Promise.resolve({}) }));
+      render(<OnboardingScreen />);
+      await waitFor(() => {
+        expect(screen.getAllByText(/Welcome to ruwt.dev/).length).toBeGreaterThanOrEqual(1);
+      });
+    });
+
+    it('handles getUser returning valid user during onboarding', async () => {
+      mockGetUser.mockResolvedValue({ data: { user: { id: 'u1' } } });
+      render(<OnboardingScreen />);
+      await waitFor(() => {
+        expect(screen.getAllByText(/Welcome to ruwt.dev/).length).toBeGreaterThanOrEqual(1);
+      });
+    });
+
+    it('handles PATCH with malformed JSON response', async () => {
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.reject(new Error('bad json')),
+      }));
+      render(<OnboardingScreen />);
+      await waitFor(() => {
+        expect(screen.getAllByText(/Welcome to ruwt.dev/).length).toBeGreaterThanOrEqual(1);
+      });
+    });
+  });
 });

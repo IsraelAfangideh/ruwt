@@ -54,7 +54,6 @@ export function ChallengeCard({ challenge }: { challenge: Challenge }) {
   const diffBg = diffStyle.bg;
 
   const catLabel = categoryLabel(challenge.category);
-  /* istanbul ignore next -- @preserve */
   const catColor = challenge.category === 'model_selection' ? (isDark ? c.accent : '#6b5520')
     : challenge.category === 'prompt_efficiency' ? (isDark ? c.success : '#3a6b3a')
     : challenge.category === 'iterative_debugging' ? (isDark ? c.destructive : '#8b4040')
@@ -137,7 +136,7 @@ export function ChallengeCard({ challenge }: { challenge: Challenge }) {
             )}
             {langLabel && (
               <View style={[styles.pill, { backgroundColor: '#3b82f615' }]}>
-                <Text style={[styles.pillText, { color: /* istanbul ignore next -- @preserve */ isDark ? '#93c5fd' : '#1d4ed8' }]}>{langLabel}</Text>
+                <Text style={[styles.pillText, { color: isDark ? '#93c5fd' : '#1d4ed8' }]}>{langLabel}</Text>
               </View>
             )}
             {isSolved && (
@@ -170,13 +169,11 @@ export function ChallengeCard({ challenge }: { challenge: Challenge }) {
         <View style={styles.footer}>
           {hasSolvers && (
             <Text style={[styles.statsLine, { color: c.textSubtle }]}>
-              {challenge.stats!.solvers} solver{/* istanbul ignore next -- @preserve */ challenge.stats!.solvers !== 1 ? 's' : ''}
+              {challenge.stats!.solvers} solver{challenge.stats!.solvers !== 1 ? 's' : ''}
               {challenge.stats!.avgCost != null && ` \u00b7 avg ${formatCostFromHundredths(challenge.stats!.avgCost)}`}
             </Text>
           )}
-          /* istanbul ignore next -- @preserve */
           {isSolved && challenge.userBestCost != null && (
-            /* istanbul ignore next -- @preserve */
             <Text style={[styles.statsLine, { color: c.success }]}>
               Your best: {formatCostFromHundredths(challenge.userBestCost)}
             </Text>

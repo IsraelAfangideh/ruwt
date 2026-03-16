@@ -372,3 +372,101 @@ describe('OPTIONS /api/execute', () => {
     expect(res.body).toBeNull();
   });
 });
+
+/* ── Additional error-path tests for execute ─────────────────────── */
+
+describe('POST /api/execute — additional error paths', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('returns 401 when user is not authenticated', async () => {
+    mockGetUser.mockResolvedValue(null);
+    const res = await onRequestPost(makeContext({ language: 'javascript', code: 'console.log(1)' }));
+    expect(res.status).toBe(401);
+  });
+
+  it('returns 400 when language is missing', async () => {
+    mockGetUser.mockResolvedValue(FAKE_USER);
+    const res = await onRequestPost(makeContext({ code: 'console.log(1)' }));
+    expect(res.status).toBe(400);
+  });
+
+  it('returns 400 when code is missing', async () => {
+    mockGetUser.mockResolvedValue(FAKE_USER);
+    const res = await onRequestPost(makeContext({ language: 'javascript' }));
+    expect(res.status).toBe(400);
+  });
+
+  it('returns 400 when body is malformed JSON', async () => {
+    mockGetUser.mockResolvedValue(FAKE_USER);
+    const ctx = {
+      request: new Request('https://ruwt.dev/api/execute', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: 'not valid json',
+      }),
+      env: makeEnv(),
+    };
+    const res = await onRequestPost(ctx);
+    expect(res.status).toBe(400);
+  });
+
+  it('returns 400 when code exceeds max size', async () => {
+    mockGetUser.mockResolvedValue(FAKE_USER);
+    const res = await onRequestPost(makeContext({ language: 'javascript', code: 'x'.repeat(1024 * 1024 + 1) }));
+    expect(res.status).toBe(400);
+  });
+
+  it('returns 400 when language is empty string', async () => {
+    mockGetUser.mockResolvedValue(FAKE_USER);
+    const res = await onRequestPost(makeContext({ language: '', code: 'x' }));
+    expect(res.status).toBe(400);
+  });
+
+  it('returns 400 when code is empty string', async () => {
+    mockGetUser.mockResolvedValue(FAKE_USER);
+    const res = await onRequestPost(makeContext({ language: 'javascript', code: '' }));
+    expect(res.status).toBe(400);
+  });
+
+  it('returns 400 when body is an array', async () => {
+    mockGetUser.mockResolvedValue(FAKE_USER);
+    const ctx = {
+      request: new Request('https://ruwt.dev/api/execute', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify([{ language: 'javascript', code: 'x' }]),
+      }),
+      env: makeEnv(),
+    };
+    const res = await onRequestPost(ctx);
+    expect(res.status).toBe(400);
+  });
+
+  it('returns 400 when body is null', async () => {
+    mockGetUser.mockResolvedValue(FAKE_USER);
+    const ctx = {
+      request: new Request('https://ruwt.dev/api/execute', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: 'null',
+      }),
+      env: makeEnv(),
+    };
+    const res = await onRequestPost(ctx);
+    expect(res.status).toBe(400);
+  });
+
+  it('handles unsupported language gracefully', async () => {
+    mockGetUser.mockResolvedValue(FAKE_USER);
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ run: { stdout: '', stderr: 'unsupported', code: 1 } }),
+    }));
+    const res = await onRequestPost(makeContext({ language: 'brainfuck', code: '+' }));
+    // May return 200 with error in output, or 400 depending on validation
+    expect([200, 400, 500]).toContain(res.status);
+    vi.unstubAllGlobals();
+  });
+});

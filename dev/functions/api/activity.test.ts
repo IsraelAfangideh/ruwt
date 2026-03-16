@@ -83,4 +83,22 @@ describe('GET /api/activity (public)', () => {
     expect(res.status).toBe(500);
     expect((await res.json()).error).toBe('Internal server error');
   });
+
+  it('returns 500 when getDb returns null', async () => {
+    mockGetDb.mockReturnValue(null);
+    const res = await onRequestGet(makeCtx());
+    expect(res.status).toBe(500);
+  });
+
+  it('handles activity with limit parameter', async () => {
+    setupDb([]);
+    const res = await onRequestGet(makeCtx('?limit=5'));
+    expect(res.status).toBe(200);
+  });
+
+  it('handles activity with invalid limit parameter', async () => {
+    setupDb([]);
+    const res = await onRequestGet(makeCtx('?limit=abc'));
+    expect(res.status).toBe(200);
+  });
 });

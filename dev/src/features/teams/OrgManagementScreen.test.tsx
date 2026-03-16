@@ -760,6 +760,52 @@ describe('OrgManagementScreen', () => {
     });
   });
 
+  it('shows Team AI Fluency section with avg AFI and top performers when members have AFI scores', async () => {
+    const membersWithAfi = [
+      { id: 'm1', userId: 'u1', role: 'owner', joinedAt: '2026-01-01', name: 'Owner User', email: 'owner@acme.com', avatarUrl: null, afiScore: 700, afiTier: 'exceptional' },
+      { id: 'm2', userId: 'u2', role: 'admin', joinedAt: '2026-01-02', name: null, email: 'admin@acme.com', avatarUrl: null, afiScore: 500, afiTier: null },
+      { id: 'm3', userId: 'u3', role: 'member', joinedAt: '2026-01-03', name: null, email: 'member@acme.com', avatarUrl: null, afiScore: 0, afiTier: null },
+    ];
+    setupFetch({
+      '/api/orgs': ok([mockOrg]),
+      '/api/orgs/org1/members': ok(membersWithAfi),
+      '/api/orgs/org1/invitations': ok([]),
+    });
+    render(<OrgManagementScreen />);
+    await waitFor(() => {
+      expect(screen.getByText('Team AI Fluency')).toBeInTheDocument();
+    });
+    // Avg AFI of members with score > 0: (700+500)/2 = 600
+    expect(screen.getByText('600')).toBeInTheDocument();
+    expect(screen.getByText('Team Average AFI')).toBeInTheDocument();
+    expect(screen.getByText('Top Performers')).toBeInTheDocument();
+    // 2 of 3 members scored
+    expect(screen.getByText('2 of 3 members scored')).toBeInTheDocument();
+    // Top performers list (names appear in members table AND top performers)
+    expect(screen.getAllByText('Owner User').length).toBeGreaterThanOrEqual(2);
+    // Admin User has null name, so falls back to email in top performers
+    expect(screen.getAllByText('admin@acme.com').length).toBeGreaterThanOrEqual(2);
+    expect(screen.getByText('700')).toBeInTheDocument();
+    expect(screen.getByText('500')).toBeInTheDocument();
+  });
+
+  it('shows "no AFI scores yet" message when all members have zero AFI', async () => {
+    const membersNoAfi = [
+      { id: 'm1', userId: 'u1', role: 'owner', joinedAt: '2026-01-01', name: 'Owner User', email: 'owner@acme.com', avatarUrl: null, afiScore: 0, afiTier: null },
+      { id: 'm2', userId: 'u2', role: 'admin', joinedAt: '2026-01-02', name: 'Admin User', email: 'admin@acme.com', avatarUrl: null },
+    ];
+    setupFetch({
+      '/api/orgs': ok([mockOrg]),
+      '/api/orgs/org1/members': ok(membersNoAfi),
+      '/api/orgs/org1/invitations': ok([]),
+    });
+    render(<OrgManagementScreen />);
+    await waitFor(() => {
+      expect(screen.getByText('Team AI Fluency')).toBeInTheDocument();
+    });
+    expect(screen.getByText(/No team members have AFI scores yet/)).toBeInTheDocument();
+  });
+
   it('shows annual plan label for active annual subscription', async () => {
     const annualOrg = { ...mockOrg, subscriptionPlan: 'annual' };
     setupFetch({
@@ -770,6 +816,25 @@ describe('OrgManagementScreen', () => {
     render(<OrgManagementScreen />);
     await waitFor(() => {
       expect(screen.getByText(/Annual/)).toBeInTheDocument();
+    });
+  });
+
+  it('renders fallback border color for unknown member roles', async () => {
+    const unknownRoleMembers = [
+      { id: 'm1', userId: 'u1', role: 'owner', joinedAt: '2026-01-01', name: 'Owner User', email: 'owner@acme.com', avatarUrl: null },
+      { id: 'm4', userId: 'u4', role: 'custom_role', joinedAt: '2026-01-04', name: 'Custom User', email: 'custom@acme.com', avatarUrl: null },
+    ];
+    const unknownRoleInvites = [
+      { id: 'inv2', email: 'unknown@acme.com', role: 'custom_role', status: 'pending', expiresAt: '2026-04-01T00:00:00Z', createdAt: '2026-02-01' },
+    ];
+    setupFetch({
+      '/api/orgs': ok([mockOrg]),
+      '/api/orgs/org1/members': ok(unknownRoleMembers),
+      '/api/orgs/org1/invitations': ok(unknownRoleInvites),
+    });
+    render(<OrgManagementScreen />);
+    await waitFor(() => {
+      expect(screen.getByText('custom@acme.com')).toBeInTheDocument();
     });
   });
 });

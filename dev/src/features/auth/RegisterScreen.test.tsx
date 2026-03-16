@@ -105,7 +105,7 @@ describe('RegisterScreen', () => {
 
   it('renders Create account button', () => {
     render(<RegisterScreen />);
-    expect(screen.getAllByText('Create account').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByRole('button', { name: 'Create account' }).length).toBeGreaterThanOrEqual(1);
   });
 
   /* ── Registration form submission ──────────────────────────────── */
@@ -121,7 +121,7 @@ describe('RegisterScreen', () => {
     fireEvent.change(passwordInput, { target: { value: 'password123' } });
 
     await act(async () => {
-      fireEvent.click(screen.getByText('Create account'));
+      fireEvent.click(screen.getByRole('button', { name: 'Create account' }));
     });
 
     expect(mockSignUp).toHaveBeenCalledWith({
@@ -148,7 +148,7 @@ describe('RegisterScreen', () => {
     fireEvent.change(passwordInput, { target: { value: 'password123' } });
 
     await act(async () => {
-      fireEvent.click(screen.getByText('Create account'));
+      fireEvent.click(screen.getByRole('button', { name: 'Create account' }));
     });
 
     await waitFor(() => {
@@ -172,14 +172,14 @@ describe('RegisterScreen', () => {
     fireEvent.change(passwordInput, { target: { value: 'password123' } });
 
     await act(async () => {
-      fireEvent.click(screen.getByText('Create account'));
+      fireEvent.click(screen.getByRole('button', { name: 'Create account' }));
     });
 
     await waitFor(() => {
       expect(screen.getAllByText('Back to sign in').length).toBeGreaterThanOrEqual(1);
     });
 
-    fireEvent.click(screen.getByText('Back to sign in'));
+    fireEvent.click(screen.getByRole('button', { name: 'Back to sign in' }));
     expect(mockNavigate).toHaveBeenCalledWith('Login');
   });
 
@@ -196,7 +196,7 @@ describe('RegisterScreen', () => {
     fireEvent.change(passwordInput, { target: { value: 'password123' } });
 
     await act(async () => {
-      fireEvent.click(screen.getByText('Create account'));
+      fireEvent.click(screen.getByRole('button', { name: 'Create account' }));
     });
 
     await waitFor(() => {
@@ -217,7 +217,7 @@ describe('RegisterScreen', () => {
     fireEvent.change(passwordInput, { target: { value: 'password123' } });
 
     await act(async () => {
-      fireEvent.click(screen.getByText('Create account'));
+      fireEvent.click(screen.getByRole('button', { name: 'Create account' }));
     });
 
     await waitFor(() => {
@@ -238,7 +238,7 @@ describe('RegisterScreen', () => {
     fireEvent.change(passwordInput, { target: { value: 'password123' } });
 
     await act(async () => {
-      fireEvent.click(screen.getByText('Create account'));
+      fireEvent.click(screen.getByRole('button', { name: 'Create account' }));
     });
 
     await waitFor(() => {
@@ -264,7 +264,7 @@ describe('RegisterScreen', () => {
     fireEvent.change(passwordInput, { target: { value: 'password123' } });
 
     await act(async () => {
-      fireEvent.click(screen.getByText('Create account'));
+      fireEvent.click(screen.getByRole('button', { name: 'Create account' }));
     });
 
     await waitFor(() => {
@@ -284,10 +284,10 @@ describe('RegisterScreen', () => {
     fireEvent.change(passwordInput, { target: { value: 'password123' } });
 
     await act(async () => {
-      fireEvent.click(screen.getByText('Create account'));
+      fireEvent.click(screen.getByRole('button', { name: 'Create account' }));
     });
 
-    expect(screen.getAllByText('Creating account...').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByRole('button', { name: 'Creating account...' }).length).toBeGreaterThanOrEqual(1);
   });
 
   /* ── OAuth flow ────────────────────────────────────────────────── */
@@ -356,5 +356,114 @@ describe('RegisterScreen', () => {
     });
 
     expect(mockSignUp).toHaveBeenCalled();
+  });
+
+  /* ── Error handling / negative tests ─────────────────────────────── */
+
+  describe('error handling', () => {
+    it('shows error when signup returns auth error', async () => {
+      mockSignUp.mockResolvedValue({ error: { message: 'Email already registered' } });
+      render(<RegisterScreen />);
+      const emailInput = document.querySelector('input[placeholder="you@example.com"]') as HTMLInputElement;
+      const passwordInput = document.querySelector('input[type="password"]') as HTMLInputElement;
+      fireEvent.change(emailInput, { target: { value: 'taken@test.com' } });
+      fireEvent.change(passwordInput, { target: { value: 'pass1234' } });
+      await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Create account' })); });
+      await waitFor(() => { expect(screen.getByText('Email already registered')).toBeInTheDocument(); });
+    });
+
+    it('shows error when signup returns server error message', async () => {
+      mockSignUp.mockResolvedValue({ error: { message: 'Server unavailable' } });
+      render(<RegisterScreen />);
+      const emailInput = document.querySelector('input[placeholder="you@example.com"]') as HTMLInputElement;
+      const passwordInput = document.querySelector('input[type="password"]') as HTMLInputElement;
+      fireEvent.change(emailInput, { target: { value: 'user@test.com' } });
+      fireEvent.change(passwordInput, { target: { value: 'pass1234' } });
+      await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Create account' })); });
+      await waitFor(() => { expect(screen.getByText('Server unavailable')).toBeInTheDocument(); });
+    });
+
+    it('shows error when GitHub OAuth returns error', async () => {
+      mockSignInWithOAuth.mockResolvedValue({ error: { message: 'OAuth denied' } });
+      render(<RegisterScreen />);
+      await act(async () => { fireEvent.click(screen.getByText(/Continue with GitHub/)); });
+      await waitFor(() => { expect(screen.getByText('OAuth denied')).toBeInTheDocument(); });
+    });
+
+    it('handles signup with empty email by showing validation error', async () => {
+      mockSignUp.mockResolvedValue({ error: { message: 'Email is required' } });
+      render(<RegisterScreen />);
+      const passwordInput = document.querySelector('input[type="password"]') as HTMLInputElement;
+      fireEvent.change(passwordInput, { target: { value: 'pass1234' } });
+      await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Create account' })); });
+      // Component submits; Supabase returns error for empty email
+      await waitFor(() => { expect(screen.getByText('Email is required')).toBeInTheDocument(); });
+    });
+
+    it('handles signup with empty password by showing validation error', async () => {
+      mockSignUp.mockResolvedValue({ error: { message: 'Password is required' } });
+      render(<RegisterScreen />);
+      const emailInput = document.querySelector('input[placeholder="you@example.com"]') as HTMLInputElement;
+      fireEvent.change(emailInput, { target: { value: 'user@test.com' } });
+      await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Create account' })); });
+      await waitFor(() => { expect(screen.getByText('Password is required')).toBeInTheDocument(); });
+    });
+
+    it('handles signup with both fields empty', async () => {
+      mockSignUp.mockResolvedValue({ error: { message: 'Credentials required' } });
+      render(<RegisterScreen />);
+      await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Create account' })); });
+      await waitFor(() => { expect(screen.getByText('Credentials required')).toBeInTheDocument(); });
+    });
+
+    it('shows error for weak password', async () => {
+      mockSignUp.mockResolvedValue({ error: { message: 'Password too weak' } });
+      render(<RegisterScreen />);
+      const emailInput = document.querySelector('input[placeholder="you@example.com"]') as HTMLInputElement;
+      const passwordInput = document.querySelector('input[type="password"]') as HTMLInputElement;
+      fireEvent.change(emailInput, { target: { value: 'user@test.com' } });
+      fireEvent.change(passwordInput, { target: { value: '123' } });
+      await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Create account' })); });
+      await waitFor(() => { expect(screen.getByText('Password too weak')).toBeInTheDocument(); });
+    });
+
+    it('handles GitHub OAuth failure response', async () => {
+      mockSignInWithOAuth.mockResolvedValue({ error: { message: 'GitHub service unavailable' } });
+      render(<RegisterScreen />);
+      await act(async () => { fireEvent.click(screen.getByText(/Continue with GitHub/)); });
+      await waitFor(() => { expect(screen.getByText('GitHub service unavailable')).toBeInTheDocument(); });
+    });
+
+    it('handles signup with very long email', async () => {
+      render(<RegisterScreen />);
+      const emailInput = document.querySelector('input[placeholder="you@example.com"]') as HTMLInputElement;
+      const passwordInput = document.querySelector('input[type="password"]') as HTMLInputElement;
+      fireEvent.change(emailInput, { target: { value: 'a'.repeat(300) + '@test.com' } });
+      fireEvent.change(passwordInput, { target: { value: 'longpassword' } });
+      await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Create account' })); });
+      expect(mockSignUp).toHaveBeenCalled();
+    });
+
+    it('shows rate limit error', async () => {
+      mockSignUp.mockResolvedValue({ error: { message: 'Rate limit exceeded' } });
+      render(<RegisterScreen />);
+      const emailInput = document.querySelector('input[placeholder="you@example.com"]') as HTMLInputElement;
+      const passwordInput = document.querySelector('input[type="password"]') as HTMLInputElement;
+      fireEvent.change(emailInput, { target: { value: 'user@test.com' } });
+      fireEvent.change(passwordInput, { target: { value: 'pass1234' } });
+      await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Create account' })); });
+      await waitFor(() => { expect(screen.getByText('Rate limit exceeded')).toBeInTheDocument(); });
+    });
+
+    it('handles invalid email format gracefully', async () => {
+      mockSignUp.mockResolvedValue({ error: { message: 'Invalid email' } });
+      render(<RegisterScreen />);
+      const emailInput = document.querySelector('input[placeholder="you@example.com"]') as HTMLInputElement;
+      const passwordInput = document.querySelector('input[type="password"]') as HTMLInputElement;
+      fireEvent.change(emailInput, { target: { value: 'not-an-email' } });
+      fireEvent.change(passwordInput, { target: { value: 'pass1234' } });
+      await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Create account' })); });
+      await waitFor(() => { expect(screen.getByText('Invalid email')).toBeInTheDocument(); });
+    });
   });
 });

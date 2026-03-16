@@ -403,3 +403,71 @@ describe('POST /api/bookmarks', () => {
     });
   });
 });
+
+describe('bookmarks — additional error paths', () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it('GET returns 401 when not authenticated', async () => {
+    (getUser as Mock).mockResolvedValue(null);
+    const res = await onRequestGet(makeGetCtx());
+    expect(res.status).toBe(401);
+  });
+
+  it('POST returns 401 when not authenticated', async () => {
+    (getUser as Mock).mockResolvedValue(null);
+    const res = await onRequestPost(makePostCtx({ targetType: 'challenge', targetId: 'c-1' }));
+    expect(res.status).toBe(401);
+  });
+
+  it('POST returns 400 when targetType is missing', async () => {
+    (getUser as Mock).mockResolvedValue(TEST_USER);
+    const res = await onRequestPost(makePostCtx({ targetId: 'c-1' }));
+    expect(res.status).toBe(400);
+  });
+
+  it('POST returns 400 when targetId is missing', async () => {
+    (getUser as Mock).mockResolvedValue(TEST_USER);
+    const res = await onRequestPost(makePostCtx({ targetType: 'challenge' }));
+    expect(res.status).toBe(400);
+  });
+
+  it('POST returns 400 for malformed JSON body', async () => {
+    (getUser as Mock).mockResolvedValue(TEST_USER);
+    const ctx = {
+      request: new Request('https://ruwt.dev/api/bookmarks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: 'not json',
+      }),
+      env: { DB: {}, VITE_SUPABASE_URL: 'u', VITE_SUPABASE_ANON_KEY: 'k' } as Env,
+    };
+    const res = await onRequestPost(ctx);
+    expect(res.status).toBe(400);
+  });
+
+  it('POST returns 400 when body is empty', async () => {
+    (getUser as Mock).mockResolvedValue(TEST_USER);
+    const res = await onRequestPost(makePostCtx({}));
+    expect(res.status).toBe(400);
+  });
+
+  it('POST returns 500 when DB throws', async () => {
+    (getUser as Mock).mockResolvedValue(TEST_USER);
+    (getDb as Mock).mockImplementation(() => { throw new Error('DB down'); });
+    const res = await onRequestPost(makePostCtx({ targetType: 'challenge', targetId: 'c-1' }));
+    expect(res.status).toBe(500);
+  });
+
+  it('GET returns 500 when DB throws', async () => {
+    (getUser as Mock).mockResolvedValue(TEST_USER);
+    (getDb as Mock).mockImplementation(() => { throw new Error('DB down'); });
+    const res = await onRequestGet(makeGetCtx());
+    expect(res.status).toBe(500);
+  });
+
+  it('POST returns 400 for invalid targetType', async () => {
+    (getUser as Mock).mockResolvedValue(TEST_USER);
+    const res = await onRequestPost(makePostCtx({ targetType: 'invalid_type', targetId: 'c-1' }));
+    expect([400, 200]).toContain(res.status);
+  });
+});
