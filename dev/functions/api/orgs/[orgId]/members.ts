@@ -164,6 +164,11 @@ export async function onRequestDelete(context: { request: Request; env: Env; par
       return Response.json({ error: 'Member not found' }, { status: 404 });
     }
 
+    // Only owners can remove other owners
+    if (targetMember.role === 'owner' && callerRole !== 'owner') {
+      return Response.json({ error: 'Only owners can remove other owners' }, { status: 403 });
+    }
+
     // Cannot remove the last owner
     if (targetMember.role === 'owner') {
       const owners = await db
