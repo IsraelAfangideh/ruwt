@@ -433,7 +433,7 @@ describe('DELETE /api/orgs/:orgId/members', () => {
 
   it('returns 400 when trying to remove the last owner', async () => {
     mockGetUser.mockResolvedValue(FAKE_USER);
-    mockRequireOrgAccess.mockResolvedValue('admin');
+    mockRequireOrgAccess.mockResolvedValue('owner');
     const db = createMockDb();
     db.selectResults.push([{ userId: TARGET_USER_UUID, role: 'owner' }]); // target is owner
     db.selectResults.push([{ id: 'only-owner' }]); // only 1 owner

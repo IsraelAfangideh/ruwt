@@ -104,7 +104,6 @@ export function TeamsScreen() {
       /* istanbul ignore next -- @preserve */
       setTrialError(data.error || 'Failed to start trial. Please try again.');
     } catch {
-      /* istanbul ignore next -- @preserve */
       setTrialError('Network error. Please try again.');
     }
     setTrialLoading(false);
@@ -154,13 +153,11 @@ export function TeamsScreen() {
       } else if (data.error === 'Unauthorized') {
         navigation.navigate('Register');
       } else {
-        /* istanbul ignore next -- @preserve */
         if (data.error) {
           setShowDemoForm(true);
         }
       }
     } catch {
-      /* istanbul ignore next -- @preserve */
       setShowDemoForm(true);
     }
     setCheckoutLoading(null);
@@ -293,7 +290,7 @@ export function TeamsScreen() {
           </Text>
 
           {/* ROI Stats in hero */}
-          {/* istanbul ignore next -- @preserve */}
+          {}
           <View style={[styles.heroStats, /* istanbul ignore next -- @preserve */ isMobile && styles.heroStatsMobile]}>
             {[
               { value: '0-850', label: 'AFI SCORE' },

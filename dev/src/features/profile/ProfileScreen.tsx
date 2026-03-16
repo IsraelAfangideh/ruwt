@@ -64,49 +64,31 @@ interface BadgeCatalogEntry {
   icon: string;
 }
 
-/* istanbul ignore next -- @preserve */
 function ActivityHeatmap({ heatmap }: { heatmap: Record<string, number> }) {
-  /* istanbul ignore next -- @preserve */
   const c = useColors();
-  /* istanbul ignore next -- @preserve */
   const days = useMemo(() => generateHeatmapDays(), []);
-  /* istanbul ignore next -- @preserve */
   const maxCount = Math.max(1, ...Object.values(heatmap));
-  /* istanbul ignore next -- @preserve */
   const totalActivity = Object.values(heatmap).reduce((s, v) => s + v, 0);
-  /* istanbul ignore next -- @preserve */
   const activeDays = Object.values(heatmap).filter((v) => v > 0).length;
 
-  /* istanbul ignore next -- @preserve */
   function getCellColor(count: number): string {
-    /* istanbul ignore next -- @preserve */
     if (count === 0) return c.border;
-    /* istanbul ignore next -- @preserve */
     const intensity = Math.min(count / maxCount, 1);
     /* istanbul ignore next -- @preserve */
     if (intensity <= 0.33) return c.accent + '40';
-    /* istanbul ignore next -- @preserve */
     if (intensity <= 0.66) return c.accent + '80';
-    /* istanbul ignore next -- @preserve */
     return c.accent + 'CC';
   }
 
-  /* istanbul ignore next -- @preserve */
   const grid: string[][] = Array.from({ length: 7 }, () => []);
-  /* istanbul ignore next -- @preserve */
   days.forEach((day) => {
-    /* istanbul ignore next -- @preserve */
     const d = new Date(day + 'T00:00:00');
-    /* istanbul ignore next -- @preserve */
     const dow = d.getDay();
-    /* istanbul ignore next -- @preserve */
     grid[dow].push(day);
   });
 
-  /* istanbul ignore next -- @preserve */
   const dayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-  /* istanbul ignore next -- @preserve */
   return (
     <Card style={styles.section} accessibilityRole="region" accessibilityLabel="Activity heatmap">
       <CardHeader>
@@ -149,7 +131,6 @@ function ActivityHeatmap({ heatmap }: { heatmap: Record<string, number> }) {
               style={[
                 styles.heatmapCell,
                 {
-                  /* istanbul ignore next -- @preserve */
                   backgroundColor: intensity === 0 ? c.border
                     : intensity <= 0.33 ? c.accent + '40'
                     : intensity <= 0.66 ? c.accent + '80'
@@ -214,7 +195,6 @@ export function ProfileScreen() {
   // Avatar
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
 
-  /* istanbul ignore next -- @preserve */
   // Initialize local state from cached data when it loads
   useEffect(() => {
     if (data) {
@@ -356,7 +336,7 @@ export function ProfileScreen() {
                   <Text style={{ fontSize: fontSizes.xs, color: c.textMuted }}>{bio.length}/300</Text>
                 </View>
                 <View style={styles.usernameActions}>
-                  {/* istanbul ignore next -- @preserve */}
+                  {}
                   <Button size="sm" onPress={handleSaveBio} disabled={savingBio}>
                     {(() => { /* istanbul ignore next -- @preserve */ return savingBio ? 'Saving...' : 'Save'; })()}
                   </Button>

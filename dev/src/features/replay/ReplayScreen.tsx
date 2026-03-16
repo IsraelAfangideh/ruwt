@@ -241,9 +241,8 @@ export function ReplayScreen() {
           </Text>
         </View>
         <View style={styles.timeline}>
-          {/* istanbul ignore next -- @preserve */}
+          {}
           {data.messages.map((msg, i) => {
-            /* istanbul ignore next -- @preserve */
             const mi = msg.model ? getModelById(msg.model) : undefined;
             /* istanbul ignore next -- @preserve */
             const truncated = msg.content.length > 2000 ? msg.content.slice(0, 2000) + '...' : msg.content;
@@ -270,7 +269,7 @@ export function ReplayScreen() {
         </View>
         <View style={{ alignItems: 'center', padding: spacing.md }}>
           <Text style={{ color: c.textMuted, fontSize: fontSizes.xs }}>
-            {/* istanbul ignore next -- @preserve */}
+            {}
             View on <Text style={{ color: c.accent }} onPress={() => window.open(replayUrl, '_blank')}>ruwt.dev</Text>
           </Text>
         </View>
@@ -279,7 +278,6 @@ export function ReplayScreen() {
   }
 
   // Header (shared between video and text modes)
-  /* istanbul ignore next -- @preserve */
   const headerEl = (
     <div style={{
       display: 'flex',
@@ -292,7 +290,7 @@ export function ReplayScreen() {
       width: '100%',
       boxSizing: 'border-box' as const,
     }}>
-      {/* istanbul ignore next -- @preserve */}
+      {}
       <div style={{ marginBottom: isDesktop ? 0 : spacing.sm }}>
         <Text style={[styles.title, !isDesktop && { fontSize: fontSizes.lg }, { color: c.text }]}>
           {data.solver.name}'s Replay
@@ -301,7 +299,7 @@ export function ReplayScreen() {
           {data.challenge.title} ({data.challenge.difficulty})
         </Text>
       </div>
-      {/* istanbul ignore next -- @preserve */}
+      {}
       <div style={{ marginLeft: isDesktop ? 'auto' : 0, display: 'flex', flexDirection: 'row', alignItems: 'center', gap: spacing.xs, flexWrap: 'wrap' as const }}>
         <Pressable onPress={handleCopyLink} style={[styles.shareBtn, { borderColor: c.border }]}>
           <Text style={{ color: c.text, fontSize: fontSizes.xs }}>
@@ -330,7 +328,6 @@ export function ReplayScreen() {
   );
 
   // Summary bar (shared)
-  /* istanbul ignore next -- @preserve */
   const summaryEl = (
     <View style={[styles.summary, !isDesktop && { padding: spacing.md }, { backgroundColor: c.muted + '20', borderBottomColor: c.border }]}>
       <Text style={[styles.summaryText, { color: c.text }]}>
@@ -517,20 +514,16 @@ export function ReplayScreen() {
       {/* Message timeline */}
       <View style={styles.timeline}>
         {data.messages.map((msg, i) => {
-          /* istanbul ignore next -- @preserve */
           const mi = msg.model ? getModelById(msg.model) : undefined;
-          /* istanbul ignore next -- @preserve */
           const costDisplay = msg.cost != null && msg.cost > 0;
-          /* istanbul ignore next -- @preserve */
           const tokenCount = (msg.inputTokens ?? 0) + (msg.outputTokens ?? 0);
-          /* istanbul ignore next -- @preserve */
           const truncatedContent = msg.content.length > 2000 ? msg.content.slice(0, 2000) + '...' : msg.content;
           return (
             <View key={i} style={[styles.msgRow, { borderBottomColor: c.border }]}>
               <View style={styles.msgHeader}>
                 <View style={[styles.roleBadge, { backgroundColor: msg.role === 'user' ? c.accent + '20' : c.muted + '30' }]}>
                   <Text style={{ fontSize: fontSizes.xs, fontWeight: '700', color: msg.role === 'user' ? c.accent : c.textMuted }}>
-                    {/* istanbul ignore next -- @preserve */}
+                    {}
                     {msg.role === 'user' ? 'USER' : 'AI'}
                   </Text>
                 </View>

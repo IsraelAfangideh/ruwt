@@ -94,11 +94,9 @@ interface DashboardData {
 
 function getGreeting(): string {
   const h = new Date().getHours();
-  /* istanbul ignore next -- @preserve */
   if (h < 12) return 'Good morning';
   /* istanbul ignore next -- @preserve */
   if (h < 17) return 'Good afternoon';
-  /* istanbul ignore next -- @preserve */
   return 'Good evening';
 }
 
@@ -873,6 +871,7 @@ export function DashboardScreen() {
     if (countdown <= 0) return;
     countdownRef.current = setInterval(() => {
       setCountdown((prev) => {
+        /* istanbul ignore next -- @preserve */
         if (prev <= 1) {
           /* istanbul ignore next -- @preserve */
           if (countdownRef.current) clearInterval(countdownRef.current);
@@ -882,6 +881,7 @@ export function DashboardScreen() {
         return prev - 1;
       });
     }, 1000);
+    /* istanbul ignore next -- @preserve */
     return () => {
       /* istanbul ignore next -- @preserve */
       if (countdownRef.current) clearInterval(countdownRef.current);

@@ -589,8 +589,7 @@ function ChatPanel({
         )}
         {(() => {
           const visible: Array<{ msg: typeof messages[0]; origIdx: number }> = [];
-          /* istanbul ignore next -- @preserve */
-          messages.forEach((m, idx) => { if (m.role !== 'system') visible.push({ msg: m, origIdx: idx }); });
+          messages.forEach((m, idx) => { /* istanbul ignore next -- @preserve */ if (m.role !== 'system') visible.push({ msg: m, origIdx: idx }); });
           let lastAsstVisIdx = -1;
           for (let j = visible.length - 1; j >= 0; j--) {
             if (visible[j].msg.role === 'assistant' && !visible[j].msg.isConstraint) { lastAsstVisIdx = j; break; }
@@ -805,7 +804,6 @@ function ChatPanel({
                       aria-disabled={disabledModels.has(mi.id)}
                       style={{
                         ...s.tierDropdownItem,
-                        /* istanbul ignore next -- @preserve */
                         background: model === mi.id ? `${tc}15` : 'transparent',
                         color: /* istanbul ignore next -- @preserve */ disabledModels.has(mi.id) ? arena.textSubtle : model === mi.id ? tc : arena.text,
                         opacity: /* istanbul ignore next -- @preserve */ disabledModels.has(mi.id) ? 0.5 : 1,
@@ -814,9 +812,7 @@ function ChatPanel({
                       onClick={() => {
                         /* istanbul ignore next -- @preserve */
                         if (disabledModels.has(mi.id)) return;
-                        /* istanbul ignore next -- @preserve */
                         setModel(mi.id);
-                        /* istanbul ignore next -- @preserve */
                         setTierDropdownOpen(false);
                       }}
                     >
@@ -851,7 +847,6 @@ function ChatPanel({
             data-testid="chat-input"
             value={chatInput}
             onChange={(e) => {
-              /* istanbul ignore next -- @preserve */
               setChatInput(e.target.value);
               e.target.style.height = 'auto';
               e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px';
@@ -948,7 +943,6 @@ export function ArenaIDE({
   const [chatInput, setChatInput] = useState('');
   const [isLoadingChat, setIsLoadingChat] = useState(false);
   const [model, setModel] = useState('@cf/meta/llama-3.1-8b-instruct');
-  /* istanbul ignore next -- @preserve */
   const [selectedTier, setSelectedTier] = useState<ModelTier>('budget');
   const [tierDropdownOpen, setTierDropdownOpen] = useState(false);
   const [showExpiryOverlay, setShowExpiryOverlay] = useState(false);
@@ -1340,9 +1334,7 @@ export function ArenaIDE({
           },
           onDone: async (fullContent, meta) => {
             // If user clicked Stop, handleStopChat already saved the message
-            /* istanbul ignore next -- @preserve */
             if (abortedByUserRef.current) {
-              /* istanbul ignore next -- @preserve */
               abortedByUserRef.current = false;
               resetStreamingState();
               resolve(null);
@@ -1402,11 +1394,10 @@ export function ArenaIDE({
 
     // Auto-run tests once after AI writes code, but don't auto-iterate.
     // The user decides what feedback to give — keeps humans in the loop.
-    /* istanbul ignore next -- @preserve */
     if (
       aiResponse &&
       (hasToolCalls(aiResponse) || lastRoundAppliedCode) &&
-      (mode === 'agent' || mode === 'debug') &&
+      (mode === 'agent' || /* istanbul ignore next -- @preserve */ mode === 'debug') &&
       !constraintHit &&
       onRunTests
     ) {
@@ -1423,7 +1414,7 @@ export function ArenaIDE({
         const resultMsg = formatTestResultsForMessage(asAITestResults);
         setMessages((m) => [...m, { role: 'user', content: resultMsg }]);
       } catch (err) {
-        const errMsg = err instanceof Error ? err.message : 'Test execution failed';
+        const errMsg = err instanceof Error ? err.message : /* istanbul ignore next -- @preserve */ 'Test execution failed';
         setMessages((m) => [...m, { role: 'assistant', content: `[Test run error: ${errMsg}]` }]);
       }
     }
@@ -1431,7 +1422,6 @@ export function ArenaIDE({
     setIsToolLooping(false);
     setIsLoadingChat(false);
     // Clear pending test context after use
-    /* istanbul ignore next -- @preserve */
     pendingTestContextRef.current = null;
 
     // Drain message queue
@@ -1709,7 +1699,6 @@ export function ArenaIDE({
       bottomPanelRef.current?.expand();
     } else {
       // panel lives in sidebar (description, discussion, or chat/results when docked there)
-      /* istanbul ignore next -- @preserve */
       if (panel !== 'results') setActiveTab(panel as 'description' | 'chat' | 'discussion');
       sidebarPanelRef.current?.expand();
       if (isMobile) setMobilePanel('sidebar');
@@ -1759,7 +1748,7 @@ export function ArenaIDE({
           </button>
           <button style={activeTab === 'discussion' ? s.tabActive : s.tab} onClick={() => setActiveTab('discussion')} role="tab" aria-selected={activeTab === 'discussion'} aria-controls="panel-discussion">Discussion</button>
           <button
-            onClick={() => sidebarPanelRef.current?.collapse()}
+            onClick={/* istanbul ignore next -- @preserve */ () => sidebarPanelRef.current?.collapse()}
             title="Collapse sidebar (Cmd+B)"
             aria-label="Collapse sidebar"
             style={s.collapseBtn}
@@ -1808,7 +1797,7 @@ export function ArenaIDE({
           {/* Tab bar */}
           <div style={s.tabBar} role="tablist" aria-label="Sidebar panels">
             <button
-              style={/* istanbul ignore next -- @preserve */ activeTab === 'description' ? s.tabActive : s.tab}
+              style={activeTab === 'description' ? s.tabActive : s.tab}
               onClick={/* istanbul ignore next -- @preserve */ () => setActiveTab('description')}
               role="tab"
               aria-selected={activeTab === 'description'}
@@ -2001,7 +1990,7 @@ export function ArenaIDE({
             >
               <div style={s.terminalWrap}>
                 {/* Bottom zone tab bar — only visible when 2+ tabs */}
-                {/* istanbul ignore next -- @preserve */ (layout.resultsDock === 'bottom' && testResults) ? (
+                {(layout.resultsDock === 'bottom' && testResults) ? (
                   <div style={s.terminalHeader}>
                     <div style={{ display: 'flex', gap: 0 }}>
                       <button
@@ -2106,11 +2095,9 @@ export function ArenaIDE({
       {/* Test results bar */}
       {testResults && <ResultsBar results={testResults} hiddenTestCount={challenge.hiddenTestCount} onDismiss={onDismissResults} onAskAI={(prompt) => {
         // Inject test results into AI context and switch to debug mode
-        /* istanbul ignore next -- @preserve */
         pendingTestContextRef.current = testResults as AITestResults;
         setMode('debug');
         setChatInput(prompt);
-        /* istanbul ignore next -- @preserve */
         focusPanel('chat');
         setNudgeDismissed(true);
       }} />}
@@ -2191,7 +2178,6 @@ const s: Record<string, React.CSSProperties> = {
 
   // Main layout
   mainRow: {
-    /* istanbul ignore next -- @preserve */
     display: 'flex',
     flex: 1,
     minHeight: 0,
@@ -2211,7 +2197,6 @@ const s: Record<string, React.CSSProperties> = {
     width: '100%',
   },
 
-  /* istanbul ignore next -- @preserve */
   // Right pane: editor + terminal
   rightPane: {
     display: 'flex',

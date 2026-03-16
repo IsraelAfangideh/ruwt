@@ -123,7 +123,6 @@ export function LeaderboardScreen() {
       /* istanbul ignore next -- @preserve */
       const base = typeof window !== 'undefined' ? window.location.origin : '';
       const r = await fetch(`${base}/api/leaderboard?challengeId=${challengeId}&limit=50&period=${p || period}&division=${div || division}`);
-      /* istanbul ignore next -- @preserve */
       if (r.ok) {
         const data = await r.json() as { entries: ChallengeEntry[] };
         /* istanbul ignore next -- @preserve */
@@ -278,11 +277,10 @@ export function LeaderboardScreen() {
               {[1, 0, 2].map((i) => {
                 const e = globalEntries[i];
                 if (!e) return null;
-                /* istanbul ignore next -- @preserve */
                 const ordinal = e.rank === 1 ? '1st' : e.rank === 2 ? '2nd' : '3rd';
                 return (
                   <View key={e.user.id} style={[styles.podiumItem, i === 1 && styles.podiumFirst]} accessibilityLabel={`${ordinal} place: ${e.user.name}`}>
-                    {/* istanbul ignore next -- @preserve */}
+                    {}
                     <Avatar src={e.user.avatarUrl} fallback={/* istanbul ignore next -- @preserve */ e.user.name?.[0] ?? '?'} size={i === 1 ? 56 : 40} />
                     <Text style={[styles.podiumName, { color: c.text }]} numberOfLines={1}>{e.user.name}</Text>
                     <Text style={[styles.podiumRank, { color: c.accent }]}>#{e.rank}</Text>
@@ -306,9 +304,9 @@ export function LeaderboardScreen() {
                   <tr key={e.user.id} style={{ borderBottom: `1px solid ${c.border}` }}>
                     <td style={{ width: 32, fontSize: fontSizes.sm, color: c.textMuted as string, padding: `${spacing.sm}px 0` }}>{e.rank}</td>
                     <td style={{ padding: `${spacing.sm}px 0` }}>
-                      {/* istanbul ignore next -- @preserve */}
+                      {}
                       <Pressable style={styles.nameCell} onPress={() => e.user.username && (navigation.navigate as any)('PublicProfile', { username: e.user.username })}>
-                        {/* istanbul ignore next -- @preserve */}
+                        {}
                         <Avatar src={e.user.avatarUrl} fallback={/* istanbul ignore next -- @preserve */ e.user.name?.[0] ?? '?'} size={28} />
                         <Text style={[styles.name, { color: e.user.username ? c.accent : c.text }]} numberOfLines={1}>{e.user.name}</Text>
                       </Pressable>
@@ -393,9 +391,9 @@ export function LeaderboardScreen() {
                   <Text style={[styles.rank, { color: e.rank <= 3 ? c.accent : c.textMuted }]}>
                     {e.rank <= 3 ? ['', '\uD83E\uDD47', '\uD83E\uDD48', '\uD83E\uDD49'][e.rank] : e.rank}
                   </Text>
-                  {/* istanbul ignore next -- @preserve */}
+                  {}
                   <Pressable style={styles.nameCell} onPress={() => e.user.username && (navigation.navigate as any)('PublicProfile', { username: e.user.username })}>
-                    {/* istanbul ignore next -- @preserve */}
+                    {}
                     <Avatar src={e.user.avatarUrl} fallback={/* istanbul ignore next -- @preserve */ e.user.name?.[0] ?? '?'} size={28} />
                     <Text style={[styles.name, { color: e.user.username ? c.accent : c.text }]} numberOfLines={1}>{e.user.name}</Text>
                   </Pressable>

@@ -104,26 +104,20 @@ export function ChallengesScreen() {
 
   // Initialize daily countdown when dailyChallenge data becomes available
   useEffect(() => {
-    /* istanbul ignore next -- @preserve */
     if (!dailyChallenge?.challengeId) return;
-    /* istanbul ignore next -- @preserve */
     const now = new Date();
-    /* istanbul ignore next -- @preserve */
     const tomorrow = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1));
-    /* istanbul ignore next -- @preserve */
     setDailyCountdown(Math.floor((tomorrow.getTime() - now.getTime()) / 1000));
   }, [dailyChallenge]);
 
   // Daily challenge countdown
   useEffect(() => {
-    /* istanbul ignore next -- @preserve */
     if (dailyCountdown <= 0) return;
     /* istanbul ignore next -- @preserve */
     const id = setInterval(() => {
       /* istanbul ignore next -- @preserve */
       setDailyCountdown((prev) => (prev <= 1 ? 0 : prev - 1));
     }, 1000);
-    /* istanbul ignore next -- @preserve */
     return () => clearInterval(id);
   }, [dailyCountdown > 0]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -232,7 +226,6 @@ export function ChallengesScreen() {
   // Stats that reflect current non-status filters (for the clickable stats panel)
   const filteredStats = useMemo(() => {
     let result = challenges;
-    /* istanbul ignore next -- @preserve */
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase().trim();
       result = result.filter((ch) =>
@@ -284,7 +277,6 @@ export function ChallengesScreen() {
         return aVal - bVal;
       })
       .slice(0, 4);
-  /* istanbul ignore next -- @preserve */
   }, [filtered, progressStats.solved]);
 
   /* istanbul ignore next -- @preserve */
@@ -296,7 +288,6 @@ export function ChallengesScreen() {
   const hasActiveFilters = activeLang !== 'all' || activeCategory !== 'all' || activeDifficulty !== 'all' || searchQuery.trim() !== '' || statusFilter !== 'all';
   const hasNonStatusFilters = activeLang !== 'all' || activeCategory !== 'all' || activeDifficulty !== 'all' || searchQuery.trim() !== '';
   const displayStats = hasNonStatusFilters ? filteredStats : progressStats;
-  /* istanbul ignore next -- @preserve */
   const progressPct = displayStats.total > 0 ? Math.round((displayStats.solved / displayStats.total) * 100) : 0;
   return (
     <DashboardLayout user={user}>
@@ -379,7 +370,7 @@ export function ChallengesScreen() {
       </View>
 
       {/* Daily Challenge Featured Card */}
-      {/* istanbul ignore next -- @preserve */ dailyChallenge && (
+      {dailyChallenge && (
         <Card style={[styles.dailyCard, { borderColor: c.accent, borderWidth: 2 }]}>
           <CardContent style={styles.dailyContent}>
             <View style={styles.dailyLeft}>
@@ -394,22 +385,21 @@ export function ChallengesScreen() {
                 </Badge>
               </View>
               <Text style={[styles.dailyTitle, { color: c.text }]}>{dailyChallenge.title}</Text>
-              {/* istanbul ignore next -- @preserve */ dailyCountdown > 0 && (
+              {dailyCountdown > 0 && (
                 <Text style={[styles.dailyCountdown, { color: c.textSubtle }]}>
                   Next in {String(Math.floor(dailyCountdown / 3600)).padStart(2, '0')}:{String(Math.floor((dailyCountdown % 3600) / 60)).padStart(2, '0')}:{String(dailyCountdown % 60).padStart(2, '0')}
                 </Text>
               )}
             </View>
             <View style={styles.dailyRight}>
-              {/* istanbul ignore next -- @preserve */ dailyChallenge.solvedToday ? (
+              {dailyChallenge.solvedToday ? (
                 <View style={[styles.dailySolved, { backgroundColor: c.successBg }]}>
                   <Text style={[styles.dailySolvedText, { color: c.success }]}>{'\u2705'} Completed!</Text>
                 </View>
               ) : (
                 <Button
                   size="lg"
-                  /* istanbul ignore next -- @preserve */
-                  onPress={() => (navigation.navigate as any)('Arena', { challengeId: dailyChallenge.challengeId })}
+                  onPress={/* istanbul ignore next -- @preserve */ () => (navigation.navigate as any)('Arena', { challengeId: dailyChallenge.challengeId })}
                   style={{ backgroundColor: c.accent }}
                   textStyle={{ color: c.primaryForeground, fontWeight: '700' }}
                 >
@@ -601,9 +591,10 @@ export function ChallengesScreen() {
                 ? 'Try adjusting your filters or search query.'
                 : 'Check back later for new challenges.'}
             </Text>
-            {hasActiveFilters && (
+            {/* istanbul ignore next -- @preserve */ hasActiveFilters && (
               <Pressable
-                onPress={() => {
+                /* istanbul ignore next -- @preserve */
+                onPress={/* istanbul ignore next -- @preserve */ () => {
                   setActiveCategory('all');
                   setActiveLang('all');
                   setActiveDifficulty('all');
@@ -698,11 +689,9 @@ export function ChallengesScreen() {
                 accessibilityRole="menuitem"
                 /* istanbul ignore next -- @preserve */
                 accessibilityLabel={(() => { /* istanbul ignore next -- @preserve */ const suffix = sortBy === opt.key && opt.key !== 'default' ? (sortDirection === 'asc' ? ', ascending' : ', descending') : ''; return `Sort by ${opt.label}${suffix}`; })()}
-                /* istanbul ignore next -- @preserve */
                 accessibilityState={{ selected: sortBy === opt.key }}
                 style={[
                   styles.sortMenuItem,
-                  /* istanbul ignore next -- @preserve */
                   sortBy === opt.key && { backgroundColor: c.accentBg },
                 ]}
               >

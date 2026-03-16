@@ -110,7 +110,6 @@ export function SettingsScreen() {
       });
       if (!r.ok) {
         setNewsletterSubscribed(!newValue); // revert
-        /* istanbul ignore next -- @preserve */
         showToast('Failed to update preference', 'error');
       }
     } catch {
@@ -249,8 +248,7 @@ export function SettingsScreen() {
                 </Button>
               ) : (
                 <Button
-                  onPress={() => {
-                    /* istanbul ignore next -- @preserve */
+                  onPress={/* istanbul ignore next -- @preserve */ () => {
                     if (typeof window !== 'undefined') window.location.href = '/hiring';
                   }}
                 >
@@ -314,7 +312,7 @@ export function SettingsScreen() {
               <CardDescription>Control which in-app notifications you receive</CardDescription>
             </CardHeader>
             <CardContent>
-              {(Object.keys(NOTIF_PREF_LABELS) as Array<keyof NotifPrefs>).map((key) => (
+              {/* istanbul ignore next -- @preserve */ (Object.keys(NOTIF_PREF_LABELS) as Array<keyof NotifPrefs>).map((key) => (
                 <Pressable
                   key={key}
                   /* istanbul ignore next -- @preserve */
@@ -324,7 +322,7 @@ export function SettingsScreen() {
                   <Text style={[styles.toggleLabel, { color: c.text }]}>
                     {NOTIF_PREF_LABELS[key]}
                   </Text>
-                  {/* istanbul ignore next -- @preserve */}
+                  {}
                   <View
                     style={[
                       styles.toggleTrack,

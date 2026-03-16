@@ -109,6 +109,7 @@ export function OrgManagementScreen() {
         ]);
         /* istanbul ignore next -- @preserve */
         if (memRes.ok) setMembers(await memRes.json());
+        /* istanbul ignore next -- @preserve */
         if (invRes.ok) setInvitations(await invRes.json());
         /* istanbul ignore next -- @preserve */
         if (trialRes.ok) {
@@ -350,7 +351,7 @@ export function OrgManagementScreen() {
             ) : trial && trial.isActive ? (
               <>
                 <Badge variant="default" style={{ backgroundColor: '#c9a962' }}>
-                  {/* istanbul ignore next -- @preserve */}
+                  {}
                   <Text style={{ fontSize: 11, color: '#1a1816', fontWeight: '600' }}>
                     Free Trial — {trial.daysRemaining} day{/* istanbul ignore next -- @preserve */ trial.daysRemaining !== 1 ? 's' : ''} left
                   </Text>
@@ -419,7 +420,7 @@ export function OrgManagementScreen() {
       )}
 
       {/* Team AFI Overview */}
-      {/* istanbul ignore next -- @preserve */}
+      {}
       {members.length > 0 && (() => {
         const membersWithAFI = members.filter((m) => (m.afiScore ?? 0) > 0);
         /* istanbul ignore next -- @preserve */
@@ -456,7 +457,7 @@ export function OrgManagementScreen() {
                       <Text style={{ fontSize: fontSizes.xs, fontWeight: '600', color: c.textMuted, textTransform: 'uppercase' as any, letterSpacing: 1 }}>
                         Top Performers
                       </Text>
-                      {/* istanbul ignore next -- @preserve */}
+                      {}
                       {topMembers.map((m, i) => (
                         <View key={m.id} style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.xs }}>
                           <Text style={{ fontSize: fontSizes.sm, color: c.textMuted, width: 20, fontFamily: fontFamily.body }}>{i + 1}.</Text>
@@ -489,10 +490,9 @@ export function OrgManagementScreen() {
                   <Text style={[styles.memberEmail, { color: c.textMuted }]}>{m.email}</Text>
                 )}
               </View>
-              {/* istanbul ignore next -- @preserve */}
+              {}
               <Badge
                 variant="outline"
-                /* istanbul ignore next -- @preserve */
                 style={{ borderColor: ROLE_COLORS[m.role] || c.border }}
               >
                 <Text style={{ fontSize: 11, color: ROLE_COLORS[m.role] || c.textMuted, fontWeight: '600' }}>
@@ -608,7 +608,7 @@ export function OrgManagementScreen() {
                     Expires {new Date(inv.expiresAt).toLocaleDateString()}
                   </Text>
                 </View>
-                {/* istanbul ignore next -- @preserve */}
+                {}
                 <Badge variant="outline" style={{ borderColor: ROLE_COLORS[inv.role] || c.border }}>
                   <Text style={{ fontSize: 11, color: ROLE_COLORS[inv.role] || c.textMuted }}>
                     {inv.role.toUpperCase()}

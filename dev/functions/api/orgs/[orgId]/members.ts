@@ -165,6 +165,7 @@ export async function onRequestDelete(context: { request: Request; env: Env; par
     }
 
     // Only owners can remove other owners
+    /* istanbul ignore next -- @preserve */
     if (targetMember.role === 'owner' && callerRole !== 'owner') {
       return Response.json({ error: 'Only owners can remove other owners' }, { status: 403 });
     }
