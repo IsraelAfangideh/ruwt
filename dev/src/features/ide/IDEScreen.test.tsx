@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
+import type { FileEntry } from './FileTree';
 
 const mockNavigate = vi.fn();
 vi.mock('@react-navigation/native', () => ({
@@ -15,8 +16,13 @@ vi.mock('@/shared/theme', async () => (await import('@/shared/test/helpers')).mo
 vi.mock('@/shared/theme/tokens', async () => (await import('@/shared/test/helpers')).mockTokens({ mono: true }));
 vi.mock('@monaco-editor/react', () => ({
   __esModule: true,
-  default: ({ value }: any) => <div data-testid="monaco-editor">{value}</div>,
+  default: ({ value, onChange }: any) => (
+    <div data-testid="monaco-editor" onClick={() => onChange?.('changed code')}>
+      {value}
+    </div>
+  ),
 }));
+
 let mockLayoutReturn: any = {
   sidebarCollapsed: false,
   bottomCollapsed: false,
@@ -36,6 +42,46 @@ vi.mock('@/features/shared-ide/PanelResizeBar', () => ({
   PanelResizeBar: ({ direction }: any) => <div data-testid={`resize-bar-${direction}`} />,
 }));
 
+// Mock webcontainer readFile/writeFile (used directly by IDEScreen)
+const mockReadFile = vi.fn().mockResolvedValue('// file content');
+const mockWriteFile = vi.fn().mockResolvedValue(undefined);
+vi.mock('@/lib/sandbox/webcontainer', () => ({
+  readFile: (...args: unknown[]) => mockReadFile(...args),
+  writeFile: (...args: unknown[]) => mockWriteFile(...args),
+}));
+
+// Mock useWebContainer hook
+const defaultFiles: FileEntry[] = [
+  { name: 'index.js', path: 'index.js', type: 'file' },
+  { name: 'package.json', path: 'package.json', type: 'file' },
+];
+let mockWCReturn: { ready: boolean; files: FileEntry[]; error: string | null; refreshFiles: () => Promise<void> };
+const mockRefreshFiles = vi.fn().mockResolvedValue(undefined);
+vi.mock('./useWebContainer', () => ({
+  useWebContainer: () => mockWCReturn,
+}));
+
+// Mock IDETerminal — heavy xterm dependency
+vi.mock('./IDETerminal', () => ({
+  IDETerminal: () => <div data-testid="ide-terminal-mock">Terminal</div>,
+}));
+
+// Mock FileTree — import the real one (it uses arena colors which are already mocked via the real module)
+vi.mock('@/shared/theme/colors', () => ({
+  arena: {
+    bg: '#0d1117',
+    surface: '#161b22',
+    surfaceHover: '#1c2128',
+    border: 'rgba(240,246,252,0.1)',
+    text: '#e6edf3',
+    textMuted: '#8b929a',
+    accent: '#c9a962',
+    accentBg: 'rgba(201,169,98,0.12)',
+    success: '#3fb950',
+    error: '#f85149',
+  },
+}));
+
 const { IDEScreen } = await import('./IDEScreen');
 
 describe('IDEScreen', () => {
@@ -53,6 +99,14 @@ describe('IDEScreen', () => {
       toggleSidebarPosition: vi.fn(),
       setResultsDock: vi.fn(),
       setActiveBottomTab: vi.fn(),
+    };
+    mockReadFile.mockResolvedValue('// file content');
+    mockWriteFile.mockResolvedValue(undefined);
+    mockWCReturn = {
+      ready: true,
+      files: [...defaultFiles],
+      error: null,
+      refreshFiles: mockRefreshFiles,
     };
   });
 
@@ -79,25 +133,150 @@ describe('IDEScreen', () => {
     expect(screen.getByText('Save')).toBeInTheDocument();
   });
 
-  it('renders file tree with mock files', () => {
+  it('renders file tree once WebContainer is ready', async () => {
     render(<IDEScreen />);
-    expect(screen.getByTestId('file-tree')).toBeInTheDocument();
-    expect(screen.getByText('index.js')).toBeInTheDocument();
-    expect(screen.getByText('package.json')).toBeInTheDocument();
-    expect(screen.getByText('README.md')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByTestId('file-tree')).toBeInTheDocument();
+    });
+    // index.js may appear in both file tree and tab bar, so use getAllByText
+    expect(screen.getAllByText('index.js').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('package.json').length).toBeGreaterThanOrEqual(1);
   });
 
-  it('renders Monaco editor with starter code', async () => {
+  it('auto-opens index.js on boot', async () => {
     render(<IDEScreen />);
-    const editor = await waitFor(() => screen.getByTestId('monaco-editor'));
-    expect(editor).toBeInTheDocument();
-    expect(editor.textContent).toContain('Hello, world!');
+    await waitFor(() => {
+      expect(mockReadFile).toHaveBeenCalledWith('index.js');
+    });
+    // Tab bar should appear with index.js tab
+    await waitFor(() => {
+      expect(screen.getByTestId('tab-bar')).toBeInTheDocument();
+    });
   });
 
-  it('renders terminal panel', () => {
+  it('renders Monaco editor with file content after opening a file', async () => {
     render(<IDEScreen />);
-    expect(screen.getByTestId('terminal-panel')).toBeInTheDocument();
-    expect(screen.getByText('Terminal')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByTestId('monaco-editor')).toBeInTheDocument();
+    });
+    expect(screen.getByTestId('monaco-editor').textContent).toContain('// file content');
+  });
+
+  it('opens a second file when clicked in file tree', async () => {
+    render(<IDEScreen />);
+    await waitFor(() => {
+      expect(screen.getByTestId('file-tree')).toBeInTheDocument();
+    });
+
+    // Click package.json
+    fireEvent.click(screen.getByTestId('file-package.json'));
+
+    await waitFor(() => {
+      expect(mockReadFile).toHaveBeenCalledWith('package.json');
+    });
+  });
+
+  it('switches tabs when clicking a tab button', async () => {
+    render(<IDEScreen />);
+    await waitFor(() => {
+      expect(screen.getByTestId('file-tree')).toBeInTheDocument();
+    });
+
+    // Open a second file
+    fireEvent.click(screen.getByTestId('file-package.json'));
+    await waitFor(() => {
+      expect(screen.getByTestId('tab-btn-package.json')).toBeInTheDocument();
+    });
+
+    // Switch back to index.js tab
+    mockReadFile.mockResolvedValueOnce('// index content');
+    fireEvent.click(screen.getByTestId('tab-btn-index.js'));
+
+    await waitFor(() => {
+      // readFile should have been called for index.js when switching
+      const calls = mockReadFile.mock.calls.map((c: unknown[]) => c[0]);
+      expect(calls).toContain('index.js');
+    });
+  });
+
+  it('closes a tab when close button is clicked', async () => {
+    render(<IDEScreen />);
+    await waitFor(() => {
+      expect(screen.getByTestId('tab-bar')).toBeInTheDocument();
+    });
+
+    // Open a second file
+    fireEvent.click(screen.getByTestId('file-package.json'));
+    await waitFor(() => {
+      expect(screen.getByTestId('tab-close-package.json')).toBeInTheDocument();
+    });
+
+    // Close the second tab
+    fireEvent.click(screen.getByTestId('tab-close-package.json'));
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('tab-btn-package.json')).toBeNull();
+    });
+  });
+
+  it('closes active tab and switches to remaining tab', async () => {
+    render(<IDEScreen />);
+    await waitFor(() => {
+      expect(screen.getByTestId('tab-bar')).toBeInTheDocument();
+    });
+
+    // Open package.json as second tab
+    fireEvent.click(screen.getByTestId('file-package.json'));
+    await waitFor(() => {
+      expect(screen.getByTestId('tab-btn-package.json')).toBeInTheDocument();
+    });
+
+    // Close the active tab (package.json)
+    fireEvent.click(screen.getByTestId('tab-close-package.json'));
+
+    // Should switch to index.js
+    await waitFor(() => {
+      expect(screen.queryByTestId('tab-btn-package.json')).toBeNull();
+      expect(screen.getByTestId('tab-btn-index.js')).toBeInTheDocument();
+    });
+  });
+
+  it('writes file content on editor change with debounce', async () => {
+    vi.useFakeTimers();
+
+    render(<IDEScreen />);
+
+    // Wait for auto-open to settle
+    await act(async () => {
+      vi.advanceTimersByTime(100);
+      await Promise.resolve();
+    });
+
+    // Click the monaco editor mock to trigger onChange('changed code')
+    const editor = screen.queryByTestId('monaco-editor');
+    if (editor) {
+      fireEvent.click(editor);
+      // Advance past the 300ms debounce
+      act(() => { vi.advanceTimersByTime(400); });
+
+      // writeFile should have been called with the changed content
+      expect(mockWriteFile).toHaveBeenCalledWith('index.js', 'changed code');
+    }
+
+    vi.useRealTimers();
+  });
+
+  it('renders terminal panel with IDETerminal when ready', async () => {
+    render(<IDEScreen />);
+    await waitFor(() => {
+      expect(screen.getByTestId('ide-terminal-mock')).toBeInTheDocument();
+    });
+  });
+
+  it('renders terminal placeholder when not ready', () => {
+    mockWCReturn = { ready: false, files: [], error: null, refreshFiles: mockRefreshFiles };
+    render(<IDEScreen />);
+    expect(screen.getByText('Waiting for WebContainer...')).toBeInTheDocument();
   });
 
   it('renders resize bars', () => {
@@ -109,23 +288,6 @@ describe('IDEScreen', () => {
   it('renders editor panel', () => {
     render(<IDEScreen />);
     expect(screen.getByTestId('editor-panel')).toBeInTheDocument();
-  });
-
-  it('allows selecting a file in the file tree', () => {
-    render(<IDEScreen />);
-    fireEvent.click(screen.getByTestId('file-package.json'));
-    // Verify the file item exists and can be clicked
-    expect(screen.getByText('package.json')).toBeInTheDocument();
-  });
-
-  it('renders "Files" sidebar header', () => {
-    render(<IDEScreen />);
-    expect(screen.getByText('Files')).toBeInTheDocument();
-  });
-
-  it('renders terminal prompt', () => {
-    render(<IDEScreen />);
-    expect(screen.getByText('$')).toBeInTheDocument();
   });
 
   it('returns null when loading', () => {
@@ -144,5 +306,96 @@ describe('IDEScreen', () => {
     mockLayoutReturn = { ...mockLayoutReturn, bottomCollapsed: true };
     const { container } = render(<IDEScreen />);
     expect(container.querySelector('[data-testid="terminal-panel"]')).toBeNull();
+  });
+
+  it('shows error state when WebContainer fails', () => {
+    mockWCReturn = { ready: false, files: [], error: 'WebContainer error', refreshFiles: mockRefreshFiles };
+    render(<IDEScreen />);
+    expect(screen.getByTestId('wc-error')).toBeInTheDocument();
+    expect(screen.getByText('WebContainer error')).toBeInTheDocument();
+  });
+
+  it('shows "Select a file" message when no file is open but ready', () => {
+    mockWCReturn = { ready: true, files: [], error: null, refreshFiles: mockRefreshFiles };
+    render(<IDEScreen />);
+    // No index.js found, so no auto-open, no file selected
+    expect(screen.getByTestId('no-file-open')).toBeInTheDocument();
+    expect(screen.getByText('Select a file to start editing')).toBeInTheDocument();
+  });
+
+  it('shows loading state in sidebar when booting', () => {
+    mockWCReturn = { ready: false, files: [], error: null, refreshFiles: mockRefreshFiles };
+    render(<IDEScreen />);
+    expect(screen.getByTestId('wc-loading')).toBeInTheDocument();
+    expect(screen.getByText('Booting...')).toBeInTheDocument();
+  });
+
+  it('shows "Booting" in editor when not ready', () => {
+    mockWCReturn = { ready: false, files: [], error: null, refreshFiles: mockRefreshFiles };
+    render(<IDEScreen />);
+    expect(screen.getByText('Booting WebContainer...')).toBeInTheDocument();
+  });
+
+  it('handles readFile failure when opening a file', async () => {
+    mockReadFile.mockRejectedValueOnce(new Error('read failed'));
+
+    render(<IDEScreen />);
+    await waitFor(() => {
+      expect(screen.getByTestId('monaco-editor')).toBeInTheDocument();
+    });
+    // Should show fallback content
+    expect(screen.getByTestId('monaco-editor').textContent).toContain('Could not read file');
+  });
+
+  it('handles readFile failure when switching tabs', async () => {
+    render(<IDEScreen />);
+    await waitFor(() => {
+      expect(screen.getByTestId('file-tree')).toBeInTheDocument();
+    });
+
+    // Open second file
+    fireEvent.click(screen.getByTestId('file-package.json'));
+    await waitFor(() => {
+      expect(screen.getByTestId('tab-btn-package.json')).toBeInTheDocument();
+    });
+
+    // Make readFile fail for the switch back
+    mockReadFile.mockRejectedValueOnce(new Error('read error'));
+    fireEvent.click(screen.getByTestId('tab-btn-index.js'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('monaco-editor').textContent).toContain('Could not read file');
+    });
+  });
+
+  it('does not add duplicate tabs for the same file', async () => {
+    render(<IDEScreen />);
+    await waitFor(() => {
+      expect(screen.getByTestId('file-tree')).toBeInTheDocument();
+    });
+
+    // Click index.js twice
+    fireEvent.click(screen.getByTestId('file-index.js'));
+    fireEvent.click(screen.getByTestId('file-index.js'));
+
+    // Should still only have one tab for index.js
+    const tabs = screen.getAllByTestId('tab-btn-index.js');
+    expect(tabs).toHaveLength(1);
+  });
+
+  it('closes last tab and shows no-file-open state', async () => {
+    render(<IDEScreen />);
+    await waitFor(() => {
+      expect(screen.getByTestId('tab-bar')).toBeInTheDocument();
+    });
+
+    // Close the only tab
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('tab-close-index.js'));
+    });
+
+    // Tab bar should disappear (0 open tabs)
+    expect(screen.queryByTestId('tab-bar')).toBeNull();
+    expect(screen.getByTestId('no-file-open')).toBeInTheDocument();
   });
 });

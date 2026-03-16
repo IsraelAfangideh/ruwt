@@ -91,24 +91,15 @@ What stayed in `arena/` (challenge-specific):
 
 ---
 
-### Step 2: Add /ide route with basic editor
+### Step 2: Add /ide route with basic editor ✅ COMPLETE
 
 **Branch:** `feat/ide-route`
 
-**What:** New route `/ide` that renders a basic IDE layout using shared-ide components. No WebContainer yet — just Monaco with a hardcoded file, terminal placeholder, and file tree stub.
-
-**Tasks:**
-- [ ] Add `/ide`, `/ide/new`, `/ide/:projectId` routes to navigation/linking.ts
-- [ ] Create `features/projects/ProjectListScreen.tsx` — placeholder list
-- [ ] Create `features/editor/IDEScreen.tsx` — basic layout using shared-ide components
-- [ ] Wire up in `AppNavigator.tsx`
-- [ ] Basic tests for new screens
-
-**Acceptance criteria:**
-- [ ] Navigating to `/ide` shows a project list placeholder
-- [ ] Navigating to `/ide/new` shows the IDE with an empty Monaco editor
-- [ ] Existing routes unaffected
-- [ ] Tests pass, TypeScript compiles
+**Completed.** Created:
+- `features/ide/ProjectListScreen.tsx` — `/ide` route with empty state, "New Project" button
+- `features/ide/IDEScreen.tsx` — `/ide/new` route with Monaco editor, mock file tree, terminal placeholder, top bar
+- Navigation wired up in types.ts, linking.ts, AppNavigator.tsx
+- 23 new tests, all 5,438 tests pass
 
 ---
 

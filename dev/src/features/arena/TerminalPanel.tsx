@@ -10,7 +10,7 @@ import { VirtualShell, type ShellCallbacks } from '../shared-ide/VirtualShell';
 import { RuwtTUI } from './RuwtTUI';
 import type { VirtualFileSystem } from '../shared-ide/VirtualFileSystem';
 import type { ModelTier } from '../../shared/lib/ai/pricing';
-import { arena } from '@/shared/theme/colors';
+import { arena, arenaTermTheme } from '@/shared/theme/colors';
 import { fontFamily } from '@/shared/theme/tokens';
 
 export interface TerminalPanelHandle {
@@ -130,20 +130,7 @@ export const TerminalPanel = React.forwardRef<TerminalPanelHandle, TerminalPanel
       if (!containerRef.current) return;
 
       const term = new Terminal({
-        theme: {
-          background: '#0d1117',
-          foreground: '#e6edf3',
-          cursor: '#c9a962',
-          selectionBackground: 'rgba(201,169,98,0.3)',
-          black: '#0d1117',
-          red: '#f85149',
-          green: '#3fb950',
-          yellow: '#c9a962',
-          blue: '#58a6ff',
-          magenta: '#bc8cff',
-          cyan: '#39d2e0',
-          white: '#e6edf3',
-        },
+        theme: arenaTermTheme,
         fontFamily: fontFamily.mono,
         fontSize: 13,
         lineHeight: 1.3,

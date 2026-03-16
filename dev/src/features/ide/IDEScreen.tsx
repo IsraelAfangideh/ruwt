@@ -1,8 +1,8 @@
 /**
  * IDEScreen: The /ide/new (and future /ide/:projectId) standalone IDE.
- * Uses shared-ide components for layout and panel resizing.
+ * Uses WebContainer for a real filesystem, multi-file editing, and terminal.
  */
-import { lazy, Suspense, useState } from 'react';
+import { lazy, Suspense, useState, useRef, useCallback, useEffect } from 'react';
 import { useNavigation } from '@react-navigation/native';
 import { useAuthGuard } from '@/shared/hooks/useAuthGuard';
 import { useIDELayout } from '@/features/shared-ide/useIDELayout';
@@ -10,29 +10,131 @@ import { PanelResizeBar } from '@/features/shared-ide/PanelResizeBar';
 import { arena } from '@/shared/theme/colors';
 import { fontFamily } from '@/shared/theme/tokens';
 import { useDocumentMeta } from '@/shared/hooks/useDocumentMeta';
+import { readFile, writeFile } from '@/lib/sandbox/webcontainer';
+import { useWebContainer } from './useWebContainer';
+import { FileTree } from './FileTree';
+import { IDETerminal } from './IDETerminal';
 
 /* istanbul ignore next -- @preserve */
 const MonacoEditor = lazy(() => import('@monaco-editor/react'));
 
-const STARTER_CODE = `// Welcome to Ruwt IDE
-// Start coding or clone a repo
+/** Derive a short label from a file path (just the filename) */
+function tabLabel(path: string): string {
+  const parts = path.split('/');
+  return parts[parts.length - 1];
+}
 
-console.log('Hello, world!');
-`;
+/** Infer Monaco language from a file path */
+function languageForPath(path: string): string {
+  const ext = path.includes('.') ? path.split('.').pop()!.toLowerCase() : '';
+  switch (ext) {
+    case 'ts': case 'tsx': return 'typescript';
+    case 'js': case 'jsx': return 'javascript';
+    case 'json': return 'json';
+    case 'md': return 'markdown';
+    case 'css': return 'css';
+    case 'html': return 'html';
+    default: return 'plaintext';
+  }
+}
 
-const MOCK_FILES = [
-  { name: 'index.js', icon: 'JS' },
-  { name: 'package.json', icon: '{}' },
-  { name: 'README.md', icon: '#' },
-];
+interface OpenTab {
+  path: string;
+  label: string;
+}
 
 export function IDEScreen() {
   const { user, loading } = useAuthGuard();
   const navigation = useNavigation();
   const layout = useIDELayout('ide-layout-prefs');
-  const [code, setCode] = useState(STARTER_CODE);
-  const [selectedFile, setSelectedFile] = useState('index.js');
+  const { ready, files, error } = useWebContainer();
   useDocumentMeta({ title: 'Ruwt IDE' });
+
+  // Open tabs and active tab tracking
+  const [openTabs, setOpenTabs] = useState<OpenTab[]>([]);
+  const [activeTab, setActiveTab] = useState<string | null>(null);
+
+  // Editor content for the active file
+  const [editorContent, setEditorContent] = useState<string>('');
+  const [editorLanguage, setEditorLanguage] = useState<string>('javascript');
+
+  // Debounce timer for writing back to the WebContainer filesystem
+  const writeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Track whether the initial auto-open has fired (prevent re-open after user closes all tabs)
+  const didAutoOpenRef = useRef(false);
+
+  // Load a file into the editor (shared by openFile and switchTab)
+  const loadFileContent = useCallback(async (path: string) => {
+    setActiveTab(path);
+    setEditorLanguage(languageForPath(path));
+    try {
+      const content = await readFile(path);
+      setEditorContent(content);
+    } catch {
+      setEditorContent('// Could not read file');
+    }
+  }, []);
+
+  // Open a file: add to tabs if not already open, then load it
+  const openFile = useCallback(async (path: string) => {
+    setOpenTabs((prev) => {
+      if (prev.some((t) => t.path === path)) return prev;
+      return [...prev, { path, label: tabLabel(path) }];
+    });
+    await loadFileContent(path);
+  }, [loadFileContent]);
+
+  // switchTab is just loadFileContent (tab already exists)
+  const switchTab = loadFileContent;
+
+  // Close a tab
+  const closeTab = useCallback((path: string) => {
+    setOpenTabs((prev) => {
+      const next = prev.filter((t) => t.path !== path);
+      if (path === activeTab) {
+        const fallback = next.length > 0 ? next[next.length - 1].path : null;
+        if (fallback) {
+          // Defer the file load to avoid side effects inside the updater
+          queueMicrotask(() => loadFileContent(fallback));
+        } else {
+          setActiveTab(null);
+          setEditorContent('');
+        }
+      }
+      return next;
+    });
+  }, [activeTab, loadFileContent]);
+
+  // Handle editor content changes — debounced write to WebContainer
+  const handleEditorChange = useCallback((value: string | undefined) => {
+    const v = value ?? '';
+    setEditorContent(v);
+    if (!activeTab) return;
+    const path = activeTab;
+    if (writeTimerRef.current) clearTimeout(writeTimerRef.current);
+    writeTimerRef.current = setTimeout(() => {
+      writeFile(path, v).catch(/* istanbul ignore next -- @preserve */ () => {});
+    }, 300);
+  }, [activeTab]);
+
+  // Cleanup write timer on unmount
+  useEffect(() => {
+    return () => {
+      if (writeTimerRef.current) clearTimeout(writeTimerRef.current);
+    };
+  }, []);
+
+  // Auto-open index.js once WebContainer is ready (only on initial boot)
+  useEffect(() => {
+    if (ready && !didAutoOpenRef.current && openTabs.length === 0 && files.length > 0) {
+      didAutoOpenRef.current = true;
+      // Find index.js in the top-level files
+      const indexFile = files.find((f) => f.type === 'file' && f.name === 'index.js');
+      if (indexFile) {
+        openFile(indexFile.path);
+      }
+    }
+  }, [ready, files, openTabs.length, openFile]);
 
   if (loading || !user) return null;
 
@@ -47,7 +149,7 @@ export function IDEScreen() {
             data-testid="back-btn"
             aria-label="Back to projects"
           >
-            ← Back
+            &larr; Back
           </button>
           <span style={projectNameStyle}>Untitled Project</span>
         </div>
@@ -60,24 +162,22 @@ export function IDEScreen() {
       <div style={mainStyle}>
         {/* Sidebar — file tree */}
         {!layout.sidebarCollapsed && (
-          <div style={sidebarStyle} data-testid="file-tree">
-            <div style={sidebarHeaderStyle}>
-              <span style={sidebarTitleStyle}>Files</span>
-            </div>
-            {MOCK_FILES.map((f) => (
-              <button
-                key={f.name}
-                onClick={() => setSelectedFile(f.name)}
-                style={{
-                  ...fileItemStyle,
-                  background: selectedFile === f.name ? arena.surfaceHover : 'transparent',
-                }}
-                data-testid={`file-${f.name}`}
-              >
-                <span style={fileIconStyle}>{f.icon}</span>
-                <span style={fileNameStyle}>{f.name}</span>
-              </button>
-            ))}
+          <div style={sidebarStyle}>
+            {ready ? (
+              <FileTree
+                files={files}
+                selectedFile={activeTab}
+                onSelectFile={openFile}
+              />
+            ) : error ? (
+              <div style={statusStyle} data-testid="wc-error">
+                <span style={errorTextStyle}>{error}</span>
+              </div>
+            ) : (
+              <div style={statusStyle} data-testid="wc-loading">
+                <span style={mutedTextStyle}>Booting...</span>
+              </div>
+            )}
           </div>
         )}
 
@@ -91,25 +191,64 @@ export function IDEScreen() {
 
         {/* Editor + terminal vertical split */}
         <div style={editorAreaStyle}>
+          {/* Tab bar */}
+          {openTabs.length > 0 && (
+            <div style={tabBarStyle} data-testid="tab-bar">
+              {openTabs.map((tab) => (
+                <div
+                  key={tab.path}
+                  style={{
+                    ...tabStyle,
+                    background: tab.path === activeTab ? arena.surfaceHover : 'transparent',
+                    borderBottom: tab.path === activeTab ? `2px solid ${arena.accent}` : '2px solid transparent',
+                  }}
+                  data-testid={`tab-${tab.path}`}
+                >
+                  <button
+                    onClick={() => switchTab(tab.path)}
+                    style={tabLabelBtnStyle}
+                    data-testid={`tab-btn-${tab.path}`}
+                  >
+                    {tab.label}
+                  </button>
+                  <button
+                    onClick={() => closeTab(tab.path)}
+                    style={tabCloseBtnStyle}
+                    data-testid={`tab-close-${tab.path}`}
+                    aria-label={`Close ${tab.label}`}
+                  >
+                    &times;
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
           {/* Monaco editor */}
           <div style={editorWrapperStyle} data-testid="editor-panel">
-            <Suspense fallback={<div style={editorFallbackStyle}>Loading editor...</div>}>
-              <MonacoEditor
-                height="100%"
-                language="javascript"
-                theme="vs-dark"
-                value={code}
-                onChange={/* istanbul ignore next -- @preserve */ (v) => setCode(v ?? '')}
-                options={{
-                  minimap: { enabled: false },
-                  fontSize: 14,
-                  fontFamily: fontFamily.mono ?? 'monospace',
-                  lineNumbers: 'on',
-                  scrollBeyondLastLine: false,
-                  wordWrap: 'on',
-                }}
-              />
-            </Suspense>
+            {activeTab ? (
+              <Suspense fallback={<div style={editorFallbackStyle}>Loading editor...</div>}>
+                <MonacoEditor
+                  height="100%"
+                  language={editorLanguage}
+                  theme="vs-dark"
+                  value={editorContent}
+                  onChange={handleEditorChange}
+                  options={{
+                    minimap: { enabled: false },
+                    fontSize: 14,
+                    fontFamily: fontFamily.mono ?? 'monospace',
+                    lineNumbers: 'on',
+                    scrollBeyondLastLine: false,
+                    wordWrap: 'on',
+                  }}
+                />
+              </Suspense>
+            ) : (
+              <div style={editorFallbackStyle} data-testid="no-file-open">
+                {ready ? 'Select a file to start editing' : 'Booting WebContainer...'}
+              </div>
+            )}
           </div>
 
           {/* Terminal resize bar */}
@@ -120,15 +259,21 @@ export function IDEScreen() {
             />
           )}
 
-          {/* Terminal placeholder */}
+          {/* Terminal */}
           {!layout.bottomCollapsed && (
-            <div style={terminalStyle} data-testid="terminal-panel">
-              <div style={terminalHeaderStyle}>
-                <span style={terminalTitleStyle}>Terminal</span>
-              </div>
-              <div style={terminalBodyStyle}>
-                <span style={terminalPromptStyle}>$</span>
-              </div>
+            <div style={terminalWrapperStyle} data-testid="terminal-panel">
+              {ready ? (
+                <IDETerminal />
+              ) : (
+                <div style={terminalPlaceholderStyle}>
+                  <div style={terminalHeaderPlaceholderStyle}>
+                    <span style={terminalTitleStyle}>Terminal</span>
+                  </div>
+                  <div style={terminalBodyPlaceholderStyle}>
+                    <span style={mutedTextStyle}>Waiting for WebContainer...</span>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -209,40 +354,21 @@ const sidebarStyle: React.CSSProperties = {
   flexShrink: 0,
 };
 
-const sidebarHeaderStyle: React.CSSProperties = {
-  padding: '10px 12px 6px',
-  borderBottom: `1px solid ${arena.border}`,
-};
-
-const sidebarTitleStyle: React.CSSProperties = {
-  fontSize: 11,
-  fontWeight: 600,
-  color: arena.textMuted,
-  textTransform: 'uppercase',
-  letterSpacing: 0.5,
-};
-
-const fileItemStyle: React.CSSProperties = {
+const statusStyle: React.CSSProperties = {
   display: 'flex',
   alignItems: 'center',
-  gap: 8,
-  padding: '6px 12px',
-  border: 'none',
-  width: '100%',
-  textAlign: 'left',
-  cursor: 'pointer',
-  color: arena.text,
+  justifyContent: 'center',
+  height: '100%',
+  padding: 16,
+};
+
+const mutedTextStyle: React.CSSProperties = {
+  color: arena.textMuted,
   fontSize: 13,
 };
 
-const fileIconStyle: React.CSSProperties = {
-  fontSize: 11,
-  color: arena.textMuted,
-  width: 20,
-  textAlign: 'center',
-};
-
-const fileNameStyle: React.CSSProperties = {
+const errorTextStyle: React.CSSProperties = {
+  color: arena.error,
   fontSize: 13,
 };
 
@@ -251,6 +377,43 @@ const editorAreaStyle: React.CSSProperties = {
   flexDirection: 'column',
   flex: 1,
   overflow: 'hidden',
+};
+
+const tabBarStyle: React.CSSProperties = {
+  display: 'flex',
+  background: arena.surface,
+  borderBottom: `1px solid ${arena.border}`,
+  overflow: 'auto',
+  flexShrink: 0,
+};
+
+const tabStyle: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 4,
+  padding: '0 4px 0 0',
+  flexShrink: 0,
+};
+
+const tabLabelBtnStyle: React.CSSProperties = {
+  background: 'transparent',
+  border: 'none',
+  color: arena.text,
+  cursor: 'pointer',
+  fontSize: 12,
+  padding: '6px 8px',
+  whiteSpace: 'nowrap',
+};
+
+const tabCloseBtnStyle: React.CSSProperties = {
+  background: 'transparent',
+  border: 'none',
+  color: arena.textMuted,
+  cursor: 'pointer',
+  fontSize: 14,
+  padding: '2px 4px',
+  lineHeight: 1,
+  borderRadius: 3,
 };
 
 const editorWrapperStyle: React.CSSProperties = {
@@ -267,15 +430,21 @@ const editorFallbackStyle: React.CSSProperties = {
   fontSize: 14,
 };
 
-const terminalStyle: React.CSSProperties = {
+const terminalWrapperStyle: React.CSSProperties = {
   height: 180,
-  background: arena.bg,
   display: 'flex',
   flexDirection: 'column',
   flexShrink: 0,
 };
 
-const terminalHeaderStyle: React.CSSProperties = {
+const terminalPlaceholderStyle: React.CSSProperties = {
+  display: 'flex',
+  flexDirection: 'column',
+  height: '100%',
+  background: arena.bg,
+};
+
+const terminalHeaderPlaceholderStyle: React.CSSProperties = {
   padding: '6px 12px',
   borderBottom: `1px solid ${arena.border}`,
   background: arena.surface,
@@ -287,14 +456,9 @@ const terminalTitleStyle: React.CSSProperties = {
   color: arena.textMuted,
 };
 
-const terminalBodyStyle: React.CSSProperties = {
+const terminalBodyPlaceholderStyle: React.CSSProperties = {
   flex: 1,
-  padding: '8px 12px',
-  fontFamily: 'monospace',
-  fontSize: 13,
-  color: arena.text,
-};
-
-const terminalPromptStyle: React.CSSProperties = {
-  color: arena.accent,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
 };

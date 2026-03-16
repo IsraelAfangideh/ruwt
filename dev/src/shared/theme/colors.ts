@@ -76,5 +76,21 @@ export const arena = {
   error: '#f85149',
 };
 
+/** xterm terminal theme matching the arena dark palette */
+export const arenaTermTheme = {
+  background: '#0d1117',
+  foreground: '#e6edf3',
+  cursor: '#c9a962',
+  selectionBackground: 'rgba(201,169,98,0.3)',
+  black: '#0d1117',
+  red: '#f85149',
+  green: '#3fb950',
+  yellow: '#c9a962',
+  blue: '#58a6ff',
+  magenta: '#bc8cff',
+  cyan: '#39d2e0',
+  white: '#e6edf3',
+} as const;
+
 export type ColorScheme = typeof colors.light;
 export type ThemeMode = 'light' | 'dark';

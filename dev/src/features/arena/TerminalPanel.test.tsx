@@ -103,6 +103,11 @@ vi.mock('@/shared/theme/colors', () => ({
     text: '#e6edf3',
     accent: '#c9a962',
   },
+  arenaTermTheme: {
+    background: '#0d1117',
+    foreground: '#e6edf3',
+    cursor: '#c9a962',
+  },
 }));
 
 // Must import after mocks are set up
