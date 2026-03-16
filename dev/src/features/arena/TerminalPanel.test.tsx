@@ -70,7 +70,7 @@ vi.mock('@xterm/xterm/css/xterm.css', () => ({}));
 
 const mockShellHandleInput = vi.fn();
 const mockShellPrintPrompt = vi.fn();
-vi.mock('./VirtualShell', () => ({
+vi.mock('../shared-ide/VirtualShell', () => ({
   VirtualShell: class MockVirtualShell {
     handleInput = mockShellHandleInput;
     printPrompt = mockShellPrintPrompt;
@@ -93,7 +93,7 @@ vi.mock('./RuwtTUI', () => ({
   },
 }));
 
-vi.mock('./VirtualFileSystem', () => ({
+vi.mock('../shared-ide/VirtualFileSystem', () => ({
   VirtualFileSystem: class MockVFS {},
 }));
 

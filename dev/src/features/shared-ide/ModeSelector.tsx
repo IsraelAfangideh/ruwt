@@ -1,6 +1,6 @@
 import React from 'react';
 import { arena } from '../../shared/theme/colors';
-import type { AIMode } from './lib/system-prompts';
+import type { AIMode } from './lib/ai-types';
 
 interface ModeSelectorProps {
   mode: AIMode;

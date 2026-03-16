@@ -6,7 +6,7 @@ import { useColors } from '@/shared/theme';
 import { spacing, fontSizes, fontFamily } from '@/shared/theme/tokens';
 import { useAssessmentAgent, TOOL_SUCCESS_LABELS } from '@/features/assessments/useAssessmentAgent';
 import { useToast } from '@/shared/ui/Toast';
-import { renderMarkdown } from '@/features/arena/ChatMarkdown';
+import { renderMarkdown } from '@/features/shared-ide/ChatMarkdown';
 import { ASSESSMENT_TEMPLATES, type AssessmentTemplate } from '@/features/assessments/assessment-templates';
 import type { PassThreshold } from '@/features/assessments/PassThresholdEditor';
 

@@ -1,16 +1,16 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
-import { useArenaLayout } from './useArenaLayout';
+import { useIDELayout } from './useIDELayout';
 
-describe('useArenaLayout', () => {
+describe('useIDELayout', () => {
   beforeEach(() => {
     vi.spyOn(Storage.prototype, 'getItem').mockReturnValue(null);
     vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {});
   });
 
   it('returns default prefs when nothing in localStorage', () => {
-    const { result } = renderHook(() => useArenaLayout());
+    const { result } = renderHook(() => useIDELayout());
     expect(result.current.sidebarPosition).toBe('left');
     expect(result.current.sidebarCollapsed).toBe(false);
     expect(result.current.bottomCollapsed).toBe(false);
@@ -22,7 +22,7 @@ describe('useArenaLayout', () => {
     vi.spyOn(Storage.prototype, 'getItem').mockReturnValue(
       JSON.stringify({ sidebarPosition: 'right' })
     );
-    const { result } = renderHook(() => useArenaLayout());
+    const { result } = renderHook(() => useIDELayout());
     expect(result.current.sidebarPosition).toBe('right');
     // Transient state always starts at default
     expect(result.current.sidebarCollapsed).toBe(false);
@@ -32,13 +32,13 @@ describe('useArenaLayout', () => {
 
   it('handles corrupted localStorage gracefully', () => {
     vi.spyOn(Storage.prototype, 'getItem').mockReturnValue('not valid json');
-    const { result } = renderHook(() => useArenaLayout());
+    const { result } = renderHook(() => useIDELayout());
     expect(result.current.sidebarPosition).toBe('left');
   });
 
   it('persists only non-transient prefs to localStorage on change', () => {
     const setItem = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {});
-    const { result } = renderHook(() => useArenaLayout());
+    const { result } = renderHook(() => useIDELayout());
     // Changing transient state (collapsed) should NOT trigger localStorage write
     act(() => result.current.setSidebarCollapsed(true));
     // Only the initial render may write defaults; collapsed state is not persisted
@@ -55,19 +55,19 @@ describe('useArenaLayout', () => {
   });
 
   it('setSidebarCollapsed updates state', () => {
-    const { result } = renderHook(() => useArenaLayout());
+    const { result } = renderHook(() => useIDELayout());
     act(() => result.current.setSidebarCollapsed(true));
     expect(result.current.sidebarCollapsed).toBe(true);
   });
 
   it('setBottomCollapsed updates state', () => {
-    const { result } = renderHook(() => useArenaLayout());
+    const { result } = renderHook(() => useIDELayout());
     act(() => result.current.setBottomCollapsed(true));
     expect(result.current.bottomCollapsed).toBe(true);
   });
 
   it('toggleSidebarPosition flips left to right', () => {
-    const { result } = renderHook(() => useArenaLayout());
+    const { result } = renderHook(() => useIDELayout());
     expect(result.current.sidebarPosition).toBe('left');
     act(() => result.current.toggleSidebarPosition());
     expect(result.current.sidebarPosition).toBe('right');
@@ -77,34 +77,34 @@ describe('useArenaLayout', () => {
     vi.spyOn(Storage.prototype, 'getItem').mockReturnValue(
       JSON.stringify({ sidebarPosition: 'right' })
     );
-    const { result } = renderHook(() => useArenaLayout());
+    const { result } = renderHook(() => useIDELayout());
     act(() => result.current.toggleSidebarPosition());
     expect(result.current.sidebarPosition).toBe('left');
   });
 
   it('setResultsDock to bottom also sets activeBottomTab', () => {
-    const { result } = renderHook(() => useArenaLayout());
+    const { result } = renderHook(() => useIDELayout());
     act(() => result.current.setResultsDock('bottom'));
     expect(result.current.resultsDock).toBe('bottom');
     expect(result.current.activeBottomTab).toBe('results');
   });
 
   it('setResultsDock to sidebar does not change activeBottomTab', () => {
-    const { result } = renderHook(() => useArenaLayout());
+    const { result } = renderHook(() => useIDELayout());
     act(() => result.current.setResultsDock('sidebar'));
     expect(result.current.resultsDock).toBe('sidebar');
     expect(result.current.activeBottomTab).toBe('terminal');
   });
 
   it('setActiveBottomTab updates state', () => {
-    const { result } = renderHook(() => useArenaLayout());
+    const { result } = renderHook(() => useIDELayout());
     act(() => result.current.setResultsDock('bottom'));
     act(() => result.current.setActiveBottomTab('results'));
     expect(result.current.activeBottomTab).toBe('results');
   });
 
   it('effectiveBottomTab falls back to terminal when results is not docked in bottom', () => {
-    const { result } = renderHook(() => useArenaLayout());
+    const { result } = renderHook(() => useIDELayout());
     act(() => result.current.setResultsDock('bottom'));
     act(() => result.current.setActiveBottomTab('results'));
     expect(result.current.activeBottomTab).toBe('results');
@@ -116,7 +116,7 @@ describe('useArenaLayout', () => {
     vi.spyOn(Storage.prototype, 'getItem').mockReturnValue(
       JSON.stringify({ activeBottomTab: 'results', resultsDock: 'sidebar' })
     );
-    const { result } = renderHook(() => useArenaLayout());
+    const { result } = renderHook(() => useIDELayout());
     expect(result.current.activeBottomTab).toBe('terminal');
   });
 
@@ -124,7 +124,7 @@ describe('useArenaLayout', () => {
     vi.spyOn(Storage.prototype, 'getItem').mockReturnValue(
       JSON.stringify({ sidebarPosition: 'right', chatDock: 'bottom', activeBottomTab: 'chat' })
     );
-    const { result } = renderHook(() => useArenaLayout());
+    const { result } = renderHook(() => useIDELayout());
     expect(result.current.sidebarPosition).toBe('right');
     // chat is no longer a valid bottom tab, should fall back to terminal
     expect(result.current.activeBottomTab).toBe('terminal');

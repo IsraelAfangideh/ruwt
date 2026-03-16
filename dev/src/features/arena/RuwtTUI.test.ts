@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, type Mock } from 'vitest';
 import { RuwtTUI } from './RuwtTUI';
-import { VirtualFileSystem } from './VirtualFileSystem';
+import { VirtualFileSystem } from '../shared-ide/VirtualFileSystem';
 
 // ---------------------------------------------------------------------------
 // Mock dependencies that RuwtTUI imports
@@ -12,12 +12,12 @@ vi.mock('./lib/system-prompts', () => ({
   formatTestResultsForMessage: vi.fn((r) => `Tests: ${r.passedTests}/${r.totalTests}`),
 }));
 
-vi.mock('./lib/tool-parser', () => ({
+vi.mock('../shared-ide/lib/tool-parser', () => ({
   hasToolCalls: vi.fn(() => false),
   stripToolCalls: vi.fn((text: string) => text),
 }));
 
-vi.mock('./lib/code-apply', () => ({
+vi.mock('../shared-ide/lib/code-apply', () => ({
   applyCodeFromResponse: vi.fn(() => ({
     applied: false,
     newCode: '',
@@ -28,19 +28,19 @@ vi.mock('./lib/code-apply', () => ({
   extractFileEdits: vi.fn(() => ({ fileEdits: [], remaining: '' })),
 }));
 
-vi.mock('./lib/apply-model', () => ({
+vi.mock('../shared-ide/lib/apply-model', () => ({
   callApplyModel: vi.fn(() => Promise.resolve({ success: false })),
 }));
 
-vi.mock('./lib/line-diff', () => ({
+vi.mock('../shared-ide/lib/line-diff', () => ({
   computeLineDiff: vi.fn(() => ({ added: [], changed: [] })),
 }));
 
 // Import the mocked modules for use in tests
-import { hasToolCalls, stripToolCalls } from './lib/tool-parser';
-import { applyCodeFromResponse, extractFileEdits } from './lib/code-apply';
-import { callApplyModel } from './lib/apply-model';
-import { computeLineDiff } from './lib/line-diff';
+import { hasToolCalls, stripToolCalls } from '../shared-ide/lib/tool-parser';
+import { applyCodeFromResponse, extractFileEdits } from '../shared-ide/lib/code-apply';
+import { callApplyModel } from '../shared-ide/lib/apply-model';
+import { computeLineDiff } from '../shared-ide/lib/line-diff';
 
 // ---------------------------------------------------------------------------
 // Helpers

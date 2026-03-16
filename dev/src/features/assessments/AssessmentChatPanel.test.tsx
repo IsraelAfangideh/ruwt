@@ -40,7 +40,7 @@ vi.mock('@/shared/ui/Toast', () => ({
   useToast: () => ({ showToast: mockShowToast }),
 }));
 
-vi.mock('@/features/arena/ChatMarkdown', () => ({
+vi.mock('@/features/shared-ide/ChatMarkdown', () => ({
   renderMarkdown: (text: string) => text,
 }));
 

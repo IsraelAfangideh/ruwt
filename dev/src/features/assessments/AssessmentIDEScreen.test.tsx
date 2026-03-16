@@ -76,7 +76,7 @@ vi.mock('@/shared/lib/useIsMobile', () => ({
 vi.mock('@/shared/ui/ScreenSkeletons', () => ({
   FormSkeleton: () => <div data-testid="skeleton-form" />,
 }));
-vi.mock('@/features/arena/PanelResizeBar', () => ({
+vi.mock('@/features/shared-ide/PanelResizeBar', () => ({
   PanelResizeBar: () => <div data-testid="panel-resize-bar" />,
 }));
 vi.mock('react-resizable-panels', () => ({

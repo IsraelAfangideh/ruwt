@@ -44,7 +44,7 @@ describe('useAIChat — additional negative paths', () => {
     const chunks = [encode(sseLine({ type: 'chunk', content: bigContent }) + sseLine({ type: 'done', cost: 0 }))];
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(okResponse(chunks));
 
-    const { result } = renderHook(() => useAIChat({ attemptId: 'a-1', model: 'm' }));
+    const { result } = renderHook(() => useAIChat({ sessionId: 'a-1', model: 'm' }));
     const cbs = makeCbs();
     await act(async () => { await result.current.streamChat([], cbs); });
 
@@ -54,7 +54,7 @@ describe('useAIChat — additional negative paths', () => {
 
   it('handles response with empty body (null)', async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(null, { status: 200 }));
-    const { result } = renderHook(() => useAIChat({ attemptId: 'a-1', model: 'm' }));
+    const { result } = renderHook(() => useAIChat({ sessionId: 'a-1', model: 'm' }));
     const cbs = makeCbs();
     await act(async () => { await result.current.streamChat([], cbs); });
     expect(cbs.onDone).toHaveBeenCalledWith('(no response)', undefined);
@@ -64,14 +64,14 @@ describe('useAIChat — additional negative paths', () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(
       new Response('', { status: 503, statusText: 'Service Unavailable' })
     );
-    const { result } = renderHook(() => useAIChat({ attemptId: 'a-1', model: 'm' }));
+    const { result } = renderHook(() => useAIChat({ sessionId: 'a-1', model: 'm' }));
     const cbs = makeCbs();
     await act(async () => { await result.current.streamChat([], cbs); });
     expect(cbs.onError).toHaveBeenCalledWith('Service Unavailable');
   });
 
   it('handles multiple rapid abort() calls without crashing', () => {
-    const { result } = renderHook(() => useAIChat({ attemptId: 'a-1', model: 'm' }));
+    const { result } = renderHook(() => useAIChat({ sessionId: 'a-1', model: 'm' }));
     result.current.abort();
     result.current.abort();
     result.current.abort();
@@ -82,7 +82,7 @@ describe('useAIChat — additional negative paths', () => {
     const chunks = [encode(sseLine({ type: 'chunk', content: xssContent }) + sseLine({ type: 'done', cost: 0 }))];
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(okResponse(chunks));
 
-    const { result } = renderHook(() => useAIChat({ attemptId: 'a-1', model: 'm' }));
+    const { result } = renderHook(() => useAIChat({ sessionId: 'a-1', model: 'm' }));
     const cbs = makeCbs();
     await act(async () => { await result.current.streamChat([], cbs); });
 
@@ -95,7 +95,7 @@ describe('useAIChat — additional negative paths', () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(okResponse(chunks));
 
     const onCostUpdate = vi.fn();
-    const { result } = renderHook(() => useAIChat({ attemptId: 'a-1', model: 'm', onCostUpdate }));
+    const { result } = renderHook(() => useAIChat({ sessionId: 'a-1', model: 'm', onCostUpdate }));
     const cbs = makeCbs();
     await act(async () => { await result.current.streamChat([], cbs); });
 
@@ -107,7 +107,7 @@ describe('useAIChat — additional negative paths', () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(okResponse(chunks));
 
     const onCostUpdate = vi.fn();
-    const { result } = renderHook(() => useAIChat({ attemptId: 'a-1', model: 'm', onCostUpdate }));
+    const { result } = renderHook(() => useAIChat({ sessionId: 'a-1', model: 'm', onCostUpdate }));
     const cbs = makeCbs();
     await act(async () => { await result.current.streamChat([], cbs); });
 
@@ -121,7 +121,7 @@ describe('useAIChat — additional negative paths', () => {
         status: 401, headers: { 'Content-Type': 'application/json' },
       })
     );
-    const { result } = renderHook(() => useAIChat({ attemptId: 'a-1', model: 'm' }));
+    const { result } = renderHook(() => useAIChat({ sessionId: 'a-1', model: 'm' }));
     const cbs = makeCbs();
     await act(async () => { await result.current.streamChat([], cbs); });
     expect(cbs.onError).toHaveBeenCalledWith('Unauthorized');
@@ -131,7 +131,7 @@ describe('useAIChat — additional negative paths', () => {
     const chunks = [encode(sseLine({ type: 'chunk', content: '   ' }) + sseLine({ type: 'done', cost: 0 }))];
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(okResponse(chunks));
 
-    const { result } = renderHook(() => useAIChat({ attemptId: 'a-1', model: 'm' }));
+    const { result } = renderHook(() => useAIChat({ sessionId: 'a-1', model: 'm' }));
     const cbs = makeCbs();
     await act(async () => { await result.current.streamChat([], cbs); });
 
@@ -147,7 +147,7 @@ describe('useAIChat — additional negative paths', () => {
     )];
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(okResponse(chunks));
 
-    const { result } = renderHook(() => useAIChat({ attemptId: 'a-1', model: 'm' }));
+    const { result } = renderHook(() => useAIChat({ sessionId: 'a-1', model: 'm' }));
     const cbs = makeCbs();
     await act(async () => { await result.current.streamChat([], cbs); });
 

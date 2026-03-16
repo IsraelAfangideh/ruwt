@@ -7,9 +7,9 @@ import React, { useState, useRef, useEffect, useCallback, useMemo, Suspense } fr
 import { Group, Panel, usePanelRef } from 'react-resizable-panels';
 import { arena } from '@/shared/theme/colors';
 import { fontFamily } from '@/shared/theme/tokens';
-import { VirtualFileSystem } from './VirtualFileSystem';
-import { useCodeSync } from './useCodeSync';
-import { useAIChat, type MessageMeta } from './useAIChat';
+import { VirtualFileSystem } from '../shared-ide/VirtualFileSystem';
+import { useCodeSync } from '../shared-ide/useCodeSync';
+import { useAIChat, type MessageMeta } from '../shared-ide/useAIChat';
 import type { TerminalPanelHandle } from './TerminalPanel';
 
 const TerminalPanel = React.lazy(() =>
@@ -21,20 +21,21 @@ import { TIER_MODELS, TIER_ORDER, getModelById, getModelsForTier, tierColor, tie
 import { estimateChatCost, formatEstimatedCost } from '@/shared/lib/cost-estimate';
 import { useIsMobile } from '@/shared/lib/useIsMobile';
 import { CommentSection } from '@/shared/social/CommentSection';
-import { buildSystemPrompt, formatTestResultsForMessage, type AIMode, type TestResults as AITestResults } from '@/features/arena/lib/system-prompts';
-import { stripToolCalls, hasToolCalls } from '@/features/arena/lib/tool-parser';
-import { applyCodeFromResponse as sharedApplyCode, extractFileEdits } from '@/features/arena/lib/code-apply';
-import { callApplyModel } from '@/features/arena/lib/apply-model';
-import { useEditorDecorations } from './useEditorDecorations';
-import { ModeSelector } from './ModeSelector';
-import { renderMarkdown, ThinkingBlock } from './ChatMarkdown';
+import { type AIMode, type TestResults as AITestResults, formatTestResultsForMessage } from '@/features/shared-ide/lib/ai-types';
+import { buildSystemPrompt } from '@/features/arena/lib/system-prompts';
+import { stripToolCalls, hasToolCalls } from '@/features/shared-ide/lib/tool-parser';
+import { applyCodeFromResponse as sharedApplyCode, extractFileEdits } from '@/features/shared-ide/lib/code-apply';
+import { callApplyModel } from '@/features/shared-ide/lib/apply-model';
+import { useEditorDecorations } from '../shared-ide/useEditorDecorations';
+import { ModeSelector } from '../shared-ide/ModeSelector';
+import { renderMarkdown, ThinkingBlock } from '../shared-ide/ChatMarkdown';
 import { ResultsBar, type TestResults } from './ResultsBar';
 import ExpiryOverlay from './ExpiryOverlay';
 import { formatTime } from '@/shared/lib/utils';
-import { useArenaLayout } from './useArenaLayout';
-import { PanelResizeBar } from './PanelResizeBar';
-import { CollapsedSidebar, type SidebarTab } from './CollapsedSidebar';
-import '@/features/arena/lib/monaco-init';
+import { useIDELayout } from '../shared-ide/useIDELayout';
+import { PanelResizeBar } from '../shared-ide/PanelResizeBar';
+import { CollapsedSidebar, type SidebarTab } from '../shared-ide/CollapsedSidebar';
+import '@/features/shared-ide/lib/monaco-init';
 
 const MonacoEditor = React.lazy(() => import('@monaco-editor/react'));
 
@@ -980,7 +981,7 @@ export function ArenaIDE({
   const bottomPanelRef = usePanelRef();
 
   // Layout prefs (persisted)
-  const layout = useArenaLayout();
+  const layout = useIDELayout();
 
   const isMobile = useIsMobile();
   const activeTabRef = useRef<'description' | 'chat' | 'discussion'>('description');
@@ -1036,7 +1037,7 @@ export function ArenaIDE({
   }, []);
 
   const { streamChat, abort: abortChat } = useAIChat({
-    attemptId,
+    sessionId: attemptId,
     model,
     onCostUpdate: handleCostUpdate,
   });

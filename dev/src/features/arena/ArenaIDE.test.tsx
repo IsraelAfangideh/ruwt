@@ -29,7 +29,7 @@ const { mockVfsReaddir, mockVfsReadFile } = vi.hoisted(() => ({
   mockVfsReadFile: { fn: (_path: string): string => '' },
 }));
 
-vi.mock('./VirtualFileSystem', () => ({
+vi.mock('../shared-ide/VirtualFileSystem', () => ({
   VirtualFileSystem: class MockVFS {
     private _code = '';
     private _files: Record<string, string> = {};
@@ -45,14 +45,14 @@ vi.mock('./VirtualFileSystem', () => ({
   },
 }));
 
-vi.mock('./useCodeSync', () => ({
+vi.mock('../shared-ide/useCodeSync', () => ({
   useCodeSync: () => ({ handleEditorChange: vi.fn(), syncCode: vi.fn() }),
 }));
 
 /* ── AI chat mock with control ──────────────────────────────────── */
 const mockStreamChat = vi.fn();
 const mockAbortChat = vi.fn();
-vi.mock('./useAIChat', () => ({
+vi.mock('../shared-ide/useAIChat', () => ({
   useAIChat: () => ({
     messages: [],
     meta: {} as any,
@@ -74,7 +74,7 @@ vi.mock('./TerminalPanel', () => ({
   ),
 }));
 
-vi.mock('./ModeSelector', () => ({
+vi.mock('../shared-ide/ModeSelector', () => ({
   ModeSelector: ({ mode, onModeChange, disabled }: any) => (
     <div data-testid="mode-selector">
       <span data-testid="current-mode">{mode}</span>
@@ -84,7 +84,7 @@ vi.mock('./ModeSelector', () => ({
 }));
 
 let capturedLineClickHandler: ((line: number) => void) | null = null;
-vi.mock('./ChatMarkdown', () => ({
+vi.mock('../shared-ide/ChatMarkdown', () => ({
   renderMarkdown: (text: string, onLineClick?: (line: number) => void) => {
     if (onLineClick) capturedLineClickHandler = onLineClick;
     return [<span key={0}>{text}</span>];
@@ -114,7 +114,7 @@ vi.mock('./ExpiryOverlay', () => ({
   ),
 }));
 
-vi.mock('@/features/arena/lib/monaco-init', () => ({}));
+vi.mock('@/features/shared-ide/lib/monaco-init', () => ({}));
 
 /* ── react-resizable-panels mock ──────────────────────────────── */
 vi.mock('react-resizable-panels', () => ({
@@ -148,15 +148,15 @@ const mockLayout = {
   setResultsDock: vi.fn(),
   setActiveBottomTab: vi.fn(),
 };
-vi.mock('./useArenaLayout', () => ({
-  useArenaLayout: () => mockLayout,
+vi.mock('../shared-ide/useIDELayout', () => ({
+  useIDELayout: () => mockLayout,
 }));
 
-vi.mock('./PanelResizeBar', () => ({
+vi.mock('../shared-ide/PanelResizeBar', () => ({
   PanelResizeBar: ({ direction }: any) => <div data-testid={`resize-bar-${direction}`} />,
 }));
 
-vi.mock('./CollapsedSidebar', () => ({
+vi.mock('../shared-ide/CollapsedSidebar', () => ({
   CollapsedSidebar: ({ onExpandTab }: any) => (
     <div data-testid="collapsed-sidebar">
       <button onClick={() => onExpandTab('description')}>Expand Desc</button>
@@ -226,22 +226,22 @@ vi.mock('@/features/arena/lib/system-prompts', () => ({
   formatTestResultsForMessage: () => '[Test Results] 1/1 passed',
 }));
 
-vi.mock('@/features/arena/lib/tool-parser', () => ({
+vi.mock('@/features/shared-ide/lib/tool-parser', () => ({
   stripToolCalls: (s: string) => s,
   hasToolCalls: () => false,
 }));
 
 const mockApplyCodeFromResponse = vi.fn().mockReturnValue({ applied: false, needsApplyModel: false, newCode: '', message: '' });
-vi.mock('@/features/arena/lib/code-apply', () => ({
+vi.mock('@/features/shared-ide/lib/code-apply', () => ({
   applyCodeFromResponse: (...args: any[]) => mockApplyCodeFromResponse(...args),
   extractFileEdits: () => ({ fileEdits: [], remaining: '' }),
 }));
 
-vi.mock('@/features/arena/lib/apply-model', () => ({
+vi.mock('@/features/shared-ide/lib/apply-model', () => ({
   callApplyModel: vi.fn().mockResolvedValue({ success: false }),
 }));
 
-vi.mock('./useEditorDecorations', () => ({
+vi.mock('../shared-ide/useEditorDecorations', () => ({
   useEditorDecorations: () => ({ showDiffDecorations: vi.fn(), clearDecorations: vi.fn() }),
 }));
 
@@ -2196,7 +2196,7 @@ describe('ArenaIDE', () => {
   /* ─── applyCodeFromResponse with apply model — success path ──── */
 
   it('applyCodeFromResponse calls apply model when needsApplyModel is true', async () => {
-    const { callApplyModel } = await import('@/features/arena/lib/apply-model');
+    const { callApplyModel } = await import('@/features/shared-ide/lib/apply-model');
     const mockCallApply = vi.mocked(callApplyModel);
     mockCallApply.mockResolvedValue({
       success: true,
@@ -2635,7 +2635,7 @@ describe('ArenaIDE', () => {
   /* ─── ApplyFailureToast shown when apply model verification fails ── */
 
   it('shows ApplyFailureToast when apply model returns verified=false', async () => {
-    const { callApplyModel } = await import('@/features/arena/lib/apply-model');
+    const { callApplyModel } = await import('@/features/shared-ide/lib/apply-model');
     const mockCallApply = vi.mocked(callApplyModel);
     mockCallApply.mockResolvedValue({
       success: true,

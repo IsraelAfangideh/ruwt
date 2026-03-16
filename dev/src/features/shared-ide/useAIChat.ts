@@ -28,7 +28,7 @@ export interface MessageMeta {
 }
 
 export interface UseAIChatOptions {
-  attemptId: string;
+  sessionId: string;
   model: string;
   maxTokens?: number;
   onCostUpdate?: (cost: number, inputTokens: number, outputTokens: number) => void;
@@ -47,7 +47,7 @@ export interface StreamCallbacks {
 }
 
 export function useAIChat(options: UseAIChatOptions) {
-  const { attemptId, model, maxTokens = 2048, onCostUpdate } = options;
+  const { sessionId, model, maxTokens = 2048, onCostUpdate } = options;
   const abortRef = useRef<AbortController | null>(null);
 
   const streamChat = useCallback(
@@ -67,7 +67,7 @@ export function useAIChat(options: UseAIChatOptions) {
         const res = await fetch('/api/ai/chat', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ model, messages, attemptId, maxTokens, userMessage, codeSnapshot }),
+          body: JSON.stringify({ model, messages, attemptId: sessionId, maxTokens, userMessage, codeSnapshot }),
           signal: controller.signal,
         });
 
@@ -165,7 +165,7 @@ export function useAIChat(options: UseAIChatOptions) {
         }
       }
     },
-    [attemptId, model, maxTokens, onCostUpdate]
+    [sessionId, model, maxTokens, onCostUpdate]
   );
 
   const abort = useCallback(() => {

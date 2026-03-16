@@ -8,12 +8,10 @@ interface PersistedPrefs {
 }
 
 /** Full layout state (persisted prefs + transient state) */
-export interface ArenaLayoutPrefs extends PersistedPrefs {
+export interface IDELayoutPrefs extends PersistedPrefs {
   sidebarCollapsed: boolean;
   bottomCollapsed: boolean;
 }
-
-const STORAGE_KEY = 'arena-layout-prefs';
 
 const PERSISTED_DEFAULTS: PersistedPrefs = {
   sidebarPosition: 'left',
@@ -21,15 +19,15 @@ const PERSISTED_DEFAULTS: PersistedPrefs = {
   activeBottomTab: 'terminal',
 };
 
-const DEFAULTS: ArenaLayoutPrefs = {
+const DEFAULTS: IDELayoutPrefs = {
   ...PERSISTED_DEFAULTS,
   sidebarCollapsed: false,
   bottomCollapsed: false,
 };
 
-function loadPrefs(): ArenaLayoutPrefs {
+function loadPrefs(storageKey: string): IDELayoutPrefs {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(storageKey);
     if (raw) {
       const parsed = JSON.parse(raw);
       return { ...DEFAULTS, ...parsed };
@@ -38,14 +36,14 @@ function loadPrefs(): ArenaLayoutPrefs {
   return { ...DEFAULTS };
 }
 
-export function useArenaLayout() {
-  const [prefs, setPrefs] = useState<ArenaLayoutPrefs>(loadPrefs);
+export function useIDELayout(storageKey: string = 'arena-layout-prefs') {
+  const [prefs, setPrefs] = useState<IDELayoutPrefs>(() => loadPrefs(storageKey));
 
   // Only persist non-transient preferences, not collapsed state
   useEffect(() => {
     const { sidebarPosition, resultsDock, activeBottomTab } = prefs;
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ sidebarPosition, resultsDock, activeBottomTab }));
-  }, [prefs.sidebarPosition, prefs.resultsDock, prefs.activeBottomTab]);
+    localStorage.setItem(storageKey, JSON.stringify({ sidebarPosition, resultsDock, activeBottomTab }));
+  }, [prefs.sidebarPosition, prefs.resultsDock, prefs.activeBottomTab, storageKey]);
 
   const setSidebarCollapsed = useCallback((v: boolean) => {
     setPrefs((p) => ({ ...p, sidebarCollapsed: v }));

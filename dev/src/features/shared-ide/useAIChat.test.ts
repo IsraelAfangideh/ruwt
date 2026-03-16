@@ -43,7 +43,7 @@ function errorResponse(status: number, body: Record<string, unknown>): Response 
 }
 
 const defaultOpts: UseAIChatOptions = {
-  attemptId: 'attempt-1',
+  sessionId: 'attempt-1',
   model: 'test-model',
 };
 
@@ -639,7 +639,7 @@ describe('useAIChat', () => {
     );
 
     const { result } = renderHook(() =>
-      useAIChat({ attemptId: 'a-1', model: 'claude-3', maxTokens: 4096 })
+      useAIChat({ sessionId: 'a-1', model: 'claude-3', maxTokens: 4096 })
     );
     const cbs = makeCallbacks();
 

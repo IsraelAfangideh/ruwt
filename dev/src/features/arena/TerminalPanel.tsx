@@ -6,9 +6,9 @@ import React, { useEffect, useRef, useCallback, useImperativeHandle } from 'reac
 import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import '@xterm/xterm/css/xterm.css';
-import { VirtualShell, type ShellCallbacks } from './VirtualShell';
+import { VirtualShell, type ShellCallbacks } from '../shared-ide/VirtualShell';
 import { RuwtTUI } from './RuwtTUI';
-import type { VirtualFileSystem } from './VirtualFileSystem';
+import type { VirtualFileSystem } from '../shared-ide/VirtualFileSystem';
 import type { ModelTier } from '../../shared/lib/ai/pricing';
 import { arena } from '@/shared/theme/colors';
 import { fontFamily } from '@/shared/theme/tokens';

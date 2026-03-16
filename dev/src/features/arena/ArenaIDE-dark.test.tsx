@@ -19,7 +19,7 @@ vi.mock('@/shared/theme/colors', () => ({
   },
 }));
 
-vi.mock('./VirtualFileSystem', () => ({
+vi.mock('../shared-ide/VirtualFileSystem', () => ({
   VirtualFileSystem: class MockVFS {
     private _code = '';
     constructor(_lang: string, code: string) { this._code = code; }
@@ -34,11 +34,11 @@ vi.mock('./VirtualFileSystem', () => ({
   },
 }));
 
-vi.mock('./useCodeSync', () => ({
+vi.mock('../shared-ide/useCodeSync', () => ({
   useCodeSync: () => ({ handleEditorChange: vi.fn(), syncCode: vi.fn() }),
 }));
 
-vi.mock('./useAIChat', () => ({
+vi.mock('../shared-ide/useAIChat', () => ({
   useAIChat: () => ({
     messages: [
       { role: 'assistant', content: 'Here is the fix', meta: { model: 'mock-model', tokens: 1, cost: 0 } },
@@ -61,7 +61,7 @@ vi.mock('./TerminalPanel', () => ({
   ),
 }));
 
-vi.mock('./ModeSelector', () => ({
+vi.mock('../shared-ide/ModeSelector', () => ({
   ModeSelector: ({ mode, onModeChange, disabled }: any) => (
     <div data-testid="mode-selector">
       <span data-testid="current-mode">{mode}</span>
@@ -70,7 +70,7 @@ vi.mock('./ModeSelector', () => ({
   ),
 }));
 
-vi.mock('./ChatMarkdown', () => ({
+vi.mock('../shared-ide/ChatMarkdown', () => ({
   renderMarkdown: (text: string) => [<span key={0}>{text}</span>],
   ThinkingBlock: ({ text }: any) => <div data-testid="thinking-block">{text}</div>,
 }));
@@ -84,7 +84,7 @@ vi.mock('./ExpiryOverlay', () => ({
   default: () => <div data-testid="expiry-overlay" />,
 }));
 
-vi.mock('@/features/arena/lib/monaco-init', () => ({}));
+vi.mock('@/features/shared-ide/lib/monaco-init', () => ({}));
 
 vi.mock('react-resizable-panels', () => ({
   Group: ({ children, ...props }: any) => <div data-group="true" {...props}>{children}</div>,
@@ -98,8 +98,8 @@ vi.mock('react-resizable-panels', () => ({
   usePanelRef: () => ({ current: { collapse: vi.fn(), expand: vi.fn(), isCollapsed: vi.fn().mockReturnValue(false), resize: vi.fn() } }),
 }));
 
-vi.mock('./useArenaLayout', () => ({
-  useArenaLayout: () => ({
+vi.mock('../shared-ide/useIDELayout', () => ({
+  useIDELayout: () => ({
     sidebarPosition: 'left', sidebarCollapsed: false, bottomCollapsed: false,
     resultsDock: 'bottom', activeBottomTab: 'terminal',
     setSidebarCollapsed: vi.fn(), setBottomCollapsed: vi.fn(),
@@ -107,11 +107,11 @@ vi.mock('./useArenaLayout', () => ({
   }),
 }));
 
-vi.mock('./PanelResizeBar', () => ({
+vi.mock('../shared-ide/PanelResizeBar', () => ({
   PanelResizeBar: ({ direction }: any) => <div data-testid={`resize-bar-${direction}`} />,
 }));
 
-vi.mock('./CollapsedSidebar', () => ({
+vi.mock('../shared-ide/CollapsedSidebar', () => ({
   CollapsedSidebar: ({ onExpandTab }: any) => (
     <div data-testid="collapsed-sidebar">
       <button onClick={() => onExpandTab('description')}>Expand Desc</button>
@@ -169,21 +169,21 @@ vi.mock('@/features/arena/lib/system-prompts', () => ({
   formatTestResultsForMessage: () => '[Test Results] 1/1 passed',
 }));
 
-vi.mock('@/features/arena/lib/tool-parser', () => ({
+vi.mock('@/features/shared-ide/lib/tool-parser', () => ({
   stripToolCalls: (s: string) => s,
   hasToolCalls: () => false,
 }));
 
-vi.mock('@/features/arena/lib/code-apply', () => ({
+vi.mock('@/features/shared-ide/lib/code-apply', () => ({
   applyCodeFromResponse: () => ({ applied: false, needsApplyModel: false, newCode: '', message: '' }),
   extractFileEdits: () => ({ fileEdits: [], remaining: '' }),
 }));
 
-vi.mock('@/features/arena/lib/apply-model', () => ({
+vi.mock('@/features/shared-ide/lib/apply-model', () => ({
   callApplyModel: vi.fn().mockResolvedValue({ success: false }),
 }));
 
-vi.mock('./useEditorDecorations', () => ({
+vi.mock('../shared-ide/useEditorDecorations', () => ({
   useEditorDecorations: () => ({ showDiffDecorations: vi.fn(), clearDecorations: vi.fn() }),
 }));
 

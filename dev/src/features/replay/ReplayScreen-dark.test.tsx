@@ -14,7 +14,7 @@ vi.mock('@react-navigation/native', () => ({
 }));
 vi.mock('@/shared/hooks/useDocumentMeta', () => ({ useDocumentMeta: () => {} }));
 vi.mock('@/shared/hooks/useWindowWidth', () => ({ useIsDesktop: () => false, useWindowWidth: () => 400 }));
-vi.mock('@/features/arena/lib/monaco-init', () => ({}));
+vi.mock('@/features/shared-ide/lib/monaco-init', () => ({}));
 vi.mock('@/shared/lib/ai/pricing', () => ({
   getModelById: (id: string) => id ? ({ name: 'Test Model', displayName: 'Test Model', tier: 'free' }) : undefined,
   tierColor: () => '#ccc',

@@ -6,7 +6,7 @@
 import { useState, useEffect } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { Group, Panel } from 'react-resizable-panels';
-import { PanelResizeBar } from '@/features/arena/PanelResizeBar';
+import { PanelResizeBar } from '@/features/shared-ide/PanelResizeBar';
 import { FormSkeleton } from '@/shared/ui/ScreenSkeletons';
 import { useColors } from '@/shared/theme';
 import { spacing, fontSizes } from '@/shared/theme/tokens';

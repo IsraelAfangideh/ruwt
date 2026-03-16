@@ -4,12 +4,13 @@
  * Supports modes: /agent /plan /debug /ask
  */
 import type { Terminal } from '@xterm/xterm';
-import type { VirtualFileSystem } from './VirtualFileSystem';
-import { buildSystemPrompt, formatTestResultsForMessage, type AIMode, type TestResults } from './lib/system-prompts';
-import { hasToolCalls, stripToolCalls } from './lib/tool-parser';
-import { applyCodeFromResponse as sharedApplyCode, extractFileEdits } from './lib/code-apply';
-import { callApplyModel } from './lib/apply-model';
-import { computeLineDiff } from './lib/line-diff';
+import type { VirtualFileSystem } from '../shared-ide/VirtualFileSystem';
+import { type AIMode, type TestResults, formatTestResultsForMessage } from '../shared-ide/lib/ai-types';
+import { buildSystemPrompt } from './lib/system-prompts';
+import { hasToolCalls, stripToolCalls } from '../shared-ide/lib/tool-parser';
+import { applyCodeFromResponse as sharedApplyCode, extractFileEdits } from '../shared-ide/lib/code-apply';
+import { callApplyModel } from '../shared-ide/lib/apply-model';
+import { computeLineDiff } from '../shared-ide/lib/line-diff';
 import { getModelsForTier, getModelById, tierLabel, TIER_ORDER, type ModelTier } from '../../shared/lib/ai/pricing';
 
 type TextSegment = { type: 'text'; content: string };

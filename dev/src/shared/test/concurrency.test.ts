@@ -33,7 +33,7 @@ function okResponse(chunks: Uint8Array[]): Response {
   return new Response(mockStream(chunks), { status: 200 });
 }
 
-const { useAIChat } = await import('@/features/arena/useAIChat');
+const { useAIChat } = await import('@/features/shared-ide/useAIChat');
 
 describe('useAIChat — concurrency', () => {
 
@@ -59,7 +59,7 @@ describe('useAIChat — concurrency', () => {
       ]);
     });
 
-    const { result } = renderHook(() => useAIChat({ attemptId: 'a-1', model: 'm' }));
+    const { result } = renderHook(() => useAIChat({ sessionId: 'a-1', model: 'm' }));
     const cbs1 = { onChunk: vi.fn(), onDone: vi.fn(), onError: vi.fn(), onThinking: vi.fn(), onThinkingDone: vi.fn(), onConstraint: vi.fn() };
     const cbs2 = { onChunk: vi.fn(), onDone: vi.fn(), onError: vi.fn(), onThinking: vi.fn(), onThinkingDone: vi.fn(), onConstraint: vi.fn() };
 
@@ -99,7 +99,7 @@ describe('useAIChat — concurrency', () => {
       ]);
     });
 
-    const { result } = renderHook(() => useAIChat({ attemptId: 'a-1', model: 'm' }));
+    const { result } = renderHook(() => useAIChat({ sessionId: 'a-1', model: 'm' }));
     const makeCbs = () => ({
       onChunk: vi.fn(), onDone: vi.fn(), onError: vi.fn(),
       onThinking: vi.fn(), onThinkingDone: vi.fn(), onConstraint: vi.fn(),
@@ -142,7 +142,7 @@ describe('useAIChat — concurrency', () => {
       return new Response(stream, { status: 200 });
     });
 
-    const { result } = renderHook(() => useAIChat({ attemptId: 'a-1', model: 'm' }));
+    const { result } = renderHook(() => useAIChat({ sessionId: 'a-1', model: 'm' }));
     const cbs = { onChunk: vi.fn(), onDone: vi.fn(), onError: vi.fn(), onThinking: vi.fn(), onThinkingDone: vi.fn(), onConstraint: vi.fn() };
 
     let streamPromise: Promise<void>;
@@ -179,7 +179,7 @@ describe('useAIChat — concurrency', () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(okResponse(chunks));
 
     const { result, rerender } = renderHook(
-      (props: { onCostUpdate: any }) => useAIChat({ attemptId: 'a-1', model: 'm', onCostUpdate: props.onCostUpdate }),
+      (props: { onCostUpdate: any }) => useAIChat({ sessionId: 'a-1', model: 'm', onCostUpdate: props.onCostUpdate }),
       { initialProps: { onCostUpdate: onCostUpdate1 } }
     );
 
