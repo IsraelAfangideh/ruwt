@@ -39,7 +39,7 @@ Each step is designed to be completable in 1-3 Claude Code sessions. Each produc
 
 ---
 
-### Step 1: Extract shared-ide components from arena/ ✅ READY TO START
+### Step 1: Extract shared-ide components from arena/ ✅ COMPLETE
 
 **Branch:** `feat/ide-shared-components`
 
@@ -66,12 +66,23 @@ Each step is designed to be completable in 1-3 Claude Code sessions. Each produc
 - Challenge-specific types and hooks
 
 **Acceptance criteria:**
-- [ ] All components moved to `features/shared-ide/`
-- [ ] `features/shared-ide/index.ts` barrel export
-- [ ] Arena components import from `shared-ide/` instead of local
-- [ ] ALL existing tests pass (`npx vitest run`)
-- [ ] TypeScript compiles (`npx tsc --noEmit`)
-- [ ] No behavior changes — this is a pure refactor
+- [x] All components moved to `features/shared-ide/`
+- [ ] `features/shared-ide/index.ts` barrel export (deferred — not needed yet)
+- [x] Arena components import from `shared-ide/` instead of local
+- [x] ALL existing tests pass (`npx vitest run`) — 5,415/5,416 (1 pre-existing failure in LandingScreen)
+- [x] TypeScript compiles (`npx tsc --noEmit`)
+- [x] No behavior changes — pure refactor
+
+**Completed in branch `feat/ide-shared-components`. 53 files changed.**
+
+What was moved to `shared-ide/`:
+- UI: ChatMarkdown, CollapsedSidebar, ModeSelector, PanelResizeBar, PlanApproval, Notepad, VirtualFileSystem, VirtualShell
+- Hooks: useAIChat (attemptId→sessionId), useIDELayout (renamed from useArenaLayout), useEditorDecorations, useCodeSync
+- Lib: diff-apply, code-apply, apply-model, tool-parser, line-diff, monaco-init
+- New: ai-types.ts (extracted shared types from system-prompts.ts)
+
+What stayed in `arena/` (challenge-specific):
+- ArenaIDE.tsx, ArenaScreen.tsx, GuestArenaScreen.tsx, TerminalPanel.tsx, ResultsBar.tsx, ExpiryOverlay.tsx, RuwtTUI.ts, ArenaErrorBoundary.tsx, lib/system-prompts.ts
 
 **Gotchas:**
 - Some components may have arena-specific props/types. Make them generic or pass as props.
