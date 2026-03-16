@@ -58,13 +58,13 @@ describe('AssessmentInviteSection', () => {
 
   it('shows Generate Invite Link button when no inviteLink', () => {
     render(<AssessmentInviteSection {...baseProps} />);
-    expect(screen.getByText('Generate Invite Link')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Generate Invite Link' })).toBeInTheDocument();
   });
 
   it('calls onGenerateInvite when Generate Invite Link is clicked', () => {
     const onGenerateInvite = vi.fn();
     render(<AssessmentInviteSection {...baseProps} onGenerateInvite={onGenerateInvite} />);
-    fireEvent.click(screen.getByText('Generate Invite Link'));
+    fireEvent.click(screen.getByRole('button', { name: 'Generate Invite Link' }));
     expect(onGenerateInvite).toHaveBeenCalled();
   });
 
@@ -99,13 +99,13 @@ describe('AssessmentInviteSection', () => {
 
   it('shows Copy to Clipboard button when invite link exists', () => {
     render(<AssessmentInviteSection {...baseProps} inviteLink="https://ruwt.dev/invite/abc" />);
-    expect(screen.getByText('Copy to Clipboard')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Copy to Clipboard' })).toBeInTheDocument();
   });
 
   it('calls onCopyInviteLink when Copy button is clicked', () => {
     const onCopyInviteLink = vi.fn();
     render(<AssessmentInviteSection {...baseProps} inviteLink="https://ruwt.dev/invite/abc" onCopyInviteLink={onCopyInviteLink} />);
-    fireEvent.click(screen.getByText('Copy to Clipboard'));
+    fireEvent.click(screen.getByRole('button', { name: 'Copy to Clipboard' }));
     expect(onCopyInviteLink).toHaveBeenCalled();
   });
 

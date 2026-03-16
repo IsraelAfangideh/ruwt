@@ -376,9 +376,9 @@ describe('LeaderboardScreen', () => {
     setupFetch({ leaderboardEntries: [], challenges: mockChallenges });
     render(<LeaderboardScreen />);
     await waitFor(() => {
-      expect(screen.getByText('By Challenge')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'By Challenge' })).toBeInTheDocument();
     });
-    fireEvent.click(screen.getByText('By Challenge'));
+    fireEvent.click(screen.getByRole('button', { name: 'By Challenge' }));
     await waitFor(() => {
       expect(screen.getByText('Select a challenge...')).toBeInTheDocument();
     });
@@ -390,9 +390,9 @@ describe('LeaderboardScreen', () => {
     setupFetch({ leaderboardEntries: [], challenges: mockChallenges, challengeEntries });
     const { container } = render(<LeaderboardScreen />);
     await waitFor(() => {
-      expect(screen.getByText('By Challenge')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'By Challenge' })).toBeInTheDocument();
     });
-    fireEvent.click(screen.getByText('By Challenge'));
+    fireEvent.click(screen.getByRole('button', { name: 'By Challenge' }));
     await waitFor(() => {
       expect(screen.getByText('Select a challenge...')).toBeInTheDocument();
     });
@@ -409,8 +409,8 @@ describe('LeaderboardScreen', () => {
   it('clears challenge entries when empty value selected in challenge dropdown', async () => {
     setupFetch({ leaderboardEntries: [], challenges: mockChallenges, challengeEntries });
     const { container } = render(<LeaderboardScreen />);
-    await waitFor(() => expect(screen.getByText('By Challenge')).toBeInTheDocument());
-    fireEvent.click(screen.getByText('By Challenge'));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'By Challenge' })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: 'By Challenge' }));
     await waitFor(() => expect(screen.getByText('Select a challenge...')).toBeInTheDocument());
     const selects = container.querySelectorAll('select');
     const challengeSelect = selects[selects.length - 1];
@@ -427,9 +427,9 @@ describe('LeaderboardScreen', () => {
     setupFetch({ leaderboardEntries: [], challenges: mockChallenges, challengeEntries: [] });
     const { container } = render(<LeaderboardScreen />);
     await waitFor(() => {
-      expect(screen.getByText('By Challenge')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'By Challenge' })).toBeInTheDocument();
     });
-    fireEvent.click(screen.getByText('By Challenge'));
+    fireEvent.click(screen.getByRole('button', { name: 'By Challenge' }));
     await waitFor(() => {
       expect(screen.getByText('Select a challenge...')).toBeInTheDocument();
     });
@@ -449,9 +449,9 @@ describe('LeaderboardScreen', () => {
     setupFetch({ leaderboardEntries: [], challenges: mockChallenges, challengeEntries });
     const { container } = render(<LeaderboardScreen />);
     await waitFor(() => {
-      expect(screen.getByText('By Challenge')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'By Challenge' })).toBeInTheDocument();
     });
-    fireEvent.click(screen.getByText('By Challenge'));
+    fireEvent.click(screen.getByRole('button', { name: 'By Challenge' }));
     const selects = container.querySelectorAll('select');
     const challengeSelect = selects[selects.length - 1];
     if (challengeSelect) {
@@ -468,9 +468,9 @@ describe('LeaderboardScreen', () => {
     setupFetch({ leaderboardEntries: [], challenges: mockChallenges, challengeEntries });
     const { container } = render(<LeaderboardScreen />);
     await waitFor(() => {
-      expect(screen.getByText('By Challenge')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'By Challenge' })).toBeInTheDocument();
     });
-    fireEvent.click(screen.getByText('By Challenge'));
+    fireEvent.click(screen.getByRole('button', { name: 'By Challenge' }));
     const selects = container.querySelectorAll('select');
     const challengeSelect = selects[selects.length - 1];
     if (challengeSelect) {
@@ -487,9 +487,9 @@ describe('LeaderboardScreen', () => {
     setupFetch({ leaderboardEntries: [], challenges: mockChallenges, challengeEntries });
     const { container } = render(<LeaderboardScreen />);
     await waitFor(() => {
-      expect(screen.getByText('By Challenge')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'By Challenge' })).toBeInTheDocument();
     });
-    fireEvent.click(screen.getByText('By Challenge'));
+    fireEvent.click(screen.getByRole('button', { name: 'By Challenge' }));
     const selects = container.querySelectorAll('select');
     const challengeSelect = selects[selects.length - 1];
     if (challengeSelect) {
@@ -505,9 +505,9 @@ describe('LeaderboardScreen', () => {
     setupFetch({ leaderboardEntries: [], challenges: mockChallenges, challengeEntries });
     const { container } = render(<LeaderboardScreen />);
     await waitFor(() => {
-      expect(screen.getByText('By Challenge')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'By Challenge' })).toBeInTheDocument();
     });
-    fireEvent.click(screen.getByText('By Challenge'));
+    fireEvent.click(screen.getByRole('button', { name: 'By Challenge' }));
     const selects = container.querySelectorAll('select');
     const challengeSelect = selects[selects.length - 1];
     if (challengeSelect) {
@@ -526,8 +526,8 @@ describe('LeaderboardScreen', () => {
   it('closes ReplayViewer when Close button is clicked', async () => {
     setupFetch({ leaderboardEntries: [], challenges: mockChallenges, challengeEntries });
     const { container } = render(<LeaderboardScreen />);
-    await waitFor(() => expect(screen.getByText('By Challenge')).toBeInTheDocument());
-    fireEvent.click(screen.getByText('By Challenge'));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'By Challenge' })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: 'By Challenge' }));
     const selects = container.querySelectorAll('select');
     const challengeSelect = selects[selects.length - 1];
     expect(challengeSelect).toBeTruthy();
@@ -537,7 +537,7 @@ describe('LeaderboardScreen', () => {
     fireEvent.click(screen.getAllByText('Replay')[0]);
     await waitFor(() => expect(container.querySelector('[data-testid="replay-viewer"]')).toBeInTheDocument());
     // Close replay viewer (covers line 402: setReplayAttemptId(null))
-    fireEvent.click(screen.getByText('Close'));
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }));
     await waitFor(() => expect(container.querySelector('[data-testid="replay-viewer"]')).toBeNull());
   });
 
@@ -555,8 +555,8 @@ describe('LeaderboardScreen', () => {
   it('navigates to PublicProfile when clicking a user with username in challenge entries', async () => {
     setupFetch({ leaderboardEntries: [], challenges: mockChallenges, challengeEntries });
     const { container } = render(<LeaderboardScreen />);
-    await waitFor(() => expect(screen.getByText('By Challenge')).toBeInTheDocument());
-    fireEvent.click(screen.getByText('By Challenge'));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'By Challenge' })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: 'By Challenge' }));
     const selects = container.querySelectorAll('select');
     const challengeSelect = selects[selects.length - 1];
     expect(challengeSelect).toBeTruthy();
@@ -572,9 +572,9 @@ describe('LeaderboardScreen', () => {
     setupFetch({ leaderboardEntries: [], challenges: mockChallenges, challengeEntries });
     const { container } = render(<LeaderboardScreen />);
     await waitFor(() => {
-      expect(screen.getByText('By Challenge')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'By Challenge' })).toBeInTheDocument();
     });
-    fireEvent.click(screen.getByText('By Challenge'));
+    fireEvent.click(screen.getByRole('button', { name: 'By Challenge' }));
     await waitFor(() => expect(screen.getByText('Select a challenge...')).toBeInTheDocument());
     const selects = container.querySelectorAll('select');
     const challengeSelect = selects[selects.length - 1];
@@ -594,9 +594,9 @@ describe('LeaderboardScreen', () => {
     setupFetch({ leaderboardEntries: [], challenges: mockChallenges, challengeEntries });
     const { container } = render(<LeaderboardScreen />);
     await waitFor(() => {
-      expect(screen.getByText('By Challenge')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'By Challenge' })).toBeInTheDocument();
     });
-    fireEvent.click(screen.getByText('By Challenge'));
+    fireEvent.click(screen.getByRole('button', { name: 'By Challenge' }));
     const selects = container.querySelectorAll('select');
     const challengeSelect = selects[selects.length - 1];
     if (challengeSelect) {
@@ -633,8 +633,8 @@ describe('LeaderboardScreen', () => {
   it('navigates to Arena for Try This Challenge on challenge empty state', async () => {
     setupFetch({ leaderboardEntries: [], challenges: mockChallenges, challengeEntries: [] });
     const { container } = render(<LeaderboardScreen />);
-    await waitFor(() => expect(screen.getByText('By Challenge')).toBeInTheDocument());
-    fireEvent.click(screen.getByText('By Challenge'));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'By Challenge' })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: 'By Challenge' }));
     const selects = container.querySelectorAll('select');
     const challengeSelect = selects[selects.length - 1];
     if (challengeSelect) {
@@ -745,8 +745,8 @@ describe('LeaderboardScreen', () => {
     it('handles empty challenges list on challenge tab', async () => {
       setupFetch({ leaderboardEntries: [], challenges: [] });
       render(<LeaderboardScreen />);
-      await waitFor(() => expect(screen.getByText('By Challenge')).toBeInTheDocument());
-      fireEvent.click(screen.getByText('By Challenge'));
+      await waitFor(() => expect(screen.getByRole('button', { name: 'By Challenge' })).toBeInTheDocument());
+      fireEvent.click(screen.getByRole('button', { name: 'By Challenge' }));
       await waitFor(() => { expect(screen.getByText('Select a challenge...')).toBeInTheDocument(); });
     });
 
@@ -778,8 +778,8 @@ describe('LeaderboardScreen', () => {
     it('handles challenge leaderboard fetch returning non-ok', async () => {
       setupFetch({ leaderboardEntries: [], challenges: mockChallenges, challengeEntries: [], leaderboardOk: false });
       const { container } = render(<LeaderboardScreen />);
-      await waitFor(() => expect(screen.getByText('By Challenge')).toBeInTheDocument());
-      fireEvent.click(screen.getByText('By Challenge'));
+      await waitFor(() => expect(screen.getByRole('button', { name: 'By Challenge' })).toBeInTheDocument());
+      fireEvent.click(screen.getByRole('button', { name: 'By Challenge' }));
       const selects = container.querySelectorAll('select');
       const challengeSelect = selects[selects.length - 1];
       if (challengeSelect) {
@@ -791,8 +791,8 @@ describe('LeaderboardScreen', () => {
     it('handles challenge entries with null submittedAt', async () => {
       setupFetch({ leaderboardEntries: [], challenges: mockChallenges, challengeEntries: [{ rank: 1, user: { id: 'u1', name: 'Alice', avatarUrl: null, username: 'alice' }, attemptId: 'att1', cost: 500, tokens: 100, submittedAt: null }] });
       const { container } = render(<LeaderboardScreen />);
-      await waitFor(() => expect(screen.getByText('By Challenge')).toBeInTheDocument());
-      fireEvent.click(screen.getByText('By Challenge'));
+      await waitFor(() => expect(screen.getByRole('button', { name: 'By Challenge' })).toBeInTheDocument());
+      fireEvent.click(screen.getByRole('button', { name: 'By Challenge' }));
       const selects = container.querySelectorAll('select');
       const challengeSelect = selects[selects.length - 1];
       if (challengeSelect) {

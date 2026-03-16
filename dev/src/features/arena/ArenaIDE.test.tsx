@@ -324,8 +324,8 @@ describe('ArenaIDE', () => {
 
   it('renders Description and AI Chat tabs', () => {
     renderIDE();
-    expect(screen.getByText('Description')).toBeInTheDocument();
-    expect(screen.getByText('AI Chat')).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Description' })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'AI Chat' })).toBeInTheDocument();
   });
 
   it('renders the challenge description content', () => {
@@ -352,36 +352,36 @@ describe('ArenaIDE', () => {
 
   it('switches to AI Chat tab on click', () => {
     renderIDE();
-    fireEvent.click(screen.getByText('AI Chat'));
+    fireEvent.click(screen.getByRole('tab', { name: 'AI Chat' }));
     // Mode selector and chat input should be visible
     expect(screen.getByTestId('mode-selector')).toBeInTheDocument();
   });
 
   it('switches back to Description tab', () => {
     renderIDE();
-    fireEvent.click(screen.getByText('AI Chat'));
-    fireEvent.click(screen.getByText('Description'));
+    fireEvent.click(screen.getByRole('tab', { name: 'AI Chat' }));
+    fireEvent.click(screen.getByRole('tab', { name: 'Description' }));
     // Description content should be visible again
     expect(screen.getByText(/Build something cool/)).toBeInTheDocument();
   });
 
   it('clears unread dot when switching to chat tab', () => {
     renderIDE();
-    fireEvent.click(screen.getByText('AI Chat'));
+    fireEvent.click(screen.getByRole('tab', { name: 'AI Chat' }));
     // The unread dot should not be visible after clicking
   });
 
   it('switches to Discussion tab and shows CommentSection', () => {
     renderIDE();
-    fireEvent.click(screen.getByText('Discussion'));
+    fireEvent.click(screen.getByRole('tab', { name: 'Discussion' }));
     expect(screen.getByTestId('comment-section')).toBeInTheDocument();
   });
 
   it('switches from Discussion back to Description tab', () => {
     renderIDE();
-    fireEvent.click(screen.getByText('Discussion'));
+    fireEvent.click(screen.getByRole('tab', { name: 'Discussion' }));
     expect(screen.getByTestId('comment-section')).toBeInTheDocument();
-    fireEvent.click(screen.getByText('Description'));
+    fireEvent.click(screen.getByRole('tab', { name: 'Description' }));
     expect(screen.getByText(/Build something cool/)).toBeInTheDocument();
   });
 
@@ -506,14 +506,14 @@ describe('ArenaIDE', () => {
     renderIDE({
       attempt: { ...attempt, totalCost: 5000, inputTokens: 100, outputTokens: 200 },
     });
-    fireEvent.click(screen.getByText('AI Chat'));
+    fireEvent.click(screen.getByRole('tab', { name: 'AI Chat' }));
     // Total tokens (100+200=300) should appear somewhere
     expect(screen.getByText(/300/)).toBeInTheDocument();
   });
 
   it('does not show token count when 0', () => {
     renderIDE();
-    fireEvent.click(screen.getByText('AI Chat'));
+    fireEvent.click(screen.getByRole('tab', { name: 'AI Chat' }));
     // With 0 tokens, the tok display shouldn't appear
     expect(screen.queryByText(/\d+ tok/)).toBeNull();
   });
@@ -522,13 +522,13 @@ describe('ArenaIDE', () => {
 
   it('renders guest mode placeholder in chat textarea', () => {
     renderIDE({ guestMode: true });
-    fireEvent.click(screen.getByText('AI Chat'));
+    fireEvent.click(screen.getByRole('tab', { name: 'AI Chat' }));
     expect(screen.getByPlaceholderText('Sign up to chat with AI')).toBeInTheDocument();
   });
 
   it('disables send button in guest mode', () => {
     renderIDE({ guestMode: true });
-    fireEvent.click(screen.getByText('AI Chat'));
+    fireEvent.click(screen.getByRole('tab', { name: 'AI Chat' }));
     // The send button should be disabled
     const sendBtns = screen.getAllByRole('button');
     const sendBtn = sendBtns.find(b => b.textContent?.includes('\u25B6'));
@@ -541,7 +541,7 @@ describe('ArenaIDE', () => {
 
   it('shows chat prompt suggestions when no messages', () => {
     renderIDE();
-    fireEvent.click(screen.getByText('AI Chat'));
+    fireEvent.click(screen.getByRole('tab', { name: 'AI Chat' }));
     expect(screen.getByText('Write the solution')).toBeInTheDocument();
     expect(screen.getByText("What's the most efficient approach?")).toBeInTheDocument();
     expect(screen.getByText('Fix the failing tests')).toBeInTheDocument();
@@ -549,7 +549,7 @@ describe('ArenaIDE', () => {
 
   it('clicking a prompt suggestion populates chat input', () => {
     renderIDE();
-    fireEvent.click(screen.getByText('AI Chat'));
+    fireEvent.click(screen.getByRole('tab', { name: 'AI Chat' }));
     fireEvent.click(screen.getByText('Write the solution'));
     const textarea = screen.getByPlaceholderText(/Ask about this problem/) as HTMLTextAreaElement;
     expect(textarea.value).toBe('Write the solution');
@@ -557,13 +557,13 @@ describe('ArenaIDE', () => {
 
   it('shows budget info in empty chat state when maxCost set', () => {
     renderIDE({ challenge: { ...challenge, maxCost: 50000 } });
-    fireEvent.click(screen.getByText('AI Chat'));
+    fireEvent.click(screen.getByRole('tab', { name: 'AI Chat' }));
     expect(screen.getByText(/Budget:/)).toBeInTheDocument();
   });
 
   it('shows leaderboard info in empty chat state when no budget', () => {
     renderIDE();
-    fireEvent.click(screen.getByText('AI Chat'));
+    fireEvent.click(screen.getByRole('tab', { name: 'AI Chat' }));
     expect(screen.getByText(/Costs tracked for leaderboard/)).toBeInTheDocument();
   });
 
@@ -571,7 +571,7 @@ describe('ArenaIDE', () => {
 
   it('renders all 5 tier buttons', () => {
     renderIDE();
-    fireEvent.click(screen.getByText('AI Chat'));
+    fireEvent.click(screen.getByRole('tab', { name: 'AI Chat' }));
     expect(screen.getByText('Micro')).toBeInTheDocument();
     expect(screen.getByText('Budget')).toBeInTheDocument();
     expect(screen.getByText('Mid')).toBeInTheDocument();
@@ -581,7 +581,7 @@ describe('ArenaIDE', () => {
 
   it('selects a different tier on click', () => {
     renderIDE();
-    fireEvent.click(screen.getByText('AI Chat'));
+    fireEvent.click(screen.getByRole('tab', { name: 'AI Chat' }));
     // Click on Premium tier
     fireEvent.click(screen.getByText('Premium'));
     // Premium should now be active (visually indicated)
@@ -589,7 +589,7 @@ describe('ArenaIDE', () => {
 
   it('shows tier dropdown when clicking active tier with multiple models', () => {
     renderIDE();
-    fireEvent.click(screen.getByText('AI Chat'));
+    fireEvent.click(screen.getByRole('tab', { name: 'AI Chat' }));
     // Mid tier has 2 models in our mock
     fireEvent.click(screen.getByText('Mid'));
     // Now click Mid again to open dropdown
@@ -600,7 +600,7 @@ describe('ArenaIDE', () => {
 
   it('selects model from dropdown', () => {
     renderIDE();
-    fireEvent.click(screen.getByText('AI Chat'));
+    fireEvent.click(screen.getByRole('tab', { name: 'AI Chat' }));
     fireEvent.click(screen.getByText('Mid'));
     fireEvent.click(screen.getByText('Mid')); // open dropdown
     fireEvent.click(screen.getByText('Mid Model 2'));
@@ -611,7 +611,7 @@ describe('ArenaIDE', () => {
   it('shows recommended star for matching difficulty tier', () => {
     // challenge.difficulty = 'easy' → recommended tier is 'budget'
     renderIDE();
-    fireEvent.click(screen.getByText('AI Chat'));
+    fireEvent.click(screen.getByRole('tab', { name: 'AI Chat' }));
     // The Budget tier button should have a star
   });
 
@@ -619,7 +619,7 @@ describe('ArenaIDE', () => {
 
   it('typing in chat input updates value', () => {
     renderIDE();
-    fireEvent.click(screen.getByText('AI Chat'));
+    fireEvent.click(screen.getByRole('tab', { name: 'AI Chat' }));
     const textarea = screen.getByPlaceholderText(/Ask about this problem/) as HTMLTextAreaElement;
     fireEvent.change(textarea, { target: { value: 'Hello AI' } });
     expect(textarea.value).toBe('Hello AI');
@@ -627,7 +627,7 @@ describe('ArenaIDE', () => {
 
   it('shows cost estimate when chat input has text', () => {
     renderIDE();
-    fireEvent.click(screen.getByText('AI Chat'));
+    fireEvent.click(screen.getByRole('tab', { name: 'AI Chat' }));
     const textarea = screen.getByPlaceholderText(/Ask about this problem/) as HTMLTextAreaElement;
     fireEvent.change(textarea, { target: { value: 'Help me' } });
     expect(screen.getByText(/\$0\.01 est/)).toBeInTheDocument();
@@ -635,7 +635,7 @@ describe('ArenaIDE', () => {
 
   it('Enter key sends message (calls streamChat)', async () => {
     renderIDE();
-    fireEvent.click(screen.getByText('AI Chat'));
+    fireEvent.click(screen.getByRole('tab', { name: 'AI Chat' }));
     const textarea = screen.getByPlaceholderText(/Ask about this problem/) as HTMLTextAreaElement;
     fireEvent.change(textarea, { target: { value: 'Help me solve this' } });
     fireEvent.keyDown(textarea, { key: 'Enter', shiftKey: false });
@@ -648,7 +648,7 @@ describe('ArenaIDE', () => {
 
   it('Shift+Enter does not send message', () => {
     renderIDE();
-    fireEvent.click(screen.getByText('AI Chat'));
+    fireEvent.click(screen.getByRole('tab', { name: 'AI Chat' }));
     const textarea = screen.getByPlaceholderText(/Ask about this problem/) as HTMLTextAreaElement;
     fireEvent.change(textarea, { target: { value: 'Draft' } });
     fireEvent.keyDown(textarea, { key: 'Enter', shiftKey: true });
@@ -657,7 +657,7 @@ describe('ArenaIDE', () => {
 
   it('does not send empty message', () => {
     renderIDE();
-    fireEvent.click(screen.getByText('AI Chat'));
+    fireEvent.click(screen.getByRole('tab', { name: 'AI Chat' }));
     const textarea = screen.getByPlaceholderText(/Ask about this problem/) as HTMLTextAreaElement;
     fireEvent.change(textarea, { target: { value: '  ' } });
     fireEvent.keyDown(textarea, { key: 'Enter', shiftKey: false });
@@ -666,7 +666,7 @@ describe('ArenaIDE', () => {
 
   it('does not send when no attemptId', () => {
     renderIDE({ attempt: null });
-    fireEvent.click(screen.getByText('AI Chat'));
+    fireEvent.click(screen.getByRole('tab', { name: 'AI Chat' }));
     const textarea = screen.getByPlaceholderText(/Ask about this problem/) as HTMLTextAreaElement;
     fireEvent.change(textarea, { target: { value: 'Hello' } });
     fireEvent.keyDown(textarea, { key: 'Enter', shiftKey: false });
@@ -683,7 +683,7 @@ describe('ArenaIDE', () => {
     // After dismissing the overlay, chat becomes disabled
     fireEvent.click(screen.getByTestId('expiry-review'));
     await waitFor(() => expect(screen.queryByTestId('expiry-overlay')).toBeNull());
-    fireEvent.click(screen.getByText('AI Chat'));
+    fireEvent.click(screen.getByRole('tab', { name: 'AI Chat' }));
     const textarea = screen.getByPlaceholderText(/time expired/) as HTMLTextAreaElement;
     expect(textarea.disabled).toBe(true);
   });
@@ -720,7 +720,7 @@ describe('ArenaIDE', () => {
       // Don't call onDone — leave it loading
     });
     renderIDE();
-    fireEvent.click(screen.getByText('AI Chat'));
+    fireEvent.click(screen.getByRole('tab', { name: 'AI Chat' }));
     const textarea = screen.getByPlaceholderText(/Ask about this problem/) as HTMLTextAreaElement;
     fireEvent.change(textarea, { target: { value: 'Test' } });
     fireEvent.keyDown(textarea, { key: 'Enter', shiftKey: false });
@@ -738,7 +738,7 @@ describe('ArenaIDE', () => {
       callbacks.onChunk?.('Partial response');
     });
     renderIDE();
-    fireEvent.click(screen.getByText('AI Chat'));
+    fireEvent.click(screen.getByRole('tab', { name: 'AI Chat' }));
     const textarea = screen.getByPlaceholderText(/Ask about this problem/) as HTMLTextAreaElement;
     fireEvent.change(textarea, { target: { value: 'Test' } });
     fireEvent.keyDown(textarea, { key: 'Enter', shiftKey: false });
@@ -766,7 +766,7 @@ describe('ArenaIDE', () => {
     });
 
     renderIDE();
-    fireEvent.click(screen.getByText('AI Chat'));
+    fireEvent.click(screen.getByRole('tab', { name: 'AI Chat' }));
     const textarea = screen.getByPlaceholderText(/Ask about this problem/) as HTMLTextAreaElement;
     fireEvent.change(textarea, { target: { value: 'Help' } });
 
@@ -785,7 +785,7 @@ describe('ArenaIDE', () => {
     });
 
     renderIDE();
-    fireEvent.click(screen.getByText('AI Chat'));
+    fireEvent.click(screen.getByRole('tab', { name: 'AI Chat' }));
     const textarea = screen.getByPlaceholderText(/Ask about this problem/) as HTMLTextAreaElement;
     fireEvent.change(textarea, { target: { value: 'Help' } });
 
@@ -805,7 +805,7 @@ describe('ArenaIDE', () => {
     });
 
     renderIDE({ onExpire });
-    fireEvent.click(screen.getByText('AI Chat'));
+    fireEvent.click(screen.getByRole('tab', { name: 'AI Chat' }));
     const textarea = screen.getByPlaceholderText(/Ask about this problem/) as HTMLTextAreaElement;
     fireEvent.change(textarea, { target: { value: 'Help' } });
 
@@ -825,7 +825,7 @@ describe('ArenaIDE', () => {
     });
 
     renderIDE();
-    fireEvent.click(screen.getByText('AI Chat'));
+    fireEvent.click(screen.getByRole('tab', { name: 'AI Chat' }));
     const textarea = screen.getByPlaceholderText(/Ask about this problem/) as HTMLTextAreaElement;
     fireEvent.change(textarea, { target: { value: 'Help' } });
 
@@ -845,7 +845,7 @@ describe('ArenaIDE', () => {
     });
 
     renderIDE();
-    fireEvent.click(screen.getByText('AI Chat'));
+    fireEvent.click(screen.getByRole('tab', { name: 'AI Chat' }));
     const textarea = screen.getByPlaceholderText(/Ask about this problem/) as HTMLTextAreaElement;
     fireEvent.change(textarea, { target: { value: 'Think deeply' } });
 
@@ -870,7 +870,7 @@ describe('ArenaIDE', () => {
     });
 
     renderIDE();
-    fireEvent.click(screen.getByText('AI Chat'));
+    fireEvent.click(screen.getByRole('tab', { name: 'AI Chat' }));
     const textarea = screen.getByPlaceholderText(/Ask about this problem/) as HTMLTextAreaElement;
     fireEvent.change(textarea, { target: { value: 'Test' } });
 
@@ -898,7 +898,7 @@ describe('ArenaIDE', () => {
     });
 
     renderIDE();
-    fireEvent.click(screen.getByText('AI Chat'));
+    fireEvent.click(screen.getByRole('tab', { name: 'AI Chat' }));
     const textarea = screen.getByPlaceholderText(/Ask about this problem/) as HTMLTextAreaElement;
     fireEvent.change(textarea, { target: { value: 'Hello' } });
 
@@ -907,9 +907,9 @@ describe('ArenaIDE', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText('Clear')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Clear' })).toBeInTheDocument();
     });
-    fireEvent.click(screen.getByText('Clear'));
+    fireEvent.click(screen.getByRole('button', { name: 'Clear' }));
     // Messages should be gone, prompt suggestions should reappear
     await waitFor(() => {
       expect(screen.getByText('Write the solution')).toBeInTheDocument();
@@ -924,7 +924,7 @@ describe('ArenaIDE', () => {
     });
 
     renderIDE();
-    fireEvent.click(screen.getByText('AI Chat'));
+    fireEvent.click(screen.getByRole('tab', { name: 'AI Chat' }));
     const textarea = screen.getByPlaceholderText(/Ask about this problem/) as HTMLTextAreaElement;
     fireEvent.change(textarea, { target: { value: 'Test question' } });
 
@@ -941,13 +941,13 @@ describe('ArenaIDE', () => {
 
   it('renders mode selector with current mode', () => {
     renderIDE();
-    fireEvent.click(screen.getByText('AI Chat'));
+    fireEvent.click(screen.getByRole('tab', { name: 'AI Chat' }));
     expect(screen.getByTestId('current-mode').textContent).toBe('agent');
   });
 
   it('mode selector switch changes mode', () => {
     renderIDE();
-    fireEvent.click(screen.getByText('AI Chat'));
+    fireEvent.click(screen.getByRole('tab', { name: 'AI Chat' }));
     fireEvent.click(screen.getByTestId('switch-mode'));
     expect(screen.getByTestId('current-mode').textContent).toBe('debug');
   });
@@ -1040,7 +1040,7 @@ describe('ArenaIDE', () => {
 
   it('nudge "Open Chat" button switches to chat tab', () => {
     renderIDE({ code: '// your code here', challenge: { ...challenge, starterCode: null } });
-    fireEvent.click(screen.getByText('Open Chat'));
+    fireEvent.click(screen.getByRole('button', { name: 'Open Chat' }));
     // Should switch to chat tab
     expect(screen.getByTestId('mode-selector')).toBeInTheDocument();
   });
@@ -1134,7 +1134,7 @@ describe('ArenaIDE', () => {
     });
 
     renderIDE({ onAttemptUpdate });
-    fireEvent.click(screen.getByText('AI Chat'));
+    fireEvent.click(screen.getByRole('tab', { name: 'AI Chat' }));
     const textarea = screen.getByPlaceholderText(/Ask about this problem/) as HTMLTextAreaElement;
     fireEvent.change(textarea, { target: { value: 'Help' } });
 
@@ -1154,7 +1154,7 @@ describe('ArenaIDE', () => {
     renderIDE({
       attempt: { ...attempt, totalCost: 50, inputTokens: 10, outputTokens: 20 },
     });
-    fireEvent.click(screen.getByText('AI Chat'));
+    fireEvent.click(screen.getByRole('tab', { name: 'AI Chat' }));
     // Token display: "30 tok · $0.0050"
     expect(screen.getByText(/\$0\.0050/)).toBeInTheDocument();
   });
@@ -1163,7 +1163,7 @@ describe('ArenaIDE', () => {
     renderIDE({
       attempt: { ...attempt, totalCost: 50000, inputTokens: 500, outputTokens: 500 },
     });
-    fireEvent.click(screen.getByText('AI Chat'));
+    fireEvent.click(screen.getByRole('tab', { name: 'AI Chat' }));
     expect(screen.getByText(/\$5\.00/)).toBeInTheDocument();
   });
 
@@ -1180,7 +1180,7 @@ describe('ArenaIDE', () => {
 
   it('scroll to bottom button not visible by default', () => {
     renderIDE();
-    fireEvent.click(screen.getByText('AI Chat'));
+    fireEvent.click(screen.getByRole('tab', { name: 'AI Chat' }));
     // The scroll button should not be visible (showScrollBtn = false by default)
     expect(screen.queryByTestId('scroll-to-bottom')).toBeNull();
   });
@@ -1202,7 +1202,7 @@ describe('ArenaIDE', () => {
     });
 
     renderIDE();
-    fireEvent.click(screen.getByText('AI Chat'));
+    fireEvent.click(screen.getByRole('tab', { name: 'AI Chat' }));
     const textarea = screen.getByPlaceholderText(/Ask about this problem/) as HTMLTextAreaElement;
     fireEvent.change(textarea, { target: { value: 'First message' } });
     fireEvent.keyDown(textarea, { key: 'Enter', shiftKey: false });
@@ -1249,7 +1249,7 @@ describe('ArenaIDE', () => {
       <ArenaIDE {...defaultProps} isExpired={false} />
     );
 
-    fireEvent.click(screen.getByText('AI Chat'));
+    fireEvent.click(screen.getByRole('tab', { name: 'AI Chat' }));
     const textarea = screen.getByPlaceholderText(/Ask about this problem/) as HTMLTextAreaElement;
     fireEvent.change(textarea, { target: { value: 'Hello' } });
 
@@ -1274,7 +1274,7 @@ describe('ArenaIDE', () => {
     });
 
     renderIDE();
-    fireEvent.click(screen.getByText('AI Chat'));
+    fireEvent.click(screen.getByRole('tab', { name: 'AI Chat' }));
     const textarea = screen.getByPlaceholderText(/Ask about this problem/) as HTMLTextAreaElement;
     fireEvent.change(textarea, { target: { value: 'Test' } });
 
@@ -1297,7 +1297,7 @@ describe('ArenaIDE', () => {
     });
 
     renderIDE();
-    fireEvent.click(screen.getByText('AI Chat'));
+    fireEvent.click(screen.getByRole('tab', { name: 'AI Chat' }));
     const textarea = screen.getByPlaceholderText(/Ask about this problem/) as HTMLTextAreaElement;
     fireEvent.change(textarea, { target: { value: 'Edit me' } });
 
@@ -1318,7 +1318,7 @@ describe('ArenaIDE', () => {
     });
 
     renderIDE();
-    fireEvent.click(screen.getByText('AI Chat'));
+    fireEvent.click(screen.getByRole('tab', { name: 'AI Chat' }));
     const textarea = screen.getByPlaceholderText(/Ask about this problem/) as HTMLTextAreaElement;
     fireEvent.change(textarea, { target: { value: 'Edit me' } });
 
@@ -1347,7 +1347,7 @@ describe('ArenaIDE', () => {
 
     // Send first message and get long response
     renderIDE();
-    fireEvent.click(screen.getByText('AI Chat'));
+    fireEvent.click(screen.getByRole('tab', { name: 'AI Chat' }));
     const textarea = screen.getByPlaceholderText(/Ask about this problem/) as HTMLTextAreaElement;
     fireEvent.change(textarea, { target: { value: 'Question 1' } });
 
@@ -1394,7 +1394,7 @@ describe('ArenaIDE', () => {
     });
 
     renderIDE();
-    fireEvent.click(screen.getByText('AI Chat'));
+    fireEvent.click(screen.getByRole('tab', { name: 'AI Chat' }));
     const textarea = screen.getByPlaceholderText(/Ask about this problem/) as HTMLTextAreaElement;
     fireEvent.change(textarea, { target: { value: 'Test' } });
 
@@ -1418,18 +1418,18 @@ describe('ArenaIDE', () => {
   it('handles challenge with invalid testCases JSON gracefully', () => {
     renderIDE({ challenge: { ...challenge, testCases: 'invalid json' } });
     // Should not crash — the try/catch handles this
-    expect(screen.getByText('Description')).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Description' })).toBeInTheDocument();
   });
 
   it('renders with no attempt (null attempt)', () => {
     renderIDE({ attempt: null });
     // Should still render — attempt is optional
-    expect(screen.getByText('Description')).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Description' })).toBeInTheDocument();
   });
 
   it('handles attempt with 0 tokens gracefully', () => {
     renderIDE({ attempt: { ...attempt, inputTokens: 0, outputTokens: 0 } });
-    fireEvent.click(screen.getByText('AI Chat'));
+    fireEvent.click(screen.getByRole('tab', { name: 'AI Chat' }));
     // Should not show "0 tok" text
     expect(screen.queryByText('0 tok')).toBeNull();
   });
@@ -1442,7 +1442,7 @@ describe('ArenaIDE', () => {
     });
 
     renderIDE();
-    fireEvent.click(screen.getByText('AI Chat'));
+    fireEvent.click(screen.getByRole('tab', { name: 'AI Chat' }));
     const textarea = screen.getByPlaceholderText(/Ask about this problem/) as HTMLTextAreaElement;
     fireEvent.change(textarea, { target: { value: 'User question' } });
 
@@ -1465,7 +1465,7 @@ describe('ArenaIDE', () => {
     });
 
     renderIDE({ onExpire });
-    fireEvent.click(screen.getByText('AI Chat'));
+    fireEvent.click(screen.getByRole('tab', { name: 'AI Chat' }));
     const textarea = screen.getByPlaceholderText(/Ask about this problem/) as HTMLTextAreaElement;
     fireEvent.change(textarea, { target: { value: 'Test' } });
 
@@ -1490,7 +1490,7 @@ describe('ArenaIDE', () => {
     });
 
     renderIDE();
-    fireEvent.click(screen.getByText('AI Chat'));
+    fireEvent.click(screen.getByRole('tab', { name: 'AI Chat' }));
     const textarea = screen.getByPlaceholderText(/Ask about this problem/) as HTMLTextAreaElement;
     fireEvent.change(textarea, { target: { value: 'Test' } });
 
@@ -1543,7 +1543,7 @@ describe('ArenaIDE', () => {
     await waitFor(() => expect(screen.queryByTestId('expiry-overlay')).toBeNull());
 
     // Switch to chat tab
-    fireEvent.click(screen.getByText('AI Chat'));
+    fireEvent.click(screen.getByRole('tab', { name: 'AI Chat' }));
     // Chat is disabled, so we can't type. But the placeholder shows "time expired"
     const textarea = screen.getByPlaceholderText(/time expired/) as HTMLTextAreaElement;
     expect(textarea.disabled).toBe(true);
@@ -1557,7 +1557,7 @@ describe('ArenaIDE', () => {
     });
 
     renderIDE();
-    fireEvent.click(screen.getByText('AI Chat'));
+    fireEvent.click(screen.getByRole('tab', { name: 'AI Chat' }));
     const textarea = screen.getByPlaceholderText(/Ask about this problem/) as HTMLTextAreaElement;
     fireEvent.change(textarea, { target: { value: 'Test' } });
 
@@ -1618,7 +1618,7 @@ describe('ArenaIDE', () => {
     });
 
     renderIDE();
-    fireEvent.click(screen.getByText('AI Chat'));
+    fireEvent.click(screen.getByRole('tab', { name: 'AI Chat' }));
     const textarea = screen.getByPlaceholderText(/Ask about this problem/) as HTMLTextAreaElement;
     fireEvent.change(textarea, { target: { value: 'Help' } });
 
@@ -1651,7 +1651,7 @@ describe('ArenaIDE', () => {
     });
 
     renderIDE();
-    fireEvent.click(screen.getByText('AI Chat'));
+    fireEvent.click(screen.getByRole('tab', { name: 'AI Chat' }));
     const textarea = screen.getByPlaceholderText(/Ask about this problem/) as HTMLTextAreaElement;
     fireEvent.change(textarea, { target: { value: 'Help' } });
 
@@ -1685,7 +1685,7 @@ describe('ArenaIDE', () => {
     });
 
     renderIDE();
-    fireEvent.click(screen.getByText('AI Chat'));
+    fireEvent.click(screen.getByRole('tab', { name: 'AI Chat' }));
     const textarea = screen.getByPlaceholderText(/Ask about this problem/) as HTMLTextAreaElement;
     fireEvent.change(textarea, { target: { value: 'Button send' } });
 
@@ -1738,7 +1738,7 @@ describe('ArenaIDE', () => {
   it('nudge Open Chat on mobile sets mobilePanel to sidebar', () => {
     isMobileReturn = true;
     renderIDE({ code: '// your code here', challenge: { ...challenge, starterCode: null } });
-    fireEvent.click(screen.getByText('Open Chat'));
+    fireEvent.click(screen.getByRole('button', { name: 'Open Chat' }));
     // Should switch to sidebar panel with chat visible
     expect(screen.getByTestId('mode-selector')).toBeInTheDocument();
   });
@@ -1758,7 +1758,7 @@ describe('ArenaIDE', () => {
 
   it('prompt suggestion hover changes border color', () => {
     renderIDE();
-    fireEvent.click(screen.getByText('AI Chat'));
+    fireEvent.click(screen.getByRole('tab', { name: 'AI Chat' }));
     const btn = screen.getByText('Write the solution');
     fireEvent.mouseEnter(btn);
     expect(btn.style.borderColor).toBe('rgb(201, 169, 98)'); // arena.accent
@@ -1775,7 +1775,7 @@ describe('ArenaIDE', () => {
     });
 
     renderIDE();
-    fireEvent.click(screen.getByText('AI Chat'));
+    fireEvent.click(screen.getByRole('tab', { name: 'AI Chat' }));
     const textarea = screen.getByPlaceholderText(/Ask about this problem/) as HTMLTextAreaElement;
     fireEvent.change(textarea, { target: { value: 'Q1' } });
 
@@ -1829,7 +1829,7 @@ describe('ArenaIDE', () => {
     });
 
     renderIDE();
-    fireEvent.click(screen.getByText('AI Chat'));
+    fireEvent.click(screen.getByRole('tab', { name: 'AI Chat' }));
     const textarea = screen.getByPlaceholderText(/Ask about this problem/) as HTMLTextAreaElement;
     fireEvent.change(textarea, { target: { value: 'Original question' } });
 
@@ -1861,7 +1861,7 @@ describe('ArenaIDE', () => {
     });
 
     renderIDE();
-    fireEvent.click(screen.getByText('AI Chat'));
+    fireEvent.click(screen.getByRole('tab', { name: 'AI Chat' }));
     const textarea = screen.getByPlaceholderText(/Ask about this problem/) as HTMLTextAreaElement;
     fireEvent.change(textarea, { target: { value: 'Loading msg' } });
 
@@ -1873,9 +1873,9 @@ describe('ArenaIDE', () => {
     // Actually clear button only appears when messages.filter(m => m.role !== 'system').length > 0
     // The user message was added, so clear should be visible
     await waitFor(() => {
-      expect(screen.getByText('Clear')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Clear' })).toBeInTheDocument();
     });
-    fireEvent.click(screen.getByText('Clear'));
+    fireEvent.click(screen.getByRole('button', { name: 'Clear' }));
     // After clearing, prompt suggestions should reappear
     await waitFor(() => {
       expect(screen.getByText('Write the solution')).toBeInTheDocument();
@@ -1942,7 +1942,7 @@ describe('ArenaIDE', () => {
     fireEvent.click(screen.getByTestId('expiry-review'));
     await waitFor(() => expect(screen.queryByTestId('expiry-overlay')).toBeNull());
     // Chat is now disabled — the placeholder shows "time expired"
-    fireEvent.click(screen.getByText('AI Chat'));
+    fireEvent.click(screen.getByRole('tab', { name: 'AI Chat' }));
     const ta = screen.getByPlaceholderText(/time expired/) as HTMLTextAreaElement;
     expect(ta.disabled).toBe(true);
     // Constraint messages area should be visible
@@ -1957,7 +1957,7 @@ describe('ArenaIDE', () => {
     });
 
     renderIDE();
-    fireEvent.click(screen.getByText('AI Chat'));
+    fireEvent.click(screen.getByRole('tab', { name: 'AI Chat' }));
     const textarea = screen.getByPlaceholderText(/Ask about this problem/) as HTMLTextAreaElement;
     fireEvent.change(textarea, { target: { value: 'Test cost' } });
 
@@ -1996,7 +1996,7 @@ describe('ArenaIDE', () => {
     });
 
     renderIDE({ onRunTests });
-    fireEvent.click(screen.getByText('AI Chat'));
+    fireEvent.click(screen.getByRole('tab', { name: 'AI Chat' }));
     const textarea = screen.getByPlaceholderText(/Ask about this problem/) as HTMLTextAreaElement;
     fireEvent.change(textarea, { target: { value: 'Solve this' } });
 
@@ -2031,7 +2031,7 @@ describe('ArenaIDE', () => {
     });
 
     renderIDE({ onRunTests });
-    fireEvent.click(screen.getByText('AI Chat'));
+    fireEvent.click(screen.getByRole('tab', { name: 'AI Chat' }));
     const textarea = screen.getByPlaceholderText(/Ask about this problem/) as HTMLTextAreaElement;
     fireEvent.change(textarea, { target: { value: 'Fix this' } });
 
@@ -2061,7 +2061,7 @@ describe('ArenaIDE', () => {
     const onRunTests = vi.fn().mockRejectedValue(new Error('Execution timeout'));
 
     renderIDE({ onRunTests });
-    fireEvent.click(screen.getByText('AI Chat'));
+    fireEvent.click(screen.getByRole('tab', { name: 'AI Chat' }));
     const textarea = screen.getByPlaceholderText(/Ask about this problem/) as HTMLTextAreaElement;
     fireEvent.change(textarea, { target: { value: 'Try fix' } });
 
@@ -2080,7 +2080,7 @@ describe('ArenaIDE', () => {
 
   it('handleRetry does nothing when no assistant messages', () => {
     renderIDE();
-    fireEvent.click(screen.getByText('AI Chat'));
+    fireEvent.click(screen.getByRole('tab', { name: 'AI Chat' }));
     // No messages yet, retry should not crash
   });
 
@@ -2107,7 +2107,7 @@ describe('ArenaIDE', () => {
     });
 
     renderIDE();
-    fireEvent.click(screen.getByText('AI Chat'));
+    fireEvent.click(screen.getByRole('tab', { name: 'AI Chat' }));
     const textarea = screen.getByPlaceholderText(/Ask about this problem/) as HTMLTextAreaElement;
     fireEvent.change(textarea, { target: { value: 'Deep question' } });
 
@@ -2149,7 +2149,7 @@ describe('ArenaIDE', () => {
     });
 
     renderIDE({ onAttemptUpdate });
-    fireEvent.click(screen.getByText('AI Chat'));
+    fireEvent.click(screen.getByRole('tab', { name: 'AI Chat' }));
     const textarea = screen.getByPlaceholderText(/Ask about this problem/) as HTMLTextAreaElement;
     fireEvent.change(textarea, { target: { value: 'test cost' } });
 
@@ -2176,7 +2176,7 @@ describe('ArenaIDE', () => {
     });
 
     const { container } = renderIDE();
-    fireEvent.click(screen.getByText('AI Chat'));
+    fireEvent.click(screen.getByRole('tab', { name: 'AI Chat' }));
     const textarea = screen.getByPlaceholderText(/Ask about this problem/) as HTMLTextAreaElement;
     fireEvent.change(textarea, { target: { value: 'Write code' } });
 
@@ -2214,7 +2214,7 @@ describe('ArenaIDE', () => {
     });
 
     renderIDE();
-    fireEvent.click(screen.getByText('AI Chat'));
+    fireEvent.click(screen.getByRole('tab', { name: 'AI Chat' }));
     const textarea = screen.getByPlaceholderText(/Ask about this problem/) as HTMLTextAreaElement;
     fireEvent.change(textarea, { target: { value: 'Apply model test' } });
 
@@ -2238,7 +2238,7 @@ describe('ArenaIDE', () => {
     });
 
     renderIDE();
-    fireEvent.click(screen.getByText('AI Chat'));
+    fireEvent.click(screen.getByRole('tab', { name: 'AI Chat' }));
     const textarea = screen.getByPlaceholderText(/Ask about this problem/) as HTMLTextAreaElement;
 
     // Send first message (starts loading)
@@ -2276,7 +2276,7 @@ describe('ArenaIDE', () => {
     await waitFor(() => expect(screen.queryByTestId('expiry-overlay')).toBeNull());
 
     // Switch to chat tab
-    fireEvent.click(screen.getByText('AI Chat'));
+    fireEvent.click(screen.getByRole('tab', { name: 'AI Chat' }));
     // Input should be disabled
     const ta = screen.getByPlaceholderText(/time expired/) as HTMLTextAreaElement;
     expect(ta.disabled).toBe(true);
@@ -2291,7 +2291,7 @@ describe('ArenaIDE', () => {
     });
 
     renderIDE();
-    fireEvent.click(screen.getByText('AI Chat'));
+    fireEvent.click(screen.getByRole('tab', { name: 'AI Chat' }));
     const textarea = screen.getByPlaceholderText(/Ask about this problem/) as HTMLTextAreaElement;
     fireEvent.change(textarea, { target: { value: 'Trigger cost limit' } });
 
@@ -2320,7 +2320,7 @@ describe('ArenaIDE', () => {
     });
 
     renderIDE({ onExpire });
-    fireEvent.click(screen.getByText('AI Chat'));
+    fireEvent.click(screen.getByRole('tab', { name: 'AI Chat' }));
     const textarea = screen.getByPlaceholderText(/Ask about this problem/) as HTMLTextAreaElement;
     fireEvent.change(textarea, { target: { value: 'After time' } });
 
@@ -2345,7 +2345,7 @@ describe('ArenaIDE', () => {
 
     renderIDE();
     // Switch to chat tab and send message
-    fireEvent.click(screen.getByText('AI Chat'));
+    fireEvent.click(screen.getByRole('tab', { name: 'AI Chat' }));
     const textarea = screen.getByPlaceholderText(/Ask about this problem/) as HTMLTextAreaElement;
     fireEvent.change(textarea, { target: { value: 'Send this' } });
 
@@ -2354,7 +2354,7 @@ describe('ArenaIDE', () => {
     });
 
     // Now switch to description tab before the response arrives
-    fireEvent.click(screen.getByText('Description'));
+    fireEvent.click(screen.getByRole('tab', { name: 'Description' }));
 
     // Now fire the onDone callback (while on description tab)
     await act(async () => {
@@ -2362,7 +2362,7 @@ describe('ArenaIDE', () => {
     });
 
     // Switch back to chat tab to see the message
-    fireEvent.click(screen.getByText('AI Chat'));
+    fireEvent.click(screen.getByRole('tab', { name: 'AI Chat' }));
 
     await waitFor(() => {
       expect(screen.getByText('Unread response')).toBeInTheDocument();
@@ -2402,7 +2402,7 @@ describe('ArenaIDE', () => {
     });
 
     renderIDE();
-    fireEvent.click(screen.getByText('AI Chat'));
+    fireEvent.click(screen.getByRole('tab', { name: 'AI Chat' }));
     const textarea = screen.getByPlaceholderText(/Ask about this problem/) as HTMLTextAreaElement;
     fireEvent.change(textarea, { target: { value: 'Stop test' } });
 
@@ -2482,7 +2482,7 @@ describe('ArenaIDE', () => {
     });
 
     renderIDE();
-    fireEvent.click(screen.getByText('AI Chat'));
+    fireEvent.click(screen.getByRole('tab', { name: 'AI Chat' }));
     const textarea = screen.getByPlaceholderText(/Ask about this problem/) as HTMLTextAreaElement;
     fireEvent.change(textarea, { target: { value: 'Error test' } });
 
@@ -2507,7 +2507,7 @@ describe('ArenaIDE', () => {
     });
 
     renderIDE();
-    fireEvent.click(screen.getByText('AI Chat'));
+    fireEvent.click(screen.getByRole('tab', { name: 'AI Chat' }));
     const textarea = screen.getByPlaceholderText(/Ask about this problem/) as HTMLTextAreaElement;
     fireEvent.change(textarea, { target: { value: 'Create file' } });
 
@@ -2573,7 +2573,7 @@ describe('ArenaIDE', () => {
       callbacks.onDone?.('See line 5 for the issue', { model: 'mock-model', cost: 100, tokens: 50 });
     });
 
-    fireEvent.click(screen.getByText('AI Chat'));
+    fireEvent.click(screen.getByRole('tab', { name: 'AI Chat' }));
     const textarea = screen.getByPlaceholderText(/Ask about this problem/) as HTMLTextAreaElement;
     fireEvent.change(textarea, { target: { value: 'Check line' } });
 
@@ -2609,7 +2609,7 @@ describe('ArenaIDE', () => {
       callbacks.onDone?.('Response', { model: 'mock-model', cost: 100, tokens: 50 });
     });
 
-    fireEvent.click(screen.getByText('AI Chat'));
+    fireEvent.click(screen.getByText(/AI Chat/));
     const textarea = screen.getByPlaceholderText(/Ask about this problem/) as HTMLTextAreaElement;
     fireEvent.change(textarea, { target: { value: 'line click mobile test' } });
 
@@ -2654,7 +2654,7 @@ describe('ArenaIDE', () => {
     });
 
     renderIDE();
-    fireEvent.click(screen.getByText('AI Chat'));
+    fireEvent.click(screen.getByRole('tab', { name: 'AI Chat' }));
     const textarea = screen.getByPlaceholderText(/Ask about this problem/) as HTMLTextAreaElement;
     fireEvent.change(textarea, { target: { value: 'Apply model fail test' } });
 
@@ -2701,7 +2701,7 @@ describe('ArenaIDE', () => {
     renderIDE();
 
     // Trigger a chat message which invokes runOneRound → readdir → readFile
-    fireEvent.click(screen.getByText('AI Chat'));
+    fireEvent.click(screen.getByRole('tab', { name: 'AI Chat' }));
     const textarea = screen.getByPlaceholderText(/Ask about this problem/) as HTMLTextAreaElement;
     fireEvent.change(textarea, { target: { value: 'Help with workspace files' } });
 

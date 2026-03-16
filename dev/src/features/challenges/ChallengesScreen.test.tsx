@@ -187,7 +187,7 @@ describe('ChallengesScreen', () => {
       expect(screen.getByText('No Challenges Found')).toBeInTheDocument();
     });
     expect(screen.getByText('Try adjusting your filters or search query.')).toBeInTheDocument();
-    expect(screen.getByText('Clear all filters')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Clear all filters' })).toBeInTheDocument();
   });
 
   it('shows Showing X challenges count', () => {
@@ -404,7 +404,7 @@ describe('ChallengesScreen', () => {
       expect(screen.getByText('No Challenges Found')).toBeInTheDocument();
     });
     // Click "Clear all filters" in empty state
-    fireEvent.click(screen.getByText('Clear all filters'));
+    fireEvent.click(screen.getByRole('button', { name: 'Clear all filters' }));
     expect(container.querySelectorAll('[data-testid="challenge-card"]').length).toBe(5);
   });
 
@@ -726,7 +726,7 @@ describe('ChallengesScreen', () => {
       const input = container.querySelector('input[placeholder="Search challenges..."]') as HTMLInputElement;
       fireEvent.change(input, { target: { value: 'nonexistent' } });
       await waitFor(() => { expect(screen.getByText('No Challenges Found')).toBeInTheDocument(); });
-      fireEvent.click(screen.getByText('Clear all filters'));
+      fireEvent.click(screen.getByRole('button', { name: 'Clear all filters' }));
       expect(container.querySelectorAll('[data-testid="challenge-card"]').length).toBe(5);
     });
   });

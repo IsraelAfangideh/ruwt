@@ -90,10 +90,10 @@ describe('UserNav', () => {
     fireEvent.click(screen.getByTestId('avatar'));
     expect(screen.getByText('Test User')).toBeInTheDocument();
     expect(screen.getByText('test@ruwt.dev')).toBeInTheDocument();
-    expect(screen.getByText('Profile')).toBeInTheDocument();
-    expect(screen.getByText('Bookmarks')).toBeInTheDocument();
-    expect(screen.getByText('Settings')).toBeInTheDocument();
-    expect(screen.getByText('Sign out')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Profile' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Bookmarks' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Settings' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Sign out' })).toBeInTheDocument();
   });
 
   it('hides mode indicator and org settings for org members in practice mode', () => {
@@ -118,7 +118,7 @@ describe('UserNav', () => {
     render(<UserNav user={mockUser} />);
     fireEvent.click(screen.getByTestId('avatar'));
     expect(screen.getByText('Acme Corp')).toBeInTheDocument();
-    expect(screen.getByText('Org Settings')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Org Settings' })).toBeInTheDocument();
   });
 
   it('hides org settings for non-org members', () => {
@@ -131,14 +131,14 @@ describe('UserNav', () => {
   it('navigates to Profile when clicked', () => {
     render(<UserNav user={mockUser} />);
     fireEvent.click(screen.getByTestId('avatar'));
-    fireEvent.click(screen.getByText('Profile'));
+    fireEvent.click(screen.getByRole('button', { name: 'Profile' }));
     expect(mockNavigate).toHaveBeenCalledWith('Profile');
   });
 
   it('navigates to Bookmarks when clicked', () => {
     render(<UserNav user={mockUser} />);
     fireEvent.click(screen.getByTestId('avatar'));
-    fireEvent.click(screen.getByText('Bookmarks'));
+    fireEvent.click(screen.getByRole('button', { name: 'Bookmarks' }));
     expect(mockNavigate).toHaveBeenCalledWith('Bookmarks');
   });
 
@@ -146,21 +146,21 @@ describe('UserNav', () => {
     mockNavigate.mockClear();
     render(<UserNav user={mockUser} />);
     fireEvent.click(screen.getByTestId('avatar'));
-    fireEvent.click(screen.getByText('Settings'));
+    fireEvent.click(screen.getByRole('button', { name: 'Settings' }));
     expect(mockNavigate).toHaveBeenCalledWith('Settings');
   });
 
   it('signs out and resets navigation when Sign out is clicked', async () => {
     render(<UserNav user={mockUser} />);
     fireEvent.click(screen.getByTestId('avatar'));
-    fireEvent.click(screen.getByText('Sign out'));
+    fireEvent.click(screen.getByRole('button', { name: 'Sign out' }));
     expect(mockSignOut).toHaveBeenCalled();
   });
 
   it('closes menu when overlay is clicked', () => {
     const { container } = render(<UserNav user={mockUser} />);
     fireEvent.click(screen.getByTestId('avatar'));
-    expect(screen.getByText('Profile')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Profile' })).toBeInTheDocument();
     const overlayBtn = container.querySelector('[accessibilitylabel="Close account menu"]') as HTMLElement;
     expect(overlayBtn).not.toBeNull();
     fireEvent.click(overlayBtn);
@@ -170,7 +170,7 @@ describe('UserNav', () => {
   it('closes menu on Escape key press', () => {
     render(<UserNav user={mockUser} />);
     fireEvent.click(screen.getByTestId('avatar'));
-    expect(screen.getByText('Profile')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Profile' })).toBeInTheDocument();
     fireEvent.keyDown(document, { key: 'Escape' });
     expect(screen.queryByText('Profile')).toBeNull();
   });
@@ -191,7 +191,7 @@ describe('UserNav', () => {
     render(<UserNav user={mockUser} />);
     fireEvent.click(screen.getByTestId('avatar'));
     mockNavigate.mockClear();
-    fireEvent.click(screen.getByText('Org Settings'));
+    fireEvent.click(screen.getByRole('button', { name: 'Org Settings' }));
     expect(mockNavigate).toHaveBeenCalledWith('OrgManagement', {});
   });
 

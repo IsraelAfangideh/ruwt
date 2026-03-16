@@ -80,8 +80,8 @@ describe('CustomChallengeReview', () => {
 
   it('renders approve and delete buttons for draft challenges', () => {
     render(<CustomChallengeReview challenge={challenge} orgId="org1" onApprove={mockOnApprove} onDelete={mockOnDelete} />);
-    expect(screen.getByText('Approve Challenge')).toBeInTheDocument();
-    expect(screen.getByText('Delete Draft')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Approve Challenge' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Delete Draft' })).toBeInTheDocument();
   });
 
   it('hides approve/delete buttons for active challenges', () => {
@@ -93,17 +93,17 @@ describe('CustomChallengeReview', () => {
   it('calls onApprove on successful approve click', async () => {
     vi.spyOn(global, 'fetch').mockResolvedValue({ ok: true } as Response);
     render(<CustomChallengeReview challenge={challenge} orgId="org1" onApprove={mockOnApprove} onDelete={mockOnDelete} />);
-    fireEvent.click(screen.getByText('Approve Challenge'));
+    fireEvent.click(screen.getByRole('button', { name: 'Approve Challenge' }));
     await waitFor(() => expect(mockOnApprove).toHaveBeenCalledWith('c1'));
   });
 
   it('calls onDelete after two-step confirmation', async () => {
     vi.spyOn(global, 'fetch').mockResolvedValue({ ok: true } as Response);
     render(<CustomChallengeReview challenge={challenge} orgId="org1" onApprove={mockOnApprove} onDelete={mockOnDelete} />);
-    fireEvent.click(screen.getByText('Delete Draft'));
+    fireEvent.click(screen.getByRole('button', { name: 'Delete Draft' }));
     expect(mockOnDelete).not.toHaveBeenCalled();
-    expect(screen.getByText('Confirm Delete')).toBeInTheDocument();
-    fireEvent.click(screen.getByText('Confirm Delete'));
+    expect(screen.getByRole('button', { name: 'Confirm Delete' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm Delete' }));
     await waitFor(() => expect(mockOnDelete).toHaveBeenCalledWith('c1'));
   });
 
@@ -121,12 +121,12 @@ describe('CustomChallengeReview', () => {
 
   it('renders Try Challenge button when starterCode exists', () => {
     render(<CustomChallengeReview challenge={challenge} orgId="org1" onApprove={mockOnApprove} onDelete={mockOnDelete} />);
-    expect(screen.getByText('Try Challenge')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Try Challenge' })).toBeInTheDocument();
   });
 
   it('navigates to Arena when Try Challenge is clicked', () => {
     render(<CustomChallengeReview challenge={challenge} orgId="org1" onApprove={mockOnApprove} onDelete={mockOnDelete} />);
-    fireEvent.click(screen.getByText('Try Challenge'));
+    fireEvent.click(screen.getByRole('button', { name: 'Try Challenge' }));
     expect(mockNavigate).toHaveBeenCalledWith('Arena', { challengeId: 'c1' });
   });
 
@@ -195,12 +195,12 @@ describe('CustomChallengeReview', () => {
 
   it('cancels delete confirmation when Cancel is clicked', () => {
     render(<CustomChallengeReview challenge={challenge} orgId="org1" onApprove={mockOnApprove} onDelete={mockOnDelete} />);
-    fireEvent.click(screen.getByText('Delete Draft'));
-    expect(screen.getByText('Confirm Delete')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Delete Draft' }));
+    expect(screen.getByRole('button', { name: 'Confirm Delete' })).toBeInTheDocument();
     // Click Cancel to dismiss
     fireEvent.click(screen.getByLabelText('Cancel delete'));
     // Should show Delete Draft again
-    expect(screen.getByText('Delete Draft')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Delete Draft' })).toBeInTheDocument();
   });
 
   it('handles hiddenTestCases being null', () => {

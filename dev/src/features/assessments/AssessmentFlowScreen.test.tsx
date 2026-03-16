@@ -182,7 +182,7 @@ describe('AssessmentFlowScreen', () => {
     });
     render(<AssessmentFlowScreen />);
     await waitFor(() => {
-      expect(screen.getByText('View Results')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'View Results' })).toBeInTheDocument();
     });
   });
 
@@ -196,8 +196,8 @@ describe('AssessmentFlowScreen', () => {
       '/api/dashboard': ok(mockDashboardData),
     });
     render(<AssessmentFlowScreen />);
-    await waitFor(() => expect(screen.getByText('View Results')).toBeInTheDocument());
-    fireEvent.click(screen.getByText('View Results'));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'View Results' })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: 'View Results' }));
     expect(mockNavigate).toHaveBeenCalledWith('AssessmentResults', { shareToken: 'share-xyz' });
   });
 
@@ -397,10 +397,10 @@ describe('AssessmentFlowScreen', () => {
     // Run tests to pass the last challenge
     fireEvent.click(screen.getByTestId('run-tests-btn'));
     await waitFor(() => {
-      expect(screen.getByText('Complete Assessment')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Complete Assessment' })).toBeInTheDocument();
     });
     // Click Complete Assessment
-    fireEvent.click(screen.getByText('Complete Assessment'));
+    fireEvent.click(screen.getByRole('button', { name: 'Complete Assessment' }));
     await waitFor(() => {
       expect(mockNavigate).toHaveBeenCalledWith('AssessmentResults', { shareToken: 'final-share' });
     });
@@ -547,9 +547,9 @@ describe('AssessmentFlowScreen', () => {
     await waitFor(() => expect(screen.getByTestId('run-tests-btn')).toBeInTheDocument());
     fireEvent.click(screen.getByTestId('run-tests-btn'));
     await waitFor(() => {
-      expect(screen.getByText('Complete Assessment')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Complete Assessment' })).toBeInTheDocument();
     });
-    fireEvent.click(screen.getByText('Complete Assessment'));
+    fireEvent.click(screen.getByRole('button', { name: 'Complete Assessment' }));
     await waitFor(() => {
       expect(screen.getByText('Assessment Complete')).toBeInTheDocument();
     });

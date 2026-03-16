@@ -631,10 +631,10 @@ describe('ProfileScreen', () => {
       render(<ProfileScreen />);
       await waitFor(() => { expect(screen.getByText('Set username')).toBeInTheDocument(); });
       fireEvent.click(screen.getByText('Set username'));
-      await waitFor(() => { expect(screen.getByText('Save')).toBeInTheDocument(); });
+      await waitFor(() => { expect(screen.getByRole('button', { name: 'Save' })).toBeInTheDocument(); });
       const input = document.querySelector('[data-testid="username-input"]') as HTMLInputElement;
       fireEvent.change(input, { target: { value: 'testname' } });
-      fireEvent.click(screen.getByText('Save'));
+      fireEvent.click(screen.getByRole('button', { name: 'Save' }));
       await waitFor(() => { expect(screen.getByText('Network error')).toBeInTheDocument(); });
     });
 
@@ -724,10 +724,10 @@ describe('ProfileScreen', () => {
       render(<ProfileScreen />);
       await waitFor(() => { expect(screen.getByText('Set username')).toBeInTheDocument(); });
       fireEvent.click(screen.getByText('Set username'));
-      await waitFor(() => { expect(screen.getByText('Save')).toBeInTheDocument(); });
+      await waitFor(() => { expect(screen.getByRole('button', { name: 'Save' })).toBeInTheDocument(); });
       const input = document.querySelector('[data-testid="username-input"]') as HTMLInputElement;
       fireEvent.change(input, { target: { value: '   ' } });
-      fireEvent.click(screen.getByText('Save'));
+      fireEvent.click(screen.getByRole('button', { name: 'Save' }));
       // Should not call PATCH for whitespace-only username
       expect(patchCalled).toBe(false);
     });

@@ -261,7 +261,7 @@ describe('AssessmentResultsDashboardScreen', () => {
   it('renders Export CSV button when results exist', async () => {
     render(<AssessmentResultsDashboardScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Export CSV')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Export CSV' })).toBeInTheDocument();
     });
   });
 
@@ -282,7 +282,7 @@ describe('AssessmentResultsDashboardScreen', () => {
   it('renders Compare Candidates button when 2+ results', async () => {
     render(<AssessmentResultsDashboardScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Compare Candidates')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Compare Candidates' })).toBeInTheDocument();
     });
   });
 
@@ -302,8 +302,8 @@ describe('AssessmentResultsDashboardScreen', () => {
 
   it('toggles comparison view when Compare Candidates is clicked', async () => {
     render(<AssessmentResultsDashboardScreen />);
-    await waitFor(() => expect(screen.getByText('Compare Candidates')).toBeInTheDocument());
-    fireEvent.click(screen.getByText('Compare Candidates'));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Compare Candidates' })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: 'Compare Candidates' }));
     await waitFor(() => {
       expect(screen.getByText('Hide Comparison')).toBeInTheDocument();
     });
@@ -311,8 +311,8 @@ describe('AssessmentResultsDashboardScreen', () => {
 
   it('renders comparison view component when toggled on', async () => {
     const { container } = render(<AssessmentResultsDashboardScreen />);
-    await waitFor(() => expect(screen.getByText('Compare Candidates')).toBeInTheDocument());
-    fireEvent.click(screen.getByText('Compare Candidates'));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Compare Candidates' })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: 'Compare Candidates' }));
     await waitFor(() => {
       expect(container.querySelector('[data-testid="comparison-view"]')).not.toBeNull();
     });
@@ -398,8 +398,8 @@ describe('AssessmentResultsDashboardScreen', () => {
     });
 
     render(<AssessmentResultsDashboardScreen />);
-    await waitFor(() => expect(screen.getByText('Export CSV')).toBeInTheDocument());
-    fireEvent.click(screen.getByText('Export CSV'));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Export CSV' })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: 'Export CSV' }));
     expect(mockClick).toHaveBeenCalled();
     expect(mockRevokeObjectURL).toHaveBeenCalledWith(mockUrl);
 

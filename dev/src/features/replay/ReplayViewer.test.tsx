@@ -145,7 +145,7 @@ describe('ReplayViewer', () => {
     await waitFor(() => expect(screen.getByText("Alice's Replay")).toBeInTheDocument());
 
     // Click the Share button
-    fireEvent.click(screen.getByText('Share'));
+    fireEvent.click(screen.getByRole('button', { name: 'Share' }));
     await waitFor(() => {
       expect(writeTextMock).toHaveBeenCalled();
       const shareText = writeTextMock.mock.calls[0][0];
@@ -160,11 +160,11 @@ describe('ReplayViewer', () => {
     vi.spyOn(global, 'fetch').mockReturnValue(new Promise(() => {}));
     render(<ReplayViewer attemptId="att-1" onClose={mockOnClose} />);
     // Data is still loading, Share button exists but data is null
-    const shareBtn = screen.getByText('Share');
+    const shareBtn = screen.getByRole('button', { name: 'Share' });
     // Click - should do nothing since data is null
     fireEvent.click(shareBtn);
     // Still shows "Share" (not "Copied!")
-    expect(screen.getByText('Share')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Share' })).toBeInTheDocument();
   });
 
   it('handles clipboard write failure gracefully on share', async () => {
@@ -184,9 +184,9 @@ describe('ReplayViewer', () => {
     render(<ReplayViewer attemptId="att-1" onClose={mockOnClose} />);
     await waitFor(() => expect(screen.getByText("Bob's Replay")).toBeInTheDocument());
     // Click Share - clipboard will fail
-    fireEvent.click(screen.getByText('Share'));
+    fireEvent.click(screen.getByRole('button', { name: 'Share' }));
     // Should not crash, "Share" should still be visible
-    await waitFor(() => expect(screen.getByText('Share')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Share' })).toBeInTheDocument());
   });
 
   it('shows load failure error when fetch throws exception', async () => {
@@ -210,7 +210,7 @@ describe('ReplayViewer', () => {
 
     render(<ReplayViewer attemptId="att-1" onClose={mockOnClose} />);
     await waitFor(() => expect(screen.getByText("Bob's Replay")).toBeInTheDocument());
-    fireEvent.click(screen.getByText('Full replay'));
+    fireEvent.click(screen.getByRole('button', { name: 'Full replay' }));
     expect(mockOnClose).toHaveBeenCalled();
     expect(mockNavigate).toHaveBeenCalledWith('Replay', { attemptId: 'att-1' });
   });

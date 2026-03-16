@@ -23,7 +23,7 @@ export default defineConfig({
       clean: false,
       // REQUIRED: prevents vitest from cleaning coverage on test failure
       reportOnFailure: true,
-      reporter: ['text', 'text-summary', 'json-summary'],
+      reporter: ['text', 'text-summary', 'json-summary', 'json'],
       include: ['src/**/*.ts', 'src/**/*.tsx', 'functions/**/*.ts'],
       exclude: [
         '**/*.test.ts',

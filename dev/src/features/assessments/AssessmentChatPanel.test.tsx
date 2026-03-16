@@ -109,7 +109,7 @@ describe('AssessmentChatPanel', () => {
 
   it('renders suggested prompts in empty state', () => {
     render(<AssessmentChatPanel {...baseProps} />);
-    expect(screen.getByText('Analyze a job description')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Analyze a job description' })).toBeInTheDocument();
     expect(screen.getByText('Suggest challenges for a role')).toBeInTheDocument();
     expect(screen.getByText('Create a custom challenge')).toBeInTheDocument();
   });
@@ -149,7 +149,7 @@ describe('AssessmentChatPanel', () => {
 
   it('sets input text on suggested prompt click', () => {
     render(<AssessmentChatPanel {...baseProps} />);
-    fireEvent.click(screen.getByText('Analyze a job description'));
+    fireEvent.click(screen.getByRole('button', { name: 'Analyze a job description' }));
     // The prompt text should be in the input (value is managed by useState)
     // Since we can't directly read the input value easily, verify it did not call sendMessage
     expect(mockSendMessage).not.toHaveBeenCalled();
@@ -157,26 +157,26 @@ describe('AssessmentChatPanel', () => {
 
   it('renders Send button', () => {
     render(<AssessmentChatPanel {...baseProps} />);
-    expect(screen.getByText('Send')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Send' })).toBeInTheDocument();
   });
 
   it('disables Send button when input is empty', () => {
     render(<AssessmentChatPanel {...baseProps} />);
-    const sendBtn = screen.getByText('Send');
+    const sendBtn = screen.getByRole('button', { name: 'Send' });
     expect(sendBtn.closest('button')?.disabled).toBe(true);
   });
 
   it('renders Stop button when streaming', () => {
     mockStreaming.current = true;
     render(<AssessmentChatPanel {...baseProps} />);
-    expect(screen.getByText('Stop')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Stop' })).toBeInTheDocument();
     expect(screen.queryByText('Send')).toBeNull();
   });
 
   it('calls abort when Stop is clicked', () => {
     mockStreaming.current = true;
     render(<AssessmentChatPanel {...baseProps} />);
-    fireEvent.click(screen.getByText('Stop'));
+    fireEvent.click(screen.getByRole('button', { name: 'Stop' }));
     expect(mockAbort).toHaveBeenCalled();
   });
 
@@ -282,7 +282,7 @@ describe('AssessmentChatPanel', () => {
       { role: 'assistant', content: 'Option A: Add more challenges\nOption B: Keep current set' },
     ];
     render(<AssessmentChatPanel {...baseProps} />);
-    expect(screen.getByText('Option A')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Option A' })).toBeInTheDocument();
     expect(screen.getByText('Option B')).toBeInTheDocument();
   });
 
@@ -291,7 +291,7 @@ describe('AssessmentChatPanel', () => {
       { role: 'assistant', content: 'Option A: Add more challenges\nOption B: Keep current set' },
     ];
     render(<AssessmentChatPanel {...baseProps} />);
-    fireEvent.click(screen.getByText('Option A'));
+    fireEvent.click(screen.getByRole('button', { name: 'Option A' }));
     expect(mockSendMessage).toHaveBeenCalledWith('Option A');
   });
 
@@ -449,7 +449,7 @@ describe('handleToolResult (via captured callback)', () => {
 describe('handleSend', () => {
   it('Send button is disabled when input is empty', () => {
     render(<AssessmentChatPanel {...baseProps} />);
-    const sendBtn = screen.getByText('Send').closest('button');
+    const sendBtn = screen.getByRole('button', { name: 'Send' }).closest('button');
     expect(sendBtn?.disabled).toBe(true);
   });
 
@@ -457,7 +457,7 @@ describe('handleSend', () => {
     render(<AssessmentChatPanel {...baseProps} />);
     const input = screen.getByPlaceholderText('Describe the role or paste a job description...');
     fireEvent.change(input, { target: { value: 'Hello world' } });
-    const sendBtn = screen.getByText('Send').closest('button');
+    const sendBtn = screen.getByRole('button', { name: 'Send' }).closest('button');
     expect(sendBtn?.disabled).toBe(false);
   });
 
@@ -465,7 +465,7 @@ describe('handleSend', () => {
     render(<AssessmentChatPanel {...baseProps} />);
     const input = screen.getByPlaceholderText('Describe the role or paste a job description...');
     fireEvent.change(input, { target: { value: 'Build assessment' } });
-    fireEvent.click(screen.getByText('Send'));
+    fireEvent.click(screen.getByRole('button', { name: 'Send' }));
     expect(mockSendMessage).toHaveBeenCalledWith('Build assessment');
   });
 
@@ -473,6 +473,6 @@ describe('handleSend', () => {
     mockStreaming.current = true;
     render(<AssessmentChatPanel {...baseProps} />);
     expect(screen.queryByText('Send')).toBeNull();
-    expect(screen.getByText('Stop')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Stop' })).toBeInTheDocument();
   });
 });

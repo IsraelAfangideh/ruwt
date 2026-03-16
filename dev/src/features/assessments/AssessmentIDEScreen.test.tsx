@@ -151,7 +151,7 @@ describe('AssessmentIDEScreen', () => {
     const handleSave = vi.fn();
     mockState.current = { ...mockState.current, handleSave };
     render(<AssessmentIDEScreen />);
-    fireEvent.click(screen.getByText('Save'));
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
     expect(handleSave).toHaveBeenCalled();
   });
 
@@ -190,8 +190,8 @@ describe('AssessmentIDEScreen', () => {
 
     it('renders mobile tab bar', () => {
       render(<AssessmentIDEScreen />);
-      expect(screen.getByText('Chat')).toBeInTheDocument();
-      expect(screen.getByText('Document')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Chat' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Document' })).toBeInTheDocument();
     });
 
     it('shows chat panel by default', () => {
@@ -202,16 +202,16 @@ describe('AssessmentIDEScreen', () => {
 
     it('switches to document panel when Document tab is clicked', () => {
       render(<AssessmentIDEScreen />);
-      fireEvent.click(screen.getByText('Document'));
+      fireEvent.click(screen.getByRole('button', { name: 'Document' }));
       expect(screen.getByTestId('document-panel')).toBeInTheDocument();
       expect(screen.queryByTestId('chat-panel')).toBeNull();
     });
 
     it('switches back to chat panel when Chat tab is clicked', () => {
       render(<AssessmentIDEScreen />);
-      fireEvent.click(screen.getByText('Document'));
+      fireEvent.click(screen.getByRole('button', { name: 'Document' }));
       expect(screen.getByTestId('document-panel')).toBeInTheDocument();
-      fireEvent.click(screen.getByText('Chat'));
+      fireEvent.click(screen.getByRole('button', { name: 'Chat' }));
       expect(screen.getByTestId('chat-panel')).toBeInTheDocument();
     });
 
@@ -225,7 +225,7 @@ describe('AssessmentIDEScreen', () => {
     it('Cmd+L switches to chat tab on mobile', () => {
       mockIsMobile.current = true;
       render(<AssessmentIDEScreen />);
-      fireEvent.click(screen.getByText('Document'));
+      fireEvent.click(screen.getByRole('button', { name: 'Document' }));
       expect(screen.getByTestId('document-panel')).toBeInTheDocument();
       act(() => {
         window.dispatchEvent(new KeyboardEvent('keydown', { key: 'l', metaKey: true }));
@@ -236,7 +236,7 @@ describe('AssessmentIDEScreen', () => {
     it('Ctrl+L switches to chat tab on mobile', () => {
       mockIsMobile.current = true;
       render(<AssessmentIDEScreen />);
-      fireEvent.click(screen.getByText('Document'));
+      fireEvent.click(screen.getByRole('button', { name: 'Document' }));
       act(() => {
         window.dispatchEvent(new KeyboardEvent('keydown', { key: 'l', ctrlKey: true }));
       });

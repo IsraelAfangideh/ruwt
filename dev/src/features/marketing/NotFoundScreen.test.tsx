@@ -65,19 +65,19 @@ describe('NotFoundScreen', () => {
   /* ── Navigation actions ────────────────────────────────────────── */
   it('navigates to Landing when "Go Home" is clicked', () => {
     render(<NotFoundScreen />);
-    fireEvent.click(screen.getByText('Go Home'));
+    fireEvent.click(screen.getByRole('button', { name: 'Go Home' }));
     expect(mockNavigate).toHaveBeenCalledWith('Landing');
   });
 
   it('navigates to Challenges when "Browse Problems" is clicked', () => {
     render(<NotFoundScreen />);
-    fireEvent.click(screen.getByText('Browse Problems'));
+    fireEvent.click(screen.getByRole('button', { name: 'Browse Problems' }));
     expect(mockNavigate).toHaveBeenCalledWith('Problems');
   });
 
   it('navigates to Login when "Sign In" is clicked', () => {
     render(<NotFoundScreen />);
-    fireEvent.click(screen.getByText('Sign In'));
+    fireEvent.click(screen.getByRole('button', { name: 'Sign In' }));
     expect(mockNavigate).toHaveBeenCalledWith('Login');
   });
 

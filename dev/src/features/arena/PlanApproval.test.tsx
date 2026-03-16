@@ -43,23 +43,23 @@ describe('PlanApproval', () => {
 
   it('renders Accept & Execute button', () => {
     render(<PlanApproval planText={threeSteps} onAccept={mockOnAccept} onReject={mockOnReject} />);
-    expect(screen.getByText('Accept & Execute')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Accept & Execute' })).toBeInTheDocument();
   });
 
   it('renders Reject button', () => {
     render(<PlanApproval planText={threeSteps} onAccept={mockOnAccept} onReject={mockOnReject} />);
-    expect(screen.getByText('Reject')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Reject' })).toBeInTheDocument();
   });
 
   it('calls onAccept when Accept is clicked', () => {
     render(<PlanApproval planText={threeSteps} onAccept={mockOnAccept} onReject={mockOnReject} />);
-    fireEvent.click(screen.getByText('Accept & Execute'));
+    fireEvent.click(screen.getByRole('button', { name: 'Accept & Execute' }));
     expect(mockOnAccept).toHaveBeenCalled();
   });
 
   it('calls onReject when Reject is clicked', () => {
     render(<PlanApproval planText={threeSteps} onAccept={mockOnAccept} onReject={mockOnReject} />);
-    fireEvent.click(screen.getByText('Reject'));
+    fireEvent.click(screen.getByRole('button', { name: 'Reject' }));
     expect(mockOnReject).toHaveBeenCalled();
   });
 

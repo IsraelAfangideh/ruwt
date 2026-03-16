@@ -36,7 +36,7 @@ describe('AssessmentActionBar', () => {
 
   it('renders Save Draft button', () => {
     render(<AssessmentActionBar {...baseProps} />);
-    expect(screen.getByText('Save Draft')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Save Draft' })).toBeInTheDocument();
   });
 
   it('shows Saving... text when saving', () => {
@@ -57,7 +57,7 @@ describe('AssessmentActionBar', () => {
 
   it('disables Save Draft when title is empty', () => {
     render(<AssessmentActionBar {...baseProps} title="" />);
-    const btn = screen.getByText('Save Draft');
+    const btn = screen.getByRole('button', { name: 'Save Draft' });
     expect(btn.closest('button')?.disabled).toBe(true);
   });
 
@@ -68,7 +68,7 @@ describe('AssessmentActionBar', () => {
 
   it('disables Save Draft when weightSum is not 100', () => {
     render(<AssessmentActionBar {...baseProps} weightSum={80} />);
-    const btn = screen.getByText('Save Draft');
+    const btn = screen.getByRole('button', { name: 'Save Draft' });
     expect(btn.closest('button')?.disabled).toBe(true);
   });
 
@@ -79,20 +79,20 @@ describe('AssessmentActionBar', () => {
 
   it('disables Save Draft when weightSum is NaN', () => {
     render(<AssessmentActionBar {...baseProps} weightSum={NaN} />);
-    const btn = screen.getByText('Save Draft');
+    const btn = screen.getByRole('button', { name: 'Save Draft' });
     expect(btn.closest('button')?.disabled).toBe(true);
   });
 
   it('calls onSave when Save Draft is clicked', () => {
     const onSave = vi.fn();
     render(<AssessmentActionBar {...baseProps} onSave={onSave} />);
-    fireEvent.click(screen.getByText('Save Draft'));
+    fireEvent.click(screen.getByRole('button', { name: 'Save Draft' }));
     expect(onSave).toHaveBeenCalled();
   });
 
   it('shows Activate button for draft with assessmentId', () => {
     render(<AssessmentActionBar {...baseProps} />);
-    expect(screen.getByText('Activate')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Activate' })).toBeInTheDocument();
   });
 
   it('does not show Activate button when no assessmentId', () => {
@@ -108,21 +108,21 @@ describe('AssessmentActionBar', () => {
   it('sets confirmActivate on Activate click', () => {
     const onSetConfirmActivate = vi.fn();
     render(<AssessmentActionBar {...baseProps} onSetConfirmActivate={onSetConfirmActivate} />);
-    fireEvent.click(screen.getByText('Activate'));
+    fireEvent.click(screen.getByRole('button', { name: 'Activate' }));
     expect(onSetConfirmActivate).toHaveBeenCalledWith(true);
   });
 
   it('shows Confirm Activate and Cancel when confirmActivate is true', () => {
     render(<AssessmentActionBar {...baseProps} confirmActivate={true} />);
-    expect(screen.getByText('Confirm Activate')).toBeInTheDocument();
-    expect(screen.getByText('Cancel')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Confirm Activate' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Cancel' })).toBeInTheDocument();
   });
 
   it('calls onActivate and resets confirm on Confirm Activate click', () => {
     const onActivate = vi.fn();
     const onSetConfirmActivate = vi.fn();
     render(<AssessmentActionBar {...baseProps} confirmActivate={true} onActivate={onActivate} onSetConfirmActivate={onSetConfirmActivate} />);
-    fireEvent.click(screen.getByText('Confirm Activate'));
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm Activate' }));
     expect(onSetConfirmActivate).toHaveBeenCalledWith(false);
     expect(onActivate).toHaveBeenCalled();
   });
@@ -130,7 +130,7 @@ describe('AssessmentActionBar', () => {
   it('cancels confirm on Cancel click', () => {
     const onSetConfirmActivate = vi.fn();
     render(<AssessmentActionBar {...baseProps} confirmActivate={true} onSetConfirmActivate={onSetConfirmActivate} />);
-    fireEvent.click(screen.getByText('Cancel'));
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
     expect(onSetConfirmActivate).toHaveBeenCalledWith(false);
   });
 

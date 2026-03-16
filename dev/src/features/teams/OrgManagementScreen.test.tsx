@@ -110,17 +110,17 @@ describe('OrgManagementScreen', () => {
     await waitFor(() => {
       expect(screen.getByText('Create Your Team')).toBeInTheDocument();
       expect(screen.getByText(/Set up an organization/)).toBeInTheDocument();
-      expect(screen.getByText('Create Organization')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Create Organization' })).toBeInTheDocument();
     });
   });
 
   it('creates organization when form is submitted', async () => {
     const fn = setupFetch({ '/api/orgs': ok([]) });
     render(<OrgManagementScreen />);
-    await waitFor(() => expect(screen.getByText('Create Organization')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Create Organization' })).toBeInTheDocument());
     const input = screen.getByDisplayValue('');
     fireEvent.change(input, { target: { value: 'New Org' } });
-    fireEvent.click(screen.getByText('Create Organization'));
+    fireEvent.click(screen.getByRole('button', { name: 'Create Organization' }));
     await waitFor(() => {
       expect(fn).toHaveBeenCalledWith('/api/orgs', expect.objectContaining({
         method: 'POST',
@@ -150,7 +150,7 @@ describe('OrgManagementScreen', () => {
       '/api/orgs/org1/invitations': ok([]),
     });
     render(<OrgManagementScreen />);
-    await waitFor(() => expect(screen.getByText('Manage Billing')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Manage Billing' })).toBeInTheDocument());
   });
 
   it('shows Resubscribe button for canceled subscription', async () => {
@@ -163,7 +163,7 @@ describe('OrgManagementScreen', () => {
     render(<OrgManagementScreen />);
     await waitFor(() => {
       expect(screen.getByText('Canceled')).toBeInTheDocument();
-      expect(screen.getByText('Resubscribe')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Resubscribe' })).toBeInTheDocument();
     });
   });
 
@@ -177,7 +177,7 @@ describe('OrgManagementScreen', () => {
     render(<OrgManagementScreen />);
     await waitFor(() => {
       expect(screen.getByText('Payment Past Due')).toBeInTheDocument();
-      expect(screen.getByText('Update Payment')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Update Payment' })).toBeInTheDocument();
     });
   });
 
@@ -189,7 +189,7 @@ describe('OrgManagementScreen', () => {
       '/api/orgs/org1/invitations': ok([]),
     });
     render(<OrgManagementScreen />);
-    await waitFor(() => expect(screen.getByText('Subscribe')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Subscribe' })).toBeInTheDocument());
   });
 
   it('renders team members with roles', async () => {
@@ -236,7 +236,7 @@ describe('OrgManagementScreen', () => {
     render(<OrgManagementScreen />);
     await waitFor(() => {
       expect(screen.getByText('Organization Settings')).toBeInTheDocument();
-      expect(screen.getByText('Save Settings')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Save Settings' })).toBeInTheDocument();
     });
   });
 
@@ -262,7 +262,7 @@ describe('OrgManagementScreen', () => {
     render(<OrgManagementScreen />);
     await waitFor(() => {
       expect(screen.getByText('Invite Team Member')).toBeInTheDocument();
-      expect(screen.getByText('Send Invite')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Send Invite' })).toBeInTheDocument();
       expect(screen.getByText('Member')).toBeInTheDocument();
       expect(screen.getAllByText('Admin').length).toBeGreaterThanOrEqual(1);
       expect(screen.getByText('Viewer')).toBeInTheDocument();
@@ -276,10 +276,10 @@ describe('OrgManagementScreen', () => {
       '/api/orgs/org1/invitations': ok([]),
     });
     render(<OrgManagementScreen />);
-    await waitFor(() => expect(screen.getByText('Send Invite')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Send Invite' })).toBeInTheDocument());
     const emailInput = screen.getByPlaceholderText('colleague@company.com');
     fireEvent.change(emailInput, { target: { value: 'new@acme.com' } });
-    fireEvent.click(screen.getByText('Send Invite'));
+    fireEvent.click(screen.getByRole('button', { name: 'Send Invite' }));
     await waitFor(() => {
       expect(fn).toHaveBeenCalledWith('/api/orgs/org1/invitations', expect.objectContaining({
         method: 'POST',
@@ -295,10 +295,10 @@ describe('OrgManagementScreen', () => {
       '/api/orgs/org1/invitations': ok([]),
     });
     render(<OrgManagementScreen />);
-    await waitFor(() => expect(screen.getByText('Send Invite')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Send Invite' })).toBeInTheDocument());
     const emailInput = screen.getByPlaceholderText('colleague@company.com');
     fireEvent.change(emailInput, { target: { value: 'new@acme.com' } });
-    fireEvent.click(screen.getByText('Send Invite'));
+    fireEvent.click(screen.getByRole('button', { name: 'Send Invite' }));
     await waitFor(() => expect(screen.getByText('Invitation sent!')).toBeInTheDocument());
   });
 
@@ -309,10 +309,10 @@ describe('OrgManagementScreen', () => {
       '/api/orgs/org1/invitations': fail({ error: 'Already invited' }),
     });
     render(<OrgManagementScreen />);
-    await waitFor(() => expect(screen.getByText('Send Invite')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Send Invite' })).toBeInTheDocument());
     const emailInput = screen.getByPlaceholderText('colleague@company.com');
     fireEvent.change(emailInput, { target: { value: 'dup@acme.com' } });
-    fireEvent.click(screen.getByText('Send Invite'));
+    fireEvent.click(screen.getByRole('button', { name: 'Send Invite' }));
     await waitFor(() => expect(screen.getByText('Already invited')).toBeInTheDocument());
   });
 
@@ -354,8 +354,8 @@ describe('OrgManagementScreen', () => {
       '/api/orgs/org1/invitations': ok([]),
     });
     render(<OrgManagementScreen />);
-    await waitFor(() => expect(screen.getByText('Save Settings')).toBeInTheDocument());
-    fireEvent.click(screen.getByText('Save Settings'));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Save Settings' })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: 'Save Settings' }));
     await waitFor(() => {
       expect(fn).toHaveBeenCalledWith('/api/orgs/org1', expect.objectContaining({ method: 'PUT' }));
     });
@@ -424,7 +424,7 @@ describe('OrgManagementScreen', () => {
     // Now send an invite to verify the role was changed
     const emailInput = screen.getByPlaceholderText('colleague@company.com');
     fireEvent.change(emailInput, { target: { value: 'test@acme.com' } });
-    fireEvent.click(screen.getByText('Send Invite'));
+    fireEvent.click(screen.getByRole('button', { name: 'Send Invite' }));
     await waitFor(() => {
       const calls = (globalThis.fetch as any).mock.calls;
       const inviteCall = calls.find((c: any) => c[0]?.includes('/invitations') && c[1]?.method === 'POST');
@@ -473,10 +473,10 @@ describe('OrgManagementScreen', () => {
     });
     vi.stubGlobal('fetch', fn);
     render(<OrgManagementScreen />);
-    await waitFor(() => expect(screen.getByText('Send Invite')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Send Invite' })).toBeInTheDocument());
     const emailInput = screen.getByPlaceholderText('colleague@company.com');
     fireEvent.change(emailInput, { target: { value: 'new@acme.com' } });
-    fireEvent.click(screen.getByText('Send Invite'));
+    fireEvent.click(screen.getByRole('button', { name: 'Send Invite' }));
     await waitFor(() => expect(screen.getByText('Network error')).toBeInTheDocument());
   });
 
@@ -491,8 +491,8 @@ describe('OrgManagementScreen', () => {
     delete (window as any).location;
     (window as any).location = { href: '' };
     render(<OrgManagementScreen />);
-    await waitFor(() => expect(screen.getByText('Manage Billing')).toBeInTheDocument());
-    fireEvent.click(screen.getByText('Manage Billing'));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Manage Billing' })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: 'Manage Billing' }));
     await waitFor(() => {
       expect(window.location.href).toBe('https://billing.stripe.com/portal');
     });
@@ -511,8 +511,8 @@ describe('OrgManagementScreen', () => {
     delete (window as any).location;
     (window as any).location = { href: '' };
     render(<OrgManagementScreen />);
-    await waitFor(() => expect(screen.getByText('Update Payment')).toBeInTheDocument());
-    fireEvent.click(screen.getByText('Update Payment'));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Update Payment' })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: 'Update Payment' }));
     await waitFor(() => {
       expect(window.location.href).toBe('https://billing.stripe.com/portal');
     });
@@ -527,8 +527,8 @@ describe('OrgManagementScreen', () => {
       '/api/orgs/org1/invitations': ok([]),
     });
     render(<OrgManagementScreen />);
-    await waitFor(() => expect(screen.getByText('Subscribe')).toBeInTheDocument());
-    fireEvent.click(screen.getByText('Subscribe'));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Subscribe' })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: 'Subscribe' }));
     expect(mockNavigate).toHaveBeenCalledWith('Hiring');
   });
 
@@ -540,8 +540,8 @@ describe('OrgManagementScreen', () => {
       '/api/orgs/org1/invitations': ok([]),
     });
     render(<OrgManagementScreen />);
-    await waitFor(() => expect(screen.getByText('Resubscribe')).toBeInTheDocument());
-    fireEvent.click(screen.getByText('Resubscribe'));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Resubscribe' })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: 'Resubscribe' }));
     expect(mockNavigate).toHaveBeenCalledWith('Hiring');
   });
 
@@ -559,18 +559,18 @@ describe('OrgManagementScreen', () => {
     });
     vi.stubGlobal('fetch', fn);
     render(<OrgManagementScreen />);
-    await waitFor(() => expect(screen.getByText('Save Settings')).toBeInTheDocument());
-    fireEvent.click(screen.getByText('Save Settings'));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Save Settings' })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: 'Save Settings' }));
     await waitFor(() => {
-      expect(screen.getByText('Save Settings')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Save Settings' })).toBeInTheDocument();
     });
   });
 
   it('prevents org creation when name field is empty', async () => {
     const fn = setupFetch({ '/api/orgs': ok([]) });
     render(<OrgManagementScreen />);
-    await waitFor(() => expect(screen.getByText('Create Organization')).toBeInTheDocument());
-    fireEvent.click(screen.getByText('Create Organization'));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Create Organization' })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: 'Create Organization' }));
     const postCalls = fn.mock.calls.filter((c: any) => c[1]?.method === 'POST');
     expect(postCalls.length).toBe(0);
   });
@@ -595,7 +595,7 @@ describe('OrgManagementScreen', () => {
       expect(screen.getByText(/14 days left/)).toBeInTheDocument();
       expect(screen.getByText(/1\/3 assessments/)).toBeInTheDocument();
       expect(screen.getByText(/2\/5 invites/)).toBeInTheDocument();
-      expect(screen.getByText('Subscribe')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Subscribe' })).toBeInTheDocument();
     });
   });
 
@@ -614,8 +614,8 @@ describe('OrgManagementScreen', () => {
       }),
     });
     render(<OrgManagementScreen />);
-    await waitFor(() => expect(screen.getByText('Subscribe')).toBeInTheDocument());
-    fireEvent.click(screen.getByText('Subscribe'));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Subscribe' })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: 'Subscribe' }));
     expect(mockNavigate).toHaveBeenCalledWith('Hiring');
   });
 
@@ -636,7 +636,7 @@ describe('OrgManagementScreen', () => {
     render(<OrgManagementScreen />);
     await waitFor(() => {
       expect(screen.getByText('Trial Expired')).toBeInTheDocument();
-      expect(screen.getByText('Subscribe')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Subscribe' })).toBeInTheDocument();
     });
   });
 
@@ -655,8 +655,8 @@ describe('OrgManagementScreen', () => {
       }),
     });
     render(<OrgManagementScreen />);
-    await waitFor(() => expect(screen.getByText('Subscribe')).toBeInTheDocument());
-    fireEvent.click(screen.getByText('Subscribe'));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Subscribe' })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: 'Subscribe' }));
     expect(mockNavigate).toHaveBeenCalledWith('Hiring');
   });
 
@@ -668,8 +668,8 @@ describe('OrgManagementScreen', () => {
       '/api/billing/portal': ok({ error: 'No subscription' }),
     });
     render(<OrgManagementScreen />);
-    await waitFor(() => expect(screen.getByText('Manage Billing')).toBeInTheDocument());
-    fireEvent.click(screen.getByText('Manage Billing'));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Manage Billing' })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: 'Manage Billing' }));
     await waitFor(() => {
       expect(mockShowToast).toHaveBeenCalledWith('No subscription', 'error');
     });
@@ -689,8 +689,8 @@ describe('OrgManagementScreen', () => {
     });
     vi.stubGlobal('fetch', fn);
     render(<OrgManagementScreen />);
-    await waitFor(() => expect(screen.getByText('Manage Billing')).toBeInTheDocument());
-    fireEvent.click(screen.getByText('Manage Billing'));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Manage Billing' })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: 'Manage Billing' }));
     await waitFor(() => {
       expect(mockShowToast).toHaveBeenCalledWith('Failed to open billing portal', 'error');
     });
@@ -711,8 +711,8 @@ describe('OrgManagementScreen', () => {
     });
     vi.stubGlobal('fetch', fn);
     render(<OrgManagementScreen />);
-    await waitFor(() => expect(screen.getByText('Update Payment')).toBeInTheDocument());
-    fireEvent.click(screen.getByText('Update Payment'));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Update Payment' })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: 'Update Payment' }));
     await waitFor(() => {
       expect(mockShowToast).toHaveBeenCalledWith('Failed to open billing portal', 'error');
     });
@@ -727,8 +727,8 @@ describe('OrgManagementScreen', () => {
       '/api/billing/portal': ok({ error: 'Billing error' }),
     });
     render(<OrgManagementScreen />);
-    await waitFor(() => expect(screen.getByText('Update Payment')).toBeInTheDocument());
-    fireEvent.click(screen.getByText('Update Payment'));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Update Payment' })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: 'Update Payment' }));
     await waitFor(() => {
       expect(mockShowToast).toHaveBeenCalledWith('Billing error', 'error');
     });
@@ -750,13 +750,13 @@ describe('OrgManagementScreen', () => {
     });
     vi.stubGlobal('fetch', fn);
     render(<OrgManagementScreen />);
-    await waitFor(() => expect(screen.getByText('Create Organization')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Create Organization' })).toBeInTheDocument());
     const input = screen.getByDisplayValue('');
     fireEvent.change(input, { target: { value: 'Test Org' } });
-    fireEvent.click(screen.getByText('Create Organization'));
+    fireEvent.click(screen.getByRole('button', { name: 'Create Organization' }));
     // Should not crash
     await waitFor(() => {
-      expect(screen.getByText('Create Organization')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Create Organization' })).toBeInTheDocument();
     });
   });
 

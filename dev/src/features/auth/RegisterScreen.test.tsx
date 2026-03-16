@@ -295,7 +295,7 @@ describe('RegisterScreen', () => {
     render(<RegisterScreen />);
 
     await act(async () => {
-      fireEvent.click(screen.getByText('Continue with GitHub'));
+      fireEvent.click(screen.getByRole('button', { name: 'Continue with GitHub' }));
     });
 
     expect(mockSignInWithOAuth).toHaveBeenCalledWith({
@@ -312,7 +312,7 @@ describe('RegisterScreen', () => {
     render(<RegisterScreen />);
 
     await act(async () => {
-      fireEvent.click(screen.getByText('Continue with GitHub'));
+      fireEvent.click(screen.getByRole('button', { name: 'Continue with GitHub' }));
     });
 
     await waitFor(() => {

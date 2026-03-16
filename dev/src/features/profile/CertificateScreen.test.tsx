@@ -106,7 +106,7 @@ describe('CertificateScreen', () => {
     await waitFor(() => {
       expect(screen.getAllByText('Add to LinkedIn').length).toBeGreaterThanOrEqual(1);
     });
-    fireEvent.click(screen.getByText('Add to LinkedIn'));
+    fireEvent.click(screen.getByRole('button', { name: 'Add to LinkedIn' }));
     expect(openMock).toHaveBeenCalledWith(
       expect.stringContaining('linkedin.com/profile/add'),
       '_blank'

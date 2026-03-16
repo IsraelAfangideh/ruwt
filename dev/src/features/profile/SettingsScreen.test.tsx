@@ -550,10 +550,10 @@ describe('SettingsScreen', () => {
       }));
       render(<SettingsScreen />);
       await waitFor(() => {
-        expect(screen.getByText('Manage Billing')).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Manage Billing' })).toBeInTheDocument();
       });
       await act(async () => {
-        fireEvent.click(screen.getByText('Manage Billing'));
+        fireEvent.click(screen.getByRole('button', { name: 'Manage Billing' }));
       });
       await waitFor(() => {
         expect(mockShowToast).toHaveBeenCalled();

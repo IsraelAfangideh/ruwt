@@ -224,7 +224,7 @@ describe('AssessmentDocumentPanel', () => {
     render(<AssessmentDocumentPanel {...baseProps} handleApproveCustomChallenge={handleApprove} customChallenges={[
       { ...DRAFT_CUSTOM_CHALLENGE, title: 'Draft' },
     ]} orgId="org1" />);
-    fireEvent.click(screen.getByText('Approve'));
+    fireEvent.click(screen.getByRole('button', { name: 'Approve' }));
     expect(handleApprove).toHaveBeenCalledWith('cc1');
   });
 
@@ -233,7 +233,7 @@ describe('AssessmentDocumentPanel', () => {
     render(<AssessmentDocumentPanel {...baseProps} handleDeleteCustomChallenge={handleDelete} customChallenges={[
       { ...DRAFT_CUSTOM_CHALLENGE, title: 'Draft' },
     ]} orgId="org1" />);
-    fireEvent.click(screen.getByText('Delete'));
+    fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
     expect(handleDelete).toHaveBeenCalledWith('cc1');
   });
 

@@ -161,7 +161,7 @@ describe('AssessmentListScreen', () => {
     await waitFor(() => {
       expect(screen.getByText('Acme Team')).toBeInTheDocument();
       expect(screen.getByText(/owner/)).toBeInTheDocument();
-      expect(screen.getByText('Manage Team')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Manage Team' })).toBeInTheDocument();
     });
   });
 
@@ -171,7 +171,7 @@ describe('AssessmentListScreen', () => {
     });
     render(<AssessmentListScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Create Team')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Create Team' })).toBeInTheDocument();
     });
   });
 
@@ -180,8 +180,8 @@ describe('AssessmentListScreen', () => {
       '/api/orgs': ok([{ id: 'org1', name: 'Acme', role: 'admin' }]),
     });
     render(<AssessmentListScreen />);
-    await waitFor(() => expect(screen.getByText('Manage Team')).toBeInTheDocument());
-    fireEvent.click(screen.getByText('Manage Team'));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Manage Team' })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: 'Manage Team' }));
     expect(mockNavigate).toHaveBeenCalledWith('OrgManagement', { orgId: 'org1' });
   });
 
@@ -191,8 +191,8 @@ describe('AssessmentListScreen', () => {
     });
     render(<AssessmentListScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Edit')).toBeInTheDocument();
-      expect(screen.getByText('Results')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Edit' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Results' })).toBeInTheDocument();
     });
   });
 
@@ -201,8 +201,8 @@ describe('AssessmentListScreen', () => {
       '/api/assessments': ok([mockActiveAssessment]),
     });
     render(<AssessmentListScreen />);
-    await waitFor(() => expect(screen.getByText('Edit')).toBeInTheDocument());
-    fireEvent.click(screen.getByText('Edit'));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Edit' })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: 'Edit' }));
     expect(mockNavigate).toHaveBeenCalledWith('AssessmentBuilder', { assessmentId: 'a1' });
   });
 
@@ -211,8 +211,8 @@ describe('AssessmentListScreen', () => {
       '/api/assessments': ok([mockActiveAssessment]),
     });
     render(<AssessmentListScreen />);
-    await waitFor(() => expect(screen.getByText('Results')).toBeInTheDocument());
-    fireEvent.click(screen.getByText('Results'));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Results' })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: 'Results' }));
     expect(mockNavigate).toHaveBeenCalledWith('AssessmentResultsDashboard', { assessmentId: 'a1' });
   });
 
@@ -222,7 +222,7 @@ describe('AssessmentListScreen', () => {
     });
     render(<AssessmentListScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Generate Invite Link')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Generate Invite Link' })).toBeInTheDocument();
     });
   });
 
@@ -235,8 +235,8 @@ describe('AssessmentListScreen', () => {
       '/api/assessments/a1/invites': ok({ url: 'https://ruwt.dev/inv/xyz' }),
     });
     render(<AssessmentListScreen />);
-    await waitFor(() => expect(screen.getByText('Generate Invite Link')).toBeInTheDocument());
-    fireEvent.click(screen.getByText('Generate Invite Link'));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Generate Invite Link' })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: 'Generate Invite Link' }));
     await waitFor(() => {
       expect(screen.getByText('https://ruwt.dev/inv/xyz')).toBeInTheDocument();
     });
@@ -248,8 +248,8 @@ describe('AssessmentListScreen', () => {
       '/api/assessments/a1/invites': fail({ error: 'No subscription' }),
     });
     render(<AssessmentListScreen />);
-    await waitFor(() => expect(screen.getByText('Generate Invite Link')).toBeInTheDocument());
-    fireEvent.click(screen.getByText('Generate Invite Link'));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Generate Invite Link' })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: 'Generate Invite Link' }));
     await waitFor(() => {
       expect(screen.getByText('No subscription')).toBeInTheDocument();
     });
@@ -280,7 +280,7 @@ describe('AssessmentListScreen', () => {
       '/api/assessments': ok([mockActiveAssessment]),
     });
     render(<AssessmentListScreen />);
-    await waitFor(() => expect(screen.getByText('Duplicate')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Duplicate' })).toBeInTheDocument());
   });
 
   it('formats time correctly for hours and minutes', async () => {
@@ -312,8 +312,8 @@ describe('AssessmentListScreen', () => {
       '/api/assessments/a1/invites': fail({ error: 'Some error' }),
     });
     render(<AssessmentListScreen />);
-    await waitFor(() => expect(screen.getByText('Generate Invite Link')).toBeInTheDocument());
-    fireEvent.click(screen.getByText('Generate Invite Link'));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Generate Invite Link' })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: 'Generate Invite Link' }));
     await waitFor(() => expect(screen.getByText('Some error')).toBeInTheDocument());
     // Click the dismiss X
     fireEvent.click(screen.getByText('\u2715'));
@@ -342,9 +342,9 @@ describe('AssessmentListScreen', () => {
       '/api/assessments/a1/invites': ok({ url: 'https://ruwt.dev/inv/abc' }),
     });
     render(<AssessmentListScreen />);
-    await waitFor(() => expect(screen.getByText('Generate Invite Link')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Generate Invite Link' })).toBeInTheDocument());
     // Generate the invite link first
-    fireEvent.click(screen.getByText('Generate Invite Link'));
+    fireEvent.click(screen.getByRole('button', { name: 'Generate Invite Link' }));
     await waitFor(() => expect(screen.getByText('https://ruwt.dev/inv/abc')).toBeInTheDocument());
     // Now click on the link row to copy it again
     fireEvent.click(screen.getByText('https://ruwt.dev/inv/abc'));
@@ -361,9 +361,9 @@ describe('AssessmentListScreen', () => {
       '/api/assessments/a1/invites': ok({ url: 'https://ruwt.dev/inv/abc' }),
     });
     render(<AssessmentListScreen />);
-    await waitFor(() => expect(screen.getByText('Generate Invite Link')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Generate Invite Link' })).toBeInTheDocument());
     // Generate invite link
-    fireEvent.click(screen.getByText('Generate Invite Link'));
+    fireEvent.click(screen.getByRole('button', { name: 'Generate Invite Link' }));
     await waitFor(() => expect(screen.getByText('https://ruwt.dev/inv/abc')).toBeInTheDocument());
     // Now click "Generate Invite Link" - but since it's already cached, the Pressable with URL shows
     // The Generate Invite Link button is now replaced by the link row
@@ -386,8 +386,8 @@ describe('AssessmentListScreen', () => {
     });
     vi.stubGlobal('fetch', fn);
     render(<AssessmentListScreen />);
-    await waitFor(() => expect(screen.getByText('Generate Invite Link')).toBeInTheDocument());
-    fireEvent.click(screen.getByText('Generate Invite Link'));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Generate Invite Link' })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: 'Generate Invite Link' }));
     await waitFor(() => expect(screen.getByText('Failed to generate invite')).toBeInTheDocument());
   });
 
@@ -428,8 +428,8 @@ describe('AssessmentListScreen', () => {
     });
     vi.stubGlobal('fetch', fetchImpl);
     render(<AssessmentListScreen />);
-    await waitFor(() => expect(screen.getByText('Duplicate')).toBeInTheDocument());
-    fireEvent.click(screen.getByText('Duplicate'));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Duplicate' })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: 'Duplicate' }));
     await waitFor(() => {
       expect(mockNavigate).toHaveBeenCalledWith('AssessmentBuilder', { assessmentId: 'new-a1' });
     });
@@ -446,8 +446,8 @@ describe('AssessmentListScreen', () => {
     });
     vi.stubGlobal('fetch', fetchImpl);
     render(<AssessmentListScreen />);
-    await waitFor(() => expect(screen.getByText('Duplicate')).toBeInTheDocument());
-    fireEvent.click(screen.getByText('Duplicate'));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Duplicate' })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: 'Duplicate' }));
     // The early return skips setDuplicating(null), so button stays as "..."
     await waitFor(() => {
       expect(screen.getByText('...')).toBeInTheDocument();
@@ -470,8 +470,8 @@ describe('AssessmentListScreen', () => {
     });
     vi.stubGlobal('fetch', fetchImpl);
     render(<AssessmentListScreen />);
-    await waitFor(() => expect(screen.getByText('Duplicate')).toBeInTheDocument());
-    fireEvent.click(screen.getByText('Duplicate'));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Duplicate' })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: 'Duplicate' }));
     // The early return on createRes.ok=false skips setDuplicating(null)
     await waitFor(() => {
       expect(screen.getByText('...')).toBeInTheDocument();
@@ -492,8 +492,8 @@ describe('AssessmentListScreen', () => {
     });
     vi.stubGlobal('fetch', fetchImpl);
     render(<AssessmentListScreen />);
-    await waitFor(() => expect(screen.getByText('Duplicate')).toBeInTheDocument());
-    fireEvent.click(screen.getByText('Duplicate'));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Duplicate' })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: 'Duplicate' }));
     await waitFor(() => {
       expect(mockNavigate).toHaveBeenCalledWith('AssessmentBuilder', { assessmentId: 'new-a2' });
     });
@@ -542,8 +542,8 @@ describe('AssessmentListScreen', () => {
       '/api/orgs': ok([]),
     });
     render(<AssessmentListScreen />);
-    await waitFor(() => expect(screen.getByText('Create Team')).toBeInTheDocument());
-    fireEvent.click(screen.getByText('Create Team'));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Create Team' })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: 'Create Team' }));
     expect(mockNavigate).toHaveBeenCalledWith('OrgManagement', {});
   });
 
@@ -585,9 +585,9 @@ describe('AssessmentListScreen', () => {
       '/api/assessments/a1/invites': ok({ url: 'https://ruwt.dev/inv/cached' }),
     });
     render(<AssessmentListScreen />);
-    await waitFor(() => expect(screen.getByText('Generate Invite Link')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Generate Invite Link' })).toBeInTheDocument());
     // First click: generates the invite link
-    fireEvent.click(screen.getByText('Generate Invite Link'));
+    fireEvent.click(screen.getByRole('button', { name: 'Generate Invite Link' }));
     await waitFor(() => expect(screen.getByText('https://ruwt.dev/inv/cached')).toBeInTheDocument());
     // The URL is now displayed as a Pressable. The handleInvite for this assessment
     // would use the cached path. But the Generate Invite Link button is now replaced.

@@ -196,13 +196,13 @@ describe('BulkInvitePanel', () => {
 
   it('renders Upload CSV button', () => {
     render(<BulkInvitePanel assessmentId="a1" onInvitesSent={mockOnInvitesSent} />);
-    expect(screen.getByText('Upload CSV')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Upload CSV' })).toBeInTheDocument();
   });
 
   it('triggers file input when Upload CSV is clicked', () => {
     const createElementSpy = vi.spyOn(document, 'createElement');
     render(<BulkInvitePanel assessmentId="a1" onInvitesSent={mockOnInvitesSent} />);
-    fireEvent.click(screen.getByText('Upload CSV'));
+    fireEvent.click(screen.getByRole('button', { name: 'Upload CSV' }));
     expect(createElementSpy).toHaveBeenCalledWith('input');
   });
 
@@ -227,7 +227,7 @@ describe('BulkInvitePanel', () => {
       return origCreate(tag);
     });
 
-    fireEvent.click(screen.getByText('Upload CSV'));
+    fireEvent.click(screen.getByRole('button', { name: 'Upload CSV' }));
 
     // Simulate file selection
     if (mockInput.onchange) {
@@ -260,7 +260,7 @@ describe('BulkInvitePanel', () => {
       return origCreate(tag);
     });
 
-    fireEvent.click(screen.getByText('Upload CSV'));
+    fireEvent.click(screen.getByRole('button', { name: 'Upload CSV' }));
 
     if (mockInput.onchange) {
       await mockInput.onchange({ target: { files: [mockFile] } });
@@ -287,7 +287,7 @@ describe('BulkInvitePanel', () => {
       return origCreate(tag);
     });
 
-    fireEvent.click(screen.getByText('Upload CSV'));
+    fireEvent.click(screen.getByRole('button', { name: 'Upload CSV' }));
 
     if (mockInput.onchange) {
       await mockInput.onchange({ target: { files: [] } });

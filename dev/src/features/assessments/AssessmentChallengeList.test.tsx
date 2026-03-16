@@ -155,19 +155,19 @@ describe('AssessmentChallengeList', () => {
 
   it('shows Select All Visible button', () => {
     render(<AssessmentChallengeList {...baseProps} />);
-    expect(screen.getByText('Select All Visible')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Select All Visible' })).toBeInTheDocument();
   });
 
   it('calls onSelectAll with visible challenge IDs', () => {
     const onSelectAll = vi.fn();
     render(<AssessmentChallengeList {...baseProps} onSelectAll={onSelectAll} />);
-    fireEvent.click(screen.getByText('Select All Visible'));
+    fireEvent.click(screen.getByRole('button', { name: 'Select All Visible' }));
     expect(onSelectAll).toHaveBeenCalledWith(['ch1', 'ch2', 'ch3']);
   });
 
   it('shows Clear All button when challenges are selected', () => {
     render(<AssessmentChallengeList {...baseProps} selectedChallengeIds={['ch1']} />);
-    expect(screen.getByText('Clear All')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Clear All' })).toBeInTheDocument();
   });
 
   it('does not show Clear All button when nothing is selected', () => {
@@ -178,7 +178,7 @@ describe('AssessmentChallengeList', () => {
   it('calls onClearAll when Clear All is clicked', () => {
     const onClearAll = vi.fn();
     render(<AssessmentChallengeList {...baseProps} selectedChallengeIds={['ch1']} onClearAll={onClearAll} />);
-    fireEvent.click(screen.getByText('Clear All'));
+    fireEvent.click(screen.getByRole('button', { name: 'Clear All' }));
     expect(onClearAll).toHaveBeenCalled();
   });
 
@@ -239,7 +239,7 @@ describe('AssessmentChallengeList', () => {
   it('includes custom challenges in Select All Visible', () => {
     const onSelectAll = vi.fn();
     render(<AssessmentChallengeList {...baseProps} customChallenges={CUSTOM_CHALLENGES} onSelectAll={onSelectAll} />);
-    fireEvent.click(screen.getByText('Select All Visible'));
+    fireEvent.click(screen.getByRole('button', { name: 'Select All Visible' }));
     expect(onSelectAll).toHaveBeenCalledWith(['ch1', 'ch2', 'ch3', 'cc1']);
   });
 

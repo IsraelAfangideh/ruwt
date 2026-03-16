@@ -169,7 +169,7 @@ describe('AssessmentLandingScreen', () => {
     });
 
     await act(async () => {
-      fireEvent.click(screen.getByText('Start Assessment'));
+      fireEvent.click(screen.getByRole('button', { name: 'Start Assessment' }));
     });
 
     await waitFor(() => {
@@ -190,7 +190,7 @@ describe('AssessmentLandingScreen', () => {
     });
 
     await act(async () => {
-      fireEvent.click(screen.getByText('Start Assessment'));
+      fireEvent.click(screen.getByRole('button', { name: 'Start Assessment' }));
     });
 
     expect(screen.getAllByText('Starting...').length).toBeGreaterThanOrEqual(1);
@@ -208,7 +208,7 @@ describe('AssessmentLandingScreen', () => {
     });
 
     await act(async () => {
-      fireEvent.click(screen.getByText('Start Assessment'));
+      fireEvent.click(screen.getByRole('button', { name: 'Start Assessment' }));
     });
 
     expect(mockNavigate).toHaveBeenCalledWith('Login');
@@ -227,7 +227,7 @@ describe('AssessmentLandingScreen', () => {
     });
 
     await act(async () => {
-      fireEvent.click(screen.getByText('Start Assessment'));
+      fireEvent.click(screen.getByRole('button', { name: 'Start Assessment' }));
     });
 
     await waitFor(() => {
@@ -248,7 +248,7 @@ describe('AssessmentLandingScreen', () => {
     });
 
     await act(async () => {
-      fireEvent.click(screen.getByText('Start Assessment'));
+      fireEvent.click(screen.getByRole('button', { name: 'Start Assessment' }));
     });
 
     await waitFor(() => {
@@ -269,7 +269,7 @@ describe('AssessmentLandingScreen', () => {
     });
 
     await act(async () => {
-      fireEvent.click(screen.getByText('Start Assessment'));
+      fireEvent.click(screen.getByRole('button', { name: 'Start Assessment' }));
     });
 
     await waitFor(() => {

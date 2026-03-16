@@ -128,7 +128,7 @@ describe('NotificationBell', () => {
 
     const bellButtons = screen.getAllByText(/\uD83D\uDD14/);
     fireEvent.click(bellButtons[0]);
-    await waitFor(() => expect(screen.getByText('Mark all read')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Mark all read' })).toBeInTheDocument());
   });
 
   it('sends mark_all_read action when Mark all read is clicked', async () => {
@@ -145,8 +145,8 @@ describe('NotificationBell', () => {
 
     const bellButtons = screen.getAllByText(/\uD83D\uDD14/);
     fireEvent.click(bellButtons[0]);
-    await waitFor(() => expect(screen.getByText('Mark all read')).toBeInTheDocument());
-    fireEvent.click(screen.getByText('Mark all read'));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Mark all read' })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: 'Mark all read' }));
     await waitFor(() => {
       const postCall = fetchSpy.mock.calls.find((c: any[]) => c[1]?.method === 'POST');
       expect(postCall).toBeTruthy();

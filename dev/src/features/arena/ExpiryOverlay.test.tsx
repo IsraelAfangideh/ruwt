@@ -43,18 +43,18 @@ describe('ExpiryOverlay', () => {
 
   it('renders Review Code button', () => {
     render(<ExpiryOverlay totalTokens={0} totalCost={0} isMobile={false} onReview={mockOnReview} />);
-    expect(screen.getByText('Review Code')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Review Code' })).toBeInTheDocument();
   });
 
   it('calls onReview when Review Code is clicked', () => {
     render(<ExpiryOverlay totalTokens={0} totalCost={0} isMobile={false} onReview={mockOnReview} />);
-    fireEvent.click(screen.getByText('Review Code'));
+    fireEvent.click(screen.getByRole('button', { name: 'Review Code' }));
     expect(mockOnReview).toHaveBeenCalled();
   });
 
   it('renders Start New Attempt button when onRestart provided', () => {
     render(<ExpiryOverlay totalTokens={0} totalCost={0} isMobile={false} onReview={mockOnReview} onRestart={mockOnRestart} />);
-    expect(screen.getByText('Start New Attempt')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Start New Attempt' })).toBeInTheDocument();
   });
 
   it('does not render Start New Attempt when onRestart is not provided', () => {
@@ -64,15 +64,15 @@ describe('ExpiryOverlay', () => {
 
   it('calls onRestart when Start New Attempt is clicked', () => {
     render(<ExpiryOverlay totalTokens={0} totalCost={0} isMobile={false} onReview={mockOnReview} onRestart={mockOnRestart} />);
-    fireEvent.click(screen.getByText('Start New Attempt'));
+    fireEvent.click(screen.getByRole('button', { name: 'Start New Attempt' }));
     expect(mockOnRestart).toHaveBeenCalled();
   });
 
   it('renders in mobile layout', () => {
     render(<ExpiryOverlay totalTokens={100} totalCost={500} isMobile={true} onReview={mockOnReview} onRestart={mockOnRestart} />);
     expect(screen.getByText("Time's Up!")).toBeInTheDocument();
-    expect(screen.getByText('Review Code')).toBeInTheDocument();
-    expect(screen.getByText('Start New Attempt')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Review Code' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Start New Attempt' })).toBeInTheDocument();
   });
 
   it('renders "solved it" heading and Submit button when onSubmit is provided', () => {
@@ -80,13 +80,13 @@ describe('ExpiryOverlay', () => {
     render(<ExpiryOverlay totalTokens={200} totalCost={300} isMobile={false} onReview={mockOnReview} onSubmit={mockOnSubmit} />);
     expect(screen.getByText("Time's Up — But You Solved It!")).toBeInTheDocument();
     expect(screen.getByText('All tests passed. Submit now to lock in your score.')).toBeInTheDocument();
-    expect(screen.getByText('Submit Solution')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Submit Solution' })).toBeInTheDocument();
   });
 
   it('calls onSubmit when Submit Solution is clicked', () => {
     const mockOnSubmit = vi.fn();
     render(<ExpiryOverlay totalTokens={0} totalCost={0} isMobile={false} onReview={mockOnReview} onSubmit={mockOnSubmit} />);
-    fireEvent.click(screen.getByText('Submit Solution'));
+    fireEvent.click(screen.getByRole('button', { name: 'Submit Solution' }));
     expect(mockOnSubmit).toHaveBeenCalled();
   });
 
@@ -100,8 +100,8 @@ describe('ExpiryOverlay', () => {
     const mockOnSubmit = vi.fn();
     render(<ExpiryOverlay totalTokens={100} totalCost={200} isMobile={true} onReview={mockOnReview} onSubmit={mockOnSubmit} onRestart={mockOnRestart} />);
     expect(screen.getByText("Time's Up — But You Solved It!")).toBeInTheDocument();
-    expect(screen.getByText('Submit Solution')).toBeInTheDocument();
-    expect(screen.getByText('Review Code')).toBeInTheDocument();
-    expect(screen.getByText('Start New Attempt')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Submit Solution' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Review Code' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Start New Attempt' })).toBeInTheDocument();
   });
 });

@@ -104,13 +104,13 @@ describe('ResultsBar', () => {
   it('renders Ask AI for Help button on failure when onAskAI provided', () => {
     const mockAskAI = vi.fn();
     render(<ResultsBar results={failingResults} onAskAI={mockAskAI} />);
-    expect(screen.getByText('Ask AI for Help')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Ask AI for Help' })).toBeInTheDocument();
   });
 
   it('calls onAskAI with debug prompt when Ask AI is clicked', () => {
     const mockAskAI = vi.fn();
     render(<ResultsBar results={failingResults} onAskAI={mockAskAI} />);
-    fireEvent.click(screen.getByText('Ask AI for Help'));
+    fireEvent.click(screen.getByRole('button', { name: 'Ask AI for Help' }));
     expect(mockAskAI).toHaveBeenCalled();
     const prompt = mockAskAI.mock.calls[0][0];
     expect(prompt).toContain('fails 2 test');

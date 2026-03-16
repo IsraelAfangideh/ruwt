@@ -51,20 +51,20 @@ describe('PassThresholdEditor', () => {
 
   it('shows enabled state with default threshold when value is null', () => {
     render(<PassThresholdEditor value={null} onChange={mockOnChange} />);
-    expect(screen.getByText('Auto-grading enabled')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Auto-grading enabled' })).toBeInTheDocument();
   });
 
   it('calls onChange(null) to disable when toggle is clicked on enabled state', () => {
     render(<PassThresholdEditor value={null} onChange={mockOnChange} />);
-    fireEvent.click(screen.getByText('Auto-grading enabled'));
+    fireEvent.click(screen.getByRole('button', { name: 'Auto-grading enabled' }));
     expect(mockOnChange).toHaveBeenCalledWith(null);
   });
 
   it('calls onChange with DEFAULT_THRESHOLD when enabling from disabled state', () => {
     const disabled = { enabled: false, mode: 'all_dimensions' as const, dimensions: {} };
     render(<PassThresholdEditor value={disabled} onChange={mockOnChange} />);
-    expect(screen.getByText('Auto-grading disabled')).toBeInTheDocument();
-    fireEvent.click(screen.getByText('Auto-grading disabled'));
+    expect(screen.getByRole('button', { name: 'Auto-grading disabled' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Auto-grading disabled' }));
     expect(mockOnChange).toHaveBeenCalledWith(
       expect.objectContaining({ enabled: true, mode: 'all_dimensions' })
     );
@@ -91,8 +91,8 @@ describe('PassThresholdEditor', () => {
       dimensions: { modelSelection: 50, promptEfficiency: 50, debugging: 50, strategy: 50, speed: 50 },
     };
     render(<PassThresholdEditor value={threshold} onChange={mockOnChange} />);
-    expect(screen.getByText('All dimensions above threshold')).toBeInTheDocument();
-    expect(screen.getByText('Weighted average above minimum')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'All dimensions above threshold' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Weighted average above minimum' })).toBeInTheDocument();
   });
 
   it('switches mode to weighted_average when clicked', () => {
@@ -102,7 +102,7 @@ describe('PassThresholdEditor', () => {
       dimensions: { modelSelection: 50, promptEfficiency: 50, debugging: 50, strategy: 50, speed: 50 },
     };
     render(<PassThresholdEditor value={threshold} onChange={mockOnChange} />);
-    fireEvent.click(screen.getByText('Weighted average above minimum'));
+    fireEvent.click(screen.getByRole('button', { name: 'Weighted average above minimum' }));
     expect(mockOnChange).toHaveBeenCalledWith(
       expect.objectContaining({ mode: 'weighted_average' })
     );
@@ -116,7 +116,7 @@ describe('PassThresholdEditor', () => {
       dimensions: { modelSelection: 50, promptEfficiency: 50, debugging: 50, strategy: 50, speed: 50 },
     };
     render(<PassThresholdEditor value={threshold} onChange={mockOnChange} />);
-    fireEvent.click(screen.getByText('All dimensions above threshold'));
+    fireEvent.click(screen.getByRole('button', { name: 'All dimensions above threshold' }));
     expect(mockOnChange).toHaveBeenCalledWith(
       expect.objectContaining({ mode: 'all_dimensions' })
     );

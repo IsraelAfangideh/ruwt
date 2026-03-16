@@ -273,7 +273,7 @@ describe('CallbackScreen', () => {
       expect(screen.getAllByText('Back to sign in').length).toBeGreaterThanOrEqual(1);
     });
 
-    fireEvent.click(screen.getByText('Back to sign in'));
+    fireEvent.click(screen.getByRole('button', { name: 'Back to sign in' }));
     expect(mockNavigate).toHaveBeenCalledWith('Login');
 
     vi.useRealTimers();
@@ -342,7 +342,7 @@ describe('CallbackScreen', () => {
 
     const inputs = document.querySelectorAll('input[type="password"]');
     fireEvent.change(inputs[0], { target: { value: 'ab' } });
-    fireEvent.click(screen.getByText('Update password'));
+    fireEvent.click(screen.getByRole('button', { name: 'Update password' }));
 
     await waitFor(() => {
       expect(screen.getAllByText('Password must be at least 8 characters').length).toBeGreaterThanOrEqual(1);
@@ -363,7 +363,7 @@ describe('CallbackScreen', () => {
     const inputs = document.querySelectorAll('input[type="password"]');
     fireEvent.change(inputs[0], { target: { value: 'password123' } });
     fireEvent.change(inputs[1], { target: { value: 'differentpass' } });
-    fireEvent.click(screen.getByText('Update password'));
+    fireEvent.click(screen.getByRole('button', { name: 'Update password' }));
 
     await waitFor(() => {
       expect(screen.getAllByText('Passwords do not match').length).toBeGreaterThanOrEqual(1);
@@ -388,7 +388,7 @@ describe('CallbackScreen', () => {
     fireEvent.change(inputs[1], { target: { value: 'newpassword' } });
 
     await act(async () => {
-      fireEvent.click(screen.getByText('Update password'));
+      fireEvent.click(screen.getByRole('button', { name: 'Update password' }));
     });
 
     await waitFor(() => {
@@ -415,7 +415,7 @@ describe('CallbackScreen', () => {
     fireEvent.change(inputs[1], { target: { value: 'newpassword' } });
 
     await act(async () => {
-      fireEvent.click(screen.getByText('Update password'));
+      fireEvent.click(screen.getByRole('button', { name: 'Update password' }));
     });
 
     await waitFor(() => {
@@ -510,7 +510,7 @@ describe('CallbackScreen', () => {
     fireEvent.change(inputs[1], { target: { value: 'newpassword' } });
 
     await act(async () => {
-      fireEvent.click(screen.getByText('Update password'));
+      fireEvent.click(screen.getByRole('button', { name: 'Update password' }));
     });
 
     await waitFor(() => {

@@ -172,7 +172,7 @@ describe('DashboardLayout', () => {
 
     expect(screen.getByText('Team Account Required')).toBeInTheDocument();
     expect(screen.queryByText('Protected Content')).toBeNull();
-    expect(screen.getByText('Upgrade to Teams')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Upgrade to Teams' })).toBeInTheDocument();
   });
 
   it('renders children when requireOrg is true and user is org member', () => {
@@ -214,7 +214,7 @@ describe('DashboardLayout', () => {
       </DashboardLayout>
     );
 
-    fireEvent.click(screen.getByText('Upgrade to Teams'));
+    fireEvent.click(screen.getByRole('button', { name: 'Upgrade to Teams' }));
     expect(mockNavigate).toHaveBeenCalledWith('Hiring');
   });
 

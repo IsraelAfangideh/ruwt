@@ -257,7 +257,7 @@ describe('ArenaScreen', () => {
     await waitFor(() => {
       expect(screen.getByText('Oops')).toBeInTheDocument();
     });
-    fireEvent.click(screen.getByText('Back to Problems'));
+    fireEvent.click(screen.getByRole('button', { name: 'Back to Problems' }));
     expect(mockNavigate).toHaveBeenCalledWith('Problems');
   });
 
@@ -268,7 +268,7 @@ describe('ArenaScreen', () => {
     await waitFor(() => {
       expect(screen.getByText('FizzBuzz Budget')).toBeInTheDocument();
     });
-    expect(screen.getByText('Start Challenge')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Start Challenge' })).toBeInTheDocument();
   });
 
   it('shows difficulty badge on pre-attempt screen', async () => {
@@ -361,10 +361,10 @@ describe('ArenaScreen', () => {
   it('clicking "Start Challenge" calls POST /api/attempts and shows IDE', async () => {
     render(<ArenaScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Start Challenge')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Start Challenge' })).toBeInTheDocument();
     });
     await act(async () => {
-      fireEvent.click(screen.getByText('Start Challenge'));
+      fireEvent.click(screen.getByRole('button', { name: 'Start Challenge' }));
     });
     await waitFor(() => {
       expect(screen.getByTestId('arena-ide')).toBeInTheDocument();
@@ -384,10 +384,10 @@ describe('ArenaScreen', () => {
     });
 
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Start Challenge' })).toBeInTheDocument());
 
-    fireEvent.click(screen.getByText('Start Challenge'));
-    await waitFor(() => expect(screen.getByText('Starting...')).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: 'Start Challenge' }));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Starting...' })).toBeInTheDocument());
 
     // Resolve the promise
     await act(async () => {
@@ -414,9 +414,9 @@ describe('ArenaScreen', () => {
     });
 
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Start Challenge' })).toBeInTheDocument());
     await act(async () => {
-      fireEvent.click(screen.getByText('Start Challenge'));
+      fireEvent.click(screen.getByRole('button', { name: 'Start Challenge' }));
     });
     await waitFor(() => {
       expect(screen.getByText('Failed to start attempt')).toBeInTheDocument();
@@ -435,9 +435,9 @@ describe('ArenaScreen', () => {
     });
 
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Start Challenge' })).toBeInTheDocument());
     await act(async () => {
-      fireEvent.click(screen.getByText('Start Challenge'));
+      fireEvent.click(screen.getByRole('button', { name: 'Start Challenge' }));
     });
     await waitFor(() => {
       expect(screen.getByText('Connection refused')).toBeInTheDocument();
@@ -456,9 +456,9 @@ describe('ArenaScreen', () => {
     });
 
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Start Challenge' })).toBeInTheDocument());
     await act(async () => {
-      fireEvent.click(screen.getByText('Start Challenge'));
+      fireEvent.click(screen.getByRole('button', { name: 'Start Challenge' }));
     });
     await waitFor(() => {
       expect(screen.getByText('Failed to start attempt')).toBeInTheDocument();
@@ -489,9 +489,9 @@ describe('ArenaScreen', () => {
     });
 
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Start Challenge' })).toBeInTheDocument());
     await act(async () => {
-      fireEvent.click(screen.getByText('Start Challenge'));
+      fireEvent.click(screen.getByRole('button', { name: 'Start Challenge' }));
     });
     await waitFor(() => {
       expect(screen.getByTestId('ide-code')).toBeInTheDocument();
@@ -502,9 +502,9 @@ describe('ArenaScreen', () => {
 
   it('uses starterCode for new attempt', async () => {
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Start Challenge' })).toBeInTheDocument());
     await act(async () => {
-      fireEvent.click(screen.getByText('Start Challenge'));
+      fireEvent.click(screen.getByRole('button', { name: 'Start Challenge' }));
     });
     await waitFor(() => {
       expect(screen.getByTestId('ide-code')?.textContent).toBe('// start here');
@@ -517,9 +517,9 @@ describe('ArenaScreen', () => {
     // The stale closure means it uses the JS default comment — this tests actual behavior.
     globalThis.fetch = mockFetchForChallenge({ ...challengeData, language: 'python', starterCode: null });
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Start Challenge' })).toBeInTheDocument());
     await act(async () => {
-      fireEvent.click(screen.getByText('Start Challenge'));
+      fireEvent.click(screen.getByRole('button', { name: 'Start Challenge' }));
     });
     await waitFor(() => {
       // With starterCode=null, falls back to default comment
@@ -548,9 +548,9 @@ describe('ArenaScreen', () => {
     });
 
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Start Challenge' })).toBeInTheDocument());
     await act(async () => {
-      fireEvent.click(screen.getByText('Start Challenge'));
+      fireEvent.click(screen.getByRole('button', { name: 'Start Challenge' }));
     });
     await waitFor(() => {
       expect(screen.getByTestId('ide-code')?.textContent).toBe('// your code here');
@@ -561,9 +561,9 @@ describe('ArenaScreen', () => {
 
   it('renders ArenaIDE after starting attempt with correct props', async () => {
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Start Challenge' })).toBeInTheDocument());
     await act(async () => {
-      fireEvent.click(screen.getByText('Start Challenge'));
+      fireEvent.click(screen.getByRole('button', { name: 'Start Challenge' }));
     });
     await waitFor(() => {
       expect(screen.getByTestId('arena-ide')).toBeInTheDocument();
@@ -576,13 +576,13 @@ describe('ArenaScreen', () => {
 
   it('renders Run Tests and Submit buttons in desktop header', async () => {
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Start Challenge' })).toBeInTheDocument());
     await act(async () => {
-      fireEvent.click(screen.getByText('Start Challenge'));
+      fireEvent.click(screen.getByRole('button', { name: 'Start Challenge' }));
     });
     await waitFor(() => {
-      expect(screen.getByText('Run Tests')).toBeInTheDocument();
-      expect(screen.getByText('Submit')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Run Tests' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Submit' })).toBeInTheDocument();
     });
   });
 
@@ -593,9 +593,9 @@ describe('ArenaScreen', () => {
       testCases: '[{"input":"1","expectedOutput":"1"},{"input":"2","expectedOutput":"2"}]',
     });
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Start Challenge' })).toBeInTheDocument());
     await act(async () => {
-      fireEvent.click(screen.getByText('Start Challenge'));
+      fireEvent.click(screen.getByRole('button', { name: 'Start Challenge' }));
     });
     await waitFor(() => {
       expect(screen.getByText('Run Tests (2 public)')).toBeInTheDocument();
@@ -605,13 +605,13 @@ describe('ArenaScreen', () => {
 
   it('Run Tests button triggers handleRun and sets test results', async () => {
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Start Challenge' })).toBeInTheDocument());
     await act(async () => {
-      fireEvent.click(screen.getByText('Start Challenge'));
+      fireEvent.click(screen.getByRole('button', { name: 'Start Challenge' }));
     });
-    await waitFor(() => expect(screen.getByText('Run Tests')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Run Tests' })).toBeInTheDocument());
     await act(async () => {
-      fireEvent.click(screen.getByText('Run Tests'));
+      fireEvent.click(screen.getByRole('button', { name: 'Run Tests' }));
     });
     // After run completes, testResults should be passed to ArenaIDE
     await waitFor(() => {
@@ -642,10 +642,10 @@ describe('ArenaScreen', () => {
     });
 
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
-    await act(async () => { fireEvent.click(screen.getByText('Start Challenge')); });
-    await waitFor(() => expect(screen.getByText('Run Tests')).toBeInTheDocument());
-    await act(async () => { fireEvent.click(screen.getByText('Run Tests')); });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Start Challenge' })).toBeInTheDocument());
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Start Challenge' })); });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Run Tests' })).toBeInTheDocument());
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Run Tests' })); });
     await waitFor(() => {
       const results = screen.queryByTestId('ide-results');
       expect(results).toBeTruthy();
@@ -657,10 +657,10 @@ describe('ArenaScreen', () => {
 
   it('Submit button triggers handleSubmit', async () => {
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
-    await act(async () => { fireEvent.click(screen.getByText('Start Challenge')); });
-    await waitFor(() => expect(screen.getByText('Submit')).toBeInTheDocument());
-    await act(async () => { fireEvent.click(screen.getByText('Submit')); });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Start Challenge' })).toBeInTheDocument());
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Start Challenge' })); });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Submit' })).toBeInTheDocument());
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Submit' })); });
     // After submit, test results are passed to IDE with isSubmission=true
     await waitFor(() => {
       const results = screen.queryByTestId('ide-results');
@@ -670,25 +670,25 @@ describe('ArenaScreen', () => {
 
   it('shows success overlay after passed submission', async () => {
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
-    await act(async () => { fireEvent.click(screen.getByText('Start Challenge')); });
-    await waitFor(() => expect(screen.getByText('Submit')).toBeInTheDocument());
-    await act(async () => { fireEvent.click(screen.getByText('Submit')); });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Start Challenge' })).toBeInTheDocument());
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Start Challenge' })); });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Submit' })).toBeInTheDocument());
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Submit' })); });
     await waitFor(() => {
       expect(screen.getByText('Challenge Passed!')).toBeInTheDocument();
     });
     // Check share buttons
-    expect(screen.getByText('LinkedIn')).toBeInTheDocument();
-    expect(screen.getByText('X / Twitter')).toBeInTheDocument();
-    expect(screen.getByText('Copy Link')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'LinkedIn' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'X / Twitter' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Copy Link' })).toBeInTheDocument();
   });
 
   it('shows rank stats in success overlay', async () => {
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
-    await act(async () => { fireEvent.click(screen.getByText('Start Challenge')); });
-    await waitFor(() => expect(screen.getByText('Submit')).toBeInTheDocument());
-    await act(async () => { fireEvent.click(screen.getByText('Submit')); });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Start Challenge' })).toBeInTheDocument());
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Start Challenge' })); });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Submit' })).toBeInTheDocument());
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Submit' })); });
     await waitFor(() => {
       expect(screen.getByText('Challenge Passed!')).toBeInTheDocument();
     });
@@ -700,21 +700,21 @@ describe('ArenaScreen', () => {
 
   it('success overlay "View Your Replay" navigates to Replay screen', async () => {
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
-    await act(async () => { fireEvent.click(screen.getByText('Start Challenge')); });
-    await waitFor(() => expect(screen.getByText('Submit')).toBeInTheDocument());
-    await act(async () => { fireEvent.click(screen.getByText('Submit')); });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Start Challenge' })).toBeInTheDocument());
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Start Challenge' })); });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Submit' })).toBeInTheDocument());
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Submit' })); });
     await waitFor(() => expect(screen.getByText('Challenge Passed!')).toBeInTheDocument());
-    fireEvent.click(screen.getByText('View Your Replay'));
+    fireEvent.click(screen.getByRole('button', { name: 'View Your Replay' }));
     expect(mockNavigate).toHaveBeenCalledWith('Replay', expect.objectContaining({ attemptId: expect.any(String) }));
   });
 
   it('success overlay "Back to Problems" navigates', async () => {
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
-    await act(async () => { fireEvent.click(screen.getByText('Start Challenge')); });
-    await waitFor(() => expect(screen.getByText('Submit')).toBeInTheDocument());
-    await act(async () => { fireEvent.click(screen.getByText('Submit')); });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Start Challenge' })).toBeInTheDocument());
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Start Challenge' })); });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Submit' })).toBeInTheDocument());
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Submit' })); });
     await waitFor(() => expect(screen.getByText('Challenge Passed!')).toBeInTheDocument());
     const backBtns = screen.getAllByText(/Back to Problems/);
     fireEvent.click(backBtns[backBtns.length - 1]);
@@ -726,29 +726,29 @@ describe('ArenaScreen', () => {
     Object.assign(navigator, { clipboard: { writeText } });
 
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
-    await act(async () => { fireEvent.click(screen.getByText('Start Challenge')); });
-    await waitFor(() => expect(screen.getByText('Submit')).toBeInTheDocument());
-    await act(async () => { fireEvent.click(screen.getByText('Submit')); });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Start Challenge' })).toBeInTheDocument());
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Start Challenge' })); });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Submit' })).toBeInTheDocument());
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Submit' })); });
     await waitFor(() => expect(screen.getByText('Challenge Passed!')).toBeInTheDocument());
     await act(async () => {
-      fireEvent.click(screen.getByText('Copy Link'));
+      fireEvent.click(screen.getByRole('button', { name: 'Copy Link' }));
     });
     expect(writeText).toHaveBeenCalled();
     await waitFor(() => {
-      expect(screen.getByText('Copied!')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Copied!' })).toBeInTheDocument();
     });
   });
 
   it('success overlay LinkedIn button opens window', async () => {
     const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null);
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
-    await act(async () => { fireEvent.click(screen.getByText('Start Challenge')); });
-    await waitFor(() => expect(screen.getByText('Submit')).toBeInTheDocument());
-    await act(async () => { fireEvent.click(screen.getByText('Submit')); });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Start Challenge' })).toBeInTheDocument());
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Start Challenge' })); });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Submit' })).toBeInTheDocument());
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Submit' })); });
     await waitFor(() => expect(screen.getByText('Challenge Passed!')).toBeInTheDocument());
-    fireEvent.click(screen.getByText('LinkedIn'));
+    fireEvent.click(screen.getByRole('button', { name: 'LinkedIn' }));
     expect(openSpy).toHaveBeenCalledWith(expect.stringContaining('linkedin.com'), '_blank', expect.any(String));
     openSpy.mockRestore();
   });
@@ -756,12 +756,12 @@ describe('ArenaScreen', () => {
   it('success overlay X / Twitter button opens window', async () => {
     const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null);
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
-    await act(async () => { fireEvent.click(screen.getByText('Start Challenge')); });
-    await waitFor(() => expect(screen.getByText('Submit')).toBeInTheDocument());
-    await act(async () => { fireEvent.click(screen.getByText('Submit')); });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Start Challenge' })).toBeInTheDocument());
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Start Challenge' })); });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Submit' })).toBeInTheDocument());
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Submit' })); });
     await waitFor(() => expect(screen.getByText('Challenge Passed!')).toBeInTheDocument());
-    fireEvent.click(screen.getByText('X / Twitter'));
+    fireEvent.click(screen.getByRole('button', { name: 'X / Twitter' }));
     expect(openSpy).toHaveBeenCalledWith(expect.stringContaining('twitter.com'), '_blank', expect.any(String));
     openSpy.mockRestore();
   });
@@ -788,10 +788,10 @@ describe('ArenaScreen', () => {
     });
 
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
-    await act(async () => { fireEvent.click(screen.getByText('Start Challenge')); });
-    await waitFor(() => expect(screen.getByText('Submit')).toBeInTheDocument());
-    await act(async () => { fireEvent.click(screen.getByText('Submit')); });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Start Challenge' })).toBeInTheDocument());
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Start Challenge' })); });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Submit' })).toBeInTheDocument());
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Submit' })); });
     await waitFor(() => {
       const results = screen.queryByTestId('ide-results');
       expect(results).toBeTruthy();
@@ -806,7 +806,7 @@ describe('ArenaScreen', () => {
     // onRunTests check: if (!attempt?.id) return ...
     // This is implicitly tested since ArenaIDE isn't rendered until attempt exists
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Start Challenge' })).toBeInTheDocument());
     // No IDE rendered yet, so no tests to run
     expect(screen.queryByTestId('arena-ide')).toBeNull();
   });
@@ -815,8 +815,8 @@ describe('ArenaScreen', () => {
 
   it('onRestart resets to pre-attempt screen', async () => {
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
-    await act(async () => { fireEvent.click(screen.getByText('Start Challenge')); });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Start Challenge' })).toBeInTheDocument());
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Start Challenge' })); });
     await waitFor(() => expect(screen.getByTestId('arena-ide')).toBeInTheDocument());
     // Click restart in the mock IDE
     await act(async () => {
@@ -824,7 +824,7 @@ describe('ArenaScreen', () => {
     });
     // Should be back to pre-attempt screen
     await waitFor(() => {
-      expect(screen.getByText('Start Challenge')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Start Challenge' })).toBeInTheDocument();
     });
   });
 
@@ -850,8 +850,8 @@ describe('ArenaScreen', () => {
     });
 
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
-    await act(async () => { fireEvent.click(screen.getByText('Start Challenge')); });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Start Challenge' })).toBeInTheDocument());
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Start Challenge' })); });
     await waitFor(() => {
       expect(screen.getByTestId('arena-ide')).toBeInTheDocument();
       // Timer should be visible — check for time format like "1:30" or "1:29"
@@ -880,8 +880,8 @@ describe('ArenaScreen', () => {
     });
 
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
-    await act(async () => { fireEvent.click(screen.getByText('Start Challenge')); });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Start Challenge' })).toBeInTheDocument());
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Start Challenge' })); });
     await waitFor(() => {
       expect(screen.getByTestId('arena-ide')).toBeInTheDocument();
     });
@@ -895,8 +895,8 @@ describe('ArenaScreen', () => {
 
   it('shows budget progress bar with "no limit" when maxCost is null', async () => {
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
-    await act(async () => { fireEvent.click(screen.getByText('Start Challenge')); });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Start Challenge' })).toBeInTheDocument());
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Start Challenge' })); });
     await waitFor(() => {
       expect(screen.getByText('no limit')).toBeInTheDocument();
     });
@@ -905,8 +905,8 @@ describe('ArenaScreen', () => {
   it('shows budget progress bar with limits when maxCost is set', async () => {
     globalThis.fetch = mockFetchForChallenge({ ...challengeData, maxCost: 100000 });
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
-    await act(async () => { fireEvent.click(screen.getByText('Start Challenge')); });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Start Challenge' })).toBeInTheDocument());
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Start Challenge' })); });
     await waitFor(() => {
       expect(screen.getByTestId('arena-ide')).toBeInTheDocument();
     });
@@ -919,12 +919,12 @@ describe('ArenaScreen', () => {
   it('renders mobile header when isMobile is true', async () => {
     isMobileReturn = true;
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
-    await act(async () => { fireEvent.click(screen.getByText('Start Challenge')); });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Start Challenge' })).toBeInTheDocument());
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Start Challenge' })); });
     await waitFor(() => {
       // Mobile header has Run and Submit buttons with shorter text
-      expect(screen.getByText('Run')).toBeInTheDocument();
-      expect(screen.getByText('Submit')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Run' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Submit' })).toBeInTheDocument();
     });
   });
 
@@ -991,16 +991,16 @@ describe('ArenaScreen', () => {
 
   it('onRunCode calls /api/execute with correct language mapping', async () => {
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
-    await act(async () => { fireEvent.click(screen.getByText('Start Challenge')); });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Start Challenge' })).toBeInTheDocument());
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Start Challenge' })); });
     await waitFor(() => expect(screen.getByTestId('arena-ide')).toBeInTheDocument());
     // The onRunCode callback is passed to ArenaIDE; it's tested via the ArenaIDE mock
   });
 
   it('onRunCode calls /api/execute and returns stdout/stderr/exitCode', async () => {
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
-    await act(async () => { fireEvent.click(screen.getByText('Start Challenge')); });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Start Challenge' })).toBeInTheDocument());
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Start Challenge' })); });
     await waitFor(() => expect(screen.getByTestId('arena-ide')).toBeInTheDocument());
 
     // capturedOnRunCode was captured from the ArenaIDE mock
@@ -1017,8 +1017,8 @@ describe('ArenaScreen', () => {
 
   it('onRunCode falls back to javascript for unknown language', async () => {
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
-    await act(async () => { fireEvent.click(screen.getByText('Start Challenge')); });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Start Challenge' })).toBeInTheDocument());
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Start Challenge' })); });
     await waitFor(() => expect(screen.getByTestId('arena-ide')).toBeInTheDocument());
 
     expect(capturedOnRunCode).not.toBeNull();
@@ -1054,8 +1054,8 @@ describe('ArenaScreen', () => {
     });
 
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
-    await act(async () => { fireEvent.click(screen.getByText('Start Challenge')); });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Start Challenge' })).toBeInTheDocument());
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Start Challenge' })); });
     await waitFor(() => expect(screen.getByTestId('arena-ide')).toBeInTheDocument());
 
     expect(capturedOnRunCode).not.toBeNull();
@@ -1085,11 +1085,11 @@ describe('ArenaScreen', () => {
 
   it('onDismissResults clears test results', async () => {
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
-    await act(async () => { fireEvent.click(screen.getByText('Start Challenge')); });
-    await waitFor(() => expect(screen.getByText('Run Tests')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Start Challenge' })).toBeInTheDocument());
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Start Challenge' })); });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Run Tests' })).toBeInTheDocument());
     // Run tests first to get results
-    await act(async () => { fireEvent.click(screen.getByText('Run Tests')); });
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Run Tests' })); });
     await waitFor(() => expect(screen.getByTestId('ide-results')).toBeInTheDocument());
     // Dismiss results
     await act(async () => { fireEvent.click(screen.getByTestId('ide-dismiss')); });
@@ -1102,8 +1102,8 @@ describe('ArenaScreen', () => {
 
   it('onAttemptUpdate updates attempt state', async () => {
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
-    await act(async () => { fireEvent.click(screen.getByText('Start Challenge')); });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Start Challenge' })).toBeInTheDocument());
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Start Challenge' })); });
     await waitFor(() => expect(screen.getByTestId('arena-ide')).toBeInTheDocument());
     await act(async () => {
       fireEvent.click(screen.getByTestId('ide-update-attempt'));
@@ -1116,13 +1116,13 @@ describe('ArenaScreen', () => {
 
   it('See How #1 button navigates to top solver replay', async () => {
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
-    await act(async () => { fireEvent.click(screen.getByText('Start Challenge')); });
-    await waitFor(() => expect(screen.getByText('Submit')).toBeInTheDocument());
-    await act(async () => { fireEvent.click(screen.getByText('Submit')); });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Start Challenge' })).toBeInTheDocument());
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Start Challenge' })); });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Submit' })).toBeInTheDocument());
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Submit' })); });
     await waitFor(() => expect(screen.getByText('Challenge Passed!')).toBeInTheDocument());
     await act(async () => {
-      fireEvent.click(screen.getByText('See How #1 Solved This'));
+      fireEvent.click(screen.getByRole('button', { name: 'See How #1 Solved This' }));
     });
     await waitFor(() => {
       expect(mockNavigate).toHaveBeenCalledWith('Replay', expect.objectContaining({ attemptId: 'att-1' }));
@@ -1140,13 +1140,13 @@ describe('ArenaScreen', () => {
     });
 
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
-    await act(async () => { fireEvent.click(screen.getByText('Start Challenge')); });
-    await waitFor(() => expect(screen.getByText('Submit')).toBeInTheDocument());
-    await act(async () => { fireEvent.click(screen.getByText('Submit')); });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Start Challenge' })).toBeInTheDocument());
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Start Challenge' })); });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Submit' })).toBeInTheDocument());
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Submit' })); });
     await waitFor(() => expect(screen.getByText('Challenge Passed!')).toBeInTheDocument());
     await act(async () => {
-      fireEvent.click(screen.getByText('See How #1 Solved This'));
+      fireEvent.click(screen.getByRole('button', { name: 'See How #1 Solved This' }));
     });
     await waitFor(() => {
       expect(mockShowToast).toHaveBeenCalledWith('Could not load leaderboard', 'error');
@@ -1157,10 +1157,10 @@ describe('ArenaScreen', () => {
 
   it('Up Next link appears after successful submission', async () => {
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
-    await act(async () => { fireEvent.click(screen.getByText('Start Challenge')); });
-    await waitFor(() => expect(screen.getByText('Submit')).toBeInTheDocument());
-    await act(async () => { fireEvent.click(screen.getByText('Submit')); });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Start Challenge' })).toBeInTheDocument());
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Start Challenge' })); });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Submit' })).toBeInTheDocument());
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Submit' })); });
     await waitFor(() => {
       expect(screen.getByText('Up Next')).toBeInTheDocument();
     });
@@ -1194,8 +1194,8 @@ describe('ArenaScreen', () => {
 
   it('onExpire callback marks screen as expired', async () => {
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
-    await act(async () => { fireEvent.click(screen.getByText('Start Challenge')); });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Start Challenge' })).toBeInTheDocument());
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Start Challenge' })); });
     await waitFor(() => expect(screen.getByTestId('arena-ide')).toBeInTheDocument());
     // Trigger expire through mock IDE
     await act(async () => {
@@ -1210,8 +1210,8 @@ describe('ArenaScreen', () => {
 
   it('desktop header back button navigates to Problems', async () => {
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
-    await act(async () => { fireEvent.click(screen.getByText('Start Challenge')); });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Start Challenge' })).toBeInTheDocument());
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Start Challenge' })); });
     await waitFor(() => expect(screen.getByTestId('arena-ide')).toBeInTheDocument());
     // Find the "← Back" button in the desktop header
     const backBtn = screen.getByText(/Back$/);
@@ -1243,10 +1243,10 @@ describe('ArenaScreen', () => {
     });
 
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
-    await act(async () => { fireEvent.click(screen.getByText('Start Challenge')); });
-    await waitFor(() => expect(screen.getByText('Submit')).toBeInTheDocument());
-    await act(async () => { fireEvent.click(screen.getByText('Submit')); });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Start Challenge' })).toBeInTheDocument());
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Start Challenge' })); });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Submit' })).toBeInTheDocument());
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Submit' })); });
     await waitFor(() => {
       const results = screen.queryByTestId('ide-results');
       expect(results).toBeTruthy();
@@ -1286,10 +1286,10 @@ describe('ArenaScreen', () => {
     });
 
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
-    await act(async () => { fireEvent.click(screen.getByText('Start Challenge')); });
-    await waitFor(() => expect(screen.getByText('Submit')).toBeInTheDocument());
-    await act(async () => { fireEvent.click(screen.getByText('Submit')); });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Start Challenge' })).toBeInTheDocument());
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Start Challenge' })); });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Submit' })).toBeInTheDocument());
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Submit' })); });
     // Submit completes — attempt state updated with new attempt data
     await waitFor(() => expect(screen.queryByTestId('ide-results')).toBeInTheDocument());
   });
@@ -1302,8 +1302,8 @@ describe('ArenaScreen', () => {
     // We cannot call the prop directly from the mock — but we verify
     // that the fetch mock for /api/execute is properly set up.
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
-    await act(async () => { fireEvent.click(screen.getByText('Start Challenge')); });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Start Challenge' })).toBeInTheDocument());
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Start Challenge' })); });
     await waitFor(() => expect(screen.getByTestId('arena-ide')).toBeInTheDocument());
     // The IDE is rendered — onRunCode is passed as a prop
   });
@@ -1355,10 +1355,10 @@ describe('ArenaScreen', () => {
     });
 
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
-    await act(async () => { fireEvent.click(screen.getByText('Start Challenge')); });
-    await waitFor(() => expect(screen.getByText('Submit')).toBeInTheDocument());
-    await act(async () => { fireEvent.click(screen.getByText('Submit')); });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Start Challenge' })).toBeInTheDocument());
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Start Challenge' })); });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Submit' })).toBeInTheDocument());
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Submit' })); });
     await waitFor(() => expect(screen.getByText('Challenge Passed!')).toBeInTheDocument());
     // The "Up Next" link should point to the closest difficulty in same category
     // hard (idx 3) has dist 1, easy (idx 1) has dist 1+5=6, so hard-one wins
@@ -1417,10 +1417,10 @@ describe('ArenaScreen', () => {
     });
 
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
-    await act(async () => { fireEvent.click(screen.getByText('Start Challenge')); });
-    await waitFor(() => expect(screen.getByText('Submit')).toBeInTheDocument());
-    await act(async () => { fireEvent.click(screen.getByText('Submit')); });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Start Challenge' })).toBeInTheDocument());
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Start Challenge' })); });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Submit' })).toBeInTheDocument());
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Submit' })); });
     await waitFor(() => expect(screen.getByText('Challenge Passed!')).toBeInTheDocument());
 
     // nextChallenge should be null, so link href falls back to /challenges
@@ -1475,10 +1475,10 @@ describe('ArenaScreen', () => {
     (window as any).location = { ...originalLocation, href: 'http://localhost/' };
 
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
-    await act(async () => { fireEvent.click(screen.getByText('Start Challenge')); });
-    await waitFor(() => expect(screen.getByText('Submit')).toBeInTheDocument());
-    await act(async () => { fireEvent.click(screen.getByText('Submit')); });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Start Challenge' })).toBeInTheDocument());
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Start Challenge' })); });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Submit' })).toBeInTheDocument());
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Submit' })); });
     await waitFor(() => expect(screen.getByText('Challenge Passed!')).toBeInTheDocument());
 
     const tryNextLink = screen.getByText('Up Next');
@@ -1497,13 +1497,13 @@ describe('ArenaScreen', () => {
 
   it('View Your Replay button navigates to Replay screen', async () => {
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
-    await act(async () => { fireEvent.click(screen.getByText('Start Challenge')); });
-    await waitFor(() => expect(screen.getByText('Submit')).toBeInTheDocument());
-    await act(async () => { fireEvent.click(screen.getByText('Submit')); });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Start Challenge' })).toBeInTheDocument());
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Start Challenge' })); });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Submit' })).toBeInTheDocument());
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Submit' })); });
     await waitFor(() => expect(screen.getByText('Challenge Passed!')).toBeInTheDocument());
     await act(async () => {
-      fireEvent.click(screen.getByText('View Your Replay'));
+      fireEvent.click(screen.getByRole('button', { name: 'View Your Replay' }));
     });
     expect(mockNavigate).toHaveBeenCalledWith('Replay', expect.objectContaining({ attemptId: 'att-1' }));
   });
@@ -1512,10 +1512,10 @@ describe('ArenaScreen', () => {
 
   it('Back to Problems in success overlay navigates away', async () => {
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
-    await act(async () => { fireEvent.click(screen.getByText('Start Challenge')); });
-    await waitFor(() => expect(screen.getByText('Submit')).toBeInTheDocument());
-    await act(async () => { fireEvent.click(screen.getByText('Submit')); });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Start Challenge' })).toBeInTheDocument());
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Start Challenge' })); });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Submit' })).toBeInTheDocument());
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Submit' })); });
     await waitFor(() => expect(screen.getByText('Challenge Passed!')).toBeInTheDocument());
     // There are multiple "Back to Problems" buttons, find the one in the overlay
     const btcButtons = screen.getAllByText('Back to Problems');
@@ -1529,19 +1529,19 @@ describe('ArenaScreen', () => {
   it('Copy Link button copies share URL to clipboard', async () => {
     Object.assign(navigator, { clipboard: { writeText: vi.fn().mockResolvedValue(undefined) } });
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
-    await act(async () => { fireEvent.click(screen.getByText('Start Challenge')); });
-    await waitFor(() => expect(screen.getByText('Submit')).toBeInTheDocument());
-    await act(async () => { fireEvent.click(screen.getByText('Submit')); });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Start Challenge' })).toBeInTheDocument());
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Start Challenge' })); });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Submit' })).toBeInTheDocument());
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Submit' })); });
     await waitFor(() => expect(screen.getByText('Challenge Passed!')).toBeInTheDocument());
     await act(async () => {
-      fireEvent.click(screen.getByText('Copy Link'));
+      fireEvent.click(screen.getByRole('button', { name: 'Copy Link' }));
     });
     await waitFor(() => {
       expect(navigator.clipboard.writeText).toHaveBeenCalledWith(expect.stringContaining('/share/att-1'));
     });
     await waitFor(() => {
-      expect(screen.getByText('Copied!')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Copied!' })).toBeInTheDocument();
     });
   });
 
@@ -1550,9 +1550,9 @@ describe('ArenaScreen', () => {
   it('mobile header back arrow navigates to Problems', async () => {
     isMobileReturn = true;
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
-    await act(async () => { fireEvent.click(screen.getByText('Start Challenge')); });
-    await waitFor(() => expect(screen.getByText('Run')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Start Challenge' })).toBeInTheDocument());
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Start Challenge' })); });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Run' })).toBeInTheDocument());
     // Find the left-arrow button (←) in mobile header
     const arrowButton = screen.getByText('←');
     fireEvent.click(arrowButton);
@@ -1568,11 +1568,11 @@ describe('ArenaScreen', () => {
       testCases: 'INVALID JSON',
     });
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
-    await act(async () => { fireEvent.click(screen.getByText('Start Challenge')); });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Start Challenge' })).toBeInTheDocument());
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Start Challenge' })); });
     // When JSON.parse fails, it catches and falls back to 'Run Tests'
     await waitFor(() => {
-      expect(screen.getByText('Run Tests')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Run Tests' })).toBeInTheDocument();
     });
   });
 
@@ -1583,11 +1583,11 @@ describe('ArenaScreen', () => {
       testCases: 'INVALID JSON',
     });
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
-    await act(async () => { fireEvent.click(screen.getByText('Start Challenge')); });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Start Challenge' })).toBeInTheDocument());
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Start Challenge' })); });
     // When JSON.parse fails, it catches and falls back to 'Submit'
     await waitFor(() => {
-      expect(screen.getByText('Submit')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Submit' })).toBeInTheDocument();
     });
   });
 
@@ -1657,13 +1657,13 @@ describe('ArenaScreen', () => {
     });
 
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
-    await act(async () => { fireEvent.click(screen.getByText('Start Challenge')); });
-    await waitFor(() => expect(screen.getByText('Submit')).toBeInTheDocument());
-    await act(async () => { fireEvent.click(screen.getByText('Submit')); });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Start Challenge' })).toBeInTheDocument());
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Start Challenge' })); });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Submit' })).toBeInTheDocument());
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Submit' })); });
     await waitFor(() => expect(screen.getByText('Challenge Passed!')).toBeInTheDocument());
     await act(async () => {
-      fireEvent.click(screen.getByText('See How #1 Solved This'));
+      fireEvent.click(screen.getByRole('button', { name: 'See How #1 Solved This' }));
     });
     // With empty entries, it falls through — navigatingRef reset, overlay closed
     await waitFor(() => {
@@ -1696,10 +1696,10 @@ describe('ArenaScreen', () => {
     });
 
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
-    await act(async () => { fireEvent.click(screen.getByText('Start Challenge')); });
-    await waitFor(() => expect(screen.getByText('Submit')).toBeInTheDocument());
-    await act(async () => { fireEvent.click(screen.getByText('Submit')); });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Start Challenge' })).toBeInTheDocument());
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Start Challenge' })); });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Submit' })).toBeInTheDocument());
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Submit' })); });
     await waitFor(() => {
       const results = screen.queryByTestId('ide-results');
       expect(results).toBeTruthy();
@@ -1738,14 +1738,14 @@ describe('ArenaScreen', () => {
     });
 
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
-    await act(async () => { fireEvent.click(screen.getByText('Start Challenge')); });
-    await waitFor(() => expect(screen.getByText('Submit')).toBeInTheDocument());
-    await act(async () => { fireEvent.click(screen.getByText('Submit')); });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Start Challenge' })).toBeInTheDocument());
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Start Challenge' })); });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Submit' })).toBeInTheDocument());
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Submit' })); });
     await waitFor(() => expect(screen.getByText('Challenge Passed!')).toBeInTheDocument());
 
     // Click "See How #1 Solved This" — leaderboard returns non-ok
-    await act(async () => { fireEvent.click(screen.getByText('See How #1 Solved This')); });
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'See How #1 Solved This' })); });
     // Should dismiss overlay without navigating to Replay
     await waitFor(() => expect(screen.queryByText('Challenge Passed!')).toBeNull());
     expect(mockNavigate).not.toHaveBeenCalledWith('Replay', expect.anything());
@@ -1783,13 +1783,13 @@ describe('ArenaScreen', () => {
     });
 
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
-    await act(async () => { fireEvent.click(screen.getByText('Start Challenge')); });
-    await waitFor(() => expect(screen.getByText('Submit')).toBeInTheDocument());
-    await act(async () => { fireEvent.click(screen.getByText('Submit')); });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Start Challenge' })).toBeInTheDocument());
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Start Challenge' })); });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Submit' })).toBeInTheDocument());
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Submit' })); });
     await waitFor(() => expect(screen.getByText('Challenge Passed!')).toBeInTheDocument());
 
-    await act(async () => { fireEvent.click(screen.getByText('See How #1 Solved This')); });
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'See How #1 Solved This' })); });
     await waitFor(() => expect(screen.queryByText('Challenge Passed!')).toBeNull());
     expect(mockNavigate).not.toHaveBeenCalledWith('Replay', expect.anything());
   });
@@ -1828,13 +1828,13 @@ describe('ArenaScreen', () => {
     });
 
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
-    await act(async () => { fireEvent.click(screen.getByText('Start Challenge')); });
-    await waitFor(() => expect(screen.getByText('Submit')).toBeInTheDocument());
-    await act(async () => { fireEvent.click(screen.getByText('Submit')); });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Start Challenge' })).toBeInTheDocument());
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Start Challenge' })); });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Submit' })).toBeInTheDocument());
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Submit' })); });
     await waitFor(() => expect(screen.getByText('Challenge Passed!')).toBeInTheDocument());
 
-    await act(async () => { fireEvent.click(screen.getByText('See How #1 Solved This')); });
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'See How #1 Solved This' })); });
     await waitFor(() => {
       expect(mockShowToast).toHaveBeenCalledWith('Could not load leaderboard', 'error');
     });
@@ -1847,13 +1847,13 @@ describe('ArenaScreen', () => {
     globalThis.fetch = mockFetchForChallenge(malformedChallenge);
 
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
-    await act(async () => { fireEvent.click(screen.getByText('Start Challenge')); });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Start Challenge' })).toBeInTheDocument());
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Start Challenge' })); });
     await waitFor(() => {
       // Should show plain "Run Tests" (not "Run Tests (X public)")
-      expect(screen.getByText('Run Tests')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Run Tests' })).toBeInTheDocument();
       // And "Submit" (not "Submit (X tests)")
-      expect(screen.getByText('Submit')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Submit' })).toBeInTheDocument();
     });
   });
 
@@ -1879,12 +1879,12 @@ describe('ArenaScreen', () => {
     });
 
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
-    await act(async () => { fireEvent.click(screen.getByText('Start Challenge')); });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Start Challenge' })).toBeInTheDocument());
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Start Challenge' })); });
     // Should render the budget progress bar with over-budget state
     await waitFor(() => {
-      expect(screen.getByText('Run Tests')).toBeInTheDocument();
-      expect(screen.getByText('Submit')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Run Tests' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Submit' })).toBeInTheDocument();
     });
   });
 
@@ -1912,8 +1912,8 @@ describe('ArenaScreen', () => {
     });
 
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
-    await act(async () => { fireEvent.click(screen.getByText('Start Challenge')); });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Start Challenge' })).toBeInTheDocument());
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Start Challenge' })); });
     // Timer should be rendered (0:25 or similar)
     await waitFor(() => {
       expect(screen.getByText(/0:\d{2}/)).toBeInTheDocument();
@@ -1942,8 +1942,8 @@ describe('ArenaScreen', () => {
     });
 
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
-    await act(async () => { fireEvent.click(screen.getByText('Start Challenge')); });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Start Challenge' })).toBeInTheDocument());
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Start Challenge' })); });
     await waitFor(() => {
       expect(screen.getByText(/1:\d{2}/)).toBeInTheDocument();
     });
@@ -1992,10 +1992,10 @@ describe('ArenaScreen', () => {
     });
 
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
-    await act(async () => { fireEvent.click(screen.getByText('Start Challenge')); });
-    await waitFor(() => expect(screen.getByText('Submit')).toBeInTheDocument());
-    await act(async () => { fireEvent.click(screen.getByText('Submit')); });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Start Challenge' })).toBeInTheDocument());
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Start Challenge' })); });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Submit' })).toBeInTheDocument());
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Submit' })); });
     await waitFor(() => expect(screen.getByText('Challenge Passed!')).toBeInTheDocument());
 
     // Cross-category fallback: should recommend other-1 from debugging category
@@ -2036,10 +2036,10 @@ describe('ArenaScreen', () => {
     });
 
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
-    await act(async () => { fireEvent.click(screen.getByText('Start Challenge')); });
-    await waitFor(() => expect(screen.getByText('Submit')).toBeInTheDocument());
-    await act(async () => { fireEvent.click(screen.getByText('Submit')); });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Start Challenge' })).toBeInTheDocument());
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Start Challenge' })); });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Submit' })).toBeInTheDocument());
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Submit' })); });
     await waitFor(() => expect(screen.getByText('Challenge Passed!')).toBeInTheDocument());
 
     // "Top Solver" label should not appear when topCost is null
@@ -2052,10 +2052,10 @@ describe('ArenaScreen', () => {
 
   it('shows "Try Again" button in success overlay for personal attempts', async () => {
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
-    await act(async () => { fireEvent.click(screen.getByText('Start Challenge')); });
-    await waitFor(() => expect(screen.getByText('Submit')).toBeInTheDocument());
-    await act(async () => { fireEvent.click(screen.getByText('Submit')); });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Start Challenge' })).toBeInTheDocument());
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Start Challenge' })); });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Submit' })).toBeInTheDocument());
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Submit' })); });
     await waitFor(() => {
       expect(screen.getByText('Challenge Passed!')).toBeInTheDocument();
     });
@@ -2098,10 +2098,10 @@ describe('ArenaScreen', () => {
     globalThis.fetch = fetchMock;
 
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
-    await act(async () => { fireEvent.click(screen.getByText('Start Challenge')); });
-    await waitFor(() => expect(screen.getByText('Submit')).toBeInTheDocument());
-    await act(async () => { fireEvent.click(screen.getByText('Submit')); });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Start Challenge' })).toBeInTheDocument());
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Start Challenge' })); });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Submit' })).toBeInTheDocument());
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Submit' })); });
     await waitFor(() => {
       expect(screen.getByText('Challenge Passed!')).toBeInTheDocument();
     });
@@ -2132,8 +2132,8 @@ describe('ArenaScreen', () => {
     globalThis.fetch = fetchMock;
 
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
-    await act(async () => { fireEvent.click(screen.getByText('Start Challenge')); });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Start Challenge' })).toBeInTheDocument());
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Start Challenge' })); });
     await waitFor(() => expect(screen.getByTestId('arena-ide')).toBeInTheDocument());
     // ArenaIDE mock renders a "Restart" button only if onRestart is passed
     expect(screen.queryByTestId('ide-restart')).toBeNull();
@@ -2141,10 +2141,10 @@ describe('ArenaScreen', () => {
 
   it('"Try Again" button resets state and returns to pre-attempt screen', async () => {
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
-    await act(async () => { fireEvent.click(screen.getByText('Start Challenge')); });
-    await waitFor(() => expect(screen.getByText('Submit')).toBeInTheDocument());
-    await act(async () => { fireEvent.click(screen.getByText('Submit')); });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Start Challenge' })).toBeInTheDocument());
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Start Challenge' })); });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Submit' })).toBeInTheDocument());
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Submit' })); });
     await waitFor(() => {
       expect(screen.getByText('Challenge Passed!')).toBeInTheDocument();
     });
@@ -2153,7 +2153,7 @@ describe('ArenaScreen', () => {
     // Should return to pre-attempt screen
     await waitFor(() => {
       expect(screen.queryByText('Challenge Passed!')).toBeNull();
-      expect(screen.getByText('Start Challenge')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Start Challenge' })).toBeInTheDocument();
     });
   });
 
@@ -2295,10 +2295,10 @@ describe('ArenaScreen', () => {
     });
 
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
-    await act(async () => { fireEvent.click(screen.getByText('Start Challenge')); });
-    await waitFor(() => expect(screen.getByText('Submit')).toBeInTheDocument());
-    await act(async () => { fireEvent.click(screen.getByText('Submit')); });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Start Challenge' })).toBeInTheDocument());
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Start Challenge' })); });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Submit' })).toBeInTheDocument());
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Submit' })); });
     await waitFor(() => expect(screen.getByText('Challenge Passed!')).toBeInTheDocument());
 
     const link = screen.getByText('Up Next');
@@ -2340,10 +2340,10 @@ describe('ArenaScreen', () => {
     });
 
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
-    await act(async () => { fireEvent.click(screen.getByText('Start Challenge')); });
-    await waitFor(() => expect(screen.getByText('Submit')).toBeInTheDocument());
-    await act(async () => { fireEvent.click(screen.getByText('Submit')); });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Start Challenge' })).toBeInTheDocument());
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Start Challenge' })); });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Submit' })).toBeInTheDocument());
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Submit' })); });
     await waitFor(() => expect(screen.getByText('Challenge Passed!')).toBeInTheDocument());
 
     const link = screen.getByText('Up Next');
@@ -2385,10 +2385,10 @@ describe('ArenaScreen', () => {
     });
 
     render(<ArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Start Challenge')).toBeInTheDocument());
-    await act(async () => { fireEvent.click(screen.getByText('Start Challenge')); });
-    await waitFor(() => expect(screen.getByText('Submit')).toBeInTheDocument());
-    await act(async () => { fireEvent.click(screen.getByText('Submit')); });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Start Challenge' })).toBeInTheDocument());
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Start Challenge' })); });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Submit' })).toBeInTheDocument());
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Submit' })); });
     await waitFor(() => expect(screen.getByText('Challenge Passed!')).toBeInTheDocument());
 
     await waitFor(() => {

@@ -259,13 +259,13 @@ describe('LandingScreen', () => {
 
   it('navigates to Problems when Browse Challenges is clicked', () => {
     render(<LandingScreen />);
-    fireEvent.click(screen.getByText('Browse Challenges'));
+    fireEvent.click(screen.getByRole('button', { name: 'Browse Challenges' }));
     expect(mockNavigate).toHaveBeenCalledWith('Problems');
   });
 
   it('navigates to Hiring when Benchmark Your Team is clicked in teams section', () => {
     render(<LandingScreen />);
-    fireEvent.click(screen.getByText('Assess Candidates'));
+    fireEvent.click(screen.getByRole('button', { name: 'Assess Candidates' }));
     expect(mockNavigate).toHaveBeenCalledWith('Hiring');
   });
 

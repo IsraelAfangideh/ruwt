@@ -53,7 +53,7 @@ describe('DashboardNav', () => {
 
   it('renders base nav items for individual accounts in practice mode', () => {
     render(<DashboardNav />);
-    expect(screen.getByText('Problems')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Problems' })).toBeInTheDocument();
     expect(screen.getByText('Discuss')).toBeInTheDocument();
     expect(screen.getByText('Leaderboard')).toBeInTheDocument();
     expect(screen.queryByText('My Profile')).toBeNull(); // Moved to profile menu
@@ -67,7 +67,7 @@ describe('DashboardNav', () => {
     render(<DashboardNav />);
     expect(screen.queryByText('Your Team')).toBeNull(); // No team link in practice mode
     expect(screen.queryByText('Hiring')).toBeNull(); // No accent CTA when already in org
-    expect(screen.getByText('Problems')).toBeInTheDocument(); // Still shows practice items
+    expect(screen.getByRole('button', { name: 'Problems' })).toBeInTheDocument(); // Still shows practice items
   });
 
   it('shows hiring nav items when in hiring mode', () => {
@@ -89,21 +89,21 @@ describe('DashboardNav', () => {
   it('shows base practice items while loading', () => {
     mockAppMode = { ...mockAppMode, profileLoading: true };
     render(<DashboardNav />);
-    expect(screen.getByText('Problems')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Problems' })).toBeInTheDocument();
     expect(screen.queryByText('Assessments')).toBeNull();
     expect(screen.queryByText('Hiring')).toBeNull();
   });
 
   it('navigates when a nav item is clicked', () => {
     render(<DashboardNav />);
-    fireEvent.click(screen.getByText('Problems'));
+    fireEvent.click(screen.getByRole('button', { name: 'Problems' }));
     expect(mockNavigate).toHaveBeenCalledWith('Problems');
   });
 
   it('falls back to practice nav if hiring mode but cannot access', () => {
     mockAppMode = { ...mockAppMode, mode: 'hiring', canAccessHiringMode: false };
     render(<DashboardNav />);
-    expect(screen.getByText('Problems')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Problems' })).toBeInTheDocument();
     expect(screen.getByText('Hiring')).toBeInTheDocument(); // Falls back to individual practice
     expect(screen.queryByText('Org Settings')).toBeNull();
   });

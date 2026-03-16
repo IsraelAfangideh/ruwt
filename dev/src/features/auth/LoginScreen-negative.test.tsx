@@ -141,7 +141,7 @@ describe('LoginScreen — negative paths', () => {
   it('shows error when OAuth provider is unavailable', async () => {
     mockSignInWithOAuth.mockResolvedValue({ error: { message: 'Provider temporarily unavailable' } });
     render(<LoginScreen />);
-    await act(async () => { fireEvent.click(screen.getByText('Continue with GitHub')); });
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Continue with GitHub' })); });
     await waitFor(() => {
       expect(screen.getAllByText('Provider temporarily unavailable').length).toBeGreaterThanOrEqual(1);
     });

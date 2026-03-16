@@ -104,7 +104,7 @@ describe('OrgJoinScreen', () => {
     });
 
     await act(async () => {
-      fireEvent.click(screen.getByText('Accept Invitation'));
+      fireEvent.click(screen.getByRole('button', { name: 'Accept Invitation' }));
     });
 
     await waitFor(() => {
@@ -122,7 +122,7 @@ describe('OrgJoinScreen', () => {
     });
 
     await act(async () => {
-      fireEvent.click(screen.getByText('Accept Invitation'));
+      fireEvent.click(screen.getByRole('button', { name: 'Accept Invitation' }));
     });
 
     expect(screen.getAllByText('Joining...').length).toBeGreaterThanOrEqual(1);
@@ -142,7 +142,7 @@ describe('OrgJoinScreen', () => {
     });
 
     await act(async () => {
-      fireEvent.click(screen.getByText('Accept Invitation'));
+      fireEvent.click(screen.getByRole('button', { name: 'Accept Invitation' }));
     });
 
     await waitFor(() => {
@@ -163,7 +163,7 @@ describe('OrgJoinScreen', () => {
     });
 
     await act(async () => {
-      fireEvent.click(screen.getByText('Accept Invitation'));
+      fireEvent.click(screen.getByRole('button', { name: 'Accept Invitation' }));
     });
 
     await waitFor(() => {
@@ -181,7 +181,7 @@ describe('OrgJoinScreen', () => {
     });
 
     await act(async () => {
-      fireEvent.click(screen.getByText('Accept Invitation'));
+      fireEvent.click(screen.getByRole('button', { name: 'Accept Invitation' }));
     });
 
     await waitFor(() => {
@@ -204,7 +204,7 @@ describe('OrgJoinScreen', () => {
     });
 
     await act(async () => {
-      fireEvent.click(screen.getByText('Accept Invitation'));
+      fireEvent.click(screen.getByRole('button', { name: 'Accept Invitation' }));
     });
 
     await waitFor(() => {

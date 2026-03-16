@@ -93,11 +93,11 @@ describe('ProfileScreen — negative paths', () => {
     render(<ProfileScreen />);
     await waitFor(() => expect(screen.getByText('Set username')).toBeInTheDocument());
     fireEvent.click(screen.getByText('Set username'));
-    await waitFor(() => expect(screen.getByText('Save')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Save' })).toBeInTheDocument());
 
     const input = document.querySelector('[data-testid="username-input"]') as HTMLInputElement;
     fireEvent.change(input, { target: { value: '<script>alert(1)</script>' } });
-    fireEvent.click(screen.getByText('Save'));
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 
     await waitFor(() => {
       expect(patchBody).not.toBeNull();
@@ -118,11 +118,11 @@ describe('ProfileScreen — negative paths', () => {
     render(<ProfileScreen />);
     await waitFor(() => expect(screen.getByText('Set username')).toBeInTheDocument());
     fireEvent.click(screen.getByText('Set username'));
-    await waitFor(() => expect(screen.getByText('Save')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Save' })).toBeInTheDocument());
 
     const input = document.querySelector('[data-testid="username-input"]') as HTMLInputElement;
     fireEvent.change(input, { target: { value: "'; DROP TABLE users; --" } });
-    fireEvent.click(screen.getByText('Save'));
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 
     await waitFor(() => {
       expect(patchBody).not.toBeNull();
@@ -140,11 +140,11 @@ describe('ProfileScreen — negative paths', () => {
     render(<ProfileScreen />);
     await waitFor(() => expect(screen.getByText('Set username')).toBeInTheDocument());
     fireEvent.click(screen.getByText('Set username'));
-    await waitFor(() => expect(screen.getByText('Save')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Save' })).toBeInTheDocument());
 
     const input = document.querySelector('[data-testid="username-input"]') as HTMLInputElement;
     fireEvent.change(input, { target: { value: 'newuser' } });
-    fireEvent.click(screen.getByText('Save'));
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 
     await waitFor(() => expect(screen.getByText('Network error')).toBeInTheDocument());
   });
@@ -162,12 +162,12 @@ describe('ProfileScreen — negative paths', () => {
     render(<ProfileScreen />);
     await waitFor(() => expect(screen.getByText('Set username')).toBeInTheDocument());
     fireEvent.click(screen.getByText('Set username'));
-    await waitFor(() => expect(screen.getByText('Save')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Save' })).toBeInTheDocument());
 
     const longUsername = 'a'.repeat(1000);
     const input = document.querySelector('[data-testid="username-input"]') as HTMLInputElement;
     fireEvent.change(input, { target: { value: longUsername } });
-    fireEvent.click(screen.getByText('Save'));
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 
     await waitFor(() => {
       expect(patchBody).not.toBeNull();

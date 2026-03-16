@@ -27,7 +27,7 @@ describe('TrialBanner', () => {
     expect(screen.getByText(/20 days remaining/)).toBeInTheDocument();
     expect(screen.getByText('0/1 assessments')).toBeInTheDocument();
     expect(screen.getByText('1/3 invites')).toBeInTheDocument();
-    expect(screen.getByText('Subscribe')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Subscribe' })).toBeInTheDocument();
   });
 
   it('renders singular "day" for 1 day remaining', () => {
@@ -59,7 +59,7 @@ describe('TrialBanner', () => {
   it('navigates to Teams on Subscribe click', () => {
     render(<TrialBanner trial={activeTrial} />);
 
-    fireEvent.click(screen.getByText('Subscribe'));
+    fireEvent.click(screen.getByRole('button', { name: 'Subscribe' }));
 
     expect(mockNavigate).toHaveBeenCalledWith('Hiring');
   });

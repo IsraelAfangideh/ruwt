@@ -102,7 +102,7 @@ describe('GuestArenaScreen', () => {
     await waitFor(() => {
       expect(screen.getAllByText('Challenge not found').length).toBeGreaterThanOrEqual(1);
     });
-    fireEvent.click(screen.getByText('Back to Home'));
+    fireEvent.click(screen.getByRole('button', { name: 'Back to Home' }));
     expect(mockNavigate).toHaveBeenCalledWith('Landing');
   });
 
@@ -147,16 +147,16 @@ describe('GuestArenaScreen', () => {
     await waitFor(() => {
       expect(screen.getAllByText('FizzBuzz Budget').length).toBeGreaterThanOrEqual(1);
     });
-    expect(screen.getByText('Run Tests')).toBeInTheDocument();
-    expect(screen.getByText('Submit')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Run Tests' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Submit' })).toBeInTheDocument();
   });
 
   it('shows signup overlay when Run Tests header button is clicked', async () => {
     render(<GuestArenaScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Run Tests')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Run Tests' })).toBeInTheDocument();
     });
-    fireEvent.click(screen.getByText('Run Tests'));
+    fireEvent.click(screen.getByRole('button', { name: 'Run Tests' }));
     await waitFor(() => {
       expect(screen.getByText('Sign Up to Continue')).toBeInTheDocument();
       expect(screen.getByText(/Create a free account/)).toBeInTheDocument();
@@ -166,9 +166,9 @@ describe('GuestArenaScreen', () => {
   it('shows signup overlay when Submit header button is clicked', async () => {
     render(<GuestArenaScreen />);
     await waitFor(() => {
-      expect(screen.getByText('Submit')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Submit' })).toBeInTheDocument();
     });
-    fireEvent.click(screen.getByText('Submit'));
+    fireEvent.click(screen.getByRole('button', { name: 'Submit' }));
     await waitFor(() => {
       expect(screen.getByText('Sign Up to Continue')).toBeInTheDocument();
     });
@@ -176,24 +176,24 @@ describe('GuestArenaScreen', () => {
 
   it('stores challengeId in localStorage when guest action is triggered', async () => {
     render(<GuestArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Run Tests')).toBeInTheDocument());
-    fireEvent.click(screen.getByText('Run Tests'));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Run Tests' })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: 'Run Tests' }));
     expect(localStorage.getItem('ruwt_pending_challenge')).toBe('fizzbuzz-budget');
   });
 
   it('navigates to Register when Sign Up Free is clicked in overlay', async () => {
     render(<GuestArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Run Tests')).toBeInTheDocument());
-    fireEvent.click(screen.getByText('Run Tests'));
-    await waitFor(() => expect(screen.getByText('Sign Up Free')).toBeInTheDocument());
-    fireEvent.click(screen.getByText('Sign Up Free'));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Run Tests' })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: 'Run Tests' }));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Sign Up Free' })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: 'Sign Up Free' }));
     expect(mockNavigate).toHaveBeenCalledWith('Register');
   });
 
   it('navigates to Login when Sign In is clicked in overlay', async () => {
     render(<GuestArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Run Tests')).toBeInTheDocument());
-    fireEvent.click(screen.getByText('Run Tests'));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Run Tests' })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: 'Run Tests' }));
     await waitFor(() => expect(screen.getByText(/Already have an account/)).toBeInTheDocument());
     fireEvent.click(screen.getByText(/Already have an account/));
     expect(mockNavigate).toHaveBeenCalledWith('Login');
@@ -201,10 +201,10 @@ describe('GuestArenaScreen', () => {
 
   it('dismisses signup overlay when Continue exploring is clicked', async () => {
     render(<GuestArenaScreen />);
-    await waitFor(() => expect(screen.getByText('Run Tests')).toBeInTheDocument());
-    fireEvent.click(screen.getByText('Run Tests'));
-    await waitFor(() => expect(screen.getByText('Continue exploring')).toBeInTheDocument());
-    fireEvent.click(screen.getByText('Continue exploring'));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Run Tests' })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: 'Run Tests' }));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Continue exploring' })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: 'Continue exploring' }));
     await waitFor(() => expect(screen.queryByText('Sign Up to Continue')).toBeNull());
   });
 
