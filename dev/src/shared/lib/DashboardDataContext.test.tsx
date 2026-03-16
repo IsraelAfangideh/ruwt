@@ -21,8 +21,6 @@ import {
   initialState,
   ENDPOINTS,
   MIN_REFETCH_INTERVAL,
-  type DashboardDataState,
-  type EndpointName,
 } from './DashboardDataContext';
 
 // ---------------------------------------------------------------------------

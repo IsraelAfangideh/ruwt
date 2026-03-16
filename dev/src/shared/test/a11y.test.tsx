@@ -21,7 +21,7 @@ vi.mock('react-native', () => ({
   Pressable: ({ children, onPress, accessibilityRole: _ar, style: _s, ...p }: any) => {
     return <button onClick={onPress} {...p}>{typeof children === 'function' ? children({ pressed: false }) : children}</button>;
   },
-  Image: ({ style: _s, accessibilityLabel, resizeMode: _r, source: _src, ...p }: any) => <img alt={accessibilityLabel || ''} />,
+  Image: ({ style: _s, accessibilityLabel, resizeMode: _r, source: _src }: any) => <img alt={accessibilityLabel || ''} />,
   ActivityIndicator: () => <div role="progressbar" aria-label="Loading" />,
   StyleSheet: {
     create: (s: any) => s,
