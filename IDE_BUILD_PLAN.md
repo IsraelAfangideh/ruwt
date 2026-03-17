@@ -150,7 +150,55 @@ What stayed in `arena/` (challenge-specific):
 
 ---
 
-### Step 7: Git integration (can be parallel with Step 6)
+### Step 6.5: Full Session Replay Telemetry ← NEXT
+
+**Branch:** `feat/ide-session-replay`
+
+**What:** Upgrade take-home telemetry from basic event logging to full session replay. This is the core value proposition — "everyone's doing vibe coding, we're the only platform that lets you see how."
+
+**The pitch:** Companies don't just get a summary. They get a timeline-scrubbing replay of everything the candidate did: every keystroke (via content snapshots), every AI prompt and response (full text), every terminal command, every file switch, every test run.
+
+**What to capture (expand existing telemetry):**
+
+| Event type | Data | Capture method |
+|---|---|---|
+| `content_snapshot` | `{ path, content, cursorLine }` | Every 5 seconds for active file (debounced) |
+| `ai_prompt` | `{ model, fullPrompt, timestamp }` | On each AI message send (full text, not preview) |
+| `ai_response` | `{ model, fullResponse, tokens, cost, timestamp }` | On each AI response complete |
+| `terminal_command` | `{ input, output, exitCode, timestamp }` | On each command completion in terminal |
+| `file_open` | `{ path, timestamp }` | On file tab open |
+| `file_close` | `{ path, timestamp }` | On file tab close |
+| `tab_switch` | `{ fromPath, toPath, timestamp }` | On tab change |
+| `test_run` | `{ command, passed, failed, output, timestamp }` | On test execution |
+| `focus_change` | `{ focused, timestamp }` | On window focus/blur (detect idle) |
+
+**Candidate disclosure:** Assessment landing page must clearly state: "This assessment records your coding activity including keystrokes, AI usage, terminal commands, and file changes. Your employer will be able to review a full replay of your session."
+
+**Tasks:**
+- [ ] D1 migration 0059: expand assessment_telemetry or create session_events table (high-volume, consider R2 for raw data)
+- [ ] Update TakeHomeScreen to record all event types above
+- [ ] Content snapshot: debounced 5-second interval for active file, store in R2 (not D1 — too much data)
+- [ ] Full AI conversation capture: store complete prompt + response text (not just preview)
+- [ ] Terminal command capture: hook into xterm output, parse command boundaries
+- [ ] Focus tracking: window focus/blur events
+- [ ] Candidate disclosure: add telemetry notice to assessment landing page
+- [ ] Session replay API: GET /api/assessments/:id/sessions/:sessionId/replay — returns ordered event stream
+- [ ] Session replay component: timeline scrubber, file state at any point, AI conversation sidebar
+- [ ] Company dashboard update: add "Watch Replay" button per candidate
+
+**Data storage strategy:**
+- High-frequency events (content snapshots, terminal output) → R2 as JSON blobs per session
+- Indexed events (AI calls, test runs, file opens) → D1 assessment_telemetry table (for querying/filtering)
+- Session replay loads both: R2 blob for raw timeline + D1 for structured events
+
+**Privacy/legal:**
+- Candidates must acknowledge recording before starting
+- Companies cannot share replay data outside their org
+- Candidates can request deletion of their session data (GDPR)
+
+---
+
+### Step 7: Git integration
 
 **Branch:** `feat/ide-git`
 

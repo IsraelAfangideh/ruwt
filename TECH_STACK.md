@@ -51,18 +51,27 @@ Nobody lets you bring your own API key. Nobody prices at cost. Nobody has an int
 
 ## Differentiators
 
-### 1. Take-Home Assessments with AI Telemetry
+### 1. Take-Home Assessments with Full Session Replay
 
-The primary differentiator and revenue driver. Companies already give take-home assignments. We give them telemetry they've never had:
+The primary differentiator and revenue driver. The pitch: "Everyone's doing vibe coding. We're the only platform that lets you see how."
 
-- Which AI models the candidate used
-- How many tokens they burned (and at what cost)
-- How long they actually spent
-- Their AI conversation history (optional)
-- An AFI score for the session
-- The actual code diff
+Companies don't just get a summary. They get a **full session replay** — a timeline-scrubbing view of everything the candidate did:
 
-No other assessment platform does this. HackerRank, Codility, CoderPad — they test coding ability, not AI fluency. And they use contrived puzzles, not the company's real codebase.
+- **Every keystroke** (content snapshots every 5 seconds per active file)
+- **Every AI prompt** (full text of what they asked, which model they chose)
+- **Every AI response** (full text of what the AI suggested)
+- **Every terminal command** (input + output + exit code)
+- **Every file switch** (which files they opened, when, in what order)
+- **Every test run** (pass/fail, which tests, output)
+- **Active vs idle time** (window focus tracking)
+- **AFI score** computed from the session
+- **Full code diff** (what changed from the original repo)
+
+The hiring manager can scrub through the timeline, see exactly when the candidate asked for help, what they asked, what the AI said, and what they did with it. This is 10x more valuable than a test score.
+
+No other assessment platform has this. HackerRank, Codility, CoderPad — they test coding ability with contrived puzzles. We test AI fluency on the company's real codebase with full observability.
+
+**Candidate disclosure:** Transparent, not hidden. Assessment landing page clearly states telemetry is recorded. Good candidates want to show off their process.
 
 The take-home model is also the acquisition engine: every candidate spends 4-8 hours in the IDE, and ~10% come back for personal use afterward.
 
@@ -667,11 +676,12 @@ Take-home assessments are the business. The IDE is the product and the acquisiti
 |--------|-------|--------|-------|
 | **IDE Free tier** | $0 | Loss leader | Browser Mode, OSS AI, 3 projects. Costs ~$0.01-0.05/user/month |
 | **IDE Pro tier** | $5/month | Low-medium | Cloud Mode, unlimited projects, BYOK, deploy, git push |
-| **Take-home Starter** | $200/month | ~90% | Up to 10 take-homes/month, AI telemetry, AFI scoring |
-| **Take-home Growth** | $500/month | ~90% | Up to 30 take-homes/month, custom branding, session replay |
-| **Take-home Enterprise** | $1,500+/month | ~90% | Unlimited, SSO, API access, dedicated support |
-| **Per-assessment (no plan)** | $75 per take-home | ~85% | Pay-as-you-go for occasional hiring |
-| **Challenge assessments** | $100-300/month per org | High | Existing: pre-built challenges, AFI reports |
+| **Take-home (monthly)** | $500/month | ~98% | Unlimited take-homes, full session replay, AI telemetry, AFI scoring |
+| **Take-home (pay-per-use)** | $75/take-home | ~95% | Same features, billed per assessment |
+| **Auto-billing** | whichever is less | | If $75 × take-homes < $500, charge per-use. Otherwise $500 flat. Customer never overpays. |
+| **Challenge assessments** | included | | Existing pre-built challenges included in company plan |
+
+**Pricing philosophy for companies:** One price. $500/month for everything, or $75/take-home if that's less. "We charge whichever costs you less." Zero friction. The company never has to pick a plan or worry about overages.
 
 ### Why take-home assessments are the core business
 
@@ -751,38 +761,39 @@ Assessment revenue drives the business. IDE revenue is secondary.
 | 1-5 | 0 | 0 | $0 | 27 | 0 | $0 | **$0** | ~$10 | **-$10** |
 | 6 | 0 | 0 | $0 | 27 | 0 | $0 | **$0** | ~$10 | **-$10** |
 | 7 | 1 (free beta) | 15 | $0 | 29 | 0 | $0 | **$0** | ~$15 | **-$15** |
-| 8 | 2 (1 free, 1 paid) | 30 | $300 | 32 | 0 | $0 | **$300** | ~$20 | **$280** |
-| 9 | 3 (1 free, 2 paid) | 45 | $700 | 37 | 1 | $5 | **$705** | ~$25 | **$680** |
-| 10 | 3 (all paid) | 45 | $1,000 | 43 | 2 | $10 | **$1,010** | ~$30 | **$980** |
-| 11 | 4 | 60 | $1,400 | 49 | 2 | $10 | **$1,410** | ~$35 | **$1,375** |
-| 12 | 5 | 75 | $1,800 | 57 | 3 | $15 | **$1,815** | ~$40 | **$1,775** |
+| 8 | 2 (1 free, 1 paid) | 30 | $500 | 32 | 0 | $0 | **$500** | ~$20 | **$480** |
+| 9 | 3 (1 free, 2 paid) | 45 | $1,000 | 37 | 1 | $5 | **$1,005** | ~$25 | **$980** |
+| 10 | 3 (all paid) | 45 | $1,500 | 43 | 2 | $10 | **$1,510** | ~$30 | **$1,480** |
+| 11 | 4 | 60 | $2,000 | 49 | 2 | $10 | **$2,010** | ~$35 | **$1,975** |
+| 12 | 5 | 75 | $2,500 | 57 | 3 | $15 | **$2,515** | ~$40 | **$2,475** |
 
-**End of Year 1: ~$1,800 MRR, 5 B2B customers, ~57 IDE users, ~$1,775/month net**
+**End of Year 1: ~$2,500 MRR, 5 B2B customers, ~57 IDE users, ~$2,475/month net**
 
 #### Year 2 detailed (months 13-24)
 
 | Month | B2B customers | Candidates/month | Assessment MRR | Cumulative IDE users | IDE Pro users | IDE MRR | **Total MRR** | Infra cost | **Net profit** |
 |---|---|---|---|---|---|---|---|---|---|
-| 13 | 6 | 90 | $2,200 | 66 | 3 | $15 | **$2,215** | ~$50 | **$2,165** |
-| 14 | 7 | 105 | $2,600 | 77 | 4 | $20 | **$2,620** | ~$55 | **$2,565** |
-| 15 | 8 | 120 | $3,000 | 89 | 4 | $20 | **$3,020** | ~$65 | **$2,955** |
-| 16 | 9 | 135 | $3,400 | 102 | 5 | $25 | **$3,425** | ~$70 | **$3,355** |
-| 17 | 10 | 150 | $3,800 | 117 | 6 | $30 | **$3,830** | ~$80 | **$3,750** |
-| 18 | 12 | 180 | $4,600 | 135 | 7 | $35 | **$4,635** | ~$90 | **$4,545** |
-| 19 | 14 | 210 | $5,400 | 156 | 8 | $40 | **$5,440** | ~$105 | **$5,335** |
-| 20 | 16 | 240 | $6,200 | 180 | 9 | $45 | **$6,245** | ~$120 | **$6,125** |
-| 21 | 18 | 270 | $7,000 | 207 | 10 | $50 | **$7,050** | ~$135 | **$6,915** |
-| 22 | 20 | 300 | $7,800 | 237 | 12 | $60 | **$7,860** | ~$150 | **$7,710** |
-| 23 | 22 | 330 | $8,600 | 270 | 14 | $70 | **$8,670** | ~$165 | **$8,505** |
-| 24 | 25 | 375 | $9,800 | 308 | 15 | $75 | **$9,875** | ~$185 | **$9,690** |
+| 13 | 6 | 90 | $3,000 | 66 | 3 | $15 | **$3,015** | ~$50 | **$2,965** |
+| 14 | 7 | 105 | $3,500 | 77 | 4 | $20 | **$3,520** | ~$55 | **$3,465** |
+| 15 | 8 | 120 | $4,000 | 89 | 4 | $20 | **$4,020** | ~$65 | **$3,955** |
+| 16 | 9 | 135 | $4,500 | 102 | 5 | $25 | **$4,525** | ~$70 | **$4,455** |
+| 17 | 10 | 150 | $5,000 | 117 | 6 | $30 | **$5,030** | ~$80 | **$4,950** |
+| 18 | 12 | 180 | $6,000 | 135 | 7 | $35 | **$6,035** | ~$90 | **$5,945** |
+| 19 | 14 | 210 | $7,000 | 156 | 8 | $40 | **$7,040** | ~$105 | **$6,935** |
+| 20 | 16 | 240 | $8,000 | 180 | 9 | $45 | **$8,045** | ~$120 | **$7,925** |
+| 21 | 18 | 270 | $9,000 | 207 | 10 | $50 | **$9,050** | ~$135 | **$8,915** |
+| 22 | 20 | 300 | $10,000 | 237 | 12 | $60 | **$10,060** | ~$150 | **$9,910** |
+| 23 | 22 | 330 | $11,000 | 270 | 14 | $70 | **$11,070** | ~$165 | **$10,905** |
+| 24 | 25 | 375 | $12,500 | 308 | 15 | $75 | **$12,575** | ~$185 | **$12,390** |
 
-**End of Year 2: ~$9,875 MRR, 25 B2B customers, ~308 IDE users, ~$9,690/month net**
+**End of Year 2: ~$12,500 MRR, 25 B2B customers, ~308 IDE users, ~$12,390/month net**
 
 #### Key observations
 
-- **Month 17**: Crosses $3,800 MRR — enough to cover basic living expenses in a low-cost area
-- **Month 20**: Crosses $6,000 MRR — comfortable solo founder income
-- **Month 24**: Approaching $10k MRR — sustainable business
+- **Month 14**: Crosses $3,500 MRR — enough to cover basic living expenses in a low-cost area
+- **Month 18**: Crosses $6,000 MRR — comfortable solo founder income
+- **Month 22**: Crosses $10k MRR — sustainable business
+- **Month 24**: $12,500 MRR — solid solo founder business
 - **Infra costs stay tiny**: ~$185/month at 25 customers because candidates use Browser Mode (zero compute)
 - **Gross margin**: ~98% on assessment revenue (almost pure software margin)
 - **IDE revenue is negligible**: $75/month at month 24 — confirms IDE is distribution, not the business
@@ -790,11 +801,11 @@ Assessment revenue drives the business. IDE revenue is secondary.
 
 #### To reach $10k MRR
 
-Need ~25 assessment customers at an average of ~$400/month. That's:
+Need ~20 assessment customers at $500/month. That's:
 - Not 26,000 DAU
 - Not viral GitHub stars
-- Just 25 engineering teams that do take-home assignments and want AI telemetry
-- Tractable via cold outreach + referrals over 18-24 months
+- Just 20 engineering teams that do take-home assignments and want AI telemetry
+- Tractable via cold outreach + referrals over ~22 months
 
 #### What if growth is faster or slower?
 
@@ -953,25 +964,25 @@ B2B sales cycle for a solo founder doing outbound:
 
 | Scenario | Probability | B2B customers | Assessment MRR | IDE MRR | **Total MRR** | **Monthly net** |
 |---|---|---|---|---|---|---|
-| B2B sales fail | 25% | 0-2 | $0-600 | <$20 | **<$620** | **<$600** |
-| Slow growth | 30% | 5-10 | $2,000-4,000 | $20-50 | **$2,020-4,050** | **$1,900-3,900** |
-| Base case | 25% | 15-25 | $6,000-10,000 | $50-75 | **$6,050-10,075** | **$5,800-9,700** |
-| Strong PMF | 15% | 25-40 | $10,000-16,000 | $75-150 | **$10,075-16,150** | **$9,700-15,700** |
-| Breakout | 5% | 50+ | $20,000+ | $200+ | **$20,200+** | **$19,500+** |
+| B2B sales fail | 25% | 0-2 | $0-1,000 | <$20 | **<$1,020** | **<$1,000** |
+| Slow growth | 30% | 5-10 | $2,500-5,000 | $20-50 | **$2,520-5,050** | **$2,400-4,900** |
+| Base case | 25% | 15-25 | $7,500-12,500 | $50-75 | **$7,550-12,575** | **$7,300-12,200** |
+| Strong PMF | 15% | 25-40 | $12,500-20,000 | $75-150 | **$12,575-20,150** | **$12,200-19,500** |
+| Breakout | 5% | 50+ | $25,000+ | $200+ | **$25,200+** | **$24,500+** |
 
-**Probability-weighted expected MRR after 2 years: ~$4,500-6,000/month**
+**Probability-weighted expected MRR after 2 years: ~$5,500-7,500/month**
 
-~45% chance of reaching $5,000+ MRR (base case or better). ~20% chance of reaching $10k+ MRR.
+~45% chance of reaching $7,000+ MRR (base case or better). ~20% chance of reaching $12k+ MRR.
 
 ### Why B2B changes the math vs IDE-only
 
 | Path | What you need for $10k MRR | Probability in 2 years |
 |---|---|---|
 | IDE only at $5/month | ~26,000 DAU (2,600 paying users) | ~5% |
-| B2B take-homes at $400/month avg | ~25 companies | ~20% |
-| Combined (B2B + IDE organic) | ~20 companies + some IDE Pro users | ~25% |
+| B2B take-homes at $500/month | ~20 companies | ~20% |
+| Combined (B2B + IDE organic) | ~15 companies + some IDE Pro users | ~25% |
 
-25 companies is hard but tractable via outbound sales. 26,000 DAU without funding is near-impossible. B2B is the path.
+20 companies is hard but tractable via outbound sales. 26,000 DAU without funding is near-impossible. B2B is the path.
 
 ### Comparable B2B dev tool growth (solo/small team)
 
