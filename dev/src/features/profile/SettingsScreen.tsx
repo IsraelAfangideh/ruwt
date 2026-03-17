@@ -8,6 +8,7 @@ import { useColors } from '@/shared/theme';
 import { spacing, fontSizes, fontFamily, radii } from '@/shared/theme/tokens';
 import { useToast } from '@/shared/ui/Toast';
 import { useAuthGuard } from '@/shared/hooks/useAuthGuard';
+import { GIT_TOKEN_KEY } from '@/features/ide/utils';
 
 interface NotifPrefs {
   badgeEarned: number;
@@ -48,8 +49,22 @@ export function SettingsScreen() {
   const [showSuccess, setShowSuccess] = useState(false);
   const [profileLoading, setProfileLoading] = useState(true);
   const [notifPrefs, setNotifPrefs] = useState<NotifPrefs | null>(null);
+  const [gitToken, setGitToken] = useState('');
+  const [gitTokenSaved, setGitTokenSaved] = useState(false);
   const c = useColors();
   const { showToast } = useToast();
+
+  // Load git token from localStorage on mount
+  useEffect(() => {
+    /* istanbul ignore next -- @preserve */
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem(GIT_TOKEN_KEY);
+      if (saved) {
+        setGitToken(saved);
+        setGitTokenSaved(true);
+      }
+    }
+  }, []);
 
   useEffect(() => {
     if (!user) return;
@@ -117,6 +132,21 @@ export function SettingsScreen() {
       showToast('Failed to update preference', 'error');
     }
     setTogglingNewsletter(false);
+  };
+
+  const saveGitToken = () => {
+    /* istanbul ignore next -- @preserve */
+    if (typeof window !== 'undefined') {
+      if (gitToken.trim()) {
+        localStorage.setItem(GIT_TOKEN_KEY, gitToken.trim());
+        setGitTokenSaved(true);
+        showToast('Git token saved', 'success');
+      } else {
+        localStorage.removeItem(GIT_TOKEN_KEY);
+        setGitTokenSaved(false);
+        showToast('Git token removed', 'success');
+      }
+    }
   };
 
   /* istanbul ignore next -- @preserve */
@@ -351,6 +381,53 @@ export function SettingsScreen() {
             <CardDescription>Signed in as {user.email}</CardDescription>
           </CardHeader>
         </Card>
+
+        <Card style={styles.card}>
+          <CardHeader>
+            <CardTitle>Git Integration</CardTitle>
+            <CardDescription>
+              {gitTokenSaved
+                ? 'Token saved. Used for cloning private repos and pushing from the IDE.'
+                : 'Add a GitHub Personal Access Token to clone private repos and push from the IDE.'}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <View style={styles.gitTokenRow}>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.toggleLabel, { color: c.text }]}>GitHub PAT</Text>
+                <View style={styles.gitInputRow}>
+                  <input
+                    type="password"
+                    value={gitToken}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                      setGitToken(e.target.value);
+                      setGitTokenSaved(false);
+                    }}
+                    placeholder="ghp_..."
+                    data-testid="git-token-input"
+                    style={{
+                      flex: 1,
+                      background: c.bg,
+                      border: `1px solid ${c.border}`,
+                      borderRadius: 6,
+                      color: c.text,
+                      fontSize: 14,
+                      padding: '6px 10px',
+                      outline: 'none',
+                      fontFamily: 'monospace',
+                    }}
+                  />
+                </View>
+              </View>
+              <Button
+                variant={gitTokenSaved ? 'outline' : 'default'}
+                onPress={saveGitToken}
+              >
+                {gitTokenSaved ? 'Update' : 'Save'}
+              </Button>
+            </View>
+          </CardContent>
+        </Card>
           </>
         )}
       </ScrollView>
@@ -396,5 +473,17 @@ const styles = StyleSheet.create({
     width: 20,
     height: 20,
     borderRadius: 10,
+  },
+  gitTokenRow: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'space-between' as const,
+    gap: spacing.md,
+  },
+  gitInputRow: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: spacing.sm,
+    marginTop: 4,
   },
 });

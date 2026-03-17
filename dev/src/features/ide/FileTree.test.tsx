@@ -187,4 +187,60 @@ describe('FileTree', () => {
     const fileBtn = screen.getByTestId('file-index.js');
     expect(fileBtn.getAttribute('aria-expanded')).toBeNull();
   });
+
+  // ── Git status badge tests ───────────────────────────────────────
+
+  it('shows git status badges when gitStatus is provided', () => {
+    const gitStatus = {
+      'index.js': 'modified' as const,
+      'src/index.ts': 'added' as const,
+      'style.css': 'deleted' as const,
+      'data': 'untracked' as const,
+    };
+    render(
+      <FileTree files={mockFiles} selectedFile={null} onSelectFile={vi.fn()} gitStatus={gitStatus} />
+    );
+    // Modified file shows M badge
+    expect(screen.getByTestId('git-badge-index.js')).toBeInTheDocument();
+    expect(screen.getByTestId('git-badge-index.js').textContent).toBe('M');
+
+    // Added file shows + badge
+    expect(screen.getByTestId('git-badge-src/index.ts')).toBeInTheDocument();
+    expect(screen.getByTestId('git-badge-src/index.ts').textContent).toBe('+');
+
+    // Deleted file shows - badge
+    expect(screen.getByTestId('git-badge-style.css')).toBeInTheDocument();
+    expect(screen.getByTestId('git-badge-style.css').textContent).toBe('-');
+
+    // Untracked file shows ? badge
+    expect(screen.getByTestId('git-badge-data')).toBeInTheDocument();
+    expect(screen.getByTestId('git-badge-data').textContent).toBe('?');
+  });
+
+  it('does not show git badges when gitStatus is undefined', () => {
+    render(
+      <FileTree files={mockFiles} selectedFile={null} onSelectFile={vi.fn()} />
+    );
+    expect(screen.queryByTestId('git-badge-index.js')).toBeNull();
+  });
+
+  it('does not show git badge for files not in gitStatus map', () => {
+    const gitStatus = { 'index.js': 'modified' as const };
+    render(
+      <FileTree files={mockFiles} selectedFile={null} onSelectFile={vi.fn()} gitStatus={gitStatus} />
+    );
+    // index.js has badge
+    expect(screen.getByTestId('git-badge-index.js')).toBeInTheDocument();
+    // package.json does not
+    expect(screen.queryByTestId('git-badge-package.json')).toBeNull();
+  });
+
+  it('passes gitStatus to nested children', () => {
+    const gitStatus = { 'src/utils.js': 'modified' as const };
+    render(
+      <FileTree files={mockFiles} selectedFile={null} onSelectFile={vi.fn()} gitStatus={gitStatus} />
+    );
+    expect(screen.getByTestId('git-badge-src/utils.js')).toBeInTheDocument();
+    expect(screen.getByTestId('git-badge-src/utils.js').textContent).toBe('M');
+  });
 });

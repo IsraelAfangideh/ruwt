@@ -1,9 +1,11 @@
 /**
  * FileTree: renders a file-tree sidebar from WebContainer filesystem entries.
- * Supports folder expand/collapse, file-type icons, and selected-file highlighting.
+ * Supports folder expand/collapse, file-type icons, selected-file highlighting,
+ * and optional git status indicators per file.
  */
 import { useState, useCallback } from 'react';
 import { arena } from '@/shared/theme/colors';
+import type { GitFileStatus } from '@/lib/git/browser-git';
 
 export interface FileEntry {
   name: string;
@@ -12,10 +14,15 @@ export interface FileEntry {
   children?: FileEntry[];
 }
 
+/** Map of filepath -> git status for display in the file tree */
+export type GitStatusMap = Record<string, GitFileStatus>;
+
 interface FileTreeProps {
   files: FileEntry[];
   selectedFile: string | null;
   onSelectFile: (path: string) => void;
+  /** Optional git status per file path */
+  gitStatus?: GitStatusMap;
 }
 
 /** Map file extension to a short icon label */
@@ -34,7 +41,7 @@ function fileIcon(name: string): string {
   }
 }
 
-export function FileTree({ files, selectedFile, onSelectFile }: FileTreeProps) {
+export function FileTree({ files, selectedFile, onSelectFile, gitStatus }: FileTreeProps) {
   return (
     <div data-testid="file-tree" style={rootStyle}>
       <div style={headerStyle}>
@@ -48,6 +55,7 @@ export function FileTree({ files, selectedFile, onSelectFile }: FileTreeProps) {
             depth={0}
             selectedFile={selectedFile}
             onSelectFile={onSelectFile}
+            gitStatus={gitStatus}
           />
         ))}
       </div>
@@ -55,14 +63,37 @@ export function FileTree({ files, selectedFile, onSelectFile }: FileTreeProps) {
   );
 }
 
+/** Badge text for git status */
+function gitStatusBadge(status: GitFileStatus): string {
+  switch (status) {
+    case 'modified': return 'M';
+    case 'added': return '+';
+    case 'deleted': return '-';
+    case 'untracked': return '?';
+    default: return '';
+  }
+}
+
+/** Badge color for git status */
+function gitStatusColor(status: GitFileStatus): string {
+  switch (status) {
+    case 'modified': return '#e5c07b';
+    case 'added': return '#3fb950';
+    case 'deleted': return '#f85149';
+    case 'untracked': return '#8b929a';
+    default: return '#8b929a';
+  }
+}
+
 interface FileTreeNodeProps {
   entry: FileEntry;
   depth: number;
   selectedFile: string | null;
   onSelectFile: (path: string) => void;
+  gitStatus?: GitStatusMap;
 }
 
-function FileTreeNode({ entry, depth, selectedFile, onSelectFile }: FileTreeNodeProps) {
+function FileTreeNode({ entry, depth, selectedFile, onSelectFile, gitStatus }: FileTreeNodeProps) {
   const [expanded, setExpanded] = useState(true);
 
   const handleClick = useCallback(() => {
@@ -74,6 +105,7 @@ function FileTreeNode({ entry, depth, selectedFile, onSelectFile }: FileTreeNode
   }, [entry.type, entry.path, onSelectFile]);
 
   const isSelected = entry.type === 'file' && entry.path === selectedFile;
+  const fileGitStatus = gitStatus?.[entry.path];
 
   return (
     <>
@@ -91,6 +123,14 @@ function FileTreeNode({ entry, depth, selectedFile, onSelectFile }: FileTreeNode
           {entry.type === 'directory' ? (expanded ? '\u25BE' : '\u25B8') : fileIcon(entry.name)}
         </span>
         <span style={nameStyle}>{entry.name}</span>
+        {fileGitStatus && (
+          <span
+            style={{ ...gitBadgeStyle, color: gitStatusColor(fileGitStatus) }}
+            data-testid={`git-badge-${entry.path}`}
+          >
+            {gitStatusBadge(fileGitStatus)}
+          </span>
+        )}
       </button>
       {entry.type === 'directory' && expanded && entry.children?.map((child) => (
         <FileTreeNode
@@ -99,6 +139,7 @@ function FileTreeNode({ entry, depth, selectedFile, onSelectFile }: FileTreeNode
           depth={depth + 1}
           selectedFile={selectedFile}
           onSelectFile={onSelectFile}
+          gitStatus={gitStatus}
         />
       ))}
     </>
@@ -158,4 +199,12 @@ const nameStyle: React.CSSProperties = {
   whiteSpace: 'nowrap',
   overflow: 'hidden',
   textOverflow: 'ellipsis',
+  flex: 1,
+};
+
+const gitBadgeStyle: React.CSSProperties = {
+  fontSize: 10,
+  fontWeight: 700,
+  flexShrink: 0,
+  marginLeft: 4,
 };

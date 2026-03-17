@@ -2,8 +2,9 @@
  * IDEScreen: The /ide/new (and /ide/new/:projectId) standalone IDE.
  * Uses WebContainer for a real filesystem, multi-file editing, and terminal.
  * Integrates with project persistence (R2 + D1) for save/load.
+ * Supports git operations via isomorphic-git (clone, commit, push).
  */
-import { lazy, Suspense, useState, useRef, useCallback, useEffect } from 'react';
+import { lazy, Suspense, useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useAuthGuard } from '@/shared/hooks/useAuthGuard';
 import { useIDELayout } from '@/features/shared-ide/useIDELayout';
@@ -16,7 +17,11 @@ import { useWebContainer } from './useWebContainer';
 import type { SaveStatus } from './useWebContainer';
 import { FileTree } from './FileTree';
 import { IDETerminal } from './IDETerminal';
-import { tabLabel, languageForPath } from './utils';
+import { CloneDialog } from './CloneDialog';
+import { GitPanel } from './GitPanel';
+import { tabLabel, languageForPath, GIT_TOKEN_KEY, buildGitStatusMap } from './utils';
+import * as browserGit from '@/lib/git/browser-git';
+import type { GitStatusEntry, GitLogEntry } from '@/lib/git/browser-git';
 
 /* istanbul ignore next -- @preserve */
 const MonacoEditor = lazy(() => import('@monaco-editor/react'));
@@ -48,7 +53,7 @@ export function IDEScreen() {
   const [projectId, setProjectId] = useState<string | undefined>(routeProjectId);
   const [projectName, setProjectName] = useState('Untitled Project');
 
-  const { ready, files, error, saveStatus, markDirty, saveProject } = useWebContainer(projectId);
+  const { ready, files, error, refreshFiles, saveStatus, markDirty, saveProject } = useWebContainer(projectId);
   useDocumentMeta({ title: `${projectName} — Ruwt IDE` });
 
   // Open tabs and active tab tracking
@@ -63,6 +68,17 @@ export function IDEScreen() {
   const writeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Track whether the initial auto-open has fired (prevent re-open after user closes all tabs)
   const didAutoOpenRef = useRef(false);
+
+  // Git integration state
+  const [showCloneDialog, setShowCloneDialog] = useState(false);
+  const [sidebarTab, setSidebarTab] = useState<'files' | 'git'>('files');
+  const [gitStatusEntries, setGitStatusEntries] = useState<GitStatusEntry[]>([]);
+  const [gitLogEntries, setGitLogEntries] = useState<GitLogEntry[]>([]);
+  const [gitBranch, setGitBranch] = useState<string | null>(null);
+  const gitTokenRef = useRef<string | null>(
+    /* istanbul ignore next -- @preserve */
+    typeof window !== 'undefined' ? localStorage.getItem(GIT_TOKEN_KEY) : null,
+  );
 
   // Load project metadata if we have a projectId
   useEffect(() => {
@@ -151,6 +167,75 @@ export function IDEScreen() {
     }
   }, [ready, files, openTabs.length, openFile]);
 
+  // ── Git helpers ─────────────────────────────────────────────────────
+
+  /** Refresh git status, branch, and log from the working directory. */
+  const refreshGitStatus = useCallback(async () => {
+    try {
+      const [branch, entries, commits] = await Promise.all([
+        browserGit.currentBranch('.'),
+        browserGit.status('.'),
+        browserGit.log('.', 5),
+      ]);
+      setGitBranch(branch);
+      setGitStatusEntries(entries);
+      setGitLogEntries(commits);
+    } catch {
+      // Not a git repo or git error — clear state
+      setGitStatusEntries([]);
+      setGitLogEntries([]);
+      setGitBranch(null);
+    }
+  }, []);
+
+  /** Handle clone: clone repo, refresh file tree, check git status. */
+  const handleClone = useCallback(async (url: string, token?: string) => {
+    await browserGit.clone(url, '.', { token });
+    await Promise.all([refreshFiles(), refreshGitStatus()]);
+  }, [refreshFiles, refreshGitStatus]);
+
+  /** Stage a file */
+  const handleGitStage = useCallback((filepath: string) => {
+    browserGit.add('.', filepath)
+      .then(refreshGitStatus)
+      .catch(/* istanbul ignore next -- @preserve */ () => {});
+  }, [refreshGitStatus]);
+
+  /** Unstage a file (remove from the index via git.remove) */
+  const handleGitUnstage = useCallback((filepath: string) => {
+    browserGit.unstage('.', filepath)
+      .then(refreshGitStatus)
+      .catch(/* istanbul ignore next -- @preserve */ () => {});
+  }, [refreshGitStatus]);
+
+  /** Commit staged changes */
+  const handleGitCommit = useCallback((message: string) => {
+    const author = { name: user?.email ?? 'Ruwt User', email: user?.email ?? 'user@ruwt.dev' };
+    browserGit.commit('.', message, author)
+      .then(() => refreshGitStatus())
+      .catch(/* istanbul ignore next -- @preserve */ () => {});
+  }, [user, refreshGitStatus]);
+
+  /** Push to remote */
+  const handleGitPush = useCallback(() => {
+    const token = gitTokenRef.current ?? undefined;
+    browserGit.push('.', { token })
+      .catch(/* istanbul ignore next -- @preserve */ () => {});
+  }, []);
+
+  // Derive isGitRepo from gitBranch (no separate state needed)
+  const isGitRepo = gitBranch !== null;
+
+  // Build git status map for the file tree (memoized)
+  const gitStatusMap = useMemo(() => buildGitStatusMap(gitStatusEntries), [gitStatusEntries]);
+
+  // Check git status when WebContainer is ready
+  useEffect(() => {
+    if (ready) {
+      refreshGitStatus();
+    }
+  }, [ready, refreshGitStatus]);
+
   // Handle manual save
   const handleSave = useCallback(async () => {
     // If no project yet, create one first
@@ -206,22 +291,87 @@ export function IDEScreen() {
             </span>
           )}
         </div>
-        <button onClick={handleSave} style={saveBtnStyle} data-testid="save-btn">
-          Save
-        </button>
+        <div style={topBarRightStyle}>
+          <button
+            onClick={() => setShowCloneDialog(true)}
+            style={cloneRepoBtnStyle}
+            data-testid="clone-repo-btn"
+          >
+            Clone Repo
+          </button>
+          <button onClick={handleSave} style={saveBtnStyle} data-testid="save-btn">
+            Save
+          </button>
+        </div>
       </div>
+
+      {/* Clone dialog */}
+      <CloneDialog
+        open={showCloneDialog}
+        onClose={() => setShowCloneDialog(false)}
+        onClone={handleClone}
+      />
 
       {/* Main content area */}
       <div style={mainStyle}>
-        {/* Sidebar — file tree */}
+        {/* Sidebar — file tree / git panel */}
         {!layout.sidebarCollapsed && (
           <div style={sidebarStyle}>
             {ready ? (
-              <FileTree
-                files={files}
-                selectedFile={activeTab}
-                onSelectFile={openFile}
-              />
+              <>
+                {/* Sidebar tab switcher */}
+                {isGitRepo && (
+                  <div style={sidebarTabBarStyle} data-testid="sidebar-tab-bar">
+                    <button
+                      onClick={() => setSidebarTab('files')}
+                      style={{
+                        ...sidebarTabBtnStyle,
+                        borderBottom: sidebarTab === 'files'
+                          ? `2px solid ${arena.accent}`
+                          : '2px solid transparent',
+                        color: sidebarTab === 'files' ? arena.text : arena.textMuted,
+                      }}
+                      data-testid="sidebar-tab-files"
+                    >
+                      Files
+                    </button>
+                    <button
+                      onClick={() => setSidebarTab('git')}
+                      style={{
+                        ...sidebarTabBtnStyle,
+                        borderBottom: sidebarTab === 'git'
+                          ? `2px solid ${arena.accent}`
+                          : '2px solid transparent',
+                        color: sidebarTab === 'git' ? arena.text : arena.textMuted,
+                      }}
+                      data-testid="sidebar-tab-git"
+                    >
+                      Git
+                    </button>
+                  </div>
+                )}
+
+                {sidebarTab === 'files' ? (
+                  <FileTree
+                    files={files}
+                    selectedFile={activeTab}
+                    onSelectFile={openFile}
+                    gitStatus={isGitRepo ? gitStatusMap : undefined}
+                  />
+                ) : (
+                  <GitPanel
+                    branch={gitBranch}
+                    statusEntries={gitStatusEntries}
+                    logEntries={gitLogEntries}
+                    hasToken={!!gitTokenRef.current}
+                    onStage={handleGitStage}
+                    onUnstage={handleGitUnstage}
+                    onCommit={handleGitCommit}
+                    onPush={handleGitPush}
+                    onRefresh={refreshGitStatus}
+                  />
+                )}
+              </>
             ) : error ? (
               <div style={statusDivStyle} data-testid="wc-error">
                 <span style={errorTextStyle}>{error}</span>
@@ -385,6 +535,22 @@ const saveStatusStyle: React.CSSProperties = {
   fontStyle: 'italic',
 };
 
+const topBarRightStyle: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 8,
+};
+
+const cloneRepoBtnStyle: React.CSSProperties = {
+  background: 'transparent',
+  border: `1px solid ${arena.border}`,
+  color: arena.textMuted,
+  cursor: 'pointer',
+  fontSize: 12,
+  padding: '4px 10px',
+  borderRadius: 4,
+};
+
 const saveBtnStyle: React.CSSProperties = {
   background: arena.accent,
   border: 'none',
@@ -410,6 +576,22 @@ const sidebarStyle: React.CSSProperties = {
   flexDirection: 'column',
   overflow: 'auto',
   flexShrink: 0,
+};
+
+const sidebarTabBarStyle: React.CSSProperties = {
+  display: 'flex',
+  borderBottom: `1px solid ${arena.border}`,
+  flexShrink: 0,
+};
+
+const sidebarTabBtnStyle: React.CSSProperties = {
+  flex: 1,
+  background: 'transparent',
+  border: 'none',
+  cursor: 'pointer',
+  fontSize: 11,
+  padding: '6px 8px',
+  textAlign: 'center' as const,
 };
 
 const statusDivStyle: React.CSSProperties = {

@@ -6,7 +6,7 @@
  * Records AI telemetry on every chat interaction.
  * Submit button collects files and POSTs to the submit endpoint.
  */
-import { lazy, Suspense, useState, useRef, useCallback, useEffect } from 'react';
+import { lazy, Suspense, useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useAuthGuard } from '@/shared/hooks/useAuthGuard';
 import { useIDELayout } from '@/features/shared-ide/useIDELayout';
@@ -18,9 +18,11 @@ import { readFile, writeFile } from '@/lib/sandbox/webcontainer';
 import { useWebContainer } from './useWebContainer';
 import { FileTree } from './FileTree';
 import { IDETerminal } from './IDETerminal';
-import { tabLabel, languageForPath } from './utils';
+import { tabLabel, languageForPath, buildGitStatusMap } from './utils';
 import { useSessionRecorder } from './useSessionRecorder';
 import { TelemetryDisclosure } from './TelemetryDisclosure';
+import * as browserGit from '@/lib/git/browser-git';
+import type { GitStatusEntry } from '@/lib/git/browser-git';
 
 /* istanbul ignore next -- @preserve */
 const MonacoEditor = lazy(() => import('@monaco-editor/react'));
@@ -67,7 +69,7 @@ export function TakeHomeScreen() {
   const [showInstructions, setShowInstructions] = useState(true);
   const [disclosureAccepted, setDisclosureAccepted] = useState(false);
 
-  const { ready, files, error, collectFiles } = useWebContainer();
+  const { ready, files, error, refreshFiles, collectFiles } = useWebContainer();
   const recorder = useSessionRecorder(sessionId ?? '');
   useDocumentMeta({ title: 'Take-Home Assessment — Ruwt IDE' });
 
@@ -82,6 +84,12 @@ export function TakeHomeScreen() {
   const expiresAtRef = useRef<number | null>(null);
   const editorContentRef = useRef(editorContent);
   editorContentRef.current = editorContent;
+
+  // Git integration state for take-home
+  const [cloneProgress, setCloneProgress] = useState<string | null>(null);
+  const [cloneFailed, setCloneFailed] = useState(false);
+  const [gitStatusEntries, setGitStatusEntries] = useState<GitStatusEntry[]>([]);
+  const cloneAttemptedRef = useRef(false);
 
   // Fetch session details on mount
   useEffect(() => {
@@ -119,6 +127,48 @@ export function TakeHomeScreen() {
         setSessionLoading(false);
       });
   }, [sessionId]);
+
+  /** Shared clone logic — used by both initial clone and retry. */
+  const doClone = useCallback((repoUrl: string) => {
+    cloneAttemptedRef.current = true;
+    setCloneFailed(false);
+    setCloneProgress('Cloning repository...');
+    browserGit.clone(repoUrl, '.', {
+      onProgress: (phase, loaded, total) => {
+        setCloneProgress(`${phase}: ${loaded}${total ? `/${total}` : ''}`);
+      },
+    })
+      .then(async () => {
+        setCloneProgress(null);
+        await refreshFiles();
+        try {
+          const entries = await browserGit.status('.');
+          setGitStatusEntries(entries);
+        } catch {
+          // Not a git repo after clone? Ignore
+        }
+      })
+      .catch(/* istanbul ignore next -- @preserve */ () => {
+        setCloneProgress('Clone failed');
+        setCloneFailed(true);
+        cloneAttemptedRef.current = false; // allow retry
+      });
+  }, [refreshFiles]);
+
+  // Clone repo when session is loaded and WebContainer is ready
+  useEffect(() => {
+    if (!ready || !sessionDetails?.repoUrl || cloneAttemptedRef.current) return;
+    doClone(sessionDetails.repoUrl);
+  }, [ready, sessionDetails, doClone]);
+
+  /** Retry clone after a failure. */
+  const handleRetryClone = useCallback(() => {
+    if (!sessionDetails?.repoUrl || !ready) return;
+    doClone(sessionDetails.repoUrl);
+  }, [ready, sessionDetails, doClone]);
+
+  // Build git status map for file tree (memoized)
+  const gitStatusMap = useMemo(() => buildGitStatusMap(gitStatusEntries), [gitStatusEntries]);
 
   // Timer countdown
   useEffect(() => {
@@ -380,11 +430,26 @@ export function TakeHomeScreen() {
             {!layout.sidebarCollapsed && (
               <>
                 <div style={fileTreeSidebarStyle}>
+                  {cloneProgress && (
+                    <div style={cloneProgressStyle} data-testid="clone-progress">
+                      {cloneProgress}
+                      {cloneFailed && (
+                        <button
+                          onClick={handleRetryClone}
+                          style={retryBtnStyle}
+                          data-testid="clone-retry-btn"
+                        >
+                          Retry
+                        </button>
+                      )}
+                    </div>
+                  )}
                   {ready ? (
                     <FileTree
                       files={files}
                       selectedFile={activeTab}
                       onSelectFile={openFile}
+                      gitStatus={Object.keys(gitStatusMap).length > 0 ? gitStatusMap : undefined}
                     />
                   ) : error ? (
                     <div style={statusDivStyle} data-testid="wc-error">
@@ -750,4 +815,25 @@ const terminalBodyPlaceholderStyle: React.CSSProperties = {
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
+};
+
+const cloneProgressStyle: React.CSSProperties = {
+  padding: '6px 12px',
+  fontSize: 11,
+  color: arena.accent,
+  borderBottom: `1px solid ${arena.border}`,
+  display: 'flex',
+  alignItems: 'center',
+  gap: 8,
+};
+
+const retryBtnStyle: React.CSSProperties = {
+  background: 'transparent',
+  border: `1px solid ${arena.accent}`,
+  color: arena.accent,
+  cursor: 'pointer',
+  fontSize: 10,
+  padding: '2px 8px',
+  borderRadius: 3,
+  flexShrink: 0,
 };
