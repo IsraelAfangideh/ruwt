@@ -272,6 +272,8 @@ export const assessmentSessions = sqliteTable('assessment_sessions', {
   completedAt: text('completed_at'),
   expiresAt: text('expires_at').notNull(),
   shareToken: text('share_token').unique(),
+  replayR2Key: text('replay_r2_key'),
+  disclosureAccepted: integer('disclosure_accepted').default(0).notNull(),
   createdAt: text('created_at').default(sql`(datetime('now'))`).notNull(),
 });
 

@@ -68,6 +68,30 @@ vi.mock('./IDETerminal', () => ({
   IDETerminal: () => <div data-testid="ide-terminal-mock">Terminal</div>,
 }));
 
+const mockRecorder = {
+  record: vi.fn(),
+  flush: vi.fn().mockResolvedValue(undefined),
+  snapshotContent: vi.fn(),
+  recordAIPrompt: vi.fn(),
+  recordAIResponse: vi.fn(),
+  recordTerminalCommand: vi.fn(),
+  recordFileOpen: vi.fn(),
+  recordFileClose: vi.fn(),
+  recordTabSwitch: vi.fn(),
+  recordFocus: vi.fn(),
+};
+vi.mock('./useSessionRecorder', () => ({
+  useSessionRecorder: () => mockRecorder,
+}));
+
+vi.mock('./TelemetryDisclosure', () => ({
+  TelemetryDisclosure: ({ onAccept }: any) => (
+    <div data-testid="telemetry-disclosure">
+      <button data-testid="disclosure-accept-btn" onClick={onAccept}>Accept</button>
+    </div>
+  ),
+}));
+
 vi.mock('@/shared/theme/colors', () => ({
   arena: {
     bg: '#0d1117',
@@ -121,7 +145,7 @@ describe('TakeHomeScreen', () => {
     mockFetch.mockResolvedValue({
       ok: true,
       json: () => Promise.resolve({
-        session: { id: 'sess-123', status: 'in_progress', expiresAt: new Date(Date.now() + 3600000).toISOString() },
+        session: { id: 'sess-123', status: 'in_progress', expiresAt: new Date(Date.now() + 3600000).toISOString(), disclosureAccepted: 1 },
         assessment: {
           id: 'assess-1',
           type: 'takehome',
@@ -212,7 +236,7 @@ describe('TakeHomeScreen', () => {
       .mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve({
-          session: { id: 'sess-123', status: 'in_progress', expiresAt: new Date(Date.now() + 3600000).toISOString() },
+          session: { id: 'sess-123', status: 'in_progress', expiresAt: new Date(Date.now() + 3600000).toISOString(), disclosureAccepted: 1 },
           assessment: { id: 'a1', type: 'takehome', timeLimit: 3600, instructions: 'Test', allowedModels: null },
         }),
       })
@@ -297,7 +321,7 @@ describe('TakeHomeScreen', () => {
     mockFetch.mockResolvedValueOnce({
       ok: true,
       json: () => Promise.resolve({
-        session: { id: 'sess-123', status: 'in_progress', expiresAt: new Date(Date.now() + 3600000).toISOString() },
+        session: { id: 'sess-123', status: 'in_progress', expiresAt: new Date(Date.now() + 3600000).toISOString(), disclosureAccepted: 1 },
         assessment: { id: 'a1', type: 'takehome', timeLimit: 3600, instructions: null, allowedModels: null },
       }),
     });
@@ -311,7 +335,7 @@ describe('TakeHomeScreen', () => {
     mockFetch.mockResolvedValueOnce({
       ok: true,
       json: () => Promise.resolve({
-        session: { id: 'sess-123', status: 'completed', expiresAt: new Date(Date.now() + 3600000).toISOString() },
+        session: { id: 'sess-123', status: 'completed', expiresAt: new Date(Date.now() + 3600000).toISOString(), disclosureAccepted: 1 },
         assessment: { id: 'a1', type: 'takehome', timeLimit: 3600, instructions: 'Test', allowedModels: null },
       }),
     });
@@ -335,7 +359,7 @@ describe('TakeHomeScreen', () => {
       .mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve({
-          session: { id: 'sess-123', status: 'in_progress', expiresAt: new Date(Date.now() + 3600000).toISOString() },
+          session: { id: 'sess-123', status: 'in_progress', expiresAt: new Date(Date.now() + 3600000).toISOString(), disclosureAccepted: 1 },
           assessment: { id: 'a1', type: 'takehome', timeLimit: 3600, instructions: 'Test', allowedModels: null },
         }),
       })
@@ -354,5 +378,64 @@ describe('TakeHomeScreen', () => {
     await waitFor(() => {
       expect(screen.getByText('Submit')).toBeInTheDocument();
     });
+  });
+
+  it('shows disclosure modal when disclosureAccepted is false', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve({
+        session: { id: 'sess-123', status: 'in_progress', expiresAt: new Date(Date.now() + 3600000).toISOString(), disclosureAccepted: 0 },
+        assessment: { id: 'a1', type: 'takehome', timeLimit: 3600, instructions: 'Test', allowedModels: null },
+      }),
+    });
+    render(<TakeHomeScreen />);
+    await waitFor(() => {
+      expect(screen.getByTestId('telemetry-disclosure')).toBeInTheDocument();
+    });
+    // IDE should NOT be visible yet
+    expect(screen.queryByTestId('takehome-screen')).toBeNull();
+  });
+
+  it('shows IDE after accepting disclosure', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve({
+        session: { id: 'sess-123', status: 'in_progress', expiresAt: new Date(Date.now() + 3600000).toISOString(), disclosureAccepted: 0 },
+        assessment: { id: 'a1', type: 'takehome', timeLimit: 3600, instructions: 'Test', allowedModels: null },
+      }),
+    });
+    render(<TakeHomeScreen />);
+    await waitFor(() => {
+      expect(screen.getByTestId('telemetry-disclosure')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId('disclosure-accept-btn'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('takehome-screen')).toBeInTheDocument();
+    });
+  });
+
+  it('flushes recorder on submit', async () => {
+    mockFetch
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({
+          session: { id: 'sess-123', status: 'in_progress', expiresAt: new Date(Date.now() + 3600000).toISOString(), disclosureAccepted: 1 },
+          assessment: { id: 'a1', type: 'takehome', timeLimit: 3600, instructions: 'Test', allowedModels: null },
+        }),
+      })
+      .mockResolvedValue({ ok: true, json: () => Promise.resolve({ shareToken: 'share-xyz' }) });
+
+    render(<TakeHomeScreen />);
+    await waitFor(() => {
+      expect(screen.getByTestId('submit-btn')).toBeInTheDocument();
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('submit-btn'));
+    });
+
+    expect(mockRecorder.flush).toHaveBeenCalled();
   });
 });

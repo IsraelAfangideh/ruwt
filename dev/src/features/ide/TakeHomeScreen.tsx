@@ -19,6 +19,8 @@ import { useWebContainer } from './useWebContainer';
 import { FileTree } from './FileTree';
 import { IDETerminal } from './IDETerminal';
 import { tabLabel, languageForPath } from './utils';
+import { useSessionRecorder } from './useSessionRecorder';
+import { TelemetryDisclosure } from './TelemetryDisclosure';
 
 /* istanbul ignore next -- @preserve */
 const MonacoEditor = lazy(() => import('@monaco-editor/react'));
@@ -45,6 +47,7 @@ interface SessionDetails {
   instructions: string | null;
   timeLimit: number;
   allowedModels: string[] | null;
+  companyName: string;
 }
 
 export function TakeHomeScreen() {
@@ -62,8 +65,10 @@ export function TakeHomeScreen() {
   const [submitted, setSubmitted] = useState(false);
   const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
   const [showInstructions, setShowInstructions] = useState(true);
+  const [disclosureAccepted, setDisclosureAccepted] = useState(false);
 
   const { ready, files, error, collectFiles } = useWebContainer();
+  const recorder = useSessionRecorder(sessionId ?? '');
   useDocumentMeta({ title: 'Take-Home Assessment — Ruwt IDE' });
 
   // Open tabs and active tab tracking
@@ -75,6 +80,8 @@ export function TakeHomeScreen() {
   const writeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const didAutoOpenRef = useRef(false);
   const expiresAtRef = useRef<number | null>(null);
+  const editorContentRef = useRef(editorContent);
+  editorContentRef.current = editorContent;
 
   // Fetch session details on mount
   useEffect(() => {
@@ -90,6 +97,7 @@ export function TakeHomeScreen() {
           instructions: data.assessment?.instructions ?? null,
           timeLimit: data.assessment?.timeLimit ?? 0,
           allowedModels: null,
+          companyName: data.assessment?.companyName ?? 'the hiring company',
         };
         if (data.assessment?.allowedModels) {
           try { details.allowedModels = JSON.parse(data.assessment.allowedModels); } catch { /* ignore */ }
@@ -99,6 +107,9 @@ export function TakeHomeScreen() {
         }
         if (data.session?.status === 'completed') {
           setSubmitted(true);
+        }
+        if (data.session?.disclosureAccepted) {
+          setDisclosureAccepted(true);
         }
         setSessionDetails(details);
         setSessionLoading(false);
@@ -126,27 +137,37 @@ export function TakeHomeScreen() {
 
   // Load file content
   const loadFileContent = useCallback(async (path: string) => {
+    const prevTab = activeTab;
     setActiveTab(path);
     setEditorLanguage(languageForPath(path));
+    if (disclosureAccepted && prevTab && prevTab !== path) {
+      recorder.recordTabSwitch(prevTab, path);
+    }
     try {
       const content = await readFile(path);
       setEditorContent(content);
     } catch {
       setEditorContent('// Could not read file');
     }
-  }, []);
+  }, [activeTab, disclosureAccepted, recorder]);
 
   const openFile = useCallback(async (path: string) => {
     setOpenTabs((prev) => {
       if (prev.some((t) => t.path === path)) return prev;
       return [...prev, { path, label: tabLabel(path) }];
     });
+    if (disclosureAccepted) {
+      recorder.recordFileOpen(path);
+    }
     await loadFileContent(path);
-  }, [loadFileContent]);
+  }, [loadFileContent, disclosureAccepted, recorder]);
 
   const switchTab = loadFileContent;
 
   const closeTab = useCallback((path: string) => {
+    if (disclosureAccepted) {
+      recorder.recordFileClose(path);
+    }
     setOpenTabs((prev) => {
       const next = prev.filter((t) => t.path !== path);
       if (path === activeTab) {
@@ -160,7 +181,7 @@ export function TakeHomeScreen() {
       }
       return next;
     });
-  }, [activeTab, loadFileContent]);
+  }, [activeTab, loadFileContent, disclosureAccepted, recorder]);
 
   const handleEditorChange = useCallback((value: string | undefined) => {
     const v = value ?? '';
@@ -192,6 +213,28 @@ export function TakeHomeScreen() {
     };
   }, []);
 
+  // Content snapshot every 5 seconds for the active file
+  useEffect(() => {
+    if (!disclosureAccepted || !activeTab) return;
+    const interval = setInterval(() => {
+      recorder.snapshotContent(activeTab, editorContentRef.current);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [disclosureAccepted, activeTab, recorder]);
+
+  // Window focus/blur tracking
+  useEffect(() => {
+    if (!disclosureAccepted) return;
+    const onFocus = () => recorder.recordFocus(true);
+    const onBlur = () => recorder.recordFocus(false);
+    window.addEventListener('focus', onFocus);
+    window.addEventListener('blur', onBlur);
+    return () => {
+      window.removeEventListener('focus', onFocus);
+      window.removeEventListener('blur', onBlur);
+    };
+  }, [disclosureAccepted, recorder]);
+
   // Auto-open index.js once WebContainer is ready
   useEffect(() => {
     if (ready && !didAutoOpenRef.current && openTabs.length === 0 && files.length > 0) {
@@ -208,6 +251,8 @@ export function TakeHomeScreen() {
     if (!sessionId || submitting || submitted) return;
     setSubmitting(true);
     try {
+      // Flush remaining replay events before submitting
+      await recorder.flush().catch(/* istanbul ignore next -- @preserve */ () => {});
       const allFiles = await collectFiles();
       const res = await fetch('/api/assess/takehome/submit', {
         method: 'POST',
@@ -224,7 +269,7 @@ export function TakeHomeScreen() {
     } finally {
       setSubmitting(false);
     }
-  }, [sessionId, submitting, submitted, collectFiles, navigation]);
+  }, [sessionId, submitting, submitted, collectFiles, navigation, recorder]);
 
   if (loading || !user) return null;
 
@@ -245,6 +290,17 @@ export function TakeHomeScreen() {
           <span style={errorTextStyle}>{sessionError}</span>
         </div>
       </div>
+    );
+  }
+
+  // Show disclosure modal if not yet accepted (skip for already-completed sessions)
+  if (!disclosureAccepted && !submitted) {
+    return (
+      <TelemetryDisclosure
+        companyName={sessionDetails?.companyName ?? 'the hiring company'}
+        sessionId={sessionId}
+        onAccept={() => setDisclosureAccepted(true)}
+      />
     );
   }
 
