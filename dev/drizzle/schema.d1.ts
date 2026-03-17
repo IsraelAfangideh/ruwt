@@ -222,6 +222,19 @@ export const assessments = sqliteTable('assessments', {
   welcomeMessage: text('welcome_message'),
   orgId: text('org_id').references(() => organizations.id),
   passThreshold: text('pass_threshold'), // JSON: { enabled, mode, dimensions, minOverall? }
+  type: text('type').default('challenge_based').notNull(), // 'challenge_based' | 'takehome'
+  repoUrl: text('repo_url'),
+  repoToken: text('repo_token'),
+  instructions: text('instructions'),
+  allowedModels: text('allowed_models'), // JSON array of model IDs
+  createdAt: text('created_at').default(sql`(datetime('now'))`).notNull(),
+});
+
+export const assessmentTelemetry = sqliteTable('assessment_telemetry', {
+  id: text('id').primaryKey(),
+  sessionId: text('session_id').notNull().references(() => assessmentSessions.id),
+  eventType: text('event_type').notNull(), // 'ai_call' | 'file_change' | 'test_run'
+  data: text('data').default('{}').notNull(), // JSON
   createdAt: text('created_at').default(sql`(datetime('now'))`).notNull(),
 });
 
@@ -480,6 +493,8 @@ export type AssessmentInvite = typeof assessmentInvites.$inferSelect;
 export type NewAssessmentInvite = typeof assessmentInvites.$inferInsert;
 export type AssessmentSession = typeof assessmentSessions.$inferSelect;
 export type NewAssessmentSession = typeof assessmentSessions.$inferInsert;
+export type AssessmentTelemetry = typeof assessmentTelemetry.$inferSelect;
+export type NewAssessmentTelemetry = typeof assessmentTelemetry.$inferInsert;
 export type AttemptMessage = typeof attemptMessages.$inferSelect;
 export type NewAttemptMessage = typeof attemptMessages.$inferInsert;
 
@@ -553,6 +568,8 @@ export type OrgRole = 'owner' | 'admin' | 'member' | 'viewer';
 export type OrgInvitationStatus = 'pending' | 'accepted' | 'expired' | 'revoked';
 export type CustomChallengeStatus = 'draft' | 'active' | 'archived';
 export type EmailType = 'candidate_invite' | 'reminder' | 'results_ready' | 'team_invite';
+export type AssessmentType = 'challenge_based' | 'takehome';
+export type TelemetryEventType = 'ai_call' | 'file_change' | 'test_run';
 
 export interface PassThreshold {
   enabled: boolean;

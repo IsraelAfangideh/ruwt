@@ -36,6 +36,7 @@ export const linking: LinkingOptions<ReactNavigation.RootParamList> = {
       ModelDetail: 'models/:modelId',
       ProjectList: 'ide',
       IDE: 'ide/new/:projectId?',
+      TakeHome: 'ide/takehome/:sessionId',
       NotFound: '*',
     },
   },

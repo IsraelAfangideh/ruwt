@@ -31,6 +31,7 @@ export type RootStackParamList = {
   ModelDetail: { modelId: string };
   ProjectList: undefined;
   IDE: { projectId?: string } | undefined;
+  TakeHome: { sessionId: string };
   NotFound: undefined;
 };
 

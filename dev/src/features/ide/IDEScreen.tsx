@@ -16,29 +16,10 @@ import { useWebContainer } from './useWebContainer';
 import type { SaveStatus } from './useWebContainer';
 import { FileTree } from './FileTree';
 import { IDETerminal } from './IDETerminal';
+import { tabLabel, languageForPath } from './utils';
 
 /* istanbul ignore next -- @preserve */
 const MonacoEditor = lazy(() => import('@monaco-editor/react'));
-
-/** Derive a short label from a file path (just the filename) */
-function tabLabel(path: string): string {
-  const parts = path.split('/');
-  return parts[parts.length - 1];
-}
-
-/** Infer Monaco language from a file path */
-function languageForPath(path: string): string {
-  const ext = path.includes('.') ? path.split('.').pop()!.toLowerCase() : '';
-  switch (ext) {
-    case 'ts': case 'tsx': return 'typescript';
-    case 'js': case 'jsx': return 'javascript';
-    case 'json': return 'json';
-    case 'md': return 'markdown';
-    case 'css': return 'css';
-    case 'html': return 'html';
-    default: return 'plaintext';
-  }
-}
 
 /** Human-readable save status label */
 function saveStatusLabel(status: SaveStatus): string {

@@ -100,6 +100,8 @@ const ProjectListScreen = lazyWithRetry('ProjectList', () => import('@/features/
 /* istanbul ignore next -- @preserve */
 const IDEScreen = lazyWithRetry('IDE', () => import('@/features/ide/IDEScreen'), m => m.IDEScreen);
 /* istanbul ignore next -- @preserve */
+const TakeHomeScreen = lazyWithRetry('TakeHome', () => import('@/features/ide/TakeHomeScreen'), m => m.TakeHomeScreen);
+/* istanbul ignore next -- @preserve */
 const NotFoundScreen = lazyWithRetry('NotFound', () => import('@/features/marketing/NotFoundScreen'), m => m.NotFoundScreen);
 
 function LoadingFallback() {
@@ -225,6 +227,7 @@ export function AppNavigator() {
           <Stack.Screen name="ModelDetail" component={ModelScreen} />
           <Stack.Screen name="ProjectList" component={ProjectListScreen} />
           <Stack.Screen name="IDE" component={IDEScreen} />
+          <Stack.Screen name="TakeHome" component={TakeHomeScreen} />
           <Stack.Screen name="NotFound" component={NotFoundScreen} />
         </Stack.Navigator>
       </Suspense>
