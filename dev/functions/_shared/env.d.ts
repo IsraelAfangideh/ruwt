@@ -18,4 +18,5 @@ interface Env {
   ERROR_ALERT_EMAIL?: string;
   SENTRY_DSN?: string;
   EXECUTOR_SECRET?: string;
+  PROJECTS_BUCKET?: R2Bucket;
 }

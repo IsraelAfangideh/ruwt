@@ -35,7 +35,7 @@ export const linking: LinkingOptions<ReactNavigation.RootParamList> = {
       Models: 'models',
       ModelDetail: 'models/:modelId',
       ProjectList: 'ide',
-      IDE: 'ide/new',
+      IDE: 'ide/new/:projectId?',
       NotFound: '*',
     },
   },

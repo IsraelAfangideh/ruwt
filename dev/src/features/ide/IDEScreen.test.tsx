@@ -1,11 +1,13 @@
 // @vitest-environment jsdom
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import type { FileEntry } from './FileTree';
 
 const mockNavigate = vi.fn();
+const mockRouteParams: any = {};
 vi.mock('@react-navigation/native', () => ({
   useNavigation: () => ({ navigate: mockNavigate, reset: vi.fn(), goBack: vi.fn() }),
+  useRoute: () => ({ params: mockRouteParams }),
 }));
 let mockAuthReturn: any = { user: { id: 'u1' }, loading: false };
 vi.mock('@/shared/hooks/useAuthGuard', () => ({
@@ -55,8 +57,11 @@ const defaultFiles: FileEntry[] = [
   { name: 'index.js', path: 'index.js', type: 'file' },
   { name: 'package.json', path: 'package.json', type: 'file' },
 ];
-let mockWCReturn: { ready: boolean; files: FileEntry[]; error: string | null; refreshFiles: () => Promise<void> };
+let mockWCReturn: { ready: boolean; files: FileEntry[]; error: string | null; refreshFiles: () => Promise<void>; saveStatus: string; markDirty: () => void; saveProject: (id: string) => Promise<boolean>; collectFiles: () => Promise<Record<string, string>> };
 const mockRefreshFiles = vi.fn().mockResolvedValue(undefined);
+const mockMarkDirty = vi.fn();
+const mockSaveProject = vi.fn().mockResolvedValue(true);
+const mockCollectFiles = vi.fn().mockResolvedValue({});
 vi.mock('./useWebContainer', () => ({
   useWebContainer: () => mockWCReturn,
 }));
@@ -82,12 +87,17 @@ vi.mock('@/shared/theme/colors', () => ({
   },
 }));
 
+// Mock fetch for project metadata loading and save
+const mockFetch = vi.fn();
+vi.stubGlobal('fetch', mockFetch);
+
 const { IDEScreen } = await import('./IDEScreen');
 
 describe('IDEScreen', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockAuthReturn = { user: { id: 'u1' }, loading: false };
+    mockRouteParams.projectId = undefined;
     mockLayoutReturn = {
       sidebarCollapsed: false,
       bottomCollapsed: false,
@@ -107,7 +117,16 @@ describe('IDEScreen', () => {
       files: [...defaultFiles],
       error: null,
       refreshFiles: mockRefreshFiles,
+      saveStatus: 'idle',
+      markDirty: mockMarkDirty,
+      saveProject: mockSaveProject,
+      collectFiles: mockCollectFiles,
     };
+    mockFetch.mockResolvedValue({ ok: false });
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   it('renders the top bar with project name', () => {
@@ -261,6 +280,8 @@ describe('IDEScreen', () => {
 
       // writeFile should have been called with the changed content
       expect(mockWriteFile).toHaveBeenCalledWith('index.js', 'changed code');
+      // markDirty should have been called
+      expect(mockMarkDirty).toHaveBeenCalled();
     }
 
     vi.useRealTimers();
@@ -274,7 +295,7 @@ describe('IDEScreen', () => {
   });
 
   it('renders terminal placeholder when not ready', () => {
-    mockWCReturn = { ready: false, files: [], error: null, refreshFiles: mockRefreshFiles };
+    mockWCReturn = { ...mockWCReturn, ready: false, files: [] };
     render(<IDEScreen />);
     expect(screen.getByText('Waiting for WebContainer...')).toBeInTheDocument();
   });
@@ -309,14 +330,14 @@ describe('IDEScreen', () => {
   });
 
   it('shows error state when WebContainer fails', () => {
-    mockWCReturn = { ready: false, files: [], error: 'WebContainer error', refreshFiles: mockRefreshFiles };
+    mockWCReturn = { ...mockWCReturn, ready: false, files: [], error: 'WebContainer error' };
     render(<IDEScreen />);
     expect(screen.getByTestId('wc-error')).toBeInTheDocument();
     expect(screen.getByText('WebContainer error')).toBeInTheDocument();
   });
 
   it('shows "Select a file" message when no file is open but ready', () => {
-    mockWCReturn = { ready: true, files: [], error: null, refreshFiles: mockRefreshFiles };
+    mockWCReturn = { ...mockWCReturn, ready: true, files: [] };
     render(<IDEScreen />);
     // No index.js found, so no auto-open, no file selected
     expect(screen.getByTestId('no-file-open')).toBeInTheDocument();
@@ -324,14 +345,14 @@ describe('IDEScreen', () => {
   });
 
   it('shows loading state in sidebar when booting', () => {
-    mockWCReturn = { ready: false, files: [], error: null, refreshFiles: mockRefreshFiles };
+    mockWCReturn = { ...mockWCReturn, ready: false, files: [], error: null };
     render(<IDEScreen />);
     expect(screen.getByTestId('wc-loading')).toBeInTheDocument();
     expect(screen.getByText('Booting...')).toBeInTheDocument();
   });
 
   it('shows "Booting" in editor when not ready', () => {
-    mockWCReturn = { ready: false, files: [], error: null, refreshFiles: mockRefreshFiles };
+    mockWCReturn = { ...mockWCReturn, ready: false, files: [], error: null };
     render(<IDEScreen />);
     expect(screen.getByText('Booting WebContainer...')).toBeInTheDocument();
   });
@@ -397,5 +418,99 @@ describe('IDEScreen', () => {
     // Tab bar should disappear (0 open tabs)
     expect(screen.queryByTestId('tab-bar')).toBeNull();
     expect(screen.getByTestId('no-file-open')).toBeInTheDocument();
+  });
+
+  // --- New persistence tests ---
+
+  it('shows save status when saveStatus is "saving"', () => {
+    mockWCReturn = { ...mockWCReturn, saveStatus: 'saving' };
+    render(<IDEScreen />);
+    expect(screen.getByTestId('save-status')).toBeInTheDocument();
+    expect(screen.getByText('Saving...')).toBeInTheDocument();
+  });
+
+  it('shows save status when saveStatus is "saved"', () => {
+    mockWCReturn = { ...mockWCReturn, saveStatus: 'saved' };
+    render(<IDEScreen />);
+    expect(screen.getByText('Saved')).toBeInTheDocument();
+  });
+
+  it('shows save status when saveStatus is "error"', () => {
+    mockWCReturn = { ...mockWCReturn, saveStatus: 'error' };
+    render(<IDEScreen />);
+    expect(screen.getByText('Save failed')).toBeInTheDocument();
+  });
+
+  it('does not show save status when idle', () => {
+    render(<IDEScreen />);
+    expect(screen.queryByTestId('save-status')).toBeNull();
+  });
+
+  it('calls saveProject on save button click when projectId exists', async () => {
+    mockRouteParams.projectId = 'proj-123';
+    render(<IDEScreen />);
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('save-btn'));
+    });
+    expect(mockSaveProject).toHaveBeenCalledWith('proj-123');
+  });
+
+  it('creates a new project on save when no projectId', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve({ project: { id: 'new-proj', name: 'Untitled Project' } }),
+    });
+
+    render(<IDEScreen />);
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('save-btn'));
+    });
+
+    // Should have POSTed to create
+    expect(mockFetch).toHaveBeenCalledWith(
+      '/api/projects',
+      expect.objectContaining({ method: 'POST' }),
+    );
+    // Then saved
+    expect(mockSaveProject).toHaveBeenCalledWith('new-proj');
+  });
+
+  it('handles create project failure gracefully', async () => {
+    mockFetch.mockResolvedValueOnce({ ok: false });
+
+    render(<IDEScreen />);
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('save-btn'));
+    });
+
+    // Should not crash; saveProject should not be called
+    expect(mockSaveProject).not.toHaveBeenCalled();
+  });
+
+  it('handles create project network error gracefully', async () => {
+    mockFetch.mockRejectedValueOnce(new Error('network'));
+
+    render(<IDEScreen />);
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('save-btn'));
+    });
+
+    expect(mockSaveProject).not.toHaveBeenCalled();
+  });
+
+  it('fetches project metadata when projectId is in route params', async () => {
+    mockRouteParams.projectId = 'proj-456';
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve({ project: { name: 'Loaded Project' } }),
+    });
+
+    render(<IDEScreen />);
+    await waitFor(() => {
+      expect(mockFetch).toHaveBeenCalledWith('/api/projects/proj-456');
+    });
+    await waitFor(() => {
+      expect(screen.getByText('Loaded Project')).toBeInTheDocument();
+    });
   });
 });

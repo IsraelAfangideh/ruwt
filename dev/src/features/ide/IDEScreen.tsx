@@ -1,9 +1,10 @@
 /**
- * IDEScreen: The /ide/new (and future /ide/:projectId) standalone IDE.
+ * IDEScreen: The /ide/new (and /ide/new/:projectId) standalone IDE.
  * Uses WebContainer for a real filesystem, multi-file editing, and terminal.
+ * Integrates with project persistence (R2 + D1) for save/load.
  */
 import { lazy, Suspense, useState, useRef, useCallback, useEffect } from 'react';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { useAuthGuard } from '@/shared/hooks/useAuthGuard';
 import { useIDELayout } from '@/features/shared-ide/useIDELayout';
 import { PanelResizeBar } from '@/features/shared-ide/PanelResizeBar';
@@ -12,6 +13,7 @@ import { fontFamily } from '@/shared/theme/tokens';
 import { useDocumentMeta } from '@/shared/hooks/useDocumentMeta';
 import { readFile, writeFile } from '@/lib/sandbox/webcontainer';
 import { useWebContainer } from './useWebContainer';
+import type { SaveStatus } from './useWebContainer';
 import { FileTree } from './FileTree';
 import { IDETerminal } from './IDETerminal';
 
@@ -38,6 +40,16 @@ function languageForPath(path: string): string {
   }
 }
 
+/** Human-readable save status label */
+function saveStatusLabel(status: SaveStatus): string {
+  switch (status) {
+    case 'saving': return 'Saving...';
+    case 'saved': return 'Saved';
+    case 'error': return 'Save failed';
+    default: return '';
+  }
+}
+
 interface OpenTab {
   path: string;
   label: string;
@@ -46,9 +58,17 @@ interface OpenTab {
 export function IDEScreen() {
   const { user, loading } = useAuthGuard();
   const navigation = useNavigation();
+  const route = useRoute();
   const layout = useIDELayout('ide-layout-prefs');
-  const { ready, files, error } = useWebContainer();
-  useDocumentMeta({ title: 'Ruwt IDE' });
+
+  // Extract projectId from route params
+  const routeProjectId = (route.params as { projectId?: string } | undefined)?.projectId;
+
+  const [projectId, setProjectId] = useState<string | undefined>(routeProjectId);
+  const [projectName, setProjectName] = useState('Untitled Project');
+
+  const { ready, files, error, saveStatus, markDirty, saveProject } = useWebContainer(projectId);
+  useDocumentMeta({ title: `${projectName} — Ruwt IDE` });
 
   // Open tabs and active tab tracking
   const [openTabs, setOpenTabs] = useState<OpenTab[]>([]);
@@ -62,6 +82,19 @@ export function IDEScreen() {
   const writeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Track whether the initial auto-open has fired (prevent re-open after user closes all tabs)
   const didAutoOpenRef = useRef(false);
+
+  // Load project metadata if we have a projectId
+  useEffect(() => {
+    if (!routeProjectId) return;
+    fetch(`/api/projects/${routeProjectId}`)
+      .then((res) => res.ok ? res.json() : null)
+      .then((data: any) => {
+        if (data?.project) {
+          setProjectName(data.project.name ?? 'Untitled Project');
+        }
+      })
+      .catch(/* istanbul ignore next -- @preserve */ () => {});
+  }, [routeProjectId]);
 
   // Load a file into the editor (shared by openFile and switchTab)
   const loadFileContent = useCallback(async (path: string) => {
@@ -114,8 +147,9 @@ export function IDEScreen() {
     if (writeTimerRef.current) clearTimeout(writeTimerRef.current);
     writeTimerRef.current = setTimeout(() => {
       writeFile(path, v).catch(/* istanbul ignore next -- @preserve */ () => {});
+      markDirty();
     }, 300);
-  }, [activeTab]);
+  }, [activeTab, markDirty]);
 
   // Cleanup write timer on unmount
   useEffect(() => {
@@ -136,7 +170,34 @@ export function IDEScreen() {
     }
   }, [ready, files, openTabs.length, openFile]);
 
+  // Handle manual save
+  const handleSave = useCallback(async () => {
+    // If no project yet, create one first
+    let pid = projectId;
+    if (!pid) {
+      try {
+        const res = await fetch('/api/projects', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: projectName }),
+        });
+        if (res.ok) {
+          const data = await res.json() as { project: { id: string; name: string } };
+          pid = data.project.id;
+          setProjectId(pid);
+        }
+      } catch {
+        return;
+      }
+    }
+    if (pid) {
+      await saveProject(pid);
+    }
+  }, [projectId, projectName, saveProject]);
+
   if (loading || !user) return null;
+
+  const statusText = saveStatusLabel(saveStatus);
 
   return (
     <div style={rootStyle}>
@@ -151,9 +212,20 @@ export function IDEScreen() {
           >
             &larr; Back
           </button>
-          <span style={projectNameStyle}>Untitled Project</span>
+          <span style={projectNameStyle}>{projectName}</span>
+          {statusText && (
+            <span
+              style={{
+                ...saveStatusStyle,
+                color: saveStatus === 'error' ? arena.error : arena.textMuted,
+              }}
+              data-testid="save-status"
+            >
+              {statusText}
+            </span>
+          )}
         </div>
-        <button style={saveBtnStyle} data-testid="save-btn">
+        <button onClick={handleSave} style={saveBtnStyle} data-testid="save-btn">
           Save
         </button>
       </div>
@@ -170,11 +242,11 @@ export function IDEScreen() {
                 onSelectFile={openFile}
               />
             ) : error ? (
-              <div style={statusStyle} data-testid="wc-error">
+              <div style={statusDivStyle} data-testid="wc-error">
                 <span style={errorTextStyle}>{error}</span>
               </div>
             ) : (
-              <div style={statusStyle} data-testid="wc-loading">
+              <div style={statusDivStyle} data-testid="wc-loading">
                 <span style={mutedTextStyle}>Booting...</span>
               </div>
             )}
@@ -327,6 +399,11 @@ const projectNameStyle: React.CSSProperties = {
   color: arena.text,
 };
 
+const saveStatusStyle: React.CSSProperties = {
+  fontSize: 12,
+  fontStyle: 'italic',
+};
+
 const saveBtnStyle: React.CSSProperties = {
   background: arena.accent,
   border: 'none',
@@ -354,7 +431,7 @@ const sidebarStyle: React.CSSProperties = {
   flexShrink: 0,
 };
 
-const statusStyle: React.CSSProperties = {
+const statusDivStyle: React.CSSProperties = {
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',

@@ -11,12 +11,18 @@ const mockCreateStarterFiles = vi.fn().mockReturnValue({
 
 // listFiles mock: returns entries for '.', throws for files
 const mockListFiles = vi.fn();
+const mockReadFile = vi.fn().mockResolvedValue('// content');
+const mockWriteFile = vi.fn().mockResolvedValue(undefined);
+const mockMkdir = vi.fn().mockResolvedValue(undefined);
 
 vi.mock('@/lib/sandbox/webcontainer', () => ({
   getWebContainer: (...args: unknown[]) => mockGetWebContainer(...args),
   mountFiles: (...args: unknown[]) => mockMountFiles(...args),
   createStarterFiles: (...args: unknown[]) => mockCreateStarterFiles(...args),
   listFiles: (...args: unknown[]) => mockListFiles(...args),
+  readFile: (...args: unknown[]) => mockReadFile(...args),
+  writeFile: (...args: unknown[]) => mockWriteFile(...args),
+  mkdir: (...args: unknown[]) => mockMkdir(...args),
 }));
 
 // Need to mock colors because FileTree import chain uses them
@@ -33,18 +39,34 @@ vi.mock('@/shared/theme/colors', () => ({
   },
 }));
 
+// Mock fetch for API calls
+const mockFetch = vi.fn();
+vi.stubGlobal('fetch', mockFetch);
+
 import { useWebContainer } from './useWebContainer';
 
 describe('useWebContainer', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Re-establish default implementations after clearAllMocks
+    mockGetWebContainer.mockResolvedValue({});
+    mockMountFiles.mockResolvedValue(undefined);
+    mockCreateStarterFiles.mockReturnValue({
+      'package.json': { file: { contents: '{}' } },
+      'index.js': { file: { contents: '// hello' } },
+    });
+    mockReadFile.mockResolvedValue('// content');
+    mockWriteFile.mockResolvedValue(undefined);
+    mockMkdir.mockResolvedValue(undefined);
     // Default: root directory has two files, no directories
     mockListFiles.mockImplementation((path: string) => {
       if (path === '.') return Promise.resolve(['index.js', 'package.json']);
       // Any other path = it's a file, throw
       return Promise.reject(new Error('not a directory'));
     });
+    mockFetch.mockResolvedValue({ ok: false });
   });
+
 
   it('boots and sets ready=true with file tree', async () => {
     const { result } = renderHook(() => useWebContainer());
@@ -182,5 +204,178 @@ describe('useWebContainer', () => {
 
     // Give it a tick — no errors expected
     await new Promise((r) => setTimeout(r, 20));
+  });
+
+  it('exposes saveStatus as idle initially', async () => {
+    const { result } = renderHook(() => useWebContainer());
+    await waitFor(() => expect(result.current.ready).toBe(true));
+    expect(result.current.saveStatus).toBe('idle');
+  });
+
+  it('markDirty is callable', async () => {
+    const { result } = renderHook(() => useWebContainer());
+    await waitFor(() => expect(result.current.ready).toBe(true));
+    // Should not throw
+    act(() => result.current.markDirty());
+  });
+
+  it('saveProject calls fetch PUT and sets saveStatus', async () => {
+    mockFetch.mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({}) });
+
+    const { result } = renderHook(() => useWebContainer());
+    await waitFor(() => expect(result.current.ready).toBe(true));
+
+    let success: boolean = false;
+    await act(async () => {
+      success = await result.current.saveProject('proj-1');
+    });
+
+    expect(success).toBe(true);
+    expect(result.current.saveStatus).toBe('saved');
+    expect(mockFetch).toHaveBeenCalledWith(
+      '/api/projects/proj-1',
+      expect.objectContaining({ method: 'PUT' }),
+    );
+  });
+
+  it('saveProject sets error status on fetch failure', async () => {
+    mockFetch.mockResolvedValueOnce({ ok: false });
+
+    const { result } = renderHook(() => useWebContainer());
+    await waitFor(() => expect(result.current.ready).toBe(true));
+
+    let success: boolean = true;
+    await act(async () => {
+      success = await result.current.saveProject('proj-1');
+    });
+
+    expect(success).toBe(false);
+    expect(result.current.saveStatus).toBe('error');
+  });
+
+  it('saveProject sets error status on network error', async () => {
+    mockFetch.mockRejectedValueOnce(new Error('network error'));
+
+    const { result } = renderHook(() => useWebContainer());
+    await waitFor(() => expect(result.current.ready).toBe(true));
+
+    let success: boolean = true;
+    await act(async () => {
+      success = await result.current.saveProject('proj-1');
+    });
+
+    expect(success).toBe(false);
+    expect(result.current.saveStatus).toBe('error');
+  });
+
+  it('collectFiles reads all files from the filesystem', async () => {
+    mockListFiles.mockImplementation((path: string) => {
+      if (path === '.') return Promise.resolve(['index.js', 'package.json']);
+      return Promise.reject(new Error('not a directory'));
+    });
+    mockReadFile.mockResolvedValue('// content');
+
+    const { result } = renderHook(() => useWebContainer());
+    await waitFor(() => expect(result.current.ready).toBe(true));
+
+    let fileMap: Record<string, string> = {};
+    await act(async () => {
+      fileMap = await result.current.collectFiles();
+    });
+
+    expect(fileMap['index.js']).toBe('// content');
+    expect(fileMap['package.json']).toBe('// content');
+  });
+
+  it('collectFiles handles nested directories', async () => {
+    mockListFiles.mockImplementation((path: string) => {
+      if (path === '.') return Promise.resolve(['src', 'index.js']);
+      if (path === 'src') return Promise.resolve(['main.ts']);
+      return Promise.reject(new Error('not a directory'));
+    });
+    mockReadFile.mockResolvedValue('code');
+
+    const { result } = renderHook(() => useWebContainer());
+    await waitFor(() => expect(result.current.ready).toBe(true));
+
+    let fileMap: Record<string, string> = {};
+    await act(async () => {
+      fileMap = await result.current.collectFiles();
+    });
+
+    expect(fileMap['index.js']).toBe('code');
+    expect(fileMap['src/main.ts']).toBe('code');
+  });
+
+  it('collectFiles skips unreadable files', async () => {
+    mockListFiles.mockImplementation((path: string) => {
+      if (path === '.') return Promise.resolve(['bad.js']);
+      return Promise.reject(new Error('not a directory'));
+    });
+    mockReadFile.mockRejectedValue(new Error('cannot read'));
+
+    const { result } = renderHook(() => useWebContainer());
+    await waitFor(() => expect(result.current.ready).toBe(true));
+
+    let fileMap: Record<string, string> = {};
+    await act(async () => {
+      fileMap = await result.current.collectFiles();
+    });
+
+    expect(Object.keys(fileMap)).toHaveLength(0);
+  });
+
+  it('loads project files from API when projectId is provided', async () => {
+    const files = { 'app.js': 'console.log("loaded")' };
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve({ files }),
+    });
+
+    const { result } = renderHook(() => useWebContainer('proj-123'));
+
+    await waitFor(() => expect(result.current.ready).toBe(true));
+
+    // mountFiles should have been called with the loaded files
+    expect(mockFetch).toHaveBeenCalledWith('/api/projects/proj-123/files');
+    expect(mockMountFiles).toHaveBeenCalled();
+    // createStarterFiles should NOT have been called since we loaded from API
+    expect(mockCreateStarterFiles).not.toHaveBeenCalled();
+  });
+
+  it('falls back to starter files when API load fails', async () => {
+    mockFetch.mockResolvedValueOnce({ ok: false });
+
+    const { result } = renderHook(() => useWebContainer('proj-123'));
+
+    await waitFor(() => expect(result.current.ready).toBe(true));
+
+    // Should fall back to starter files
+    expect(mockCreateStarterFiles).toHaveBeenCalled();
+    expect(mockMountFiles).toHaveBeenCalled();
+  });
+
+  it('falls back to starter files when API returns empty files', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve({ files: {} }),
+    });
+
+    const { result } = renderHook(() => useWebContainer('proj-123'));
+
+    await waitFor(() => expect(result.current.ready).toBe(true));
+
+    // Should fall back to starter files
+    expect(mockCreateStarterFiles).toHaveBeenCalled();
+  });
+
+  it('falls back to starter files when fetch throws', async () => {
+    mockFetch.mockRejectedValueOnce(new Error('network'));
+
+    const { result } = renderHook(() => useWebContainer('proj-123'));
+
+    await waitFor(() => expect(result.current.ready).toBe(true));
+
+    expect(mockCreateStarterFiles).toHaveBeenCalled();
   });
 });

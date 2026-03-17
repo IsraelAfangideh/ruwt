@@ -30,7 +30,7 @@ export type RootStackParamList = {
   Models: undefined;
   ModelDetail: { modelId: string };
   ProjectList: undefined;
-  IDE: undefined;
+  IDE: { projectId?: string } | undefined;
   NotFound: undefined;
 };
 

@@ -425,6 +425,22 @@ export const bookmarks = sqliteTable('bookmarks', {
   createdAt: text('created_at').default(sql`(datetime('now'))`).notNull(),
 });
 
+// --- Projects (IDE persistence) ---
+
+export const projects = sqliteTable('projects', {
+  id: text('id').primaryKey(),
+  userId: text('user_id').notNull().references(() => profiles.id),
+  name: text('name').notNull().default('Untitled Project'),
+  description: text('description').default(''),
+  r2Key: text('r2_key').notNull(),
+  language: text('language').default('javascript'),
+  fileCount: integer('file_count').default(0),
+  sizeBytes: integer('size_bytes').default(0),
+  lastOpenedAt: text('last_opened_at').default(sql`(datetime('now'))`),
+  createdAt: text('created_at').default(sql`(datetime('now'))`).notNull(),
+  updatedAt: text('updated_at').default(sql`(datetime('now'))`),
+});
+
 // --- Notification Preferences ---
 
 export const notificationPreferences = sqliteTable('notification_preferences', {
@@ -529,6 +545,9 @@ export type NewBookmark = typeof bookmarks.$inferInsert;
 export type NotificationPreference = typeof notificationPreferences.$inferSelect;
 export type NewNotificationPreference = typeof notificationPreferences.$inferInsert;
 export type BookmarkTargetType = 'challenge' | 'replay';
+
+export type Project = typeof projects.$inferSelect;
+export type NewProject = typeof projects.$inferInsert;
 
 export type OrgRole = 'owner' | 'admin' | 'member' | 'viewer';
 export type OrgInvitationStatus = 'pending' | 'accepted' | 'expired' | 'revoked';

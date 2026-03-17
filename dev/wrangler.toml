@@ -22,5 +22,17 @@ database_name = "ruwt-dev"
 database_id = "27b64c12-c858-473d-8a40-d202d01d32aa"
 migrations_dir = "drizzle/migrations-d1"
 
+[[r2_buckets]]
+binding = "PROJECTS_BUCKET"
+bucket_name = "ruwt-projects"
+
+[[env.preview.r2_buckets]]
+binding = "PROJECTS_BUCKET"
+bucket_name = "ruwt-projects-preview"
+
+[[env.production.r2_buckets]]
+binding = "PROJECTS_BUCKET"
+bucket_name = "ruwt-projects"
+
 # Runtime vars for Pages Functions are set via wrangler pages secret put in the deploy workflow.
 # Do NOT add [vars] here for values already set in the Dashboard — causes "Binding name already in use" failures.
