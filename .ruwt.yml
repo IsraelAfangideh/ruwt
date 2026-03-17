@@ -1,0 +1,44 @@
+# Ruwt IDE configuration for this monorepo.
+# Tells the IDE how to set up the dev environment and what tasks are available.
+
+name: ruwt
+mode: cloud
+
+machine:
+  spec: medium
+  region: iad
+
+setup:
+  - cd dev && npm install
+  - cd social/code/api && bun install
+
+tasks:
+  test:
+    command: cd dev && npx vitest run
+    label: Run all tests
+  test-watch:
+    command: cd dev && npx vitest
+    label: Run tests (watch mode)
+  typecheck:
+    command: cd dev && npx tsc --noEmit
+    label: TypeScript check
+  dev:
+    command: cd dev && npm run dev
+    label: Start dev server
+  deploy-dev:
+    command: cd dev && CLOUDFLARE_API_TOKEN=$CLOUDFLARE_API_TOKEN npx wrangler pages deploy dist --project-name=ruwt-dev --branch=main
+    label: Deploy to ruwt.dev
+  deploy-executor:
+    command: cd executor && flyctl deploy
+    label: Deploy executor
+  build-executor:
+    command: cd executor && docker build -t ruwt-exec-test .
+    label: Build executor Docker image
+  test-executor:
+    command: cd executor && docker run --privileged -d --name ruwt-exec-test -p 8080:8080 -e EXECUTOR_SECRET=test123 ruwt-exec-test && sleep 2 && curl -s -X POST http://localhost:8080/execute -H "X-Executor-Secret: test123" -H "Content-Type: application/json" -d '{"language":"javascript","code":"console.log(42)"}' && docker stop ruwt-exec-test && docker rm ruwt-exec-test
+    label: Test executor locally
+
+env:
+  - CLOUDFLARE_API_TOKEN
+  - FLY_API_TOKEN
+  - SUPABASE_ADMIN_TOKEN

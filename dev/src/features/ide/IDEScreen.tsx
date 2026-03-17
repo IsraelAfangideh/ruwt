@@ -19,7 +19,10 @@ import { FileTree } from './FileTree';
 import { IDETerminal } from './IDETerminal';
 import { CloneDialog } from './CloneDialog';
 import { GitPanel } from './GitPanel';
+import { TaskRunner } from './TaskRunner';
 import { tabLabel, languageForPath, GIT_TOKEN_KEY, buildGitStatusMap } from './utils';
+import { parseRuwtConfig } from '@/lib/config/ruwt-config';
+import type { RuwtConfig } from '@/lib/config/ruwt-config';
 import * as browserGit from '@/lib/git/browser-git';
 import type { GitStatusEntry, GitLogEntry } from '@/lib/git/browser-git';
 
@@ -68,6 +71,9 @@ export function IDEScreen() {
   const writeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Track whether the initial auto-open has fired (prevent re-open after user closes all tabs)
   const didAutoOpenRef = useRef(false);
+
+  // .ruwt.yml config (loaded from project root when ready)
+  const [ruwtConfig, setRuwtConfig] = useState<RuwtConfig | null>(null);
 
   // Git integration state
   const [showCloneDialog, setShowCloneDialog] = useState(false);
@@ -236,6 +242,28 @@ export function IDEScreen() {
     }
   }, [ready, refreshGitStatus]);
 
+  // Load .ruwt.yml config when WebContainer is ready
+  useEffect(() => {
+    if (!ready) return;
+    readFile('.ruwt.yml')
+      .then((content) => {
+        try {
+          const config = parseRuwtConfig(content);
+          setRuwtConfig(config);
+        } catch {
+          // Invalid config — silently ignore
+        }
+      })
+      .catch(() => {
+        // No .ruwt.yml found — that's fine
+      });
+  }, [ready]);
+
+  /** Run a task command — currently a no-op placeholder until terminal command dispatch is wired up. */
+  const handleRunCommand = useCallback((_command: string) => {
+    // TODO: wire to IDETerminal's shell input when terminal exposes a write API
+  }, []);
+
   // Handle manual save
   const handleSave = useCallback(async () => {
     // If no project yet, create one first
@@ -292,6 +320,9 @@ export function IDEScreen() {
           )}
         </div>
         <div style={topBarRightStyle}>
+          {ruwtConfig?.tasks && Object.keys(ruwtConfig.tasks).length > 0 && (
+            <TaskRunner tasks={ruwtConfig.tasks} onRunCommand={handleRunCommand} />
+          )}
           <button
             onClick={() => setShowCloneDialog(true)}
             style={cloneRepoBtnStyle}

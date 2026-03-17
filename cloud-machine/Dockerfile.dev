@@ -1,0 +1,33 @@
+# Specialized Cloud Machine image for ruwt monorepo development.
+# Extends the base cloud image with monorepo-specific tooling.
+#
+# Build:  docker build -f Dockerfile.dev -t ruwt-cloud-dev .
+# Run:    (launched automatically by Cloud Mode when .ruwt.yml specifies mode: cloud)
+
+FROM ruwt-cloud:latest
+
+USER root
+
+# Additional tools for ruwt monorepo development
+RUN npm install -g vitest patch-package
+
+# Pre-install Bun (used by /social)
+RUN curl -fsSL https://bun.sh/install | bash && \
+    ln -s /root/.bun/bin/bun /usr/local/bin/bun
+
+# Docker-in-Docker support (for executor testing)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    docker-compose-plugin && \
+    rm -rf /var/lib/apt/lists/*
+
+# Copy workspace init script
+COPY init-workspace.sh /usr/local/bin/init-workspace.sh
+RUN chmod +x /usr/local/bin/init-workspace.sh
+
+USER dev
+
+# Clone the ruwt monorepo on first boot
+ENV RUWT_REPO=https://github.com/IsraelAfangideh/ruwt.git
+
+# Run init script on container start (bridge server is started after)
+CMD ["/bin/bash", "-c", "/usr/local/bin/init-workspace.sh && node /opt/bridge/server.js"]
