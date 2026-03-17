@@ -440,6 +440,20 @@ export const bookmarks = sqliteTable('bookmarks', {
   createdAt: text('created_at').default(sql`(datetime('now'))`).notNull(),
 });
 
+// --- Cloud Machines (Cloud Mode) ---
+
+export const cloudMachines = sqliteTable('cloud_machines', {
+  id: text('id').primaryKey(),
+  userId: text('user_id').notNull().references(() => profiles.id),
+  flyMachineId: text('fly_machine_id').notNull(),
+  bridgeToken: text('bridge_token').notNull(),
+  spec: text('spec').default('light').notNull(), // 'light' | 'medium' | 'heavy'
+  status: text('status').default('stopped').notNull(), // 'running' | 'stopped'
+  region: text('region').default('iad').notNull(),
+  lastActiveAt: text('last_active_at').default(sql`(datetime('now'))`),
+  createdAt: text('created_at').default(sql`(datetime('now'))`),
+});
+
 // --- Projects (IDE persistence) ---
 
 export const projects = sqliteTable('projects', {
@@ -566,12 +580,17 @@ export type BookmarkTargetType = 'challenge' | 'replay';
 export type Project = typeof projects.$inferSelect;
 export type NewProject = typeof projects.$inferInsert;
 
+export type CloudMachine = typeof cloudMachines.$inferSelect;
+export type NewCloudMachine = typeof cloudMachines.$inferInsert;
+
 export type OrgRole = 'owner' | 'admin' | 'member' | 'viewer';
 export type OrgInvitationStatus = 'pending' | 'accepted' | 'expired' | 'revoked';
 export type CustomChallengeStatus = 'draft' | 'active' | 'archived';
 export type EmailType = 'candidate_invite' | 'reminder' | 'results_ready' | 'team_invite';
 export type AssessmentType = 'challenge_based' | 'takehome';
 export type TelemetryEventType = 'ai_call' | 'file_change' | 'test_run';
+export type MachineSpec = 'light' | 'medium' | 'heavy';
+export type MachineStatus = 'running' | 'stopped';
 
 export interface PassThreshold {
   enabled: boolean;

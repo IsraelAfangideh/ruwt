@@ -18,5 +18,6 @@ interface Env {
   ERROR_ALERT_EMAIL?: string;
   SENTRY_DSN?: string;
   EXECUTOR_SECRET?: string;
+  FLY_API_TOKEN?: string;
   PROJECTS_BUCKET?: R2Bucket;
 }

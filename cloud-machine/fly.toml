@@ -1,0 +1,18 @@
+# Template for Cloud Mode machines -- not deployed directly.
+# Machines are created via Fly Machines API from /api/machines/start.
+app = "ruwt-cloud"
+primary_region = "iad"
+
+[build]
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+
+[[vm]]
+  memory = "1024mb"
+  cpu_kind = "shared"
+  cpus = 1
