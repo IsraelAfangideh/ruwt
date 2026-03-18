@@ -30,10 +30,13 @@ export class VirtualFileSystem {
   private cwd = '/home/user';
   readonly solutionFilename: string;
   readonly solutionPath: string;
+  private readonly executorAliasPath: string;
 
   constructor(language: string, initialCode: string) {
     this.solutionFilename = LANG_EXTENSIONS[language] || 'solution.js';
     this.solutionPath = `/home/user/${this.solutionFilename}`;
+    const ext = this.solutionFilename.substring(this.solutionFilename.lastIndexOf('.'));
+    this.executorAliasPath = `/home/user/main${ext}`;
 
     // Bootstrap directories
     this.dirs.add('/');
@@ -209,6 +212,16 @@ export class VirtualFileSystem {
   }
 
   /* ── Solution helpers ── */
+
+  /**
+   * Check if a path refers to the solution file, including executor aliases.
+   * The executor writes code to main.{ext} — models see this in stacktraces
+   * and may target it with FILE: main.js instead of the actual solution filename.
+   */
+  isSolutionPath(path: string): boolean {
+    const abs = this.resolve(path);
+    return abs === this.solutionPath || abs === this.executorAliasPath;
+  }
 
   getSolutionCode(): string {
     return this.files.get(this.solutionPath) ?? '';

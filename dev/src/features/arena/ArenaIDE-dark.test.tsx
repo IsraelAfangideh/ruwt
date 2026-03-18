@@ -175,12 +175,10 @@ vi.mock('@/features/shared-ide/lib/tool-parser', () => ({
 }));
 
 vi.mock('@/features/shared-ide/lib/code-apply', () => ({
-  applyCodeFromResponse: () => ({ applied: false, needsApplyModel: false, newCode: '', message: '' }),
-  extractFileEdits: () => ({ fileEdits: [], remaining: '' }),
-}));
-
-vi.mock('@/features/shared-ide/lib/apply-model', () => ({
-  callApplyModel: vi.fn().mockResolvedValue({ success: false }),
+  applyAIResponse: () => Promise.resolve({
+    codeChanged: false, failedCount: 0, helperFilesWritten: [],
+    oldCode: '', newCode: '', message: '', applyModelVerifyFailed: false,
+  }),
 }));
 
 vi.mock('../shared-ide/useEditorDecorations', () => ({

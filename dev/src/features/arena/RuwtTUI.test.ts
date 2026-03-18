@@ -18,18 +18,15 @@ vi.mock('../shared-ide/lib/tool-parser', () => ({
 }));
 
 vi.mock('../shared-ide/lib/code-apply', () => ({
-  applyCodeFromResponse: vi.fn(() => ({
-    applied: false,
+  applyAIResponse: vi.fn(() => Promise.resolve({
+    codeChanged: false,
+    failedCount: 0,
+    helperFilesWritten: [],
+    oldCode: '',
     newCode: '',
-    method: 'none' as const,
     message: '',
-    needsApplyModel: false,
+    applyModelVerifyFailed: false,
   })),
-  extractFileEdits: vi.fn(() => ({ fileEdits: [], remaining: '' })),
-}));
-
-vi.mock('../shared-ide/lib/apply-model', () => ({
-  callApplyModel: vi.fn(() => Promise.resolve({ success: false })),
 }));
 
 vi.mock('../shared-ide/lib/line-diff', () => ({
@@ -38,8 +35,7 @@ vi.mock('../shared-ide/lib/line-diff', () => ({
 
 // Import the mocked modules for use in tests
 import { hasToolCalls, stripToolCalls } from '../shared-ide/lib/tool-parser';
-import { applyCodeFromResponse, extractFileEdits } from '../shared-ide/lib/code-apply';
-import { callApplyModel } from '../shared-ide/lib/apply-model';
+import { applyAIResponse } from '../shared-ide/lib/code-apply';
 import { computeLineDiff } from '../shared-ide/lib/line-diff';
 
 // ---------------------------------------------------------------------------
@@ -138,13 +134,14 @@ describe('RuwtTUI', () => {
     // Reset default mock implementations
     (hasToolCalls as Mock).mockReturnValue(false);
     (stripToolCalls as Mock).mockImplementation((t: string) => t);
-    (extractFileEdits as Mock).mockReturnValue({ fileEdits: [], remaining: '' });
-    (applyCodeFromResponse as Mock).mockReturnValue({
-      applied: false,
+    (applyAIResponse as Mock).mockResolvedValue({
+      codeChanged: false,
+      failedCount: 0,
+      helperFilesWritten: [],
+      oldCode: '',
       newCode: '',
-      method: 'none',
       message: '',
-      needsApplyModel: false,
+      applyModelVerifyFailed: false,
     });
   });
 
@@ -716,20 +713,18 @@ describe('RuwtTUI', () => {
   // Code application from AI response
   // ---------------------------------------------------------------------------
   describe('code application', () => {
-    it('applies code when applyCodeFromResponse returns applied=true', async () => {
+    it('applies code when applyAIResponse returns codeChanged=true', async () => {
       const { tui, term, fs: _fs, streamChat, onCodeApplied } = createTUI();
       tui.enter();
 
-      (extractFileEdits as Mock).mockReturnValue({
-        fileEdits: [],
-        remaining: 'response with code',
-      });
-      (applyCodeFromResponse as Mock).mockReturnValue({
-        applied: true,
+      (applyAIResponse as Mock).mockResolvedValue({
+        codeChanged: true,
+        failedCount: 0,
+        helperFilesWritten: [],
+        oldCode: '',
         newCode: 'function solve() { return 99; }',
-        method: 'code_block',
         message: 'Code applied',
-        needsApplyModel: false,
+        applyModelVerifyFailed: false,
       });
 
       mockStreamDone(streamChat, 'Here is the code block');
@@ -737,7 +732,7 @@ describe('RuwtTUI', () => {
       typeAndEnter(tui, 'fix the code');
 
       await vi.waitFor(() => {
-        expect(applyCodeFromResponse).toHaveBeenCalled();
+        expect(applyAIResponse).toHaveBeenCalled();
         expect(onCodeApplied).toHaveBeenCalledWith('function solve() { return 99; }');
         const out = termOutput(term);
         expect(out).toContain('Code applied');
@@ -748,16 +743,14 @@ describe('RuwtTUI', () => {
       const { tui, term, fs: _fs, streamChat } = createTUI();
       tui.enter();
 
-      (extractFileEdits as Mock).mockReturnValue({
-        fileEdits: [{ path: 'helper.js', content: 'export const x = 1;' }],
-        remaining: 'rest of response',
-      });
-      (applyCodeFromResponse as Mock).mockReturnValue({
-        applied: false,
+      (applyAIResponse as Mock).mockResolvedValue({
+        codeChanged: false,
+        failedCount: 0,
+        helperFilesWritten: ['helper.js'],
+        oldCode: '',
         newCode: '',
-        method: 'none',
         message: '',
-        needsApplyModel: false,
+        applyModelVerifyFailed: false,
       });
 
       mockStreamDone(streamChat, 'FILE: helper.js ...');
@@ -765,28 +758,24 @@ describe('RuwtTUI', () => {
       typeAndEnter(tui, 'create a helper file');
 
       await vi.waitFor(() => {
-        expect(extractFileEdits).toHaveBeenCalled();
+        expect(applyAIResponse).toHaveBeenCalled();
         const out = termOutput(term);
         expect(out).toContain('Created helper.js');
       });
     });
 
-    it('calls apply model when needsApplyModel is true', async () => {
-      const { tui, term, streamChat } = createTUI();
+    it('applies code via apply model path (codeChanged=true from applyAIResponse)', async () => {
+      const { tui, term, streamChat, onCodeApplied } = createTUI();
       tui.enter();
 
-      (extractFileEdits as Mock).mockReturnValue({ fileEdits: [], remaining: 'response' });
-      (applyCodeFromResponse as Mock).mockReturnValue({
-        applied: false,
-        newCode: '',
-        method: 'none',
-        message: '',
-        needsApplyModel: true,
-      });
-      (callApplyModel as Mock).mockResolvedValue({
-        success: true,
-        mergedCode: 'function solve() { return 100; }',
-        verified: true,
+      (applyAIResponse as Mock).mockResolvedValue({
+        codeChanged: true,
+        failedCount: 0,
+        helperFilesWritten: [],
+        oldCode: '',
+        newCode: 'function solve() { return 100; }',
+        message: 'Code updated',
+        applyModelVerifyFailed: false,
       });
 
       mockStreamDone(streamChat, 'partial code change');
@@ -794,9 +783,9 @@ describe('RuwtTUI', () => {
       typeAndEnter(tui, 'tweak it');
 
       await vi.waitFor(() => {
-        expect(callApplyModel).toHaveBeenCalled();
+        expect(applyAIResponse).toHaveBeenCalled();
+        expect(onCodeApplied).toHaveBeenCalledWith('function solve() { return 100; }');
         const out = termOutput(term);
-        expect(out).toContain('applying edit');
         expect(out).toContain('Code updated');
       });
     });
@@ -805,18 +794,14 @@ describe('RuwtTUI', () => {
       const { tui, term, streamChat } = createTUI();
       tui.enter();
 
-      (extractFileEdits as Mock).mockReturnValue({ fileEdits: [], remaining: 'response' });
-      (applyCodeFromResponse as Mock).mockReturnValue({
-        applied: false,
+      (applyAIResponse as Mock).mockResolvedValue({
+        codeChanged: false,
+        failedCount: 0,
+        helperFilesWritten: [],
+        oldCode: '',
         newCode: '',
-        method: 'none',
         message: '',
-        needsApplyModel: true,
-      });
-      (callApplyModel as Mock).mockResolvedValue({
-        success: false,
-        verified: false,
-        verificationErrors: ['corruption detected'],
+        applyModelVerifyFailed: true,
       });
 
       mockStreamDone(streamChat, 'bad merge');
@@ -830,51 +815,41 @@ describe('RuwtTUI', () => {
       });
     });
 
-    it('returns false when apply model fails (success:false, not verification)', async () => {
+    it('returns false when apply model fails (codeChanged:false)', async () => {
       const { tui, term: _term, streamChat, onCodeApplied } = createTUI();
       tui.enter();
 
-      (extractFileEdits as Mock).mockReturnValue({ fileEdits: [], remaining: 'response' });
-      (applyCodeFromResponse as Mock).mockReturnValue({
-        applied: false,
+      (applyAIResponse as Mock).mockResolvedValue({
+        codeChanged: false,
+        failedCount: 0,
+        helperFilesWritten: [],
+        oldCode: '',
         newCode: '',
-        method: 'none',
         message: '',
-        needsApplyModel: true,
-      });
-      // success:false but NOT verified:false — falls through to the final return
-      (callApplyModel as Mock).mockResolvedValue({
-        success: false,
-        error: 'Model unavailable',
+        applyModelVerifyFailed: false,
       });
 
       mockStreamDone(streamChat, 'try edit');
       typeAndEnter(tui, 'apply');
 
       await vi.waitFor(() => {
-        expect(callApplyModel).toHaveBeenCalled();
+        expect(applyAIResponse).toHaveBeenCalled();
       });
       expect(onCodeApplied).not.toHaveBeenCalled();
     });
 
-    it('returns true when apply model fails but file edits were applied', async () => {
+    it('returns true when code not changed but file edits were applied', async () => {
       const { tui, term, streamChat } = createTUI();
       tui.enter();
 
-      (extractFileEdits as Mock).mockReturnValue({
-        fileEdits: [{ path: 'config.json', content: '{}' }],
-        remaining: 'response',
-      });
-      (applyCodeFromResponse as Mock).mockReturnValue({
-        applied: false,
+      (applyAIResponse as Mock).mockResolvedValue({
+        codeChanged: false,
+        failedCount: 0,
+        helperFilesWritten: ['config.json'],
+        oldCode: '',
         newCode: '',
-        method: 'none',
         message: '',
-        needsApplyModel: true,
-      });
-      (callApplyModel as Mock).mockResolvedValue({
-        success: false,
-        error: 'Model unavailable',
+        applyModelVerifyFailed: false,
       });
 
       mockStreamDone(streamChat, 'edit with file');
@@ -882,36 +857,31 @@ describe('RuwtTUI', () => {
       typeAndEnter(tui, 'create and apply');
 
       await vi.waitFor(() => {
-        expect(callApplyModel).toHaveBeenCalled();
+        expect(applyAIResponse).toHaveBeenCalled();
         const out = termOutput(term);
         expect(out).toContain('Created config.json');
       });
     });
 
-    it('skips apply when merged code matches old code', async () => {
-      const { tui, term: _term, fs, streamChat, onCodeApplied } = createTUI();
+    it('skips apply when merged code matches old code (codeChanged=false)', async () => {
+      const { tui, term: _term, fs: _fs, streamChat, onCodeApplied } = createTUI();
       tui.enter();
 
-      const currentCode = fs.getSolutionCode();
-      (extractFileEdits as Mock).mockReturnValue({ fileEdits: [], remaining: 'response' });
-      (applyCodeFromResponse as Mock).mockReturnValue({
-        applied: false,
-        newCode: '',
-        method: 'none',
+      (applyAIResponse as Mock).mockResolvedValue({
+        codeChanged: false,
+        failedCount: 0,
+        helperFilesWritten: [],
+        oldCode: 'function solve() { return 42; }',
+        newCode: 'function solve() { return 42; }',
         message: '',
-        needsApplyModel: true,
-      });
-      (callApplyModel as Mock).mockResolvedValue({
-        success: true,
-        mergedCode: currentCode,
-        verified: true,
+        applyModelVerifyFailed: false,
       });
 
       mockStreamDone(streamChat, 'no real change');
       typeAndEnter(tui, 'tweak');
 
       await vi.waitFor(() => {
-        expect(callApplyModel).toHaveBeenCalled();
+        expect(applyAIResponse).toHaveBeenCalled();
       });
       // onCodeApplied should NOT have been called since code is the same
       expect(onCodeApplied).not.toHaveBeenCalled();
@@ -927,30 +897,33 @@ describe('RuwtTUI', () => {
       tui.enter();
 
       let callCount = 0;
-      (extractFileEdits as Mock).mockReturnValue({ fileEdits: [], remaining: 'response' });
 
       streamChat.mockImplementation(async (_msgs: unknown, cbs: any) => {
         callCount++;
         if (callCount === 1) {
           // First round: apply code and have tool call
-          (applyCodeFromResponse as Mock).mockReturnValueOnce({
-            applied: true,
+          (applyAIResponse as Mock).mockResolvedValueOnce({
+            codeChanged: true,
+            failedCount: 0,
+            helperFilesWritten: [],
+            oldCode: '',
             newCode: 'function solve() { return 1; }',
-            method: 'code_block',
             message: 'Code applied',
-            needsApplyModel: false,
+            applyModelVerifyFailed: false,
           });
           (hasToolCalls as Mock).mockReturnValueOnce(true);
           cbs.onChunk('here is the fix');
           await cbs.onDone('here is the fix <ruwt:run_tests/>');
         } else {
           // Second round: tests pass, no more tool calls
-          (applyCodeFromResponse as Mock).mockReturnValueOnce({
-            applied: false,
+          (applyAIResponse as Mock).mockResolvedValueOnce({
+            codeChanged: false,
+            failedCount: 0,
+            helperFilesWritten: [],
+            oldCode: '',
             newCode: '',
-            method: 'none',
             message: '',
-            needsApplyModel: false,
+            applyModelVerifyFailed: false,
           });
           (hasToolCalls as Mock).mockReturnValueOnce(false);
           cbs.onChunk('All tests pass now');
@@ -978,14 +951,15 @@ describe('RuwtTUI', () => {
       const { tui, streamChat, onRunTests } = createTUI();
       tui.enter();
 
-      (extractFileEdits as Mock).mockReturnValue({ fileEdits: [], remaining: 'response' });
       (hasToolCalls as Mock).mockReturnValue(true);
-      (applyCodeFromResponse as Mock).mockReturnValue({
-        applied: true,
+      (applyAIResponse as Mock).mockResolvedValue({
+        codeChanged: true,
+        failedCount: 0,
+        helperFilesWritten: [],
+        oldCode: '',
         newCode: 'code',
-        method: 'code_block',
         message: 'Code applied',
-        needsApplyModel: false,
+        applyModelVerifyFailed: false,
       });
 
       streamChat.mockImplementation(async (_msgs: unknown, cbs: any) => {
@@ -1013,14 +987,15 @@ describe('RuwtTUI', () => {
       const { tui, term, streamChat, onRunTests } = createTUI();
       tui.enter();
 
-      (extractFileEdits as Mock).mockReturnValue({ fileEdits: [], remaining: 'response' });
       (hasToolCalls as Mock).mockReturnValue(true);
-      (applyCodeFromResponse as Mock).mockReturnValue({
-        applied: true,
+      (applyAIResponse as Mock).mockResolvedValue({
+        codeChanged: true,
+        failedCount: 0,
+        helperFilesWritten: [],
+        oldCode: '',
         newCode: 'code',
-        method: 'code_block',
         message: 'Code applied',
-        needsApplyModel: false,
+        applyModelVerifyFailed: false,
       });
 
       let doneCb: ((content: string) => Promise<void>) | null = null;
@@ -1060,11 +1035,10 @@ describe('RuwtTUI', () => {
       tui.enter();
 
       // Round 1: AI applies code → tests pass
-      (extractFileEdits as Mock).mockReturnValue({ fileEdits: [], remaining: 'response' });
       (hasToolCalls as Mock).mockReturnValueOnce(true);
-      (applyCodeFromResponse as Mock).mockReturnValueOnce({
-        applied: true, newCode: 'code', method: 'code_block',
-        message: 'Applied', needsApplyModel: false,
+      (applyAIResponse as Mock).mockResolvedValueOnce({
+        codeChanged: true, failedCount: 0, helperFilesWritten: [],
+        oldCode: '', newCode: 'code', message: 'Applied', applyModelVerifyFailed: false,
       });
 
       streamChat.mockImplementation(async (_msgs: unknown, cbs: any) => {
@@ -1092,9 +1066,9 @@ describe('RuwtTUI', () => {
       tui.handleInput('follow up\r');
 
       // Complete round 2 — no code, no tests
-      (applyCodeFromResponse as Mock).mockReturnValueOnce({
-        applied: false, newCode: '', method: 'none',
-        message: '', needsApplyModel: false,
+      (applyAIResponse as Mock).mockResolvedValueOnce({
+        codeChanged: false, failedCount: 0, helperFilesWritten: [],
+        oldCode: '', newCode: '', message: '', applyModelVerifyFailed: false,
       });
       (hasToolCalls as Mock).mockReturnValueOnce(false);
 
@@ -1120,14 +1094,15 @@ describe('RuwtTUI', () => {
       const { tui, term, streamChat, onRunTests } = createTUI();
       tui.enter();
 
-      (extractFileEdits as Mock).mockReturnValue({ fileEdits: [], remaining: 'response' });
       (hasToolCalls as Mock).mockReturnValue(true);
-      (applyCodeFromResponse as Mock).mockReturnValue({
-        applied: true,
+      (applyAIResponse as Mock).mockResolvedValue({
+        codeChanged: true,
+        failedCount: 0,
+        helperFilesWritten: [],
+        oldCode: '',
         newCode: 'code',
-        method: 'code_block',
         message: 'Applied',
-        needsApplyModel: false,
+        applyModelVerifyFailed: false,
       });
 
       streamChat.mockImplementation(async (_msgs: unknown, cbs: any) => {
@@ -1149,15 +1124,16 @@ describe('RuwtTUI', () => {
       const { tui, term, streamChat, onRunTests } = createTUI();
       tui.enter();
 
-      (extractFileEdits as Mock).mockReturnValue({ fileEdits: [], remaining: 'response' });
       // Always return tool calls and code applied
       (hasToolCalls as Mock).mockReturnValue(true);
-      (applyCodeFromResponse as Mock).mockReturnValue({
-        applied: true,
+      (applyAIResponse as Mock).mockResolvedValue({
+        codeChanged: true,
+        failedCount: 0,
+        helperFilesWritten: [],
+        oldCode: '',
         newCode: 'code',
-        method: 'code_block',
         message: 'Applied',
-        needsApplyModel: false,
+        applyModelVerifyFailed: false,
       });
 
       streamChat.mockImplementation(async (_msgs: unknown, cbs: any) => {
@@ -1341,13 +1317,14 @@ describe('RuwtTUI', () => {
       const { tui, term, streamChat, onCodeApplied: _onCodeApplied } = createTUI();
       tui.enter();
 
-      (extractFileEdits as Mock).mockReturnValue({ fileEdits: [], remaining: 'response' });
-      (applyCodeFromResponse as Mock).mockReturnValue({
-        applied: true,
+      (applyAIResponse as Mock).mockResolvedValue({
+        codeChanged: true,
+        failedCount: 0,
+        helperFilesWritten: [],
+        oldCode: '',
         newCode: 'function solve() { return 99; }',
-        method: 'code_block',
         message: 'Code applied',
-        needsApplyModel: false,
+        applyModelVerifyFailed: false,
       });
       (computeLineDiff as Mock).mockReturnValue({
         added: [1],
@@ -1368,13 +1345,14 @@ describe('RuwtTUI', () => {
       const { tui, term, streamChat } = createTUI();
       tui.enter();
 
-      (extractFileEdits as Mock).mockReturnValue({ fileEdits: [], remaining: 'response' });
-      (applyCodeFromResponse as Mock).mockReturnValue({
-        applied: true,
+      (applyAIResponse as Mock).mockResolvedValue({
+        codeChanged: true,
+        failedCount: 0,
+        helperFilesWritten: [],
+        oldCode: '',
         newCode: 'function solve() { return 99; }',
-        method: 'code_block',
         message: 'Code applied',
-        needsApplyModel: false,
+        applyModelVerifyFailed: false,
       });
       (computeLineDiff as Mock).mockReturnValue({
         added: [],
@@ -1395,13 +1373,14 @@ describe('RuwtTUI', () => {
       const { tui, term, streamChat } = createTUI();
       tui.enter();
 
-      (extractFileEdits as Mock).mockReturnValue({ fileEdits: [], remaining: 'response' });
-      (applyCodeFromResponse as Mock).mockReturnValue({
-        applied: true,
+      (applyAIResponse as Mock).mockResolvedValue({
+        codeChanged: true,
+        failedCount: 0,
+        helperFilesWritten: [],
+        oldCode: '',
         newCode: 'line1\nline2\nline3\nline4\nline5\nline6\nline7',
-        method: 'code_block',
         message: 'Code applied',
-        needsApplyModel: false,
+        applyModelVerifyFailed: false,
       });
       (computeLineDiff as Mock).mockReturnValue({
         added: [1, 2, 3, 4, 5, 6, 7],
@@ -1423,13 +1402,14 @@ describe('RuwtTUI', () => {
       tui.enter();
 
       const longLine = 'x'.repeat(100);
-      (extractFileEdits as Mock).mockReturnValue({ fileEdits: [], remaining: 'response' });
-      (applyCodeFromResponse as Mock).mockReturnValue({
-        applied: true,
+      (applyAIResponse as Mock).mockResolvedValue({
+        codeChanged: true,
+        failedCount: 0,
+        helperFilesWritten: [],
+        oldCode: '',
         newCode: longLine,
-        method: 'code_block',
         message: 'Code applied',
-        needsApplyModel: false,
+        applyModelVerifyFailed: false,
       });
       (computeLineDiff as Mock).mockReturnValue({
         added: [1],
@@ -1519,14 +1499,15 @@ describe('RuwtTUI', () => {
       const { tui, streamChat } = createTUI({ onRunTests: undefined });
       tui.enter();
 
-      (extractFileEdits as Mock).mockReturnValue({ fileEdits: [], remaining: 'r' });
       (hasToolCalls as Mock).mockReturnValue(true);
-      (applyCodeFromResponse as Mock).mockReturnValue({
-        applied: true,
+      (applyAIResponse as Mock).mockResolvedValue({
+        codeChanged: true,
+        failedCount: 0,
+        helperFilesWritten: [],
+        oldCode: '',
         newCode: 'code',
-        method: 'code_block',
         message: 'Applied',
-        needsApplyModel: false,
+        applyModelVerifyFailed: false,
       });
 
       mockStreamDone(streamChat, 'fix <ruwt:run_tests/>');
@@ -1548,14 +1529,15 @@ describe('RuwtTUI', () => {
       tui.enter();
       typeAndEnter(tui, '/plan');
 
-      (extractFileEdits as Mock).mockReturnValue({ fileEdits: [], remaining: 'r' });
       (hasToolCalls as Mock).mockReturnValue(true);
-      (applyCodeFromResponse as Mock).mockReturnValue({
-        applied: true,
+      (applyAIResponse as Mock).mockResolvedValue({
+        codeChanged: true,
+        failedCount: 0,
+        helperFilesWritten: [],
+        oldCode: '',
         newCode: 'code',
-        method: 'code_block',
         message: 'Applied',
-        needsApplyModel: false,
+        applyModelVerifyFailed: false,
       });
 
       mockStreamDone(streamChat, 'plan <ruwt:run_tests/>');

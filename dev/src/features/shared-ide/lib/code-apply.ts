@@ -15,6 +15,8 @@ import {
   parseUnifiedDiff,
   applyEditBlocks,
 } from './diff-apply';
+import { callApplyModel } from './apply-model';
+import type { VirtualFileSystem } from '../VirtualFileSystem';
 
 export interface CodeApplyResult {
   applied: boolean;
@@ -33,8 +35,18 @@ export interface FileEdit {
 /**
  * Extract FILE: prefixed code blocks from AI response.
  * Returns the extracted file edits and the remaining response text.
+ *
+ * When `isSolutionFile` is provided, FILE: blocks targeting the solution file
+ * are left in the remaining text so they go through the normal diff-apply
+ * pipeline (SEARCH/REPLACE → unified diff → code block → apply model).
+ * This prevents the bug where a model targets "main.js" (the executor filename)
+ * instead of the actual solution filename, causing the edit to write to the
+ * wrong path in the virtual filesystem.
  */
-export function extractFileEdits(responseText: string): { fileEdits: FileEdit[]; remaining: string } {
+export function extractFileEdits(
+  responseText: string,
+  isSolutionFile?: (path: string) => boolean,
+): { fileEdits: FileEdit[]; remaining: string } {
   const fileEdits: FileEdit[] = [];
   let remaining = responseText;
 
@@ -42,6 +54,9 @@ export function extractFileEdits(responseText: string): { fileEdits: FileEdit[];
   const fileBlockPattern = /FILE:\s*(\S+)\s*\n```[^\n]*\n([\s\S]*?)```/g;
   let match;
   while ((match = fileBlockPattern.exec(responseText)) !== null) {
+    if (isSolutionFile && isSolutionFile(match[1])) {
+      continue; // Leave in remaining for the diff apply pipeline
+    }
     fileEdits.push({ path: match[1], content: match[2].trimEnd() });
     remaining = remaining.replace(match[0], '');
   }
@@ -222,4 +237,106 @@ export function applyCodeFromResponse(
   }
 
   return noChange;
+}
+
+/* ── Full AI response → solution code pipeline ─────────────────────── */
+
+export interface ApplyAIResponseResult {
+  /** Whether the solution code was changed */
+  codeChanged: boolean;
+  /** Number of failed edit blocks in structured apply */
+  failedCount: number;
+  /** Paths of helper files written by FILE: blocks */
+  helperFilesWritten: string[];
+  /** Solution code before any changes */
+  oldCode: string;
+  /** Solution code after changes (same as oldCode if !codeChanged) */
+  newCode: string;
+  /** Human-readable message about what happened */
+  message: string;
+  /** Apply model returned verified=false (caller should show error UI) */
+  applyModelVerifyFailed: boolean;
+  /** Apply model cost tracking (only set when apply model was used) */
+  applyModelCost?: number;
+  applyModelInputTokens?: number;
+  applyModelOutputTokens?: number;
+}
+
+/**
+ * Full pipeline: parse AI response → apply edits to solution code.
+ * Handles FILE: blocks, structured diffs, and apply-model fallback.
+ * Both ArenaIDE and RuwtTUI call this instead of duplicating the logic.
+ */
+export async function applyAIResponse(
+  fs: VirtualFileSystem,
+  responseText: string,
+  language: string,
+  mode: string,
+  attemptId: string | null,
+  challengeId?: string,
+  challengeTitle?: string,
+): Promise<ApplyAIResponseResult> {
+  // 1. Extract FILE: blocks, skipping solution-targeted ones
+  const { fileEdits, remaining } = extractFileEdits(
+    responseText,
+    (path) => fs.isSolutionPath(path),
+  );
+  const helperFilesWritten: string[] = [];
+  for (const edit of fileEdits) {
+    fs.writeFile(edit.path, edit.content);
+    helperFilesWritten.push(edit.path);
+  }
+
+  // 2. Try structured parsing (SEARCH/REPLACE, unified diff, code block)
+  const oldCode = fs.getSolutionCode();
+  const result = applyCodeFromResponse(remaining || responseText, oldCode, language, mode);
+
+  const base: ApplyAIResponseResult = {
+    codeChanged: false,
+    failedCount: result.failedCount,
+    helperFilesWritten,
+    oldCode,
+    newCode: oldCode,
+    message: '',
+    applyModelVerifyFailed: false,
+  };
+
+  if (result.applied) {
+    fs.setSolutionCode(result.newCode);
+    return { ...base, codeChanged: true, newCode: result.newCode, message: result.message };
+  }
+
+  // 3. Fall back to apply model when structured parsing can't handle the format
+  if (result.needsApplyModel && attemptId) {
+    const applyResult = await callApplyModel({
+      attemptId,
+      currentCode: oldCode,
+      aiResponse: remaining || responseText,
+      language,
+      challengeId,
+      challengeTitle,
+    });
+
+    if (applyResult.cost) {
+      base.applyModelCost = applyResult.cost;
+      base.applyModelInputTokens = applyResult.inputTokens;
+      base.applyModelOutputTokens = applyResult.outputTokens;
+    }
+
+    if (applyResult.verified === false) {
+      return { ...base, applyModelVerifyFailed: true, codeChanged: helperFilesWritten.length > 0 };
+    }
+
+    if (applyResult.success && applyResult.mergedCode) {
+      if (applyResult.mergedCode.trim() !== oldCode.trim()) {
+        fs.setSolutionCode(applyResult.mergedCode);
+        return { ...base, codeChanged: true, newCode: applyResult.mergedCode, message: 'Code updated' };
+      }
+      return { ...base, codeChanged: helperFilesWritten.length > 0 };
+    }
+
+    return { ...base, codeChanged: helperFilesWritten.length > 0 };
+  }
+
+  return { ...base, codeChanged: helperFilesWritten.length > 0 };
 }

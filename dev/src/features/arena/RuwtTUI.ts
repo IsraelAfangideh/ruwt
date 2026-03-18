@@ -8,8 +8,7 @@ import type { VirtualFileSystem } from '../shared-ide/VirtualFileSystem';
 import { type AIMode, type TestResults, formatTestResultsForMessage } from '../shared-ide/lib/ai-types';
 import { buildSystemPrompt } from './lib/system-prompts';
 import { hasToolCalls, stripToolCalls } from '../shared-ide/lib/tool-parser';
-import { applyCodeFromResponse as sharedApplyCode, extractFileEdits } from '../shared-ide/lib/code-apply';
-import { callApplyModel } from '../shared-ide/lib/apply-model';
+import { applyAIResponse } from '../shared-ide/lib/code-apply';
 import { computeLineDiff } from '../shared-ide/lib/line-diff';
 import { getModelsForTier, getModelById, tierLabel, TIER_ORDER, type ModelTier } from '../../shared/lib/ai/pricing';
 
@@ -493,62 +492,27 @@ export class RuwtTUI {
   }
 
   private async applyCodeFromResponse(responseText: string): Promise<boolean> {
-    // Extract FILE: prefixed edits for non-solution files
-    const { fileEdits, remaining } = extractFileEdits(responseText);
-    for (const edit of fileEdits) {
-      this.fs.writeFile(edit.path, edit.content);
-      this.term.write(`\r\n\x1b[32m\u2713 Created ${edit.path}\x1b[0m`);
+    const r = await applyAIResponse(this.fs, responseText, this.language, this.mode, this.attemptId, undefined, this.challengeTitle);
+    this.lastApplyFailedCount = r.failedCount;
+
+    for (const path of r.helperFilesWritten) {
+      this.term.write(`\r\n\x1b[32m\u2713 Created ${path}\x1b[0m`);
     }
 
-    const oldCode = this.fs.getSolutionCode();
-    const result = sharedApplyCode(remaining || responseText, oldCode, this.language, this.mode);
-    this.lastApplyFailedCount = result.failedCount;
-
-    // Code block extracted directly (free, instant)
-    if (result.applied) {
-      this.fs.setSolutionCode(result.newCode);
-      this.onCodeApplied(result.newCode);
-      this.term.write(`\r\n\r\n\x1b[32m\u2713 ${result.message}\x1b[0m`);
-      this.printDiffSummary(oldCode, result.newCode);
-      return true;
+    if (r.applyModelVerifyFailed) {
+      this.term.write('\r\n\r\n\x1b[1;31m\u2718 Code apply failed\x1b[0m');
+      this.term.write('\r\n\x1b[33mOur apply model couldn\'t faithfully reproduce this change.\x1b[0m');
+      this.term.write('\r\n\x1b[33mCopy the code from the AI response above and paste it manually.\x1b[0m');
+      this.term.write('\r\n\x1b[90mWe\'ve been notified.\x1b[0m');
     }
 
-    // Response has code but no extractable block — use apply model
-    if (result.needsApplyModel && this.attemptId) {
-      this.term.write('\r\n\r\n\x1b[33m[applying edit...]\x1b[0m');
-      const applyResult = await callApplyModel({
-        /* istanbul ignore next -- @preserve */
-        attemptId: this.attemptId,
-        currentCode: oldCode,
-        aiResponse: /* istanbul ignore next -- @preserve */ remaining || responseText,
-        language: this.language,
-        challengeTitle: this.challengeTitle,
-      });
-
-      // Verification failed — apply model corrupted the output
-      if (applyResult.verified === false) {
-        this.term.write('\r\n\r\n\x1b[1;31m\u2718 Code apply failed\x1b[0m');
-        this.term.write('\r\n\x1b[33mOur apply model couldn\'t faithfully reproduce this change.\x1b[0m');
-        this.term.write('\r\n\x1b[33mCopy the code from the AI response above and paste it manually.\x1b[0m');
-        this.term.write('\r\n\x1b[90mWe\'ve been notified.\x1b[0m');
-        return fileEdits.length > 0;
-      }
-
-      if (applyResult.success && applyResult.mergedCode) {
-        if (applyResult.mergedCode.trim() === oldCode.trim()) {
-          return fileEdits.length > 0;
-        }
-        this.fs.setSolutionCode(applyResult.mergedCode);
-        this.onCodeApplied(applyResult.mergedCode);
-        this.term.write('\r\n\x1b[32m\u2713 Code updated\x1b[0m');
-        this.printDiffSummary(oldCode, applyResult.mergedCode);
-        return true;
-      }
-
-      return fileEdits.length > 0;
+    if (r.codeChanged && r.newCode !== r.oldCode) {
+      this.onCodeApplied(r.newCode);
+      this.term.write(`\r\n\r\n\x1b[32m\u2713 ${r.message || 'Code updated'}\x1b[0m`);
+      this.printDiffSummary(r.oldCode, r.newCode);
     }
 
-    return false;
+    return r.codeChanged;
   }
 
   private openModelPicker(): void {

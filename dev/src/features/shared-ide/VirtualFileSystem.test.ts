@@ -551,6 +551,62 @@ describe('VirtualFileSystem', () => {
   });
 
   // ---------------------------------------------------------------------------
+  // isSolutionPath
+  // ---------------------------------------------------------------------------
+  describe('isSolutionPath', () => {
+    it('returns true for the exact solution filename', () => {
+      expect(vfs.isSolutionPath('solution.ts')).toBe(true);
+    });
+
+    it('returns true for the absolute solution path', () => {
+      expect(vfs.isSolutionPath('/home/user/solution.ts')).toBe(true);
+    });
+
+    it('returns true for main.{ext} (executor alias)', () => {
+      expect(vfs.isSolutionPath('main.ts')).toBe(true);
+    });
+
+    it('returns true for absolute main.{ext} path', () => {
+      expect(vfs.isSolutionPath('/home/user/main.ts')).toBe(true);
+    });
+
+    it('returns false for a different file', () => {
+      expect(vfs.isSolutionPath('utils.ts')).toBe(false);
+    });
+
+    it('returns false for main with wrong extension', () => {
+      expect(vfs.isSolutionPath('main.js')).toBe(false);
+    });
+
+    it('returns false for solution with wrong extension', () => {
+      expect(vfs.isSolutionPath('solution.js')).toBe(false);
+    });
+
+    it('works for JavaScript language', () => {
+      const jsVfs = new VirtualFileSystem('javascript', '');
+      expect(jsVfs.isSolutionPath('solution.js')).toBe(true);
+      expect(jsVfs.isSolutionPath('main.js')).toBe(true);
+      expect(jsVfs.isSolutionPath('main.ts')).toBe(false);
+    });
+
+    it('works for Python language', () => {
+      const pyVfs = new VirtualFileSystem('python', '');
+      expect(pyVfs.isSolutionPath('solution.py')).toBe(true);
+      expect(pyVfs.isSolutionPath('main.py')).toBe(true);
+      expect(pyVfs.isSolutionPath('main.js')).toBe(false);
+    });
+
+    it('resolves relative paths against cwd', () => {
+      vfs.mkdir('/home/user/sub');
+      vfs.setCwd('/home/user/sub');
+      // main.ts relative to /home/user/sub → /home/user/sub/main.ts, NOT /home/user/main.ts
+      expect(vfs.isSolutionPath('main.ts')).toBe(false);
+      // But the absolute path still works
+      expect(vfs.isSolutionPath('/home/user/main.ts')).toBe(true);
+    });
+  });
+
+  // ---------------------------------------------------------------------------
   // Solution helpers
   // ---------------------------------------------------------------------------
   describe('getSolutionCode / setSolutionCode', () => {

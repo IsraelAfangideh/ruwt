@@ -66,6 +66,78 @@ console.log("hello");
     const { fileEdits } = extractFileEdits(response);
     expect(fileEdits[0].content).toBe('console.log("hello");');
   });
+
+  it('skips solution-targeted FILE: blocks when isSolutionFile is provided', () => {
+    const response = `Here is the fix:
+
+FILE: main.js
+\`\`\`javascript
+class MiddlewareChain {
+  execute() { return new Promise(r => r()); }
+}
+\`\`\`
+
+Done.`;
+
+    const isSolution = (path: string) => path === 'main.js';
+    const { fileEdits, remaining } = extractFileEdits(response, isSolution);
+    expect(fileEdits).toHaveLength(0);
+    // The FILE: block stays in remaining for the diff-apply pipeline
+    expect(remaining).toContain('FILE: main.js');
+    expect(remaining).toContain('class MiddlewareChain');
+  });
+
+  it('extracts non-solution FILE: blocks while skipping solution ones', () => {
+    const response = `FILE: main.js
+\`\`\`javascript
+const solution = true;
+\`\`\`
+
+FILE: helper.js
+\`\`\`javascript
+const helper = true;
+\`\`\``;
+
+    const isSolution = (path: string) => path === 'main.js';
+    const { fileEdits, remaining } = extractFileEdits(response, isSolution);
+    expect(fileEdits).toHaveLength(1);
+    expect(fileEdits[0].path).toBe('helper.js');
+    expect(fileEdits[0].content).toBe('const helper = true;');
+    // Solution block stays in remaining
+    expect(remaining).toContain('FILE: main.js');
+    expect(remaining).toContain('const solution = true;');
+  });
+
+  it('works normally when isSolutionFile is not provided', () => {
+    const response = `FILE: main.js
+\`\`\`javascript
+const x = 1;
+\`\`\``;
+
+    const { fileEdits, remaining } = extractFileEdits(response);
+    expect(fileEdits).toHaveLength(1);
+    expect(fileEdits[0].path).toBe('main.js');
+    expect(remaining).toBe('');
+  });
+
+  it('skips solution FILE: blocks with diff content (leaves for diff pipeline)', () => {
+    const response = `FILE: main.js
+\`\`\`diff
+@@ -1,3 +1,5 @@
+ class Foo {
+-  bar() {}
++  bar() {
++    return 42;
++  }
+ }
+\`\`\``;
+
+    const isSolution = (path: string) => path === 'main.js';
+    const { fileEdits, remaining } = extractFileEdits(response, isSolution);
+    expect(fileEdits).toHaveLength(0);
+    expect(remaining).toContain('@@');
+    expect(remaining).toContain('return 42;');
+  });
 });
 
 // ---------------------------------------------------------------------------

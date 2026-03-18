@@ -24,8 +24,7 @@ import { CommentSection } from '@/shared/social/CommentSection';
 import { type AIMode, type TestResults as AITestResults, formatTestResultsForMessage } from '@/features/shared-ide/lib/ai-types';
 import { buildSystemPrompt } from '@/features/arena/lib/system-prompts';
 import { stripToolCalls, hasToolCalls } from '@/features/shared-ide/lib/tool-parser';
-import { applyCodeFromResponse as sharedApplyCode, extractFileEdits } from '@/features/shared-ide/lib/code-apply';
-import { callApplyModel } from '@/features/shared-ide/lib/apply-model';
+import { applyAIResponse } from '@/features/shared-ide/lib/code-apply';
 import { useEditorDecorations } from '../shared-ide/useEditorDecorations';
 import { ModeSelector } from '../shared-ide/ModeSelector';
 import { renderMarkdown, ThinkingBlock } from '../shared-ide/ChatMarkdown';
@@ -1062,70 +1061,24 @@ export function ArenaIDE({
   // Auto-apply code from AI response.
   // Returns true if code was changed (used by agent loop to auto-run tests).
   const applyCodeFromResponse = useCallback(async (responseText: string): Promise<boolean> => {
-    // Extract FILE: prefixed edits for non-solution files
-    const { fileEdits, remaining } = extractFileEdits(responseText);
-    /* istanbul ignore next -- @preserve extractFileEdits is mocked to return empty array in tests */
-    for (const edit of fileEdits) {
-      fs.writeFile(edit.path, edit.content);
-      flashToast(`Created ${edit.path}`);
+    const r = await applyAIResponse(fs, responseText, language, mode, attemptId, challenge.id, challenge.title);
+    lastApplyFailedRef.current = r.failedCount;
+
+    /* istanbul ignore next -- @preserve helper file notifications */
+    for (const path of r.helperFilesWritten) flashToast(`Created ${path}`);
+
+    /* istanbul ignore next -- @preserve apply model cost tracking */
+    if (r.applyModelCost) handleCostUpdate(r.applyModelCost, r.applyModelInputTokens ?? 0, r.applyModelOutputTokens ?? 0);
+
+    if (r.applyModelVerifyFailed) setShowApplyFailure(true);
+
+    if (r.codeChanged && r.newCode !== r.oldCode) {
+      flashToast(r.message || 'Code updated');
+      showDiffDecorations(r.oldCode, r.newCode);
     }
 
-    const oldCode = fs.getSolutionCode();
-    const result = sharedApplyCode(remaining || responseText, oldCode, language, mode);
-    lastApplyFailedRef.current = result.failedCount;
-
-    // Code block extracted directly (free, instant)
-    if (result.applied) {
-      fs.setSolutionCode(result.newCode);
-      flashToast(result.message);
-      showDiffDecorations(oldCode, result.newCode);
-      return true;
-    }
-
-    // Response has code but no extractable block — use apply model
-    if (result.needsApplyModel && attemptId) {
-      flashToast('Applying edit...');
-      const applyResult = await callApplyModel({
-        attemptId,
-        currentCode: oldCode,
-        aiResponse: remaining || responseText,
-        language,
-        challengeId: challenge.id,
-        challengeTitle: challenge.title,
-      });
-
-      // Track apply model cost regardless of success/failure
-      /* istanbul ignore next -- @preserve */
-      if (applyResult.cost) {
-        /* istanbul ignore next -- @preserve */
-        handleCostUpdate(applyResult.cost, applyResult.inputTokens ?? 0, applyResult.outputTokens ?? 0);
-      }
-
-      // Verification failed — apply model corrupted the output
-      if (applyResult.verified === false) {
-        setShowApplyFailure(true);
-        return fileEdits.length > 0;
-      }
-
-      /* istanbul ignore if -- @preserve applyResult.success requires callApplyModel to succeed; mocked as { success: false } */
-      if (applyResult.success && applyResult.mergedCode) {
-        // Check that the merge actually changed something
-        if (applyResult.mergedCode.trim() === oldCode.trim()) {
-          return fileEdits.length > 0; // Still return true if we wrote other files
-        }
-        fs.setSolutionCode(applyResult.mergedCode);
-        flashToast('Code updated');
-        showDiffDecorations(oldCode, applyResult.mergedCode);
-        return true;
-      }
-
-      /* istanbul ignore next -- @preserve fallback return after apply model branch */
-      return fileEdits.length > 0;
-    }
-
-    /* istanbul ignore next -- @preserve fallback return when no code block and no apply model result */
-    return fileEdits.length > 0;
-  }, [language, fs, flashToast, mode, attemptId, showDiffDecorations, challenge.id, challenge.title, handleCostUpdate]);
+    return r.codeChanged;
+  }, [language, fs, mode, attemptId, challenge.id, challenge.title, flashToast, showDiffDecorations, handleCostUpdate]);
 
   // Handle code applied from terminal (RuwtTUI)
   /* istanbul ignore next -- @preserve callback invoked by TerminalPanel which is fully mocked */
@@ -2037,8 +1990,8 @@ export function ArenaIDE({
       </Group>
       )}
 
-      {/* First-attempt nudge — shown when no messages sent and no code written */}
-      {!nudgeDismissed && messages.length === 0 && code === (challenge.starterCode || '// your code here') && (
+      {/* First-attempt nudge — shown until first AI message or manual dismiss */}
+      {!nudgeDismissed && messages.length === 0 && (
         <div style={{
           position: 'absolute',
           bottom: isMobile ? 60 : 16,

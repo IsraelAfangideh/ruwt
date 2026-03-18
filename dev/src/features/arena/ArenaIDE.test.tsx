@@ -231,14 +231,13 @@ vi.mock('@/features/shared-ide/lib/tool-parser', () => ({
   hasToolCalls: () => false,
 }));
 
-const mockApplyCodeFromResponse = vi.fn().mockReturnValue({ applied: false, needsApplyModel: false, newCode: '', message: '' });
+const noChangeResult = {
+  codeChanged: false, failedCount: 0, helperFilesWritten: [] as string[],
+  oldCode: '', newCode: '', message: '', applyModelVerifyFailed: false,
+};
+const mockApplyAIResponse = vi.fn().mockResolvedValue(noChangeResult);
 vi.mock('@/features/shared-ide/lib/code-apply', () => ({
-  applyCodeFromResponse: (...args: any[]) => mockApplyCodeFromResponse(...args),
-  extractFileEdits: () => ({ fileEdits: [], remaining: '' }),
-}));
-
-vi.mock('@/features/shared-ide/lib/apply-model', () => ({
-  callApplyModel: vi.fn().mockResolvedValue({ success: false }),
+  applyAIResponse: (...args: any[]) => mockApplyAIResponse(...args),
 }));
 
 vi.mock('../shared-ide/useEditorDecorations', () => ({
@@ -304,7 +303,7 @@ describe('ArenaIDE', () => {
     capturedLineClickHandler = null;
     mockStreamChat.mockReset();
     mockAbortChat.mockReset();
-    mockApplyCodeFromResponse.mockReturnValue({ applied: false, needsApplyModel: false, newCode: '', message: '' });
+    mockApplyAIResponse.mockResolvedValue(noChangeResult);
     mockVfsReaddir.value = [];
     mockVfsReadFile.fn = () => '';
     vi.spyOn(Storage.prototype, 'getItem').mockReturnValue(null);
@@ -1053,8 +1052,19 @@ describe('ArenaIDE', () => {
     expect(screen.queryByText(/Start by asking the AI/)).toBeNull();
   });
 
-  it('nudge is not shown when code differs from starter', () => {
+  it('nudge is still shown when code differs from starter (persists until AI message)', () => {
     renderIDE({ code: 'some custom code' });
+    expect(screen.getByText(/Start by asking the AI/)).toBeInTheDocument();
+  });
+
+  it('nudge persists across code edits until dismissed', () => {
+    const { rerender } = renderIDE({ code: 'function solve() {}' });
+    expect(screen.getByText(/Start by asking the AI/)).toBeInTheDocument();
+    // Simulate code change — nudge should persist
+    rerender(<ArenaIDE {...defaultProps} code="const x = 42;" />);
+    expect(screen.getByText(/Start by asking the AI/)).toBeInTheDocument();
+    // Dismiss via button
+    fireEvent.click(screen.getByText('\u00D7'));
     expect(screen.queryByText(/Start by asking the AI/)).toBeNull();
   });
 
@@ -1989,7 +1999,7 @@ describe('ArenaIDE', () => {
     });
 
     // Make applyCodeFromResponse return true (code was applied) to trigger agent loop
-    mockApplyCodeFromResponse.mockReturnValue({ applied: true, needsApplyModel: false, newCode: 'new code', message: 'Code updated' });
+    mockApplyAIResponse.mockResolvedValue({ ...noChangeResult, codeChanged: true, newCode: 'new code', message: 'Code updated' });
 
     const onRunTests = vi.fn().mockResolvedValue({
       passed: true, passedTests: 1, totalTests: 1, results: [],
@@ -2010,7 +2020,7 @@ describe('ArenaIDE', () => {
     });
 
     // Reset mocks
-    mockApplyCodeFromResponse.mockReturnValue({ applied: false, needsApplyModel: false, newCode: '', message: '' });
+    mockApplyAIResponse.mockResolvedValue(noChangeResult);
   });
 
   /* ─── Agent auto-test runs once, does not iterate ────────────────── */
@@ -2023,7 +2033,7 @@ describe('ArenaIDE', () => {
     });
 
     // Make the first response trigger test run
-    mockApplyCodeFromResponse.mockReturnValue({ applied: true, needsApplyModel: false, newCode: 'code', message: 'Updated' });
+    mockApplyAIResponse.mockResolvedValue({ ...noChangeResult, codeChanged: true, newCode: 'code', message: 'Updated' });
 
     const onRunTests = vi.fn().mockResolvedValue({
       passed: false, passedTests: 0, totalTests: 1,
@@ -2046,13 +2056,13 @@ describe('ArenaIDE', () => {
     // AI should only have been called once (no re-prompt)
     expect(callCount).toBe(1);
 
-    mockApplyCodeFromResponse.mockReturnValue({ applied: false, needsApplyModel: false, newCode: '', message: '' });
+    mockApplyAIResponse.mockResolvedValue(noChangeResult);
   });
 
   /* ─── Agent loop error handling ────────────────────────────────── */
 
   it('agent loop handles test execution error gracefully', async () => {
-    mockApplyCodeFromResponse.mockReturnValue({ applied: true, needsApplyModel: false, newCode: 'code', message: 'Updated' });
+    mockApplyAIResponse.mockResolvedValue({ ...noChangeResult, codeChanged: true, newCode: 'code', message: 'Updated' });
 
     mockStreamChat.mockImplementation((_msgs: any, callbacks: any) => {
       callbacks.onDone?.('Code fix attempt', { model: 'mock-model', cost: 100, tokens: 50 });
@@ -2073,7 +2083,7 @@ describe('ArenaIDE', () => {
       expect(screen.getByText(/Test run error: Execution timeout/)).toBeInTheDocument();
     });
 
-    mockApplyCodeFromResponse.mockReturnValue({ applied: false, needsApplyModel: false, newCode: '', message: '' });
+    mockApplyAIResponse.mockResolvedValue(noChangeResult);
   });
 
   /* ─── handleRetry with no assistant message ────────────────────── */
@@ -2170,7 +2180,7 @@ describe('ArenaIDE', () => {
   /* ─── flashToast and showPasteBlockedToast ──────────────────────── */
 
   it('flashToast shows code update toast when code is applied', async () => {
-    mockApplyCodeFromResponse.mockReturnValue({ applied: true, needsApplyModel: false, newCode: 'updated', message: 'Code updated' });
+    mockApplyAIResponse.mockResolvedValue({ ...noChangeResult, codeChanged: true, newCode: 'updated', message: 'Code updated' });
     mockStreamChat.mockImplementation((_msgs: any, callbacks: any) => {
       callbacks.onDone?.('```\nconst x = 1;\n```', { model: 'mock-model', cost: 100, tokens: 50 });
     });
@@ -2190,24 +2200,14 @@ describe('ArenaIDE', () => {
       expect(container.querySelector('[style*="background"]')).toBeInTheDocument();
     });
 
-    mockApplyCodeFromResponse.mockReturnValue({ applied: false, needsApplyModel: false, newCode: '', message: '' });
+    mockApplyAIResponse.mockResolvedValue(noChangeResult);
   });
 
   /* ─── applyCodeFromResponse with apply model — success path ──── */
 
   it('applyCodeFromResponse calls apply model when needsApplyModel is true', async () => {
-    const { callApplyModel } = await import('@/features/shared-ide/lib/apply-model');
-    const mockCallApply = vi.mocked(callApplyModel);
-    mockCallApply.mockResolvedValue({
-      success: true,
-      mergedCode: 'merged code result',
-      cost: 50,
-      inputTokens: 20,
-      outputTokens: 30,
-      verified: true,
-    } as any);
-
-    mockApplyCodeFromResponse.mockReturnValue({ applied: false, needsApplyModel: true, newCode: '', message: '' });
+    // applyAIResponse is mocked — simulate the apply model succeeding
+    mockApplyAIResponse.mockResolvedValue({ ...noChangeResult, codeChanged: false });
 
     mockStreamChat.mockImplementation((_msgs: any, callbacks: any) => {
       callbacks.onDone?.('Here is a code change', { model: 'mock-model', cost: 100, tokens: 50 });
@@ -2226,7 +2226,7 @@ describe('ArenaIDE', () => {
       expect(screen.getByText('Here is a code change')).toBeInTheDocument();
     });
 
-    mockApplyCodeFromResponse.mockReturnValue({ applied: false, needsApplyModel: false, newCode: '', message: '' });
+    mockApplyAIResponse.mockResolvedValue(noChangeResult);
   });
 
   /* ─── sendMessage when already loading queues the message ──────── */
@@ -2500,7 +2500,7 @@ describe('ArenaIDE', () => {
   it('applyCodeFromResponse handles file edits from extractFileEdits', async () => {
     // The extractFileEdits mock returns empty by default
     // We test that the component renders and processes the path
-    mockApplyCodeFromResponse.mockReturnValue({ applied: true, needsApplyModel: false, newCode: 'updated', message: 'Code updated' });
+    mockApplyAIResponse.mockResolvedValue({ ...noChangeResult, codeChanged: true, newCode: 'updated', message: 'Code updated' });
 
     mockStreamChat.mockImplementation((_msgs: any, callbacks: any) => {
       callbacks.onDone?.('FILE: test.ts\nconsole.log("test")', { model: 'mock-model', cost: 100, tokens: 50 });
@@ -2516,10 +2516,10 @@ describe('ArenaIDE', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText(/test/)).toBeInTheDocument();
+      expect(screen.getByText(/console\.log/)).toBeInTheDocument();
     });
 
-    mockApplyCodeFromResponse.mockReturnValue({ applied: false, needsApplyModel: false, newCode: '', message: '' });
+    mockApplyAIResponse.mockResolvedValue(noChangeResult);
   });
 
   /* ─── challenge with hiddenTestCount=0 shows test count ────────── */
@@ -2635,19 +2635,8 @@ describe('ArenaIDE', () => {
   /* ─── ApplyFailureToast shown when apply model verification fails ── */
 
   it('shows ApplyFailureToast when apply model returns verified=false', async () => {
-    const { callApplyModel } = await import('@/features/shared-ide/lib/apply-model');
-    const mockCallApply = vi.mocked(callApplyModel);
-    mockCallApply.mockResolvedValue({
-      success: true,
-      mergedCode: 'bad code',
-      cost: 50,
-      inputTokens: 20,
-      outputTokens: 30,
-      verified: false,
-    } as any);
-
-    // Make applyCodeFromResponse return needsApplyModel=true to trigger callApplyModel
-    mockApplyCodeFromResponse.mockReturnValue({ applied: false, needsApplyModel: true, newCode: '', message: '' });
+    // applyAIResponse is mocked — simulate apply model verification failure
+    mockApplyAIResponse.mockResolvedValue({ ...noChangeResult, codeChanged: false, applyModelVerifyFailed: true });
 
     mockStreamChat.mockImplementation((_msgs: any, callbacks: any) => {
       callbacks.onDone?.('Here is a code change for you', { model: 'mock-model', cost: 100, tokens: 50 });
@@ -2676,7 +2665,7 @@ describe('ArenaIDE', () => {
     });
 
     // Reset mocks
-    mockApplyCodeFromResponse.mockReturnValue({ applied: false, needsApplyModel: false, newCode: '', message: '' });
+    mockApplyAIResponse.mockResolvedValue(noChangeResult);
   });
 
   /* ─── TerminalPanel receives isExpired prop ──────── */
