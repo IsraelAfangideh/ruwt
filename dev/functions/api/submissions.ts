@@ -18,6 +18,7 @@ import { sendMilestoneEmail } from '../_shared/milestone-email';
 import { challengeAttemptNotificationEmail } from '../_shared/email/templates';
 import { ADMIN_EMAIL } from '../_shared/ensure-profile';
 import { attempts, challenges, customChallenges, profiles } from '../../drizzle/schema.d1';
+import type { AiComparison } from '../../src/shared/lib/arena-types';
 
 /** Returns true if code already reads stdin (model ignored instructions). */
 function codeReadsStdin(code: string, lang: string): boolean {
@@ -316,6 +317,8 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
     );
 
     const status = testResult.passed ? 'passed' : 'failed';
+    const submittedAtMs = Date.now();
+    const submittedNow = new Date(submittedAtMs).toISOString();
     await db
       .update(attempts)
       .set({
@@ -323,17 +326,18 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
         finalCode: sourceCode,
         passedTests: testResult.passedTests,
         totalTests: testResult.totalTests,
-        submittedAt: new Date().toISOString(),
+        submittedAt: submittedNow,
       })
       .where(eq(attempts.id, attempt.id));
 
     // On successful solve, run post-solve tasks concurrently (non-blocking)
     let newBadges: string[] = [];
     let streakResult: { currentStreak: number; newBadges: string[] } | null = null;
+    let aiComparison: AiComparison | null = null;
     if (testResult.passed) {
       const baseUrl = new URL(context.request.url).origin;
 
-      const [badgeResult, streakRes, , , , ] = await Promise.all([
+      const [badgeResult, streakRes, , , , , aiCompRow] = await Promise.all([
         // Check and award badges
         checkAndAwardBadges(db, user.id).catch(/* istanbul ignore next -- @preserve */ (e) => {
           console.error('Badge check error (non-blocking):', e);
@@ -376,12 +380,49 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
           /* istanbul ignore next -- @preserve */
           console.error('Cache invalidation error (non-blocking):', e);
         }),
+        // AI vs manual comparison stats for post-solve card
+        context.env.DB.prepare(`
+          SELECT
+            COUNT(CASE WHEN ac_sub.has_ai = 1 THEN 1 END) AS aiSolves,
+            COUNT(CASE WHEN ac_sub.has_ai IS NULL THEN 1 END) AS manualSolves,
+            AVG(CASE WHEN ac_sub.has_ai = 1
+                THEN (julianday(a.submitted_at) - julianday(a.created_at)) * 86400 END) AS aiAvgTimeSecs,
+            AVG(CASE WHEN ac_sub.has_ai IS NULL
+                THEN (julianday(a.submitted_at) - julianday(a.created_at)) * 86400 END) AS manualAvgTimeSecs,
+            AVG(CASE WHEN ac_sub.has_ai = 1 THEN a.total_cost END) AS aiAvgCost
+          FROM attempts a
+          LEFT JOIN (SELECT DISTINCT attempt_id, 1 AS has_ai FROM ai_calls) ac_sub
+            ON ac_sub.attempt_id = a.id
+          WHERE a.challenge_id = ? AND a.status = 'passed' AND a.submitted_at IS NOT NULL
+        `).bind(attempt.challengeId).first<{
+          aiSolves: number; manualSolves: number;
+          aiAvgTimeSecs: number | null; manualAvgTimeSecs: number | null;
+          aiAvgCost: number | null;
+        }>().catch(/* istanbul ignore next -- @preserve */ () => null),
       ]);
 
       newBadges = badgeResult;
       if (streakRes) {
         streakResult = streakRes;
         newBadges = [...newBadges, ...streakRes.newBadges];
+      }
+
+      // Compute AI comparison card data (need ≥3 total solves for meaningful stats)
+      const MIN_SOLVES_FOR_COMPARISON = 3;
+      const totalSolves = (aiCompRow?.aiSolves ?? 0) + (aiCompRow?.manualSolves ?? 0);
+      if (aiCompRow && totalSolves >= MIN_SOLVES_FOR_COMPARISON) {
+        const userSolveTimeSecs = Math.round(
+          (submittedAtMs - new Date(attempt.createdAt).getTime()) / 1000
+        );
+        aiComparison = {
+          aiSolves: aiCompRow.aiSolves,
+          manualSolves: aiCompRow.manualSolves,
+          aiAvgTimeSecs: aiCompRow.aiAvgTimeSecs,
+          manualAvgTimeSecs: aiCompRow.manualAvgTimeSecs,
+          aiAvgCost: aiCompRow.aiAvgCost,
+          userUsedAi: (attempt.totalCost ?? 0) > 0,
+          userSolveTimeSecs,
+        };
       }
     }
 
@@ -457,6 +498,7 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
       },
       newBadges,
       streak: streakResult ? { currentStreak: streakResult.currentStreak } : null,
+      aiComparison,
     };
 
     // Cache for idempotency dedup

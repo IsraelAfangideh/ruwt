@@ -101,7 +101,7 @@ const challengeData: {
 
 const profileData = { credits: 50000 };
 
-function mockFetchForChallenge(challenge = challengeData, profile = profileData) {
+function mockFetchForChallenge(challenge = challengeData, profile = profileData, submissionExtras: Record<string, unknown> = {}) {
   return vi.fn().mockImplementation((url: string, opts?: any) => {
     if (typeof url === 'string' && url.includes('/api/challenges/')) {
       return Promise.resolve({ ok: true, json: () => Promise.resolve(challenge) });
@@ -125,7 +125,7 @@ function mockFetchForChallenge(challenge = challengeData, profile = profileData)
     if (typeof url === 'string' && url.includes('/api/submissions')) {
       return Promise.resolve({
         ok: true,
-        json: () => Promise.resolve({ success: true, passedTests: 1, totalTests: 1, results: [{ passed: true, input: '1', expectedOutput: '1', actualOutput: '1' }] }),
+        json: () => Promise.resolve({ success: true, passedTests: 1, totalTests: 1, results: [{ passed: true, input: '1', expectedOutput: '1', actualOutput: '1' }], ...submissionExtras }),
       });
     }
     if (typeof url === 'string' && url.includes('/api/leaderboard')) {
@@ -2397,5 +2397,106 @@ describe('ArenaScreen', () => {
     });
     // Link should point to /challenges (browse page)
     expect(screen.getByText('All Challenges Completed!').closest('a')?.getAttribute('href')).toBe('/challenges');
+  });
+
+  /* ─── AI Comparison Card ─────────────────────────────────────── */
+
+  it('shows comparison card for no-AI user with correct multiplier text', async () => {
+    globalThis.fetch = mockFetchForChallenge(challengeData, profileData, { aiComparison: {
+      aiSolves: 8, manualSolves: 4,
+      aiAvgTimeSecs: 192, manualAvgTimeSecs: 525,
+      aiAvgCost: 200, userUsedAi: false, userSolveTimeSecs: 525,
+    } });
+
+    render(<ArenaScreen />);
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Start Challenge' })).toBeInTheDocument());
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Start Challenge' })); });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Submit' })).toBeInTheDocument());
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Submit' })); });
+    await waitFor(() => expect(screen.getByText('Challenge Passed!')).toBeInTheDocument());
+
+    await waitFor(() => {
+      expect(screen.getByText(/AI solvers finished 2.7x faster/)).toBeInTheDocument();
+    });
+    expect(screen.getByText(/You \(no AI\)/)).toBeInTheDocument();
+  });
+
+  it('shows comparison card for AI user with time-saved text', async () => {
+    globalThis.fetch = mockFetchForChallenge(challengeData, profileData, { aiComparison: {
+      aiSolves: 12, manualSolves: 5,
+      aiAvgTimeSecs: 180, manualAvgTimeSecs: 500,
+      aiAvgCost: 150, userUsedAi: true, userSolveTimeSecs: 200,
+    } });
+
+    render(<ArenaScreen />);
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Start Challenge' })).toBeInTheDocument());
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Start Challenge' })); });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Submit' })).toBeInTheDocument());
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Submit' })); });
+    await waitFor(() => expect(screen.getByText('Challenge Passed!')).toBeInTheDocument());
+
+    await waitFor(() => {
+      expect(screen.getByText(/12 AI solvers/)).toBeInTheDocument();
+      expect(screen.getByText(/5 solved manually/)).toBeInTheDocument();
+      expect(screen.getByText(/You saved ~5m by using AI/)).toBeInTheDocument();
+    });
+  });
+
+  it('hides comparison card when aiComparison is null', async () => {
+    globalThis.fetch = mockFetchForChallenge(challengeData, profileData, { aiComparison: null });
+
+    render(<ArenaScreen />);
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Start Challenge' })).toBeInTheDocument());
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Start Challenge' })); });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Submit' })).toBeInTheDocument());
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Submit' })); });
+    await waitFor(() => expect(screen.getByText('Challenge Passed!')).toBeInTheDocument());
+
+    expect(screen.queryByText(/AI solvers finished/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/solved manually/)).not.toBeInTheDocument();
+  });
+
+  it('hides comparison card when aiSolves or manualSolves is 0', async () => {
+    globalThis.fetch = mockFetchForChallenge(challengeData, profileData, { aiComparison: {
+      aiSolves: 5, manualSolves: 0,
+      aiAvgTimeSecs: 180, manualAvgTimeSecs: null,
+      aiAvgCost: 100, userUsedAi: true, userSolveTimeSecs: 200,
+    } });
+
+    render(<ArenaScreen />);
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Start Challenge' })).toBeInTheDocument());
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Start Challenge' })); });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Submit' })).toBeInTheDocument());
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Submit' })); });
+    await waitFor(() => expect(screen.getByText('Challenge Passed!')).toBeInTheDocument());
+
+    expect(screen.queryByText(/AI solvers finished/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/solved manually/)).not.toBeInTheDocument();
+  });
+
+  it('resets aiComparison state on Try Again', async () => {
+    globalThis.fetch = mockFetchForChallenge(challengeData, profileData, { aiComparison: {
+      aiSolves: 8, manualSolves: 4,
+      aiAvgTimeSecs: 192, manualAvgTimeSecs: 525,
+      aiAvgCost: 200, userUsedAi: false, userSolveTimeSecs: 525,
+    } });
+
+    render(<ArenaScreen />);
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Start Challenge' })).toBeInTheDocument());
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Start Challenge' })); });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Submit' })).toBeInTheDocument());
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Submit' })); });
+    await waitFor(() => expect(screen.getByText('Challenge Passed!')).toBeInTheDocument());
+
+    await waitFor(() => {
+      expect(screen.getByText(/AI solvers finished/)).toBeInTheDocument();
+    });
+
+    // Click Try Again
+    fireEvent.click(screen.getByText(/Try Again/));
+
+    // Overlay is dismissed, comparison card is no longer visible
+    expect(screen.queryByText('Challenge Passed!')).not.toBeInTheDocument();
+    expect(screen.queryByText(/AI solvers finished/)).not.toBeInTheDocument();
   });
 });

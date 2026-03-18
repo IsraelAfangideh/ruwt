@@ -13,6 +13,7 @@ import { estimateMessagesForBudget, formatCostFromHundredths } from '@/shared/li
 import { BADGE_DEFS, type BadgeDef } from '@/shared/lib/badge-defs';
 import { formatTime } from '@/shared/lib/utils';
 import { SplitPaneSkeleton } from '@/shared/ui/ScreenSkeletons';
+import type { AiComparison } from '@/shared/lib/arena-types';
 
 /* ─── Budget Progress Bar ──────────────────────────────────────────── */
 
@@ -100,6 +101,47 @@ function formatWallClock(seconds: number): string {
   return `${s}s`;
 }
 
+/* ─── AI Comparison Card ─────────────────────────────────────────── */
+
+function AiComparisonCard({ comparison }: { comparison: AiComparison }) {
+  const { userUsedAi, aiAvgTimeSecs, manualAvgTimeSecs, userSolveTimeSecs, aiSolves, manualSolves, aiAvgCost } = comparison;
+  const showNudge = !userUsedAi && aiAvgTimeSecs != null && manualAvgTimeSecs != null && aiAvgTimeSecs > 0 && manualAvgTimeSecs / aiAvgTimeSecs > 1;
+  const timeSaved = manualAvgTimeSecs != null ? Math.round(manualAvgTimeSecs - userSolveTimeSecs) : 0;
+  const showReinforcement = userUsedAi && timeSaved > 0;
+  if (!showNudge && !showReinforcement) return null;
+  return (
+    <div style={{
+      width: '100%',
+      padding: 12,
+      border: `1px solid ${showNudge ? arena.accent : arena.border}`,
+      borderRadius: 8,
+      background: showNudge ? `${arena.accent}10` : 'transparent',
+    }}>
+      {showNudge ? (
+        <>
+          <div style={{ fontSize: 13, fontWeight: 600, color: arena.accent, marginBottom: 8 }}>
+            {'\u26A1'} AI solvers finished {(manualAvgTimeSecs! / aiAvgTimeSecs!).toFixed(1)}x faster
+          </div>
+          <div style={{ fontSize: 12, color: arena.textMuted }}>
+            With AI: {formatWallClock(Math.round(aiAvgTimeSecs!))} avg{aiAvgCost != null ? ` \u2022 ${formatCostFromHundredths(aiAvgCost)} avg` : ''}
+          </div>
+          <div style={{ fontSize: 12, color: arena.text, marginTop: 2 }}>
+            You (no AI): {formatWallClock(userSolveTimeSecs)}
+          </div>
+        </>
+      ) : (
+        <>
+          <div style={{ fontSize: 12, color: arena.textMuted }}>
+            {'\u26A1'} {aiSolves} AI solvers {'\u2022'} {manualSolves} solved manually
+          </div>
+          <div style={{ fontSize: 13, color: arena.text, marginTop: 4 }}>
+            You saved ~{formatWallClock(timeSaved)} by using AI
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
 
 export function ArenaScreen() {
   const navigation = useNavigation();
@@ -135,6 +177,7 @@ export function ArenaScreen() {
   const [nextChallengeResolved, setNextChallengeResolved] = useState(false);
   const [earnedBadges, setEarnedBadges] = useState<BadgeDef[]>([]);
   const [streakInfo, setStreakInfo] = useState<{ currentStreak: number } | null>(null);
+  const [aiComparison, setAiComparison] = useState<AiComparison | null>(null);
   const [commentText, setCommentText] = useState('');
   const [commentSubmitted, setCommentSubmitted] = useState(false);
   const [commentSubmitting, setCommentSubmitting] = useState(false);
@@ -178,9 +221,8 @@ export function ArenaScreen() {
     return false;
   }, [challengeId]);
 
-  // Reset all state when challengeId changes (e.g. "Try Next Challenge")
-  useEffect(() => {
-    setChallenge(null);
+  // Shared reset for attempt/overlay/results state (used by both challengeId change and restart)
+  const resetAttemptState = useCallback(() => {
     setAttempt(null);
     setCode('');
     setTestResults(null);
@@ -190,13 +232,20 @@ export function ArenaScreen() {
     isExpiredRef.current = false;
     setError(null);
     setIsRunning(false);
-    setLoading(true);
-    setNextChallenge(null);
     setNextChallengeResolved(false);
     setEarnedBadges([]);
     setStreakInfo(null);
+    setAiComparison(null);
     setCommentText('');
     setCommentSubmitted(false);
+  }, []);
+
+  // Reset all state when challengeId changes (e.g. "Try Next Challenge")
+  useEffect(() => {
+    setChallenge(null);
+    resetAttemptState();
+    setLoading(true);
+    setNextChallenge(null);
     navigatingRef.current = false;
     autoResumeCalledRef.current = false;
   }, [challengeId]);
@@ -310,21 +359,8 @@ export function ArenaScreen() {
   useEffect(() => { startAttemptRef.current = startAttempt; }, [startAttempt]);
 
   const onRestart = useCallback(() => {
-    setAttempt(null);
-    setCode('');
-    setIsRunning(false);
-    setError(null);
-    setTestResults(null);
-    setSuccessOverlay(null);
-    setSuccessStats(null);
-    setEarnedBadges([]);
-    setStreakInfo(null);
-    setCommentText('');
-    setCommentSubmitted(false);
-    setNextChallengeResolved(false);
-    setIsExpired(false);
-    isExpiredRef.current = false;
-  }, []);
+    resetAttemptState();
+  }, [resetAttemptState]);
 
   const onRunTests = useCallback(
     async (sourceCode: string, lang: string) => {
@@ -392,6 +428,9 @@ export function ArenaScreen() {
         if (data.streak) {
           /* istanbul ignore next -- @preserve */
           setStreakInfo(data.streak);
+        }
+        if (data.aiComparison) {
+          setAiComparison(data.aiComparison);
         }
         // Fire leaderboard + next challenge fetches in parallel (don't block each other)
         const leaderboardPromise = fetch(`/api/leaderboard?challengeId=${challengeId}`)
@@ -1175,6 +1214,11 @@ export function ArenaScreen() {
                   </div>
                 )}
               </div>
+
+              {/* AI Comparison Card */}
+              {aiComparison && aiComparison.aiSolves > 0 && aiComparison.manualSolves > 0 && (
+                <AiComparisonCard comparison={aiComparison} />
+              )}
 
               {/* Share buttons */}
               <div style={{ display: 'flex', gap: 8, width: '100%', marginTop: 8 }}>

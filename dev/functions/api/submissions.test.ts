@@ -49,22 +49,28 @@ import { onRequestPost, onRequestGet } from './submissions';
 
 const FAKE_USER = { id: 'user-abc', email: 'test@ruwt.dev' };
 
-function makeEnv(): Env {
+function makeEnv(aiCompResult: unknown = null): Env {
   return {
-    DB: {} as D1Database,
+    DB: {
+      prepare: vi.fn().mockReturnValue({
+        bind: vi.fn().mockReturnValue({
+          first: vi.fn().mockResolvedValue(aiCompResult),
+        }),
+      }),
+    } as any,
     VITE_SUPABASE_URL: 'https://test.supabase.co',
     VITE_SUPABASE_ANON_KEY: 'anon-key',
   } as Env;
 }
 
-function makePostContext(body: unknown) {
+function makePostContext(body: unknown, aiCompResult: unknown = null) {
   return {
     request: new Request('https://ruwt.dev/api/submissions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     }),
-    env: makeEnv(),
+    env: makeEnv(aiCompResult),
   };
 }
 
@@ -206,23 +212,27 @@ function makeDb(opts: {
 
 const VALID_ATTEMPT_ID = '11385777-ebbd-4e68-b4ac-da8a030eb375';
 
+function setupSubmissionMocks() {
+  mockGetUser.mockReset();
+  mockGetDb.mockReset();
+  mockRunTestCases.mockReset();
+  mockCheckAndAwardBadges.mockReset().mockResolvedValue([]);
+  mockUpdateStreak.mockReset().mockResolvedValue({ currentStreak: 1, longestStreak: 1, newBadges: [], streakFreezeUsed: false });
+  mockCreateCompetitiveNudges.mockReset().mockResolvedValue(undefined);
+  mockCreateNewUserNearRankNotifications.mockReset().mockResolvedValue(undefined);
+  mockSendEmail.mockReset().mockResolvedValue({ success: true, id: 'email-123' });
+  mockChallengeAttemptNotificationEmail.mockReset().mockReturnValue({
+    subject: 'Test solved FizzBuzz!',
+    html: '<h1>Solved</h1>',
+    text: 'Solved notification',
+  });
+}
+
 // ── POST Tests ───────────────────────────────────────────────────────
 
 describe('POST /api/submissions', () => {
   beforeEach(() => {
-    mockGetUser.mockReset();
-    mockGetDb.mockReset();
-    mockRunTestCases.mockReset();
-    mockCheckAndAwardBadges.mockReset().mockResolvedValue([]);
-    mockUpdateStreak.mockReset().mockResolvedValue({ currentStreak: 1, longestStreak: 1, newBadges: [], streakFreezeUsed: false });
-    mockCreateCompetitiveNudges.mockReset().mockResolvedValue(undefined);
-    mockCreateNewUserNearRankNotifications.mockReset().mockResolvedValue(undefined);
-    mockSendEmail.mockReset().mockResolvedValue({ success: true, id: 'email-123' });
-    mockChallengeAttemptNotificationEmail.mockReset().mockReturnValue({
-      subject: 'Test solved FizzBuzz!',
-      html: '<h1>Solved</h1>',
-      text: 'Solved notification',
-    });
+    setupSubmissionMocks();
   });
 
   it('returns 401 when user is not authenticated', async () => {
@@ -1733,5 +1743,162 @@ describe('GET /api/submissions — additional error paths', () => {
     mockGetUser.mockResolvedValue(FAKE_USER);
     const res = await onRequestGet(makeGetContext('attemptId='));
     expect(res.status).toBe(400);
+  });
+});
+
+// ── AI Comparison Card Tests ──────────────────────────────────────────
+
+describe('POST /api/submissions — aiComparison', () => {
+  beforeEach(() => {
+    setupSubmissionMocks();
+  });
+
+  it('aiComparison present for passed submission with sufficient data', async () => {
+    mockGetUser.mockResolvedValue(FAKE_USER);
+
+    const attempt = fakeAttempt({ totalCost: 50 });
+    const challenge = fakeChallenge();
+    mockRunTestCases.mockResolvedValue(passingTestResult(2));
+
+    const { db } = makeDb({
+      selectResults: [[attempt], [challenge]],
+    });
+    mockGetDb.mockReturnValue(db);
+
+    const aiCompData = {
+      aiSolves: 5, manualSolves: 3,
+      aiAvgTimeSecs: 180, manualAvgTimeSecs: 480,
+      aiAvgCost: 200,
+    };
+    const ctx = makePostContext({
+      attemptId: VALID_ATTEMPT_ID,
+      sourceCode: 'function fizzbuzz(n) { return "FizzBuzz"; }',
+    }, aiCompData);
+
+    const res = await onRequestPost(ctx);
+    const json = await res.json();
+
+    expect(json.aiComparison).toBeTruthy();
+    expect(json.aiComparison.aiSolves).toBe(5);
+    expect(json.aiComparison.manualSolves).toBe(3);
+    expect(json.aiComparison.aiAvgTimeSecs).toBe(180);
+    expect(json.aiComparison.manualAvgTimeSecs).toBe(480);
+    expect(json.aiComparison.aiAvgCost).toBe(200);
+    expect(json.aiComparison.userUsedAi).toBe(true);
+    expect(typeof json.aiComparison.userSolveTimeSecs).toBe('number');
+  });
+
+  it('aiComparison null when fewer than 3 total solves', async () => {
+    mockGetUser.mockResolvedValue(FAKE_USER);
+
+    const attempt = fakeAttempt();
+    const challenge = fakeChallenge();
+    mockRunTestCases.mockResolvedValue(passingTestResult(2));
+
+    const { db } = makeDb({
+      selectResults: [[attempt], [challenge]],
+    });
+    mockGetDb.mockReturnValue(db);
+
+    const aiCompData = {
+      aiSolves: 1, manualSolves: 1,
+      aiAvgTimeSecs: 120, manualAvgTimeSecs: 300,
+      aiAvgCost: 100,
+    };
+    const ctx = makePostContext({
+      attemptId: VALID_ATTEMPT_ID,
+      sourceCode: 'code',
+    }, aiCompData);
+
+    const res = await onRequestPost(ctx);
+    const json = await res.json();
+
+    expect(json.aiComparison).toBeNull();
+  });
+
+  it('aiComparison null for failed submissions', async () => {
+    mockGetUser.mockResolvedValue(FAKE_USER);
+
+    const attempt = fakeAttempt();
+    const challenge = fakeChallenge();
+    mockRunTestCases.mockResolvedValue(failingTestResult());
+
+    const { db } = makeDb({
+      selectResults: [[attempt], [challenge]],
+    });
+    mockGetDb.mockReturnValue(db);
+
+    const ctx = makePostContext({
+      attemptId: VALID_ATTEMPT_ID,
+      sourceCode: 'code',
+    }, { aiSolves: 10, manualSolves: 5, aiAvgTimeSecs: 100, manualAvgTimeSecs: 200, aiAvgCost: 50 });
+
+    const res = await onRequestPost(ctx);
+    const json = await res.json();
+
+    // Failed submissions don't run the Promise.all block, so no aiComparison
+    expect(json.aiComparison).toBeNull();
+  });
+
+  it('userUsedAi reflects attempt cost (false when zero)', async () => {
+    mockGetUser.mockResolvedValue(FAKE_USER);
+
+    const attempt = fakeAttempt({ totalCost: 0 });
+    const challenge = fakeChallenge();
+    mockRunTestCases.mockResolvedValue(passingTestResult(2));
+
+    const { db } = makeDb({
+      selectResults: [[attempt], [challenge]],
+    });
+    mockGetDb.mockReturnValue(db);
+
+    const aiCompData = {
+      aiSolves: 4, manualSolves: 2,
+      aiAvgTimeSecs: 150, manualAvgTimeSecs: 400,
+      aiAvgCost: 100,
+    };
+    const ctx = makePostContext({
+      attemptId: VALID_ATTEMPT_ID,
+      sourceCode: 'code',
+    }, aiCompData);
+
+    const res = await onRequestPost(ctx);
+    const json = await res.json();
+
+    expect(json.aiComparison).toBeTruthy();
+    expect(json.aiComparison.userUsedAi).toBe(false);
+  });
+
+  it('query failure is non-blocking (returns null aiComparison)', async () => {
+    mockGetUser.mockResolvedValue(FAKE_USER);
+
+    const attempt = fakeAttempt();
+    const challenge = fakeChallenge();
+    mockRunTestCases.mockResolvedValue(passingTestResult(2));
+
+    const { db } = makeDb({
+      selectResults: [[attempt], [challenge]],
+    });
+    mockGetDb.mockReturnValue(db);
+
+    // DB.prepare that throws
+    const ctx = makePostContext({
+      attemptId: VALID_ATTEMPT_ID,
+      sourceCode: 'code',
+    });
+    ctx.env.DB = {
+      prepare: vi.fn().mockReturnValue({
+        bind: vi.fn().mockReturnValue({
+          first: vi.fn().mockRejectedValue(new Error('D1 error')),
+        }),
+      }),
+    } as any;
+
+    const res = await onRequestPost(ctx);
+    const json = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(json.success).toBe(true);
+    expect(json.aiComparison).toBeNull();
   });
 });
