@@ -51,16 +51,6 @@ const DIFFICULTY_TO_TIER: Record<string, ModelTier> = {
 
 /* ─── Types ───────────────────────────────────────────────────────── */
 
-export interface TestCaseResult {
-  passed: boolean;
-  input: string;
-  expectedOutput: string;
-  actualOutput: string;
-  error?: string | null;
-  time?: string;
-  memory?: number;
-}
-
 export interface ArenaChallenge {
   id: string;
   title: string;
