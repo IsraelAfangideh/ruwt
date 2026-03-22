@@ -179,7 +179,7 @@ describe('LandingScreen', () => {
   it('navigates to GuestArena on Try a Challenge click', () => {
     render(<LandingScreen />);
     fireEvent.click(screen.getByText(/Try a Challenge/));
-    expect(mockNavigate).toHaveBeenCalledWith('GuestArena', { challengeId: 'fizzbuzz-budget' });
+    expect(mockNavigate).toHaveBeenCalledWith('GuestArena', { challengeId: 'one-shot-csv-parser' });
   });
 
   it('navigates to Teams when Benchmark Your Team is clicked', () => {

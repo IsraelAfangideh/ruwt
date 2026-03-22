@@ -47,8 +47,8 @@ async function handleDrip(env: Env): Promise<Response> {
       const firstName = user.name?.split(' ')[0] || '';
       const subject = 'the arena is waiting for you';
       const line = `${firstName ? firstName + ' — ' : ''}you signed up yesterday but haven't tried a challenge yet.`;
-      const cta = 'the first one takes about 2 minutes: "FizzBuzz Budget" is the best intro.';
-      const link = 'https://ruwt.dev/arena/fizzbuzz-budget';
+      const cta = 'the first one takes about 3 minutes: the CSV Parser challenge is the best intro.';
+      const link = 'https://ruwt.dev/arena/one-shot-csv-parser';
       const text = `${line}\n\n${cta}\n\n${link}\n\n---\nreply stop to unsubscribe`;
       const html = `<div dir="ltr"><p>${escapeHtml(line)}</p><p>${escapeHtml(cta)}</p><p><a href="${link}">${link}</a></p><p><font color="#b0aaa0" size="1">reply stop to unsubscribe</font></p></div>`;
 

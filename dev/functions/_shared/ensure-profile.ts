@@ -47,8 +47,8 @@ export async function ensureProfile(db: Db, user: User, env?: { RESEND_API_KEY?:
       userId: user.id,
       type: 'new_challenge',
       title: 'Welcome to ruwt.dev!',
-      body: 'Start with FizzBuzz Budget — a quick intro challenge to learn the arena.',
-      metadata: JSON.stringify({ challengeId: 'fizzbuzz-budget' }),
+      body: 'Start with the CSV Parser challenge — a quick intro that shows how AI speeds up real tasks.',
+      metadata: JSON.stringify({ challengeId: 'one-shot-csv-parser' }),
     }).onConflictDoNothing();
 
     // Welcome email (logged for visibility)

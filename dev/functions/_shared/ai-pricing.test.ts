@@ -5,7 +5,6 @@ import {
   countMessageTokens,
   getCloudflareModels,
   getTierFallbackChain,
-  getToolCapableModels,
   getToolCapableFallbackChain,
 } from './ai-pricing';
 
@@ -146,29 +145,6 @@ describe('getTierFallbackChain', () => {
     for (let i = 1; i < models.length; i++) {
       expect(tierOrder[models[i]!.tier]).toBeGreaterThanOrEqual(tierOrder[models[i - 1]!.tier]);
     }
-  });
-});
-
-describe('getToolCapableModels', () => {
-  it('returns only models with supportsTools=true', () => {
-    const toolModels = getToolCapableModels();
-    expect(toolModels.length).toBeGreaterThan(0);
-    for (const id of toolModels) {
-      const pricing = getModelPricing(id);
-      expect(pricing?.supportsTools).toBe(true);
-    }
-  });
-
-  it('includes known tool-capable models', () => {
-    const toolModels = getToolCapableModels();
-    expect(toolModels).toContain('@cf/qwen/qwen2.5-coder-32b-instruct');
-    expect(toolModels).toContain('@cf/meta/llama-3.1-8b-instruct');
-  });
-
-  it('excludes models without tool support', () => {
-    const toolModels = getToolCapableModels();
-    // Gemma 3 12B does not support tools
-    expect(toolModels).not.toContain('@cf/google/gemma-3-12b-it');
   });
 });
 

@@ -192,16 +192,8 @@ export function getModelsForTier(tier: ModelTier): ModelInfo[] {
   return MODELS.filter((m) => m.tier === tier);
 }
 
-export function getAllModels(): ModelInfo[] {
-  return MODELS;
-}
-
 export function getModelById(id: string): ModelInfo | undefined {
   return MODELS.find((m) => m.id === id);
-}
-
-export function getCloudflareModels(): ModelInfo[] {
-  return MODELS;
 }
 
 export function formatCostFromHundredths(hundredths: number): string {

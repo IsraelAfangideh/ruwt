@@ -1,10 +1,10 @@
 import { describe, it, expect } from 'vitest';
+import { buildSystemPrompt } from './system-prompts';
 import {
-  buildSystemPrompt,
   formatTestResultsForMessage,
   type AIMode,
   type TestResults,
-} from './system-prompts';
+} from '@/features/shared-ide/lib/ai-types';
 
 // ---------------------------------------------------------------------------
 // Shared fixtures

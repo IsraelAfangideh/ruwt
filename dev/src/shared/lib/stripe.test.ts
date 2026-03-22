@@ -3,8 +3,6 @@ import {
   CREDIT_PACKAGES,
   SUBSCRIPTION_PLANS,
   ENTERPRISE_TIER,
-  getPackageById,
-  getSubscriptionPlanById,
 } from './stripe';
 
 describe('stripe', () => {
@@ -58,25 +56,6 @@ describe('stripe', () => {
   });
 
   // ---------------------------------------------------------------------------
-  // getPackageById
-  // ---------------------------------------------------------------------------
-  describe('getPackageById', () => {
-    it('finds each package by its id', () => {
-      for (const pkg of CREDIT_PACKAGES) {
-        expect(getPackageById(pkg.id)).toEqual(pkg);
-      }
-    });
-
-    it('returns undefined for an unknown id', () => {
-      expect(getPackageById('credits-999999')).toBeUndefined();
-    });
-
-    it('returns undefined for an empty string', () => {
-      expect(getPackageById('')).toBeUndefined();
-    });
-  });
-
-  // ---------------------------------------------------------------------------
   // SUBSCRIPTION_PLANS constant
   // ---------------------------------------------------------------------------
   describe('SUBSCRIPTION_PLANS', () => {
@@ -123,25 +102,6 @@ describe('stripe', () => {
       const annual = SUBSCRIPTION_PLANS.find((p) => p.id === 'plan-annual')!;
       expect(annual.savings).toBeDefined();
       expect(annual.savings).toContain('25%');
-    });
-  });
-
-  // ---------------------------------------------------------------------------
-  // getSubscriptionPlanById
-  // ---------------------------------------------------------------------------
-  describe('getSubscriptionPlanById', () => {
-    it('finds each subscription plan by its id', () => {
-      for (const plan of SUBSCRIPTION_PLANS) {
-        expect(getSubscriptionPlanById(plan.id)).toEqual(plan);
-      }
-    });
-
-    it('returns undefined for an unknown id', () => {
-      expect(getSubscriptionPlanById('plan-enterprise')).toBeUndefined();
-    });
-
-    it('returns undefined for an empty string', () => {
-      expect(getSubscriptionPlanById('')).toBeUndefined();
     });
   });
 

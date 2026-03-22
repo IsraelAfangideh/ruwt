@@ -5,18 +5,6 @@
  * - Loop prompt (follow-up calls): only current code + test results (saves tokens)
  */
 
-// Re-export shared types/constants so existing relative imports still work
-export {
-  type AIMode,
-  type TestResult,
-  type TestResults,
-  EDIT_FORMAT_RULES,
-  EDIT_FORMAT_COMPACT,
-  SEARCH_REPLACE_WARNING,
-  TOOL_USE_RULES,
-  formatTestResultsForMessage,
-} from '@/features/shared-ide/lib/ai-types';
-
 import type { AIMode, TestResults } from '@/features/shared-ide/lib/ai-types';
 import {
   EDIT_FORMAT_RULES,

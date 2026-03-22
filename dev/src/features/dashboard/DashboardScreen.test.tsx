@@ -357,21 +357,21 @@ describe('DashboardScreen', () => {
     await waitFor(() => {
       expect(screen.getByText('Start Your First Challenge')).toBeInTheDocument();
     });
-    expect(screen.getByRole('button', { name: 'Try FizzBuzz Budget' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Try CSV Parser Challenge' })).toBeInTheDocument();
     expect(screen.getByText('Browse all challenges')).toBeInTheDocument();
   });
 
-  it('navigates to Arena with fizzbuzz-budget when Try FizzBuzz Budget is clicked', async () => {
+  it('navigates to Arena with one-shot-csv-parser when Try CSV Parser Challenge is clicked', async () => {
     setupHappyPath({
       progress: { ...baseDashboardData.progress, solvedCount: 0 },
     });
     vi.useRealTimers();
     render(<DashboardScreen />);
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Try FizzBuzz Budget' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Try CSV Parser Challenge' })).toBeInTheDocument();
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Try FizzBuzz Budget' }));
-    expect(mockNavigate).toHaveBeenCalledWith('Arena', { challengeId: 'fizzbuzz-budget' });
+    fireEvent.click(screen.getByRole('button', { name: 'Try CSV Parser Challenge' }));
+    expect(mockNavigate).toHaveBeenCalledWith('Arena', { challengeId: 'one-shot-csv-parser' });
   });
 
   it('navigates to Challenges when Browse all challenges is clicked', async () => {

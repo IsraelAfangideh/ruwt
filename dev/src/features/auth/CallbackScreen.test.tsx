@@ -121,7 +121,7 @@ describe('CallbackScreen', () => {
 
   /* ── Pending challenge redirect ────────────────────────────────── */
   it('redirects to Arena with pending challenge if set in localStorage', async () => {
-    localStorage.setItem('ruwt_pending_challenge', 'fizzbuzz-budget');
+    localStorage.setItem('ruwt_pending_challenge', 'one-shot-csv-parser');
 
     render(<CallbackScreen />);
 
@@ -132,7 +132,7 @@ describe('CallbackScreen', () => {
     await waitFor(() => {
       expect(mockReset).toHaveBeenCalledWith({
         index: 0,
-        routes: [{ name: 'Arena', params: { challengeId: 'fizzbuzz-budget' } }],
+        routes: [{ name: 'Arena', params: { challengeId: 'one-shot-csv-parser' } }],
       });
     });
     expect(localStorage.getItem('ruwt_pending_challenge')).toBeNull();

@@ -6,7 +6,6 @@ import {
   resultsReadyEmail,
   newSignupNotificationEmail,
   challengeAttemptNotificationEmail,
-  teamInviteEmail,
   trialStartNotificationEmail,
   trialWelcomeEmail,
   trialExpiringEmail,
@@ -47,7 +46,7 @@ describe('escapeHtml (via template output)', () => {
   });
 });
 
-describe('formatDate (via candidateInviteEmail + teamInviteEmail)', () => {
+describe('formatDate (via candidateInviteEmail)', () => {
   it('formats a standard ISO date into short month format', () => {
     const { html, text } = candidateInviteEmail({
       assessmentTitle: 'Test',
@@ -56,34 +55,8 @@ describe('formatDate (via candidateInviteEmail + teamInviteEmail)', () => {
       inviteUrl: 'https://ruwt.dev/invite/abc',
       expiresAt: '2026-02-21T00:00:00Z',
     });
-    // The formatted date should look like "Feb 21, 2026" (but exact format
-    // depends on locale; we check the text version which uses the same helper)
     expect(text).toContain('2026');
     expect(text).toContain('Feb');
-  });
-
-  it('formats a date in the middle of the year', () => {
-    const { text } = teamInviteEmail({
-      inviterName: 'Alice',
-      orgName: 'Acme',
-      role: 'admin',
-      joinUrl: 'https://ruwt.dev/join/xyz',
-      expiresAt: '2026-07-04T12:00:00Z',
-    });
-    expect(text).toContain('Jul');
-    expect(text).toContain('2026');
-  });
-
-  it('formats a date at the end of the year', () => {
-    const { text } = teamInviteEmail({
-      inviterName: 'Bob',
-      orgName: 'Corp',
-      role: 'viewer',
-      joinUrl: 'https://ruwt.dev/join/xyz',
-      expiresAt: '2026-12-15T12:00:00Z',
-    });
-    expect(text).toContain('Dec');
-    expect(text).toContain('2026');
   });
 
   it('handles an invalid date string gracefully (returns the raw string)', () => {
@@ -325,10 +298,10 @@ describe('welcomeEmail', () => {
     expect(html).toContain('https://ruwt.dev/challenges');
   });
 
-  it('mentions FizzBuzz Budget as a starter recommendation', () => {
+  it('mentions CSV Parser as a starter recommendation', () => {
     const { html, text } = welcomeEmail({});
-    expect(html).toContain('FizzBuzz Budget');
-    expect(text).toContain('FizzBuzz Budget');
+    expect(html).toContain('CSV Parser');
+    expect(text).toContain('CSV Parser');
   });
 
   it('plain text includes all key information', () => {
@@ -1184,125 +1157,6 @@ describe('challengeAttemptNotificationEmail', () => {
 });
 
 // ---------------------------------------------------------------------------
-// 7. Team Invite Email
-// ---------------------------------------------------------------------------
-
-describe('teamInviteEmail', () => {
-  const baseParams = {
-    inviterName: 'Alice Johnson',
-    orgName: 'Acme Engineering',
-    role: 'admin',
-    joinUrl: 'https://ruwt.dev/join/team123',
-    expiresAt: '2026-04-01T00:00:00Z',
-  };
-
-  it('returns subject, html, and text properties', () => {
-    const result = teamInviteEmail(baseParams);
-    expect(result).toHaveProperty('subject');
-    expect(result).toHaveProperty('html');
-    expect(result).toHaveProperty('text');
-  });
-
-  it('includes org name in the subject', () => {
-    const { subject } = teamInviteEmail(baseParams);
-    expect(subject).toBe('Join Acme Engineering on Ruwt');
-  });
-
-  it('uses "Hi," as a static greeting (no personalization)', () => {
-    const { html, text } = teamInviteEmail(baseParams);
-    expect(html).toContain('>Hi,<');
-    expect(text.startsWith('Hi,')).toBe(true);
-  });
-
-  it('mentions the inviter name', () => {
-    const { html, text } = teamInviteEmail(baseParams);
-    expect(html).toContain('<strong>Alice Johnson</strong>');
-    expect(text).toContain('Alice Johnson has invited you');
-  });
-
-  it('mentions the organization name in the body and details box', () => {
-    const { html, text } = teamInviteEmail(baseParams);
-    // Organization appears in both the invite line and the details table
-    const orgMatches = html.split('Acme Engineering').length - 1;
-    expect(orgMatches).toBeGreaterThanOrEqual(2);
-    expect(text).toContain('Organization: Acme Engineering');
-  });
-
-  it('capitalizes the first letter of the role', () => {
-    const { html, text } = teamInviteEmail(baseParams);
-    expect(html).toContain('Admin');
-    expect(text).toContain('Your role: Admin');
-  });
-
-  it('capitalizes role correctly for multi-word roles', () => {
-    const { html } = teamInviteEmail({ ...baseParams, role: 'viewer' });
-    expect(html).toContain('Viewer');
-  });
-
-  it('includes the team collaboration description', () => {
-    const { html, text } = teamInviteEmail(baseParams);
-    expect(html).toContain('collaborate on assessments');
-    expect(text).toContain('collaborate on assessments');
-  });
-
-  it('includes the CTA button with "Accept Invitation"', () => {
-    const { html } = teamInviteEmail(baseParams);
-    expect(html).toContain('Accept Invitation');
-    expect(html).toContain('https://ruwt.dev/join/team123');
-  });
-
-  it('displays the expiry date', () => {
-    const { html, text } = teamInviteEmail(baseParams);
-    expect(html).toContain('expires on');
-    expect(text).toContain('expires on');
-    expect(text).toContain('Apr');
-    expect(text).toContain('2026');
-  });
-
-  it('includes a fallback link', () => {
-    const { html } = teamInviteEmail(baseParams);
-    expect(html).toContain("If the button doesn't work");
-    expect(html).toContain('https://ruwt.dev/join/team123');
-  });
-
-  it('escapes HTML in inviter name and org name', () => {
-    const { html } = teamInviteEmail({
-      ...baseParams,
-      inviterName: 'Bob <admin>',
-      orgName: 'R&D Corp',
-    });
-    expect(html).toContain('Bob &lt;admin&gt;');
-    expect(html).toContain('R&amp;D Corp');
-  });
-
-  it('escapes HTML in the role', () => {
-    const { html } = teamInviteEmail({
-      ...baseParams,
-      role: '<script>alert("xss")</script>',
-    });
-    // The role gets capitalized first (< -> <, charAt(0).toUpperCase() = '<')
-    // then escaped. The display role becomes "&lt;script&gt;..."
-    expect(html).not.toContain('<script>alert');
-  });
-
-  it('includes inviter and org in the preheader', () => {
-    const { html } = teamInviteEmail(baseParams);
-    expect(html).toContain('Alice Johnson invited you to join Acme Engineering');
-  });
-
-  it('plain text includes all key information', () => {
-    const { text } = teamInviteEmail(baseParams);
-    expect(text).toContain('Hi,');
-    expect(text).toContain('Alice Johnson has invited you to join Acme Engineering');
-    expect(text).toContain('Organization: Acme Engineering');
-    expect(text).toContain('Your role: Admin');
-    expect(text).toContain('Accept invitation: https://ruwt.dev/join/team123');
-    expect(text).toContain('Sent by ruwt.dev');
-    expect(text).toContain('Unsubscribe');
-  });
-});
-
-// ---------------------------------------------------------------------------
 // trialWelcomeEmail — no org/team name
 // ---------------------------------------------------------------------------
 
@@ -1388,17 +1242,6 @@ describe('all templates produce structurally valid output', () => {
           passedTests: 3,
           totalTests: 3,
           totalCost: 500,
-        }),
-    },
-    {
-      name: 'teamInviteEmail',
-      fn: () =>
-        teamInviteEmail({
-          inviterName: 'Inviter',
-          orgName: 'Org',
-          role: 'admin',
-          joinUrl: 'https://ruwt.dev/join/x',
-          expiresAt: '2026-06-01T00:00:00Z',
         }),
     },
     {

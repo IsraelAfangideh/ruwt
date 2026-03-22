@@ -3,33 +3,12 @@
  * AI can request tool execution by including XML-like tags in output.
  */
 
-export type ToolCallType = 'run_tests' | 'run_code';
-
-export interface ToolCall {
-  type: ToolCallType;
-}
+type ToolCallType = 'run_tests' | 'run_code';
 
 const TOOL_PATTERNS: { pattern: RegExp; type: ToolCallType }[] = [
   { pattern: /<ruwt:run_tests\s*\/?>/g, type: 'run_tests' },
   { pattern: /<ruwt:run_code\s*\/?>/g, type: 'run_code' },
 ];
-
-/** Extract all tool calls from AI response text. */
-export function parseToolCalls(text: string): ToolCall[] {
-  const calls: ToolCall[] = [];
-  const seen = new Set<ToolCallType>();
-
-  for (const { pattern, type } of TOOL_PATTERNS) {
-    // Reset regex state
-    pattern.lastIndex = 0;
-    if (pattern.test(text) && !seen.has(type)) {
-      calls.push({ type });
-      seen.add(type);
-    }
-  }
-
-  return calls;
-}
 
 /** Remove tool-use markers from text for clean display. */
 export function stripToolCalls(text: string): string {

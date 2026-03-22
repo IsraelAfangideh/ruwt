@@ -184,13 +184,6 @@ export function getTierFallbackChain(tier: ModelTier): string[] {
     .map(([id]) => id);
 }
 
-/** Get models that support native function calling (tools). */
-export function getToolCapableModels(): string[] {
-  return Object.entries(MODEL_PRICING)
-    .filter(([, p]) => p.supportsTools)
-    .map(([id]) => id);
-}
-
 /** Get tool-capable fallback chain for a given tier. */
 export function getToolCapableFallbackChain(tier: ModelTier): string[] {
   const tierOrder: ModelTier[] = ['reasoning', 'premium', 'mid', 'budget', 'micro'];

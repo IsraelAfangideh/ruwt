@@ -51,12 +51,6 @@ export function computeAFI(radar: RadarData): AFIResult {
   return { score: clamped, tier: matched.tier, label: matched.label };
 }
 
-export function getAFITier(score: number): { tier: AFITier; label: string } {
-  /* istanbul ignore next -- @preserve: TIERS always matches since last entry has min:0 */
-  const matched = TIERS.find((t) => score >= t.min) ?? TIERS[TIERS.length - 1];
-  return { tier: matched.tier, label: matched.label };
-}
-
 export const AFI_TIER_COLORS: Record<AFITier, string> = {
   exceptional: '#c9a962',
   advanced: '#b8993e',

@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 
 const mockNavigate = vi.fn();
-let mockChallengeId = 'fizzbuzz-budget';
+let mockChallengeId = 'one-shot-csv-parser';
 vi.mock('@react-navigation/native', () => ({
   useNavigation: () => ({ navigate: mockNavigate, reset: vi.fn() }),
   useRoute: () => ({ params: { challengeId: mockChallengeId } }),
@@ -35,11 +35,11 @@ vi.mock('@/shared/theme', async () => (await import('@/shared/test/helpers')).mo
 vi.mock('@/shared/theme/tokens', async () => (await import('@/shared/test/helpers')).mockTokens({ mono: true }));
 
 const mockChallenge = {
-  id: 'fizzbuzz-budget',
-  title: 'FizzBuzz Budget',
+  id: 'one-shot-csv-parser',
+  title: 'One-Shot CSV Parser',
   difficulty: 'easy',
   category: 'prompt_efficiency',
-  description: 'Solve FizzBuzz within budget',
+  description: 'Write a CSV parser that handles quoted fields',
   starterCode: '// your code here',
   testCases: '[]',
   language: 'javascript',
@@ -56,7 +56,7 @@ const { GuestArenaScreen } = await import('./GuestArenaScreen');
 describe('GuestArenaScreen', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockChallengeId = 'fizzbuzz-budget';
+    mockChallengeId = 'one-shot-csv-parser';
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
       ok: true,
       json: () => Promise.resolve(mockChallenge),
@@ -125,7 +125,7 @@ describe('GuestArenaScreen', () => {
   it('renders full challenge view with title, difficulty badge, and GUEST MODE badge', async () => {
     render(<GuestArenaScreen />);
     await waitFor(() => {
-      expect(screen.getAllByText('FizzBuzz Budget').length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText('One-Shot CSV Parser').length).toBeGreaterThanOrEqual(1);
     });
     expect(screen.getByText('GUEST MODE')).toBeInTheDocument();
     expect(screen.getByText('Medium')).toBeInTheDocument();
@@ -134,7 +134,7 @@ describe('GuestArenaScreen', () => {
   it('renders header navigation button to ruwt.dev', async () => {
     render(<GuestArenaScreen />);
     await waitFor(() => {
-      expect(screen.getAllByText('FizzBuzz Budget').length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText('One-Shot CSV Parser').length).toBeGreaterThanOrEqual(1);
     });
     // Click the header navigation back button
     const backBtn = screen.getByText(/ruwt\.dev/);
@@ -145,7 +145,7 @@ describe('GuestArenaScreen', () => {
   it('renders Run Tests and Submit buttons in header', async () => {
     render(<GuestArenaScreen />);
     await waitFor(() => {
-      expect(screen.getAllByText('FizzBuzz Budget').length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText('One-Shot CSV Parser').length).toBeGreaterThanOrEqual(1);
     });
     expect(screen.getByRole('button', { name: 'Run Tests' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Submit' })).toBeInTheDocument();
@@ -178,7 +178,7 @@ describe('GuestArenaScreen', () => {
     render(<GuestArenaScreen />);
     await waitFor(() => expect(screen.getByRole('button', { name: 'Run Tests' })).toBeInTheDocument());
     fireEvent.click(screen.getByRole('button', { name: 'Run Tests' }));
-    expect(localStorage.getItem('ruwt_pending_challenge')).toBe('fizzbuzz-budget');
+    expect(localStorage.getItem('ruwt_pending_challenge')).toBe('one-shot-csv-parser');
   });
 
   it('navigates to Register when Sign Up Free is clicked in overlay', async () => {
@@ -249,7 +249,7 @@ describe('GuestArenaScreen', () => {
     }));
     render(<GuestArenaScreen />);
     await waitFor(() => {
-      expect(screen.getAllByText('FizzBuzz Budget').length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText('One-Shot CSV Parser').length).toBeGreaterThanOrEqual(1);
     });
   });
 

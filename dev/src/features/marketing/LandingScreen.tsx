@@ -25,7 +25,7 @@ export function LandingScreen() {
   useEffect(() => {
     createClient().auth.getUser().then(({ data: { user } }) => {
       if (user) resetNavigation(navigation, [{ name: DEFAULT_AUTH_REDIRECT }]);
-    });
+    }).catch(() => {/* auth check is best-effort */});
   }, [navigation]);
   const width = useWindowWidth();
   const isMobile = width < 768;
@@ -83,7 +83,7 @@ export function LandingScreen() {
               variant="outline"
               size="lg"
               onPress={() => {
-                (navigation.navigate as any)('GuestArena', { challengeId: 'fizzbuzz-budget' });
+                (navigation.navigate as any)('GuestArena', { challengeId: 'one-shot-csv-parser' });
               }}
               style={{ borderColor: 'rgba(232,228,223,0.25)' }}
               textStyle={{ color: '#f5f3f0' }}

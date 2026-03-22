@@ -17,10 +17,6 @@ export const CREDIT_PACKAGES: CreditPackage[] = [
   { id: 'credits-100000', credits: 100000, priceInCents: 3999, label: '100,000 Credits', badge: 'Best Value' },
 ];
 
-export function getPackageById(id: string): CreditPackage | undefined {
-  return CREDIT_PACKAGES.find((p) => p.id === id);
-}
-
 /**
  * B2B subscription plans — flat-rate monthly/annual pricing for hiring teams.
  * Unlimited assessments, cancel anytime, 30-day money-back guarantee.
@@ -83,6 +79,4 @@ export const ENTERPRISE_TIER = {
   ],
 };
 
-export function getSubscriptionPlanById(id: string): SubscriptionPlan | undefined {
-  return SUBSCRIPTION_PLANS.find((p) => p.id === id);
-}
+

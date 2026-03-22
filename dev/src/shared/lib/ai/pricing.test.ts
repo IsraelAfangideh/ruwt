@@ -2,9 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   TIER_MODELS,
   getModelsForTier,
-  getAllModels,
   getModelById,
-  getCloudflareModels,
   formatCostFromHundredths,
   tierColor,
   tierLabel,
@@ -65,27 +63,6 @@ describe('pricing', () => {
   });
 
   // ---------------------------------------------------------------------------
-  // getAllModels
-  // ---------------------------------------------------------------------------
-  describe('getAllModels', () => {
-    it('returns all 15 models', () => {
-      expect(getAllModels().length).toBe(15);
-    });
-
-    it('every model has required fields populated', () => {
-      for (const m of getAllModels()) {
-        expect(m.id).toBeTruthy();
-        expect(m.displayName).toBeTruthy();
-        expect(m.tier).toBeTruthy();
-        expect(m.input).toBeGreaterThan(0);
-        expect(m.output).toBeGreaterThan(0);
-        expect(m.costIndicator).toBeTruthy();
-        expect(m.description).toBeTruthy();
-      }
-    });
-  });
-
-  // ---------------------------------------------------------------------------
   // getModelById
   // ---------------------------------------------------------------------------
   describe('getModelById', () => {
@@ -101,15 +78,6 @@ describe('pricing', () => {
 
     it('returns undefined for an empty string', () => {
       expect(getModelById('')).toBeUndefined();
-    });
-  });
-
-  // ---------------------------------------------------------------------------
-  // getCloudflareModels (alias for getAllModels)
-  // ---------------------------------------------------------------------------
-  describe('getCloudflareModels', () => {
-    it('returns the same list as getAllModels', () => {
-      expect(getCloudflareModels()).toEqual(getAllModels());
     });
   });
 
@@ -243,14 +211,17 @@ describe('pricing', () => {
   // Model data integrity
   // ---------------------------------------------------------------------------
   describe('model data integrity', () => {
+    const allTiers: ModelTier[] = ['reasoning', 'premium', 'mid', 'budget', 'micro'];
+    const allModels = allTiers.flatMap((t) => getModelsForTier(t));
+
     it('all model ids start with @cf/', () => {
-      for (const m of getAllModels()) {
+      for (const m of allModels) {
         expect(m.id.startsWith('@cf/')).toBe(true);
       }
     });
 
     it('costIndicator matches tier conventions', () => {
-      for (const m of getAllModels()) {
+      for (const m of allModels) {
         if (m.tier === 'reasoning') expect(m.costIndicator).toBe('$$$$$');
         if (m.tier === 'premium') expect(m.costIndicator).toBe('$$$');
         if (m.tier === 'mid') expect(m.costIndicator).toBe('$$');
@@ -260,9 +231,8 @@ describe('pricing', () => {
     });
 
     it('supportsTools is set on models across tiers', () => {
-      const withTools = getAllModels().filter((m) => m.supportsTools);
+      const withTools = allModels.filter((m) => m.supportsTools);
       expect(withTools.length).toBeGreaterThan(0);
-      // Tool support spans all tiers (reasoning GPT-OSS 120B through micro Granite)
       for (const m of withTools) {
         expect(['reasoning', 'premium', 'mid', 'budget', 'micro']).toContain(m.tier);
       }

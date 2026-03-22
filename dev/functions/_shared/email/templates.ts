@@ -178,7 +178,7 @@ export function welcomeEmail(params: WelcomeParams): EmailTemplate {
                 </td>
               </tr>
             </table>
-            <p style="margin: 0; font-size: 13px; color: #8a847a; text-align: center; line-height: 1.5;">We recommend starting with <strong>FizzBuzz Budget</strong> &mdash; it takes about 2 minutes and teaches you the core loop.</p>`;
+            <p style="margin: 0; font-size: 13px; color: #8a847a; text-align: center; line-height: 1.5;">We recommend starting with the <strong>CSV Parser</strong> challenge &mdash; it takes about 3 minutes and shows how AI speeds up real tasks.</p>`;
 
   const html = wrapInLayout(content, 'Welcome to ruwt.dev — start your first AI coding challenge');
 
@@ -195,7 +195,7 @@ export function welcomeEmail(params: WelcomeParams): EmailTemplate {
     '',
     'Start your first challenge: https://ruwt.dev/challenges',
     '',
-    'We recommend starting with FizzBuzz Budget — it takes about 2 minutes.',
+    'We recommend starting with the CSV Parser challenge — it takes about 3 minutes.',
     '',
     '---',
     'Sent by ruwt.dev -- AI-efficiency assessment platform',
@@ -760,87 +760,7 @@ export function challengeAttemptNotificationEmail(params: ChallengeAttemptNotifi
 }
 
 // ---------------------------------------------------------------------------
-// 6. Team Invite
-// ---------------------------------------------------------------------------
-
-export interface TeamInviteParams {
-  inviterName: string;
-  orgName: string;
-  role: string;
-  joinUrl: string;
-  expiresAt: string; // ISO date
-}
-
-export function teamInviteEmail(params: TeamInviteParams): EmailTemplate {
-  const { inviterName, orgName, role, joinUrl, expiresAt } = params;
-
-  const subject = `Join ${orgName} on Ruwt`;
-  const formattedExpiry = formatDate(expiresAt);
-  const displayRole = role.charAt(0).toUpperCase() + role.slice(1);
-
-  const content = `
-            <p style="margin: 0 0 16px 0; font-size: 16px; color: #1a1816;">Hi,</p>
-            <p style="margin: 0 0 20px 0; color: #1a1816; line-height: 1.6;"><strong>${escapeHtml(inviterName)}</strong> has invited you to join <strong>${escapeHtml(orgName)}</strong> on ruwt.dev.</p>
-            <!-- Role details -->
-            <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin: 0 0 28px 0; background-color: #f5f3f0; border-radius: 8px;">
-              <tr>
-                <td style="padding: 20px 24px;">
-                  <table role="presentation" cellpadding="0" cellspacing="0" border="0">
-                    <tr>
-                      <td style="padding-right: 32px;">
-                        <p style="margin: 0; font-size: 13px; color: #8a847a; text-transform: uppercase; letter-spacing: 0.5px;">Organization</p>
-                        <p style="margin: 4px 0 0 0; font-size: 15px; font-weight: bold; color: #1a1816;">${escapeHtml(orgName)}</p>
-                      </td>
-                      <td>
-                        <p style="margin: 0; font-size: 13px; color: #8a847a; text-transform: uppercase; letter-spacing: 0.5px;">Your Role</p>
-                        <p style="margin: 4px 0 0 0; font-size: 15px; font-weight: bold; color: #1a1816;">${escapeHtml(displayRole)}</p>
-                      </td>
-                    </tr>
-                  </table>
-                </td>
-              </tr>
-            </table>
-            <p style="margin: 0 0 24px 0; color: #5c564e; font-size: 14px; line-height: 1.6;">As a team member, you'll be able to collaborate on assessments, review candidate results, and manage your organization's hiring pipeline.</p>
-            <!-- CTA -->
-            <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
-              <tr>
-                <td align="center" style="padding-bottom: 24px;">
-                  ${ctaButton('Accept Invitation', joinUrl)}
-                </td>
-              </tr>
-            </table>
-            <p style="margin: 0 0 12px 0; font-size: 13px; color: #8a847a; text-align: center; line-height: 1.5;">This invitation expires on <strong>${escapeHtml(formattedExpiry)}</strong>.</p>
-            <p style="margin: 0; font-size: 13px; color: #b0aaa0; text-align: center; line-height: 1.5;">If the button doesn't work, copy and paste this link:<br><a href="${escapeHtml(joinUrl)}" style="color: #8a847a; word-break: break-all;">${escapeHtml(joinUrl)}</a></p>`;
-
-  const html = wrapInLayout(
-    content,
-    `${inviterName} invited you to join ${orgName} on ruwt.dev`,
-  );
-
-  const text = [
-    'Hi,',
-    '',
-    `${inviterName} has invited you to join ${orgName} on ruwt.dev.`,
-    '',
-    `Organization: ${orgName}`,
-    `Your role: ${displayRole}`,
-    '',
-    "As a team member, you will be able to collaborate on assessments, review candidate results, and manage your organization's hiring pipeline.",
-    '',
-    `Accept invitation: ${joinUrl}`,
-    '',
-    `This invitation expires on ${formattedExpiry}.`,
-    '',
-    '---',
-    'Sent by ruwt.dev -- AI-efficiency assessment platform',
-    'Unsubscribe: https://ruwt.dev/settings',
-  ].join('\n');
-
-  return { subject, html, text };
-}
-
-// ---------------------------------------------------------------------------
-// 7. Trial Start Notification (sent to admin)
+// 6. Trial Start Notification (sent to admin)
 // ---------------------------------------------------------------------------
 
 export interface TrialStartNotificationParams {

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { computeAFI, getAFITier, AFI_TIER_COLORS, CERTIFICATIONS } from './scoring';
+import { computeAFI, AFI_TIER_COLORS, CERTIFICATIONS } from './scoring';
 
 describe('client-side scoring', () => {
   it('computeAFI returns correct score and tier', () => {
@@ -18,14 +18,6 @@ describe('client-side scoring', () => {
   it('computeAFI matches server-side for edge values', () => {
     expect(computeAFI({ modelSelection: 0, promptEfficiency: 0, debugging: 0, multiModel: 0, realWorld: 0 }).score).toBe(0);
     expect(computeAFI({ modelSelection: 100, promptEfficiency: 100, debugging: 100, multiModel: 100, realWorld: 100 }).score).toBe(850);
-  });
-
-  it('getAFITier returns correct labels', () => {
-    expect(getAFITier(800).label).toBe('Exceptional');
-    expect(getAFITier(700).label).toBe('Advanced');
-    expect(getAFITier(550).label).toBe('Proficient');
-    expect(getAFITier(400).label).toBe('Developing');
-    expect(getAFITier(100).label).toBe('Novice');
   });
 
   it('AFI_TIER_COLORS covers all tiers', () => {

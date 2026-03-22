@@ -229,7 +229,7 @@ function GreetingSection({
   );
 }
 
-function GetStartedBanner({ onTryFizzBuzz, onBrowse }: { onTryFizzBuzz: () => void; onBrowse: () => void }) {
+function GetStartedBanner({ onTryChallenge, onBrowse }: { onTryChallenge: () => void; onBrowse: () => void }) {
   const c = useColors();
   return (
     <Card style={{ borderColor: c.accent, borderWidth: 1, borderLeftWidth: 4 }}>
@@ -243,11 +243,11 @@ function GetStartedBanner({ onTryFizzBuzz, onBrowse }: { onTryFizzBuzz: () => vo
         <Button
           size="lg"
           fullWidth
-          onPress={onTryFizzBuzz}
+          onPress={onTryChallenge}
           style={{ backgroundColor: c.accent }}
           textStyle={{ color: c.primaryForeground, fontWeight: '700' }}
         >
-          Try FizzBuzz Budget
+          Try CSV Parser Challenge
         </Button>
         <Pressable onPress={onBrowse}>
           <Text style={{ color: c.accent, textAlign: 'center', fontSize: fontSizes.sm, fontFamily: fontFamily.body }}>
@@ -956,7 +956,7 @@ export function DashboardScreen() {
         {data.progress.solvedCount === 0 && (
           <View style={styles.section}>
             <GetStartedBanner
-              onTryFizzBuzz={() => (navigation.navigate as any)('Arena', { challengeId: 'fizzbuzz-budget' })}
+              onTryChallenge={() => (navigation.navigate as any)('Arena', { challengeId: 'one-shot-csv-parser' })}
               onBrowse={() => (navigation.navigate as any)('Problems')}
             />
           </View>

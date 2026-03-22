@@ -122,7 +122,7 @@ export function OnboardingScreen() {
             <StepFirstChallenge
               colors={c}
               onBack={goBack}
-              onStartChallenge={() => navigateToArena('fizzbuzz-budget')}
+              onStartChallenge={() => navigateToArena('one-shot-csv-parser')}
               onSkip={completeOnboarding}
             />
           )}
@@ -251,22 +251,22 @@ function StepFirstChallenge({
         <CardHeader>
           <View style={styles.badgeRow}>
             <Badge variant="default">Easy</Badge>
-            <Badge variant="secondary">Onboarding</Badge>
+            <Badge variant="secondary">Prompt Efficiency</Badge>
           </View>
-          <CardTitle>FizzBuzz Budget</CardTitle>
+          <CardTitle>One-Shot CSV Parser</CardTitle>
         </CardHeader>
         <CardContent>
           <Text style={[styles.challengeDesc, { color: c.textMuted }]}>
-            The classic FizzBuzz problem — but with a cost constraint. Can you solve it using
-            the cheapest AI model possible? This challenge teaches you the core loop: prompt,
-            review, submit.
+            Build a CSV parser that handles quoted fields, escaped quotes, and embedded newlines.
+            Tedious to write by hand — but one good AI prompt gets it done. This challenge teaches
+            you the core loop: prompt, review, submit.
           </Text>
           <View style={styles.challengeMeta}>
             <View style={[styles.metaPill, { backgroundColor: c.accentBg }]}>
               <Text style={[styles.metaText, { color: c.accent }]}>JavaScript</Text>
             </View>
             <View style={[styles.metaPill, { backgroundColor: c.successBg }]}>
-              <Text style={[styles.metaText, { color: c.success }]}>~2 min</Text>
+              <Text style={[styles.metaText, { color: c.success }]}>~3 min</Text>
             </View>
           </View>
         </CardContent>
