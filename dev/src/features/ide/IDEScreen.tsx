@@ -8,7 +8,6 @@ import { lazy, Suspense, useState, useRef, useCallback, useEffect, useMemo } fro
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useAuthGuard } from '@/shared/hooks/useAuthGuard';
 import { useIDELayout } from '@/features/shared-ide/useIDELayout';
-import { PanelResizeBar } from '@/features/shared-ide/PanelResizeBar';
 import { arena } from '@/shared/theme/colors';
 import { fontFamily } from '@/shared/theme/tokens';
 import { useDocumentMeta } from '@/shared/hooks/useDocumentMeta';
@@ -417,9 +416,10 @@ export function IDEScreen() {
 
         {/* Sidebar resize bar */}
         {!layout.sidebarCollapsed && (
-          <PanelResizeBar
-            direction="horizontal"
+          <div
+            data-testid="resize-handle-horizontal"
             onDoubleClick={() => layout.setSidebarCollapsed(true)}
+            style={hDividerStyle}
           />
         )}
 
@@ -487,9 +487,10 @@ export function IDEScreen() {
 
           {/* Terminal resize bar */}
           {!layout.bottomCollapsed && (
-            <PanelResizeBar
-              direction="vertical"
+            <div
+              data-testid="resize-handle-vertical"
               onDoubleClick={() => layout.setBottomCollapsed(true)}
+              style={vDividerStyle}
             />
           )}
 
@@ -732,4 +733,22 @@ const terminalBodyPlaceholderStyle: React.CSSProperties = {
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
+};
+
+const hDividerStyle: React.CSSProperties = {
+  width: 4,
+  cursor: 'col-resize',
+  background: arena.surface,
+  borderLeft: `1px solid ${arena.border}`,
+  borderRight: `1px solid ${arena.border}`,
+  flexShrink: 0,
+};
+
+const vDividerStyle: React.CSSProperties = {
+  height: 4,
+  cursor: 'row-resize',
+  background: arena.surface,
+  borderTop: `1px solid ${arena.border}`,
+  borderBottom: `1px solid ${arena.border}`,
+  flexShrink: 0,
 };

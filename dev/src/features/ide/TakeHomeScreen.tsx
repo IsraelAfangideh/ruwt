@@ -10,7 +10,6 @@ import { lazy, Suspense, useState, useRef, useCallback, useEffect, useMemo } fro
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useAuthGuard } from '@/shared/hooks/useAuthGuard';
 import { useIDELayout } from '@/features/shared-ide/useIDELayout';
-import { PanelResizeBar } from '@/features/shared-ide/PanelResizeBar';
 import { arena } from '@/shared/theme/colors';
 import { fontFamily } from '@/shared/theme/tokens';
 import { useDocumentMeta } from '@/shared/hooks/useDocumentMeta';
@@ -419,7 +418,7 @@ export function TakeHomeScreen() {
                 )}
               </div>
             </div>
-            <PanelResizeBar direction="horizontal" />
+            <div data-testid="resize-handle-horizontal" style={hDividerStyle} />
           </>
         )}
 
@@ -461,7 +460,7 @@ export function TakeHomeScreen() {
                     </div>
                   )}
                 </div>
-                <PanelResizeBar direction="horizontal" />
+                <div data-testid="resize-handle-horizontal" style={hDividerStyle} />
               </>
             )}
 
@@ -529,9 +528,10 @@ export function TakeHomeScreen() {
               {/* Terminal */}
               {!layout.bottomCollapsed && (
                 <>
-                  <PanelResizeBar
-                    direction="vertical"
+                  <div
+                    data-testid="resize-handle-vertical"
                     onDoubleClick={() => layout.setBottomCollapsed(true)}
+                    style={vDividerStyle}
                   />
                   <div style={terminalWrapperStyle} data-testid="terminal-panel">
                     {ready ? (
@@ -835,5 +835,23 @@ const retryBtnStyle: React.CSSProperties = {
   fontSize: 10,
   padding: '2px 8px',
   borderRadius: 3,
+  flexShrink: 0,
+};
+
+const hDividerStyle: React.CSSProperties = {
+  width: 4,
+  cursor: 'col-resize',
+  background: arena.surface,
+  borderLeft: `1px solid ${arena.border}`,
+  borderRight: `1px solid ${arena.border}`,
+  flexShrink: 0,
+};
+
+const vDividerStyle: React.CSSProperties = {
+  height: 4,
+  cursor: 'row-resize',
+  background: arena.surface,
+  borderTop: `1px solid ${arena.border}`,
+  borderBottom: `1px solid ${arena.border}`,
   flexShrink: 0,
 };

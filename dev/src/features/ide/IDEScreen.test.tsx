@@ -40,9 +40,7 @@ let mockLayoutReturn: any = {
 vi.mock('@/features/shared-ide/useIDELayout', () => ({
   useIDELayout: () => mockLayoutReturn,
 }));
-vi.mock('@/features/shared-ide/PanelResizeBar', () => ({
-  PanelResizeBar: ({ direction }: any) => <div data-testid={`resize-bar-${direction}`} />,
-}));
+// PanelResizeBar no longer used — IDEScreen renders plain div dividers directly
 
 // Mock webcontainer readFile/writeFile (used directly by IDEScreen)
 const mockReadFile = vi.fn().mockResolvedValue('// file content');
@@ -302,8 +300,8 @@ describe('IDEScreen', () => {
 
   it('renders resize bars', () => {
     render(<IDEScreen />);
-    expect(screen.getByTestId('resize-bar-horizontal')).toBeInTheDocument();
-    expect(screen.getByTestId('resize-bar-vertical')).toBeInTheDocument();
+    expect(screen.getByTestId('resize-handle-horizontal')).toBeInTheDocument();
+    expect(screen.getByTestId('resize-handle-vertical')).toBeInTheDocument();
   });
 
   it('renders editor panel', () => {

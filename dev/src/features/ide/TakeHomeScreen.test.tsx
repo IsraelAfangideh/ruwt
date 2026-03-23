@@ -40,9 +40,7 @@ let mockLayoutReturn: any = {
 vi.mock('@/features/shared-ide/useIDELayout', () => ({
   useIDELayout: () => mockLayoutReturn,
 }));
-vi.mock('@/features/shared-ide/PanelResizeBar', () => ({
-  PanelResizeBar: ({ direction }: any) => <div data-testid={`resize-bar-${direction}`} />,
-}));
+// PanelResizeBar no longer imported — TakeHomeScreen uses plain div dividers
 
 const mockReadFile = vi.fn().mockResolvedValue('// file content');
 const mockWriteFile = vi.fn().mockResolvedValue(undefined);
