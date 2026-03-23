@@ -51,8 +51,8 @@ const SECURITY_HEADERS_IDE: Record<string, string> = {
   ...NON_CSP_HEADERS,
   'Content-Security-Policy': [
     ...SHARED_CSP,
-    "connect-src 'self' https://*.supabase.co https://ruwt-exec.fly.dev https://*.webcontainer-api.io wss://*.webcontainer-api.io",
-    "frame-src https://*.webcontainer-api.io",
+    "connect-src 'self' https://*.supabase.co https://ruwt-exec.fly.dev https://*.webcontainer-api.io wss://*.webcontainer-api.io https://*.stackblitz.com wss://*.stackblitz.com",
+    "frame-src https://*.webcontainer-api.io https://stackblitz.com",
   ].join('; '),
 };
 
