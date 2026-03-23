@@ -18,25 +18,48 @@ import {
   buildArticleLd, buildCertLd, categoryLabel,
 } from './_shared/seo';
 
-const SECURITY_HEADERS: Record<string, string> = {
+const SHARED_CSP = [
+  "default-src 'self'",
+  "script-src 'self' 'unsafe-eval' 'wasm-unsafe-eval'",
+  "worker-src 'self' blob:",
+  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+  "font-src 'self' https://fonts.gstatic.com",
+  "img-src 'self' data: blob: https://*.supabase.co",
+  "frame-ancestors 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+];
+
+const NON_CSP_HEADERS: Record<string, string> = {
   'X-Content-Type-Options': 'nosniff',
   'X-Frame-Options': 'DENY',
   'Referrer-Policy': 'strict-origin-when-cross-origin',
   'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
   'Strict-Transport-Security': 'max-age=63072000; includeSubDomains; preload',
+};
+
+// Pre-computed header sets — avoids per-request string joins and object spreads.
+const SECURITY_HEADERS: Record<string, string> = {
+  ...NON_CSP_HEADERS,
   'Content-Security-Policy': [
-    "default-src 'self'",
-    "script-src 'self' 'unsafe-eval' 'wasm-unsafe-eval'",
-    "worker-src 'self' blob:",
-    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-    "font-src 'self' https://fonts.gstatic.com",
-    "img-src 'self' data: blob: https://*.supabase.co",
+    ...SHARED_CSP,
     "connect-src 'self' https://*.supabase.co https://ruwt-exec.fly.dev",
-    "frame-ancestors 'none'",
-    "base-uri 'self'",
-    "form-action 'self'",
   ].join('; '),
 };
+
+const SECURITY_HEADERS_IDE: Record<string, string> = {
+  ...NON_CSP_HEADERS,
+  'Content-Security-Policy': [
+    ...SHARED_CSP,
+    "connect-src 'self' https://*.supabase.co https://ruwt-exec.fly.dev https://*.webcontainer-api.io wss://*.webcontainer-api.io",
+    "frame-src https://*.webcontainer-api.io",
+  ].join('; '),
+};
+
+function getSecurityHeaders(pathname: string): Record<string, string> {
+  const isIdeRoute = pathname.startsWith('/ide') || pathname.startsWith('/arena');
+  return isIdeRoute ? SECURITY_HEADERS_IDE : SECURITY_HEADERS;
+}
 
 const BOT_UA_REGEX = /Twitterbot|LinkedInBot|Slackbot|facebookexternalhit|Discordbot|WhatsApp|TelegramBot|Googlebot|Google-InspectionTool|bingbot|Baiduspider|YandexBot|DuckDuckBot|Applebot|PetalBot|Bytespider|AhrefsBot|SemrushBot/i;
 
@@ -158,7 +181,7 @@ export async function onRequest(context: { request: Request; env: Env; next: () 
         }).catch(/* istanbul ignore next -- @preserve */ () => {}); // fire-and-forget, never block response
       }
 
-      return addSecurityHeaders(response);
+      return addSecurityHeaders(response, url.pathname);
     } catch (err) {
       // Unhandled exception — log and return 500
       const error = err instanceof Error ? err : new Error(String(err));
@@ -177,7 +200,8 @@ export async function onRequest(context: { request: Request; env: Env; next: () 
         Response.json(
           { error: 'Internal server error' },
           { status: 500 }
-        )
+        ),
+        url.pathname,
       );
     }
   }
@@ -186,7 +210,7 @@ export async function onRequest(context: { request: Request; env: Env; next: () 
   const ua = context.request.headers.get('user-agent') || '';
   if (!BOT_UA_REGEX.test(ua)) {
     const response = await context.next();
-    return addSecurityHeaders(response); // Human → serve SPA with security headers
+    return addSecurityHeaders(response, url.pathname); // Human → serve SPA with security headers
   }
 
   // --- Bot pre-rendering ---
@@ -476,9 +500,9 @@ async function handleCertBot(
 }
 
 // --- Security headers helper ---
-function addSecurityHeaders(response: Response): Response {
+function addSecurityHeaders(response: Response, pathname: string = '/'): Response {
   const newResponse = new Response(response.body, response);
-  for (const [key, value] of Object.entries(SECURITY_HEADERS)) {
+  for (const [key, value] of Object.entries(getSecurityHeaders(pathname))) {
     newResponse.headers.set(key, value);
   }
   return newResponse;

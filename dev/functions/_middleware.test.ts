@@ -207,6 +207,29 @@ describe('security headers', () => {
     const body = await response.text();
     expect(body).toBe('original body');
   });
+
+  it('uses relaxed CSP with WebContainer domains for /ide routes', async () => {
+    const ctx = makeContext(makeRequest('https://ruwt.dev/ide/new'));
+    const response = await onRequest(ctx);
+    const csp = response.headers.get('Content-Security-Policy') ?? '';
+    expect(csp).toContain('webcontainer-api.io');
+    expect(csp).toContain('frame-src');
+  });
+
+  it('uses relaxed CSP with WebContainer domains for /arena routes', async () => {
+    const ctx = makeContext(makeRequest('https://ruwt.dev/arena/some-challenge'));
+    const response = await onRequest(ctx);
+    const csp = response.headers.get('Content-Security-Policy') ?? '';
+    expect(csp).toContain('webcontainer-api.io');
+  });
+
+  it('uses strict CSP without WebContainer domains for non-IDE routes', async () => {
+    const ctx = makeContext(makeRequest('https://ruwt.dev/dashboard'));
+    const response = await onRequest(ctx);
+    const csp = response.headers.get('Content-Security-Policy') ?? '';
+    expect(csp).not.toContain('webcontainer-api.io');
+    expect(csp).not.toContain('frame-src');
+  });
 });
 
 // ===========================================================================
