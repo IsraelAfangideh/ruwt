@@ -20,7 +20,6 @@ import {
 
 const SHARED_CSP = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-eval' 'wasm-unsafe-eval'",
   "worker-src 'self' blob:",
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "font-src 'self' https://fonts.gstatic.com",
@@ -43,6 +42,7 @@ const SECURITY_HEADERS: Record<string, string> = {
   ...NON_CSP_HEADERS,
   'Content-Security-Policy': [
     ...SHARED_CSP,
+    "script-src 'self' 'unsafe-eval' 'wasm-unsafe-eval'",
     "connect-src 'self' https://*.supabase.co https://ruwt-exec.fly.dev",
   ].join('; '),
 };
@@ -51,7 +51,8 @@ const SECURITY_HEADERS_IDE: Record<string, string> = {
   ...NON_CSP_HEADERS,
   'Content-Security-Policy': [
     ...SHARED_CSP,
-    "connect-src 'self' https://*.supabase.co https://ruwt-exec.fly.dev https://*.webcontainer-api.io wss://*.webcontainer-api.io https://*.stackblitz.com wss://*.stackblitz.com",
+    "script-src 'self' 'unsafe-eval' 'wasm-unsafe-eval' https://cdn.jsdelivr.net",
+    "connect-src 'self' https://*.supabase.co https://ruwt-exec.fly.dev https://*.webcontainer-api.io wss://*.webcontainer-api.io https://*.stackblitz.com wss://*.stackblitz.com https://cdn.jsdelivr.net",
     "frame-src https://*.webcontainer-api.io https://stackblitz.com",
   ].join('; '),
 };
