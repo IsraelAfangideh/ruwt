@@ -24,6 +24,7 @@ import { parseRuwtConfig } from '@/lib/config/ruwt-config';
 import type { RuwtConfig } from '@/lib/config/ruwt-config';
 import * as browserGit from '@/lib/git/browser-git';
 import type { GitStatusEntry, GitLogEntry } from '@/lib/git/browser-git';
+import '@/features/shared-ide/lib/monaco-init';
 
 /* istanbul ignore next -- @preserve */
 const MonacoEditor = lazy(() => import('@monaco-editor/react'));
@@ -289,6 +290,17 @@ export function IDEScreen() {
   }, [projectId, projectName, saveProject]);
 
   if (loading || !user) return null;
+
+  if (!ready) {
+    return (
+      <div style={bootScreenStyle} data-testid="ide-boot-screen">
+        <div style={bootSpinnerStyle} />
+        <span style={bootTextStyle}>
+          {error || 'Initializing IDE...'}
+        </span>
+      </div>
+    );
+  }
 
   const statusText = saveStatusLabel(saveStatus);
 
@@ -751,4 +763,29 @@ const vDividerStyle: React.CSSProperties = {
   borderTop: `1px solid ${arena.border}`,
   borderBottom: `1px solid ${arena.border}`,
   flexShrink: 0,
+};
+
+const bootScreenStyle: React.CSSProperties = {
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'center',
+  justifyContent: 'center',
+  height: '100vh',
+  width: '100vw',
+  background: arena.bg,
+  gap: 16,
+};
+
+const bootSpinnerStyle: React.CSSProperties = {
+  width: 28,
+  height: 28,
+  border: `3px solid ${arena.border}`,
+  borderTopColor: arena.accent,
+  borderRadius: '50%',
+  animation: 'spin 0.8s linear infinite',
+};
+
+const bootTextStyle: React.CSSProperties = {
+  color: arena.textMuted,
+  fontSize: 14,
 };

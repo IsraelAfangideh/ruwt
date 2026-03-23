@@ -41,6 +41,7 @@ vi.mock('@/features/shared-ide/useIDELayout', () => ({
   useIDELayout: () => mockLayoutReturn,
 }));
 // PanelResizeBar no longer imported — TakeHomeScreen uses plain div dividers
+vi.mock('@/features/shared-ide/lib/monaco-init', () => ({}));
 
 const mockReadFile = vi.fn().mockResolvedValue('// file content');
 const mockWriteFile = vi.fn().mockResolvedValue(undefined);
@@ -290,20 +291,22 @@ describe('TakeHomeScreen', () => {
     expect(container.querySelector('[data-testid="takehome-screen"]')).toBeNull();
   });
 
-  it('shows WebContainer error when it fails', async () => {
+  it('shows boot screen with error when WebContainer fails', async () => {
     mockWCReturn = { ...mockWCReturn, ready: false, files: [], error: 'WebContainer error' };
     render(<TakeHomeScreen />);
     await waitFor(() => {
-      expect(screen.getByTestId('wc-error')).toBeInTheDocument();
+      expect(screen.getByTestId('takehome-boot-screen')).toBeInTheDocument();
     });
+    expect(screen.getByText('WebContainer error')).toBeInTheDocument();
   });
 
-  it('shows booting state when WebContainer is loading', async () => {
+  it('shows boot screen when WebContainer is loading', async () => {
     mockWCReturn = { ...mockWCReturn, ready: false, files: [], error: null };
     render(<TakeHomeScreen />);
     await waitFor(() => {
-      expect(screen.getByTestId('wc-loading')).toBeInTheDocument();
+      expect(screen.getByTestId('takehome-boot-screen')).toBeInTheDocument();
     });
+    expect(screen.getByText('Initializing IDE...')).toBeInTheDocument();
   });
 
   it('hides terminal when bottom collapsed', async () => {

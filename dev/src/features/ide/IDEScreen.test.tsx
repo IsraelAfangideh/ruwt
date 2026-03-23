@@ -41,6 +41,7 @@ vi.mock('@/features/shared-ide/useIDELayout', () => ({
   useIDELayout: () => mockLayoutReturn,
 }));
 // PanelResizeBar no longer used — IDEScreen renders plain div dividers directly
+vi.mock('@/features/shared-ide/lib/monaco-init', () => ({}));
 
 // Mock webcontainer readFile/writeFile (used directly by IDEScreen)
 const mockReadFile = vi.fn().mockResolvedValue('// file content');
@@ -292,10 +293,11 @@ describe('IDEScreen', () => {
     });
   });
 
-  it('renders terminal placeholder when not ready', () => {
+  it('renders boot screen when not ready', () => {
     mockWCReturn = { ...mockWCReturn, ready: false, files: [] };
     render(<IDEScreen />);
-    expect(screen.getByText('Waiting for WebContainer...')).toBeInTheDocument();
+    expect(screen.getByTestId('ide-boot-screen')).toBeInTheDocument();
+    expect(screen.getByText('Initializing IDE...')).toBeInTheDocument();
   });
 
   it('renders resize bars', () => {
@@ -327,10 +329,10 @@ describe('IDEScreen', () => {
     expect(container.querySelector('[data-testid="terminal-panel"]')).toBeNull();
   });
 
-  it('shows error state when WebContainer fails', () => {
+  it('shows error on boot screen when WebContainer fails', () => {
     mockWCReturn = { ...mockWCReturn, ready: false, files: [], error: 'WebContainer error' };
     render(<IDEScreen />);
-    expect(screen.getByTestId('wc-error')).toBeInTheDocument();
+    expect(screen.getByTestId('ide-boot-screen')).toBeInTheDocument();
     expect(screen.getByText('WebContainer error')).toBeInTheDocument();
   });
 
@@ -342,17 +344,11 @@ describe('IDEScreen', () => {
     expect(screen.getByText('Select a file to start editing')).toBeInTheDocument();
   });
 
-  it('shows loading state in sidebar when booting', () => {
+  it('shows boot screen when WebContainer is loading', () => {
     mockWCReturn = { ...mockWCReturn, ready: false, files: [], error: null };
     render(<IDEScreen />);
-    expect(screen.getByTestId('wc-loading')).toBeInTheDocument();
-    expect(screen.getByText('Booting...')).toBeInTheDocument();
-  });
-
-  it('shows "Booting" in editor when not ready', () => {
-    mockWCReturn = { ...mockWCReturn, ready: false, files: [], error: null };
-    render(<IDEScreen />);
-    expect(screen.getByText('Booting WebContainer...')).toBeInTheDocument();
+    expect(screen.getByTestId('ide-boot-screen')).toBeInTheDocument();
+    expect(screen.getByText('Initializing IDE...')).toBeInTheDocument();
   });
 
   it('handles readFile failure when opening a file', async () => {

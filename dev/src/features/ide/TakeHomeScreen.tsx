@@ -22,6 +22,7 @@ import { useSessionRecorder } from './useSessionRecorder';
 import { TelemetryDisclosure } from './TelemetryDisclosure';
 import * as browserGit from '@/lib/git/browser-git';
 import type { GitStatusEntry } from '@/lib/git/browser-git';
+import '@/features/shared-ide/lib/monaco-init';
 
 /* istanbul ignore next -- @preserve */
 const MonacoEditor = lazy(() => import('@monaco-editor/react'));
@@ -338,6 +339,17 @@ export function TakeHomeScreen() {
         <div style={centerStyle} data-testid="takehome-error">
           <span style={errorTextStyle}>{sessionError}</span>
         </div>
+      </div>
+    );
+  }
+
+  if (!ready) {
+    return (
+      <div style={bootScreenStyle} data-testid="takehome-boot-screen">
+        <div style={bootSpinnerStyle} />
+        <span style={bootTextStyle}>
+          {error || 'Initializing IDE...'}
+        </span>
       </div>
     );
   }
@@ -854,4 +866,29 @@ const vDividerStyle: React.CSSProperties = {
   borderTop: `1px solid ${arena.border}`,
   borderBottom: `1px solid ${arena.border}`,
   flexShrink: 0,
+};
+
+const bootScreenStyle: React.CSSProperties = {
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'center',
+  justifyContent: 'center',
+  height: '100vh',
+  width: '100vw',
+  background: arena.bg,
+  gap: 16,
+};
+
+const bootSpinnerStyle: React.CSSProperties = {
+  width: 28,
+  height: 28,
+  border: `3px solid ${arena.border}`,
+  borderTopColor: arena.accent,
+  borderRadius: '50%',
+  animation: 'spin 0.8s linear infinite',
+};
+
+const bootTextStyle: React.CSSProperties = {
+  color: arena.textMuted,
+  fontSize: 14,
 };

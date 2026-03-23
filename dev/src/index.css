@@ -15,6 +15,9 @@ body {
   0%, 100% { opacity: 0.4; }
   50% { opacity: 1; }
 }
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
 
 /* Keyboard-only focus ring (gold accent) */
 *:focus-visible {
