@@ -14,7 +14,6 @@ import { createCompetitiveNudges } from '../_shared/competitive-nudges';
 import { createNewUserNearRankNotifications } from '../_shared/new-user-alerts';
 import { invalidateCache } from '../_shared/cache';
 import { sendEmail } from '../_shared/newsletter/resend';
-import { sendMilestoneEmail } from '../_shared/milestone-email';
 import { challengeAttemptNotificationEmail } from '../_shared/email/templates';
 import { ADMIN_EMAIL } from '../_shared/ensure-profile';
 import { attempts, challenges, customChallenges, profiles } from '../../drizzle/schema.d1';
@@ -431,12 +430,6 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
       try {
         const [profile] = await db.select({ name: profiles.name }).from(profiles).where(eq(profiles.id, user.id)).limit(1);
 
-        // Milestone celebration email on badge award (fire-and-forget)
-        /* istanbul ignore next -- @preserve */
-        if (testResult.passed && newBadges.length > 0 && user.email) {
-          /* istanbul ignore next -- @preserve */
-          sendMilestoneEmail(db, context.env, { id: user.id, email: user.email, name: profile?.name ?? null }, newBadges, {}).catch(/* istanbul ignore next -- @preserve */ () => {});
-        }
         /* istanbul ignore next -- @preserve */
         const notifUserName = profile?.name ?? null;
         /* istanbul ignore next -- @preserve */

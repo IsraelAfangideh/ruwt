@@ -1,9 +1,7 @@
 name: Daily Trial Lifecycle Emails
 
 on:
-  schedule:
-    - cron: '0 10 * * *' # 10 AM UTC daily
-  workflow_dispatch:
+  workflow_dispatch: # manual trigger only — scheduled sends disabled
 
 jobs:
   send:

@@ -46,6 +46,8 @@ export interface StreamCallbacks {
   codeSnapshot?: string;
 }
 
+const EMPTY_RESPONSE_MSG = 'The model returned an empty response. It may be temporarily overloaded — try again or switch to a different model.';
+
 export function useAIChat(options: UseAIChatOptions) {
   const { sessionId, model, maxTokens = 2048, onCostUpdate } = options;
   const abortRef = useRef<AbortController | null>(null);
@@ -61,6 +63,7 @@ export function useAIChat(options: UseAIChatOptions) {
 
       let fullContent = '';
       let fullThinking = '';
+      let errorReceived = false;
 
       try {
         // All models go to /api/ai/chat (unified SSE endpoint)
@@ -117,7 +120,7 @@ export function useAIChat(options: UseAIChatOptions) {
             /* istanbul ignore next -- @preserve */
             onModelUnavailable?.(data.model || '', data.displayName || data.model || '', data.message || 'Model unavailable');
           } else if (data.type === 'error') {
-            /* istanbul ignore next -- @preserve */
+            errorReceived = true;
             onError(data.message || 'Unknown error');
           } else {
             /* istanbul ignore next -- @preserve */
@@ -152,7 +155,9 @@ export function useAIChat(options: UseAIChatOptions) {
           } catch { /* skip */ }
         }
 
-        onDone(fullContent || fullThinking || '(no response)', messageMeta);
+        if (!errorReceived) {
+          onDone(fullContent || fullThinking || EMPTY_RESPONSE_MSG, messageMeta);
+        }
       } catch (e) {
         if ((e as Error).name === 'AbortError') {
           onDone(fullContent || '[interrupted]');

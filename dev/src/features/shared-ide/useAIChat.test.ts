@@ -263,7 +263,7 @@ describe('useAIChat', () => {
     });
 
     expect(onCostUpdate).toHaveBeenCalledWith(0, 0, 0);
-    expect(cbs.onDone).toHaveBeenCalledWith('(no response)', {
+    expect(cbs.onDone).toHaveBeenCalledWith(expect.stringContaining('empty response'), {
       model: 'test-model',
       cost: 0,
       tokens: 0,
@@ -286,6 +286,7 @@ describe('useAIChat', () => {
     });
 
     expect(cbs.onError).toHaveBeenCalledWith('model overloaded');
+    expect(cbs.onDone).not.toHaveBeenCalled();
   });
 
   it('routes SSE error event with no message to "Unknown error"', async () => {
@@ -302,6 +303,7 @@ describe('useAIChat', () => {
     });
 
     expect(cbs.onError).toHaveBeenCalledWith('Unknown error');
+    expect(cbs.onDone).not.toHaveBeenCalled();
   });
 
   // ─── SSE constraint_warning event ──────────────────────────────────
@@ -516,7 +518,7 @@ describe('useAIChat', () => {
     // First stream should have been interrupted
     expect(cbs1.onDone).toHaveBeenCalledWith('[interrupted]');
     // Second stream should complete
-    expect(cbs2.onDone).toHaveBeenCalledWith('(no response)', expect.anything());
+    expect(cbs2.onDone).toHaveBeenCalledWith(expect.stringContaining('empty response'), expect.anything());
   });
 
   // ─── Network error ──────────────────────────────────────────────────
@@ -628,7 +630,7 @@ describe('useAIChat', () => {
       await result.current.streamChat([], cbs);
     });
 
-    expect(cbs.onDone).toHaveBeenCalledWith('(no response)', undefined);
+    expect(cbs.onDone).toHaveBeenCalledWith(expect.stringContaining('empty response'), undefined);
   });
 
   // ─── Sends correct request ──────────────────────────────────────────
@@ -688,7 +690,7 @@ describe('useAIChat', () => {
     });
 
     // No content chunks, so fullContent is '', fullThinking is 'deep thought'
-    // onDone fallback: fullContent || fullThinking || '(no response)'
+    // onDone fallback: fullContent || fullThinking || <empty response message>
     expect(cbs.onDone).toHaveBeenCalledWith('deep thought', expect.anything());
   });
 

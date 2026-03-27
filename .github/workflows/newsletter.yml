@@ -1,9 +1,7 @@
 name: Weekly Digest
 
 on:
-  schedule:
-    - cron: '0 * * * 6' # Every hour on Saturday — sends to users whose local time is 8-9 AM
-  workflow_dispatch: # manual trigger for testing
+  workflow_dispatch: # manual trigger only — scheduled sends disabled
 
 jobs:
   send:

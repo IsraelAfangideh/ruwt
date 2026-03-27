@@ -1,9 +1,7 @@
 name: Daily Streak Nudge
 
 on:
-  schedule:
-    - cron: '0 21 * * *'
-  workflow_dispatch:
+  workflow_dispatch: # manual trigger only — scheduled sends disabled
 
 jobs:
   send:

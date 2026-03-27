@@ -637,6 +637,34 @@ describe('POST /api/ai/chat', () => {
     expect(logError).toHaveBeenCalled();
   });
 
+  it('emits error SSE event when model returns empty content (0 tokens, no chunks)', async () => {
+    (getUser as Mock).mockResolvedValue(TEST_USER);
+
+    mockDb.selectResults.push([{ id: TEST_USER.id, credits: 50000 }]);
+    mockDb.selectResults.push([{ userId: TEST_USER.id, assessmentSessionId: null }]);
+    mockDb.selectResults.push([{ maxSeq: -1 }]);
+
+    // Generator that returns immediately with 0 tokens and no yielded chunks (silent empty response)
+    const emptyResponseGen = makeMockStream(
+      [],
+      { inputTokens: 0, outputTokens: 0, model: TEST_MODEL },
+    );
+    (streamCloudflareAIWithFallback as Mock).mockReturnValue(emptyResponseGen());
+
+    const res = await onRequestPost(makeContext(validBody()));
+    const events = await readSSEEvents(res);
+
+    const errorEvents = events.filter((e: any) => e.type === 'error');
+    expect(errorEvents).toHaveLength(1);
+    expect((errorEvents[0] as any).message).toContain('empty response');
+
+    // No ai_call or attempt_messages should be stored
+    const aiCallInserts = mockDb.insertedValues.filter(
+      (v: any) => v.model === TEST_MODEL && v.inputTokens === 0
+    );
+    expect(aiCallInserts).toHaveLength(0);
+  });
+
   it('emits error SSE event when no result returned from stream (no chunks)', async () => {
     (getUser as Mock).mockResolvedValue(TEST_USER);
 

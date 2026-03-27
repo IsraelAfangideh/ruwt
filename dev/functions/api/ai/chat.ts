@@ -12,6 +12,8 @@ import { streamCloudflareAIWithFallback, ModelUnavailableError } from '../../_sh
 import { logError } from '../../_shared/error-monitor';
 import { profiles, attempts, aiCalls, attemptMessages } from '../../../drizzle/schema.d1';
 
+const EMPTY_RESPONSE_MSG = 'The model returned an empty response. It may be temporarily overloaded — try again or switch to a different model.';
+
 const requestSchema = z.object({
   model: z.string(),
   messages: z.array(
@@ -190,6 +192,14 @@ export async function onRequestPost(context: {
           }
 
           if (!result) throw new Error('No result from stream');
+
+          if (!fullContent && !fullReasoning) {
+            controller.enqueue(
+              encoder.encode(`data: ${JSON.stringify({ type: 'error', message: EMPTY_RESPONSE_MSG })}\n\n`)
+            );
+            controller.close();
+            return;
+          }
 
           const actualCost = calculateCost(result.model, result.inputTokens, result.outputTokens);
 
