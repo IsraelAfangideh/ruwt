@@ -14,12 +14,19 @@ import { estimateMessagesForBudget, formatCostFromHundredths } from '@/shared/li
 import { BADGE_DEFS, type BadgeDef } from '@/shared/lib/badge-defs';
 import { formatTime } from '@/shared/lib/utils';
 import { SplitPaneSkeleton } from '@/shared/ui/ScreenSkeletons';
+import { downloadShareCard } from '@/shared/lib/share-card';
 import type { AiComparison } from '@/shared/lib/arena-types';
 
 /* ─── Budget Progress Bar ──────────────────────────────────────────── */
 
-const PROGRESS_TRACK = 'rgba(240,246,252,0.06)';
+const PROGRESS_TRACK = arena.borderMuted;
 const PULSE_CSS = `@keyframes pulse-urgent{0%,100%{opacity:1}50%{opacity:.6}}`;
+
+/* Shared styles for success overlay stat cards */
+const STAT_CARD: React.CSSProperties = { flex: 1, minWidth: 90, padding: '10px 8px', borderRadius: 10, textAlign: 'center' };
+const STAT_LABEL: React.CSSProperties = { fontSize: 10, color: arena.textMuted, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4, fontWeight: 600 };
+const STAT_VALUE: React.CSSProperties = { fontWeight: 700, fontSize: 18, fontFamily: fontFamily.mono };
+const SECTION_LABEL: React.CSSProperties = { fontSize: 10, textTransform: 'uppercase', letterSpacing: 1.5, fontWeight: 600 } as const;
 
 function BudgetProgressBar({ spent, budget }: { spent: number; budget: number | null; isOverBudget?: boolean }) {
   const mono = fontFamily.mono;
@@ -309,8 +316,8 @@ export function ArenaScreen() {
   // Timer for stats display (must be before early returns to avoid hook order issues)
   const expiresAtStr = attempt?.expiresAt ?? null;
   useEffect(() => {
-    if (!expiresAtStr) {
-      setTimeLeft(null);
+    if (!expiresAtStr || successOverlay) {
+      if (!expiresAtStr) setTimeLeft(null);
       return;
     }
     const expiresAt = new Date(expiresAtStr);
@@ -325,7 +332,7 @@ export function ArenaScreen() {
     tick();
     const id = setInterval(tick, 1000);
     return () => clearInterval(id);
-  }, [expiresAtStr]);
+  }, [expiresAtStr, successOverlay]);
 
   const startAttempt = useCallback(async () => {
     setStarting(true);
@@ -1082,7 +1089,8 @@ export function ArenaScreen() {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            background: 'rgba(13,17,23,0.85)',
+            background: 'rgba(13,17,23,0.92)',
+            backdropFilter: 'blur(4px)',
             zIndex: 200,
             overflow: 'hidden',
           }}>
@@ -1121,30 +1129,49 @@ export function ArenaScreen() {
               />
             ))}
             <div style={{
-              background: arena.surface,
-              border: `1px solid ${arena.border}`,
-              borderRadius: 12,
-              padding: 32,
-              maxWidth: 420,
-              width: '90%',
+              background: `linear-gradient(180deg, #1c2128 0%, ${arena.surface} 100%)`,
+              border: `1px solid ${arena.accentBorderSubtle}`,
+              borderRadius: 16,
+              padding: '28px 28px 24px',
+              maxWidth: 440,
+              width: '92%',
+              maxHeight: '90vh',
+              overflowY: 'auto',
               textAlign: 'center',
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
-              gap: 16,
+              gap: 14,
               position: 'relative',
               zIndex: 1,
+              boxShadow: `0 24px 64px rgba(0,0,0,0.5), 0 0 0 1px ${arena.accentBgSubtle}`,
             }}>
-              <span style={{ fontSize: 32 }}>{'\u2705'}</span>
+              {/* Gold accent line at top */}
+              <div style={{
+                position: 'absolute', top: 0, left: '10%', right: '10%', height: 2,
+                background: 'linear-gradient(90deg, transparent, #c9a962, transparent)',
+                borderRadius: 1,
+              }} />
+
+              {/* Header */}
+              <div style={{ fontSize: 36, lineHeight: 1 }}>{'\u2705'}</div>
               <h2 style={{
-                fontSize: 20,
+                fontSize: 22,
                 fontWeight: 700,
-                color: arena.success,
+                color: arena.text,
                 margin: 0,
-                fontFamily: '"Cormorant Garamond", Georgia, serif',
+                fontFamily: fontFamily.display,
+                letterSpacing: '0.5px',
               }}>
                 Challenge Passed!
               </h2>
+              {challenge?.category && (
+                <span style={{ fontSize: 12, color: arena.textMuted }}>
+                  +1{' '}
+                  <span style={{ color: arena.accent, fontWeight: 600 }}>{categoryDisplayName}</span>
+                  {' '}score
+                </span>
+              )}
 
               {/* Earned badges celebration */}
               {/* istanbul ignore next -- @preserve */ earnedBadges.length > 0 && (
@@ -1154,24 +1181,24 @@ export function ArenaScreen() {
                   alignItems: 'center',
                   gap: 8,
                   padding: '12px 16px',
-                  background: 'rgba(201,169,98,0.08)',
-                  borderRadius: 8,
-                  border: '1px solid rgba(201,169,98,0.2)',
+                  background: arena.accentBgFaint,
+                  borderRadius: 10,
+                  border: `1px solid ${arena.accentBorderSubtle}`,
                   width: '100%',
                   boxSizing: 'border-box',
                 }}>
-                  <span style={{ fontSize: 11, color: arena.textMuted, textTransform: 'uppercase', letterSpacing: 1, fontWeight: 600 }}>
-                    {/* istanbul ignore next -- @preserve */ earnedBadges.length === 1 ? 'Badge Earned!' : `${earnedBadges.length} Badges Earned!`}
+                  <span style={{ fontSize: 10, color: arena.accent, textTransform: 'uppercase', letterSpacing: 1.5, fontWeight: 700 }}>
+                    {/* istanbul ignore next -- @preserve */ earnedBadges.length === 1 ? 'Badge Earned' : `${earnedBadges.length} Badges Earned`}
                   </span>
-                  <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'center' }}>
+                  <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', justifyContent: 'center' }}>
                     {}
                     {/* istanbul ignore next -- @preserve */ earnedBadges.map((badge) => (
                       /* istanbul ignore next -- @preserve */
                       <div key={badge.type} style={{ textAlign: 'center', minWidth: 70 }}>
-                        <span style={{ fontSize: 28, display: 'block', animation: 'badge-pop 0.5s ease-out' }}>
+                        <span style={{ fontSize: 30, display: 'block', animation: 'badge-pop 0.5s ease-out' }}>
                           {badge.icon}
                         </span>
-                        <span style={{ fontSize: 11, color: arena.accent, fontWeight: 600, display: 'block' }}>
+                        <span style={{ fontSize: 11, color: arena.accent, fontWeight: 600, display: 'block', marginTop: 2 }}>
                           {badge.title}
                         </span>
                       </div>
@@ -1182,51 +1209,39 @@ export function ArenaScreen() {
 
               {/* Streak info */}
               {/* istanbul ignore next -- @preserve */ streakInfo && streakInfo.currentStreak > 1 && (
-                <span style={{ fontSize: 13, color: arena.accent }}>
+                <span style={{ fontSize: 13, color: arena.accent, fontWeight: 600 }}>
                   {'\u{1F525}'} {streakInfo.currentStreak}-day streak!
                 </span>
               )}
 
-              {/* AFI dimension context */}
-              {challenge?.category && (
-                <span style={{ fontSize: 12, color: arena.textMuted, textAlign: 'center' }}>
-                  This solve builds your{' '}
-                  <span style={{ color: arena.accent, fontWeight: 600 }}>
-                    {categoryDisplayName}
-                  </span>
-                  {' '}score
-                </span>
-              )}
-
-              {/* Rank comparison stats */}
+              {/* Stat cards */}
               <div style={{
                 display: 'flex',
-                gap: 16,
+                gap: 10,
                 justifyContent: 'center',
                 flexWrap: 'wrap',
-                fontFamily: fontFamily.mono,
-                fontSize: 12,
+                width: '100%',
               }}>
-                <div style={{ textAlign: 'center' }}>
-                  <div style={{ color: arena.textMuted, marginBottom: 4 }}>Your Cost</div>
-                  <div style={{ color: arena.accent, fontWeight: 700, fontSize: 16 }}>
+                <div style={{ ...STAT_CARD, background: arena.accentBgSubtle, border: `1px solid ${arena.accentBg}` }}>
+                  <div style={STAT_LABEL}>Your Cost</div>
+                  <div style={{ ...STAT_VALUE, color: arena.accent }}>
                     {formatCostFromHundredths(attempt?.totalCost ?? /* istanbul ignore next -- @preserve */ 0)}
                   </div>
                 </div>
                 {successStats && successStats.topCost != null && (
-                  <div style={{ textAlign: 'center' }}>
-                    <div style={{ color: arena.textMuted, marginBottom: 4 }}>Top Solver</div>
-                    <div style={{ color: arena.text, fontWeight: 700, fontSize: 16 }}>
+                  <div style={{ ...STAT_CARD, background: arena.borderFaint, border: `1px solid ${arena.border}` }}>
+                    <div style={STAT_LABEL}>Top Solver</div>
+                    <div style={{ ...STAT_VALUE, color: arena.text }}>
                       {formatCostFromHundredths(successStats.topCost)}
                     </div>
                   </div>
                 )}
                 {successStats && (
-                  <div style={{ textAlign: 'center' }}>
-                    <div style={{ color: arena.textMuted, marginBottom: 4 }}>Your Rank</div>
-                    <div style={{ color: /* istanbul ignore next -- @preserve */ successStats.rank === 1 ? arena.accent : arena.text, fontWeight: 700, fontSize: 16 }}>
+                  <div style={{ ...STAT_CARD, background: arena.borderFaint, border: `1px solid ${arena.border}` }}>
+                    <div style={STAT_LABEL}>Your Rank</div>
+                    <div style={{ ...STAT_VALUE, color: /* istanbul ignore next -- @preserve */ successStats.rank === 1 ? arena.accent : arena.text }}>
                       #{successStats.rank}
-                      <span style={{ fontSize: 11, fontWeight: 400, color: arena.textMuted }}> / {successStats.total}</span>
+                      <span style={{ fontSize: 12, fontWeight: 400, color: arena.textMuted }}> / {successStats.total}</span>
                     </div>
                   </div>
                 )}
@@ -1237,16 +1252,16 @@ export function ArenaScreen() {
                 <AiComparisonCard comparison={aiComparison} />
               )}
 
-              {/* Share buttons */}
-              <div style={{ display: 'flex', gap: 8, width: '100%', marginTop: 8 }}>
+              {/* Share row: social + download */}
+              <div style={{ display: 'flex', gap: 6, width: '100%', marginTop: 4 }}>
                 <button
                   style={{
                     background: '#0A66C2',
                     border: 'none',
                     borderRadius: 8,
                     color: '#fff',
-                    padding: '10px 16px',
-                    fontSize: 13,
+                    padding: '9px 0',
+                    fontSize: 12,
                     fontWeight: 600,
                     cursor: 'pointer',
                     flex: 1,
@@ -1262,11 +1277,11 @@ export function ArenaScreen() {
                 <button
                   style={{
                     background: '#000',
-                    border: 'none',
+                    border: `1px solid ${arena.border}`,
                     borderRadius: 8,
                     color: '#fff',
-                    padding: '10px 16px',
-                    fontSize: 13,
+                    padding: '9px 0',
+                    fontSize: 12,
                     fontWeight: 600,
                     cursor: 'pointer',
                     flex: 1,
@@ -1288,9 +1303,9 @@ export function ArenaScreen() {
                     background: 'transparent',
                     border: `1px solid ${arena.border}`,
                     borderRadius: 8,
-                    color: copiedShareLink ? arena.success : arena.text,
-                    padding: '10px 16px',
-                    fontSize: 13,
+                    color: copiedShareLink ? arena.success : arena.textMuted,
+                    padding: '9px 0',
+                    fontSize: 12,
                     fontWeight: 600,
                     cursor: 'pointer',
                     flex: 1,
@@ -1308,15 +1323,41 @@ export function ArenaScreen() {
                 </button>
               </div>
 
+              {/* Download share card */}
+              <button
+                data-testid="download-share-card"
+                style={{
+                  background: arena.accentBgSubtle,
+                  border: `1px solid ${arena.accentBorder}`,
+                  borderRadius: 8,
+                  color: arena.accent,
+                  padding: '9px 0',
+                  fontSize: 12,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  width: '100%',
+                }}
+                onClick={/* istanbul ignore next -- @preserve */ () => downloadShareCard({
+                  title: challenge.title,
+                  difficulty: challenge.difficulty || '',
+                  categoryDisplayName,
+                  totalCost: attempt?.totalCost ?? 0,
+                  badges: earnedBadges,
+                  rank: successStats ? { position: successStats.rank, total: successStats.total } : null,
+                })}
+              >
+                {'\u{1F4F7}'} Download Share Card
+              </button>
+
               {/* Action buttons */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, width: '100%', marginTop: 4 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, width: '100%' }}>
                 <button
                   style={{
                     background: arena.accent,
                     border: 'none',
                     borderRadius: 8,
-                    color: '#0d1117',
-                    padding: '10px 20px',
+                    color: arena.bg,
+                    padding: '11px 20px',
                     fontSize: 14,
                     fontWeight: 600,
                     cursor: 'pointer',
@@ -1339,7 +1380,7 @@ export function ArenaScreen() {
                     borderRadius: 8,
                     color: arena.text,
                     padding: '10px 20px',
-                    fontSize: 14,
+                    fontSize: 13,
                     fontWeight: 500,
                     cursor: 'pointer',
                     width: '100%',
@@ -1369,10 +1410,11 @@ export function ArenaScreen() {
                 >
                   See How #1 Solved This
                 </button>
+
+                {/* Up Next card */}
                 <a
                   href={nextChallenge ? `/arena/${nextChallenge.id}` : '/challenges'}
                   onClick={(e) => {
-                    // If next challenge isn't preloaded yet, fetch it on the spot
                     /* istanbul ignore next -- @preserve */
                     if (!nextChallenge) {
                       e.preventDefault();
@@ -1389,9 +1431,9 @@ export function ArenaScreen() {
                   }}
                   style={{
                     display: 'block',
-                    background: 'rgba(201,169,98,0.06)',
-                    border: `1px solid ${arena.accent}`,
-                    borderRadius: 8,
+                    background: arena.accentBgFaint,
+                    border: `1px solid ${arena.accentBorder}`,
+                    borderRadius: 10,
                     padding: '12px 20px',
                     textDecoration: 'none',
                     textAlign: 'center',
@@ -1401,7 +1443,7 @@ export function ArenaScreen() {
                 >
                   {nextChallenge ? (
                     <>
-                      <span style={{ fontSize: 11, color: arena.textMuted, textTransform: 'uppercase', letterSpacing: 1 }}>
+                      <span style={{ ...SECTION_LABEL, color: arena.textMuted }}>
                         Up Next
                       </span>
                       <span style={{ display: 'block', fontSize: 14, fontWeight: 600, color: arena.text, marginTop: 4 }}>
@@ -1413,11 +1455,11 @@ export function ArenaScreen() {
                     </>
                   ) : nextChallengeResolved ? (
                     <>
-                      <span style={{ fontSize: 11, color: arena.accent, textTransform: 'uppercase', letterSpacing: 1 }}>
+                      <span style={{ ...SECTION_LABEL, color: arena.accent }}>
                         Champion
                       </span>
                       <span style={{ display: 'block', fontSize: 22, marginTop: 4 }}>
-                        🏆
+                        {'\u{1F3C6}'}
                       </span>
                       <span style={{ display: 'block', fontSize: 14, fontWeight: 600, color: arena.text, marginTop: 4 }}>
                         All Challenges Completed!
@@ -1428,7 +1470,7 @@ export function ArenaScreen() {
                     </>
                   ) : (
                     <>
-                      <span style={{ fontSize: 11, color: arena.textMuted, textTransform: 'uppercase', letterSpacing: 1 }}>
+                      <span style={{ ...SECTION_LABEL, color: arena.textMuted }}>
                         Up Next
                       </span>
                       <span style={{ display: 'block', fontSize: 14, fontWeight: 500, color: arena.text, marginTop: 4 }}>
@@ -1437,54 +1479,57 @@ export function ArenaScreen() {
                     </>
                   )}
                 </a>
-                <button
-                  style={{
-                    background: 'transparent',
-                    border: 'none',
-                    color: arena.textMuted,
-                    fontSize: 13,
-                    cursor: 'pointer',
-                    padding: '8px 0',
-                  }}
-                  onClick={() => {
-                    /* istanbul ignore next -- @preserve */
-                    if (navigatingRef.current) return;
-                    navigatingRef.current = true;
-                    setSuccessOverlay(null);
-                    navigation.navigate('Problems');
-                  }}
-                >
-                  Back to Problems
-                </button>
-                {/* Try Again — personal accounts only (not assessments) */}
-                {canRestart && (
+
+                {/* Secondary actions */}
+                <div style={{ display: 'flex', gap: 8, width: '100%' }}>
                   <button
                     style={{
                       background: 'transparent',
-                      border: `1px solid ${arena.accent}40`,
-                      borderRadius: 8,
-                      color: arena.accent,
-                      padding: '10px 20px',
-                      fontSize: 13,
-                      fontWeight: 600,
+                      border: 'none',
+                      color: arena.textMuted,
+                      fontSize: 12,
                       cursor: 'pointer',
-                      width: '100%',
+                      padding: '6px 0',
+                      flex: 1,
                     }}
                     onClick={() => {
+                      /* istanbul ignore next -- @preserve */
+                      if (navigatingRef.current) return;
+                      navigatingRef.current = true;
                       setSuccessOverlay(null);
-                      onRestart();
+                      navigation.navigate('Problems');
                     }}
                   >
-                    Try Again &mdash; Beat {formatCostFromHundredths(attempt?.totalCost ?? /* istanbul ignore next -- @preserve */ 0)}
+                    Back to Problems
                   </button>
-                )}
+                  {canRestart && (
+                    <button
+                      style={{
+                        background: 'transparent',
+                        border: 'none',
+                        color: arena.accent,
+                        fontSize: 12,
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        padding: '6px 0',
+                        flex: 1,
+                      }}
+                      onClick={() => {
+                        setSuccessOverlay(null);
+                        onRestart();
+                      }}
+                    >
+                      Try Again &mdash; Beat {formatCostFromHundredths(attempt?.totalCost ?? /* istanbul ignore next -- @preserve */ 0)}
+                    </button>
+                  )}
+                </div>
+
                 {/* Post-solve comment prompt */}
                 {successOverlay.passed && !commentSubmitted && (
                   <div style={{
                     width: '100%',
-                    marginTop: 8,
-                    background: `${arena.accent}10`,
-                    border: `1px solid ${arena.accent}30`,
+                    background: arena.accentBgFaint,
+                    border: `1px solid ${arena.accentBg}`,
                     borderRadius: 8,
                     padding: 12,
                   }}>
@@ -1506,7 +1551,7 @@ export function ArenaScreen() {
                         fontSize: 13,
                         padding: 8,
                         resize: 'vertical',
-                        fontFamily: '"Libre Franklin", sans-serif',
+                        fontFamily: fontFamily.body,
                       }}
                     />
                     <button
@@ -1516,7 +1561,7 @@ export function ArenaScreen() {
                         background: arena.accent,
                         border: 'none',
                         borderRadius: 6,
-                        color: '#0d1117',
+                        color: arena.bg,
                         padding: '6px 14px',
                         fontSize: 12,
                         fontWeight: 600,

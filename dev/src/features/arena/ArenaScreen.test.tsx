@@ -780,6 +780,16 @@ describe('ArenaScreen', () => {
     openSpy.mockRestore();
   });
 
+  it('success overlay shows download share card button', async () => {
+    render(<ArenaScreen />);
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Start Challenge' })).toBeInTheDocument());
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Start Challenge' })); });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Submit' })).toBeInTheDocument());
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Submit' })); });
+    await waitFor(() => expect(screen.getByText('Challenge Passed!')).toBeInTheDocument());
+    expect(screen.getByTestId('download-share-card')).toBeInTheDocument();
+  });
+
   it('Submit error shows error results', async () => {
     globalThis.fetch = vi.fn().mockImplementation((url: string, opts?: any) => {
       if (url.includes('/api/challenges/')) return Promise.resolve({ ok: true, json: () => Promise.resolve(challengeData) });
