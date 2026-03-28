@@ -6,7 +6,8 @@ import { arena } from '@/shared/theme/colors';
 import { fontFamily } from '@/shared/theme/tokens';
 import { useIsMobile } from '@/shared/lib/useIsMobile';
 import { getDifficultyStyle } from '@/shared/lib/difficulty';
-import { useAuthGuard } from '@/shared/hooks/useAuthGuard';
+import { useAuth } from '@/shared/lib/AuthContext';
+import { resetNavigation } from '@/shared/navigation/resetNavigation';
 import { useToast } from '@/shared/ui/Toast';
 import { ArenaErrorBoundary } from '@/features/arena/ArenaErrorBoundary';
 import { estimateMessagesForBudget, formatCostFromHundredths } from '@/shared/lib/ai/pricing';
@@ -17,27 +18,29 @@ import type { AiComparison } from '@/shared/lib/arena-types';
 
 /* ─── Budget Progress Bar ──────────────────────────────────────────── */
 
+const PROGRESS_TRACK = 'rgba(240,246,252,0.06)';
+const PULSE_CSS = `@keyframes pulse-urgent{0%,100%{opacity:1}50%{opacity:.6}}`;
+
 function BudgetProgressBar({ spent, budget }: { spent: number; budget: number | null; isOverBudget?: boolean }) {
   const mono = fontFamily.mono;
   if (budget == null) {
-    // No budget limit — show running cost with a subtle open-ended bar
     return (
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 160 }}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 180 }}
         title="No budget limit — costs tracked for ranking"
       >
-        <span style={{ fontSize: 12, fontWeight: 700, color: arena.accent, fontFamily: mono }}>
+        <span style={{ fontSize: 13, fontWeight: 700, color: arena.accent, fontFamily: mono }}>
           {formatCostFromHundredths(spent)}
         </span>
-        <div style={{ flex: 1, height: 6, background: arena.border, borderRadius: 3, overflow: 'hidden', maxWidth: 80 }}>
+        <div style={{ flex: 1, height: 8, background: PROGRESS_TRACK, borderRadius: 4, overflow: 'hidden', maxWidth: 100 }}>
           <div style={{
             width: spent > 0 ? '40%' : '0%',
             height: '100%',
             background: arena.accent,
-            borderRadius: 3,
+            borderRadius: 4,
             transition: 'width 0.3s ease',
           }} />
         </div>
-        <span style={{ fontSize: 10, color: arena.textSubtle, fontFamily: mono }}>
+        <span style={{ fontSize: 11, color: arena.textSubtle, fontFamily: mono }}>
           no limit
         </span>
       </div>
@@ -45,18 +48,18 @@ function BudgetProgressBar({ spent, budget }: { spent: number; budget: number | 
   }
   const pct = Math.min(100, (spent / budget) * 100);
   /* istanbul ignore next -- @preserve */
-  const barColor = pct > 90 ? arena.error : pct > 70 ? arena.accent : '#3fb950';
+  const barColor = pct > 90 ? arena.error : pct > 70 ? arena.accent : arena.success;
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 180 }}
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 200 }}
       title={`${formatCostFromHundredths(spent)} of ${formatCostFromHundredths(budget)} budget used`}
     >
-      <span style={{ fontSize: 11, color: arena.textMuted, fontFamily: mono }}>
+      <span style={{ fontSize: 13, fontWeight: 600, color: arena.text, fontFamily: mono }}>
         {formatCostFromHundredths(spent)}
       </span>
-      <div style={{ flex: 1, height: 6, background: arena.border, borderRadius: 3, overflow: 'hidden' }}>
-        <div style={{ width: `${pct}%`, height: '100%', background: barColor, borderRadius: 3, transition: 'width 0.3s ease' }} />
+      <div style={{ flex: 1, height: 8, background: PROGRESS_TRACK, borderRadius: 4, overflow: 'hidden' }}>
+        <div style={{ width: `${pct}%`, height: '100%', background: barColor, borderRadius: 4, transition: 'width 0.3s ease' }} />
       </div>
-      <span style={{ fontSize: 11, color: arena.textMuted, fontFamily: mono }}>
+      <span style={{ fontSize: 13, fontWeight: 600, color: arena.text, fontFamily: mono }}>
         {formatCostFromHundredths(budget)}
       </span>
     </div>
@@ -146,10 +149,17 @@ function AiComparisonCard({ comparison }: { comparison: AiComparison }) {
 export function ArenaScreen() {
   const navigation = useNavigation();
   const route = useRoute();
-  const { loading: authLoading } = useAuthGuard();
+  const { user, loading: authLoading } = useAuth();
   /* istanbul ignore next -- @preserve */
   const params = (route.params || {}) as { challengeId?: string };
   const challengeId = params.challengeId ?? '';
+
+  // Redirect unauthenticated users to guest mode instead of login
+  useEffect(() => {
+    if (!authLoading && !user) {
+      resetNavigation(navigation, [{ name: 'GuestArena', params: { challengeId } }]);
+    }
+  }, [authLoading, user, navigation, challengeId]);
 
   const [challenge, setChallenge] = useState<ArenaChallenge | null>(null);
   const [attempt, setAttempt] = useState<ArenaAttempt | null>(null);
@@ -769,8 +779,13 @@ export function ArenaScreen() {
 
   const timerUrgency: 'normal' | 'warning' | 'critical' =
     timeLeft == null ? 'normal' :
-    timeLeft <= 30 ? 'critical' :
-    timeLeft <= 120 ? 'warning' : /* istanbul ignore next -- @preserve */ 'normal';
+    timeLeft <= 60 ? 'critical' :
+    timeLeft <= 180 ? 'warning' : /* istanbul ignore next -- @preserve */ 'normal';
+  const timerStyles = timerUrgency === 'critical'
+    ? { color: '#fff', background: arena.error, animation: 'pulse-urgent 1s ease-in-out infinite' } as const
+    : timerUrgency === 'warning'
+    ? { color: arena.bg, background: arena.accent, animation: undefined } as const
+    : { color: arena.success, background: 'transparent', animation: undefined } as const;
 
   return (
     <main style={{
@@ -781,6 +796,7 @@ export function ArenaScreen() {
       color: arena.text,
       overflow: 'hidden',
     }}>
+      <style>{PULSE_CSS}</style>
       {/* Header */}
       {isMobile ? (
         /* Mobile header — two rows */
@@ -827,14 +843,15 @@ export function ArenaScreen() {
             </h1>
             {/* istanbul ignore next -- @preserve */ timeLeft != null && (
               <span style={{
-                fontSize: 12,
+                fontSize: 13,
+                fontWeight: 700,
                 fontFamily: fontFamily.mono,
                 flexShrink: 0,
-                ...(/* istanbul ignore next -- @preserve */ timerUrgency === 'critical' ? {
-                  fontWeight: 700, background: arena.error, color: '#fff', padding: '2px 8px', borderRadius: 9999,
-                } : /* istanbul ignore next -- @preserve */ timerUrgency === 'warning' ? {
-                  fontWeight: 700, background: arena.accent, color: '#0d1117', padding: '2px 8px', borderRadius: 9999,
-                } : { color: arena.textMuted }),
+                color: timerStyles.color,
+                background: timerStyles.background,
+                padding: '2px 10px',
+                borderRadius: 9999,
+                animation: timerStyles.animation,
               }}>
                 {formatTime(timeLeft)}
               </span>
@@ -955,16 +972,17 @@ export function ArenaScreen() {
             {/* Budget progress bar */}
             <BudgetProgressBar spent={attempt.totalCost} budget={challenge.maxCost} isOverBudget={costLimitReached} />
 
-            {/* Timer — subtle when normal, bold pill when warning/critical */}
             {timeLeft != null && (
               <span style={{
-                fontSize: 12,
+                fontSize: 14,
+                fontWeight: 700,
                 fontFamily: fontFamily.mono,
-                ...(/* istanbul ignore next -- @preserve */ timerUrgency === 'critical' ? {
-                  fontWeight: 700, background: arena.error, color: '#fff', padding: '2px 10px', borderRadius: 9999,
-                } : /* istanbul ignore next -- @preserve */ timerUrgency === 'warning' ? {
-                  fontWeight: 700, background: arena.accent, color: '#0d1117', padding: '2px 10px', borderRadius: 9999,
-                } : { color: arena.textMuted }),
+                color: timerStyles.color,
+                background: timerStyles.background,
+                padding: '3px 12px',
+                borderRadius: 9999,
+                letterSpacing: '0.5px',
+                animation: timerStyles.animation,
               }}>
                 {formatTime(timeLeft)}
               </span>

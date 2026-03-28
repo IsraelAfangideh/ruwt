@@ -15,9 +15,14 @@ vi.mock('@react-navigation/native', () => ({
   useRoute: () => ({ params: routeParams }),
 }));
 
-let authReturn = { user: { id: 'u1', email: 'test@test.com' }, loading: false };
-vi.mock('@/shared/hooks/useAuthGuard', () => ({
-  useAuthGuard: () => authReturn,
+let authReturn = { user: { id: 'u1', email: 'test@test.com' } as any, loading: false };
+vi.mock('@/shared/lib/AuthContext', () => ({
+  useAuth: () => authReturn,
+}));
+
+const mockResetNavigation = vi.fn();
+vi.mock('@/shared/navigation/resetNavigation', () => ({
+  resetNavigation: (...args: any[]) => mockResetNavigation(...args),
 }));
 
 vi.mock('@/features/arena/ArenaIDE', () => ({

@@ -13,9 +13,14 @@ vi.mock('@react-navigation/native', () => ({
 }));
 
 /* ── auth mock — default: authenticated ─────────────────────────── */
-let authReturn = { user: { id: 'u1', email: 'test@test.com' }, loading: false };
-vi.mock('@/shared/hooks/useAuthGuard', () => ({
-  useAuthGuard: () => authReturn,
+let authReturn = { user: { id: 'u1', email: 'test@test.com' } as any, loading: false };
+vi.mock('@/shared/lib/AuthContext', () => ({
+  useAuth: () => authReturn,
+}));
+
+const mockResetNavigation = vi.fn();
+vi.mock('@/shared/navigation/resetNavigation', () => ({
+  resetNavigation: (...args: any[]) => mockResetNavigation(...args),
 }));
 
 /* ── ArenaIDE mock ─────────────────────────────────────────────── */
@@ -163,7 +168,7 @@ describe('ArenaScreen', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     routeParams = { challengeId: 'test-challenge' };
-    authReturn = { user: { id: 'u1', email: 'test@test.com' }, loading: false };
+    authReturn = { user: { id: 'u1', email: 'test@test.com' } as any, loading: false };
     isMobileReturn = false;
     capturedOnRunCode = null;
     globalThis.fetch = mockFetchForChallenge();
@@ -184,6 +189,15 @@ describe('ArenaScreen', () => {
     // Should render skeleton loading state, not "Loading arena..." text (that's for data loading)
     expect(container.textContent).not.toContain('Loading arena...');
     expect(container.querySelector('[data-testid="skeleton-split-pane"]')).not.toBeNull();
+  });
+
+  it('redirects to GuestArena when user is not authenticated', () => {
+    authReturn = { user: null, loading: false };
+    render(<ArenaScreen />);
+    expect(mockResetNavigation).toHaveBeenCalledWith(
+      expect.anything(),
+      [{ name: 'GuestArena', params: { challengeId: 'test-challenge' } }],
+    );
   });
 
   it('shows loading state while fetching challenge data', () => {
