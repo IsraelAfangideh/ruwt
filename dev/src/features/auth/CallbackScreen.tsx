@@ -68,7 +68,13 @@ export function CallbackScreen() {
             /* istanbul ignore next -- @preserve */
             const trialRes = await fetch('/api/trial/start', { method: 'POST' });
             /* istanbul ignore next -- @preserve */
-            if (!trialRes.ok) {
+            if (trialRes.ok) {
+              const trialData = await trialRes.json().catch(() => ({} as Record<string, string>));
+              if (trialData.url) {
+                window.location.href = trialData.url;
+                return;
+              }
+            } else {
               /* istanbul ignore next -- @preserve */
               console.warn('Trial start failed:', await trialRes.text().catch(() => ''));
             }

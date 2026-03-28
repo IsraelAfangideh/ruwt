@@ -90,12 +90,12 @@ export function TeamsScreen() {
     setTrialError(null);
     try {
       const res = await fetch('/api/trial/start', { method: 'POST' });
-      if (res.ok) {
-        navigation.navigate('AssessmentBuilder', {});
+      const data = await res.json().catch(() => ({} as Record<string, string>));
+      if (res.ok && data.url) {
+        // Redirect to Stripe Checkout for CC-gated trial
+        window.location.href = data.url;
         return;
       }
-      /* istanbul ignore next -- @preserve */
-      const data = await res.json().catch(() => ({} as Record<string, string>));
       // User already has team access (used trial or has subscription) — navigate directly
       if (data.error === 'Trial already used' || data.error === 'Already subscribed') {
         navigation.navigate('AssessmentBuilder', {});
@@ -321,7 +321,7 @@ export function TeamsScreen() {
             <Text style={{ color: '#b06060', textAlign: 'center', marginTop: 8 }}>{trialError}</Text>
           )}
           <Text style={styles.heroNote}>
-            Free to try. No credit card required.
+            30-day free trial. Cancel anytime.
           </Text>
         </View>
       </View>

@@ -57,7 +57,7 @@ describe('useAIChat — additional negative paths', () => {
     const { result } = renderHook(() => useAIChat({ sessionId: 'a-1', model: 'm' }));
     const cbs = makeCbs();
     await act(async () => { await result.current.streamChat([], cbs); });
-    expect(cbs.onDone).toHaveBeenCalledWith('(no response)', undefined);
+    expect(cbs.onDone).toHaveBeenCalledWith('The model returned an empty response. It may be temporarily overloaded — try again or switch to a different model.', undefined);
   });
 
   it('handles 503 Service Unavailable', async () => {

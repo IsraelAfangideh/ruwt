@@ -210,18 +210,17 @@ describe('TeamsScreen', () => {
     expect(mockNavigate).toHaveBeenCalledWith('Register');
   });
 
-  it('starts trial and navigates to AssessmentBuilder when Start Free Trial is clicked (logged in)', async () => {
+  it('starts trial and redirects to Stripe Checkout when Start Free Trial is clicked (logged in)', async () => {
     mockUser = { id: 'u1' };
     vi.stubGlobal('fetch', vi.fn().mockImplementation(() =>
-      Promise.resolve(ok({ trial: {}, orgId: 'org1' }))
+      Promise.resolve(ok({ url: 'https://checkout.stripe.com/test' }))
     ));
     render(<TeamsScreen />);
     await waitFor(() => expect(screen.getByRole('button', { name: 'Dashboard' })).toBeInTheDocument());
     fireEvent.click(screen.getAllByRole('button', { name: 'Start Free Trial' })[0]);
     await waitFor(() => {
-      expect(mockNavigate).toHaveBeenCalledWith('AssessmentBuilder', {});
+      expect(fetch).toHaveBeenCalledWith('/api/trial/start', { method: 'POST' });
     });
-    expect(fetch).toHaveBeenCalledWith('/api/trial/start', { method: 'POST' });
   });
 
   it('navigates to AssessmentBuilder when trial already used (logged in)', async () => {

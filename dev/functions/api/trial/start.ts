@@ -1,24 +1,14 @@
 /**
  * POST /api/trial/start
- * Start a 30-day free trial for the authenticated user.
- * Creates an org if the user doesn't have one, sets trial dates + zero counters.
- * Sends admin notification + user welcome email.
+ * Start a 30-day free trial by redirecting to Stripe Checkout.
+ * Stripe collects CC and creates a subscription with trial_period_days=30.
+ * Org creation + trial activation happens in the webhook on checkout.session.completed.
  */
-import { eq, sql } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import { getDb } from '../../_shared/db';
 import { getUser } from '../../_shared/auth';
-import {
-  canStartTrial,
-  getUserOrg,
-  TRIAL_DURATION_DAYS,
-  TRIAL_MAX_ASSESSMENTS,
-  TRIAL_MAX_INVITES,
-  getTrialStatus,
-} from '../../_shared/org';
-import { profiles, organizations, orgMembers } from '../../../drizzle/schema.d1';
-import { sendEmail } from '../../_shared/newsletter/resend';
-import { trialStartNotificationEmail, trialWelcomeEmail } from '../../_shared/email/templates';
-import { ADMIN_EMAIL } from '../../_shared/ensure-profile';
+import { canStartTrial, getUserOrg } from '../../_shared/org';
+import { organizations } from '../../../drizzle/schema.d1';
 
 // Personal email domains where we should NOT derive org name from domain
 const PERSONAL_DOMAINS = new Set([
@@ -27,7 +17,7 @@ const PERSONAL_DOMAINS = new Set([
   'gmx', 'tutanota', 'proton',
 ]);
 
-function deriveOrgName(email: string): string {
+export function deriveOrgName(email: string): string {
   /* istanbul ignore next -- @preserve */
   if (!email.includes('@')) return 'My Team';
   const domain = email.split('@')[1].split('.')[0].toLowerCase();
@@ -51,116 +41,95 @@ export async function onRequestPost(context: { request: Request; env: Env; waitU
       );
     }
 
-    const now = new Date();
-    const trialEnds = new Date(now);
-    trialEnds.setDate(trialEnds.getDate() + TRIAL_DURATION_DAYS);
-
-    // Create or update org FIRST (before marking trial as used)
-    let userOrg = await getUserOrg(db, user.id);
-    if (userOrg) {
-      // Only allow org owner/admin to start trial on an existing org
-      if (userOrg.role !== 'owner' && userOrg.role !== 'admin') {
-        return Response.json(
-          { error: 'Only org owners can start a trial', code: 'TRIAL_NOT_ELIGIBLE' },
-          { status: 403 },
-        );
-      }
-      // User has an existing org — set trial dates on it
-      await db
-        .update(organizations)
-        .set({
-          trialStartedAt: now.toISOString(),
-          trialEndsAt: trialEnds.toISOString(),
-          trialAssessmentsUsed: 0,
-          trialInvitesUsed: 0,
-        })
-        .where(eq(organizations.id, userOrg.org.id));
-    } else {
-      // Create a new org
-      const orgId = crypto.randomUUID();
-      /* istanbul ignore next -- @preserve */
-      const userEmail = user.email || '';
-      const orgName = deriveOrgName(userEmail);
-
-      await db.insert(organizations).values({
-        id: orgId,
-        name: orgName,
-        createdBy: user.id,
-        trialStartedAt: now.toISOString(),
-        trialEndsAt: trialEnds.toISOString(),
-        trialAssessmentsUsed: 0,
-        trialInvitesUsed: 0,
-      });
-
-      await db.insert(orgMembers).values({
-        id: crypto.randomUUID(),
-        orgId,
-        userId: user.id,
-        role: 'owner',
-      });
-
-      userOrg = await getUserOrg(db, user.id);
+    const stripeKey = (context.env as Record<string, string>).STRIPE_SECRET_KEY;
+    if (!stripeKey) {
+      return Response.json({ error: 'Payment system not configured' }, { status: 503 });
     }
 
-    // Mark trial as used AFTER org creation succeeds (prevents lockout if org insert fails)
-    await db
-      .update(profiles)
-      .set({ accountType: 'team', trialUsed: 1 })
-      .where(eq(profiles.id, user.id));
-
-    /* istanbul ignore next -- @preserve */
-    const trial = userOrg ? await getTrialStatus(db, userOrg.org.id) : null;
-    const orgName = userOrg?.org.name ?? 'My Team';
-    /* istanbul ignore next -- @preserve */
+    const origin = new URL(context.request.url).origin;
+    const userEmail = user.email || '';
     const userName = (user.user_metadata?.full_name ?? user.user_metadata?.name) as string | null ?? null;
-    /* istanbul ignore next -- @preserve */
-    const provider = (user.app_metadata?.provider as string) ?? 'email';
 
-    // Send admin notification + user welcome email (kept alive via waitUntil)
-    if (context.env.RESEND_API_KEY) {
-      // Admin: "someone started a teams trial"
-      const adminEmail = trialStartNotificationEmail({
-        /* istanbul ignore next -- @preserve */
-        userName,
-        userEmail: /* istanbul ignore next -- @preserve */ user.email ?? '',
-        orgName,
-        provider,
-        trialEndsAt: trialEnds.toISOString(),
+    // Check for existing org (owner/admin can start trial on it)
+    const userOrg = await getUserOrg(db, user.id);
+    if (userOrg && userOrg.role !== 'owner' && userOrg.role !== 'admin') {
+      return Response.json(
+        { error: 'Only org owners can start a trial', code: 'TRIAL_NOT_ELIGIBLE' },
+        { status: 403 },
+      );
+    }
+
+    // Find or create Stripe Customer
+    let stripeCustomerId = userOrg?.org.stripeCustomerId ?? null;
+    const orgName = userOrg?.org.name ?? deriveOrgName(userEmail);
+
+    if (!stripeCustomerId) {
+      const custParams = new URLSearchParams();
+      custParams.append('email', userEmail);
+      custParams.append('metadata[userId]', user.id);
+      if (userName) custParams.append('name', userName);
+
+      const custRes = await fetch('https://api.stripe.com/v1/customers', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${stripeKey}`,
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: custParams.toString(),
       });
-      const adminPromise = sendEmail(context.env, { to: ADMIN_EMAIL, subject: adminEmail.subject, html: adminEmail.html, text: adminEmail.text })
-        .then(async (result) => {
-          /* istanbul ignore next -- @preserve */
-          await db.run(sql`INSERT INTO newsletter_logs (id, recipient_email, subject, status, error_message, resend_id, user_id, digest_type)
-            VALUES (${crypto.randomUUID()}, ${ADMIN_EMAIL}, ${adminEmail.subject}, ${result.success ? 'sent' : 'failed'}, ${result.error ?? null}, ${result.id ?? null}, ${user.id}, 'admin_trial_start')`);
-        })
-        /* istanbul ignore next -- @preserve */
-        .catch(/* istanbul ignore next -- @preserve */ () => {});
-      context.waitUntil?.(adminPromise);
 
-      // User: "welcome to your trial, here's what to do"
-      /* istanbul ignore next -- @preserve */
-      if (user.email) {
-        const welcomeEmail = trialWelcomeEmail({
-          /* istanbul ignore next -- @preserve */
-          name: userName?.split(' ')[0] ?? null,
-          orgName,
-          trialEndsAt: trialEnds.toISOString(),
-          assessmentLimit: TRIAL_MAX_ASSESSMENTS,
-          inviteLimit: TRIAL_MAX_INVITES,
-        });
-        const welcomePromise = sendEmail(context.env, { to: user.email, subject: welcomeEmail.subject, html: welcomeEmail.html, text: welcomeEmail.text })
-          .then(async (result) => {
-            await db.run(sql`INSERT INTO newsletter_logs (id, recipient_email, subject, status, error_message, resend_id, user_id, digest_type)
-              /* istanbul ignore next -- @preserve */
-              VALUES (${crypto.randomUUID()}, ${user.email}, ${welcomeEmail.subject}, ${result.success ? 'sent' : 'failed'}, ${result.error ?? null}, ${result.id ?? null}, ${user.id}, 'trial_welcome')`);
-          })
-          /* istanbul ignore next -- @preserve */
-          .catch(/* istanbul ignore next -- @preserve */ () => {});
-        context.waitUntil?.(welcomePromise);
+      if (!custRes.ok) {
+        console.error('Stripe customer creation error:', await custRes.text());
+        return Response.json({ error: 'Failed to create billing account' }, { status: 502 });
+      }
+
+      const customer = await custRes.json() as { id: string };
+      stripeCustomerId = customer.id;
+
+      // Save customer ID to existing org if applicable
+      if (userOrg) {
+        await db.update(organizations)
+          .set({ stripeCustomerId: customer.id })
+          .where(eq(organizations.id, userOrg.org.id));
       }
     }
 
-    return Response.json({ trial, orgId: userOrg?.org.id }, { status: 201 });
+    // Create Stripe Checkout Session with 30-day trial on monthly subscription
+    const params = new URLSearchParams();
+    params.append('mode', 'subscription');
+    params.append('customer', stripeCustomerId);
+    params.append('line_items[0][quantity]', '1');
+    params.append('line_items[0][price_data][currency]', 'usd');
+    params.append('line_items[0][price_data][product_data][name]', 'Ruwt.dev Monthly Subscription');
+    params.append('line_items[0][price_data][unit_amount]', '20000');
+    params.append('line_items[0][price_data][recurring][interval]', 'month');
+    params.append('subscription_data[trial_period_days]', '30');
+    params.append('success_url', `${origin}/org?trial_started=true`);
+    params.append('cancel_url', `${origin}/teams`);
+    params.append('metadata[userId]', user.id);
+    params.append('metadata[type]', 'trial_subscription');
+    params.append('metadata[orgName]', orgName);
+    params.append('metadata[userEmail]', userEmail);
+    if (userName) params.append('metadata[userName]', userName);
+    if (userOrg) params.append('metadata[orgId]', userOrg.org.id);
+
+    const stripeRes = await fetch('https://api.stripe.com/v1/checkout/sessions', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${stripeKey}`,
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: params.toString(),
+    });
+
+    if (!stripeRes.ok) {
+      const err = await stripeRes.text();
+      console.error('Stripe checkout error:', err);
+      return Response.json({ error: 'Failed to create checkout session' }, { status: 502 });
+    }
+
+    const session = await stripeRes.json() as { url: string };
+    return Response.json({ url: session.url });
   } catch (error) {
     /* istanbul ignore next -- @preserve */
     console.error('Trial start error:', error);

@@ -5,7 +5,8 @@
  */
 import { eq, sql } from 'drizzle-orm';
 import { getDb } from '../../_shared/db';
-import { profiles, transactions, organizations } from '../../../drizzle/schema.d1';
+import { profiles, transactions, organizations, orgMembers } from '../../../drizzle/schema.d1';
+import { TRIAL_DURATION_DAYS } from '../../_shared/org';
 
 async function verifyStripeSignature(
   payload: string,
@@ -104,7 +105,8 @@ export async function onRequestPost(context: {
       customer?: string;
     };
 
-    if (session.payment_status !== 'paid' || !session.metadata?.userId) {
+    // Trial subscriptions have payment_status 'no_payment_required' (no initial charge)
+    if (!['paid', 'no_payment_required'].includes(session.payment_status ?? '') || !session.metadata?.userId) {
       return Response.json({ received: true });
     }
 
@@ -126,7 +128,45 @@ export async function onRequestPost(context: {
         }
       }
 
-      if (purchaseType === 'subscription' && session.metadata.orgId) {
+      if (purchaseType === 'trial_subscription') {
+        // CC-gated free trial: create org (if needed), activate trial, set Stripe IDs
+        const existingOrgId = session.metadata.orgId;
+        const orgName = (session.metadata as Record<string, string>).orgName ?? 'My Team';
+        const now = new Date();
+        const trialEnds = new Date(now);
+        trialEnds.setDate(trialEnds.getDate() + TRIAL_DURATION_DAYS);
+
+        const trialFields = {
+          trialStartedAt: now.toISOString(),
+          trialEndsAt: trialEnds.toISOString(),
+          trialAssessmentsUsed: 0,
+          trialInvitesUsed: 0,
+          stripeSubscriptionId: session.subscription ?? null,
+          stripeCustomerId: (session.customer as string) ?? null,
+          subscriptionStatus: 'trialing',
+          subscriptionPlan: 'monthly',
+        };
+
+        let orgId: string;
+        if (existingOrgId) {
+          orgId = existingOrgId;
+          await db.update(organizations).set(trialFields).where(eq(organizations.id, orgId));
+        } else {
+          orgId = crypto.randomUUID();
+          await db.insert(organizations).values({ id: orgId, name: orgName, createdBy: userId!, ...trialFields });
+          await db.insert(orgMembers).values({ id: crypto.randomUUID(), orgId, userId: userId!, role: 'owner' });
+        }
+
+        await db.update(profiles).set({ accountType: 'team', trialUsed: 1 }).where(eq(profiles.id, userId!));
+
+        await db.insert(transactions).values({
+          id: crypto.randomUUID(),
+          userId: userId!,
+          type: 'trial_start',
+          amount: 0,
+          stripeId: stripeSessionId,
+        });
+      } else if (purchaseType === 'subscription' && session.metadata.orgId) {
         // Subscription checkout completed
         const orgId = session.metadata.orgId;
         const planId = session.metadata.plan ?? 'plan-monthly';
@@ -226,6 +266,8 @@ export async function onRequestPost(context: {
           subscriptionStatus = 'canceled';
         } else if (sub.status === 'active') {
           subscriptionStatus = 'active';
+        } else if (sub.status === 'trialing') {
+          subscriptionStatus = 'trialing';
         } else if (sub.status === 'past_due') {
           subscriptionStatus = 'past_due';
         } else {

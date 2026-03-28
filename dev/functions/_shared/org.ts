@@ -124,7 +124,7 @@ export async function canStartTrial(
 
   // Check if user already has an active subscription
   const userOrg = await getUserOrg(db, userId);
-  if (userOrg && (userOrg.org.subscriptionStatus === 'active' || userOrg.org.subscriptionStatus === 'past_due')) {
+  if (userOrg && (userOrg.org.subscriptionStatus === 'active' || userOrg.org.subscriptionStatus === 'past_due' || userOrg.org.subscriptionStatus === 'trialing')) {
     return { eligible: false, reason: 'Already subscribed' };
   }
 
@@ -235,7 +235,7 @@ export async function hasActiveSubscription(db: Db, orgId: string): Promise<bool
 
   if (!org) return false;
 
-  if (org.subscriptionStatus === 'active') return true;
+  if (org.subscriptionStatus === 'active' || org.subscriptionStatus === 'trialing') return true;
 
   // Canceled but still within paid period
   if (org.subscriptionStatus === 'canceled' && org.subscriptionEndsAt) {

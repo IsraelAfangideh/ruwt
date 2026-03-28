@@ -1,21 +1,15 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 // ── Mocks ────────────────────────────────────────────────────────────
 const {
   mockGetUser, mockGetDb, mockCanStartTrial, mockGetUserOrg,
-  mockGetTrialStatus, mockInsert, mockUpdate,
-  mockSendEmail, mockTrialStartNotificationEmail, mockTrialWelcomeEmail,
+  mockUpdate,
 } = vi.hoisted(() => ({
   mockGetUser: vi.fn(),
   mockGetDb: vi.fn(),
   mockCanStartTrial: vi.fn(),
   mockGetUserOrg: vi.fn(),
-  mockGetTrialStatus: vi.fn(),
-  mockInsert: vi.fn(),
   mockUpdate: vi.fn(),
-  mockSendEmail: vi.fn(),
-  mockTrialStartNotificationEmail: vi.fn(),
-  mockTrialWelcomeEmail: vi.fn(),
 }));
 
 vi.mock('../../_shared/auth', () => ({ getUser: mockGetUser }));
@@ -23,20 +17,12 @@ vi.mock('../../_shared/db', () => ({ getDb: mockGetDb }));
 vi.mock('../../_shared/org', () => ({
   canStartTrial: mockCanStartTrial,
   getUserOrg: mockGetUserOrg,
-  getTrialStatus: mockGetTrialStatus,
   TRIAL_DURATION_DAYS: 30,
   TRIAL_MAX_ASSESSMENTS: 1,
   TRIAL_MAX_INVITES: 3,
 }));
-vi.mock('../../_shared/newsletter/resend', () => ({
-  sendEmail: mockSendEmail,
-}));
-vi.mock('../../_shared/email/templates', () => ({
-  trialStartNotificationEmail: mockTrialStartNotificationEmail,
-  trialWelcomeEmail: mockTrialWelcomeEmail,
-}));
 
-import { onRequestPost } from './start';
+import { onRequestPost, deriveOrgName } from './start';
 
 // ── Helpers ──────────────────────────────────────────────────────────
 
@@ -52,7 +38,7 @@ function makeEnv(overrides: Partial<Env> = {}): Env {
     DB: {} as D1Database,
     VITE_SUPABASE_URL: 'https://test.supabase.co',
     VITE_SUPABASE_ANON_KEY: 'anon-key',
-    RESEND_API_KEY: 'test-resend-key',
+    STRIPE_SECRET_KEY: 'sk_test_fake',
     ...overrides,
   } as Env;
 }
@@ -76,22 +62,20 @@ function createMockDb() {
   return chain as any;
 }
 
+// Mock global fetch for Stripe API calls
+const mockFetch = vi.fn();
+const originalFetch = globalThis.fetch;
+
 // ── Tests ────────────────────────────────────────────────────────────
 
 describe('POST /api/trial/start', () => {
   beforeEach(() => {
     vi.resetAllMocks();
-    mockSendEmail.mockResolvedValue({ success: true, id: 'email-id-1' });
-    mockTrialStartNotificationEmail.mockReturnValue({
-      subject: 'New teams trial: Test User started a trial',
-      html: '<h1>Trial started</h1>',
-      text: 'Trial started',
-    });
-    mockTrialWelcomeEmail.mockReturnValue({
-      subject: 'Your 30-day trial is active',
-      html: '<h1>Welcome to your trial</h1>',
-      text: 'Welcome to your trial',
-    });
+    globalThis.fetch = mockFetch;
+  });
+
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
   });
 
   it('returns 401 when not authenticated', async () => {
@@ -129,28 +113,16 @@ describe('POST /api/trial/start', () => {
     expect(json.error).toContain('Already subscribed');
   });
 
-  it('creates org and starts trial for user without org', async () => {
-    const db = createMockDb();
+  it('returns 503 when STRIPE_SECRET_KEY is missing', async () => {
     mockGetUser.mockResolvedValue(FAKE_USER);
-    mockGetDb.mockReturnValue(db);
+    mockGetDb.mockReturnValue(createMockDb());
     mockCanStartTrial.mockResolvedValue({ eligible: true });
-    // First call: no org; second call after creation: returns new org
-    mockGetUserOrg
-      .mockResolvedValueOnce(null)
-      .mockResolvedValueOnce({ org: { id: 'new-org' }, role: 'owner' });
-    mockGetTrialStatus.mockResolvedValue({
-      isActive: true, daysRemaining: 30,
-      assessmentsUsed: 0, assessmentsLimit: 1,
-      invitesUsed: 0, invitesLimit: 3,
-    });
 
-    const res = await onRequestPost(makeContext());
+    const res = await onRequestPost(makeContext({ STRIPE_SECRET_KEY: undefined } as any));
     const json = await res.json();
 
-    expect(res.status).toBe(201);
-    expect(json.trial).toBeTruthy();
-    expect(json.trial.isActive).toBe(true);
-    expect(json.orgId).toBe('new-org');
+    expect(res.status).toBe(503);
+    expect(json.error).toBe('Payment system not configured');
   });
 
   it('returns 403 when user is only a member (not owner/admin) of existing org', async () => {
@@ -159,7 +131,7 @@ describe('POST /api/trial/start', () => {
     mockGetDb.mockReturnValue(db);
     mockCanStartTrial.mockResolvedValue({ eligible: true });
     mockGetUserOrg.mockResolvedValue({
-      org: { id: 'existing-org', subscriptionStatus: 'none' },
+      org: { id: 'existing-org', subscriptionStatus: 'none', stripeCustomerId: null },
       role: 'member',
     });
 
@@ -170,193 +142,131 @@ describe('POST /api/trial/start', () => {
     expect(json.error).toContain('Only org owners');
   });
 
-  it('updates existing org with trial dates when user has org', async () => {
+  it('creates Stripe customer and checkout session for user without org', async () => {
     const db = createMockDb();
     mockGetUser.mockResolvedValue(FAKE_USER);
     mockGetDb.mockReturnValue(db);
     mockCanStartTrial.mockResolvedValue({ eligible: true });
-    mockGetUserOrg.mockResolvedValue({
-      org: { id: 'existing-org', subscriptionStatus: 'none' },
-      role: 'owner',
+    mockGetUserOrg.mockResolvedValue(null);
+
+    // Stripe customer creation
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ id: 'cus_test123' }),
     });
-    mockGetTrialStatus.mockResolvedValue({
-      isActive: true, daysRemaining: 30,
-      assessmentsUsed: 0, assessmentsLimit: 1,
-      invitesUsed: 0, invitesLimit: 3,
+    // Stripe checkout session creation
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ url: 'https://checkout.stripe.com/test-session' }),
     });
 
     const res = await onRequestPost(makeContext());
     const json = await res.json();
 
-    expect(res.status).toBe(201);
-    expect(json.trial.isActive).toBe(true);
-    expect(json.orgId).toBe('existing-org');
+    expect(res.status).toBe(200);
+    expect(json.url).toBe('https://checkout.stripe.com/test-session');
+
+    // Verify Stripe customer creation
+    expect(mockFetch).toHaveBeenCalledTimes(2);
+    const custCall = mockFetch.mock.calls[0];
+    expect(custCall[0]).toBe('https://api.stripe.com/v1/customers');
+
+    // Verify checkout session params include trial_period_days and trial_subscription type
+    const sessionCall = mockFetch.mock.calls[1];
+    expect(sessionCall[0]).toBe('https://api.stripe.com/v1/checkout/sessions');
+    const body = sessionCall[1].body;
+    expect(body).toContain('trial_period_days');
+    expect(body).toContain('trial_subscription');
+    expect(body).not.toContain('orgId'); // No org yet
   });
 
-  // ── Email notification tests ──────────────────────────────────────
-
-  it('sends admin notification email on successful trial start', async () => {
+  it('reuses existing Stripe customer for user with org', async () => {
     const db = createMockDb();
     mockGetUser.mockResolvedValue(FAKE_USER);
     mockGetDb.mockReturnValue(db);
     mockCanStartTrial.mockResolvedValue({ eligible: true });
-    mockGetUserOrg
-      .mockResolvedValueOnce(null)
-      .mockResolvedValueOnce({ org: { id: 'new-org', name: 'Company Team' }, role: 'owner' });
-    mockGetTrialStatus.mockResolvedValue({
-      isActive: true, daysRemaining: 30,
-      assessmentsUsed: 0, assessmentsLimit: 1,
-      invitesUsed: 0, invitesLimit: 3,
+    mockGetUserOrg.mockResolvedValue({
+      org: { id: 'existing-org', name: 'Acme Team', subscriptionStatus: 'none', stripeCustomerId: 'cus_existing' },
+      role: 'owner',
+    });
+
+    // Only checkout session creation (customer already exists)
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ url: 'https://checkout.stripe.com/test-session' }),
     });
 
     const res = await onRequestPost(makeContext());
-    expect(res.status).toBe(201);
+    const json = await res.json();
 
-    await vi.waitFor(() => {
-      expect(mockTrialStartNotificationEmail).toHaveBeenCalledWith(
-        expect.objectContaining({
-          userName: 'Test User',
-          userEmail: 'test@company.com',
-          provider: 'github',
-        }),
-      );
-      expect(mockSendEmail).toHaveBeenCalledWith(
-        expect.anything(),
-        expect.objectContaining({
-          to: 'israel@ruwt.dev',
-          subject: 'New teams trial: Test User started a trial',
-        }),
-      );
-    });
+    expect(res.status).toBe(200);
+    expect(json.url).toBe('https://checkout.stripe.com/test-session');
+
+    // Should only call Stripe once (checkout session, not customer creation)
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+    const body = mockFetch.mock.calls[0][1].body;
+    expect(body).toContain('orgId');
+    expect(body).toContain('existing-org');
   });
 
-  it('sends user welcome email on successful trial start', async () => {
+  it('returns 502 when Stripe customer creation fails', async () => {
     const db = createMockDb();
     mockGetUser.mockResolvedValue(FAKE_USER);
     mockGetDb.mockReturnValue(db);
     mockCanStartTrial.mockResolvedValue({ eligible: true });
-    mockGetUserOrg
-      .mockResolvedValueOnce(null)
-      .mockResolvedValueOnce({ org: { id: 'new-org', name: 'Company Team' }, role: 'owner' });
-    mockGetTrialStatus.mockResolvedValue({
-      isActive: true, daysRemaining: 30,
-      assessmentsUsed: 0, assessmentsLimit: 1,
-      invitesUsed: 0, invitesLimit: 3,
+    mockGetUserOrg.mockResolvedValue(null);
+
+    mockFetch.mockResolvedValueOnce({
+      ok: false,
+      text: async () => 'Stripe error',
     });
 
     const res = await onRequestPost(makeContext());
-    expect(res.status).toBe(201);
+    const json = await res.json();
 
-    await vi.waitFor(() => {
-      expect(mockTrialWelcomeEmail).toHaveBeenCalledWith(
-        expect.objectContaining({
-          name: 'Test',
-          assessmentLimit: 1,
-          inviteLimit: 3,
-        }),
-      );
-      expect(mockSendEmail).toHaveBeenCalledWith(
-        expect.anything(),
-        expect.objectContaining({
-          to: 'test@company.com',
-          subject: 'Your 30-day trial is active',
-        }),
-      );
-    });
+    expect(res.status).toBe(502);
+    expect(json.error).toBe('Failed to create billing account');
   });
 
-  it('org name uses "My Team" for personal email domains', async () => {
-    const db = createMockDb();
-    mockGetUser.mockResolvedValue({ ...FAKE_USER, email: 'someone@gmail.com' });
-    mockGetDb.mockReturnValue(db);
-    mockCanStartTrial.mockResolvedValue({ eligible: true });
-    mockGetUserOrg
-      .mockResolvedValueOnce(null)
-      .mockResolvedValueOnce({ org: { id: 'new-org', name: 'My Team' }, role: 'owner' });
-    mockGetTrialStatus.mockResolvedValue({
-      isActive: true, daysRemaining: 30,
-      assessmentsUsed: 0, assessmentsLimit: 1,
-      invitesUsed: 0, invitesLimit: 3,
-    });
-
-    const res = await onRequestPost(makeContext());
-    expect(res.status).toBe(201);
-
-    await vi.waitFor(() => {
-      expect(mockTrialStartNotificationEmail).toHaveBeenCalledWith(
-        expect.objectContaining({ orgName: 'My Team' }),
-      );
-    });
-  });
-
-  it('org name derives from work email domain', async () => {
-    const db = createMockDb();
-    mockGetUser.mockResolvedValue({ ...FAKE_USER, email: 'hire@acme.com' });
-    mockGetDb.mockReturnValue(db);
-    mockCanStartTrial.mockResolvedValue({ eligible: true });
-    mockGetUserOrg
-      .mockResolvedValueOnce(null)
-      .mockResolvedValueOnce({ org: { id: 'new-org', name: 'Acme Team' }, role: 'owner' });
-    mockGetTrialStatus.mockResolvedValue({
-      isActive: true, daysRemaining: 30,
-      assessmentsUsed: 0, assessmentsLimit: 1,
-      invitesUsed: 0, invitesLimit: 3,
-    });
-
-    const res = await onRequestPost(makeContext());
-    expect(res.status).toBe(201);
-
-    await vi.waitFor(() => {
-      expect(mockTrialStartNotificationEmail).toHaveBeenCalledWith(
-        expect.objectContaining({ orgName: 'Acme Team' }),
-      );
-    });
-  });
-
-  it('emails are logged to newsletter_logs', async () => {
+  it('returns 502 when Stripe checkout session creation fails', async () => {
     const db = createMockDb();
     mockGetUser.mockResolvedValue(FAKE_USER);
     mockGetDb.mockReturnValue(db);
     mockCanStartTrial.mockResolvedValue({ eligible: true });
-    mockGetUserOrg
-      .mockResolvedValueOnce(null)
-      .mockResolvedValueOnce({ org: { id: 'new-org', name: 'Company Team' }, role: 'owner' });
-    mockGetTrialStatus.mockResolvedValue({
-      isActive: true, daysRemaining: 30,
-      assessmentsUsed: 0, assessmentsLimit: 1,
-      invitesUsed: 0, invitesLimit: 3,
+    mockGetUserOrg.mockResolvedValue(null);
+
+    // Customer creation succeeds
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ id: 'cus_test123' }),
+    });
+    // Checkout session fails
+    mockFetch.mockResolvedValueOnce({
+      ok: false,
+      text: async () => 'Stripe session error',
     });
 
     const res = await onRequestPost(makeContext());
-    expect(res.status).toBe(201);
+    const json = await res.json();
 
-    // Wait for fire-and-forget email promises to settle
-    await vi.waitFor(() => {
-      // db.run is used for raw SQL newsletter_logs inserts
-      expect(db.run).toHaveBeenCalled();
-    });
+    expect(res.status).toBe(502);
+    expect(json.error).toBe('Failed to create checkout session');
+  });
+});
+
+describe('deriveOrgName', () => {
+  it('returns "My Team" for personal email domains', () => {
+    expect(deriveOrgName('someone@gmail.com')).toBe('My Team');
+    expect(deriveOrgName('test@hotmail.com')).toBe('My Team');
+    expect(deriveOrgName('user@protonmail.com')).toBe('My Team');
   });
 
-  it('does not send emails when RESEND_API_KEY is missing', async () => {
-    const db = createMockDb();
-    mockGetUser.mockResolvedValue(FAKE_USER);
-    mockGetDb.mockReturnValue(db);
-    mockCanStartTrial.mockResolvedValue({ eligible: true });
-    mockGetUserOrg
-      .mockResolvedValueOnce(null)
-      .mockResolvedValueOnce({ org: { id: 'new-org', name: 'Company Team' }, role: 'owner' });
-    mockGetTrialStatus.mockResolvedValue({
-      isActive: true, daysRemaining: 30,
-      assessmentsUsed: 0, assessmentsLimit: 1,
-      invitesUsed: 0, invitesLimit: 3,
-    });
+  it('derives org name from work email domain', () => {
+    expect(deriveOrgName('hire@acme.com')).toBe('Acme Team');
+    expect(deriveOrgName('test@company.com')).toBe('Company Team');
+  });
 
-    // Pass env without RESEND_API_KEY
-    const res = await onRequestPost(makeContext({ RESEND_API_KEY: undefined as any }));
-    expect(res.status).toBe(201);
-
-    expect(mockSendEmail).not.toHaveBeenCalled();
-    expect(mockTrialStartNotificationEmail).not.toHaveBeenCalled();
-    expect(mockTrialWelcomeEmail).not.toHaveBeenCalled();
+  it('returns "My Team" for invalid emails', () => {
+    expect(deriveOrgName('noemail')).toBe('My Team');
   });
 });

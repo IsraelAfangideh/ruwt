@@ -122,7 +122,27 @@ export function OrgManagementScreen() {
 
   useEffect(() => {
     if (authLoading || !user) return;
-    fetchOrg().finally(() => setDataLoading(false));
+    // After Stripe checkout redirect, the webhook may not have fired yet — poll briefly
+    const params = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+    const isTrialReturn = params?.get('trial_started') === 'true';
+    if (isTrialReturn) {
+      let attempts = 0;
+      const poll = async () => {
+        await fetchOrg();
+        attempts++;
+        if (!org && attempts < 5) setTimeout(poll, 2000);
+        else setDataLoading(false);
+      };
+      poll();
+      // Clean up URL param
+      if (typeof window !== 'undefined') {
+        const clean = new URL(window.location.href);
+        clean.searchParams.delete('trial_started');
+        window.history.replaceState({}, '', clean.pathname + clean.search);
+      }
+    } else {
+      fetchOrg().finally(() => setDataLoading(false));
+    }
   }, [authLoading, user, fetchOrg]);
 
   const handleCreateOrg = useCallback(async () => {
@@ -346,6 +366,41 @@ export function OrgManagementScreen() {
                   }}
                 >
                   {billingLoading ? 'Loading…' : 'Update Payment'}
+                </Button>
+              </>
+            ) : org.subscriptionStatus === 'trialing' && trial && trial.isActive ? (
+              <>
+                <Badge variant="default" style={{ backgroundColor: '#c9a962' }}>
+                  {}
+                  <Text style={{ fontSize: 11, color: '#1a1816', fontWeight: '600' }}>
+                    Free Trial — {trial.daysRemaining} day{/* istanbul ignore next -- @preserve */ trial.daysRemaining !== 1 ? 's' : ''} left
+                  </Text>
+                </Badge>
+                <Text style={[styles.creditsLabel, { color: c.textMuted }]}>
+                  {trial.assessmentsUsed}/{trial.assessmentsLimit} assessments | {trial.invitesUsed}/{trial.invitesLimit} invites
+                </Text>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={billingLoading}
+                  onPress={async () => {
+                    setBillingLoading(true);
+                    try {
+                      const res = await fetch('/api/billing/portal', { method: 'POST' });
+                      const data = await res.json() as { url?: string; error?: string };
+                      if (data.url) {
+                        window.location.href = data.url;
+                        return;
+                      }
+                      /* istanbul ignore next -- @preserve */
+                      showToast(data.error ?? 'Failed to open billing portal', 'error');
+                    } catch {
+                      showToast('Failed to open billing portal', 'error');
+                    }
+                    setBillingLoading(false);
+                  }}
+                >
+                  {billingLoading ? 'Loading…' : 'Manage Billing'}
                 </Button>
               </>
             ) : trial && trial.isActive ? (
