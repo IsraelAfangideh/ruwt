@@ -71,6 +71,24 @@ describe('checkRateLimit', () => {
     expect(result.allowed).toBe(true);
   });
 
+  it('uses execute tier (15 req/60s) for /api/execute', async () => {
+    mockDb = { prepare: makePrepare(14) };
+
+    const result = await checkRateLimit(mockDb as unknown as D1Database, 'ip:1.2.3.4', '/api/execute');
+
+    expect(result.allowed).toBe(true);
+  });
+
+  it('denies request when count reaches limit for /api/execute (15 req/60s)', async () => {
+    const now = Math.floor(Date.now() / 1000);
+    mockDb = { prepare: makePrepare(15, now - 30) };
+
+    const result = await checkRateLimit(mockDb as unknown as D1Database, 'ip:1.2.3.4', '/api/execute');
+
+    expect(result.allowed).toBe(false);
+    expect(result.retryAfter).toBeGreaterThanOrEqual(1);
+  });
+
   it('uses default tier (60 req/60s) for unmatched /api/ routes', async () => {
     mockDb = { prepare: makePrepare(59) };
 

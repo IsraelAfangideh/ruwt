@@ -154,12 +154,11 @@ export function ArenaScreen() {
   const params = (route.params || {}) as { challengeId?: string };
   const challengeId = params.challengeId ?? '';
 
-  // Redirect unauthenticated users to guest mode instead of login
   useEffect(() => {
     if (!authLoading && !user) {
       resetNavigation(navigation, [{ name: 'GuestArena', params: { challengeId } }]);
     }
-  }, [authLoading, user, navigation, challengeId]);
+  }, [authLoading, user, challengeId]);
 
   const [challenge, setChallenge] = useState<ArenaChallenge | null>(null);
   const [attempt, setAttempt] = useState<ArenaAttempt | null>(null);

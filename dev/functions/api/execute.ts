@@ -26,9 +26,6 @@ const executeSchema = z.object({
 
 export const onRequestPost: PagesFunction<Env> = async (context) => {
   const user = await getUser(context.request, context.env);
-  if (!user) {
-    return Response.json({ error: 'Unauthorized' }, { status: 401 });
-  }
 
   const execUrl = getPistonUrl(context.env);
 
@@ -63,7 +60,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     logError(context.env.DB, context.env, {
       endpoint: '/api/execute',
       method: 'POST',
-      userId: user.id,
+      userId: user?.id ?? 'anonymous',
       errorMessage: error.message,
       errorStack: error.stack,
       level: 'error',

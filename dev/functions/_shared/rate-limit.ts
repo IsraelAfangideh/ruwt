@@ -53,6 +53,12 @@ const TIERS: RateLimitTier[] = [
     windowSeconds: 60,
   },
   {
+    // Code execution — stricter limit (guests use IP-keyed limiting)
+    routes: ['/api/execute'],
+    limit: 15,
+    windowSeconds: 60,
+  },
+  {
     // Public read endpoints — keyed by IP, not user
     routes: ['/api/challenges', '/api/leaderboard', '/api/users/'],
     limit: 30,
