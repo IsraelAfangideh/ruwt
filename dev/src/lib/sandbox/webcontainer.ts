@@ -1,8 +1,9 @@
 import { WebContainer } from '@webcontainer/api';
 import type { FileSystemTree } from '@webcontainer/api';
 
-// stackblitz.com/headless returns 404 — StackBlitz moved to this endpoint
-(globalThis as any).WEBCONTAINER_API_IFRAME_URL = 'https://w-corp-production.stackblitz.io';
+// stackblitz.com/headless 404s; w-corp-production returns unauthenticated runtime.
+// w.stackblitz.io serves the authenticated runtime with binary blob URL.
+(globalThis as any).WEBCONTAINER_API_IFRAME_URL = 'https://w.stackblitz.io';
 
 let instance: WebContainer | null = null;
 let booting: Promise<WebContainer> | null = null;
@@ -14,7 +15,7 @@ export async function getWebContainer(): Promise<WebContainer> {
   if (instance) return instance;
   if (booting) return booting;
   booting = Promise.race([
-    WebContainer.boot(),
+    WebContainer.boot({ coep: 'credentialless' }),
     new Promise<never>((_, reject) =>
       setTimeout(() => reject(new Error('WebContainer boot timed out — check your network connection and try refreshing.')), BOOT_TIMEOUT_MS),
     ),

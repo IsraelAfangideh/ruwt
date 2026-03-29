@@ -20,9 +20,9 @@
 # COOP/COEP for SharedArrayBuffer (required by WebContainer).
 # credentialless allows cross-origin iframes without CORP headers.
 /ide/*
-  Cross-Origin-Embedder-Policy: require-corp
+  Cross-Origin-Embedder-Policy: credentialless
   Cross-Origin-Opener-Policy: same-origin
 
 /arena/*
-  Cross-Origin-Embedder-Policy: require-corp
+  Cross-Origin-Embedder-Policy: credentialless
   Cross-Origin-Opener-Policy: same-origin
