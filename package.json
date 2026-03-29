@@ -2,22 +2,18 @@
   "name": "ruwt",
   "version": "0.0.0",
   "private": true,
-  "workspaces": [
-    "dev",
-    "health"
-  ],
   "scripts": {
-    "dev:dev": "npm run dev --workspace=dev",
-    "dev:health": "npm run dev --workspace=ruwt-health",
-    "build:dev": "npm run build --workspace=dev",
-    "build:health": "npm run build --workspace=ruwt-health",
-    "test:dev": "npm run test --workspace=dev",
-    "lint:dev": "npm run lint --workspace=dev",
-    "lint:health": "npm run lint --workspace=ruwt-health",
-    "lint": "npm run lint --workspaces --if-present",
-    "test": "npm run test --workspaces --if-present",
-    "build": "npm run build --workspaces --if-present",
-    "typecheck": "npm run typecheck --workspaces --if-present"
+    "dev:dev": "npm --prefix dev run dev",
+    "dev:health": "npm --prefix health run dev",
+    "build:dev": "npm --prefix dev run build",
+    "build:health": "npm --prefix health run build",
+    "test:dev": "npm --prefix dev run test",
+    "lint:dev": "npm --prefix dev run lint",
+    "lint:health": "npm --prefix health run lint",
+    "lint": "npm --prefix dev run lint && npm --prefix health run lint",
+    "test": "npm --prefix dev run test",
+    "build": "npm --prefix dev run build && npm --prefix health run build",
+    "typecheck": "npm --prefix dev run typecheck && npm --prefix health run typecheck"
   },
   "engines": {
     "node": ">=20"
