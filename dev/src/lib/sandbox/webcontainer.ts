@@ -14,7 +14,7 @@ export async function getWebContainer(): Promise<WebContainer> {
   if (instance) return instance;
   if (booting) return booting;
   booting = Promise.race([
-    WebContainer.boot(),
+    WebContainer.boot({ coep: 'credentialless' }),
     new Promise<never>((_, reject) =>
       setTimeout(() => reject(new Error('WebContainer boot timed out — check your network connection and try refreshing.')), BOOT_TIMEOUT_MS),
     ),
