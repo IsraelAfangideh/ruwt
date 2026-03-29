@@ -1,14 +1,24 @@
 import { WebContainer } from '@webcontainer/api';
 import type { FileSystemTree } from '@webcontainer/api';
 
+// stackblitz.com/headless 404s — use the working corp-production endpoint
+(globalThis as any).WEBCONTAINER_API_IFRAME_URL = 'https://w-corp-production.stackblitz.io';
+
 let instance: WebContainer | null = null;
 let booting: Promise<WebContainer> | null = null;
+
+const BOOT_TIMEOUT_MS = 30_000;
 
 /** Get or boot the singleton WebContainer instance */
 export async function getWebContainer(): Promise<WebContainer> {
   if (instance) return instance;
   if (booting) return booting;
-  booting = WebContainer.boot();
+  booting = Promise.race([
+    WebContainer.boot(),
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('WebContainer boot timed out — check your network connection and try refreshing.')), BOOT_TIMEOUT_MS),
+    ),
+  ]);
   instance = await booting;
   booting = null;
   return instance;
