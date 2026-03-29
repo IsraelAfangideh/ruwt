@@ -1,8 +1,7 @@
 import { WebContainer } from '@webcontainer/api';
 import type { FileSystemTree } from '@webcontainer/api';
 
-// stackblitz.com/headless 404s — use the working corp-production endpoint
-(globalThis as any).WEBCONTAINER_API_IFRAME_URL = 'https://w-corp-production.stackblitz.io';
+// Use default stackblitz.com origin — require-corp COEP mode per official docs
 
 let instance: WebContainer | null = null;
 let booting: Promise<WebContainer> | null = null;
@@ -14,7 +13,7 @@ export async function getWebContainer(): Promise<WebContainer> {
   if (instance) return instance;
   if (booting) return booting;
   booting = Promise.race([
-    WebContainer.boot({ coep: 'credentialless' }),
+    WebContainer.boot(),
     new Promise<never>((_, reject) =>
       setTimeout(() => reject(new Error('WebContainer boot timed out — check your network connection and try refreshing.')), BOOT_TIMEOUT_MS),
     ),
