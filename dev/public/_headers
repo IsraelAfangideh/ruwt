@@ -17,13 +17,6 @@
 /favicon.ico
   Cache-Control: public, max-age=31536000, immutable
 
-# COOP/COEP headers for WebContainer (requires SharedArrayBuffer).
-# credentialless allows cross-origin resources without CORP headers (unlike require-corp).
-# Scoped to /ide/* and /arena/* so OAuth callback at /callback keeps working.
-/ide/*
-  Cross-Origin-Embedder-Policy: credentialless
-  Cross-Origin-Opener-Policy: same-origin
-
-/arena/*
-  Cross-Origin-Embedder-Policy: credentialless
-  Cross-Origin-Opener-Policy: same-origin
+# COOP/COEP removed — WebContainer handles cross-origin isolation internally
+# via iframe allow="cross-origin-isolated" attribute.
+# Having page-level COEP blocks the StackBlitz iframe from loading.
