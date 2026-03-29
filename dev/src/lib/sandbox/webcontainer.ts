@@ -1,7 +1,8 @@
 import { WebContainer } from '@webcontainer/api';
 import type { FileSystemTree } from '@webcontainer/api';
 
-// Use default stackblitz.com origin — require-corp COEP mode per official docs
+// stackblitz.com/headless returns 404 — StackBlitz moved to this endpoint
+(globalThis as any).WEBCONTAINER_API_IFRAME_URL = 'https://w-corp-production.stackblitz.io';
 
 let instance: WebContainer | null = null;
 let booting: Promise<WebContainer> | null = null;
