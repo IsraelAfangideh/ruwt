@@ -4,8 +4,8 @@
  */
 import { eq } from 'drizzle-orm';
 import { z } from 'zod';
-import { getDb } from '../_shared/db';
-import { getUser } from '../_shared/auth';
+import { getDb } from '../_shared/infra/db';
+import { getUser } from '../_shared/infra/auth';
 import { getUserOrg, getTrialStatus, canStartTrial } from '../_shared/org';
 import { ensureProfile } from '../_shared/ensure-profile';
 import { profiles } from '../../drizzle/schema.d1';

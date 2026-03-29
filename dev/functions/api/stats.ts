@@ -4,9 +4,9 @@
  * Returns challenge count, solve count, and average solve cost (no raw user count).
  */
 import { sql } from 'drizzle-orm';
-import { getDb } from '../_shared/db';
+import { getDb } from '../_shared/infra/db';
 import { profiles, attempts, challenges } from '../../drizzle/schema.d1';
-import { withCache } from '../_shared/cache';
+import { withCache } from '../_shared/infra/cache';
 
 export async function onRequestGet(context: { env: Env; request: Request }) {
   return withCache(context.request, 300, async () => {

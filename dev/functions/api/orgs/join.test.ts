@@ -11,8 +11,8 @@ const { mockGetUser, mockGetDb } = vi.hoisted(() => ({
   mockGetDb: vi.fn(),
 }));
 
-vi.mock('../../_shared/auth', () => ({ getUser: mockGetUser }));
-vi.mock('../../_shared/db', () => ({ getDb: mockGetDb }));
+vi.mock('../../_shared/infra/auth', () => ({ getUser: mockGetUser }));
+vi.mock('../../_shared/infra/db', () => ({ getDb: mockGetDb }));
 vi.mock('../../../drizzle/schema.d1', () => ({
   organizations: { id: 'id', name: 'name' },
   orgMembers: { id: 'id', orgId: 'org_id', userId: 'user_id', role: 'role' },

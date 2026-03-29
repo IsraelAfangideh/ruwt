@@ -11,8 +11,8 @@ const { mockGetDb, mockGetModelPricing } = vi.hoisted(() => ({
   mockGetModelPricing: vi.fn(),
 }));
 
-vi.mock('../../_shared/db', () => ({ getDb: mockGetDb }));
-vi.mock('../../_shared/ai-pricing', () => ({ getModelPricing: mockGetModelPricing }));
+vi.mock('../../_shared/infra/db', () => ({ getDb: mockGetDb }));
+vi.mock('../../_shared/ai/ai-pricing', () => ({ getModelPricing: mockGetModelPricing }));
 
 import { onRequestGet } from './[id]';
 

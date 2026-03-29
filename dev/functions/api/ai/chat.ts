@@ -4,12 +4,12 @@
  */
 import { eq, sql } from 'drizzle-orm';
 import { z } from 'zod';
-import { getDb } from '../../_shared/db';
-import { getUser } from '../../_shared/auth';
-import { validateConstraints, checkPreCallConstraints } from '../../_shared/constraints';
-import { getModelPricing, calculateCost, countMessageTokens } from '../../_shared/ai-pricing';
-import { streamCloudflareAIWithFallback, ModelUnavailableError } from '../../_shared/ai-stream';
-import { logError } from '../../_shared/error-monitor';
+import { getDb } from '../../_shared/infra/db';
+import { getUser } from '../../_shared/infra/auth';
+import { validateConstraints, checkPreCallConstraints } from '../../_shared/scoring/constraints';
+import { getModelPricing, calculateCost, countMessageTokens } from '../../_shared/ai/ai-pricing';
+import { streamCloudflareAIWithFallback, ModelUnavailableError } from '../../_shared/ai/ai-stream';
+import { logError } from '../../_shared/infra/error-monitor';
 import { profiles, attempts, aiCalls, attemptMessages } from '../../../drizzle/schema.d1';
 
 const EMPTY_RESPONSE_MSG = 'The model returned an empty response. It may be temporarily overloaded — try again or switch to a different model.';

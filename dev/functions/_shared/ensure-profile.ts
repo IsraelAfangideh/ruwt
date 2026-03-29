@@ -5,7 +5,7 @@
  * Safe to call multiple times (uses onConflictDoNothing).
  */
 import type { User } from '@supabase/supabase-js';
-import type { Db } from './db';
+import type { Db } from './infra/db';
 import { profiles, transactions, notifications, newsletterLogs } from '../../drizzle/schema.d1';
 import { sendEmail } from './newsletter/resend';
 import { welcomeEmail, newSignupNotificationEmail } from './email/templates';

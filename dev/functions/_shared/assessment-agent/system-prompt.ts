@@ -7,7 +7,7 @@
  * (passed in the API request body, not embedded in the prompt).
  */
 
-import type { ToolDefinition } from '../ai-stream';
+import type { ToolDefinition } from '../ai/ai-stream';
 
 interface CatalogEntry {
   id: string;

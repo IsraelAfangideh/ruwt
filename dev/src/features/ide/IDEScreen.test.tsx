@@ -37,7 +37,7 @@ let mockLayoutReturn: any = {
   setResultsDock: vi.fn(),
   setActiveBottomTab: vi.fn(),
 };
-vi.mock('@/features/shared-ide/useIDELayout', () => ({
+vi.mock('@/features/shared-ide/hooks/useIDELayout', () => ({
   useIDELayout: () => mockLayoutReturn,
 }));
 // PanelResizeBar no longer used — IDEScreen renders plain div dividers directly

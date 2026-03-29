@@ -6,8 +6,8 @@
  */
 import { eq, and } from 'drizzle-orm';
 import { z } from 'zod';
-import { getDb } from '../../../_shared/db';
-import { getUser } from '../../../_shared/auth';
+import { getDb } from '../../../_shared/infra/db';
+import { getUser } from '../../../_shared/infra/auth';
 import { requireOrgAccess, getUserOrgRole } from '../../../_shared/org';
 import { orgMembers, profiles } from '../../../../drizzle/schema.d1';
 

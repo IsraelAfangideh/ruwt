@@ -4,7 +4,7 @@ const { mockSendEmail } = vi.hoisted(() => ({
   mockSendEmail: vi.fn().mockResolvedValue({ success: true, id: 'r-1' }),
 }));
 
-vi.mock('./newsletter/resend', () => ({ sendEmail: mockSendEmail }));
+vi.mock('../newsletter/resend', () => ({ sendEmail: mockSendEmail }));
 
 import { sendMilestoneEmail } from './milestone-email';
 

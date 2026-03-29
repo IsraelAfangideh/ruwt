@@ -1,0 +1,25 @@
+{
+  "name": "ruwt",
+  "version": "0.0.0",
+  "private": true,
+  "workspaces": [
+    "dev",
+    "health"
+  ],
+  "scripts": {
+    "dev:dev": "npm run dev --workspace=dev",
+    "dev:health": "npm run dev --workspace=ruwt-health",
+    "build:dev": "npm run build --workspace=dev",
+    "build:health": "npm run build --workspace=ruwt-health",
+    "test:dev": "npm run test --workspace=dev",
+    "lint:dev": "npm run lint --workspace=dev",
+    "lint:health": "npm run lint --workspace=ruwt-health",
+    "lint": "npm run lint --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "build": "npm run build --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

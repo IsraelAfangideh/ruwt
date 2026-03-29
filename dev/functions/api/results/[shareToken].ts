@@ -4,7 +4,7 @@
  * Returns assessment session results for sharing.
  */
 import { eq, asc } from 'drizzle-orm';
-import { getDb } from '../../_shared/db';
+import { getDb } from '../../_shared/infra/db';
 import {
   assessmentSessions,
   assessments,

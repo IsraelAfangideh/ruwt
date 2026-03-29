@@ -5,8 +5,8 @@
  */
 import { eq, and, sql } from 'drizzle-orm';
 import { z } from 'zod';
-import { getDb } from '../../../../_shared/db';
-import { getUser } from '../../../../_shared/auth';
+import { getDb } from '../../../../_shared/infra/db';
+import { getUser } from '../../../../_shared/infra/auth';
 import { canManageAssessment, getUserOrg, hasActiveSubscription } from '../../../../_shared/org';
 import { sendEmail } from '../../../../_shared/newsletter/resend';
 import { candidateInviteEmail } from '../../../../_shared/email/templates';

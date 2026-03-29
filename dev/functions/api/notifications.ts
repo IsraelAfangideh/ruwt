@@ -5,8 +5,8 @@
  *   Body: { action: 'mark_read', ids: string[] } or { action: 'mark_all_read' }.
  */
 import { eq, and, desc, sql, inArray } from 'drizzle-orm';
-import { getDb } from '../_shared/db';
-import { getUser } from '../_shared/auth';
+import { getDb } from '../_shared/infra/db';
+import { getUser } from '../_shared/infra/auth';
 import { ensureProfile } from '../_shared/ensure-profile';
 import { notifications } from '../../drizzle/schema.d1';
 

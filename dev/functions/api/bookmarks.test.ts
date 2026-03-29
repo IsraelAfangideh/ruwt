@@ -5,8 +5,8 @@ import { onRequestGet, onRequestPost } from './bookmarks';
 // Mocks
 // ---------------------------------------------------------------------------
 
-vi.mock('../_shared/auth', () => ({ getUser: vi.fn() }));
-vi.mock('../_shared/db', () => ({ getDb: vi.fn() }));
+vi.mock('../_shared/infra/auth', () => ({ getUser: vi.fn() }));
+vi.mock('../_shared/infra/db', () => ({ getDb: vi.fn() }));
 vi.mock('../_shared/ensure-profile', () => ({ ensureProfile: vi.fn() }));
 vi.mock('../../drizzle/schema.d1', () => ({
   bookmarks: { id: 'id', userId: 'user_id', targetType: 'target_type', targetId: 'target_id', createdAt: 'created_at' },
@@ -15,8 +15,8 @@ vi.mock('../../drizzle/schema.d1', () => ({
   profiles: {},
 }));
 
-import { getUser } from '../_shared/auth';
-import { getDb } from '../_shared/db';
+import { getUser } from '../_shared/infra/auth';
+import { getDb } from '../_shared/infra/db';
 
 // ---------------------------------------------------------------------------
 // Helpers

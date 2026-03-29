@@ -3,8 +3,8 @@
  * Create a Stripe Checkout Session for credit purchase or subscription.
  */
 import { eq } from 'drizzle-orm';
-import { getUser } from '../_shared/auth';
-import { getDb } from '../_shared/db';
+import { getUser } from '../_shared/infra/auth';
+import { getDb } from '../_shared/infra/db';
 import { getUserOrg } from '../_shared/org';
 import { organizations } from '../../drizzle/schema.d1';
 

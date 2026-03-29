@@ -1,0 +1,10 @@
+node_modules
+dist
+build
+coverage
+.next
+*.min.js
+*.min.css
+drizzle/migrations*
+social/code/mobile/ios
+social/code/mobile/android

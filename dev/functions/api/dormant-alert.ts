@@ -5,7 +5,7 @@
  * Secured with CRON_SECRET. Called by GitHub Actions daily at 9 AM UTC.
  */
 import { sql } from 'drizzle-orm';
-import { getDb } from '../_shared/db';
+import { getDb } from '../_shared/infra/db';
 import { sendEmail } from '../_shared/newsletter/resend';
 
 export async function onRequestPost(context: { request: Request; env: Env }) {

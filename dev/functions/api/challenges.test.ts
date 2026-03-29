@@ -8,7 +8,7 @@ const { mockGetUser } = vi.hoisted(() => ({
   mockGetUser: vi.fn(),
 }));
 
-vi.mock('../_shared/auth', () => ({
+vi.mock('../_shared/infra/auth', () => ({
   getUser: mockGetUser,
 }));
 
@@ -39,7 +39,7 @@ function resetMockDb() {
   });
 }
 
-vi.mock('../_shared/db', () => ({
+vi.mock('../_shared/infra/db', () => ({
   getDb: () => mockDb,
 }));
 

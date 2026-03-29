@@ -20,7 +20,7 @@ const {
   mockGetSmartRecommendations: vi.fn().mockResolvedValue([]),
 }));
 
-vi.mock('../../_shared/db', () => ({ getDb: mockGetDb }));
+vi.mock('../../_shared/infra/db', () => ({ getDb: mockGetDb }));
 vi.mock('../../_shared/newsletter/resend', () => ({ sendEmail: mockSendEmail }));
 vi.mock('../../_shared/newsletter/content', () => ({
   getPlatformActivity: mockGetPlatformActivity,
@@ -33,8 +33,8 @@ vi.mock('../../_shared/newsletter/template', () => ({
   buildWeeklyHtml: mockBuildWeeklyHtml,
   buildWeeklyText: mockBuildWeeklyText,
 }));
-vi.mock('../../_shared/rivals', () => ({ getRivals: mockGetRivals }));
-vi.mock('../../_shared/recommendations', () => ({ getSmartRecommendations: mockGetSmartRecommendations }));
+vi.mock('../../_shared/scoring/rivals', () => ({ getRivals: mockGetRivals }));
+vi.mock('../../_shared/scoring/recommendations', () => ({ getSmartRecommendations: mockGetSmartRecommendations }));
 
 import { onRequestPost } from './send';
 

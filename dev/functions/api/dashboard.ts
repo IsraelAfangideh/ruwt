@@ -13,10 +13,10 @@
  *   - heatmap: last 90 days of solve counts per day
  */
 import { eq, and, desc, sql, gte } from 'drizzle-orm';
-import { getDb } from '../_shared/db';
-import { getUser } from '../_shared/auth';
+import { getDb } from '../_shared/infra/db';
+import { getUser } from '../_shared/infra/auth';
 import { ensureProfile } from '../_shared/ensure-profile';
-import { computeAFI, computeRadarFromCosts, determineCertification } from '../_shared/scoring';
+import { computeAFI, computeRadarFromCosts, determineCertification } from '../_shared/scoring/scoring';
 import {
   profiles,
   attempts,

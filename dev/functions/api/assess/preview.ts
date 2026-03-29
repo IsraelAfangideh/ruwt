@@ -5,7 +5,7 @@
  * Does NOT create a session or modify any state.
  */
 import { eq } from 'drizzle-orm';
-import { getDb } from '../../_shared/db';
+import { getDb } from '../../_shared/infra/db';
 import {
   assessments,
   assessmentInvites,

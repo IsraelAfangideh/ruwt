@@ -3,7 +3,7 @@
  * difficulty progression, and success patterns.
  */
 import { sql } from 'drizzle-orm';
-import type { Db } from './db';
+import type { Db } from '../infra/db';
 
 export interface SmartRecommendation {
   id: string;

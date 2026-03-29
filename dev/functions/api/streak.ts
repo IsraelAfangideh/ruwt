@@ -4,11 +4,11 @@
  *   Body: { action: 'buy_freeze' }
  */
 import { eq } from 'drizzle-orm';
-import { getDb } from '../_shared/db';
-import { getUser } from '../_shared/auth';
+import { getDb } from '../_shared/infra/db';
+import { getUser } from '../_shared/infra/auth';
 import { ensureProfile } from '../_shared/ensure-profile';
 import { profiles } from '../../drizzle/schema.d1';
-import { buyStreakFreeze, STREAK_FREEZE_COST } from '../_shared/streaks';
+import { buyStreakFreeze, STREAK_FREEZE_COST } from '../_shared/scoring/streaks';
 
 export async function onRequestGet(context: { request: Request; env: Env; waitUntil?: (p: Promise<unknown>) => void }) {
   try {

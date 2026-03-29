@@ -4,10 +4,10 @@
  * Public challenges: no auth. Custom challenges (custom-*): auth + org membership.
  */
 import { eq, sql } from 'drizzle-orm';
-import { getDb } from '../../_shared/db';
+import { getDb } from '../../_shared/infra/db';
 import { challenges, attempts, customChallenges } from '../../../drizzle/schema.d1';
-import { withCache } from '../../_shared/cache';
-import { getUser } from '../../_shared/auth';
+import { withCache } from '../../_shared/infra/cache';
+import { getUser } from '../../_shared/infra/auth';
 import { requireOrgAccess } from '../../_shared/org';
 
 export async function onRequestGet(context: {

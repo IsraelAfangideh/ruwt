@@ -4,8 +4,8 @@
  * Auth required (must be the candidate).
  */
 import { eq, and, sql } from 'drizzle-orm';
-import { getDb } from '../../../_shared/db';
-import { getUser } from '../../../_shared/auth';
+import { getDb } from '../../../_shared/infra/db';
+import { getUser } from '../../../_shared/infra/auth';
 import { assessmentSessions, assessmentInvites, assessments, profiles, attempts, emailLogs } from '../../../../drizzle/schema.d1';
 import { sendEmail } from '../../../_shared/newsletter/resend';
 import { resultsReadyEmail } from '../../../_shared/email/templates';

@@ -64,17 +64,17 @@ const ReplayScreen = lazyWithRetry('Replay', () => import('@/features/replay/Rep
 /* istanbul ignore next -- @preserve */
 const DailyChallengeScreen = lazyWithRetry('DailyChallenge', () => import('@/features/challenges/DailyChallengeScreen'), m => m.DailyChallengeScreen);
 /* istanbul ignore next -- @preserve */
-const AssessmentListScreen = lazyWithRetry('AssessmentList', () => import('@/features/assessments/AssessmentListScreen'), m => m.AssessmentListScreen);
+const AssessmentListScreen = lazyWithRetry('AssessmentList', () => import('@/features/assessments/screens/AssessmentListScreen'), m => m.AssessmentListScreen);
 /* istanbul ignore next -- @preserve */
-const AssessmentBuilderScreen = lazyWithRetry('AssessmentBuilder', () => import('@/features/assessments/AssessmentIDEScreen'), m => m.AssessmentIDEScreen);
+const AssessmentBuilderScreen = lazyWithRetry('AssessmentBuilder', () => import('@/features/assessments/screens/AssessmentIDEScreen'), m => m.AssessmentIDEScreen);
 /* istanbul ignore next -- @preserve */
-const AssessmentResultsDashboardScreen = lazyWithRetry('AssessmentResultsDashboard', () => import('@/features/assessments/AssessmentResultsDashboardScreen'), m => m.AssessmentResultsDashboardScreen);
+const AssessmentResultsDashboardScreen = lazyWithRetry('AssessmentResultsDashboard', () => import('@/features/assessments/screens/AssessmentResultsDashboardScreen'), m => m.AssessmentResultsDashboardScreen);
 /* istanbul ignore next -- @preserve */
-const AssessmentLandingScreen = lazyWithRetry('AssessmentLanding', () => import('@/features/assessments/AssessmentLandingScreen'), m => m.AssessmentLandingScreen);
+const AssessmentLandingScreen = lazyWithRetry('AssessmentLanding', () => import('@/features/assessments/screens/AssessmentLandingScreen'), m => m.AssessmentLandingScreen);
 /* istanbul ignore next -- @preserve */
-const AssessmentFlowScreen = lazyWithRetry('AssessmentFlow', () => import('@/features/assessments/AssessmentFlowScreen'), m => m.AssessmentFlowScreen);
+const AssessmentFlowScreen = lazyWithRetry('AssessmentFlow', () => import('@/features/assessments/screens/AssessmentFlowScreen'), m => m.AssessmentFlowScreen);
 /* istanbul ignore next -- @preserve */
-const AssessmentResultsScreen = lazyWithRetry('AssessmentResults', () => import('@/features/assessments/AssessmentResultsScreen'), m => m.AssessmentResultsScreen);
+const AssessmentResultsScreen = lazyWithRetry('AssessmentResults', () => import('@/features/assessments/screens/AssessmentResultsScreen'), m => m.AssessmentResultsScreen);
 /* istanbul ignore next -- @preserve */
 const HiringScreen = lazyWithRetry('Hiring', () => import('@/features/teams/TeamsScreen'), m => m.TeamsScreen);
 /* istanbul ignore next -- @preserve */

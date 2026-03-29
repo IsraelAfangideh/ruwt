@@ -9,8 +9,8 @@
  * GET /api/machines — Check machine status (convenience alias).
  */
 import { eq } from 'drizzle-orm';
-import { getDb } from '../_shared/db';
-import { getUser } from '../_shared/auth';
+import { getDb } from '../_shared/infra/db';
+import { getUser } from '../_shared/infra/auth';
 import { ensureProfile } from '../_shared/ensure-profile';
 import { cloudMachines } from '../../drizzle/schema.d1';
 

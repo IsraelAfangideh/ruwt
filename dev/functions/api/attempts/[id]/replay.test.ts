@@ -5,8 +5,8 @@ const { mockGetUser, mockGetDb } = vi.hoisted(() => ({
   mockGetDb: vi.fn(),
 }));
 
-vi.mock('../../../_shared/auth', () => ({ getUser: mockGetUser }));
-vi.mock('../../../_shared/db', () => ({ getDb: mockGetDb }));
+vi.mock('../../../_shared/infra/auth', () => ({ getUser: mockGetUser }));
+vi.mock('../../../_shared/infra/db', () => ({ getDb: mockGetDb }));
 vi.mock('../../../../drizzle/schema.d1', () => ({
   attempts: { id: 'id', userId: 'user_id', challengeId: 'challenge_id', status: 'status', totalCost: 'total_cost', inputTokens: 'input_tokens', outputTokens: 'output_tokens', replayPublic: 'replay_public', submittedAt: 'submitted_at', createdAt: 'created_at' },
   attemptMessages: { attemptId: 'attempt_id', sequence: 'sequence', role: 'role', content: 'content', model: 'model', inputTokens: 'input_tokens', outputTokens: 'output_tokens', cost: 'cost', createdAt: 'created_at' },

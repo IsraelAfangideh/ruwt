@@ -12,8 +12,8 @@ const { mockGetUser, mockGetDb } = vi.hoisted(() => ({
   mockGetDb: vi.fn(),
 }));
 
-vi.mock('../_shared/auth', () => ({ getUser: mockGetUser }));
-vi.mock('../_shared/db', () => ({ getDb: mockGetDb }));
+vi.mock('../_shared/infra/auth', () => ({ getUser: mockGetUser }));
+vi.mock('../_shared/infra/db', () => ({ getDb: mockGetDb }));
 vi.mock('../../drizzle/schema.d1', () => ({
   challenges: { id: 'id', title: 'title', description: 'description', difficulty: 'difficulty', starterCode: 'starter_code', testCases: 'test_cases', hiddenTestCases: 'hidden_test_cases', execTimeLimit: 'exec_time_limit', execMemoryLimit: 'exec_memory_limit', category: 'category', skillTested: 'skill_tested', language: 'language', creditCost: 'credit_cost', funcName: 'func_name', tags: 'tags', testHarness: 'test_harness', readonlyPrefix: 'readonly_prefix', useStdin: 'use_stdin' },
   attempts: { id: 'id', userId: 'user_id', challengeId: 'challenge_id', status: 'status', totalCost: 'total_cost', inputTokens: 'input_tokens', outputTokens: 'output_tokens', passedTests: 'passed_tests', totalTests: 'total_tests', submittedAt: 'submitted_at', createdAt: 'created_at', assessmentSessionId: 'assessment_session_id', replayPublic: 'replay_public' },

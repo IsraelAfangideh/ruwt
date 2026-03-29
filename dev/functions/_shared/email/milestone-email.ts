@@ -3,7 +3,7 @@
  * Fire-and-forget from submissions.ts after a successful solve.
  */
 import { sql } from 'drizzle-orm';
-import { sendEmail } from './newsletter/resend';
+import { sendEmail } from '../newsletter/resend';
 
 interface MilestoneUser {
   id: string;

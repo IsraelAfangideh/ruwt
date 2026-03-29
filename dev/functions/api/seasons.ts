@@ -3,7 +3,7 @@
  * List seasons, with ?current=true to get just the active season.
  */
 import { eq, desc } from 'drizzle-orm';
-import { getDb } from '../_shared/db';
+import { getDb } from '../_shared/infra/db';
 import { seasons } from '../../drizzle/schema.d1';
 
 export async function onRequestGet(context: { request: Request; env: Env }) {

@@ -5,10 +5,10 @@
  * Supports query params: ?language=python, ?tag=backend, ?category=qa_testing
  */
 import { sql, eq, and, type SQL } from 'drizzle-orm';
-import { getDb } from '../_shared/db';
-import { getUser } from '../_shared/auth';
+import { getDb } from '../_shared/infra/db';
+import { getUser } from '../_shared/infra/auth';
 import { challenges, attempts } from '../../drizzle/schema.d1';
-import { withCache } from '../_shared/cache';
+import { withCache } from '../_shared/infra/cache';
 
 export async function onRequestGet(context: { env: Env; request: Request }) {
   // Check auth first — cache only unauthenticated requests (public browse page)

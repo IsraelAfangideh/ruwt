@@ -3,7 +3,7 @@
  * Validates internal system connectivity: D1, Supabase, Workers AI, Piston.
  * No auth required. Returns JSON summary of each system's status.
  */
-import { getPistonUrl, buildPistonHeaders } from '../_shared/piston-client';
+import { getPistonUrl, buildPistonHeaders } from '../_shared/infra/piston-client';
 
 interface CheckResult {
   ok: boolean;

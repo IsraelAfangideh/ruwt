@@ -5,8 +5,8 @@ const { mockGetUser, mockGetDb } = vi.hoisted(() => ({
   mockGetDb: vi.fn(),
 }));
 
-vi.mock('../../_shared/auth', () => ({ getUser: mockGetUser }));
-vi.mock('../../_shared/db', () => ({ getDb: mockGetDb }));
+vi.mock('../../_shared/infra/auth', () => ({ getUser: mockGetUser }));
+vi.mock('../../_shared/infra/db', () => ({ getDb: mockGetDb }));
 vi.mock('../../../drizzle/schema.d1', () => ({
   profiles: { id: 'id', currentStreak: 'current_streak', longestStreak: 'longest_streak', lastStreakDate: 'last_streak_date' },
   attempts: { userId: 'user_id', status: 'status', submittedAt: 'submitted_at' },

@@ -6,10 +6,10 @@ const { mockGetUser, mockGetDb, mockEnsureProfile } = vi.hoisted(() => ({
   mockEnsureProfile: vi.fn().mockResolvedValue(undefined),
 }));
 
-vi.mock('../_shared/auth', () => ({ getUser: mockGetUser }));
-vi.mock('../_shared/db', () => ({ getDb: mockGetDb }));
+vi.mock('../_shared/infra/auth', () => ({ getUser: mockGetUser }));
+vi.mock('../_shared/infra/db', () => ({ getDb: mockGetDb }));
 vi.mock('../_shared/ensure-profile', () => ({ ensureProfile: mockEnsureProfile }));
-vi.mock('../_shared/badges', () => ({
+vi.mock('../_shared/scoring/badges', () => ({
   BADGE_DEFS: {
     first_solve: { type: 'first_solve', title: 'First Blood', description: 'Solved your first challenge', icon: 'target' },
     penny_pincher: { type: 'penny_pincher', title: 'Penny Pincher', description: 'Under $0.01', icon: 'money' },

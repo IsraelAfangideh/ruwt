@@ -34,11 +34,11 @@ vi.mock('../shared-ide/VirtualFileSystem', () => ({
   },
 }));
 
-vi.mock('../shared-ide/useCodeSync', () => ({
+vi.mock('../shared-ide/hooks/useCodeSync', () => ({
   useCodeSync: () => ({ handleEditorChange: vi.fn(), syncCode: vi.fn() }),
 }));
 
-vi.mock('../shared-ide/useAIChat', () => ({
+vi.mock('../shared-ide/hooks/useAIChat', () => ({
   useAIChat: () => ({
     messages: [
       { role: 'assistant', content: 'Here is the fix', meta: { model: 'mock-model', tokens: 1, cost: 0 } },
@@ -61,7 +61,7 @@ vi.mock('./TerminalPanel', () => ({
   ),
 }));
 
-vi.mock('../shared-ide/ModeSelector', () => ({
+vi.mock('../shared-ide/components/ModeSelector', () => ({
   ModeSelector: ({ mode, onModeChange, disabled }: any) => (
     <div data-testid="mode-selector">
       <span data-testid="current-mode">{mode}</span>
@@ -70,7 +70,7 @@ vi.mock('../shared-ide/ModeSelector', () => ({
   ),
 }));
 
-vi.mock('../shared-ide/ChatMarkdown', () => ({
+vi.mock('../shared-ide/components/ChatMarkdown', () => ({
   renderMarkdown: (text: string) => [<span key={0}>{text}</span>],
   ThinkingBlock: ({ text }: any) => <div data-testid="thinking-block">{text}</div>,
 }));
@@ -98,7 +98,7 @@ vi.mock('react-resizable-panels', () => ({
   usePanelRef: () => ({ current: { collapse: vi.fn(), expand: vi.fn(), isCollapsed: vi.fn().mockReturnValue(false), resize: vi.fn() } }),
 }));
 
-vi.mock('../shared-ide/useIDELayout', () => ({
+vi.mock('../shared-ide/hooks/useIDELayout', () => ({
   useIDELayout: () => ({
     sidebarPosition: 'left', sidebarCollapsed: false, bottomCollapsed: false,
     resultsDock: 'bottom', activeBottomTab: 'terminal',
@@ -107,11 +107,11 @@ vi.mock('../shared-ide/useIDELayout', () => ({
   }),
 }));
 
-vi.mock('../shared-ide/PanelResizeBar', () => ({
+vi.mock('../shared-ide/components/PanelResizeBar', () => ({
   PanelResizeBar: ({ direction }: any) => <div data-testid={`resize-bar-${direction}`} />,
 }));
 
-vi.mock('../shared-ide/CollapsedSidebar', () => ({
+vi.mock('../shared-ide/components/CollapsedSidebar', () => ({
   CollapsedSidebar: ({ onExpandTab }: any) => (
     <div data-testid="collapsed-sidebar">
       <button onClick={() => onExpandTab('description')}>Expand Desc</button>
@@ -181,7 +181,7 @@ vi.mock('@/features/shared-ide/lib/code-apply', () => ({
   }),
 }));
 
-vi.mock('../shared-ide/useEditorDecorations', () => ({
+vi.mock('../shared-ide/hooks/useEditorDecorations', () => ({
   useEditorDecorations: () => ({ showDiffDecorations: vi.fn(), clearDecorations: vi.fn() }),
 }));
 

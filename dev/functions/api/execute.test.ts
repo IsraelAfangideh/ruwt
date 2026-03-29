@@ -6,8 +6,8 @@ const { mockGetUser, mockLogError } = vi.hoisted(() => ({
   mockLogError: vi.fn().mockResolvedValue(undefined),
 }));
 
-vi.mock('../_shared/auth', () => ({ getUser: mockGetUser }));
-vi.mock('../_shared/error-monitor', () => ({ logError: mockLogError }));
+vi.mock('../_shared/infra/auth', () => ({ getUser: mockGetUser }));
+vi.mock('../_shared/infra/error-monitor', () => ({ logError: mockLogError }));
 
 import { onRequestPost, onRequestOptions } from './execute';
 

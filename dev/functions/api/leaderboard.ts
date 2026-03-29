@@ -5,9 +5,9 @@
  * Supports division filter: open (default, CF only) | pro (platform models) | unlimited (all).
  */
 import { eq, and, desc, sql, gte } from 'drizzle-orm';
-import { getDb } from '../_shared/db';
+import { getDb } from '../_shared/infra/db';
 import { attempts, profiles, seasons } from '../../drizzle/schema.d1';
-import { withCache } from '../_shared/cache';
+import { withCache } from '../_shared/infra/cache';
 
 function getPeriodThreshold(period: string): string | null {
   const now = new Date();

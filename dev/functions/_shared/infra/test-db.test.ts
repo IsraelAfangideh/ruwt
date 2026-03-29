@@ -5,7 +5,7 @@
  */
 import { describe, it, expect, afterAll } from 'vitest';
 import { createTestDb, resetDb } from './test-db';
-import { profiles, challenges, attempts, aiCalls, transactions } from '../../drizzle/schema.d1';
+import { profiles, challenges, attempts, aiCalls, transactions } from '../../../drizzle/schema.d1';
 import { eq } from 'drizzle-orm';
 
 describe('test-db utility', () => {

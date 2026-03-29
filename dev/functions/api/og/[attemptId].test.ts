@@ -6,9 +6,9 @@ const { mockGetDb, mockCategoryLabel, mockBuildShareSvg } = vi.hoisted(() => ({
   mockBuildShareSvg: vi.fn().mockReturnValue('<svg>test</svg>'),
 }));
 
-vi.mock('../../_shared/db', () => ({ getDb: mockGetDb }));
+vi.mock('../../_shared/infra/db', () => ({ getDb: mockGetDb }));
 vi.mock('../../_shared/seo', () => ({ categoryLabel: mockCategoryLabel }));
-vi.mock('../../_shared/og-svg', () => ({ buildShareSvg: mockBuildShareSvg }));
+vi.mock('../../_shared/og/og-svg', () => ({ buildShareSvg: mockBuildShareSvg }));
 // Mock resvg-wasm — default: fail (SVG fallback), override per-test for PNG path
 const { mockNewContext } = vi.hoisted(() => ({
   mockNewContext: vi.fn().mockRejectedValue(new Error('resvg-wasm not available in test')),

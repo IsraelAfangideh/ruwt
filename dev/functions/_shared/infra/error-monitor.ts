@@ -5,7 +5,7 @@
  * Designed to never throw — swallows its own errors so it never masks
  * the original error that triggered it.
  */
-import { sendEmail } from './newsletter/resend';
+import { sendEmail } from '../newsletter/resend';
 
 export interface ErrorInfo {
   endpoint?: string;

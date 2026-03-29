@@ -6,8 +6,8 @@ const { mockGetUser, mockGetDb } = vi.hoisted(() => ({
   mockGetDb: vi.fn(),
 }));
 
-vi.mock('../../_shared/auth', () => ({ getUser: mockGetUser }));
-vi.mock('../../_shared/db', () => ({ getDb: mockGetDb }));
+vi.mock('../../_shared/infra/auth', () => ({ getUser: mockGetUser }));
+vi.mock('../../_shared/infra/db', () => ({ getDb: mockGetDb }));
 
 import { onRequestPost as startHandler } from './takehome/start';
 import { onRequestPost as telemetryHandler } from './takehome/telemetry';

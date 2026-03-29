@@ -2,8 +2,8 @@
  * Constraint validation for attempts. Uses D1 db from getDb(env).
  */
 import { eq } from 'drizzle-orm';
-import type { Db } from './db';
-import { attempts, challenges } from '../../drizzle/schema.d1';
+import type { Db } from '../infra/db';
+import { attempts, challenges } from '../../../drizzle/schema.d1';
 
 export interface ConstraintValidation {
   valid: boolean;

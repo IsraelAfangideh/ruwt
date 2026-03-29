@@ -4,10 +4,10 @@
  * Returns a 1200x630 PNG (via resvg-wasm) or SVG fallback.
  */
 import { eq, sql } from 'drizzle-orm';
-import { getDb } from '../../_shared/db';
+import { getDb } from '../../_shared/infra/db';
 import { attempts, challenges, profiles } from '../../../drizzle/schema.d1';
 import { categoryLabel } from '../../_shared/seo';
-import { buildShareSvg } from '../../_shared/og-svg';
+import { buildShareSvg } from '../../_shared/og/og-svg';
 
 export async function onRequestGet(context: {
   request: Request;

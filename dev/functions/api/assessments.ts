@@ -4,8 +4,8 @@
  */
 import { eq, desc, and, sql, or, inArray } from 'drizzle-orm';
 import { z } from 'zod';
-import { getDb } from '../_shared/db';
-import { getUser } from '../_shared/auth';
+import { getDb } from '../_shared/infra/db';
+import { getUser } from '../_shared/infra/auth';
 import { getUserOrgIds, requireOrgAccess, requireTeamAccount, getUserOrg, claimTrialSlot } from '../_shared/org';
 import { assessments, assessmentChallenges, assessmentInvites, assessmentSessions } from '../../drizzle/schema.d1';
 

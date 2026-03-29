@@ -4,9 +4,9 @@
  * Returns user info, stats, radar chart data, and recent replays.
  */
 import { eq, and, sql, desc } from 'drizzle-orm';
-import { getDb } from '../../_shared/db';
-import { getUser } from '../../_shared/auth';
-import { computeAFI, computeRadarFromCosts, determineCertification } from '../../_shared/scoring';
+import { getDb } from '../../_shared/infra/db';
+import { getUser } from '../../_shared/infra/auth';
+import { computeAFI, computeRadarFromCosts, determineCertification } from '../../_shared/scoring/scoring';
 import { profiles, attempts, challenges, badges, follows } from '../../../drizzle/schema.d1';
 
 export async function onRequestGet(context: { request: Request; env: Env; params: { username: string } }) {

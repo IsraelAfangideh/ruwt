@@ -6,7 +6,7 @@
  * ?challengeId=xxx — Filter to specific challenge
  */
 import { eq, and, desc, sql } from 'drizzle-orm';
-import { getDb } from '../_shared/db';
+import { getDb } from '../_shared/infra/db';
 import { attempts, profiles, challenges } from '../../drizzle/schema.d1';
 
 export async function onRequestGet(context: { request: Request; env: Env }) {

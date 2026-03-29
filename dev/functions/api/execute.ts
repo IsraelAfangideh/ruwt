@@ -5,9 +5,9 @@
  * Requires authentication to prevent abuse.
  */
 import { z } from 'zod';
-import { getUser } from '../_shared/auth';
-import { logError } from '../_shared/error-monitor';
-import { getPistonUrl, buildPistonHeaders } from '../_shared/piston-client';
+import { getUser } from '../_shared/infra/auth';
+import { logError } from '../_shared/infra/error-monitor';
+import { getPistonUrl, buildPistonHeaders } from '../_shared/infra/piston-client';
 
 const executeSchema = z.object({
   language: z.string().min(1),

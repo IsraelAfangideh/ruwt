@@ -8,8 +8,8 @@ const { mockGetUser, mockGetDb, mockGetUserOrgRole, mockRequireOrgAccess, mockRe
   mockRequireTeamAccount: vi.fn(),
 }));
 
-vi.mock('../../_shared/auth', () => ({ getUser: mockGetUser }));
-vi.mock('../../_shared/db', () => ({ getDb: mockGetDb }));
+vi.mock('../../_shared/infra/auth', () => ({ getUser: mockGetUser }));
+vi.mock('../../_shared/infra/db', () => ({ getDb: mockGetDb }));
 vi.mock('../../_shared/org', () => ({
   getUserOrgRole: mockGetUserOrgRole,
   requireOrgAccess: mockRequireOrgAccess,

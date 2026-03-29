@@ -5,9 +5,9 @@
  * Secured with CRON_SECRET. Called by GitHub Actions daily at 9 PM UTC.
  */
 import { sql } from 'drizzle-orm';
-import { getDb } from '../_shared/db';
+import { getDb } from '../_shared/infra/db';
 import { sendEmail } from '../_shared/newsletter/resend';
-import { getOrSeedDailyChallenge } from '../_shared/daily-seed';
+import { getOrSeedDailyChallenge } from '../_shared/scoring/daily-seed';
 
 export async function onRequestPost(context: { request: Request; env: Env }) {
   const { request, env } = context;

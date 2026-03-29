@@ -3,9 +3,9 @@
  * Public activity feed of recent passed attempts.
  */
 import { eq, and, desc, sql } from 'drizzle-orm';
-import { getDb } from '../_shared/db';
+import { getDb } from '../_shared/infra/db';
 import { attempts, profiles, challenges } from '../../drizzle/schema.d1';
-import { withCache } from '../_shared/cache';
+import { withCache } from '../_shared/infra/cache';
 
 export async function onRequestGet(context: { request: Request; env: Env }) {
   return withCache(context.request, 120, async () => {

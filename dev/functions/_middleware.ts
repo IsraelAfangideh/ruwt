@@ -4,13 +4,13 @@
  * 2. Returns pre-rendered HTML with meta tags and JSON-LD for bots on all public routes.
  * All other requests pass through to the SPA.
  */
-import { getDb } from './_shared/db';
+import { getDb } from './_shared/infra/db';
 import { attempts, challenges, profiles, certificates } from '../drizzle/schema.d1';
 import { eq, isNotNull, sql } from 'drizzle-orm';
-import { checkRateLimit, buildKey } from './_shared/rate-limit';
-import { getUser } from './_shared/auth';
-import { logError } from './_shared/error-monitor';
-import { logSecurityEvent } from './_shared/security-log';
+import { checkRateLimit, buildKey } from './_shared/infra/rate-limit';
+import { getUser } from './_shared/infra/auth';
+import { logError } from './_shared/infra/error-monitor';
+import { logSecurityEvent } from './_shared/infra/security-log';
 import {
   generateSeoHtml, seoResponse, escapeHtml,
   STATIC_ROUTE_META,

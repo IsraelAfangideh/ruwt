@@ -4,7 +4,7 @@
  * https://github.com/engineer-man/piston
  */
 
-import { pistonExecute, type PistonEnv, type PistonResponse } from './piston-client';
+import { pistonExecute, type PistonEnv, type PistonResponse } from '../infra/piston-client';
 
 const LANGUAGE_VERSIONS: Record<string, { language: string; version: string }> = {
   javascript: { language: 'javascript', version: '18.15.0' },

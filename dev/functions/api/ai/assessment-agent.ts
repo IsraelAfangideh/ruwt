@@ -6,10 +6,10 @@
  */
 import { eq, and } from 'drizzle-orm';
 import { z } from 'zod';
-import { getDb } from '../../_shared/db';
-import { getUser } from '../../_shared/auth';
+import { getDb } from '../../_shared/infra/db';
+import { getUser } from '../../_shared/infra/auth';
 import { getUserOrg } from '../../_shared/org';
-import { getToolCapableFallbackChain } from '../../_shared/ai-pricing';
+import { getToolCapableFallbackChain } from '../../_shared/ai/ai-pricing';
 import { buildAssessmentAgentPrompt, getAssessmentAgentTools } from '../../_shared/assessment-agent/system-prompt';
 import { executeToolCall, type ToolCall } from '../../_shared/assessment-agent/tool-executor';
 import {

@@ -11,11 +11,11 @@ import { onRequestPost, onRequestDelete } from './assessment-agent';
 // Mocks
 // ---------------------------------------------------------------------------
 
-vi.mock('../../_shared/auth', () => ({
+vi.mock('../../_shared/infra/auth', () => ({
   getUser: vi.fn(),
 }));
 
-vi.mock('../../_shared/db', () => ({
+vi.mock('../../_shared/infra/db', () => ({
   getDb: vi.fn(),
 }));
 
@@ -23,7 +23,7 @@ vi.mock('../../_shared/org', () => ({
   getUserOrg: vi.fn(),
 }));
 
-vi.mock('../../_shared/ai-pricing', () => ({
+vi.mock('../../_shared/ai/ai-pricing', () => ({
   getToolCapableFallbackChain: vi.fn().mockReturnValue([
     '@cf/meta/llama-3.1-8b-instruct',
   ]),
@@ -48,8 +48,8 @@ vi.mock('../../../drizzle/schema.d1', () => ({
   agentConversations: { id: 'id', assessmentId: 'assessment_id', orgId: 'org_id', userId: 'user_id', messages: 'messages', updatedAt: 'updated_at' },
 }));
 
-import { getUser } from '../../_shared/auth';
-import { getDb } from '../../_shared/db';
+import { getUser } from '../../_shared/infra/auth';
+import { getDb } from '../../_shared/infra/db';
 import { getUserOrg } from '../../_shared/org';
 import { executeToolCall } from '../../_shared/assessment-agent/tool-executor';
 

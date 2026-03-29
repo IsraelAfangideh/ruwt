@@ -3,9 +3,9 @@
  * Called after each successful solve (non-blocking, fire-and-forget).
  */
 import { eq, and, sql } from 'drizzle-orm';
-import type { Db } from './db';
-import { profiles, attempts, challenges, afiHistory } from '../../drizzle/schema.d1';
-import { computeAFI, computeRadarFromCosts } from './scoring';
+import type { Db } from '../infra/db';
+import { profiles, attempts, challenges, afiHistory } from '../../../drizzle/schema.d1';
+import { computeAFI, computeRadarFromCosts } from '../scoring/scoring';
 
 export async function updateProfileAFI(db: Db, userId: string): Promise<void> {
   // Fetch global + user avg costs per category in parallel

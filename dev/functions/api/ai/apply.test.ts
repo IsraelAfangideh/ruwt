@@ -12,26 +12,26 @@ import { onRequestPost } from './apply';
 // Mocks
 // ---------------------------------------------------------------------------
 
-vi.mock('../../_shared/auth', () => ({
+vi.mock('../../_shared/infra/auth', () => ({
   getUser: vi.fn(),
 }));
 
-vi.mock('../../_shared/db', () => ({
+vi.mock('../../_shared/infra/db', () => ({
   getDb: vi.fn(),
 }));
 
-vi.mock('../../_shared/ai-pricing', () => ({
+vi.mock('../../_shared/ai/ai-pricing', () => ({
   calculateCost: vi.fn(),
 }));
 
-vi.mock('../../_shared/error-monitor', () => ({
+vi.mock('../../_shared/infra/error-monitor', () => ({
   logError: vi.fn().mockResolvedValue(undefined),
 }));
 
-import { getUser } from '../../_shared/auth';
-import { getDb } from '../../_shared/db';
-import { calculateCost } from '../../_shared/ai-pricing';
-import { logError } from '../../_shared/error-monitor';
+import { getUser } from '../../_shared/infra/auth';
+import { getDb } from '../../_shared/infra/db';
+import { calculateCost } from '../../_shared/ai/ai-pricing';
+import { logError } from '../../_shared/infra/error-monitor';
 
 // ---------------------------------------------------------------------------
 // Helpers

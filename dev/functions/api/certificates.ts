@@ -3,8 +3,8 @@
  * POST /api/certificates/check - Check and auto-award certificates
  */
 import { eq, and, sql } from 'drizzle-orm';
-import { getDb } from '../_shared/db';
-import { getUser } from '../_shared/auth';
+import { getDb } from '../_shared/infra/db';
+import { getUser } from '../_shared/infra/auth';
 import { certificates, attempts, challenges, profiles } from '../../drizzle/schema.d1';
 
 // Track definitions: which challenges must be completed for each certificate

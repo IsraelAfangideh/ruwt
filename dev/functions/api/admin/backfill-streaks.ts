@@ -4,8 +4,8 @@
  * Requires authenticated admin user (ADMIN_USER_IDS env var).
  */
 import { eq, sql, desc } from 'drizzle-orm';
-import { getDb } from '../../_shared/db';
-import { getUser } from '../../_shared/auth';
+import { getDb } from '../../_shared/infra/db';
+import { getUser } from '../../_shared/infra/auth';
 import { profiles, attempts } from '../../../drizzle/schema.d1';
 
 export async function onRequestPost(context: { request: Request; env: Env }) {

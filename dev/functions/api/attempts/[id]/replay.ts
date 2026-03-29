@@ -4,8 +4,8 @@
  * Auth: own attempts always; others only if replay_public=1 AND status='passed' AND in top 50.
  */
 import { eq, and, sql } from 'drizzle-orm';
-import { getDb } from '../../../_shared/db';
-import { getUser } from '../../../_shared/auth';
+import { getDb } from '../../../_shared/infra/db';
+import { getUser } from '../../../_shared/infra/auth';
 import { attempts, attemptMessages, profiles, challenges } from '../../../../drizzle/schema.d1';
 
 export async function onRequestGet(context: { request: Request; env: Env; params: { id: string } }) {

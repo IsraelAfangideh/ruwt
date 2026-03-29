@@ -7,7 +7,7 @@ const { mockGetDb } = vi.hoisted(() => ({
   mockGetDb: vi.fn(),
 }));
 
-vi.mock('./_shared/db', () => ({
+vi.mock('./_shared/infra/db', () => ({
   getDb: mockGetDb,
 }));
 

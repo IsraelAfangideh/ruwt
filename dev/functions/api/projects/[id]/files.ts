@@ -3,8 +3,8 @@
  * Returns: { files: { [path: string]: string } }
  */
 import { eq, and } from 'drizzle-orm';
-import { getDb } from '../../../_shared/db';
-import { getUser } from '../../../_shared/auth';
+import { getDb } from '../../../_shared/infra/db';
+import { getUser } from '../../../_shared/infra/auth';
 import { ensureProfile } from '../../../_shared/ensure-profile';
 import { projects } from '../../../../drizzle/schema.d1';
 

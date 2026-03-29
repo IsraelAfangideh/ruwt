@@ -4,11 +4,11 @@
  * (structured tool_calls in the API response, not XML blocks in text).
  */
 import { eq, and, inArray } from 'drizzle-orm';
-import type { Db } from '../db';
+import type { Db } from '../infra/db';
 import {
   challenges, assessments, assessmentChallenges, customChallenges,
 } from '../../../drizzle/schema.d1';
-import { pistonExecute, type PistonEnv } from '../piston-client';
+import { pistonExecute, type PistonEnv } from '../infra/piston-client';
 
 /** Cloudflare native tool call format. */
 export interface ToolCall {

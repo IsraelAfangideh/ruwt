@@ -7,9 +7,9 @@ vi.mock('drizzle-orm', () => ({
   desc: vi.fn(),
 }));
 
-vi.mock('./db', () => ({ getDb: vi.fn() }));
+vi.mock('../infra/db', () => ({ getDb: vi.fn() }));
 
-vi.mock('../../drizzle/schema.d1', () => ({
+vi.mock('../../../drizzle/schema.d1', () => ({
   profiles: { id: 'id', afiScore: 'afi_score', afiTier: 'afi_tier' },
   attempts: { userId: 'user_id', challengeId: 'challenge_id', status: 'status', totalCost: 'total_cost' },
   challenges: { id: 'id', category: 'category' },
@@ -20,7 +20,7 @@ const { mockComputeRadar, mockComputeAFI } = vi.hoisted(() => ({
   mockComputeRadar: vi.fn(),
   mockComputeAFI: vi.fn(),
 }));
-vi.mock('./scoring', () => ({
+vi.mock('../scoring/scoring', () => ({
   computeRadarFromCosts: mockComputeRadar,
   computeAFI: mockComputeAFI,
 }));

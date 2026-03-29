@@ -3,7 +3,7 @@
  * challenge and notify the beaten users via in-app notification.
  */
 import { sql } from 'drizzle-orm';
-import type { Db } from './db';
+import type { Db } from '../infra/db';
 
 export async function createCompetitiveNudges(
   db: Db,

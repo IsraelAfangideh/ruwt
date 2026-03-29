@@ -5,8 +5,8 @@
  */
 import { eq, and, sql, lt, inArray } from 'drizzle-orm';
 import { z } from 'zod';
-import { getDb } from '../../../../_shared/db';
-import { getUser } from '../../../../_shared/auth';
+import { getDb } from '../../../../_shared/infra/db';
+import { getUser } from '../../../../_shared/infra/auth';
 import { canManageAssessment } from '../../../../_shared/org';
 import { sendEmail } from '../../../../_shared/newsletter/resend';
 import { reminderEmail } from '../../../../_shared/email/templates';

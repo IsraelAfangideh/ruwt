@@ -3,7 +3,7 @@
  * Public endpoint returning certificate data for verification.
  */
 import { eq } from 'drizzle-orm';
-import { getDb } from '../../_shared/db';
+import { getDb } from '../../_shared/infra/db';
 import { certificates, profiles } from '../../../drizzle/schema.d1';
 
 export async function onRequestGet(context: {

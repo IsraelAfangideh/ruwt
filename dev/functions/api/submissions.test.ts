@@ -23,13 +23,13 @@ const {
   mockChallengeAttemptNotificationEmail: vi.fn(),
 }));
 
-vi.mock('../_shared/auth', () => ({ getUser: mockGetUser }));
-vi.mock('../_shared/db', () => ({ getDb: mockGetDb }));
-vi.mock('../_shared/judge', () => ({ runTestCases: mockRunTestCases }));
-vi.mock('../_shared/badges', () => ({ checkAndAwardBadges: mockCheckAndAwardBadges }));
-vi.mock('../_shared/streaks', () => ({ updateStreak: mockUpdateStreak }));
-vi.mock('../_shared/competitive-nudges', () => ({ createCompetitiveNudges: mockCreateCompetitiveNudges }));
-vi.mock('../_shared/new-user-alerts', () => ({ createNewUserNearRankNotifications: mockCreateNewUserNearRankNotifications }));
+vi.mock('../_shared/infra/auth', () => ({ getUser: mockGetUser }));
+vi.mock('../_shared/infra/db', () => ({ getDb: mockGetDb }));
+vi.mock('../_shared/scoring/judge', () => ({ runTestCases: mockRunTestCases }));
+vi.mock('../_shared/scoring/badges', () => ({ checkAndAwardBadges: mockCheckAndAwardBadges }));
+vi.mock('../_shared/scoring/streaks', () => ({ updateStreak: mockUpdateStreak }));
+vi.mock('../_shared/scoring/competitive-nudges', () => ({ createCompetitiveNudges: mockCreateCompetitiveNudges }));
+vi.mock('../_shared/email/new-user-alerts', () => ({ createNewUserNearRankNotifications: mockCreateNewUserNearRankNotifications }));
 vi.mock('../_shared/newsletter/resend', () => ({ sendEmail: mockSendEmail }));
 vi.mock('../_shared/email/templates', () => ({ challengeAttemptNotificationEmail: mockChallengeAttemptNotificationEmail }));
 

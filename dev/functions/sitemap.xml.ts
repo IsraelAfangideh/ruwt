@@ -3,7 +3,7 @@
  * Queries D1 for all challenges and public profiles,
  * combines with static routes into a sitemap.xml.
  */
-import { getDb } from './_shared/db';
+import { getDb } from './_shared/infra/db';
 import { challenges, profiles } from '../drizzle/schema.d1';
 import { isNotNull } from 'drizzle-orm';
 

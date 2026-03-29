@@ -15,7 +15,7 @@ const { mockGetDb, mockSendEmail, mockTrialExpiringEmail, mockTrialExpiredEmail 
   }),
 }));
 
-vi.mock('../_shared/db', () => ({ getDb: mockGetDb }));
+vi.mock('../_shared/infra/db', () => ({ getDb: mockGetDb }));
 vi.mock('../_shared/newsletter/resend', () => ({ sendEmail: mockSendEmail }));
 vi.mock('../_shared/email/templates', () => ({
   trialExpiringEmail: mockTrialExpiringEmail,

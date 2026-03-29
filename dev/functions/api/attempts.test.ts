@@ -7,8 +7,8 @@ const { mockGetUser, mockGetDb, mockEnsureProfile } = vi.hoisted(() => ({
   mockEnsureProfile: vi.fn().mockResolvedValue(undefined),
 }));
 
-vi.mock('../_shared/auth', () => ({ getUser: mockGetUser }));
-vi.mock('../_shared/db', () => ({ getDb: mockGetDb }));
+vi.mock('../_shared/infra/auth', () => ({ getUser: mockGetUser }));
+vi.mock('../_shared/infra/db', () => ({ getDb: mockGetDb }));
 vi.mock('../_shared/ensure-profile', () => ({ ensureProfile: mockEnsureProfile }));
 
 // Mock drizzle operators — they are called as tag functions in where clauses.

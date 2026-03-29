@@ -3,8 +3,8 @@
  * Public, cached 5 minutes.
  */
 import { sql } from 'drizzle-orm';
-import { getDb } from '../../_shared/db';
-import { getModelPricing } from '../../_shared/ai-pricing';
+import { getDb } from '../../_shared/infra/db';
+import { getModelPricing } from '../../_shared/ai/ai-pricing';
 
 export async function onRequestGet(context: { request: Request; env: Env; params: { id: string } }) {
   try {

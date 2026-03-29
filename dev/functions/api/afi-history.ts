@@ -4,7 +4,7 @@
  * Public endpoint (no auth required).
  */
 import { eq, desc } from 'drizzle-orm';
-import { getDb } from '../_shared/db';
+import { getDb } from '../_shared/infra/db';
 import { profiles, afiHistory } from '../../drizzle/schema.d1';
 
 export async function onRequestGet(context: { request: Request; env: Env }) {

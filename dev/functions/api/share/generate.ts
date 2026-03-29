@@ -5,8 +5,8 @@
  * Returns: { shareToken, shareUrl }
  */
 import { eq, and, sql } from 'drizzle-orm';
-import { getDb } from '../../_shared/db';
-import { getUser } from '../../_shared/auth';
+import { getDb } from '../../_shared/infra/db';
+import { getUser } from '../../_shared/infra/auth';
 import { attempts, challenges, profiles } from '../../../drizzle/schema.d1';
 
 export async function onRequestPost(context: { request: Request; env: Env }) {

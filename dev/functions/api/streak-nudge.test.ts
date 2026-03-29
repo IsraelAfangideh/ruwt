@@ -6,9 +6,9 @@ const { mockGetDb, mockSendEmail, mockGetOrSeedDailyChallenge } = vi.hoisted(() 
   mockGetOrSeedDailyChallenge: vi.fn(),
 }));
 
-vi.mock('../_shared/db', () => ({ getDb: mockGetDb }));
+vi.mock('../_shared/infra/db', () => ({ getDb: mockGetDb }));
 vi.mock('../_shared/newsletter/resend', () => ({ sendEmail: mockSendEmail }));
-vi.mock('../_shared/daily-seed', () => ({ getOrSeedDailyChallenge: mockGetOrSeedDailyChallenge }));
+vi.mock('../_shared/scoring/daily-seed', () => ({ getOrSeedDailyChallenge: mockGetOrSeedDailyChallenge }));
 
 import { onRequestPost } from './streak-nudge';
 

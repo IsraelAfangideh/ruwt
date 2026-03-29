@@ -5,8 +5,8 @@
  *   Query: ?type=following|followers&limit=20&offset=0
  */
 import { eq, and, sql, desc } from 'drizzle-orm';
-import { getDb } from '../_shared/db';
-import { getUser } from '../_shared/auth';
+import { getDb } from '../_shared/infra/db';
+import { getUser } from '../_shared/infra/auth';
 import { ensureProfile } from '../_shared/ensure-profile';
 import { follows, profiles, notifications } from '../../drizzle/schema.d1';
 

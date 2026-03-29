@@ -5,7 +5,7 @@ const { mockGetDb, mockSendEmail } = vi.hoisted(() => ({
   mockSendEmail: vi.fn().mockResolvedValue({ success: true }),
 }));
 
-vi.mock('../_shared/db', () => ({ getDb: mockGetDb }));
+vi.mock('../_shared/infra/db', () => ({ getDb: mockGetDb }));
 vi.mock('../_shared/newsletter/resend', () => ({ sendEmail: mockSendEmail }));
 
 import { onRequestPost } from './dormant-alert';

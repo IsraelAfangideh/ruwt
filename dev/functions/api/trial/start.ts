@@ -5,8 +5,8 @@
  * Org creation + trial activation happens in the webhook on checkout.session.completed.
  */
 import { eq } from 'drizzle-orm';
-import { getDb } from '../../_shared/db';
-import { getUser } from '../../_shared/auth';
+import { getDb } from '../../_shared/infra/db';
+import { getUser } from '../../_shared/infra/auth';
 import { canStartTrial, getUserOrg } from '../../_shared/org';
 import { organizations } from '../../../drizzle/schema.d1';
 

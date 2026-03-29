@@ -4,7 +4,7 @@ const { mockGetDb } = vi.hoisted(() => ({
   mockGetDb: vi.fn(),
 }));
 
-vi.mock('../_shared/db', () => ({ getDb: mockGetDb }));
+vi.mock('../_shared/infra/db', () => ({ getDb: mockGetDb }));
 vi.mock('../../drizzle/schema.d1', () => ({
   attempts: { userId: 'user_id', challengeId: 'challenge_id', status: 'status', totalCost: 'total_cost', submittedAt: 'submitted_at' },
   profiles: { id: 'id', name: 'name', email: 'email', avatarUrl: 'avatar_url', leaderboardExcluded: 'leaderboard_excluded' },

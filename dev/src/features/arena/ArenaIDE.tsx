@@ -8,8 +8,8 @@ import { Group, Panel, usePanelRef } from 'react-resizable-panels';
 import { arena } from '@/shared/theme/colors';
 import { fontFamily } from '@/shared/theme/tokens';
 import { VirtualFileSystem } from '../shared-ide/VirtualFileSystem';
-import { useCodeSync } from '../shared-ide/useCodeSync';
-import { useAIChat, type MessageMeta } from '../shared-ide/useAIChat';
+import { useCodeSync } from '../shared-ide/hooks/useCodeSync';
+import { useAIChat, type MessageMeta } from '../shared-ide/hooks/useAIChat';
 import type { TerminalPanelHandle } from './TerminalPanel';
 
 const TerminalPanel = React.lazy(() =>
@@ -25,15 +25,15 @@ import { type AIMode, type TestResults as AITestResults, formatTestResultsForMes
 import { buildSystemPrompt } from '@/features/arena/lib/system-prompts';
 import { stripToolCalls, hasToolCalls } from '@/features/shared-ide/lib/tool-parser';
 import { applyAIResponse } from '@/features/shared-ide/lib/code-apply';
-import { useEditorDecorations } from '../shared-ide/useEditorDecorations';
-import { ModeSelector } from '../shared-ide/ModeSelector';
-import { renderMarkdown, ThinkingBlock } from '../shared-ide/ChatMarkdown';
+import { useEditorDecorations } from '../shared-ide/hooks/useEditorDecorations';
+import { ModeSelector } from '../shared-ide/components/ModeSelector';
+import { renderMarkdown, ThinkingBlock } from '../shared-ide/components/ChatMarkdown';
 import { ResultsBar, type TestResults } from './ResultsBar';
 import ExpiryOverlay from './ExpiryOverlay';
 import { formatTime } from '@/shared/lib/utils';
-import { useIDELayout } from '../shared-ide/useIDELayout';
-import { PanelResizeBar } from '../shared-ide/PanelResizeBar';
-import { CollapsedSidebar, type SidebarTab } from '../shared-ide/CollapsedSidebar';
+import { useIDELayout } from '../shared-ide/hooks/useIDELayout';
+import { PanelResizeBar } from '../shared-ide/components/PanelResizeBar';
+import { CollapsedSidebar, type SidebarTab } from '../shared-ide/components/CollapsedSidebar';
 import '@/features/shared-ide/lib/monaco-init';
 
 const MonacoEditor = React.lazy(() => import('@monaco-editor/react'));

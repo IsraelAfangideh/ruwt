@@ -4,7 +4,7 @@
  * Auto-seeds if no daily challenge exists for today.
  */
 import { eq, and, sql, desc } from 'drizzle-orm';
-import { getDb } from '../_shared/db';
+import { getDb } from '../_shared/infra/db';
 import { dailyChallenges, challenges, attempts, profiles, seasons } from '../../drizzle/schema.d1';
 
 export async function onRequestGet(context: { request: Request; env: Env }) {

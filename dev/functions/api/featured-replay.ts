@@ -4,7 +4,7 @@
  * No auth required — used on landing page.
  */
 import { eq, and, sql } from 'drizzle-orm';
-import { getDb } from '../_shared/db';
+import { getDb } from '../_shared/infra/db';
 import { attempts, attemptMessages, profiles, challenges } from '../../drizzle/schema.d1';
 
 const FEATURED_CHALLENGE_IDS = [

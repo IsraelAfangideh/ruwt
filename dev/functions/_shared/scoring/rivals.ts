@@ -3,7 +3,7 @@
  * Not stored; computed on demand for weekly digest.
  */
 import { sql } from 'drizzle-orm';
-import type { Db } from './db';
+import type { Db } from '../infra/db';
 
 export interface Rival {
   userId: string;

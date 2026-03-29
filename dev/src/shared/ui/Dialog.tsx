@@ -36,8 +36,8 @@ export function Dialog({ open, onOpenChange, children, 'aria-labelledby': ariaLa
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [open, onOpenChange]);
 
-  if (!open) return null;
   const c = useColors();
+  if (!open) return null;
   return (
     <View style={[StyleSheet.absoluteFill, styles.overlay]}>
       <Pressable style={StyleSheet.absoluteFill} onPress={() => onOpenChange(false)} accessibilityRole="button" accessibilityLabel="Close dialog" />

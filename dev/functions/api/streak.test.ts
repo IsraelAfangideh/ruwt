@@ -7,10 +7,10 @@ const { mockGetUser, mockGetDb, mockEnsureProfile, mockBuyStreakFreeze } = vi.ho
   mockBuyStreakFreeze: vi.fn(),
 }));
 
-vi.mock('../_shared/auth', () => ({ getUser: mockGetUser }));
-vi.mock('../_shared/db', () => ({ getDb: mockGetDb }));
+vi.mock('../_shared/infra/auth', () => ({ getUser: mockGetUser }));
+vi.mock('../_shared/infra/db', () => ({ getDb: mockGetDb }));
 vi.mock('../_shared/ensure-profile', () => ({ ensureProfile: mockEnsureProfile }));
-vi.mock('../_shared/streaks', () => ({
+vi.mock('../_shared/scoring/streaks', () => ({
   buyStreakFreeze: mockBuyStreakFreeze,
   STREAK_FREEZE_COST: 5000,
 }));

@@ -11,15 +11,15 @@ import { onRequestPost } from './chat';
 // Mocks
 // ---------------------------------------------------------------------------
 
-vi.mock('../../_shared/auth', () => ({
+vi.mock('../../_shared/infra/auth', () => ({
   getUser: vi.fn(),
 }));
 
-vi.mock('../../_shared/db', () => ({
+vi.mock('../../_shared/infra/db', () => ({
   getDb: vi.fn(),
 }));
 
-vi.mock('../../_shared/ai-stream', async (importOriginal) => {
+vi.mock('../../_shared/ai/ai-stream', async (importOriginal) => {
   const actual = await importOriginal() as Record<string, unknown>;
   return {
     ...actual,
@@ -27,27 +27,27 @@ vi.mock('../../_shared/ai-stream', async (importOriginal) => {
   };
 });
 
-vi.mock('../../_shared/ai-pricing', () => ({
+vi.mock('../../_shared/ai/ai-pricing', () => ({
   getModelPricing: vi.fn(),
   calculateCost: vi.fn(),
   countMessageTokens: vi.fn(),
 }));
 
-vi.mock('../../_shared/constraints', () => ({
+vi.mock('../../_shared/scoring/constraints', () => ({
   validateConstraints: vi.fn(),
   checkPreCallConstraints: vi.fn(),
 }));
 
-vi.mock('../../_shared/error-monitor', () => ({
+vi.mock('../../_shared/infra/error-monitor', () => ({
   logError: vi.fn().mockResolvedValue(undefined),
 }));
 
-import { getUser } from '../../_shared/auth';
-import { getDb } from '../../_shared/db';
-import { streamCloudflareAIWithFallback, ModelUnavailableError } from '../../_shared/ai-stream';
-import { getModelPricing, calculateCost, countMessageTokens } from '../../_shared/ai-pricing';
-import { validateConstraints, checkPreCallConstraints } from '../../_shared/constraints';
-import { logError } from '../../_shared/error-monitor';
+import { getUser } from '../../_shared/infra/auth';
+import { getDb } from '../../_shared/infra/db';
+import { streamCloudflareAIWithFallback, ModelUnavailableError } from '../../_shared/ai/ai-stream';
+import { getModelPricing, calculateCost, countMessageTokens } from '../../_shared/ai/ai-pricing';
+import { validateConstraints, checkPreCallConstraints } from '../../_shared/scoring/constraints';
+import { logError } from '../../_shared/infra/error-monitor';
 
 // ---------------------------------------------------------------------------
 // Helpers

@@ -5,8 +5,8 @@
  */
 import { eq, and, desc, sql } from 'drizzle-orm';
 import { z } from 'zod';
-import { getDb } from '../../../_shared/db';
-import { getUser } from '../../../_shared/auth';
+import { getDb } from '../../../_shared/infra/db';
+import { getUser } from '../../../_shared/infra/auth';
 import { canManageAssessment, getUserOrg, hasActiveSubscription, requireTeamAccount, claimTrialSlot } from '../../../_shared/org';
 import { assessments, assessmentInvites, assessmentChallenges, profiles, emailLogs } from '../../../../drizzle/schema.d1';
 import { sendEmail } from '../../../_shared/newsletter/resend';

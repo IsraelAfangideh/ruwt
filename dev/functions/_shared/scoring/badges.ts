@@ -3,8 +3,8 @@
  * After each solve, call checkAndAwardBadges() to evaluate all badge conditions.
  */
 import { eq, and, sql } from 'drizzle-orm';
-import type { Db } from './db';
-import { badges, profiles, attempts, challenges, notifications } from '../../drizzle/schema.d1';
+import type { Db } from '../infra/db';
+import { badges, profiles, attempts, challenges, notifications } from '../../../drizzle/schema.d1';
 import { computeAFI, computeRadarFromCosts, CERTIFICATION_THRESHOLDS } from './scoring';
 
 export interface BadgeDef {

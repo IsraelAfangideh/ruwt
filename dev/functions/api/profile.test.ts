@@ -12,7 +12,7 @@ const { mockGetUser, mockEnsureProfile, mockGetUserOrg, mockGetTrialStatus, mock
   mockCanStartTrial: vi.fn(),
 }));
 
-vi.mock('../_shared/auth', () => ({
+vi.mock('../_shared/infra/auth', () => ({
   getUser: mockGetUser,
 }));
 
@@ -66,7 +66,7 @@ function resetMockDb() {
   selectChain.where.mockReturnValue(selectChain);
 }
 
-vi.mock('../_shared/db', () => ({
+vi.mock('../_shared/infra/db', () => ({
   getDb: () => mockDb,
 }));
 

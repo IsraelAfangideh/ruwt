@@ -4,7 +4,7 @@
  * Fulfills credit purchases and manages subscription lifecycle.
  */
 import { eq, sql } from 'drizzle-orm';
-import { getDb } from '../../_shared/db';
+import { getDb } from '../../_shared/infra/db';
 import { profiles, transactions, organizations, orgMembers } from '../../../drizzle/schema.d1';
 import { TRIAL_DURATION_DAYS } from '../../_shared/org';
 

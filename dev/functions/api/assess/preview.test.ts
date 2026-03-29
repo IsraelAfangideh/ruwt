@@ -5,7 +5,7 @@ const { mockGetDb } = vi.hoisted(() => ({
   mockGetDb: vi.fn(),
 }));
 
-vi.mock('../../_shared/db', () => ({ getDb: mockGetDb }));
+vi.mock('../../_shared/infra/db', () => ({ getDb: mockGetDb }));
 
 import { onRequestGet } from './preview';
 

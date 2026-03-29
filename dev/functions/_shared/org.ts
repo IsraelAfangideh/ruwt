@@ -3,7 +3,7 @@
  * Used by assessment endpoints to check team access.
  */
 import { eq, and, sql } from 'drizzle-orm';
-import type { Db } from './db';
+import type { Db } from './infra/db';
 import {
   organizations, orgMembers, assessments, profiles,
   type OrgRole,

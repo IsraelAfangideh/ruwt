@@ -12,24 +12,24 @@ const { mockGetUser, mockCheckRateLimit, mockBuildKey, mockGetDb, mockLogError, 
   mockLogSecurityEvent: vi.fn(),
 }));
 
-vi.mock('./_shared/auth', () => ({
+vi.mock('./_shared/infra/auth', () => ({
   getUser: mockGetUser,
 }));
 
-vi.mock('./_shared/rate-limit', () => ({
+vi.mock('./_shared/infra/rate-limit', () => ({
   checkRateLimit: mockCheckRateLimit,
   buildKey: mockBuildKey,
 }));
 
-vi.mock('./_shared/error-monitor', () => ({
+vi.mock('./_shared/infra/error-monitor', () => ({
   logError: mockLogError,
 }));
 
-vi.mock('./_shared/security-log', () => ({
+vi.mock('./_shared/infra/security-log', () => ({
   logSecurityEvent: mockLogSecurityEvent,
 }));
 
-vi.mock('./_shared/db', () => ({
+vi.mock('./_shared/infra/db', () => ({
   getDb: mockGetDb,
 }));
 

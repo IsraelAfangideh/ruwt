@@ -4,8 +4,8 @@
  * Used as the og:image URL when sharing profiles on social media.
  */
 import { eq, sql } from 'drizzle-orm';
-import { getDb } from '../../../_shared/db';
-import { buildAfiShareSvg } from '../../../_shared/og-afi-svg';
+import { getDb } from '../../../_shared/infra/db';
+import { buildAfiShareSvg } from '../../../_shared/og/og-afi-svg';
 import { profiles, attempts } from '../../../../drizzle/schema.d1';
 
 export async function onRequestGet(context: { request: Request; env: Env; params: { username: string } }) {
@@ -44,7 +44,7 @@ export async function onRequestGet(context: { request: Request; env: Env; params
     const solveCount = Number(stats?.solved || 0);
 
     // Determine certification from badges
-    const { determineCertification } = await import('../../../_shared/scoring');
+    const { determineCertification } = await import('../../../_shared/scoring/scoring');
     // For OG card, we don't need exact category count — use a simplified check
     const certification = determineCertification(solveCount, solveCount >= 50 ? 5 : solveCount >= 25 ? 3 : 1, profile.afiScore);
 

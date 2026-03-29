@@ -4,8 +4,8 @@
  * Auth required (must be the candidate).
  */
 import { eq, and, asc } from 'drizzle-orm';
-import { getDb } from '../../_shared/db';
-import { getUser } from '../../_shared/auth';
+import { getDb } from '../../_shared/infra/db';
+import { getUser } from '../../_shared/infra/auth';
 import {
   assessmentSessions,
   assessmentChallenges,

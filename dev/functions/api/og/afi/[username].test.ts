@@ -5,9 +5,9 @@ const { mockGetDb, mockBuildAfiShareSvg } = vi.hoisted(() => ({
   mockBuildAfiShareSvg: vi.fn().mockReturnValue('<svg>test-afi</svg>'),
 }));
 
-vi.mock('../../../_shared/db', () => ({ getDb: mockGetDb }));
-vi.mock('../../../_shared/og-afi-svg', () => ({ buildAfiShareSvg: mockBuildAfiShareSvg }));
-vi.mock('../../../_shared/scoring', () => ({
+vi.mock('../../../_shared/infra/db', () => ({ getDb: mockGetDb }));
+vi.mock('../../../_shared/og/og-afi-svg', () => ({ buildAfiShareSvg: mockBuildAfiShareSvg }));
+vi.mock('../../../_shared/scoring/scoring', () => ({
   determineCertification: vi.fn().mockReturnValue(null),
 }));
 // Mock resvg-wasm to always fail (SVG fallback path)
@@ -152,7 +152,7 @@ describe('GET /api/og/afi/:username', () => {
 
     await onRequestGet(makeCtx('pro'));
     // solveCount=60 >= 50, so categoryCount should be 5
-    const { determineCertification } = await import('../../../_shared/scoring');
+    const { determineCertification } = await import('../../../_shared/scoring/scoring');
     expect(determineCertification).toHaveBeenCalledWith(60, 5, 700);
   });
 
@@ -177,7 +177,7 @@ describe('GET /api/og/afi/:username', () => {
     mockGetDb.mockReturnValue(db);
 
     await onRequestGet(makeCtx('mid'));
-    const { determineCertification } = await import('../../../_shared/scoring');
+    const { determineCertification } = await import('../../../_shared/scoring/scoring');
     expect(determineCertification).toHaveBeenCalledWith(30, 3, 500);
   });
 
@@ -202,7 +202,7 @@ describe('GET /api/og/afi/:username', () => {
     mockGetDb.mockReturnValue(db);
 
     await onRequestGet(makeCtx('new'));
-    const { determineCertification } = await import('../../../_shared/scoring');
+    const { determineCertification } = await import('../../../_shared/scoring/scoring');
     expect(determineCertification).toHaveBeenCalledWith(10, 1, 200);
   });
 

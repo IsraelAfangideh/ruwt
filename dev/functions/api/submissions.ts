@@ -4,15 +4,15 @@
  */
 import { eq } from 'drizzle-orm';
 import { z } from 'zod';
-import { getDb } from '../_shared/db';
-import { getUser } from '../_shared/auth';
-import { runTestCases, type SupportedLanguage } from '../_shared/judge';
-import { checkAndAwardBadges } from '../_shared/badges';
-import { updateProfileAFI } from '../_shared/afi-update';
-import { updateStreak } from '../_shared/streaks';
-import { createCompetitiveNudges } from '../_shared/competitive-nudges';
-import { createNewUserNearRankNotifications } from '../_shared/new-user-alerts';
-import { invalidateCache } from '../_shared/cache';
+import { getDb } from '../_shared/infra/db';
+import { getUser } from '../_shared/infra/auth';
+import { runTestCases, type SupportedLanguage } from '../_shared/scoring/judge';
+import { checkAndAwardBadges } from '../_shared/scoring/badges';
+import { updateProfileAFI } from '../_shared/ai/afi-update';
+import { updateStreak } from '../_shared/scoring/streaks';
+import { createCompetitiveNudges } from '../_shared/scoring/competitive-nudges';
+import { createNewUserNearRankNotifications } from '../_shared/email/new-user-alerts';
+import { invalidateCache } from '../_shared/infra/cache';
 import { sendEmail } from '../_shared/newsletter/resend';
 import { challengeAttemptNotificationEmail } from '../_shared/email/templates';
 import { ADMIN_EMAIL } from '../_shared/ensure-profile';

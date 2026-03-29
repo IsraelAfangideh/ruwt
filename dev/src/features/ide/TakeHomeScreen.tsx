@@ -9,7 +9,7 @@
 import { lazy, Suspense, useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useAuthGuard } from '@/shared/hooks/useAuthGuard';
-import { useIDELayout } from '@/features/shared-ide/useIDELayout';
+import { useIDELayout } from '@/features/shared-ide/hooks/useIDELayout';
 import { arena } from '@/shared/theme/colors';
 import { fontFamily } from '@/shared/theme/tokens';
 import { useDocumentMeta } from '@/shared/hooks/useDocumentMeta';

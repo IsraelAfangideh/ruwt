@@ -10,7 +10,7 @@ vi.mock('drizzle-orm/d1', () => ({
   drizzle: mockDrizzle,
 }));
 
-vi.mock('../../drizzle/schema.d1', () => mockSchema);
+vi.mock('../../../drizzle/schema.d1', () => mockSchema);
 
 import { getDb } from './db';
 

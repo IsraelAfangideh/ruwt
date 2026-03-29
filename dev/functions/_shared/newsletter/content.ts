@@ -7,7 +7,7 @@
  */
 
 import { sql } from 'drizzle-orm';
-import type { Db } from '../db';
+import type { Db } from '../infra/db';
 
 // --- Types ---
 

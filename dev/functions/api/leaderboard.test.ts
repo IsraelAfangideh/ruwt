@@ -18,7 +18,7 @@ function resetMockDb() {
   mockDb.limit = vi.fn().mockResolvedValue([]);
 }
 
-vi.mock('../_shared/db', () => ({
+vi.mock('../_shared/infra/db', () => ({
   getDb: () => mockDb,
 }));
 

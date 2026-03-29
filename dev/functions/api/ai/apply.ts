@@ -11,10 +11,10 @@
  */
 import { eq, sql } from 'drizzle-orm';
 import { z } from 'zod';
-import { getDb } from '../../_shared/db';
-import { getUser } from '../../_shared/auth';
-import { calculateCost } from '../../_shared/ai-pricing';
-import { logError } from '../../_shared/error-monitor';
+import { getDb } from '../../_shared/infra/db';
+import { getUser } from '../../_shared/infra/auth';
+import { calculateCost } from '../../_shared/ai/ai-pricing';
+import { logError } from '../../_shared/infra/error-monitor';
 import { attempts, aiCalls } from '../../../drizzle/schema.d1';
 
 const requestSchema = z.object({

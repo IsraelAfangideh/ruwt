@@ -4,7 +4,7 @@
  * Query: ?q=search_term&limit=10
  */
 import { sql } from 'drizzle-orm';
-import { getDb } from '../../_shared/db';
+import { getDb } from '../../_shared/infra/db';
 import { profiles } from '../../../drizzle/schema.d1';
 
 /* istanbul ignore next -- @preserve */

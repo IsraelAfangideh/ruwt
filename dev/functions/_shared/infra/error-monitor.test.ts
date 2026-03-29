@@ -146,11 +146,11 @@ describe('diagnoseError', () => {
 import { logError } from './error-monitor';
 
 // We need to mock sendEmail since logError calls it
-vi.mock('./newsletter/resend', () => ({
+vi.mock('../newsletter/resend', () => ({
   sendEmail: vi.fn().mockResolvedValue(undefined),
 }));
 
-import { sendEmail } from './newsletter/resend';
+import { sendEmail } from '../newsletter/resend';
 
 describe('logError', () => {
   function makeDb() {

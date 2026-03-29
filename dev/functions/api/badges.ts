@@ -4,11 +4,11 @@
  * Auth required.
  */
 import { eq, desc } from 'drizzle-orm';
-import { getDb } from '../_shared/db';
-import { getUser } from '../_shared/auth';
+import { getDb } from '../_shared/infra/db';
+import { getUser } from '../_shared/infra/auth';
 import { ensureProfile } from '../_shared/ensure-profile';
 import { badges } from '../../drizzle/schema.d1';
-import { BADGE_DEFS } from '../_shared/badges';
+import { BADGE_DEFS } from '../_shared/scoring/badges';
 
 export async function onRequestGet(context: { request: Request; env: Env; waitUntil?: (p: Promise<unknown>) => void }) {
   try {

@@ -14,7 +14,7 @@
  */
 
 import { sql } from 'drizzle-orm';
-import { getDb } from '../../_shared/db';
+import { getDb } from '../../_shared/infra/db';
 import { sendEmail } from '../../_shared/newsletter/resend';
 import {
   getPlatformActivity,
@@ -24,8 +24,8 @@ import {
   classifyUserState,
 } from '../../_shared/newsletter/content';
 import { buildWeeklyHtml, buildWeeklyText } from '../../_shared/newsletter/template';
-import { getRivals } from '../../_shared/rivals';
-import { getSmartRecommendations } from '../../_shared/recommendations';
+import { getRivals } from '../../_shared/scoring/rivals';
+import { getSmartRecommendations } from '../../_shared/scoring/recommendations';
 
 /** Check if it's currently 8-9 AM in the given IANA timezone. */
 function isMorningLocal(timezone: string): boolean {

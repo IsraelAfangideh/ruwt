@@ -3,7 +3,7 @@
  * on the leaderboard that a new competitor has appeared.
  */
 import { sql } from 'drizzle-orm';
-import type { Db } from './db';
+import type { Db } from '../infra/db';
 
 export async function createNewUserNearRankNotifications(
   db: Db,

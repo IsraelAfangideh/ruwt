@@ -3,8 +3,8 @@
  * Create a Stripe Billing Portal session for subscription management.
  * Redirects user to Stripe-hosted portal to manage/cancel subscription.
  */
-import { getUser } from '../../_shared/auth';
-import { getDb } from '../../_shared/db';
+import { getUser } from '../../_shared/infra/auth';
+import { getDb } from '../../_shared/infra/db';
 import { getUserOrg } from '../../_shared/org';
 
 export async function onRequestPost(context: {

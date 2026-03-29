@@ -33,7 +33,7 @@ function okResponse(chunks: Uint8Array[]): Response {
   return new Response(mockStream(chunks), { status: 200 });
 }
 
-const { useAIChat } = await import('@/features/shared-ide/useAIChat');
+const { useAIChat } = await import('@/features/shared-ide/hooks/useAIChat');
 
 describe('useAIChat — concurrency', () => {
 

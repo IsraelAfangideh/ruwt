@@ -2,8 +2,8 @@
  * GET /api/trial/status
  * Returns current trial status and eligibility for the authenticated user.
  */
-import { getDb } from '../../_shared/db';
-import { getUser } from '../../_shared/auth';
+import { getDb } from '../../_shared/infra/db';
+import { getUser } from '../../_shared/infra/auth';
 import { canStartTrial, getUserOrg, getTrialStatus } from '../../_shared/org';
 
 export async function onRequestGet(context: { request: Request; env: Env }) {

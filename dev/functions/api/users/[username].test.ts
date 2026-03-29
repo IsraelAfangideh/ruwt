@@ -4,8 +4,8 @@ const { mockGetDb } = vi.hoisted(() => ({
   mockGetDb: vi.fn(),
 }));
 
-vi.mock('../../_shared/db', () => ({ getDb: mockGetDb }));
-vi.mock('../../_shared/auth', () => ({ getUser: vi.fn().mockResolvedValue(null) }));
+vi.mock('../../_shared/infra/db', () => ({ getDb: mockGetDb }));
+vi.mock('../../_shared/infra/auth', () => ({ getUser: vi.fn().mockResolvedValue(null) }));
 vi.mock('../../../drizzle/schema.d1', () => ({
   profiles: { id: 'id', name: 'name', username: 'username', avatarUrl: 'avatar_url', bio: 'bio', createdAt: 'created_at', leaderboardExcluded: 'leaderboard_excluded' },
   attempts: { id: 'id', userId: 'user_id', challengeId: 'challenge_id', status: 'status', totalCost: 'total_cost', inputTokens: 'input_tokens', outputTokens: 'output_tokens', submittedAt: 'submitted_at', replayPublic: 'replay_public' },

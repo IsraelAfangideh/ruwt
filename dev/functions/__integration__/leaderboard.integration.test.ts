@@ -6,7 +6,7 @@
  */
 import { describe, it, expect, beforeEach, afterAll } from 'vitest';
 import { eq, and, desc, sql, gte } from 'drizzle-orm';
-import { createTestDb, resetDb } from '../_shared/test-db';
+import { createTestDb, resetDb } from '../_shared/infra/test-db';
 import { profiles, challenges, attempts, seasons } from '../../drizzle/schema.d1';
 
 describe('Leaderboard Integration (real SQLite)', () => {

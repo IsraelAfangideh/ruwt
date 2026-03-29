@@ -4,8 +4,8 @@
  */
 import { eq, sql } from 'drizzle-orm';
 import { z } from 'zod';
-import { getDb } from '../../../_shared/db';
-import { getUser } from '../../../_shared/auth';
+import { getDb } from '../../../_shared/infra/db';
+import { getUser } from '../../../_shared/infra/auth';
 import { replayComments, reactions, profiles, attempts, challenges, notifications } from '../../../../drizzle/schema.d1';
 
 export async function onRequestGet(context: { request: Request; env: Env; params: { id: string } }) {

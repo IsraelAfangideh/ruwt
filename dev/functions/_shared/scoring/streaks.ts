@@ -4,8 +4,8 @@
  * Streaks reset if a day is missed (unless a streak freeze is used).
  */
 import { eq, and, sql } from 'drizzle-orm';
-import type { Db } from './db';
-import { profiles, attempts, dailyChallenges, notifications } from '../../drizzle/schema.d1';
+import type { Db } from '../infra/db';
+import { profiles, attempts, dailyChallenges, notifications } from '../../../drizzle/schema.d1';
 import { checkStreakBadges } from './badges';
 
 function todayUTC(): string {
