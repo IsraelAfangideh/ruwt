@@ -1047,6 +1047,69 @@ describe('VirtualShell', () => {
     });
   });
 
+  // ── Tab completion ──────────────────────────────────────────────────────
+
+  describe('tab completion', () => {
+    it('completes command name from partial input', () => {
+      clearOutput(term);
+      shell.handleInput('hel\t');
+      const out = termOutput(term);
+      expect(out).toContain('help');
+    });
+
+    it('completes file path from partial input', () => {
+      fs.writeFile('/home/user/package.json', '{}');
+      clearOutput(term);
+      shell.handleInput('cat pac\t');
+      const out = termOutput(term);
+      expect(out).toContain('package.json');
+    });
+
+    it('shows multiple options when ambiguous command', () => {
+      clearOutput(term);
+      // 'c' matches: cat, cd, clear, cp
+      shell.handleInput('c\t');
+      const out = termOutput(term);
+      expect(out).toContain('cat');
+      expect(out).toContain('cd');
+    });
+
+    it('shows multiple file options when ambiguous path', () => {
+      fs.writeFile('/home/user/alpha.js', 'a');
+      fs.writeFile('/home/user/apple.js', 'b');
+      clearOutput(term);
+      shell.handleInput('cat a\t');
+      const out = termOutput(term);
+      // Should show both options or complete common prefix 'a'
+      expect(out).toContain('al');
+    });
+
+    it('does nothing on tab with empty input', () => {
+      clearOutput(term);
+      shell.handleInput('\t');
+      const out = termOutput(term);
+      // Should not crash or produce unexpected output
+      expect(out).toBe('');
+    });
+
+    it('completes directory names for cd', () => {
+      fs.mkdir('/home/user/mydir');
+      clearOutput(term);
+      shell.handleInput('cd my\t');
+      const out = termOutput(term);
+      expect(out).toContain('mydir');
+    });
+
+    it('completes with path prefix (e.g., cd src/)', () => {
+      fs.mkdir('/home/user/src');
+      fs.writeFile('/home/user/src/index.ts', 'code');
+      clearOutput(term);
+      shell.handleInput('cat src/in\t');
+      const out = termOutput(term);
+      expect(out).toContain('src/index.ts');
+    });
+  });
+
   // ── Runtime commands (node, npm, npx) ─────────────────────────────────
 
   describe('node command', () => {

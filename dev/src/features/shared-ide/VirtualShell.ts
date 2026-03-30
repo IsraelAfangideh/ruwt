@@ -127,14 +127,73 @@ export class VirtualShell {
         continue;
       }
 
-      // Tab — ignore
-      if (code === 9) continue;
+      // Tab — autocomplete
+      if (code === 9) {
+        this.handleTab();
+        continue;
+      }
 
       // Printable character
       /* istanbul ignore next -- @preserve */
       if (code >= 32) {
         this.line = this.line.slice(0, this.cursorPos) + ch + this.line.slice(this.cursorPos);
         this.cursorPos++;
+        this.redrawLine();
+      }
+    }
+  }
+
+  private static readonly COMMANDS = [
+    'ls', 'cat', 'echo', 'cd', 'pwd', 'mkdir', 'rm', 'touch', 'mv', 'cp',
+    'write', 'clear', 'help', 'run', 'test', 'ruwt', 'node', 'npm', 'npx',
+  ];
+
+  private handleTab(): void {
+    const parts = this.line.slice(0, this.cursorPos).split(' ');
+    const isFirstWord = parts.length <= 1;
+    const partial = parts[parts.length - 1];
+    if (!partial) return;
+
+    if (isFirstWord) {
+      // Complete command names
+      const matches = VirtualShell.COMMANDS.filter((c) => c.startsWith(partial));
+      this.applyCompletion(partial, matches);
+    } else {
+      // Complete file/directory paths
+      const lastSlash = partial.lastIndexOf('/');
+      const dir = lastSlash >= 0 ? partial.slice(0, lastSlash) || '/' : '.';
+      const prefix = lastSlash >= 0 ? partial.slice(lastSlash + 1) : partial;
+      const entries = this.fs.readdir(dir === '.' ? this.fs.getCwd() : this.fs.resolve(dir));
+      if (!entries) return;
+      const matches = entries.filter((e) => e.startsWith(prefix));
+      const completions = matches.map((m) => (lastSlash >= 0 ? partial.slice(0, lastSlash + 1) + m : m));
+      this.applyCompletion(partial, completions);
+    }
+  }
+
+  private applyCompletion(partial: string, matches: string[]): void {
+    if (matches.length === 0) return;
+
+    if (matches.length === 1) {
+      // Single match — complete it
+      const suffix = matches[0].slice(partial.length);
+      this.line = this.line.slice(0, this.cursorPos) + suffix + this.line.slice(this.cursorPos);
+      this.cursorPos += suffix.length;
+      this.redrawLine();
+    } else {
+      // Multiple matches — complete common prefix, then show options
+      let common = matches[0];
+      for (const m of matches) {
+        while (!m.startsWith(common)) common = common.slice(0, -1);
+      }
+      const suffix = common.slice(partial.length);
+      if (suffix) {
+        this.line = this.line.slice(0, this.cursorPos) + suffix + this.line.slice(this.cursorPos);
+        this.cursorPos += suffix.length;
+        this.redrawLine();
+      } else {
+        // Show all options
+        this.term.write('\r\n' + matches.join('  ') + '\r\n');
         this.redrawLine();
       }
     }
