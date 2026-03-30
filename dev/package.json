@@ -48,7 +48,7 @@
     "react-dom": "^19.2.0",
     "react-native-safe-area-context": "^5.0.0",
     "react-native-web": "~0.19.13",
-    "react-resizable-panels": "^4.7.1",
+    "react-resizable-panels": "^4.8.0",
     "resvg-wasm": "^0.5.0",
     "util": "^0.12.5",
     "yaml": "^2.8.2",
