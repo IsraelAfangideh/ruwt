@@ -23,7 +23,6 @@ vi.mock('esbuild-wasm', () => ({
     let code = '';
     if (opts.plugins?.[0]) {
       const plugin = opts.plugins[0];
-      const resolvedPaths: string[] = [];
       const mockBuild = {
         onResolve: vi.fn((_filter: any, cb: any) => {
           // Store the resolver for later use
@@ -43,7 +42,7 @@ vi.mock('esbuild-wasm', () => ({
       errors: [],
     };
   }),
-  transform: vi.fn().mockImplementation(async (code: string, opts: any) => ({
+  transform: vi.fn().mockImplementation(async (code: string, _opts: any) => ({
     code: code, // Pass through for testing
     errors: [],
   })),
@@ -58,12 +57,8 @@ vi.mock('quickjs-emscripten', () => ({
   getQuickJS: vi.fn().mockResolvedValue({
     newRuntime: () => ({
       newContext: () => {
-        let capturedStdout = '';
         return {
-          evalCode: vi.fn().mockImplementation((code: string) => {
-            // Simple simulation: if code contains console.log, capture it
-            const logMatch = code.match(/console\.log\(["'](.+?)["']\)/);
-            if (logMatch) capturedStdout = logMatch[1];
+          evalCode: vi.fn().mockImplementation((_code: string) => {
             return { value: undefined, error: undefined };
           }),
           setProp: vi.fn(),

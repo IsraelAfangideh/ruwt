@@ -6,7 +6,7 @@
  */
 import type { VirtualFileSystem } from '@/features/shared-ide/VirtualFileSystem';
 import { initialize as initEsbuild, bundle } from './esbuild-bridge';
-import { virtualOrigin, getContentType } from './sw-handler';
+import { virtualOrigin } from './sw-handler';
 import { HOME_DIR } from './constants';
 
 // ---------------------------------------------------------------------------

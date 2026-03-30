@@ -23,7 +23,6 @@ vi.mock('./esbuild-bridge', () => ({
 // ---------------------------------------------------------------------------
 
 const mockSwRegister = vi.fn().mockResolvedValue({ active: true });
-const mockSwUnregister = vi.fn().mockResolvedValue(true);
 const mockGetRegistrations = vi.fn().mockResolvedValue([]);
 
 const mockCachePut = vi.fn().mockResolvedValue(undefined);

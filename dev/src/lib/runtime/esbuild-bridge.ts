@@ -82,14 +82,22 @@ export async function transform(
 ): Promise<TransformResult> {
   if (!initialized) throw new Error('esbuild not initialized');
 
-  const result = await esbuild.transform(code, {
-    loader: options?.loader ?? 'js',
-  });
+  try {
+    const result = await esbuild.transform(code, {
+      loader: options?.loader ?? 'js',
+    });
 
-  return {
-    code: result.code,
-    errors: result.errors.map((e) => e.text),
-  };
+    return {
+      code: result.code,
+      errors: [],
+    };
+  } catch (err: unknown) {
+    if (err && typeof err === 'object' && 'errors' in err) {
+      const failure = err as { errors: Array<{ text: string }> };
+      return { code: '', errors: failure.errors.map((e) => e.text) };
+    }
+    throw err;
+  }
 }
 
 /** Bundle an entry point, resolving imports from VirtualFileSystem. */

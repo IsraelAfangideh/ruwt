@@ -110,10 +110,10 @@ describe('EsbuildBridge', () => {
 
     it('returns errors for invalid syntax', async () => {
       await initialize();
-      mockTransform.mockResolvedValueOnce({
-        code: '',
+      const err = Object.assign(new Error('Transform failed'), {
         errors: [{ text: 'Unexpected token' }],
       });
+      mockTransform.mockRejectedValueOnce(err);
       const result = await transform('const = ;', { loader: 'ts' });
       expect(result.errors).toHaveLength(1);
       expect(result.errors[0]).toContain('Unexpected token');
@@ -205,10 +205,10 @@ describe('EsbuildBridge', () => {
       const plugin = createVfsPlugin(vfs);
       // Extract the callbacks by simulating the build.onResolve / build.onLoad registration
       const mockBuildApi = {
-        onResolve: vi.fn((opts: any, cb: any) => {
+        onResolve: vi.fn((_opts: any, cb: any) => {
           onResolveCallback = cb;
         }),
-        onLoad: vi.fn((opts: any, cb: any) => {
+        onLoad: vi.fn((_opts: any, cb: any) => {
           onLoadCallback = cb;
         }),
       };

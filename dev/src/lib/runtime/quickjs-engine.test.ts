@@ -5,7 +5,6 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 // ---------------------------------------------------------------------------
 
 const mockEvalCode = vi.fn().mockReturnValue({ value: undefined, error: undefined });
-const mockDispose = vi.fn();
 const mockSetProp = vi.fn();
 const mockGetProp = vi.fn();
 const mockNewFunction = vi.fn().mockReturnValue({ value: 'fn-handle', dispose: vi.fn() });
