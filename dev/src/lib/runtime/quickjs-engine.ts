@@ -151,7 +151,7 @@ function marshalToQuickJS(context: any, value: unknown, depth = 0): any {
     case 'function': {
       const fn = context.newFunction(value.name || 'anonymous', (...args: any[]) => {
         const jsArgs = args.map((a: any) => context.dump(a));
-        const result = (value as Function)(...jsArgs);
+        const result = (value as (...a: unknown[]) => unknown)(...jsArgs);
         return marshalToQuickJS(context, result, depth + 1);
       });
       return fn;
