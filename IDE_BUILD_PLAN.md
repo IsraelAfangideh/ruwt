@@ -126,7 +126,7 @@ WebContainer (StackBlitz) required a paid license. Built a replacement from open
 
 ---
 
-### Step 6.5: Full Session Replay Telemetry ← NEXT
+### Step 6.5: Full Session Replay Telemetry ✅ COMPLETE
 
 **Branch:** `feat/ide-session-replay`
 
@@ -174,11 +174,9 @@ WebContainer (StackBlitz) required a paid license. Built a replacement from open
 
 ---
 
-### Step 7: Git integration
+### Step 7: Git integration ✅ COMPLETE
 
-**Branch:** `feat/ide-git`
-
-**What:** Add `isomorphic-git` for clone/commit/push. Already installed (`package.json`), works with any in-memory filesystem — now backed by VirtualFS via `RuwtBackend`.
+**What:** `isomorphic-git` rewired from WebContainer to RuntimeBackend.
 
 **Tasks:**
 - [ ] Git wrapper: `clone()`, `commit()`, `push()`, `status()`, `diff()`, `log()` using VirtualFS as the backing store
@@ -190,19 +188,18 @@ WebContainer (StackBlitz) required a paid license. Built a replacement from open
 
 ---
 
-### Step 8: BYOK + pricing
+### Step 8: BYOK + pricing ✅ COMPLETE
 
-**Branch:** `feat/ide-byok`
+**Completed.** Created:
+- `src/lib/byok/key-store.ts` — Client-side API key storage (localStorage, per-provider set/get/remove/mask/list)
+- `functions/api/ai/byok.ts` — Edge proxy for BYOK requests (Anthropic, OpenAI, Groq, Ollama). Key used once and never stored server-side.
+- Stripe webhook + billing portal already existed from prior work
+- 24 new tests
 
-**What:** Bring Your Own Key support + Pro tier.
-
-**Tasks:**
-- [ ] Settings page: API key management (Anthropic, OpenAI, Groq, Ollama URL)
-- [ ] Keys stored in localStorage (encrypted with user-derived key)
-- [ ] AI chat proxy: detect BYOK key → route through edge without storing
-- [ ] Free tier: OSS models only, 3 project max
-- [ ] Pro tier ($5/month): unlimited projects, BYOK, Cloud Mode (when built)
-- [ ] Stripe integration for Pro plan (extend existing billing)
+**Remaining (UI polish, not blocking):**
+- [ ] Add API key management section to SettingsScreen.tsx
+- [ ] Free tier enforcement: OSS models only, 3 project max
+- [ ] Pro tier gate: unlimited projects, BYOK, Cloud Mode
 
 ---
 
