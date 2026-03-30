@@ -3,7 +3,7 @@ import { onRequestPost } from './byok';
 
 // Mock auth
 const mockGetUser = vi.fn();
-vi.mock('../../_shared/auth', () => ({
+vi.mock('../../_shared/infra/auth', () => ({
   getUser: (...args: unknown[]) => mockGetUser(...args),
 }));
 

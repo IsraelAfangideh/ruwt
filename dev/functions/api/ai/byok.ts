@@ -7,7 +7,7 @@
  *
  * This exists to solve CORS: browser can't call Anthropic/OpenAI directly.
  */
-import { getUser } from '../../_shared/auth';
+import { getUser } from '../../_shared/infra/auth';
 
 type Provider = 'anthropic' | 'openai' | 'groq' | 'ollama';
 
