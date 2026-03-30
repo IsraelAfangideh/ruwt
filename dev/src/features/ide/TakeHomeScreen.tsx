@@ -152,7 +152,7 @@ export function TakeHomeScreen() {
         setCloneFailed(true);
         cloneAttemptedRef.current = false; // allow retry
       });
-  }, [refreshFiles]);
+  }, [refreshFiles, backend]);
 
   // Clone repo when session is loaded and runtime is ready
   useEffect(() => {

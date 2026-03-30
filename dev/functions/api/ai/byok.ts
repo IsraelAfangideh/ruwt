@@ -18,8 +18,6 @@ const PROVIDER_URLS: Record<Provider, string> = {
   ollama: '', // User-provided URL
 };
 
-const SUPPORTED_PROVIDERS = new Set<string>(Object.keys(PROVIDER_URLS));
-
 interface BYOKRequest {
   provider: Provider;
   apiKey: string;
@@ -30,26 +28,36 @@ interface BYOKRequest {
   max_tokens?: number;
 }
 
+const MAX_BODY_SIZE = 1_000_000; // 1MB
+
+function jsonError(message: string, status: number): Response {
+  return new Response(JSON.stringify({ error: message }), {
+    status,
+    headers: { 'Content-Type': 'application/json' },
+  });
+}
+
 export async function onRequestPost(context: { request: Request; env: any }): Promise<Response> {
   const user = await getUser(context.request, context.env);
-  if (!user) {
-    return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
-  }
+  if (!user) return jsonError('Unauthorized', 401);
+
+  // Size limit
+  const contentLength = parseInt(context.request.headers.get('content-length') ?? '0', 10);
+  if (contentLength > MAX_BODY_SIZE) return jsonError('Request too large', 413);
 
   let body: BYOKRequest;
   try {
     body = await context.request.json() as BYOKRequest;
   } catch {
-    return new Response(JSON.stringify({ error: 'Invalid JSON' }), { status: 400 });
+    return jsonError('Invalid JSON', 400);
   }
 
-  if (!body.provider) {
-    return new Response(JSON.stringify({ error: 'Missing provider' }), { status: 400 });
+  if (!body.provider || !(body.provider in PROVIDER_URLS)) {
+    return jsonError(`Unsupported or missing provider: ${body.provider}`, 400);
   }
-
-  if (!SUPPORTED_PROVIDERS.has(body.provider)) {
-    return new Response(JSON.stringify({ error: `Unsupported provider: ${body.provider}` }), { status: 400 });
-  }
+  if (!body.apiKey) return jsonError('Missing apiKey', 400);
+  if (!body.model) return jsonError('Missing model', 400);
+  if (!Array.isArray(body.messages)) return jsonError('Missing messages array', 400);
 
   const url = body.provider === 'ollama'
     ? (body.ollamaUrl ?? 'http://localhost:11434') + '/api/chat'
@@ -65,17 +73,15 @@ export async function onRequestPost(context: { request: Request; env: any }): Pr
       body: JSON.stringify(requestBody),
     });
 
-    // Pass through the provider's response (including errors)
     return new Response(response.body, {
       status: response.status,
       headers: {
         'Content-Type': response.headers.get('Content-Type') ?? 'application/json',
-        'Access-Control-Allow-Origin': '*',
       },
     });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Proxy request failed';
-    return new Response(JSON.stringify({ error: message }), { status: 502 });
+    return jsonError(message, 502);
   }
 }
 

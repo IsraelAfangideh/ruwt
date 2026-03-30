@@ -63,6 +63,39 @@ describe('POST /api/ai/byok', () => {
     expect(res.status).toBe(400);
   });
 
+  it('returns 400 for missing apiKey', async () => {
+    const res = await onRequestPost(createContext({
+      provider: 'anthropic',
+      model: 'claude-sonnet-4-20250514',
+      messages: [{ role: 'user', content: 'hi' }],
+    }) as any);
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error).toContain('apiKey');
+  });
+
+  it('returns 400 for missing model', async () => {
+    const res = await onRequestPost(createContext({
+      provider: 'anthropic',
+      apiKey: 'sk-ant-xxx',
+      messages: [],
+    }) as any);
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error).toContain('model');
+  });
+
+  it('returns 400 for missing messages', async () => {
+    const res = await onRequestPost(createContext({
+      provider: 'anthropic',
+      apiKey: 'sk-ant-xxx',
+      model: 'claude-sonnet-4-20250514',
+    }) as any);
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error).toContain('messages');
+  });
+
   it('proxies request to Anthropic API', async () => {
     mockFetch.mockResolvedValueOnce(new Response('{"content":"hi"}', { status: 200 }));
     const res = await onRequestPost(createContext({
