@@ -70,26 +70,21 @@ function getCachedFsAdapter(backend: RuntimeBackend) {
  * change detection cache works correctly.
  */
 function buildFsAdapter(backend: RuntimeBackend) {
-  /** Stat cache — keyed by path, invalidated on mutating operations */
+  const MAX_CACHE_SIZE = 2000;
   const statCache = new Map<string, StatResult>();
-
-  /**
-   * Write-tracking map: path -> monotonic counter.
-   * Incremented on each write so isomorphic-git sees mtime changes.
-   */
   const writeTimes = new Map<string, number>();
   let writeCounter = 1;
 
-  /** Get a stable mtimeMs for a path. Returns 1 for never-written paths. */
   const getMtimeMs = (path: string): number => writeTimes.get(path) ?? 1;
 
-  /** Invalidate stat cache for a path and its parent directory. */
   const invalidateStat = (path: string) => {
     statCache.delete(path);
-    // Also invalidate parent directory since its listing may have changed
     const lastSlash = path.lastIndexOf('/');
     if (lastSlash > 0) statCache.delete(path.slice(0, lastSlash));
     else statCache.delete('.');
+    // Prune caches if they grow too large to prevent memory leaks in long sessions
+    if (statCache.size > MAX_CACHE_SIZE) statCache.clear();
+    if (writeTimes.size > MAX_CACHE_SIZE) writeTimes.clear();
   };
 
   const fs = {

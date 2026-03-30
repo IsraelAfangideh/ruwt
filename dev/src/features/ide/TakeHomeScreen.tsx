@@ -11,6 +11,13 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { useAuthGuard } from '@/shared/hooks/useAuthGuard';
 import { useIDELayout } from '@/features/shared-ide/hooks/useIDELayout';
 import { arena } from '@/shared/theme/colors';
+import {
+  rootStyle, topBarStyle, topBarLeftStyle, backBtnStyle, projectNameStyle,
+  topBarRightStyle, mainStyle, statusDivStyle, mutedTextStyle, errorTextStyle,
+  editorAreaStyle, tabBarStyle, tabStyle, tabLabelBtnStyle, tabCloseBtnStyle,
+  editorWrapperStyle, editorFallbackStyle, terminalWrapperStyle,
+  hDividerStyle, vDividerStyle, bootScreenStyle, bootSpinnerStyle, bootTextStyle,
+} from './ide-styles';
 import { fontFamily } from '@/shared/theme/tokens';
 import { useDocumentMeta } from '@/shared/hooks/useDocumentMeta';
 import { useRuntime } from './useRuntime';

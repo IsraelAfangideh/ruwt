@@ -5,7 +5,7 @@
  * in memory and periodically flushed to R2 via the replay API endpoint.
  * Structured events (AI calls) also go through here for the full timeline.
  */
-import { useRef, useEffect, useCallback } from 'react';
+import { useRef, useEffect, useCallback, useMemo } from 'react';
 
 export interface SessionEvent {
   type:
@@ -39,6 +39,7 @@ export function useSessionRecorder(sessionId: string): SessionRecorder {
   const events = useRef<SessionEvent[]>([]);
   const startTime = useRef(Date.now());
   const flushingRef = useRef(false);
+  const lastSnapshotHash = useRef<Map<string, number>>(new Map());
 
   const record = useCallback(
     (type: SessionEvent['type'], data: Record<string, unknown>) => {
@@ -78,6 +79,13 @@ export function useSessionRecorder(sessionId: string): SessionRecorder {
 
   const snapshotContent = useCallback(
     (path: string, content: string, cursorLine?: number) => {
+      // Skip if content unchanged since last snapshot for this path
+      let hash = 0;
+      for (let i = 0; i < content.length; i++) {
+        hash = ((hash << 5) - hash + content.charCodeAt(i)) | 0;
+      }
+      if (lastSnapshotHash.current.get(path) === hash) return;
+      lastSnapshotHash.current.set(path, hash);
       record('content_snapshot', { path, content, cursorLine });
     },
     [record],
@@ -132,7 +140,7 @@ export function useSessionRecorder(sessionId: string): SessionRecorder {
     [record],
   );
 
-  return {
+  return useMemo<SessionRecorder>(() => ({
     record,
     flush,
     snapshotContent,
@@ -143,5 +151,5 @@ export function useSessionRecorder(sessionId: string): SessionRecorder {
     recordFileClose,
     recordTabSwitch,
     recordFocus,
-  };
+  }), [record, flush, snapshotContent, recordAIPrompt, recordAIResponse, recordTerminalCommand, recordFileOpen, recordFileClose, recordTabSwitch, recordFocus]);
 }
