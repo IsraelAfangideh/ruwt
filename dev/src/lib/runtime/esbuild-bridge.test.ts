@@ -51,7 +51,7 @@ describe('EsbuildBridge', () => {
     it('calls esbuild.initialize with wasmURL and worker false', async () => {
       await initialize();
       expect(mockInitialize).toHaveBeenCalledWith(
-        expect.objectContaining({ wasmURL: expect.any(String), worker: false }),
+        expect.objectContaining({ wasmURL: '/esbuild.wasm', worker: false }),
       );
     });
 
