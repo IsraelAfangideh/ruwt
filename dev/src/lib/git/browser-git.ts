@@ -1,14 +1,13 @@
 /**
- * browser-git.ts: isomorphic-git wrapper that works with WebContainer's filesystem.
+ * browser-git.ts: isomorphic-git wrapper that works with RuntimeBackend.
  *
- * Creates a thin adapter bridging WebContainer's fs API to the PromiseFsClient
- * interface that isomorphic-git expects. Exposes clone, status, add, commit,
- * push, log, diff, and currentBranch operations.
+ * Creates a thin adapter bridging RuntimeBackend's async fs API to the
+ * PromiseFsClient interface that isomorphic-git expects. Exposes clone,
+ * status, add, commit, push, log, diff, and currentBranch operations.
  */
 import * as git from 'isomorphic-git';
 import http from 'isomorphic-git/http/web';
-import { getWebContainer } from '@/lib/sandbox/webcontainer';
-import type { WebContainer } from '@webcontainer/api';
+import type { RuntimeBackend } from '@/lib/sandbox/runtime';
 
 // ── Types ──────────────────────────────────────────────────────────────
 
@@ -46,30 +45,31 @@ interface StatResult {
 
 // ── Module-level cached fs adapter ─────────────────────────────────────
 
-/** Cached adapter — rebuilt only when the container instance changes. */
+/** Cached adapter — rebuilt only when the backend instance changes. */
 let _cachedAdapter: ReturnType<typeof buildFsAdapter> | null = null;
-let _cachedContainer: WebContainer | null = null;
+let _cachedBackend: RuntimeBackend | null = null;
 
-function getCachedFsAdapter(container: WebContainer) {
-  if (_cachedContainer === container && _cachedAdapter) return _cachedAdapter;
-  _cachedAdapter = buildFsAdapter(container);
-  _cachedContainer = container;
+function getCachedFsAdapter(backend: RuntimeBackend) {
+  if (_cachedBackend === backend && _cachedAdapter) return _cachedAdapter;
+  _cachedAdapter = buildFsAdapter(backend);
+  _cachedBackend = backend;
   return _cachedAdapter;
 }
 
-// ── WebContainer fs adapter ────────────────────────────────────────────
+// ── RuntimeBackend fs adapter ─────────────────────────────────────────
 
 /**
- * Build a PromiseFsClient adapter for isomorphic-git from a WebContainer.
+ * Build a PromiseFsClient adapter for isomorphic-git from a RuntimeBackend.
  *
- * WebContainer's fs lacks stat/lstat, so we probe with readFile (file-first)
- * and readdir (directory) to synthesise stat-like objects.
+ * RuntimeBackend's stat may not provide all fields isomorphic-git needs,
+ * so we probe with readFile (file-first) and readdir (directory) to
+ * synthesise stat-like objects.
  *
  * Includes a stat cache that is invalidated on writes, unlinks, mkdirs, and rmdirs.
  * Uses a write-tracking map for stable mtimeMs values so isomorphic-git's
  * change detection cache works correctly.
  */
-function buildFsAdapter(container: WebContainer) {
+function buildFsAdapter(backend: RuntimeBackend) {
   /** Stat cache — keyed by path, invalidated on mutating operations */
   const statCache = new Map<string, StatResult>();
 
@@ -96,43 +96,38 @@ function buildFsAdapter(container: WebContainer) {
     promises: {
       readFile: async (path: string, opts?: { encoding?: string } | string) => {
         const encoding = typeof opts === 'string' ? opts : opts?.encoding;
-        if (encoding === 'utf8' || encoding === 'utf-8') {
-          return container.fs.readFile(path, 'utf-8');
-        }
-        // isomorphic-git often reads without encoding (wants Uint8Array)
-        return container.fs.readFile(path);
+        const content = await backend.readFile(path);
+        if (encoding === 'utf8' || encoding === 'utf-8') return content;
+        // isomorphic-git sometimes wants Uint8Array
+        return new TextEncoder().encode(content);
       },
 
-      writeFile: async (path: string, data: string | Uint8Array, opts?: { mode?: number } | string) => {
-        // WebContainer.fs.writeFile accepts string or Uint8Array
-        const _opts = opts; // keep TS happy about unused
+      writeFile: async (path: string, data: string | Uint8Array, _opts?: { mode?: number } | string) => {
         void _opts;
-        await container.fs.writeFile(path, data as string);
+        const content = typeof data === 'string' ? data : new TextDecoder().decode(data);
+        await backend.writeFile(path, content);
         invalidateStat(path);
         writeTimes.set(path, ++writeCounter);
       },
 
       unlink: async (path: string) => {
-        await container.fs.rm(path);
+        await backend.rm(path);
         invalidateStat(path);
         writeTimes.delete(path);
       },
 
       readdir: async (path: string) => {
-        return container.fs.readdir(path);
+        return backend.readdir(path);
       },
 
-      mkdir: async (path: string, opts?: { recursive?: boolean }) => {
-        if (opts?.recursive) {
-          await container.fs.mkdir(path, { recursive: true });
-        } else {
-          await container.fs.mkdir(path);
-        }
+      mkdir: async (path: string, _opts?: { recursive?: boolean }) => {
+        void _opts;
+        await backend.mkdir(path);
         invalidateStat(path);
       },
 
       rmdir: async (path: string) => {
-        await container.fs.rm(path, { recursive: true });
+        await backend.rm(path);
         invalidateStat(path);
       },
 
@@ -141,35 +136,23 @@ function buildFsAdapter(container: WebContainer) {
        * mode, size, and mtimeMs. We probe file-first, then directory.
        */
       stat: async (path: string) => {
-        return probeStat(container, path, statCache, getMtimeMs);
+        return probeStat(backend, path, statCache, getMtimeMs);
       },
 
       lstat: async (path: string) => {
-        // WebContainer has no symlinks, so lstat === stat
-        return probeStat(container, path, statCache, getMtimeMs);
+        return probeStat(backend, path, statCache, getMtimeMs);
       },
 
-      readlink: async (path: string) => {
-        // WebContainer doesn't support symlinks; throw ENOENT-like error
-        const _path = path;
-        void _path;
+      readlink: async (_path: string) => {
         throw Object.assign(new Error('readlink not supported'), { code: 'ENOENT' });
       },
 
-      symlink: async (target: string, path: string) => {
-        // no-op: WebContainer doesn't support symlinks
-        const _t = target;
-        const _p = path;
-        void _t;
-        void _p;
+      symlink: async (_target: string, _path: string) => {
+        // no-op: VFS doesn't support symlinks
       },
 
-      chmod: async (path: string, mode: number) => {
-        // no-op: WebContainer doesn't support chmod
-        const _p = path;
-        const _m = mode;
-        void _p;
-        void _m;
+      chmod: async (_path: string, _mode: number) => {
+        // no-op: VFS doesn't support chmod
       },
     },
   };
@@ -186,7 +169,7 @@ function buildFsAdapter(container: WebContainer) {
  * Uses a stable mtimeMs from the write-tracking map.
  */
 async function probeStat(
-  container: WebContainer,
+  backend: RuntimeBackend,
   path: string,
   cache: Map<string, StatResult>,
   getMtimeMs: (p: string) => number,
@@ -194,38 +177,19 @@ async function probeStat(
   const cached = cache.get(path);
   if (cached) return cached;
 
-  // Try readFile first — most paths are files, avoids readdir exception cost
   try {
-    await container.fs.readFile(path);
+    const stat = await backend.stat(path);
     const result: StatResult = {
-      isFile: () => true,
-      isDirectory: () => false,
+      isFile: () => stat.isFile,
+      isDirectory: () => stat.isDirectory,
       isSymbolicLink: () => false,
-      mode: 0o100644,
-      size: 0,
+      mode: stat.isDirectory ? 0o40755 : 0o100644,
+      size: stat.size,
       mtimeMs: getMtimeMs(path),
     };
     cache.set(path, result);
     return result;
   } catch {
-    // Not a file — check if it's a directory below
-  }
-
-  // Try readdir — if it succeeds, it's a directory
-  try {
-    await container.fs.readdir(path);
-    const result: StatResult = {
-      isFile: () => false,
-      isDirectory: () => true,
-      isSymbolicLink: () => false,
-      mode: 0o40755,
-      size: 0,
-      mtimeMs: getMtimeMs(path),
-    };
-    cache.set(path, result);
-    return result;
-  } catch {
-    // Path doesn't exist — throw ENOENT
     throw Object.assign(new Error(`ENOENT: no such file or directory, stat '${path}'`), {
       code: 'ENOENT',
     });
@@ -234,14 +198,14 @@ async function probeStat(
 
 // ── Public API ─────────────────────────────────────────────────────────
 
-/** Clone a remote repo into the WebContainer filesystem. */
+/** Clone a remote repo into the runtime filesystem. */
 export async function clone(
+  backend: RuntimeBackend,
   url: string,
   dir: string,
   options: CloneOptions = {},
 ): Promise<void> {
-  const container = await getWebContainer();
-  const fs = getCachedFsAdapter(container);
+  const fs = getCachedFsAdapter(backend);
 
   const authOptions = options.token
     ? { onAuth: () => ({ username: options.token!, password: 'x-oauth-basic' }) }
@@ -271,9 +235,8 @@ export async function clone(
  * Get per-file git status for the working directory.
  * Returns only files that differ from HEAD (modified, added, deleted, untracked).
  */
-export async function status(dir: string): Promise<GitStatusEntry[]> {
-  const container = await getWebContainer();
-  const fs = getCachedFsAdapter(container);
+export async function status(backend: RuntimeBackend, dir: string): Promise<GitStatusEntry[]> {
+  const fs = getCachedFsAdapter(backend);
 
   const matrix = await git.statusMatrix({ fs, dir });
   const results: GitStatusEntry[] = [];
@@ -287,34 +250,31 @@ export async function status(dir: string): Promise<GitStatusEntry[]> {
 }
 
 /** Stage a file for commit. */
-export async function add(dir: string, filepath: string): Promise<void> {
-  const container = await getWebContainer();
-  const fs = getCachedFsAdapter(container);
+export async function add(backend: RuntimeBackend, dir: string, filepath: string): Promise<void> {
+  const fs = getCachedFsAdapter(backend);
   await git.add({ fs, dir, filepath });
 }
 
 /** Unstage a file (remove from the index). */
-export async function unstage(dir: string, filepath: string): Promise<void> {
-  const container = await getWebContainer();
-  const fs = getCachedFsAdapter(container);
+export async function unstage(backend: RuntimeBackend, dir: string, filepath: string): Promise<void> {
+  const fs = getCachedFsAdapter(backend);
   await git.remove({ fs, dir, filepath });
 }
 
 /** Create a commit with the staged changes. */
 export async function commit(
+  backend: RuntimeBackend,
   dir: string,
   message: string,
   author: { name: string; email: string },
 ): Promise<string> {
-  const container = await getWebContainer();
-  const fs = getCachedFsAdapter(container);
+  const fs = getCachedFsAdapter(backend);
   return git.commit({ fs, dir, message, author });
 }
 
 /** Push the current branch to the remote. */
-export async function push(dir: string, options: PushOptions = {}): Promise<void> {
-  const container = await getWebContainer();
-  const fs = getCachedFsAdapter(container);
+export async function push(backend: RuntimeBackend, dir: string, options: PushOptions = {}): Promise<void> {
+  const fs = getCachedFsAdapter(backend);
 
   const authOptions = options.token
     ? { onAuth: () => ({ username: options.token!, password: 'x-oauth-basic' }) }
@@ -329,9 +289,8 @@ export async function push(dir: string, options: PushOptions = {}): Promise<void
 }
 
 /** Return recent commit log entries. */
-export async function log(dir: string, depth: number = 10): Promise<GitLogEntry[]> {
-  const container = await getWebContainer();
-  const fs = getCachedFsAdapter(container);
+export async function log(backend: RuntimeBackend, dir: string, depth: number = 10): Promise<GitLogEntry[]> {
+  const fs = getCachedFsAdapter(backend);
 
   const commits = await git.log({ fs, dir, depth });
   return commits.map((c) => ({
@@ -349,9 +308,8 @@ export async function log(dir: string, depth: number = 10): Promise<GitLogEntry[
  * Show which files have unstaged changes (diff between workdir and stage).
  * Returns files with their change status.
  */
-export async function diff(dir: string): Promise<GitStatusEntry[]> {
-  const container = await getWebContainer();
-  const fs = getCachedFsAdapter(container);
+export async function diff(backend: RuntimeBackend, dir: string): Promise<GitStatusEntry[]> {
+  const fs = getCachedFsAdapter(backend);
 
   const matrix = await git.statusMatrix({ fs, dir });
   const results: GitStatusEntry[] = [];
@@ -368,9 +326,8 @@ export async function diff(dir: string): Promise<GitStatusEntry[]> {
 }
 
 /** Get the current branch name. */
-export async function currentBranch(dir: string): Promise<string | null> {
-  const container = await getWebContainer();
-  const fs = getCachedFsAdapter(container);
+export async function currentBranch(backend: RuntimeBackend, dir: string): Promise<string | null> {
+  const fs = getCachedFsAdapter(backend);
   const branch = await git.currentBranch({ fs, dir });
   return branch ?? null;
 }
@@ -413,9 +370,8 @@ export const _testExports = {
   buildFsAdapter,
   probeStat,
   mapStatusRow,
-  /** Reset the module-level cached adapter (for test isolation) */
   resetCachedAdapter: () => {
     _cachedAdapter = null;
-    _cachedContainer = null;
+    _cachedBackend = null;
   },
 };

@@ -42,25 +42,43 @@ vi.mock('@/features/shared-ide/hooks/useIDELayout', () => ({
 }));
 // PanelResizeBar no longer imported — TakeHomeScreen uses plain div dividers
 vi.mock('@/features/shared-ide/lib/monaco-init', () => ({}));
+vi.mock('@/lib/git/browser-git', () => ({
+  clone: vi.fn().mockResolvedValue(undefined),
+  status: vi.fn().mockResolvedValue([]),
+  add: vi.fn().mockResolvedValue(undefined),
+  unstage: vi.fn().mockResolvedValue(undefined),
+  commit: vi.fn().mockResolvedValue('abc'),
+  push: vi.fn().mockResolvedValue(undefined),
+  log: vi.fn().mockResolvedValue([]),
+  diff: vi.fn().mockResolvedValue([]),
+  currentBranch: vi.fn().mockResolvedValue('main'),
+}));
 
 const mockReadFile = vi.fn().mockResolvedValue('// file content');
 const mockWriteFile = vi.fn().mockResolvedValue(undefined);
-vi.mock('@/lib/sandbox/webcontainer', () => ({
-  readFile: (...args: unknown[]) => mockReadFile(...args),
-  writeFile: (...args: unknown[]) => mockWriteFile(...args),
-}));
+const mockBackend = {
+  mode: 'browser' as const,
+  readFile: mockReadFile,
+  writeFile: mockWriteFile,
+  readdir: vi.fn().mockResolvedValue([]),
+  mkdir: vi.fn().mockResolvedValue(undefined),
+  rm: vi.fn().mockResolvedValue(undefined),
+  stat: vi.fn().mockResolvedValue({ isFile: true, isDirectory: false, size: 0 }),
+  spawn: vi.fn(),
+  connectTerminal: vi.fn().mockReturnValue({ write: vi.fn(), resize: vi.fn(), disconnect: vi.fn() }),
+};
 
 const defaultFiles: FileEntry[] = [
   { name: 'index.js', path: 'index.js', type: 'file' },
   { name: 'package.json', path: 'package.json', type: 'file' },
 ];
-let mockWCReturn: { ready: boolean; files: FileEntry[]; error: string | null; refreshFiles: () => Promise<void>; saveStatus: string; markDirty: () => void; saveProject: (id: string) => Promise<boolean>; collectFiles: () => Promise<Record<string, string>> };
+let mockWCReturn: any;
 const mockRefreshFiles = vi.fn().mockResolvedValue(undefined);
 const mockMarkDirty = vi.fn();
 const mockSaveProject = vi.fn().mockResolvedValue(true);
 const mockCollectFiles = vi.fn().mockResolvedValue({ 'index.js': 'code' });
-vi.mock('./useWebContainer', () => ({
-  useWebContainer: () => mockWCReturn,
+vi.mock('./useRuntime', () => ({
+  useRuntime: () => mockWCReturn,
 }));
 
 vi.mock('./IDETerminal', () => ({
@@ -139,6 +157,7 @@ describe('TakeHomeScreen', () => {
       markDirty: mockMarkDirty,
       saveProject: mockSaveProject,
       collectFiles: mockCollectFiles,
+      backend: mockBackend,
     };
     // Default session fetch response
     mockFetch.mockResolvedValue({

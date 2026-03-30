@@ -26,26 +26,25 @@ vi.mock('isomorphic-git/http/web', () => ({
   default: { request: vi.fn() },
 }));
 
-// Mock the WebContainer
-const mockReadFile = vi.fn();
+// Mock RuntimeBackend
+const mockReadFile = vi.fn().mockResolvedValue('content');
 const mockWriteFile = vi.fn().mockResolvedValue(undefined);
-const mockReaddir = vi.fn();
+const mockReaddir = vi.fn().mockResolvedValue([]);
 const mockMkdir = vi.fn().mockResolvedValue(undefined);
 const mockRm = vi.fn().mockResolvedValue(undefined);
+const mockStat = vi.fn().mockResolvedValue({ isFile: true, isDirectory: false, size: 0 });
 
-const mockContainer = {
-  fs: {
-    readFile: mockReadFile,
-    writeFile: mockWriteFile,
-    readdir: mockReaddir,
-    mkdir: mockMkdir,
-    rm: mockRm,
-  },
+const mockBackend = {
+  mode: 'browser' as const,
+  readFile: mockReadFile,
+  writeFile: mockWriteFile,
+  readdir: mockReaddir,
+  mkdir: mockMkdir,
+  rm: mockRm,
+  stat: mockStat,
+  spawn: vi.fn(),
+  connectTerminal: vi.fn(),
 };
-
-vi.mock('@/lib/sandbox/webcontainer', () => ({
-  getWebContainer: () => Promise.resolve(mockContainer),
-}));
 
 const { clone, status, add, unstage, commit, push, log, diff, currentBranch, _testExports } = await import('./browser-git');
 
@@ -65,7 +64,7 @@ describe('browser-git', () => {
 
   describe('clone', () => {
     it('calls git.clone with correct options', async () => {
-      await clone('https://github.com/user/repo', '/project');
+      await clone(mockBackend as any, 'https://github.com/user/repo', '/project');
       expect(mockGitClone).toHaveBeenCalledWith(
         expect.objectContaining({
           dir: '/project',
@@ -77,21 +76,21 @@ describe('browser-git', () => {
     });
 
     it('passes auth callback when token is provided', async () => {
-      await clone('https://github.com/user/repo', '/project', { token: 'ghp_xxx' });
+      await clone(mockBackend as any, 'https://github.com/user/repo', '/project', { token: 'ghp_xxx' });
       const callArgs = mockGitClone.mock.calls[0][0];
       expect(callArgs.onAuth).toBeDefined();
       expect(callArgs.onAuth()).toEqual({ username: 'ghp_xxx', password: 'x-oauth-basic' });
     });
 
     it('does not pass auth callback when no token', async () => {
-      await clone('https://github.com/user/repo', '/project');
+      await clone(mockBackend as any, 'https://github.com/user/repo', '/project');
       const callArgs = mockGitClone.mock.calls[0][0];
       expect(callArgs.onAuth).toBeUndefined();
     });
 
     it('passes progress callback when onProgress is provided', async () => {
       const onProgress = vi.fn();
-      await clone('https://github.com/user/repo', '/project', { onProgress });
+      await clone(mockBackend as any, 'https://github.com/user/repo', '/project', { onProgress });
       const callArgs = mockGitClone.mock.calls[0][0];
       expect(callArgs.onProgress).toBeDefined();
       // Simulate a progress event
@@ -105,7 +104,7 @@ describe('browser-git', () => {
       mockGitStatusMatrix.mockResolvedValue([
         ['index.js', 1, 1, 1], // unmodified
       ]);
-      const result = await status('/project');
+      const result = await status(mockBackend as any, '/project');
       expect(result).toEqual([]);
     });
 
@@ -113,7 +112,7 @@ describe('browser-git', () => {
       mockGitStatusMatrix.mockResolvedValue([
         ['index.js', 1, 2, 1], // modified
       ]);
-      const result = await status('/project');
+      const result = await status(mockBackend as any, '/project');
       expect(result).toEqual([{ filepath: 'index.js', status: 'modified' }]);
     });
 
@@ -121,7 +120,7 @@ describe('browser-git', () => {
       mockGitStatusMatrix.mockResolvedValue([
         ['new-file.js', 0, 2, 0], // new file
       ]);
-      const result = await status('/project');
+      const result = await status(mockBackend as any, '/project');
       expect(result).toEqual([{ filepath: 'new-file.js', status: 'added' }]);
     });
 
@@ -129,7 +128,7 @@ describe('browser-git', () => {
       mockGitStatusMatrix.mockResolvedValue([
         ['removed.js', 1, 0, 1], // deleted
       ]);
-      const result = await status('/project');
+      const result = await status(mockBackend as any, '/project');
       expect(result).toEqual([{ filepath: 'removed.js', status: 'deleted' }]);
     });
 
@@ -140,7 +139,7 @@ describe('browser-git', () => {
         ['new.js', 0, 2, 0],
         ['deleted.js', 1, 0, 1],
       ]);
-      const result = await status('/project');
+      const result = await status(mockBackend as any, '/project');
       expect(result).toHaveLength(3);
       expect(result).toEqual([
         { filepath: 'modified.js', status: 'modified' },
@@ -152,7 +151,7 @@ describe('browser-git', () => {
 
   describe('add', () => {
     it('calls git.add with filepath', async () => {
-      await add('/project', 'index.js');
+      await add(mockBackend as any, '/project', 'index.js');
       expect(mockGitAdd).toHaveBeenCalledWith(
         expect.objectContaining({
           dir: '/project',
@@ -164,7 +163,7 @@ describe('browser-git', () => {
 
   describe('unstage', () => {
     it('calls git.remove with filepath', async () => {
-      await unstage('/project', 'index.js');
+      await unstage(mockBackend as any, '/project', 'index.js');
       expect(mockGitRemove).toHaveBeenCalledWith(
         expect.objectContaining({
           dir: '/project',
@@ -176,7 +175,7 @@ describe('browser-git', () => {
 
   describe('commit', () => {
     it('calls git.commit with message and author', async () => {
-      const oid = await commit('/project', 'feat: initial commit', {
+      const oid = await commit(mockBackend as any, '/project', 'feat: initial commit', {
         name: 'Test User',
         email: 'test@test.com',
       });
@@ -193,14 +192,14 @@ describe('browser-git', () => {
 
   describe('push', () => {
     it('calls git.push without auth when no token', async () => {
-      await push('/project');
+      await push(mockBackend as any, '/project');
       const callArgs = mockGitPush.mock.calls[0][0];
       expect(callArgs.dir).toBe('/project');
       expect(callArgs.onAuth).toBeUndefined();
     });
 
     it('calls git.push with auth when token provided', async () => {
-      await push('/project', { token: 'ghp_xxx' });
+      await push(mockBackend as any, '/project', { token: 'ghp_xxx' });
       const callArgs = mockGitPush.mock.calls[0][0];
       expect(callArgs.onAuth).toBeDefined();
       expect(callArgs.onAuth()).toEqual({ username: 'ghp_xxx', password: 'x-oauth-basic' });
@@ -226,7 +225,7 @@ describe('browser-git', () => {
         },
       ]);
 
-      const result = await log('/project', 5);
+      const result = await log(mockBackend as any, '/project', 5);
       expect(result).toHaveLength(2);
       expect(result[0]).toEqual({
         oid: 'abc123def456',
@@ -236,7 +235,7 @@ describe('browser-git', () => {
     });
 
     it('uses default depth of 10', async () => {
-      await log('/project');
+      await log(mockBackend as any, '/project');
       expect(mockGitLog).toHaveBeenCalledWith(
         expect.objectContaining({ depth: 10 }),
       );
@@ -244,7 +243,7 @@ describe('browser-git', () => {
 
     it('returns empty array when no commits', async () => {
       mockGitLog.mockResolvedValue([]);
-      const result = await log('/project');
+      const result = await log(mockBackend as any, '/project');
       expect(result).toEqual([]);
     });
   });
@@ -256,7 +255,7 @@ describe('browser-git', () => {
         ['modified.js', 1, 2, 1],    // workdir (2) !== stage (1) → modified
         ['deleted.js', 1, 0, 1],     // workdir (0) !== stage (1) → deleted
       ]);
-      const result = await diff('/project');
+      const result = await diff(mockBackend as any, '/project');
       expect(result).toEqual([
         { filepath: 'modified.js', status: 'modified' },
         { filepath: 'deleted.js', status: 'deleted' },
@@ -267,7 +266,7 @@ describe('browser-git', () => {
       mockGitStatusMatrix.mockResolvedValue([
         ['new.js', 0, 2, 0], // workdir (2) !== stage (0) → untracked
       ]);
-      const result = await diff('/project');
+      const result = await diff(mockBackend as any, '/project');
       expect(result).toEqual([
         { filepath: 'new.js', status: 'untracked' },
       ]);
@@ -277,7 +276,7 @@ describe('browser-git', () => {
       mockGitStatusMatrix.mockResolvedValue([
         ['file.js', 1, 2, 2], // workdir (2) === stage (2) → no diff
       ]);
-      const result = await diff('/project');
+      const result = await diff(mockBackend as any, '/project');
       expect(result).toEqual([]);
     });
   });
@@ -285,20 +284,20 @@ describe('browser-git', () => {
   describe('currentBranch', () => {
     it('returns branch name', async () => {
       mockGitCurrentBranch.mockResolvedValue('main');
-      const result = await currentBranch('/project');
+      const result = await currentBranch(mockBackend as any, '/project');
       expect(result).toBe('main');
     });
 
     it('returns null when detached HEAD', async () => {
       mockGitCurrentBranch.mockResolvedValue(undefined);
-      const result = await currentBranch('/project');
+      const result = await currentBranch(mockBackend as any, '/project');
       expect(result).toBeNull();
     });
   });
 
   describe('fs adapter (via _testExports)', () => {
     it('buildFsAdapter returns an object with promises namespace', () => {
-      const fs = _testExports.buildFsAdapter(mockContainer as any);
+      const fs = _testExports.buildFsAdapter(mockBackend as any);
       expect(fs.promises).toBeDefined();
       expect(fs.promises.readFile).toBeDefined();
       expect(fs.promises.writeFile).toBeDefined();
@@ -313,85 +312,83 @@ describe('browser-git', () => {
       expect(fs.promises.chmod).toBeDefined();
     });
 
-    it('readFile with utf-8 encoding delegates to container', async () => {
-      mockReadFile.mockResolvedValue('file contents');
-      const fs = _testExports.buildFsAdapter(mockContainer as any);
+    it('readFile with utf-8 encoding returns string', async () => {
+      mockReadFile.mockResolvedValueOnce('file contents');
+      const fs = _testExports.buildFsAdapter(mockBackend as any);
       const result = await fs.promises.readFile('/test.js', { encoding: 'utf-8' });
       expect(result).toBe('file contents');
-      expect(mockReadFile).toHaveBeenCalledWith('/test.js', 'utf-8');
+      expect(mockReadFile).toHaveBeenCalledWith('/test.js');
     });
 
-    it('readFile with utf8 encoding delegates to container', async () => {
-      mockReadFile.mockResolvedValue('file contents');
-      const fs = _testExports.buildFsAdapter(mockContainer as any);
+    it('readFile with utf8 string encoding returns string', async () => {
+      mockReadFile.mockResolvedValueOnce('file contents');
+      const fs = _testExports.buildFsAdapter(mockBackend as any);
       const result = await fs.promises.readFile('/test.js', 'utf8');
       expect(result).toBe('file contents');
-      expect(mockReadFile).toHaveBeenCalledWith('/test.js', 'utf-8');
     });
 
-    it('readFile without encoding returns Uint8Array', async () => {
-      const bytes = new Uint8Array([1, 2, 3]);
-      mockReadFile.mockResolvedValue(bytes);
-      const fs = _testExports.buildFsAdapter(mockContainer as any);
+    it('readFile without encoding returns Uint8Array-like', async () => {
+      mockReadFile.mockResolvedValueOnce('hello');
+      const fs = _testExports.buildFsAdapter(mockBackend as any);
       const result = await fs.promises.readFile('/test.bin');
-      expect(result).toBe(bytes);
+      expect(ArrayBuffer.isView(result)).toBe(true);
     });
 
-    it('writeFile delegates to container', async () => {
-      const fs = _testExports.buildFsAdapter(mockContainer as any);
+    it('writeFile delegates to backend', async () => {
+      const fs = _testExports.buildFsAdapter(mockBackend as any);
       await fs.promises.writeFile('/test.js', 'content');
       expect(mockWriteFile).toHaveBeenCalledWith('/test.js', 'content');
     });
 
     it('unlink calls container.fs.rm', async () => {
-      const fs = _testExports.buildFsAdapter(mockContainer as any);
+      const fs = _testExports.buildFsAdapter(mockBackend as any);
       await fs.promises.unlink('/test.js');
       expect(mockRm).toHaveBeenCalledWith('/test.js');
     });
 
     it('readdir delegates to container', async () => {
       mockReaddir.mockResolvedValue(['a.js', 'b.js']);
-      const fs = _testExports.buildFsAdapter(mockContainer as any);
+      const fs = _testExports.buildFsAdapter(mockBackend as any);
       const result = await fs.promises.readdir('/project');
       expect(result).toEqual(['a.js', 'b.js']);
     });
 
     it('mkdir without recursive calls container.fs.mkdir', async () => {
-      const fs = _testExports.buildFsAdapter(mockContainer as any);
+      const fs = _testExports.buildFsAdapter(mockBackend as any);
       await fs.promises.mkdir('/project/src');
       expect(mockMkdir).toHaveBeenCalledWith('/project/src');
     });
 
-    it('mkdir with recursive calls container.fs.mkdir with recursive', async () => {
-      const fs = _testExports.buildFsAdapter(mockContainer as any);
+    it('mkdir with recursive calls backend.mkdir', async () => {
+      const fs = _testExports.buildFsAdapter(mockBackend as any);
       await fs.promises.mkdir('/project/src/deep', { recursive: true });
-      expect(mockMkdir).toHaveBeenCalledWith('/project/src/deep', { recursive: true });
+      expect(mockMkdir).toHaveBeenCalledWith('/project/src/deep');
     });
 
-    it('rmdir calls container.fs.rm with recursive', async () => {
-      const fs = _testExports.buildFsAdapter(mockContainer as any);
+    it('rmdir calls backend.rm', async () => {
+      const fs = _testExports.buildFsAdapter(mockBackend as any);
       await fs.promises.rmdir('/project/src');
-      expect(mockRm).toHaveBeenCalledWith('/project/src', { recursive: true });
+      expect(mockRm).toHaveBeenCalledWith('/project/src');
     });
 
     it('readlink throws ENOENT', async () => {
-      const fs = _testExports.buildFsAdapter(mockContainer as any);
+      const fs = _testExports.buildFsAdapter(mockBackend as any);
       await expect(fs.promises.readlink('/test')).rejects.toThrow('readlink not supported');
     });
 
     it('symlink is a no-op', async () => {
-      const fs = _testExports.buildFsAdapter(mockContainer as any);
+      const fs = _testExports.buildFsAdapter(mockBackend as any);
       await expect(fs.promises.symlink('/target', '/link')).resolves.toBeUndefined();
     });
 
     it('chmod is a no-op', async () => {
-      const fs = _testExports.buildFsAdapter(mockContainer as any);
+      const fs = _testExports.buildFsAdapter(mockBackend as any);
       await expect(fs.promises.chmod('/test', 0o755)).resolves.toBeUndefined();
     });
 
     it('stat returns file stat via probeStat', async () => {
       mockReadFile.mockResolvedValue(new Uint8Array(10));
-      const fs = _testExports.buildFsAdapter(mockContainer as any);
+      const fs = _testExports.buildFsAdapter(mockBackend as any);
       const stat = await fs.promises.stat('/test.js');
       expect(stat.isFile()).toBe(true);
       expect(stat.size).toBe(0); // size is always 0
@@ -400,14 +397,14 @@ describe('browser-git', () => {
 
     it('lstat returns same as stat (no symlinks)', async () => {
       mockReadFile.mockResolvedValue(new Uint8Array(10));
-      const fs = _testExports.buildFsAdapter(mockContainer as any);
+      const fs = _testExports.buildFsAdapter(mockBackend as any);
       const stat = await fs.promises.lstat('/test.js');
       expect(stat.isFile()).toBe(true);
     });
 
     it('writeFile increments mtimeMs for written paths', async () => {
       mockReadFile.mockResolvedValue(new Uint8Array(5));
-      const fs = _testExports.buildFsAdapter(mockContainer as any);
+      const fs = _testExports.buildFsAdapter(mockBackend as any);
       // First stat — mtime should be 1
       const stat1 = await fs.promises.stat('/write-test.js');
       expect(stat1.mtimeMs).toBe(1);
@@ -420,7 +417,7 @@ describe('browser-git', () => {
 
     it('unlink removes path from write-tracking', async () => {
       mockReadFile.mockResolvedValue(new Uint8Array(5));
-      const fs = _testExports.buildFsAdapter(mockContainer as any);
+      const fs = _testExports.buildFsAdapter(mockBackend as any);
       await fs.promises.writeFile('/del-test.js', 'content');
       await fs.promises.unlink('/del-test.js');
       // After unlink + re-creation, mtime resets to default (but we wrote again on the next writeFile)
@@ -432,57 +429,54 @@ describe('browser-git', () => {
   });
 
   describe('probeStat', () => {
-    it('returns file stat when readFile succeeds (file-first probe)', async () => {
-      mockReadFile.mockResolvedValue(new Uint8Array(42));
+    it('returns file stat when backend.stat says isFile', async () => {
+      mockStat.mockResolvedValueOnce({ isFile: true, isDirectory: false, size: 42 });
       const cache = new Map();
       const getMtimeMs = () => 1;
-      const stat = await _testExports.probeStat(mockContainer as any, '/project/file.js', cache, getMtimeMs);
+      const stat = await _testExports.probeStat(mockBackend as any, '/project/file.js', cache, getMtimeMs);
       expect(stat.isFile()).toBe(true);
       expect(stat.isDirectory()).toBe(false);
       expect(stat.isSymbolicLink()).toBe(false);
-      expect(stat.size).toBe(0); // size is always 0 now
+      expect(stat.size).toBe(42);
       expect(stat.mode).toBe(0o100644);
       expect(stat.mtimeMs).toBe(1);
     });
 
-    it('returns directory stat when readFile fails but readdir succeeds', async () => {
-      mockReadFile.mockRejectedValue(new Error('is a directory'));
-      mockReaddir.mockResolvedValue(['file1', 'file2']);
+    it('returns directory stat when backend.stat says isDirectory', async () => {
+      mockStat.mockResolvedValueOnce({ isFile: false, isDirectory: true, size: 0 });
       const cache = new Map();
       const getMtimeMs = () => 1;
-      const stat = await _testExports.probeStat(mockContainer as any, '/project', cache, getMtimeMs);
+      const stat = await _testExports.probeStat(mockBackend as any, '/project', cache, getMtimeMs);
       expect(stat.isFile()).toBe(false);
       expect(stat.isDirectory()).toBe(true);
       expect(stat.isSymbolicLink()).toBe(false);
       expect(stat.mode).toBe(0o40755);
     });
 
-    it('throws ENOENT when both readFile and readdir fail', async () => {
-      mockReadFile.mockRejectedValue(new Error('not found'));
-      mockReaddir.mockRejectedValue(new Error('not found'));
+    it('throws ENOENT when backend.stat throws', async () => {
+      mockStat.mockRejectedValueOnce(new Error('not found'));
       const cache = new Map();
       const getMtimeMs = () => 1;
-      await expect(_testExports.probeStat(mockContainer as any, '/nonexistent', cache, getMtimeMs))
+      await expect(_testExports.probeStat(mockBackend as any, '/nonexistent', cache, getMtimeMs))
         .rejects.toThrow('ENOENT');
     });
 
     it('returns cached stat on second call', async () => {
-      mockReadFile.mockResolvedValue(new Uint8Array(10));
+      mockStat.mockResolvedValueOnce({ isFile: true, isDirectory: false, size: 10 });
       const cache = new Map();
       const getMtimeMs = () => 1;
-      const stat1 = await _testExports.probeStat(mockContainer as any, '/cached.js', cache, getMtimeMs);
-      const stat2 = await _testExports.probeStat(mockContainer as any, '/cached.js', cache, getMtimeMs);
+      const stat1 = await _testExports.probeStat(mockBackend as any, '/cached.js', cache, getMtimeMs);
+      const stat2 = await _testExports.probeStat(mockBackend as any, '/cached.js', cache, getMtimeMs);
       expect(stat1).toBe(stat2);
-      // readFile should only have been called once for this path
-      expect(mockReadFile).toHaveBeenCalledTimes(1);
+      expect(mockStat).toHaveBeenCalledTimes(1);
     });
 
     it('uses getMtimeMs for write-tracked files', async () => {
-      mockReadFile.mockResolvedValue(new Uint8Array(5));
+      mockStat.mockResolvedValueOnce({ isFile: true, isDirectory: false, size: 5 });
       const cache = new Map();
-      let counter = 42;
+      const counter = 42;
       const getMtimeMs = () => counter;
-      const stat = await _testExports.probeStat(mockContainer as any, '/tracked.js', cache, getMtimeMs);
+      const stat = await _testExports.probeStat(mockBackend as any, '/tracked.js', cache, getMtimeMs);
       expect(stat.mtimeMs).toBe(42);
     });
   });

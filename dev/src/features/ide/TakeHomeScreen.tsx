@@ -13,8 +13,7 @@ import { useIDELayout } from '@/features/shared-ide/hooks/useIDELayout';
 import { arena } from '@/shared/theme/colors';
 import { fontFamily } from '@/shared/theme/tokens';
 import { useDocumentMeta } from '@/shared/hooks/useDocumentMeta';
-import { readFile, writeFile } from '@/lib/sandbox/webcontainer';
-import { useWebContainer } from './useWebContainer';
+import { useRuntime } from './useRuntime';
 import { FileTree } from './FileTree';
 import { IDETerminal } from './IDETerminal';
 import { tabLabel, languageForPath, buildGitStatusMap } from './utils';
@@ -69,7 +68,7 @@ export function TakeHomeScreen() {
   const [showInstructions, setShowInstructions] = useState(true);
   const [disclosureAccepted, setDisclosureAccepted] = useState(false);
 
-  const { ready, files, error, refreshFiles, collectFiles } = useWebContainer();
+  const { ready, files, error, refreshFiles, collectFiles, backend } = useRuntime();
   const recorder = useSessionRecorder(sessionId ?? '');
   useDocumentMeta({ title: 'Take-Home Assessment — Ruwt IDE' });
 
@@ -133,7 +132,7 @@ export function TakeHomeScreen() {
     cloneAttemptedRef.current = true;
     setCloneFailed(false);
     setCloneProgress('Cloning repository...');
-    browserGit.clone(repoUrl, '.', {
+    browserGit.clone(backend, repoUrl, '.', {
       onProgress: (phase, loaded, total) => {
         setCloneProgress(`${phase}: ${loaded}${total ? `/${total}` : ''}`);
       },
@@ -142,7 +141,7 @@ export function TakeHomeScreen() {
         setCloneProgress(null);
         await refreshFiles();
         try {
-          const entries = await browserGit.status('.');
+          const entries = await browserGit.status(backend, '.');
           setGitStatusEntries(entries);
         } catch {
           // Not a git repo after clone? Ignore
@@ -155,7 +154,7 @@ export function TakeHomeScreen() {
       });
   }, [refreshFiles]);
 
-  // Clone repo when session is loaded and WebContainer is ready
+  // Clone repo when session is loaded and runtime is ready
   useEffect(() => {
     if (!ready || !sessionDetails?.repoUrl || cloneAttemptedRef.current) return;
     doClone(sessionDetails.repoUrl);
@@ -194,7 +193,7 @@ export function TakeHomeScreen() {
       recorder.recordTabSwitch(prevTab, path);
     }
     try {
-      const content = await readFile(path);
+      const content = await backend.readFile(path);
       setEditorContent(content);
     } catch {
       setEditorContent('// Could not read file');
@@ -240,7 +239,7 @@ export function TakeHomeScreen() {
     const path = activeTab;
     if (writeTimerRef.current) clearTimeout(writeTimerRef.current);
     writeTimerRef.current = setTimeout(() => {
-      writeFile(path, v).catch(/* istanbul ignore next -- @preserve */ () => {});
+      backend.writeFile(path, v).catch(/* istanbul ignore next -- @preserve */ () => {});
       // Fire-and-forget telemetry for file changes
       if (sessionId) {
         fetch('/api/assess/takehome/telemetry', {
@@ -285,7 +284,7 @@ export function TakeHomeScreen() {
     };
   }, [disclosureAccepted, recorder]);
 
-  // Auto-open index.js once WebContainer is ready
+  // Auto-open index.js once runtime is ready
   useEffect(() => {
     if (ready && !didAutoOpenRef.current && openTabs.length === 0 && files.length > 0) {
       didAutoOpenRef.current = true;
@@ -532,7 +531,7 @@ export function TakeHomeScreen() {
                   </Suspense>
                 ) : (
                   <div style={editorFallbackStyle} data-testid="no-file-open">
-                    {ready ? 'Select a file to start editing' : 'Booting WebContainer...'}
+                    {ready ? 'Select a file to start editing' : 'Booting runtime...'}
                   </div>
                 )}
               </div>
@@ -554,7 +553,7 @@ export function TakeHomeScreen() {
                           <span style={terminalTitleStyle}>Terminal</span>
                         </div>
                         <div style={terminalBodyPlaceholderStyle}>
-                          <span style={mutedTextStyle}>Waiting for WebContainer...</span>
+                          <span style={mutedTextStyle}>Waiting for runtime...</span>
                         </div>
                       </div>
                     )}

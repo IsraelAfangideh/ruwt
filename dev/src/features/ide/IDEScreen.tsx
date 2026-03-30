@@ -178,9 +178,9 @@ export function IDEScreen() {
   const refreshGitStatus = useCallback(async () => {
     try {
       const [branch, entries, commits] = await Promise.all([
-        browserGit.currentBranch('.'),
-        browserGit.status('.'),
-        browserGit.log('.', 5),
+        browserGit.currentBranch(backend, '.'),
+        browserGit.status(backend, '.'),
+        browserGit.log(backend, '.', 5),
       ]);
       setGitBranch(branch);
       setGitStatusEntries(entries);
@@ -195,20 +195,20 @@ export function IDEScreen() {
 
   /** Handle clone: clone repo, refresh file tree, check git status. */
   const handleClone = useCallback(async (url: string, token?: string) => {
-    await browserGit.clone(url, '.', { token });
+    await browserGit.clone(backend, url, '.', { token });
     await Promise.all([refreshFiles(), refreshGitStatus()]);
   }, [refreshFiles, refreshGitStatus]);
 
   /** Stage a file */
   const handleGitStage = useCallback((filepath: string) => {
-    browserGit.add('.', filepath)
+    browserGit.add(backend, '.', filepath)
       .then(refreshGitStatus)
       .catch(/* istanbul ignore next -- @preserve */ () => {});
   }, [refreshGitStatus]);
 
   /** Unstage a file (remove from the index via git.remove) */
   const handleGitUnstage = useCallback((filepath: string) => {
-    browserGit.unstage('.', filepath)
+    browserGit.unstage(backend, '.', filepath)
       .then(refreshGitStatus)
       .catch(/* istanbul ignore next -- @preserve */ () => {});
   }, [refreshGitStatus]);
@@ -216,7 +216,7 @@ export function IDEScreen() {
   /** Commit staged changes */
   const handleGitCommit = useCallback((message: string) => {
     const author = { name: user?.email ?? 'Ruwt User', email: user?.email ?? 'user@ruwt.dev' };
-    browserGit.commit('.', message, author)
+    browserGit.commit(backend, '.', message, author)
       .then(() => refreshGitStatus())
       .catch(/* istanbul ignore next -- @preserve */ () => {});
   }, [user, refreshGitStatus]);
@@ -224,7 +224,7 @@ export function IDEScreen() {
   /** Push to remote */
   const handleGitPush = useCallback(() => {
     const token = gitTokenRef.current ?? undefined;
-    browserGit.push('.', { token })
+    browserGit.push(backend, '.', { token })
       .catch(/* istanbul ignore next -- @preserve */ () => {});
   }, []);
 

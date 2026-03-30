@@ -40,8 +40,18 @@ let mockLayoutReturn: any = {
 vi.mock('@/features/shared-ide/hooks/useIDELayout', () => ({
   useIDELayout: () => mockLayoutReturn,
 }));
-// PanelResizeBar no longer used — IDEScreen renders plain div dividers directly
 vi.mock('@/features/shared-ide/lib/monaco-init', () => ({}));
+vi.mock('@/lib/git/browser-git', () => ({
+  clone: vi.fn().mockResolvedValue(undefined),
+  status: vi.fn().mockResolvedValue([]),
+  add: vi.fn().mockResolvedValue(undefined),
+  unstage: vi.fn().mockResolvedValue(undefined),
+  commit: vi.fn().mockResolvedValue('abc'),
+  push: vi.fn().mockResolvedValue(undefined),
+  log: vi.fn().mockResolvedValue([]),
+  diff: vi.fn().mockResolvedValue([]),
+  currentBranch: vi.fn().mockResolvedValue('main'),
+}));
 
 // Mock useRuntime hook (replaces useWebContainer)
 const mockReadFile = vi.fn().mockResolvedValue('// file content');
