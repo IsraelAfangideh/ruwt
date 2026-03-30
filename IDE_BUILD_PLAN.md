@@ -2,14 +2,15 @@
 
 This document is the step-by-step build plan for adding IDE capabilities to ruwt.dev.
 Read `TECH_STACK.md` for full strategy, architecture, and financial context.
+Read `RUNTIME.md` for the browser runtime architecture that replaced WebContainer.
 
 ## Current State
 
 - ruwt.dev is a live assessment platform with 27 users, 44 challenges, and a full Arena IDE
 - The Arena IDE (`/arena/:challengeId`) has: Monaco editor, AI chat (SSE streaming), xterm terminal, diff applier, cost tracking
 - Assessment infrastructure exists: AssessmentBuilder, invite flow, candidate flow, results dashboard, org management
-- `@webcontainer/api` is already in `dev/package.json` (installed but unused in current RNW app)
-- Old Next.js app (`dev/app/`) has dead WebContainer + FileTree code that can be referenced
+- **Ruwt Runtime** (`src/lib/runtime/`) replaces WebContainer — esbuild-wasm + QuickJS + VirtualFS, zero server cost
+- IDE at `/ide/new` is live with file tree, multi-file tabs, terminal with `node`/`npm`/`npx` commands
 
 ## Goal
 
@@ -43,84 +44,62 @@ Each step is designed to be completable in 1-3 Claude Code sessions. Each produc
 
 **Branch:** `feat/ide-shared-components`
 
-**What:** Move reusable IDE components from `features/arena/` to `features/shared-ide/`. Arena imports from the new location. Pure refactor — no new features.
-
-**Components to extract:**
-- Monaco editor wrapper (the lazy-loaded editor component)
-- AI chat panel + hooks (`useAIChat.ts`, `ChatMarkdown.tsx`, `ModeSelector.tsx`)
-- Terminal panel (`TerminalPanel.tsx`)
-- Diff applier (`lib/diff-apply.ts`, `lib/code-apply.ts`, `lib/apply-model.ts`)
-- Results bar (`ResultsBar.tsx`)
-- Panel resize bar (`PanelResizeBar.tsx`)
-- Plan approval (`PlanApproval.tsx`)
-- Collapsed sidebar (`CollapsedSidebar.tsx`)
-- Layout hook (`useArenaLayout` or equivalent)
-
-**What stays in arena/:**
-- `ArenaScreen.tsx` (challenge-specific orchestration)
-- `ArenaIDE.tsx` (challenge-specific IDE wrapper)
-- `GuestArenaScreen.tsx`
-- `ExpiryOverlay.tsx` (challenge timer — challenge-specific)
-- `RuwtTUI.ts` (virtual shell — challenge-specific, may not be needed in IDE mode)
-- `Notepad.tsx`
-- Challenge-specific types and hooks
-
-**Acceptance criteria:**
-- [x] All components moved to `features/shared-ide/`
-- [ ] `features/shared-ide/index.ts` barrel export (deferred — not needed yet)
-- [x] Arena components import from `shared-ide/` instead of local
-- [x] ALL existing tests pass (`npx vitest run`) — 5,415/5,416 (1 pre-existing failure in LandingScreen)
-- [x] TypeScript compiles (`npx tsc --noEmit`)
-- [x] No behavior changes — pure refactor
-
-**Completed in branch `feat/ide-shared-components`. 53 files changed.**
-
-What was moved to `shared-ide/`:
+**Completed.** 53 files changed. Components moved to `features/shared-ide/`:
 - UI: ChatMarkdown, CollapsedSidebar, ModeSelector, PanelResizeBar, PlanApproval, Notepad, VirtualFileSystem, VirtualShell
 - Hooks: useAIChat (attemptId→sessionId), useIDELayout (renamed from useArenaLayout), useEditorDecorations, useCodeSync
 - Lib: diff-apply, code-apply, apply-model, tool-parser, line-diff, monaco-init
 - New: ai-types.ts (extracted shared types from system-prompts.ts)
 
-What stayed in `arena/` (challenge-specific):
-- ArenaIDE.tsx, ArenaScreen.tsx, GuestArenaScreen.tsx, TerminalPanel.tsx, ResultsBar.tsx, ExpiryOverlay.tsx, RuwtTUI.ts, ArenaErrorBoundary.tsx, lib/system-prompts.ts
-
-**Gotchas:**
-- Some components may have arena-specific props/types. Make them generic or pass as props.
-- Test files that import from arena paths need updating
-- Istanbul coverage exclusions may need adjusting
-
 ---
 
 ### Step 2: Add /ide route with basic editor ✅ COMPLETE
 
-**Branch:** `feat/ide-route`
-
 **Completed.** Created:
 - `features/ide/ProjectListScreen.tsx` — `/ide` route with empty state, "New Project" button
-- `features/ide/IDEScreen.tsx` — `/ide/new` route with Monaco editor, mock file tree, terminal placeholder, top bar
+- `features/ide/IDEScreen.tsx` — `/ide/new` route with Monaco editor, file tree, terminal
 - Navigation wired up in types.ts, linking.ts, AppNavigator.tsx
-- 23 new tests, all 5,438 tests pass
 
 ---
 
-### Step 3: WebContainer wrapper ✅ COMPLETE
+### Step 3: Ruwt Runtime (browser-native JS runtime) ✅ COMPLETE
 
-**Completed.** Created:
-- `src/lib/sandbox/webcontainer.ts` — singleton boot, file CRUD, spawn, spawnWithInput, createStarterFiles
-- `public/_headers` — COOP/COEP scoped to /ide/* and /arena/* (OAuth unaffected)
-- 15 new tests
+**Originally:** WebContainer wrapper. **Replaced with:** self-built browser runtime.
+
+WebContainer (StackBlitz) required a paid license. Built a replacement from open-source components:
+
+**New modules (`src/lib/runtime/`):**
+- `esbuild-bridge.ts` — in-browser TS/JSX bundling via esbuild-wasm
+- `quickjs-engine.ts` — JS execution via QuickJS WASM with Node.js polyfills
+- `node-polyfills.ts` — fs, path, events, buffer, process, os, crypto (pure-JS SHA-256)
+- `npm-client.ts` — browser-based package manager (resolve, fetch, extract from npm registry)
+- `tar.ts` — minimal tar archive parser for npm tarballs
+- `sw-handler.ts` + `dev-server.ts` — Service Worker dev preview with Cache API
+- `persistence.ts` — IndexedDB package cache + OPFS filesystem persistence
+- `constants.ts` — shared HOME_DIR/NODE_MODULES_DIR constants
+
+**New backend (`src/lib/sandbox/`):**
+- `ruwt-backend.ts` — implements `RuntimeBackend` interface (drop-in for `BrowserBackend`)
+
+**Extended:**
+- `VirtualShell.ts` — added `node`, `npm`, `npx` commands via `RuntimeCallbacks`
+
+**260+ new tests, all passing. See `RUNTIME.md` for full architecture.**
 
 ---
 
-### Step 4: Wire WebContainer to IDE ✅ COMPLETE
+### Step 4: Wire runtime to IDE ✅ COMPLETE
 
 **Completed.** Created:
-- `features/ide/FileTree.tsx` — recursive tree from WebContainer FS, folder expand/collapse, file icons
-- `features/ide/IDETerminal.tsx` — xterm connected to WebContainer jsh shell
-- `features/ide/useWebContainer.ts` — boot lifecycle, file tree building, refresh
-- IDEScreen updated: real file tree, multi-file tabs, Monaco read/write, debounced auto-save
-- Shared terminal theme extracted to colors.ts
-- 43 new tests, all 5,496 pass
+- `features/ide/useRuntime.ts` — replaces `useWebContainer.ts`, same API + `backend` prop
+- IDEScreen updated: imports `useRuntime` instead of `useWebContainer`, uses `backend.readFile/writeFile`
+- IDETerminal updated: accepts `backend` prop, uses `backend.connectTerminal()` instead of `spawnWithInput('jsh')`
+- esbuild.wasm served from `public/` (self-hosted, no CDN dependency)
+
+**The IDE at `ruwt.dev/ide/new` is live and functional:**
+- File tree sidebar with index.js, package.json, solution.js
+- Multi-file tabs in Monaco editor
+- Terminal with `ls`, `node index.js`, `npm install`, and all shell commands
+- Project persistence via R2 (save/load)
 
 ---
 
@@ -130,11 +109,9 @@ What stayed in `arena/` (challenge-specific):
 - D1 migration 0057: projects table
 - R2 binding PROJECTS_BUCKET in wrangler.toml, env.d.ts updated
 - API: GET/POST /api/projects, GET/PUT/DELETE /api/projects/:id, GET /api/projects/:id/files
-- Client: useWebContainer saveProject/loadProject + auto-save (30s), save status indicator
+- Client: useRuntime saveProject/loadProject + auto-save (30s), save status indicator
 - ProjectListScreen: real project list from API with delete
 - IDEScreen: load on mount, save button, /ide/:projectId route
-- Files stored as JSON in R2 (simple, no compression for v1)
-- 70 new tests, all 5,566 pass
 
 ---
 
@@ -146,7 +123,6 @@ What stayed in `arena/` (challenge-specific):
 - TakeHomeScreen at /ide/takehome/:sessionId: instructions sidebar, timer, fire-and-forget telemetry, submit flow
 - Atomic SQL increments for telemetry cost tracking (race-safe)
 - Shared IDE utils extracted (tabLabel, languageForPath)
-- 51 new tests, all 5,617 pass
 
 ---
 
@@ -202,15 +178,15 @@ What stayed in `arena/` (challenge-specific):
 
 **Branch:** `feat/ide-git`
 
-**What:** Add `isomorphic-git` for clone/commit/push in Browser Mode.
+**What:** Add `isomorphic-git` for clone/commit/push. Already installed (`package.json`), works with any in-memory filesystem — now backed by VirtualFS via `RuwtBackend`.
 
 **Tasks:**
-- [ ] Install `isomorphic-git` + `lightning-fs`
-- [ ] Git wrapper: `clone()`, `commit()`, `push()`, `status()`, `diff()`, `log()`
-- [ ] Clone flow in `/ide/new` — paste a URL, clone into WebContainer
+- [ ] Git wrapper: `clone()`, `commit()`, `push()`, `status()`, `diff()`, `log()` using VirtualFS as the backing store
+- [ ] Clone flow in `/ide/new` — paste a URL, clone into VirtualFS
 - [ ] Git status indicators in file tree (modified, added, untracked)
 - [ ] Commit panel (message input + commit button)
 - [ ] Push support (user provides GitHub PAT in settings)
+- [ ] `git` commands in VirtualShell (`git status`, `git add`, `git commit`, `git push`)
 
 ---
 
@@ -232,7 +208,8 @@ What stayed in `arena/` (challenge-specific):
 
 ## Notes for Future Claude Sessions
 
-- **Always read `TECH_STACK.md` first** for full context on strategy, architecture, and business model
+- **Always read `RUNTIME.md`** for browser runtime architecture (esbuild-wasm + QuickJS + VirtualFS)
+- **Always read `TECH_STACK.md`** for full context on strategy, architecture, and business model
 - **Always run `npx vitest run` after changes** to verify nothing is broken
 - **Always run `npx tsc --noEmit`** to verify TypeScript compiles
 - **Run `/simplify` after changes** per CLAUDE.md instructions
@@ -240,6 +217,8 @@ What stayed in `arena/` (challenge-specific):
 - **Istanbul ignore syntax:** `/* istanbul ignore next -- @preserve */` (the `@preserve` is REQUIRED)
 - **React Native Web testing:** use `fireEvent.click()` not `fireEvent.press()`
 - **Branch off `main`** for all work (not `develop` — it's diverged)
-- **Commit style:** `type(dev): description` (e.g., `refactor(dev): extract shared-ide components from arena`)
-- **COOP/COEP headers may break OAuth popups** — test login flow after adding them
-- **The old Next.js WebContainer code** in `dev/app/arena/[challengeId]/page.tsx` is reference only — don't import from it, port the patterns into new modules
+- **Commit style:** `type(dev): description` (e.g., `feat(dev): add session replay`)
+- **WebContainer is deprecated** — `webcontainer.ts` and `browser-backend.ts` still exist but are unused. The IDE uses `RuwtBackend` via `useRuntime` hook.
+- **The old `useWebContainer` hook** is still in the codebase for reference but `IDEScreen` and `IDETerminal` no longer import from it.
+- **esbuild.wasm** is served from `public/esbuild.wasm` (self-hosted, 13MB). Do not use CDN — COEP headers block cross-origin fetches on `/ide/*`.
+- **Ruwt Runtime constants:** `HOME_DIR` and `NODE_MODULES_DIR` in `src/lib/runtime/constants.ts`. Never hardcode `/home/user`.
