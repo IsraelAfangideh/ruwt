@@ -68,7 +68,7 @@
     "@vitest/coverage-istanbul": "^4.0.18",
     "axe-core": "^4.11.1",
     "better-sqlite3": "^12.8.0",
-    "dotenv": "^17.2.4",
+    "dotenv": "^17.3.1",
     "drizzle-kit": "^0.31.8",
     "drizzle-orm": "^0.45.1",
     "eslint": "^9.0.0",
