@@ -1,6 +1,6 @@
 /**
  * IDEScreen: The /ide/new (and /ide/new/:projectId) standalone IDE.
- * Uses WebContainer for a real filesystem, multi-file editing, and terminal.
+ * Uses Ruwt Runtime (VirtualFS + QuickJS + esbuild-wasm) for filesystem, editing, and terminal.
  * Integrates with project persistence (R2 + D1) for save/load.
  * Supports git operations via isomorphic-git (clone, commit, push).
  */
@@ -11,9 +11,8 @@ import { useIDELayout } from '@/features/shared-ide/hooks/useIDELayout';
 import { arena } from '@/shared/theme/colors';
 import { fontFamily } from '@/shared/theme/tokens';
 import { useDocumentMeta } from '@/shared/hooks/useDocumentMeta';
-import { readFile, writeFile } from '@/lib/sandbox/webcontainer';
-import { useWebContainer } from './useWebContainer';
-import type { SaveStatus } from './useWebContainer';
+import { useRuntime } from './useRuntime';
+import type { SaveStatus } from './useRuntime';
 import { FileTree } from './FileTree';
 import { IDETerminal } from './IDETerminal';
 import { CloneDialog } from './CloneDialog';
@@ -56,7 +55,7 @@ export function IDEScreen() {
   const [projectId, setProjectId] = useState<string | undefined>(routeProjectId);
   const [projectName, setProjectName] = useState('Untitled Project');
 
-  const { ready, files, error, refreshFiles, saveStatus, markDirty, saveProject } = useWebContainer(projectId);
+  const { ready, files, error, refreshFiles, saveStatus, markDirty, saveProject, backend } = useRuntime(projectId);
   useDocumentMeta({ title: `${projectName} — Ruwt IDE` });
 
   // Open tabs and active tab tracking
@@ -67,7 +66,7 @@ export function IDEScreen() {
   const [editorContent, setEditorContent] = useState<string>('');
   const [editorLanguage, setEditorLanguage] = useState<string>('javascript');
 
-  // Debounce timer for writing back to the WebContainer filesystem
+  // Debounce timer for writing back to the runtime filesystem
   const writeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Track whether the initial auto-open has fired (prevent re-open after user closes all tabs)
   const didAutoOpenRef = useRef(false);
@@ -104,7 +103,7 @@ export function IDEScreen() {
     setActiveTab(path);
     setEditorLanguage(languageForPath(path));
     try {
-      const content = await readFile(path);
+      const content = await backend.readFile(path);
       setEditorContent(content);
     } catch {
       setEditorContent('// Could not read file');
@@ -141,7 +140,7 @@ export function IDEScreen() {
     });
   }, [activeTab, loadFileContent]);
 
-  // Handle editor content changes — debounced write to WebContainer
+  // Handle editor content changes — debounced write to runtime
   const handleEditorChange = useCallback((value: string | undefined) => {
     const v = value ?? '';
     setEditorContent(v);
@@ -149,7 +148,7 @@ export function IDEScreen() {
     const path = activeTab;
     if (writeTimerRef.current) clearTimeout(writeTimerRef.current);
     writeTimerRef.current = setTimeout(() => {
-      writeFile(path, v).catch(/* istanbul ignore next -- @preserve */ () => {});
+      backend.writeFile(path, v).catch(/* istanbul ignore next -- @preserve */ () => {});
       markDirty();
     }, 300);
   }, [activeTab, markDirty]);
@@ -161,7 +160,7 @@ export function IDEScreen() {
     };
   }, []);
 
-  // Auto-open index.js once WebContainer is ready (only on initial boot)
+  // Auto-open index.js once runtime is ready (only on initial boot)
   useEffect(() => {
     if (ready && !didAutoOpenRef.current && openTabs.length === 0 && files.length > 0) {
       didAutoOpenRef.current = true;
@@ -235,17 +234,17 @@ export function IDEScreen() {
   // Build git status map for the file tree (memoized)
   const gitStatusMap = useMemo(() => buildGitStatusMap(gitStatusEntries), [gitStatusEntries]);
 
-  // Check git status when WebContainer is ready
+  // Check git status when runtime is ready
   useEffect(() => {
     if (ready) {
       refreshGitStatus();
     }
   }, [ready, refreshGitStatus]);
 
-  // Load .ruwt.yml config when WebContainer is ready
+  // Load .ruwt.yml config when runtime is ready
   useEffect(() => {
     if (!ready) return;
-    readFile('.ruwt.yml')
+    backend.readFile('.ruwt.yml')
       .then((content) => {
         try {
           const config = parseRuwtConfig(content);
@@ -492,7 +491,7 @@ export function IDEScreen() {
               </Suspense>
             ) : (
               <div style={editorFallbackStyle} data-testid="no-file-open">
-                {ready ? 'Select a file to start editing' : 'Booting WebContainer...'}
+                {ready ? 'Select a file to start editing' : 'Booting runtime...'}
               </div>
             )}
           </div>
@@ -510,14 +509,14 @@ export function IDEScreen() {
           {!layout.bottomCollapsed && (
             <div style={terminalWrapperStyle} data-testid="terminal-panel">
               {ready ? (
-                <IDETerminal />
+                <IDETerminal backend={backend} />
               ) : (
                 <div style={terminalPlaceholderStyle}>
                   <div style={terminalHeaderPlaceholderStyle}>
                     <span style={terminalTitleStyle}>Terminal</span>
                   </div>
                   <div style={terminalBodyPlaceholderStyle}>
-                    <span style={mutedTextStyle}>Waiting for WebContainer...</span>
+                    <span style={mutedTextStyle}>Waiting for runtime...</span>
                   </div>
                 </div>
               )}

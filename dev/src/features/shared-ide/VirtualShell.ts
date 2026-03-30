@@ -16,6 +16,12 @@ export interface ShellCallbacks {
   onEnterRuwt: () => void;
 }
 
+export interface RuntimeCallbacks {
+  evaluate: (code: string) => Promise<{ stdout: string; stderr: string; exitCode: number }>;
+  npmInstall: (packages: string[]) => Promise<void>;
+  npmInit: () => Promise<void>;
+}
+
 export class VirtualShell {
   private term: Terminal;
   private fs: VirtualFileSystem;
@@ -27,12 +33,14 @@ export class VirtualShell {
   private savedLine = '';
   private cursorPos = 0;
   private writeMode: { filename: string; lines: string[] } | null = null;
+  private runtime: RuntimeCallbacks | undefined;
 
-  constructor(term: Terminal, fs: VirtualFileSystem, language: string, callbacks: ShellCallbacks) {
+  constructor(term: Terminal, fs: VirtualFileSystem, language: string, callbacks: ShellCallbacks, runtime?: RuntimeCallbacks) {
     this.term = term;
     this.fs = fs;
     this.language = language;
     this.callbacks = callbacks;
+    this.runtime = runtime;
   }
 
   printPrompt(): void {
@@ -209,6 +217,9 @@ export class VirtualShell {
       case 'run': this.cmdRun(); break;
       case 'test': this.cmdTest(); break;
       case 'ruwt': this.cmdRuwt(); break;
+      case 'node': this.cmdNode(rest); break;
+      case 'npm': this.cmdNpm(rest); break;
+      case 'npx': this.cmdNpx(rest); break;
       default:
         this.term.write(`\x1b[31m${cmd}: command not found\x1b[0m\r\n`);
         this.term.write(`Type \x1b[33mhelp\x1b[0m for available commands.\r\n`);
@@ -435,6 +446,9 @@ export class VirtualShell {
     this.term.write('  \x1b[33mrun\x1b[0m               Execute your code\r\n');
     this.term.write('  \x1b[33mtest\x1b[0m              Run test cases\r\n');
     this.term.write('  \x1b[33mruwt\x1b[0m              Enter AI assistant mode\r\n');
+    this.term.write('  \x1b[33mnode\x1b[0m <file>       Run JavaScript file\r\n');
+    this.term.write('  \x1b[33mnpm\x1b[0m <cmd>         Package manager (install, init)\r\n');
+    this.term.write('  \x1b[33mnpx\x1b[0m <pkg>         Run package binary\r\n');
     this.term.write('  \x1b[33mhelp\x1b[0m              Show this help\r\n');
     this.term.write('\r\n\x1b[1mRedirection:\x1b[0m\r\n');
     this.term.write('  echo "text" \x1b[33m>\x1b[0m file    Write to file\r\n');
@@ -451,25 +465,12 @@ export class VirtualShell {
     }
     this.term.write(`\x1b[33mRunning ${this.fs.solutionFilename}...\x1b[0m\r\n`);
     this.callbacks.onRunCode(code, this.language).then(
-      (result) => {
-        if (result.stdout) {
-          const lines = result.stdout.split('\n');
-          for (const line of lines) this.term.write(line + '\r\n');
-        }
-        if (result.stderr) {
-          const lines = result.stderr.split('\n');
-          for (const line of lines) this.term.write(`\x1b[31m${line}\x1b[0m\r\n`);
-        }
-        if (result.exitCode !== 0) {
-          this.term.write(`\x1b[31mProcess exited with code ${result.exitCode}\x1b[0m\r\n`);
-        }
-        this.printPrompt();
-      },
+      (result) => { this.printEvalResult(result); },
       (err) => {
         /* istanbul ignore next -- @preserve */
         this.term.write(`\x1b[31mExecution error: ${err.message || err}\x1b[0m\r\n`);
         this.printPrompt();
-      }
+      },
     );
   }
 
@@ -514,5 +515,126 @@ export class VirtualShell {
 
   private cmdRuwt(): void {
     this.callbacks.onEnterRuwt();
+  }
+
+  // ── Runtime commands ────────────────────────────────────────────────────
+
+  private requireRuntime(cmd: string): boolean {
+    if (this.runtime) return true;
+    this.term.write(`\x1b[31mRuntime not available. ${cmd} command requires Ruwt Runtime.\x1b[0m\r\n`);
+    this.printPrompt();
+    return false;
+  }
+
+  private printRuntimeError(err: any): void {
+    /* istanbul ignore next -- @preserve */
+    this.term.write(`\x1b[31m${err.message || err}\x1b[0m\r\n`);
+    this.printPrompt();
+  }
+
+  private cmdNode(args: string[]): void {
+    if (!this.requireRuntime('node')) return;
+
+    if (args[0] === '-e' && args.length > 1) {
+      const code = args.slice(1).join(' ');
+      this.runtime!.evaluate(code).then(
+        (result) => { this.printEvalResult(result); },
+        (err) => { this.printRuntimeError(err); },
+      );
+      return;
+    }
+
+    if (args.length === 0) {
+      this.term.write('Usage: node <file> or node -e "code"\r\n');
+      this.printPrompt();
+      return;
+    }
+
+    const filePath = this.fs.resolve(args[0]);
+    const code = this.fs.readFile(filePath);
+    if (code === null) {
+      this.term.write(`\x1b[31m${args[0]}: not found\x1b[0m\r\n`);
+      this.printPrompt();
+      return;
+    }
+
+    this.term.write(`\x1b[33mRunning ${args[0]}...\x1b[0m\r\n`);
+    this.runtime!.evaluate(code).then(
+      (result) => { this.printEvalResult(result); },
+      (err) => { this.printRuntimeError(err); },
+    );
+  }
+
+  private cmdNpm(args: string[]): void {
+    if (!this.requireRuntime('npm')) return;
+
+    const subcommand = args[0];
+
+    if (subcommand === '--version' || subcommand === '-v') {
+      this.term.write('1.0.0\r\n');
+      this.printPrompt();
+      return;
+    }
+
+    if (subcommand === 'init') {
+      this.runtime!.npmInit().then(
+        () => { this.term.write('\x1b[32mCreated package.json\x1b[0m\r\n'); this.printPrompt(); },
+        (err) => { this.printRuntimeError(err); },
+      );
+      return;
+    }
+
+    if (subcommand === 'install' || subcommand === 'i') {
+      const packages = args.slice(1);
+      this.term.write(`\x1b[33mInstalling packages...\x1b[0m\r\n`);
+      this.runtime!.npmInstall(packages).then(
+        () => { this.term.write(`\x1b[32mInstalled successfully\x1b[0m\r\n`); this.printPrompt(); },
+        (err) => { this.term.write(`\x1b[31mnpm ERR! ${err.message || err}\x1b[0m\r\n`); this.printPrompt(); },
+      );
+      return;
+    }
+
+    this.term.write(`Usage: npm install [pkg], npm init, npm --version\r\n`);
+    this.printPrompt();
+  }
+
+  private cmdNpx(args: string[]): void {
+    if (!this.requireRuntime('npx')) return;
+
+    if (args.length === 0) {
+      this.term.write('Usage: npx <package>\r\n');
+      this.printPrompt();
+      return;
+    }
+
+    const binName = args[0];
+    const binPath = this.fs.resolve(`node_modules/.bin/${binName}`);
+    const code = this.fs.readFile(binPath);
+
+    if (code === null) {
+      this.term.write(`\x1b[31m${binName}: not found in node_modules/.bin/\x1b[0m\r\n`);
+      this.printPrompt();
+      return;
+    }
+
+    this.runtime!.evaluate(code).then(
+      (result) => { this.printEvalResult(result); },
+      (err) => { this.printRuntimeError(err); },
+    );
+  }
+
+  private printEvalResult(result: { stdout: string; stderr: string; exitCode: number }): void {
+    if (result.stdout) {
+      const lines = result.stdout.split('\n');
+      for (const line of lines) this.term.write(line + '\r\n');
+    }
+    if (result.stderr) {
+      const lines = result.stderr.split('\n');
+      for (const line of lines) this.term.write(`\x1b[31m${line}\x1b[0m\r\n`);
+    }
+    if (result.exitCode !== 0) {
+      this.term.write(`\x1b[31mProcess exited with code ${result.exitCode}\x1b[0m\r\n`);
+    }
+    this.printPrompt();
   }
 }

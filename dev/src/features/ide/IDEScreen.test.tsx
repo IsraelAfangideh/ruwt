@@ -43,26 +43,31 @@ vi.mock('@/features/shared-ide/hooks/useIDELayout', () => ({
 // PanelResizeBar no longer used — IDEScreen renders plain div dividers directly
 vi.mock('@/features/shared-ide/lib/monaco-init', () => ({}));
 
-// Mock webcontainer readFile/writeFile (used directly by IDEScreen)
+// Mock useRuntime hook (replaces useWebContainer)
 const mockReadFile = vi.fn().mockResolvedValue('// file content');
 const mockWriteFile = vi.fn().mockResolvedValue(undefined);
-vi.mock('@/lib/sandbox/webcontainer', () => ({
-  readFile: (...args: unknown[]) => mockReadFile(...args),
-  writeFile: (...args: unknown[]) => mockWriteFile(...args),
-}));
-
-// Mock useWebContainer hook
+const mockBackend = {
+  mode: 'browser' as const,
+  readFile: mockReadFile,
+  writeFile: mockWriteFile,
+  readdir: vi.fn().mockResolvedValue([]),
+  mkdir: vi.fn().mockResolvedValue(undefined),
+  rm: vi.fn().mockResolvedValue(undefined),
+  stat: vi.fn().mockResolvedValue({ isFile: true, isDirectory: false, size: 0 }),
+  spawn: vi.fn().mockResolvedValue({ output: new ReadableStream(), exit: Promise.resolve(0) }),
+  connectTerminal: vi.fn().mockReturnValue({ write: vi.fn(), resize: vi.fn(), disconnect: vi.fn() }),
+};
 const defaultFiles: FileEntry[] = [
   { name: 'index.js', path: 'index.js', type: 'file' },
   { name: 'package.json', path: 'package.json', type: 'file' },
 ];
-let mockWCReturn: { ready: boolean; files: FileEntry[]; error: string | null; refreshFiles: () => Promise<void>; saveStatus: string; markDirty: () => void; saveProject: (id: string) => Promise<boolean>; collectFiles: () => Promise<Record<string, string>> };
+let mockWCReturn: { ready: boolean; files: FileEntry[]; error: string | null; refreshFiles: () => Promise<void>; saveStatus: string; markDirty: () => void; saveProject: (id: string) => Promise<boolean>; collectFiles: () => Promise<Record<string, string>>; backend: any };
 const mockRefreshFiles = vi.fn().mockResolvedValue(undefined);
 const mockMarkDirty = vi.fn();
 const mockSaveProject = vi.fn().mockResolvedValue(true);
 const mockCollectFiles = vi.fn().mockResolvedValue({});
-vi.mock('./useWebContainer', () => ({
-  useWebContainer: () => mockWCReturn,
+vi.mock('./useRuntime', () => ({
+  useRuntime: () => mockWCReturn,
 }));
 
 // Mock IDETerminal — heavy xterm dependency
@@ -120,6 +125,7 @@ describe('IDEScreen', () => {
       markDirty: mockMarkDirty,
       saveProject: mockSaveProject,
       collectFiles: mockCollectFiles,
+      backend: mockBackend,
     };
     mockFetch.mockResolvedValue({ ok: false });
   });
@@ -330,10 +336,10 @@ describe('IDEScreen', () => {
   });
 
   it('shows error on boot screen when WebContainer fails', () => {
-    mockWCReturn = { ...mockWCReturn, ready: false, files: [], error: 'WebContainer error' };
+    mockWCReturn = { ...mockWCReturn, ready: false, files: [], error: 'Runtime error' };
     render(<IDEScreen />);
     expect(screen.getByTestId('ide-boot-screen')).toBeInTheDocument();
-    expect(screen.getByText('WebContainer error')).toBeInTheDocument();
+    expect(screen.getByText('Runtime error')).toBeInTheDocument();
   });
 
   it('shows "Select a file" message when no file is open but ready', () => {
@@ -344,7 +350,7 @@ describe('IDEScreen', () => {
     expect(screen.getByText('Select a file to start editing')).toBeInTheDocument();
   });
 
-  it('shows boot screen when WebContainer is loading', () => {
+  it('shows boot screen when runtime is loading', () => {
     mockWCReturn = { ...mockWCReturn, ready: false, files: [], error: null };
     render(<IDEScreen />);
     expect(screen.getByTestId('ide-boot-screen')).toBeInTheDocument();

@@ -1,16 +1,20 @@
 /**
- * IDETerminal: xterm-based terminal connected to a WebContainer shell.
- * Spawns `jsh` (WebContainer's built-in shell) on mount.
+ * IDETerminal: xterm-based terminal connected to a RuntimeBackend.
+ * Uses backend.connectTerminal() for bidirectional I/O.
  */
 import { useEffect, useRef } from 'react';
 import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import '@xterm/xterm/css/xterm.css';
-import { spawnWithInput } from '@/lib/sandbox/webcontainer';
+import type { RuntimeBackend } from '@/lib/sandbox/runtime';
 import { arena, arenaTermTheme } from '@/shared/theme/colors';
 import { fontFamily } from '@/shared/theme/tokens';
 
-export function IDETerminal() {
+interface IDETerminalProps {
+  backend?: RuntimeBackend;
+}
+
+export function IDETerminal({ backend }: IDETerminalProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const termRef = useRef<Terminal | null>(null);
 
@@ -19,8 +23,6 @@ export function IDETerminal() {
     if (!containerRef.current) return;
 
     let disposed = false;
-    let reader: ReadableStreamDefaultReader<string> | null = null;
-    let writer: WritableStreamDefaultWriter<string> | null = null;
 
     const term = new Terminal({
       theme: arenaTermTheme,
@@ -43,48 +45,22 @@ export function IDETerminal() {
       try { fitAddon.fit(); } catch { /* container not ready */ }
     });
 
-    // Spawn shell and wire streams
-    async function startShell() {
-      try {
-        const proc = await spawnWithInput('jsh');
+    // Connect terminal to runtime backend
+    let connection: { write: (data: string) => void; resize: (cols: number, rows: number) => void; disconnect: () => void } | null = null;
 
-        if (disposed) return;
+    if (backend) {
+      connection = backend.connectTerminal((data: string) => {
+        if (!disposed) term.write(data);
+      });
 
-        writer = proc.input.getWriter();
-        reader = proc.output.getReader();
+      const onDataDisposable = term.onData((data: string) => {
+        connection?.write(data);
+      });
 
-        // Pipe output → terminal
-        async function pumpOutput() {
-          /* istanbul ignore next -- @preserve */
-          if (!reader) return;
-          try {
-            while (true) {
-              const { done, value } = await reader.read();
-              if (done || disposed) break;
-              term.write(value);
-            }
-          } catch {
-            // Stream closed or disposed
-          }
-        }
-        pumpOutput();
-
-        // Pipe terminal input → shell stdin
-        const onDataDisposable = term.onData((data: string) => {
-          /* istanbul ignore next -- @preserve */
-          writer?.write(data).catch(() => {});
-        });
-
-        // Store for cleanup
-        (term as any).__onDataDisposable = onDataDisposable;
-      } catch {
-        /* istanbul ignore next -- @preserve */
-        if (!disposed) {
-          term.write('\r\n\x1b[31mFailed to start shell.\x1b[0m\r\n');
-        }
-      }
+      (term as any).__onDataDisposable = onDataDisposable;
+    } else {
+      term.write('Waiting for runtime...\r\n');
     }
-    startShell();
 
     // Resize handling
     let resizeTimer: ReturnType<typeof setTimeout>;
@@ -102,15 +78,14 @@ export function IDETerminal() {
     return () => {
       disposed = true;
       (term as any).__onDataDisposable?.dispose();
+      connection?.disconnect();
       observer.disconnect();
       window.removeEventListener('resize', handleResize);
       clearTimeout(resizeTimer);
-      reader?.cancel().catch(() => {});
-      writer?.close().catch(() => {});
       term.dispose();
       termRef.current = null;
     };
-  }, []);
+  }, [backend]);
 
   return (
     <div

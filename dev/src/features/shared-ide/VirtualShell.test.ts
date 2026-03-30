@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { VirtualShell, type ShellCallbacks } from './VirtualShell';
+import { VirtualShell, type ShellCallbacks, type RuntimeCallbacks } from './VirtualShell';
 import { VirtualFileSystem } from './VirtualFileSystem';
 
 // ---------------------------------------------------------------------------
@@ -1044,6 +1044,211 @@ describe('VirtualShell', () => {
       shell.handleInput('\x1b[B');
       const out = termOutput(term);
       expect(out).toContain('echo beta');
+    });
+  });
+
+  // ── Runtime commands (node, npm, npx) ─────────────────────────────────
+
+  describe('node command', () => {
+    function createRuntimeCallbacks(overrides: Partial<RuntimeCallbacks> = {}): RuntimeCallbacks {
+      return {
+        evaluate: vi.fn().mockResolvedValue({ stdout: 'hello', stderr: '', exitCode: 0 }),
+        npmInstall: vi.fn().mockResolvedValue(undefined),
+        npmInit: vi.fn().mockResolvedValue(undefined),
+        ...overrides,
+      };
+    }
+
+    it('prints error when no runtime is available', () => {
+      clearOutput(term);
+      typeAndEnter(shell, 'node index.js');
+      const out = termOutput(term);
+      expect(out).toContain('not available');
+    });
+
+    it('executes a JavaScript file via runtime', async () => {
+      const runtime = createRuntimeCallbacks();
+      const rtShell = new VirtualShell(term as any, fs, 'javascript', callbacks, runtime);
+      fs.writeFile('/home/user/index.js', 'console.log("hi")');
+      clearOutput(term);
+      typeAndEnter(rtShell, 'node index.js');
+      await vi.waitFor(() => {
+        expect(runtime.evaluate).toHaveBeenCalled();
+      });
+    });
+
+    it('prints stdout from execution', async () => {
+      const runtime = createRuntimeCallbacks({
+        evaluate: vi.fn().mockResolvedValue({ stdout: 'output line', stderr: '', exitCode: 0 }),
+      });
+      const rtShell = new VirtualShell(term as any, fs, 'javascript', callbacks, runtime);
+      fs.writeFile('/home/user/index.js', 'code');
+      clearOutput(term);
+      typeAndEnter(rtShell, 'node index.js');
+      await vi.waitFor(() => {
+        const out = termOutput(term);
+        expect(out).toContain('output line');
+      });
+    });
+
+    it('prints stderr in red', async () => {
+      const runtime = createRuntimeCallbacks({
+        evaluate: vi.fn().mockResolvedValue({ stdout: '', stderr: 'error msg', exitCode: 1 }),
+      });
+      const rtShell = new VirtualShell(term as any, fs, 'javascript', callbacks, runtime);
+      fs.writeFile('/home/user/index.js', 'code');
+      clearOutput(term);
+      typeAndEnter(rtShell, 'node index.js');
+      await vi.waitFor(() => {
+        const out = termOutput(term);
+        expect(out).toContain('error msg');
+        expect(out).toContain('\x1b[31m'); // red
+      });
+    });
+
+    it('handles missing file argument with usage message', () => {
+      const runtime = createRuntimeCallbacks();
+      const rtShell = new VirtualShell(term as any, fs, 'javascript', callbacks, runtime);
+      clearOutput(term);
+      typeAndEnter(rtShell, 'node');
+      const out = termOutput(term);
+      expect(out).toMatch(/usage|Usage|node <file>/i);
+    });
+
+    it('handles non-existent file with error', () => {
+      const runtime = createRuntimeCallbacks();
+      const rtShell = new VirtualShell(term as any, fs, 'javascript', callbacks, runtime);
+      clearOutput(term);
+      typeAndEnter(rtShell, 'node missing.js');
+      const out = termOutput(term);
+      expect(out).toContain('not found');
+    });
+
+    it('supports -e flag for inline evaluation', async () => {
+      const runtime = createRuntimeCallbacks();
+      const rtShell = new VirtualShell(term as any, fs, 'javascript', callbacks, runtime);
+      clearOutput(term);
+      typeAndEnter(rtShell, 'node -e "console.log(1)"');
+      await vi.waitFor(() => {
+        expect(runtime.evaluate).toHaveBeenCalledWith(expect.stringContaining('console.log(1)'));
+      });
+    });
+  });
+
+  describe('npm command', () => {
+    function createRuntimeCallbacks(overrides: Partial<RuntimeCallbacks> = {}): RuntimeCallbacks {
+      return {
+        evaluate: vi.fn().mockResolvedValue({ stdout: '', stderr: '', exitCode: 0 }),
+        npmInstall: vi.fn().mockResolvedValue(undefined),
+        npmInit: vi.fn().mockResolvedValue(undefined),
+        ...overrides,
+      };
+    }
+
+    it('prints error when no runtime is available', () => {
+      clearOutput(term);
+      typeAndEnter(shell, 'npm install lodash');
+      const out = termOutput(term);
+      expect(out).toContain('not available');
+    });
+
+    it('npm install with package name calls npmInstall', async () => {
+      const runtime = createRuntimeCallbacks();
+      const rtShell = new VirtualShell(term as any, fs, 'javascript', callbacks, runtime);
+      clearOutput(term);
+      typeAndEnter(rtShell, 'npm install lodash');
+      await vi.waitFor(() => {
+        expect(runtime.npmInstall).toHaveBeenCalledWith(['lodash']);
+      });
+    });
+
+    it('npm install with no args calls npmInstall with empty array', async () => {
+      const runtime = createRuntimeCallbacks();
+      const rtShell = new VirtualShell(term as any, fs, 'javascript', callbacks, runtime);
+      clearOutput(term);
+      typeAndEnter(rtShell, 'npm install');
+      await vi.waitFor(() => {
+        expect(runtime.npmInstall).toHaveBeenCalledWith([]);
+      });
+    });
+
+    it('npm init calls npmInit', async () => {
+      const runtime = createRuntimeCallbacks();
+      const rtShell = new VirtualShell(term as any, fs, 'javascript', callbacks, runtime);
+      clearOutput(term);
+      typeAndEnter(rtShell, 'npm init');
+      await vi.waitFor(() => {
+        expect(runtime.npmInit).toHaveBeenCalled();
+      });
+    });
+
+    it('npm --version prints version', () => {
+      const runtime = createRuntimeCallbacks();
+      const rtShell = new VirtualShell(term as any, fs, 'javascript', callbacks, runtime);
+      clearOutput(term);
+      typeAndEnter(rtShell, 'npm --version');
+      const out = termOutput(term);
+      expect(out).toMatch(/\d+\.\d+\.\d+/);
+    });
+
+    it('npm prints usage for unknown subcommand', () => {
+      const runtime = createRuntimeCallbacks();
+      const rtShell = new VirtualShell(term as any, fs, 'javascript', callbacks, runtime);
+      clearOutput(term);
+      typeAndEnter(rtShell, 'npm frobnicate');
+      const out = termOutput(term);
+      expect(out).toMatch(/usage|unknown|Usage/i);
+    });
+
+    it('npm install prints error on failure', async () => {
+      const runtime = createRuntimeCallbacks({
+        npmInstall: vi.fn().mockRejectedValue(new Error('network error')),
+      });
+      const rtShell = new VirtualShell(term as any, fs, 'javascript', callbacks, runtime);
+      clearOutput(term);
+      typeAndEnter(rtShell, 'npm install badpkg');
+      await vi.waitFor(() => {
+        const out = termOutput(term);
+        expect(out).toContain('network error');
+      });
+    });
+  });
+
+  describe('npx command', () => {
+    function createRuntimeCallbacks(overrides: Partial<RuntimeCallbacks> = {}): RuntimeCallbacks {
+      return {
+        evaluate: vi.fn().mockResolvedValue({ stdout: 'npx output', stderr: '', exitCode: 0 }),
+        npmInstall: vi.fn().mockResolvedValue(undefined),
+        npmInit: vi.fn().mockResolvedValue(undefined),
+        ...overrides,
+      };
+    }
+
+    it('prints error when no runtime is available', () => {
+      clearOutput(term);
+      typeAndEnter(shell, 'npx cowsay');
+      const out = termOutput(term);
+      expect(out).toContain('not available');
+    });
+
+    it('runs a package binary from node_modules', async () => {
+      const runtime = createRuntimeCallbacks();
+      const rtShell = new VirtualShell(term as any, fs, 'javascript', callbacks, runtime);
+      fs.writeFile('/home/user/node_modules/.bin/cowsay', 'console.log("moo")');
+      clearOutput(term);
+      typeAndEnter(rtShell, 'npx cowsay');
+      await vi.waitFor(() => {
+        expect(runtime.evaluate).toHaveBeenCalled();
+      });
+    });
+
+    it('prints error when package has no bin entry', () => {
+      const runtime = createRuntimeCallbacks();
+      const rtShell = new VirtualShell(term as any, fs, 'javascript', callbacks, runtime);
+      clearOutput(term);
+      typeAndEnter(rtShell, 'npx nonexistent');
+      const out = termOutput(term);
+      expect(out).toContain('not found');
     });
   });
 });

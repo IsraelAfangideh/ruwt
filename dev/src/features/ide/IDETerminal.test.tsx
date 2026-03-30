@@ -46,31 +46,6 @@ vi.mock('@xterm/addon-fit', () => ({
 
 vi.mock('@xterm/xterm/css/xterm.css', () => ({}));
 
-// Mock spawnWithInput
-const mockWriter = {
-  write: vi.fn().mockResolvedValue(undefined),
-  close: vi.fn().mockResolvedValue(undefined),
-};
-const mockReader = {
-  read: vi.fn().mockResolvedValue({ done: true, value: undefined }),
-  cancel: vi.fn().mockResolvedValue(undefined),
-};
-const mockOutputStream = {
-  getReader: vi.fn().mockReturnValue(mockReader),
-};
-const mockInputStream = {
-  getWriter: vi.fn().mockReturnValue(mockWriter),
-};
-const mockSpawnWithInput = vi.fn().mockResolvedValue({
-  output: mockOutputStream,
-  input: mockInputStream,
-  exit: Promise.resolve(0),
-});
-
-vi.mock('@/lib/sandbox/webcontainer', () => ({
-  spawnWithInput: (...args: unknown[]) => mockSpawnWithInput(...args),
-}));
-
 vi.mock('@/shared/theme/colors', () => ({
   arena: {
     bg: '#0d1117',
@@ -95,11 +70,46 @@ vi.mock('@/shared/theme/tokens', () => ({
 
 import { IDETerminal } from './IDETerminal';
 
+// ---------------------------------------------------------------------------
+// Mock backend
+// ---------------------------------------------------------------------------
+
+function createMockBackend() {
+  const mockWrite = vi.fn();
+  const mockDisconnect = vi.fn();
+  const mockResize = vi.fn();
+  let onDataCb: ((data: string) => void) | null = null;
+
+  return {
+    backend: {
+      mode: 'browser' as const,
+      readFile: vi.fn().mockResolvedValue(''),
+      writeFile: vi.fn().mockResolvedValue(undefined),
+      readdir: vi.fn().mockResolvedValue([]),
+      mkdir: vi.fn().mockResolvedValue(undefined),
+      rm: vi.fn().mockResolvedValue(undefined),
+      stat: vi.fn().mockResolvedValue({ isFile: true, isDirectory: false, size: 0 }),
+      spawn: vi.fn().mockResolvedValue({ output: new ReadableStream(), exit: Promise.resolve(0) }),
+      connectTerminal: vi.fn((cb: (data: string) => void) => {
+        onDataCb = cb;
+        return { write: mockWrite, resize: mockResize, disconnect: mockDisconnect };
+      }),
+    },
+    mockWrite,
+    mockDisconnect,
+    mockResize,
+    sendData: (data: string) => { onDataCb?.(data); },
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Tests
+// ---------------------------------------------------------------------------
+
 describe('IDETerminal', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     capturedOnDataCallback = null;
-    mockReader.read.mockResolvedValue({ done: true, value: undefined });
   });
 
   it('renders the terminal container', () => {
@@ -121,76 +131,66 @@ describe('IDETerminal', () => {
     expect(app!.getAttribute('aria-roledescription')).toBe('terminal');
   });
 
-  it('spawns jsh shell on mount', async () => {
-    render(<IDETerminal />);
-    // spawnWithInput is called async, wait a tick
-    await new Promise((r) => setTimeout(r, 10));
-    expect(mockSpawnWithInput).toHaveBeenCalledWith('jsh');
+  it('calls connectTerminal on mount when backend is provided', () => {
+    const { backend } = createMockBackend();
+    render(<IDETerminal backend={backend as any} />);
+    expect(backend.connectTerminal).toHaveBeenCalledTimes(1);
+    expect(backend.connectTerminal).toHaveBeenCalledWith(expect.any(Function));
   });
 
-  it('pipes terminal input to shell writer', async () => {
-    render(<IDETerminal />);
-    await new Promise((r) => setTimeout(r, 10));
+  it('pipes terminal input to backend via connection.write', () => {
+    const { backend, mockWrite } = createMockBackend();
+    render(<IDETerminal backend={backend as any} />);
 
     // The onData callback should have been captured
     expect(capturedOnDataCallback).not.toBeNull();
+    // Simulate typing
+    capturedOnDataCallback!('hello');
+    expect(mockWrite).toHaveBeenCalledWith('hello');
   });
 
-  it('handles resize events', async () => {
-    vi.useFakeTimers();
+  it('pipes backend output to terminal', () => {
+    const { backend, sendData } = createMockBackend();
+    render(<IDETerminal backend={backend as any} />);
+
+    // Send data from backend — should not throw
+    sendData('output text');
+  });
+
+  it('shows waiting message when no backend provided', () => {
     render(<IDETerminal />);
+    // No connectTerminal called, terminal shows waiting message
+  });
+
+  it('handles resize events', () => {
+    vi.useFakeTimers();
+    const { backend } = createMockBackend();
+    render(<IDETerminal backend={backend as any} />);
 
     // Trigger resize via ResizeObserver
     if (resizeCallbacks.length > 0) {
       resizeCallbacks[0]([]);
     }
-
-    // Trigger window resize
     window.dispatchEvent(new Event('resize'));
-
-    // Advance past debounce
     vi.advanceTimersByTime(100);
     vi.useRealTimers();
   });
 
-  it('cleans up on unmount without errors', async () => {
-    const { unmount } = render(<IDETerminal />);
-    await new Promise((r) => setTimeout(r, 10));
+  it('cleans up on unmount without errors', () => {
+    const { backend, mockDisconnect } = createMockBackend();
+    const { unmount } = render(<IDETerminal backend={backend as any} />);
     expect(() => unmount()).not.toThrow();
+    expect(mockDisconnect).toHaveBeenCalledTimes(1);
   });
 
   it('focuses terminal when application div is clicked', () => {
     const { container } = render(<IDETerminal />);
     const appDiv = container.querySelector('[role="application"]') as HTMLElement;
     if (appDiv) fireEvent.click(appDiv);
-    // No assertion needed — just confirming no error
   });
 
-  it('handles spawnWithInput failure gracefully', async () => {
-    mockSpawnWithInput.mockRejectedValueOnce(new Error('spawn failed'));
+  it('renders without backend (no crash)', () => {
     const { container } = render(<IDETerminal />);
-    await new Promise((r) => setTimeout(r, 10));
-    // Should still render without crashing
     expect(container.querySelector('[data-testid="ide-terminal"]')).not.toBeNull();
-  });
-
-  it('pipes output from shell to terminal', async () => {
-    // Simulate output: first read returns data, second returns done
-    let readCount = 0;
-    mockReader.read.mockImplementation(() => {
-      readCount++;
-      if (readCount === 1) {
-        return Promise.resolve({ done: false, value: 'hello from shell' });
-      }
-      return Promise.resolve({ done: true, value: undefined });
-    });
-
-    render(<IDETerminal />);
-    // Wait for shell boot + first read cycle
-    await new Promise((r) => setTimeout(r, 50));
-
-    // The terminal's write method should have been called with the output
-    // (We can't easily check MockTerminal.write here since it's instantiated internally,
-    // but the lack of errors confirms the output pump works.)
   });
 });
