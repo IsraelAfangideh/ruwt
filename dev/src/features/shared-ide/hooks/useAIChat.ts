@@ -19,6 +19,7 @@ interface SSEChunkData {
   displayName?: string;
   violation?: string;
   message?: string;
+  calls?: Array<{ name: string; arguments: string }>;
 }
 
 export interface MessageMeta {
@@ -42,8 +43,10 @@ export interface StreamCallbacks {
   onError: (error: string) => void;
   onConstraint?: (violation: string, message: string) => void;
   onModelUnavailable?: (modelId: string, displayName: string, message: string) => void;
+  onToolCalls?: (calls: Array<{ name: string; arguments: string }>) => void;
   userMessage?: string;
   codeSnapshot?: string;
+  tools?: Array<{ name: string; description: string; parameters: Record<string, unknown> }>;
 }
 
 const EMPTY_RESPONSE_MSG = 'The model returned an empty response. It may be temporarily overloaded — try again or switch to a different model.';
@@ -54,7 +57,7 @@ export function useAIChat(options: UseAIChatOptions) {
 
   const streamChat = useCallback(
     async (messages: ChatMessage[], callbacks: StreamCallbacks) => {
-      const { onChunk, onThinking, onThinkingDone, onDone, onError, onConstraint, onModelUnavailable, userMessage, codeSnapshot } = callbacks;
+      const { onChunk, onThinking, onThinkingDone, onDone, onError, onConstraint, onModelUnavailable, onToolCalls, userMessage, codeSnapshot, tools } = callbacks;
 
       // Abort any existing stream
       abortRef.current?.abort();
@@ -70,7 +73,7 @@ export function useAIChat(options: UseAIChatOptions) {
         const res = await fetch('/api/ai/chat', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ model, messages, attemptId: sessionId, maxTokens, userMessage, codeSnapshot }),
+          body: JSON.stringify({ model, messages, attemptId: sessionId, maxTokens, userMessage, codeSnapshot, ...(tools ? { tools } : {}) }),
           signal: controller.signal,
         });
 
@@ -116,6 +119,8 @@ export function useAIChat(options: UseAIChatOptions) {
               cost: data.cost ?? 0,
               tokens: (data.inputTokens ?? 0) + (data.outputTokens ?? 0),
             };
+          } else if (data.type === 'tool_calls' && Array.isArray(data.calls)) {
+            onToolCalls?.(data.calls);
           } else if (data.type === 'model_unavailable') {
             /* istanbul ignore next -- @preserve */
             onModelUnavailable?.(data.model || '', data.displayName || data.model || '', data.message || 'Model unavailable');

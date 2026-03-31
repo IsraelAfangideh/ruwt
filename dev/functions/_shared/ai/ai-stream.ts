@@ -25,6 +25,7 @@ interface Message {
 export interface StreamChunk {
   text: string;
   phase: 'thinking' | 'content';
+  toolCalls?: Array<{ name: string; arguments: string }>;
 }
 
 import { getModelPricing, getTierFallbackChain } from './ai-pricing';
@@ -69,6 +70,28 @@ function extractChunkContent(parsed: Record<string, unknown>): StreamChunk | nul
       }
       if (typeof delta.reasoning_content === 'number' || typeof delta.reasoning_content === 'boolean') {
         return { text: String(delta.reasoning_content), phase: 'thinking' };
+      }
+      // Tool calls from models with supportsTools
+      if (Array.isArray(delta.tool_calls) && delta.tool_calls.length > 0) {
+        const calls = (delta.tool_calls as Array<{ function?: { name?: string; arguments?: string } }>)
+          .filter((tc) => tc.function?.name)
+          .map((tc) => ({ name: tc.function!.name!, arguments: tc.function!.arguments ?? '{}' }));
+        if (calls.length > 0) {
+          return { text: '', phase: 'content', toolCalls: calls };
+        }
+      }
+    }
+    // Check finish_reason for tool_calls at the response level
+    const finishReason = (parsed.choices[0] as Record<string, unknown>)?.finish_reason;
+    if (finishReason === 'tool_calls') {
+      const message = (parsed.choices[0] as Record<string, unknown>)?.message as Record<string, unknown> | undefined;
+      if (message && Array.isArray(message.tool_calls)) {
+        const calls = (message.tool_calls as Array<{ function?: { name?: string; arguments?: string } }>)
+          .filter((tc) => tc.function?.name)
+          .map((tc) => ({ name: tc.function!.name!, arguments: tc.function!.arguments ?? '{}' }));
+        if (calls.length > 0) {
+          return { text: '', phase: 'content', toolCalls: calls };
+        }
       }
     }
   }

@@ -27,6 +27,11 @@ const requestSchema = z.object({
   codeSnapshot: z.string().optional(),
   maxTokens: z.number().optional(),
   temperature: z.number().optional(),
+  tools: z.array(z.object({
+    name: z.string(),
+    description: z.string(),
+    parameters: z.record(z.unknown()),
+  })).optional(),
 });
 
 export async function onRequestPost(context: {
@@ -143,7 +148,7 @@ export async function onRequestPost(context: {
           }
 
           const gen = streamCloudflareAIWithFallback(
-            context.env, model, messages, { maxTokens, temperature },
+            context.env, model, messages, { maxTokens, temperature, tools: parsed.data.tools },
             undefined, // fallbackChain
             false      // allowFallback — user selected this model
           );
@@ -172,6 +177,13 @@ export async function onRequestPost(context: {
               controller.enqueue(
                 encoder.encode(
                   `data: ${JSON.stringify({ type: 'thinking', content: value.text })}\n\n`
+                )
+              );
+            } else if (value.toolCalls && value.toolCalls.length > 0) {
+              // Model wants to call tools — emit as separate SSE event
+              controller.enqueue(
+                encoder.encode(
+                  `data: ${JSON.stringify({ type: 'tool_calls', calls: value.toolCalls })}\n\n`
                 )
               );
             } else {
