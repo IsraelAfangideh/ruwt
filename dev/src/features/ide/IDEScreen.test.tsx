@@ -432,28 +432,27 @@ describe('IDEScreen', () => {
 
   // --- New persistence tests ---
 
-  it('shows save status when saveStatus is "saving"', () => {
+  it('save button shows "Saving..." when saveStatus is "saving"', () => {
     mockWCReturn = { ...mockWCReturn, saveStatus: 'saving' };
     render(<IDEScreen />);
-    expect(screen.getByTestId('save-status')).toBeInTheDocument();
-    expect(screen.getByText('Saving...')).toBeInTheDocument();
+    expect(screen.getByTestId('save-btn').textContent).toBe('Saving...');
   });
 
-  it('shows save status when saveStatus is "saved"', () => {
+  it('save button shows "Saved" when saveStatus is "saved"', () => {
     mockWCReturn = { ...mockWCReturn, saveStatus: 'saved' };
     render(<IDEScreen />);
-    expect(screen.getByText('Saved')).toBeInTheDocument();
+    expect(screen.getByTestId('save-btn').textContent).toBe('Saved');
   });
 
-  it('shows save status when saveStatus is "error"', () => {
+  it('save button shows "Save failed" when saveStatus is "error"', () => {
     mockWCReturn = { ...mockWCReturn, saveStatus: 'error' };
     render(<IDEScreen />);
-    expect(screen.getByText('Save failed')).toBeInTheDocument();
+    expect(screen.getByTestId('save-btn').textContent).toBe('Save failed');
   });
 
-  it('does not show save status when idle', () => {
+  it('save button shows "Save" when idle', () => {
     render(<IDEScreen />);
-    expect(screen.queryByTestId('save-status')).toBeNull();
+    expect(screen.getByTestId('save-btn').textContent).toBe('Save');
   });
 
   it('calls saveProject on save button click when projectId exists', async () => {

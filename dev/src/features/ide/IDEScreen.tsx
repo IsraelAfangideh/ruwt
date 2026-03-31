@@ -15,7 +15,7 @@ import { useRuntime } from './useRuntime';
 import type { SaveStatus } from './useRuntime';
 import {
   rootStyle, topBarStyle, topBarLeftStyle, backBtnStyle, projectNameStyle,
-  saveStatusStyle, topBarRightStyle, cloneRepoBtnStyle, saveBtnStyle,
+  topBarRightStyle, cloneRepoBtnStyle, saveBtnStyle,
   mainStyle, sidebarStyle, sidebarTabBarStyle, sidebarTabBtnStyle,
   statusDivStyle, mutedTextStyle, errorTextStyle, editorAreaStyle,
   tabBarStyle, tabStyle, tabLabelBtnStyle, tabCloseBtnStyle,
@@ -40,12 +40,12 @@ import '@/features/shared-ide/lib/monaco-init';
 const MonacoEditor = lazy(() => import('@monaco-editor/react'));
 
 /** Human-readable save status label */
-function saveStatusLabel(status: SaveStatus): string {
+function saveButtonLabel(status: SaveStatus): string {
   switch (status) {
     case 'saving': return 'Saving...';
     case 'saved': return 'Saved';
     case 'error': return 'Save failed';
-    default: return '';
+    default: return 'Save';
   }
 }
 
@@ -312,7 +312,7 @@ export function IDEScreen() {
     );
   }
 
-  const statusText = saveStatusLabel(saveStatus);
+  const buttonLabel = saveButtonLabel(saveStatus);
 
   return (
     <div style={rootStyle}>
@@ -328,17 +328,6 @@ export function IDEScreen() {
             &larr; Back
           </button>
           <span style={projectNameStyle}>{projectName}</span>
-          {statusText && (
-            <span
-              style={{
-                ...saveStatusStyle,
-                color: saveStatus === 'error' ? arena.error : arena.textMuted,
-              }}
-              data-testid="save-status"
-            >
-              {statusText}
-            </span>
-          )}
         </div>
         <div style={topBarRightStyle}>
           {ruwtConfig?.tasks && Object.keys(ruwtConfig.tasks).length > 0 && (
@@ -351,8 +340,18 @@ export function IDEScreen() {
           >
             Clone Repo
           </button>
-          <button onClick={handleSave} style={saveBtnStyle} data-testid="save-btn">
-            Save
+          <button
+            onClick={handleSave}
+            disabled={saveStatus === 'saving'}
+            style={{
+              ...saveBtnStyle,
+              ...(saveStatus === 'saved' ? { background: '#2ea043', cursor: 'default' } : {}),
+              ...(saveStatus === 'error' ? { background: arena.error } : {}),
+              ...(saveStatus === 'saving' ? { opacity: 0.7, cursor: 'wait' } : {}),
+            }}
+            data-testid="save-btn"
+          >
+            {buttonLabel}
           </button>
         </div>
       </div>
