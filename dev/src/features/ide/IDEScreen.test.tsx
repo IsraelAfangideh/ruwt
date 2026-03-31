@@ -66,6 +66,7 @@ const mockBackend = {
   stat: vi.fn().mockResolvedValue({ isFile: true, isDirectory: false, size: 0 }),
   spawn: vi.fn().mockResolvedValue({ output: new ReadableStream(), exit: Promise.resolve(0) }),
   connectTerminal: vi.fn().mockReturnValue({ write: vi.fn(), resize: vi.fn(), disconnect: vi.fn() }),
+  getVfs: vi.fn().mockReturnValue({}),
 };
 const defaultFiles: FileEntry[] = [
   { name: 'index.js', path: 'index.js', type: 'file' },
@@ -78,6 +79,11 @@ const mockSaveProject = vi.fn().mockResolvedValue(true);
 const mockCollectFiles = vi.fn().mockResolvedValue({});
 vi.mock('./useRuntime', () => ({
   useRuntime: () => mockWCReturn,
+}));
+
+// Mock ChatPanel — heavy dependency chain
+vi.mock('./ChatPanel', () => ({
+  ChatPanel: () => <div data-testid="chat-panel-mock">Chat</div>,
 }));
 
 // Mock IDETerminal — heavy xterm dependency

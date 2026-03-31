@@ -27,6 +27,7 @@ import {
 import { FileTree } from './FileTree';
 import { IDETerminal } from './IDETerminal';
 import { CloneDialog } from './CloneDialog';
+import { ChatPanel } from './ChatPanel';
 import { GitPanel } from './GitPanel';
 import { TaskRunner } from './TaskRunner';
 import { tabLabel, languageForPath, GIT_TOKEN_KEY, buildGitStatusMap } from './utils';
@@ -87,6 +88,7 @@ export function IDEScreen() {
 
   // Git integration state
   const [showCloneDialog, setShowCloneDialog] = useState(false);
+  const [showChat, setShowChat] = useState(true);
   const [sidebarTab, setSidebarTab] = useState<'files' | 'git'>('files');
   const [gitStatusEntries, setGitStatusEntries] = useState<GitStatusEntry[]>([]);
   const [gitLogEntries, setGitLogEntries] = useState<GitLogEntry[]>([]);
@@ -341,6 +343,13 @@ export function IDEScreen() {
             Clone Repo
           </button>
           <button
+            onClick={() => setShowChat((prev) => !prev)}
+            style={cloneRepoBtnStyle}
+            data-testid="toggle-chat-btn"
+          >
+            {showChat ? 'Hide Chat' : 'AI Chat'}
+          </button>
+          <button
             onClick={handleSave}
             disabled={saveStatus === 'saving'}
             style={{
@@ -533,7 +542,31 @@ export function IDEScreen() {
             </div>
           )}
         </div>
+
+        {/* Chat panel */}
+        {showChat && (
+          <>
+            <div style={hDividerStyle} data-testid="resize-handle-chat" />
+            <div style={chatPanelWrapperStyle} data-testid="chat-panel-wrapper">
+              <ChatPanel
+                vfs={backend.getVfs()}
+                backend={backend}
+                model="@cf/meta/llama-3.3-70b-instruct-fp8-fast"
+                fileTree={files.map((f) => f.path)}
+                currentFile={activeTab ? { path: activeTab, content: editorContent } : undefined}
+                language={editorLanguage}
+              />
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
 }
+
+const chatPanelWrapperStyle: React.CSSProperties = {
+  width: 320,
+  flexShrink: 0,
+  display: 'flex',
+  overflow: 'hidden',
+};
