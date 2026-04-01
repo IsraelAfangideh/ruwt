@@ -498,24 +498,32 @@ export function ArenaScreen() {
   };
 
   const onRunCode = useCallback(async (sourceCode: string, lang: string) => {
-    const pistonLang = PISTON_LANGUAGES[lang] || PISTON_LANGUAGES.javascript;
-    const res = await fetch('/api/execute', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        language: pistonLang.language,
-        version: pistonLang.version,
-        files: [{ content: sourceCode }],
-      }),
-    });
-    const data = await res.json();
-    /* istanbul ignore next -- @preserve */
-    const run = data.run || {};
-    return {
-      stdout: run.stdout || '',
-      stderr: run.stderr || '',
-      exitCode: run.code ?? /* istanbul ignore next -- @preserve */ (run.signal ? 1 : 0),
-    };
+    try {
+      const pistonLang = PISTON_LANGUAGES[lang] || PISTON_LANGUAGES.javascript;
+      const res = await fetch('/api/execute', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          language: pistonLang.language,
+          version: pistonLang.version,
+          files: [{ content: sourceCode }],
+        }),
+      });
+      const data = await res.json();
+      /* istanbul ignore next -- @preserve */
+      const run = data.run || {};
+      return {
+        stdout: run.stdout || '',
+        stderr: run.stderr || '',
+        exitCode: run.code ?? /* istanbul ignore next -- @preserve */ (run.signal ? 1 : 0),
+      };
+    } catch (err) {
+      return {
+        stdout: '',
+        stderr: `Execution failed: ${err instanceof Error ? err.message : 'Network error'}`,
+        exitCode: 1,
+      };
+    }
   }, []);
 
   const handleRun = useCallback(async () => {

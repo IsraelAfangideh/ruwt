@@ -1,7 +1,6 @@
 /**
  * useRuntime: manages Ruwt Runtime lifecycle for the standalone IDE.
- * Drop-in replacement for useWebContainer — same API, different engine.
- * Uses RuwtBackend (VirtualFS + QuickJS + esbuild-wasm) instead of WebContainer.
+ * Uses RuwtBackend (VirtualFS + QuickJS + esbuild-wasm) for the browser runtime.
  */
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { RuwtBackend } from '@/lib/sandbox/ruwt-backend';

@@ -28,6 +28,7 @@ import { FileTree } from './FileTree';
 import { IDETerminal } from './IDETerminal';
 import { CloneDialog } from './CloneDialog';
 import { ChatPanel } from './ChatPanel';
+import { createInlineCompletionProvider } from '@/features/shared-ide/hooks/useInlineCompletions';
 import { GitPanel } from './GitPanel';
 import { TaskRunner } from './TaskRunner';
 import { tabLabel, languageForPath, GIT_TOKEN_KEY, buildGitStatusMap } from './utils';
@@ -85,6 +86,22 @@ export function IDEScreen() {
 
   // .ruwt.yml config (loaded from project root when ready)
   const [ruwtConfig, setRuwtConfig] = useState<RuwtConfig | null>(null);
+
+  // Inline completions provider disposal
+  const completionDisposableRef = useRef<{ dispose: () => void } | null>(null);
+
+  const handleEditorMount = useCallback((_editor: unknown, monaco: any) => {
+    // Clean up previous registration
+    completionDisposableRef.current?.dispose();
+    const provider = createInlineCompletionProvider({
+      language: editorLanguage,
+      filePath: activeTab ?? undefined,
+    });
+    completionDisposableRef.current = monaco.languages.registerInlineCompletionsProvider(
+      editorLanguage,
+      provider,
+    );
+  }, [editorLanguage, activeTab]);
 
   // Git integration state
   const [showCloneDialog, setShowCloneDialog] = useState(false);
@@ -498,7 +515,9 @@ export function IDEScreen() {
                   theme="vs-dark"
                   value={editorContent}
                   onChange={handleEditorChange}
+                  onMount={handleEditorMount}
                   options={{
+                    inlineSuggest: { enabled: true },
                     minimap: { enabled: false },
                     fontSize: 14,
                     fontFamily: fontFamily.mono ?? 'monospace',

@@ -1,5 +1,5 @@
 /**
- * CloneDialog: modal for cloning a git repository into the WebContainer.
+ * CloneDialog: modal for cloning a git repository into the runtime filesystem.
  * Accepts a repo URL and optional GitHub PAT for private repos.
  * Shows a progress indicator during clone.
  */

@@ -1,9 +1,7 @@
 /**
  * Ruwt Runtime backend — implements RuntimeBackend using VirtualFileSystem,
- * QuickJS engine, and npm client instead of WebContainer.
- *
- * Drop-in replacement for BrowserBackend. The IDE doesn't know or care
- * which backend is active — same interface, different engine.
+ * QuickJS engine, and npm client. Provides the browser-side runtime for
+ * the standalone IDE.
  */
 import type { RuntimeBackend, FileStat, ProcessHandle, TerminalConnection } from './runtime';
 import { VirtualFileSystem } from '@/features/shared-ide/VirtualFileSystem';

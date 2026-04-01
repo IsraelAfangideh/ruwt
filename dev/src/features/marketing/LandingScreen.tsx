@@ -52,16 +52,16 @@ export function LandingScreen() {
             <Text style={{ color: '#c9a962' }}>AI Fluency Index?</Text>
           </Text>
           <Text style={styles.heroSub}>
-            Solve real coding challenges with real AI models. Get scored on how efficiently you use them — model selection, prompt strategy, cost.{'\n'}Your AFI is the number that proves it.
+            A free browser IDE with AI built in. Build real projects, solve coding challenges, and get scored on how efficiently you use AI.{'\n'}No install. No subscription. Open a tab and start coding.
           </Text>
 
           {/* Stats row */}
           <View style={[styles.statsRow, isMobile && styles.statsRowMobile]}>
             {[
-              { value: '0-850', label: 'AFI Score' },
+              { value: 'Free', label: 'Browser IDE' },
               { value: '15', label: 'AI Models' },
-              { value: '5', label: 'Cost Tiers' },
-              { value: 'Free', label: 'To Start' },
+              { value: '$0', label: 'To Start' },
+              { value: '0-850', label: 'AFI Score' },
             ].map((stat) => (
               <View key={stat.label} style={styles.statItem}>
                 <Text style={styles.statValue}>{stat.value}</Text>
@@ -82,13 +82,11 @@ export function LandingScreen() {
             <Button
               variant="outline"
               size="lg"
-              onPress={() => {
-                (navigation.navigate as any)('GuestArena', { challengeId: 'one-shot-csv-parser' });
-              }}
+              onPress={() => navigation.navigate('IDE' as any)}
               style={{ borderColor: 'rgba(232,228,223,0.25)' }}
               textStyle={{ color: '#f5f3f0' }}
             >
-              Try a Challenge — No Sign Up
+              Open the IDE — Free
             </Button>
           </View>
 
@@ -116,11 +114,46 @@ export function LandingScreen() {
         </View>
       </View>
 
+      {/* ─── Free IDE ─── */}
+      <View style={styles.section}>
+        <Text style={[styles.sectionTitle, { color: c.text }]} accessibilityRole="heading">Build With AI, For Free</Text>
+        <Text style={[styles.sectionSub, { color: c.textMuted }]}>
+          A full development environment in your browser. Monaco editor, AI agent that reads and writes your files, npm packages, terminal, git — powered by open-source AI models at zero cost.
+        </Text>
+        <View style={styles.cards}>
+          {[
+            { icon: '\u{1F916}', title: 'AI Agent', desc: 'The AI reads your code, writes fixes, runs commands, and iterates autonomously. Agent, Plan, Debug, and Ask modes.' },
+            { icon: '\u{1F4E6}', title: 'npm Packages', desc: 'Install any npm package directly in the browser. No server needed — packages resolve and install client-side.' },
+            { icon: '\u{1F4BB}', title: 'Full Terminal', desc: 'node, npm, npx, git, and all shell commands. Tab completion. Run your code instantly.' },
+            { icon: '\u{1F511}', title: 'Bring Your Own Key', desc: 'Use free open-source models, or plug in your own Claude, GPT-4, or Groq API key for premium AI.' },
+            { icon: '\u{1F4BE}', title: 'Auto-Save', desc: 'Projects persist to the cloud. Pick up where you left off, from any device.' },
+          ].map((item) => (
+            <Card key={item.title} style={styles.card}>
+              <CardHeader>
+                <View style={[styles.iconCircle, { backgroundColor: c.accentBg }]}>
+                  <Text style={{ fontSize: 20 }}>{item.icon}</Text>
+                </View>
+                <CardTitle>{item.title}</CardTitle>
+                <CardDescription>{item.desc}</CardDescription>
+              </CardHeader>
+            </Card>
+          ))}
+        </View>
+        <Button
+          size="lg"
+          onPress={() => navigation.navigate('IDE' as any)}
+          style={{ backgroundColor: '#c9a962', alignSelf: 'center', marginTop: 16 }}
+          textStyle={{ color: '#1a1816' }}
+        >
+          Open the IDE
+        </Button>
+      </View>
+
       {/* ─── Arena Preview ─── */}
       <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: c.text }]} accessibilityRole="heading">The Arena IDE</Text>
+        <Text style={[styles.sectionTitle, { color: c.text }]} accessibilityRole="heading">The Arena</Text>
         <Text style={[styles.sectionSub, { color: c.textMuted }]}>
-          Monaco editor, AI chat with 15 models, and a built-in terminal — all in your browser.
+          Solve real coding challenges with AI. Get scored on efficiency. Compete on the leaderboard.
         </Text>
         <Card style={styles.previewCard}>
           <Image

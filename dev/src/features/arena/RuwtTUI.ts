@@ -683,7 +683,9 @@ export class RuwtTUI {
             const cleaned = stripToolCalls(fullContent);
             this.history.push({ role: 'assistant', content: cleaned });
             this.pruneHistory();
-            lastRoundAppliedCode = await this.applyCodeFromResponse(fullContent);
+            try {
+              lastRoundAppliedCode = await this.applyCodeFromResponse(fullContent);
+            } catch { /* apply failed — non-fatal */ }
             resolve(fullContent);
           },
           onError: (error: string) => {
@@ -797,7 +799,7 @@ export class RuwtTUI {
         // Drain message queue
         const nextMsg = this.messageQueue.shift()!;
         this.term.write(`\r\n\x1b[90m[sending queued message...]\x1b[0m`);
-        this.sendMessage(nextMsg);
+        this.sendMessage(nextMsg).catch(() => { this.printPrompt(); });
       } else {
         this.printPrompt();
       }

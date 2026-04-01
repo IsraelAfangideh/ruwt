@@ -1,5 +1,5 @@
 /**
- * FileTree: renders a file-tree sidebar from WebContainer filesystem entries.
+ * FileTree: renders a file-tree sidebar from project filesystem entries.
  * Supports folder expand/collapse, file-type icons, selected-file highlighting,
  * and optional git status indicators per file.
  */

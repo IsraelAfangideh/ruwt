@@ -86,15 +86,20 @@ describe('LandingScreen', () => {
     expect(screen.getAllByText('Find Your Score').length).toBeGreaterThanOrEqual(1);
   });
 
-  it('renders Try a Challenge CTA', () => {
+  it('renders Open the IDE CTA', () => {
     render(<LandingScreen />);
-    expect(screen.getAllByText(/Try a Challenge/).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText(/Open the IDE/).length).toBeGreaterThanOrEqual(1);
   });
 
   /* ── Sections ──────────────────────────────────────────────────── */
-  it('renders Arena IDE section', () => {
+  it('renders Build With AI section', () => {
     render(<LandingScreen />);
-    expect(screen.getAllByText('The Arena IDE').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('Build With AI, For Free').length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('renders Arena section', () => {
+    render(<LandingScreen />);
+    expect(screen.getAllByText('The Arena').length).toBeGreaterThanOrEqual(1);
   });
 
   it('renders What Your AFI Measures section', () => {
@@ -176,10 +181,10 @@ describe('LandingScreen', () => {
     expect(mockNavigate).toHaveBeenCalledWith('Register');
   });
 
-  it('navigates to GuestArena on Try a Challenge click', () => {
+  it('navigates to IDE on Open the IDE click', () => {
     render(<LandingScreen />);
-    fireEvent.click(screen.getByText(/Try a Challenge/));
-    expect(mockNavigate).toHaveBeenCalledWith('GuestArena', { challengeId: 'one-shot-csv-parser' });
+    fireEvent.click(screen.getAllByText(/Open the IDE/)[0]);
+    expect(mockNavigate).toHaveBeenCalledWith('IDE');
   });
 
   it('navigates to Teams when Benchmark Your Team is clicked', () => {
@@ -246,9 +251,8 @@ describe('LandingScreen', () => {
   it('renders stats row on mobile (width < 768)', () => {
     mockWidth.mockReturnValue(375);
     render(<LandingScreen />);
-    // All stats should still be there
-    expect(screen.getAllByText('100+').length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText('5').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('Free').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('15').length).toBeGreaterThanOrEqual(1);
   });
 
   it('navigates to Hiring when For Teams is clicked', () => {

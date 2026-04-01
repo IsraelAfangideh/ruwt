@@ -84,18 +84,14 @@ describe('POST /api/execute', () => {
     globalThis.fetch = originalFetch;
   });
 
-  it('allows unauthenticated requests (guest mode)', async () => {
+  it('returns 401 for unauthenticated requests', async () => {
     mockGetUser.mockResolvedValue(null);
-
-    globalThis.fetch = vi.fn().mockResolvedValue(
-      new Response(JSON.stringify({ run: { stdout: 'hi\n', stderr: '', code: 0 } }), { status: 200 }),
-    );
 
     const res = await onRequestPost(makeContext(validBody));
     const json = await res.json();
 
-    expect(res.status).toBe(200);
-    expect(json.run.stdout).toBe('hi\n');
+    expect(res.status).toBe(401);
+    expect(json.error).toBe('Unauthorized');
   });
 
   it('returns 400 when language is missing', async () => {
@@ -252,21 +248,16 @@ describe('POST /api/execute', () => {
     );
   });
 
-  it('logs anonymous userId when user is not authenticated and fetch throws', async () => {
+  it('returns 401 before reaching fetch when user is not authenticated', async () => {
     mockGetUser.mockResolvedValue(null);
 
-    globalThis.fetch = vi.fn().mockRejectedValue(new Error('ECONNREFUSED'));
+    const res = await onRequestPost(makeContext(validBody));
+    const json = await res.json();
 
-    await onRequestPost(makeContext(validBody));
-
-    expect(mockLogError).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.anything(),
-      expect.objectContaining({
-        endpoint: '/api/execute',
-        userId: 'anonymous',
-      }),
-    );
+    expect(res.status).toBe(401);
+    expect(json.error).toBe('Unauthorized');
+    // Should never reach fetch or logError
+    expect(mockLogError).not.toHaveBeenCalled();
   });
 
   it('handles non-Error thrown values in the catch block', async () => {
@@ -401,14 +392,10 @@ describe('POST /api/execute — additional error paths', () => {
     vi.clearAllMocks();
   });
 
-  it('allows unauthenticated requests in additional paths', async () => {
+  it('returns 401 for unauthenticated requests before validation', async () => {
     mockGetUser.mockResolvedValue(null);
-    globalThis.fetch = vi.fn().mockResolvedValue(
-      new Response(JSON.stringify({ run: { stdout: '', stderr: '', code: 0 } }), { status: 200 }),
-    );
-    // No files array = 400 validation error, not 401
     const res = await onRequestPost(makeContext({ language: 'javascript', code: 'console.log(1)' }));
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(401);
   });
 
   it('returns 400 when language is missing', async () => {

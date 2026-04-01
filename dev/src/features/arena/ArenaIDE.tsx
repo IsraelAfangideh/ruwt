@@ -300,7 +300,7 @@ function MessageCopyButton({ content }: { content: string }) {
     navigator.clipboard.writeText(content).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
-    });
+    }).catch(() => { /* clipboard denied */ });
   };
   return (
     <button
@@ -1288,7 +1288,9 @@ export function ArenaIDE({
             const thinking = streamingThinkingRef.current || undefined;
             setMessages((m) => [...m, { role: 'assistant', content: cleanContent, meta, thinking }]);
             resetStreamingState();
-            lastRoundAppliedCode = await applyCodeFromResponse(fullContent);
+            try {
+              lastRoundAppliedCode = await applyCodeFromResponse(fullContent);
+            } catch { /* apply failed — non-fatal */ }
             resolve(fullContent);
           },
           onError: (error) => {
