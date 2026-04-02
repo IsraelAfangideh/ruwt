@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
-import { useAssessmentAgent } from './useAssessmentAgent';
+import { useAssessmentAgent, friendlyErrorLabel } from './useAssessmentAgent';
 
 /* ── Helpers ────────────────────────────────────────────────────────────── */
 
@@ -474,7 +474,7 @@ describe('useAssessmentAgent', () => {
     const errMsg = result.current.messages.find(
       (m) => m.role === 'system' && m.systemType === 'tool_error'
     );
-    expect(errMsg?.content).toBe('Failed: set_weights');
+    expect(errMsg?.content).toBe('set_weights failed — retrying');
   });
 
   it('uses fallback "completed" label for unknown tool on success', async () => {
@@ -857,5 +857,38 @@ describe('useAssessmentAgent', () => {
     expect(msgs).toHaveLength(2); // user + assistant
     expect(msgs[1].role).toBe('assistant');
     expect(msgs[1].content).toContain('_Error: immediate error_');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// friendlyErrorLabel — strips stderr/stdout noise from tool errors
+// ---------------------------------------------------------------------------
+
+describe('friendlyErrorLabel', () => {
+  it('returns tool name fallback when no error provided', () => {
+    expect(friendlyErrorLabel('set_weights')).toBe('set_weights failed — retrying');
+  });
+
+  it('returns simple error as-is for non-challenge tools', () => {
+    expect(friendlyErrorLabel('select_challenges', 'Not found')).toBe('Failed: Not found');
+  });
+
+  it('strips Stderr dump from error message', () => {
+    const raw = 'Execution failed (exit code 1)\nStderr: /tmp/exec-abc/main.js:27\nSyntaxError: blah';
+    expect(friendlyErrorLabel('select_challenges', raw)).toBe('Failed: Execution failed (exit code 1)');
+  });
+
+  it('strips Stdout dump from error message', () => {
+    const raw = 'Some test cases FAILED\nStdout: Test Case 1: FAIL';
+    expect(friendlyErrorLabel('select_challenges', raw)).toBe('Failed: Some test cases FAILED');
+  });
+
+  it('shows friendly message for challenge creation validation failure', () => {
+    const raw = 'Test harness validation failed: Execution failed (exit code 1)\nStderr: SyntaxError...';
+    expect(friendlyErrorLabel('create_custom_challenge', raw)).toBe('Challenge creation failed — fixing and retrying');
+  });
+
+  it('shows reason for non-validation challenge creation failure', () => {
+    expect(friendlyErrorLabel('create_custom_challenge', 'Organization required')).toBe('Challenge creation failed: Organization required');
   });
 });

@@ -66,6 +66,18 @@ export const TOOL_SUCCESS_LABELS: Record<string, (result: any) => string> = {
   /* istanbul ignore next -- @preserve */ search_challenges: (r) => { /* istanbul ignore next -- @preserve */ return `Found ${r?.count ?? 0} matching challenge${r?.count === 1 ? '' : 's'}`; },
 };
 
+/** Strip stderr/stdout noise from tool errors for user-facing display. */
+export function friendlyErrorLabel(tool: string, error?: string): string {
+  if (!error) return `${tool} failed — retrying`;
+  // Extract just the high-level reason, drop Stderr/Stdout dumps
+  const cleaned = error.split(/\n(?:Std(?:err|out):)/)[0].trim();
+  if (tool === 'create_custom_challenge') {
+    if (/validation failed/i.test(cleaned)) return 'Challenge creation failed — fixing and retrying';
+    return `Challenge creation failed: ${cleaned}`;
+  }
+  return `Failed: ${cleaned}`;
+}
+
 export function useAssessmentAgent({ assessmentId, onToolResult, onAssessmentCreated }: UseAssessmentAgentParams) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [streaming, setStreaming] = useState(false);
@@ -162,7 +174,7 @@ export function useAssessmentAgent({ assessmentId, onToolResult, onAssessmentCre
                 // Add inline feedback as a system message
                 const label = event.success
                   ? (TOOL_SUCCESS_LABELS[event.tool]?.(event.result) ?? `${event.tool} completed`)
-                  : `Failed: ${event.error || event.tool}`;
+                  : friendlyErrorLabel(event.tool, event.error);
                 setMessages((prev) => [
                   ...prev,
                   {

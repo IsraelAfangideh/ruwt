@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { executeToolCall, type ToolCall, type ToolResult } from './tool-executor';
+import { executeToolCall, sanitizeHarness, type ToolCall, type ToolResult } from './tool-executor';
 
 // ---------------------------------------------------------------------------
 // Mock DB builder
@@ -1333,5 +1333,63 @@ describe('executeToolCall interface', () => {
     expect(db._mocks.updateWhereMock).toHaveBeenCalled();
     // The update was issued (would have used eq(assessments.id, 'special-id'))
     expect(db.update).toHaveBeenCalled();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// sanitizeHarness — strips require('./solution') that AI keeps generating
+// ---------------------------------------------------------------------------
+
+describe('sanitizeHarness', () => {
+  it('strips const { X } = require("./solution") lines', () => {
+    const harness = `const { ShoppingCart } = require('./solution');\nconst cart = new ShoppingCart();\nconsole.log('PASS');`;
+    const result = sanitizeHarness(harness);
+    expect(result).not.toContain('require');
+    expect(result).toContain('new ShoppingCart()');
+    expect(result).toContain('PASS');
+  });
+
+  it('strips double-quoted require lines', () => {
+    const harness = `const { calc } = require("./solution");\nconsole.log(calc(1));`;
+    const result = sanitizeHarness(harness);
+    expect(result).not.toContain('require');
+    expect(result).toContain('console.log');
+  });
+
+  it('strips require("./anything") relative imports', () => {
+    const harness = `const ShoppingCart = require('./shoppingCart');\nconsole.log('PASS');`;
+    const result = sanitizeHarness(harness);
+    expect(result).not.toContain('require');
+    expect(result).toContain('PASS');
+  });
+
+  it('preserves non-require lines untouched', () => {
+    const harness = `const cart = new ShoppingCart();\nconsole.log('PASS');`;
+    expect(sanitizeHarness(harness)).toBe(harness);
+  });
+
+  it('returns empty string for a harness that is only require lines', () => {
+    const harness = `const { X } = require('./solution');`;
+    expect(sanitizeHarness(harness).trim()).toBe('');
+  });
+
+  it('strips Python "from solution import" lines', () => {
+    const harness = `from solution import ShoppingCart\ncart = ShoppingCart()\nprint('PASS')`;
+    const result = sanitizeHarness(harness);
+    expect(result).not.toContain('from solution');
+    expect(result).toContain('cart = ShoppingCart()');
+    expect(result).toContain('PASS');
+  });
+
+  it('strips Python "import solution" lines', () => {
+    const harness = `import solution\ncart = solution.ShoppingCart()\nprint('PASS')`;
+    const result = sanitizeHarness(harness);
+    expect(result).not.toContain('import solution');
+    expect(result).toContain('cart = solution.ShoppingCart()');
+  });
+
+  it('preserves Python non-solution imports', () => {
+    const harness = `import json\nfrom collections import defaultdict\nprint('PASS')`;
+    expect(sanitizeHarness(harness)).toBe(harness);
   });
 });

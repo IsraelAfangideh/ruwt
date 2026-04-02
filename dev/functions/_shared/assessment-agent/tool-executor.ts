@@ -10,6 +10,24 @@ import {
 } from '../../../drizzle/schema.d1';
 import { pistonExecute, type PistonEnv } from '../infra/piston-client';
 
+/**
+ * Strip relative import lines that the AI keeps generating despite prompt
+ * instructions.  The harness and solution run as ONE concatenated file —
+ * there is no separate module to import/require.
+ */
+export function sanitizeHarness(harness: string): string {
+  return harness
+    .split('\n')
+    .filter(line => {
+      // JS: require('./solution'), require('./shoppingCart'), etc.
+      if (/require\s*\(\s*['"]\.\//.test(line)) return false;
+      // Python: from solution import ..., import solution
+      if (/^\s*(from\s+solution\s+import|import\s+solution)\b/.test(line)) return false;
+      return true;
+    })
+    .join('\n');
+}
+
 /** Cloudflare native tool call format. */
 export interface ToolCall {
   name: string;
@@ -328,7 +346,10 @@ async function validateHarness(
   testHarness: string,
   language: string,
 ): Promise<{ valid: boolean; error?: string; stdout?: string; stderr?: string }> {
-  const code = `${referenceSolution}\n\n${testHarness}`;
+  // Strip module.exports from reference solution (same as judge.ts buildTestCode)
+  // so declarations don't conflict when concatenated with the harness.
+  const cleanedSolution = referenceSolution.replace(/module\.exports\s*=\s*[^;]+;?/g, '');
+  const code = `${cleanedSolution}\n\n${testHarness}`;
 
   let data;
   try {
@@ -374,7 +395,8 @@ async function createCustomChallenge(
   const testCases = Array.isArray(params.testCases) ? JSON.stringify(params.testCases) : '[]';
   const hiddenTestCases = Array.isArray(params.hiddenTestCases) ? JSON.stringify(params.hiddenTestCases) : null;
   const tags = Array.isArray(params.tags) ? JSON.stringify(params.tags) : null;
-  const testHarnessStr = typeof params.testHarness === 'string' ? params.testHarness : null;
+  const testHarnessRaw = typeof params.testHarness === 'string' ? params.testHarness : null;
+  const testHarnessStr = testHarnessRaw ? sanitizeHarness(testHarnessRaw) : null;
   const referenceSolution = typeof params.referenceSolution === 'string' ? params.referenceSolution : null;
   const language = String(params.language || 'javascript');
 

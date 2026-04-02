@@ -18,7 +18,7 @@ type Props = Pick<AssessmentIDEState,
   | 'weights' | 'weightSum' | 'setWeights'
   | 'passThreshold' | 'setPassThreshold'
   | 'timeLimitMinutes' | 'setTimeLimitMinutes'
-  | 'assessmentId' | 'status' | 'loadError'
+  | 'assessmentId' | 'status' | 'loadError' | 'dirty'
   | 'inviteLink' | 'copied' | 'copyInviteLink' | 'handleGenerateInvite' | 'generatingInvite'
   | 'inviteRefreshKey' | 'handleInvitesSent'
   | 'handleApproveCustomChallenge' | 'handleDeleteCustomChallenge'
@@ -57,7 +57,7 @@ export function AssessmentDocumentPanel(props: Props) {
             value={props.title}
             onChangeText={props.setTitle}
           />
-          {!props.title && (
+          {!props.title && props.dirty && (
             <Text style={{ fontSize: 10, color: c.destructive, marginTop: 2 }}>Title required</Text>
           )}
         </View>

@@ -86,6 +86,7 @@ const baseProps = {
   handleInvitesSent: vi.fn(),
   handleApproveCustomChallenge: vi.fn(),
   handleDeleteCustomChallenge: vi.fn(),
+  dirty: false,
 };
 
 const DRAFT_CUSTOM_CHALLENGE = {
@@ -124,9 +125,14 @@ describe('AssessmentDocumentPanel', () => {
     expect(screen.getByLabelText('Title')).toBeInTheDocument();
   });
 
-  it('shows "Title required" when title is empty', () => {
-    render(<AssessmentDocumentPanel {...baseProps} title="" />);
+  it('shows "Title required" when title is empty and form is dirty', () => {
+    render(<AssessmentDocumentPanel {...baseProps} title="" dirty={true} />);
     expect(screen.getByText('Title required')).toBeInTheDocument();
+  });
+
+  it('hides "Title required" when title is empty but form is not dirty', () => {
+    render(<AssessmentDocumentPanel {...baseProps} title="" dirty={false} />);
+    expect(screen.queryByText('Title required')).toBeNull();
   });
 
   it('hides "Title required" when title is set', () => {

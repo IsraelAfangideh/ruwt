@@ -101,6 +101,7 @@ export function AssessmentIDEScreen() {
       handleInvitesSent={state.handleInvitesSent}
       handleApproveCustomChallenge={state.handleApproveCustomChallenge}
       handleDeleteCustomChallenge={state.handleDeleteCustomChallenge}
+      dirty={state.dirty}
     />
   );
 
