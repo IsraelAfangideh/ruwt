@@ -151,7 +151,7 @@ export function AssessmentChatPanel({
     // Apply template settings directly (instant, reliable — no AI needed)
     onApplyTemplate(template);
     // Send a summary to the AI so it knows the context for follow-up questions
-    sendMessage(`I applied the ${template.name} template with ${template.challengeTitles.length} challenges and a ${template.timeLimitMinutes}-minute limit. Review it and make any improvements directly — swap challenges, adjust weights, or change the time limit as you see fit.`);
+    sendMessage(`I applied the ${template.name} template with these ${template.challengeTitles.length} challenges: ${template.challengeTitles.join(', ')}. Time limit: ${template.timeLimitMinutes} minutes. Review it and make any improvements directly — swap challenges, adjust weights, or change the time limit as you see fit.`);
   }, [onApplyTemplate, sendMessage]);
 
   /* istanbul ignore next -- @preserve: RNW onKeyPress nativeEvent not reachable via testing-library */
