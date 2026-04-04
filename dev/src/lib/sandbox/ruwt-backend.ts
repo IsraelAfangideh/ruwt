@@ -47,6 +47,7 @@ export class RuwtBackend implements RuntimeBackend {
   /** Kick off WASM downloads. Nulls the promise on failure so retries work. */
   private startWasmInit(): void {
     this.wasmInitPromise = Promise.all([initEsbuild(), initQuickJS()])
+      .then(/* istanbul ignore next -- @preserve */ () => {})
       .catch(/* istanbul ignore next -- @preserve */ () => {
         this.wasmInitPromise = null;
         throw new Error('WASM initialization failed');
