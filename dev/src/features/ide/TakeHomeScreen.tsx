@@ -6,7 +6,7 @@
  * Records AI telemetry on every chat interaction.
  * Submit button collects files and POSTs to the submit endpoint.
  */
-import { lazy, Suspense, useState, useRef, useCallback, useEffect, useMemo } from 'react';
+import { Suspense, useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useAuthGuard } from '@/shared/hooks/useAuthGuard';
 import { useIDELayout } from '@/features/shared-ide/hooks/useIDELayout';
@@ -21,10 +21,7 @@ import { useSessionRecorder } from './useSessionRecorder';
 import { TelemetryDisclosure } from './TelemetryDisclosure';
 import * as browserGit from '@/lib/git/browser-git';
 import type { GitStatusEntry } from '@/lib/git/browser-git';
-import '@/features/shared-ide/lib/monaco-init';
-
-/* istanbul ignore next -- @preserve */
-const MonacoEditor = lazy(() => import('@monaco-editor/react'));
+import { LazyMonacoEditor as MonacoEditor } from '@/features/shared-ide/lib/LazyMonacoEditor';
 
 /** Format seconds as MM:SS or HH:MM:SS */
 function formatTime(seconds: number): string {

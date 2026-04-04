@@ -34,6 +34,9 @@ export default defineConfig({
       output: {
         manualChunks: {
           monaco: ['@monaco-editor/react', 'monaco-editor'],
+          quickjs: ['quickjs-emscripten'],
+          xterm: ['@xterm/xterm', '@xterm/addon-fit'],
+          'browser-git': ['isomorphic-git'],
         },
       },
     },

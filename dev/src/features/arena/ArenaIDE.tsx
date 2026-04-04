@@ -34,9 +34,7 @@ import { formatTime } from '@/shared/lib/utils';
 import { useIDELayout } from '../shared-ide/hooks/useIDELayout';
 import { PanelResizeBar } from '../shared-ide/components/PanelResizeBar';
 import { CollapsedSidebar, type SidebarTab } from '../shared-ide/components/CollapsedSidebar';
-import '@/features/shared-ide/lib/monaco-init';
-
-const MonacoEditor = React.lazy(() => import('@monaco-editor/react'));
+import { LazyMonacoEditor as MonacoEditor } from '@/features/shared-ide/lib/LazyMonacoEditor';
 
 /* ─── Constraint violation messages ──────────────────────────────── */
 

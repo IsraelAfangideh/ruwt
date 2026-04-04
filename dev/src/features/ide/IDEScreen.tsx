@@ -4,7 +4,7 @@
  * Integrates with project persistence (R2 + D1) for save/load.
  * Supports git operations via isomorphic-git (clone, commit, push).
  */
-import { lazy, Suspense, useState, useRef, useCallback, useEffect, useMemo } from 'react';
+import { Suspense, useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useAuthGuard } from '@/shared/hooks/useAuthGuard';
 import { useIDELayout } from '@/features/shared-ide/hooks/useIDELayout';
@@ -36,10 +36,7 @@ import { parseRuwtConfig } from '@/lib/config/ruwt-config';
 import type { RuwtConfig } from '@/lib/config/ruwt-config';
 import * as browserGit from '@/lib/git/browser-git';
 import type { GitStatusEntry, GitLogEntry } from '@/lib/git/browser-git';
-import '@/features/shared-ide/lib/monaco-init';
-
-/* istanbul ignore next -- @preserve */
-const MonacoEditor = lazy(() => import('@monaco-editor/react'));
+import { LazyMonacoEditor as MonacoEditor } from '@/features/shared-ide/lib/LazyMonacoEditor';
 
 /** Human-readable save status label */
 function saveButtonLabel(status: SaveStatus): string {

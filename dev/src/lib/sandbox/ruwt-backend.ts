@@ -17,6 +17,7 @@ export class RuwtBackend implements RuntimeBackend {
 
   private vfs: VirtualFileSystem;
   private npmClient: NpmClient;
+  private wasmInitPromise: Promise<void> | null = null;
 
   constructor() {
     this.vfs = new VirtualFileSystem('javascript', '');
@@ -28,9 +29,28 @@ export class RuwtBackend implements RuntimeBackend {
     return this.vfs;
   }
 
-  /** Initialize esbuild-wasm and QuickJS WASM engines. */
+  /**
+   * Initialize the backend. The VFS is ready immediately.
+   * WASM engines (esbuild + QuickJS) are initialized in the background —
+   * they are only needed when the terminal runs code, not for editing.
+   */
   async initialize(): Promise<void> {
-    await Promise.all([initEsbuild(), initQuickJS()]);
+    this.startWasmInit();
+  }
+
+  /** Ensure WASM engines are ready. Called lazily before code execution. */
+  async ensureWasm(): Promise<void> {
+    if (!this.wasmInitPromise) this.startWasmInit();
+    await this.wasmInitPromise;
+  }
+
+  /** Kick off WASM downloads. Nulls the promise on failure so retries work. */
+  private startWasmInit(): void {
+    this.wasmInitPromise = Promise.all([initEsbuild(), initQuickJS()])
+      .catch(/* istanbul ignore next -- @preserve */ () => {
+        this.wasmInitPromise = null;
+        throw new Error('WASM initialization failed');
+      });
   }
 
   // ── Filesystem ────────────────────────────────────────────────────────
@@ -107,6 +127,7 @@ export class RuwtBackend implements RuntimeBackend {
 
     const shellCallbacks: ShellCallbacks = {
       onRunCode: async (code: string) => {
+        await this.ensureWasm();
         return quickjsEval(code, this.vfs);
       },
       onRunTests: async () => {
@@ -117,6 +138,7 @@ export class RuwtBackend implements RuntimeBackend {
 
     const runtimeCallbacks: RuntimeCallbacks = {
       evaluate: async (code: string) => {
+        await this.ensureWasm();
         return quickjsEval(code, this.vfs);
       },
       npmInstall: async (packages: string[]) => {
@@ -155,6 +177,7 @@ export class RuwtBackend implements RuntimeBackend {
   // ── Private ───────────────────────────────────────────────────────────
 
   private async spawnNode(args: string[]): Promise<ProcessHandle> {
+    await this.ensureWasm();
     const filePath = args[0] ? this.vfs.resolve(args[0]) : null;
     const code = filePath ? this.vfs.readFile(filePath) : null;
 

@@ -21,10 +21,7 @@ import { useIsDesktop } from '@/shared/hooks/useWindowWidth';
 import { CommentSection } from '@/shared/social/CommentSection';
 import { BookmarkButton } from '@/shared/social/BookmarkButton';
 import { SplitPaneSkeleton } from '@/shared/ui/ScreenSkeletons';
-import '@/features/shared-ide/lib/monaco-init';
-
-/* istanbul ignore next -- @preserve */
-const MonacoEditor = React.lazy(() => import('@monaco-editor/react'));
+import { LazyMonacoEditor as MonacoEditor } from '@/features/shared-ide/lib/LazyMonacoEditor';
 
 interface ReplayMessage {
   role: string;
