@@ -242,9 +242,9 @@ describe('ArenaIDE (dark mode + mobile)', () => {
     });
   });
 
-  it('renders terminal panel', () => {
+  it('renders terminal panel', async () => {
     renderIDE();
-    expect(screen.getByTestId('terminal-panel')).toBeInTheDocument();
+    expect(await screen.findByTestId('terminal-panel')).toBeInTheDocument();
   });
 
   it('shows test case examples in sidebar', () => {
