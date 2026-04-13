@@ -13,7 +13,11 @@
     "lint": "npm --prefix dev run lint && npm --prefix health run lint",
     "test": "npm --prefix dev run test",
     "build": "npm --prefix dev run build && npm --prefix health run build",
-    "typecheck": "npm --prefix dev run typecheck && npm --prefix health run typecheck"
+    "typecheck": "npm --prefix dev run typecheck && npm --prefix health run typecheck",
+    "dev:trade": "npm --prefix trade/app run dev",
+    "dev:trade-api": "npm --prefix trade/api run dev",
+    "test:trade": "npm --prefix trade/chain run test",
+    "compile:trade": "npm --prefix trade/chain run compile"
   },
   "engines": {
     "node": ">=20"

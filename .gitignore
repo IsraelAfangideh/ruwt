@@ -46,6 +46,11 @@
 /.cursor
 
 # --------------------------------------------------------------------
+# Hardhat / Foundry artifacts
+**/artifacts/
+**/cache/
+**/typechain-types/
+
 # Legacy / moved folders
 # --------------------------------------------------------------------
 # If you've moved the monorepo under social/code, keep the old root /code

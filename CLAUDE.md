@@ -7,6 +7,7 @@ ruwt/
 ├── dev/          # AI-Efficiency Assessment Platform (web app)
 ├── health/       # Ruwt Fit — Fitness & Nutrition Tracker (web app)
 ├── social/       # Ruwt Social Network (mobile + API)
+├── trade/        # Ruwt Trade — Palm Oil Futures (web app + smart contracts)
 └── .github/      # CI/CD workflows
 ```
 
@@ -48,6 +49,83 @@ Be sure that when we add challenges some of them are non trivial for models to s
 - **Shared package**: `@ruwt/shared` — types, prompt generators, constants
   - History format uses Gemini-style `{role: 'user'|'model', parts: [{text}]}` for mobile compatibility
   - Conversion to OpenAI format happens in `cloudflare-ai.ts` → `convertHistory()`
+
+## /trade — Ruwt Trade (Palm Oil Futures)
+
+- **Stack**: Solidity (Hardhat) + Express API + React (Vite) PWA, Polygon PoS
+- **Smart contract**: `trade/chain/contracts/PalmVault.sol` — vault-model futures
+- **API**: `trade/api/` — Express server, position engine, Databento oracle
+- **Web app**: `trade/app/` — Vite + React PWA (port 5180), Ruwt design system
+- **Design system**: Same warm cream/dark palette as /dev and /social, with green/red trading colors
+  - Theme: `trade/app/src/theme/colors.ts` (light/dark + profit/loss), `tokens.ts`
+  - Light mode: profit `#16a34a`, loss `#dc2626`
+  - Dark mode: profit `#00f0aa`, loss `#ff3366`
+
+### How the vault works
+- Owner seeds vault with USDT ($2K initial). Vault is counterparty to all trades.
+- User deposits USDT → opens long at oracle price → closes whenever → PnL settled from vault.
+- 3% fee on close (accrues to vault). No leverage. Max $100/position. OI capped at vault balance.
+- Operator (backend hot wallet) submits oracle prices and executes open/close on-chain.
+
+### Contract: PalmVault.sol
+- 35 passing tests covering all flows, edge cases, access control, price bounds
+- Struct-packed Position (3 storage slots), cached storage reads in closeLong
+- Price bounds: MIN_PRICE=$100/MT, MAX_PRICE=$100,000/MT (catches operator bugs)
+- Zero-address checks on constructor and setOperator
+- nonReentrant on all state-changing functions
+
+### Local dev setup (3 terminals)
+
+```bash
+# Terminal 1: Hardhat local node
+cd trade/chain && npx hardhat node
+
+# Terminal 2: Deploy contracts + start API
+cd trade/chain && npx hardhat run scripts/deploy-local.ts --network localhost
+# Copy the env vars from output, then:
+cd ../api && VAULT_ADDRESS=<addr> OPERATOR_PRIVATE_KEY=<key> POLYGON_RPC=http://127.0.0.1:8545 npm run dev
+
+# Terminal 3: Web app
+cd trade/app && npm run dev
+# → http://localhost:5180
+```
+
+### Local dev — Hardhat well-known accounts
+- Account #0 (owner): `0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266`
+- Account #1 (operator): `0x70997970C51812dc3A010C7d01b50e0d17dc79C8`, key: `0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d`
+- Account #2 (demo trader / Alice): `0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC`
+- deploy-local.ts seeds vault with $2K and gives Alice $200 platform balance
+
+### Browser testing with Chrome MCP tools
+1. Start the 3-terminal local dev setup above
+2. Load Chrome MCP tools via `ToolSearch("select:mcp__claude-in-chrome__tabs_context_mcp,...")`
+3. `tabs_context_mcp(createIfEmpty: true)` → get tab ID
+4. `navigate(url: "http://localhost:5180", tabId)` → load app
+5. `screenshot` → verify UI rendered (price display, trade panel, balance)
+6. `find("$50 preset button")` → click to select amount
+7. `find("Buy Long button")` → click to open position on-chain
+8. Wait 3s for tx confirmation, `screenshot` → verify position card appeared with P&L
+9. `find("Close Position button")` → click to close
+10. Wait 3s, `screenshot` → verify position removed, balance updated
+11. Test dark mode: `find("Dark theme toggle button")` → click → `screenshot`
+
+### API endpoints
+- `GET /api/prices/current` — latest palm oil price
+- `POST /api/positions/open` — `{trader, amount}` → opens long
+- `POST /api/positions/close` — `{positionId}` → closes position
+- `GET /api/positions/:id` — position details + unrealized P&L
+- `GET /api/account/:address` — trader balance + vault stats
+- `GET /health` — health check
+- Mutation routes require `X-API-Key` header when `API_KEY` env var is set
+
+### Deploy to production
+1. Create deployer + operator wallets (separate keys)
+2. Fund deployer with ~5 MATIC, operator with ~2 MATIC on Polygon
+3. Get 2,000 USDT on Polygon in deployer wallet
+4. Deploy: `DEPLOYER_PRIVATE_KEY=... USDT_ADDRESS=0xc2132D05D31c914a87C6611C10748AEb04B58e8F OPERATOR_ADDRESS=... npx hardhat run scripts/deploy.ts --network polygon`
+5. Deploy API to Fly.io (same as /executor pattern)
+6. Deploy web app to Cloudflare Pages (same as /dev pattern)
+7. Databento API key for real FCPO prices ($125 free credits, then ~$199/mo)
 
 ## /health — Ruwt Fit (Fitness & Nutrition Tracker)
 
