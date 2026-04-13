@@ -59,7 +59,7 @@ export function getMarketStatus(commodity: string): {
   const isOpen = isWeekday && inHours;
 
   if (isOpen) {
-    return { isOpen: true, label: "Market open" };
+    return { isOpen: true, label: "Price updating" };
   }
 
   // Find next open time
@@ -76,12 +76,17 @@ export function getMarketStatus(commodity: string): {
   const hoursUntil = Math.round((nextOpen.getTime() - now.getTime()) / 3600_000);
 
   if (hoursUntil <= 12) {
-    return { isOpen: false, label: `Market closed · Opens in ${hoursUntil}h` };
+    return { isOpen: false, label: `Next update in ${hoursUntil}h` };
   }
 
   const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
   const openDay = dayNames[nextOpen.getUTCDay()];
-  return { isOpen: false, label: `Market closed · Opens ${openDay}` };
+  // Format the open time in a human-friendly way
+  const openHour = spec.marketOpen.hour;
+  const ampm = openHour >= 12 ? "PM" : "AM";
+  const hour12 = openHour === 0 ? 12 : openHour > 12 ? openHour - 12 : openHour;
+  const minStr = spec.marketOpen.minute > 0 ? `:${spec.marketOpen.minute.toString().padStart(2, "0")}` : "";
+  return { isOpen: false, label: `Next update ${openDay} ${hour12}${minStr} ${ampm} ${spec.timezone}` };
 }
 
 let prices: Record<string, PriceData> = {};

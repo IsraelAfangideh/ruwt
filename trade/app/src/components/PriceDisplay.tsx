@@ -96,6 +96,7 @@ export function PriceDisplay({ colors, commodity }: { colors: ColorScheme; commo
         }}
       >
         <span
+          className={price.marketOpen ? "dot-live" : undefined}
           style={{
             width: 6,
             height: 6,
