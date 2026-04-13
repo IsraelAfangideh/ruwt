@@ -1,11 +1,9 @@
 import { Router } from "express";
 import { ethers } from "ethers";
-import { USDT_DECIMALS } from "../services/oracle.js";
+import { fromScaled } from "../services/oracle.js";
 import * as chain from "../services/chain.js";
 
 const router = Router();
-
-const fromScaled = (value: bigint): number => Number(value) / 10 ** USDT_DECIMALS;
 
 /** GET /api/account/:address — trader balance + vault stats */
 router.get("/:address", async (req, res) => {

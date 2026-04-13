@@ -6,11 +6,12 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
-/// @title PalmVault — Long-only commodity futures vault
-/// @notice Users go long on palm oil at oracle price. The vault is the counterparty.
-///         No leverage. 3% fee on close. Total open interest capped at vault balance.
-///         The operator (backend hot wallet) submits oracle prices — positions cannot
-///         be opened or closed without it. This is an intentional V1 trust assumption.
+/// @title PalmVault — Long-only commodity futures vault with spread-based pricing
+/// @notice Users go long at the order book's ask price and sell at the bid price.
+///         The vault acts as an automated market maker, posting bid/ask around the
+///         oracle price with a 2% spread. Revenue comes from the spread, not fees.
+///         The operator (backend matching engine) submits trade prices from the
+///         order book. This is an intentional V1 trust assumption.
 contract PalmVault is Ownable, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
@@ -20,24 +21,20 @@ contract PalmVault is Ownable, ReentrancyGuard {
     uint256 public vaultBalance;
     uint256 public totalOpenInterest;
     uint256 public nextPositionId;
+    uint256 public lastTradePrice;
 
-    uint256 public constant CLOSE_FEE_BPS = 300;
-    uint256 public constant BPS = 10_000;
     uint256 public constant MAX_POSITION = 100e6; // $100 USDT (6 decimals)
     uint256 public constant PRICE_PRECISION = 1e6;
     uint256 public constant MIN_PRICE = 100 * PRICE_PRECISION;    // $100/MT
     uint256 public constant MAX_PRICE = 100_000 * PRICE_PRECISION; // $100,000/MT
 
-    // Packed into 2 storage slots instead of 4:
-    // slot 0: trader (20 bytes) + active (1 byte) + openedAt (8 bytes) = 29 bytes
-    // slot 1: margin (32 bytes)
-    // slot 2: entryPrice (32 bytes)
+    // Packed: slot 0 = trader(20) + active(1) + openedAt(8) = 29 bytes
     struct Position {
-        address trader;      // 20 bytes ─┐
-        bool active;         //  1 byte   │ slot 0
-        uint64 openedAt;     //  8 bytes ─┘
+        address trader;
+        bool active;
+        uint64 openedAt;
         uint256 margin;      // slot 1
-        uint256 entryPrice;  // slot 2 — USD per MT, scaled by PRICE_PRECISION
+        uint256 entryPrice;  // slot 2 — trade price at open (from order book)
     }
 
     mapping(uint256 => Position) public positions;
@@ -51,14 +48,13 @@ contract PalmVault is Ownable, ReentrancyGuard {
         uint256 indexed positionId,
         address indexed trader,
         uint256 margin,
-        uint256 entryPrice
+        uint256 tradePrice
     );
     event LongClosed(
         uint256 indexed positionId,
         address indexed trader,
-        uint256 exitPrice,
+        uint256 tradePrice,
         int256 pnl,
-        uint256 fee,
         uint256 payout
     );
     event OperatorSet(address indexed operator);
@@ -129,25 +125,26 @@ contract PalmVault is Ownable, ReentrancyGuard {
     }
 
     // ---------------------------------------------------------------
-    // Operator — open & close positions
+    // Operator — execute trades from order book
     // ---------------------------------------------------------------
 
-    /// @notice Open a long position for a trader at the given oracle price.
-    /// @param trader  The trader's address
-    /// @param margin  USDT amount to lock (max $100)
-    /// @param entryPrice  Current palm oil price (USD per MT * PRICE_PRECISION)
+    /// @notice Open a long position at the matched trade price.
+    /// @param trader     The trader's address
+    /// @param margin     USDT amount to lock (max $100)
+    /// @param tradePrice Price from order book match (USD per MT * PRICE_PRECISION)
     function openLong(
         address trader,
         uint256 margin,
-        uint256 entryPrice
+        uint256 tradePrice
     ) external onlyOperator nonReentrant returns (uint256 positionId) {
         if (margin == 0 || margin > MAX_POSITION) revert ExceedsMaxPosition();
-        if (entryPrice < MIN_PRICE || entryPrice > MAX_PRICE) revert InvalidPrice();
+        if (tradePrice < MIN_PRICE || tradePrice > MAX_PRICE) revert InvalidPrice();
         if (balances[trader] < margin) revert InsufficientBalance();
         if (totalOpenInterest + margin > vaultBalance) revert OICapExceeded();
 
         balances[trader] -= margin;
         totalOpenInterest += margin;
+        lastTradePrice = tradePrice;
 
         positionId = nextPositionId++;
         positions[positionId] = Position({
@@ -155,71 +152,63 @@ contract PalmVault is Ownable, ReentrancyGuard {
             active: true,
             openedAt: uint64(block.timestamp),
             margin: margin,
-            entryPrice: entryPrice
+            entryPrice: tradePrice
         });
 
-        emit LongOpened(positionId, trader, margin, entryPrice);
+        emit LongOpened(positionId, trader, margin, tradePrice);
     }
 
-    /// @notice Close a long position at the given oracle price.
-    /// @param positionId  The position to close
-    /// @param exitPrice   Current palm oil price (USD per MT * PRICE_PRECISION)
+    /// @notice Close a long position at the matched trade price.
+    /// @param positionId The position to close
+    /// @param tradePrice Price from order book match (USD per MT * PRICE_PRECISION)
     function closeLong(
         uint256 positionId,
-        uint256 exitPrice
+        uint256 tradePrice
     ) external onlyOperator nonReentrant {
         Position storage pos = positions[positionId];
         if (!pos.active) revert PositionNotActive();
-        if (exitPrice < MIN_PRICE || exitPrice > MAX_PRICE) revert InvalidPrice();
+        if (tradePrice < MIN_PRICE || tradePrice > MAX_PRICE) revert InvalidPrice();
 
-        // Cache storage reads into stack variables
         address trader = pos.trader;
         uint256 margin = pos.margin;
         uint256 entryPrice = pos.entryPrice;
 
         pos.active = false;
         totalOpenInterest -= margin;
+        lastTradePrice = tradePrice;
 
-        // PnL = margin * (exitPrice - entryPrice) / entryPrice
+        // PnL = margin * (tradePrice - entryPrice) / entryPrice
         int256 pnl = int256(margin)
-            * (int256(exitPrice) - int256(entryPrice))
+            * (int256(tradePrice) - int256(entryPrice))
             / int256(entryPrice);
 
-        // Gross payout = margin + pnl, floored at 0
-        uint256 grossPayout;
+        // Payout = margin + pnl, floored at 0
+        uint256 payout;
         if (pnl >= 0) {
             uint256 profit = uint256(pnl);
             if (profit > vaultBalance) {
                 profit = vaultBalance;
                 pnl = int256(profit);
             }
-            grossPayout = margin + profit;
+            payout = margin + profit;
             vaultBalance -= profit;
         } else {
             uint256 loss = uint256(-pnl);
             if (loss >= margin) {
-                grossPayout = 0;
+                payout = 0;
                 vaultBalance += margin;
                 pnl = -int256(margin);
             } else {
-                grossPayout = margin - loss;
+                payout = margin - loss;
                 vaultBalance += loss;
             }
         }
 
-        // 3% fee on whatever the trader receives
-        uint256 fee = (grossPayout * CLOSE_FEE_BPS) / BPS;
-        uint256 netPayout = grossPayout - fee;
-
-        // Fee accrues to vault
-        vaultBalance += fee;
-
-        // Credit trader's balance
-        if (netPayout > 0) {
-            balances[trader] += netPayout;
+        if (payout > 0) {
+            balances[trader] += payout;
         }
 
-        emit LongClosed(positionId, trader, exitPrice, pnl, fee, netPayout);
+        emit LongClosed(positionId, trader, tradePrice, pnl, payout);
     }
 
     // ---------------------------------------------------------------

@@ -2,6 +2,9 @@ import { config } from "../config.js";
 
 export const USDT_DECIMALS = 6;
 
+export const fromScaled = (v: bigint): number => Number(v) / 10 ** USDT_DECIMALS;
+export const toScaled = (n: number): bigint => BigInt(Math.round(n * 10 ** USDT_DECIMALS));
+
 export interface PriceData {
   commodity: string;
   priceUsd: number;       // e.g. 4200.50

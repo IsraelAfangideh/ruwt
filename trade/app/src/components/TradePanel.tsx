@@ -1,11 +1,13 @@
 import { useState } from "react";
 import { type ColorScheme } from "@/theme/colors";
 import { fontFamily, radii, spacing } from "@/theme/tokens";
+import { fmtPrice } from "@/lib/format";
 
 interface TradePanelProps {
   colors: ColorScheme;
   balance: number;
   capacity: number;
+  askPrice: number | null;
   onBuy: (amount: number) => Promise<void>;
   loading: boolean;
 }
@@ -16,13 +18,14 @@ export function TradePanel({
   colors,
   balance,
   capacity,
+  askPrice,
   onBuy,
   loading,
 }: TradePanelProps) {
   const [amount, setAmount] = useState("");
   const numAmount = parseFloat(amount) || 0;
   const maxAmount = Math.min(balance, capacity, 100);
-  const valid = numAmount > 0 && numAmount <= maxAmount;
+  const valid = numAmount > 0 && numAmount <= maxAmount && askPrice !== null;
 
   return (
     <div
@@ -33,18 +36,6 @@ export function TradePanel({
         padding: spacing.lg,
       }}
     >
-      <div
-        style={{
-          fontSize: 16,
-          fontWeight: 600,
-          fontFamily: fontFamily.body,
-          color: colors.text,
-          marginBottom: spacing.md,
-        }}
-      >
-        Buy Palm Oil
-      </div>
-
       {/* Amount input */}
       <div style={{ marginBottom: spacing.md }}>
         <label
@@ -98,13 +89,7 @@ export function TradePanel({
       </div>
 
       {/* Preset buttons */}
-      <div
-        style={{
-          display: "flex",
-          gap: spacing.sm,
-          marginBottom: spacing.md,
-        }}
-      >
+      <div style={{ display: "flex", gap: spacing.sm, marginBottom: spacing.md }}>
         {PRESET_AMOUNTS.map((preset) => (
           <button
             key={preset}
@@ -116,14 +101,8 @@ export function TradePanel({
               fontSize: 13,
               fontFamily: fontFamily.mono,
               fontWeight: 500,
-              background:
-                numAmount === preset ? colors.accent : colors.bgWarm,
-              color:
-                numAmount === preset
-                  ? "#fff"
-                  : preset > maxAmount
-                    ? colors.textSubtle
-                    : colors.text,
+              background: numAmount === preset ? colors.accent : colors.bgWarm,
+              color: numAmount === preset ? "#fff" : preset > maxAmount ? colors.textSubtle : colors.text,
               border: `1px solid ${colors.border}`,
               borderRadius: radii.md,
               cursor: preset > maxAmount ? "not-allowed" : "pointer",
@@ -135,7 +114,7 @@ export function TradePanel({
         ))}
       </div>
 
-      {/* Info row */}
+      {/* Info */}
       <div
         style={{
           display: "flex",
@@ -143,7 +122,7 @@ export function TradePanel({
           fontSize: 13,
           fontFamily: fontFamily.body,
           color: colors.textMuted,
-          marginBottom: spacing.md,
+          marginBottom: spacing.sm,
           padding: `${spacing.sm}px 0`,
           borderTop: `1px solid ${colors.border}`,
         }}
@@ -153,29 +132,16 @@ export function TradePanel({
           ${balance.toFixed(2)}
         </span>
       </div>
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          fontSize: 13,
-          fontFamily: fontFamily.body,
-          color: colors.textMuted,
-          marginBottom: spacing.md,
-        }}
-      >
-        <span>Close fee</span>
-        <span style={{ fontFamily: fontFamily.mono }}>3%</span>
-      </div>
 
-      {/* Buy button */}
+      {/* Big Buy button */}
       <button
         onClick={() => valid && onBuy(numAmount)}
         disabled={!valid || loading}
         style={{
           width: "100%",
-          padding: "14px 0",
-          fontSize: 16,
-          fontWeight: 600,
+          padding: "16px 0",
+          fontSize: 18,
+          fontWeight: 700,
           fontFamily: fontFamily.body,
           background: valid && !loading ? colors.profit : colors.bgWarm,
           color: valid && !loading ? "#fff" : colors.textSubtle,
@@ -186,7 +152,11 @@ export function TradePanel({
           transition: "all 0.2s ease",
         }}
       >
-        {loading ? "Opening position..." : "Buy Long"}
+        {loading
+          ? "Buying..."
+          : askPrice
+            ? `Buy at $${fmtPrice(askPrice)}`
+            : "No price available"}
       </button>
     </div>
   );

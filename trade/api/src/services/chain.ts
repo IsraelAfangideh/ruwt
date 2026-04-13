@@ -2,16 +2,17 @@ import { ethers } from "ethers";
 import { config } from "../config.js";
 
 const VAULT_ABI = [
-  "function openLong(address trader, uint256 margin, uint256 entryPrice) external returns (uint256)",
-  "function closeLong(uint256 positionId, uint256 exitPrice) external",
+  "function openLong(address trader, uint256 margin, uint256 tradePrice) external returns (uint256)",
+  "function closeLong(uint256 positionId, uint256 tradePrice) external",
   "function balances(address) view returns (uint256)",
   "function vaultBalance() view returns (uint256)",
   "function totalOpenInterest() view returns (uint256)",
   "function availableCapacity() view returns (uint256)",
   "function getPosition(uint256) view returns (tuple(address trader, bool active, uint64 openedAt, uint256 margin, uint256 entryPrice))",
   "function nextPositionId() view returns (uint256)",
-  "event LongOpened(uint256 indexed positionId, address indexed trader, uint256 margin, uint256 entryPrice)",
-  "event LongClosed(uint256 indexed positionId, address indexed trader, uint256 exitPrice, int256 pnl, uint256 fee, uint256 payout)",
+  "function lastTradePrice() view returns (uint256)",
+  "event LongOpened(uint256 indexed positionId, address indexed trader, uint256 margin, uint256 tradePrice)",
+  "event LongClosed(uint256 indexed positionId, address indexed trader, uint256 tradePrice, int256 pnl, uint256 payout)",
 ];
 
 let provider: ethers.JsonRpcProvider;

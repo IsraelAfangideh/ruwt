@@ -1,21 +1,26 @@
 import { Router } from "express";
-import { getLatestPrice } from "../services/oracle.js";
+import { getVaultQuotes } from "../services/vault-amm.js";
 
 const router = Router();
 
-/** GET /api/prices/current — latest palm oil price */
+/** GET /api/prices/current — market price + bid/ask spread */
 router.get("/current", (_req, res) => {
-  try {
-    const price = getLatestPrice();
-    res.json({
-      commodity: price.commodity,
-      priceUsd: price.priceUsd,
-      source: price.source,
-      timestamp: price.timestamp,
-    });
-  } catch {
+  const quotes = getVaultQuotes();
+
+  if (quotes.oraclePrice === null) {
     res.status(503).json({ error: "Price feed not ready" });
+    return;
   }
+
+  res.json({
+    commodity: "PALM_OIL",
+    marketPrice: quotes.lastTradePrice ?? quotes.oraclePrice,
+    oraclePrice: quotes.oraclePrice,
+    bid: quotes.bid,
+    ask: quotes.ask,
+    spreadPercent: quotes.spreadPercent,
+    timestamp: Date.now(),
+  });
 });
 
 export default router;

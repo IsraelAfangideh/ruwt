@@ -1,37 +1,34 @@
 import { useState, useCallback, useEffect } from "react";
 import { useTheme } from "@/theme/useTheme";
 import { fontFamily, spacing, radii } from "@/theme/tokens";
+import { usePrice } from "@/hooks/usePrice";
 import { Header } from "@/components/Header";
 import { PriceDisplay } from "@/components/PriceDisplay";
 import { TradePanel } from "@/components/TradePanel";
 import { PositionCard } from "@/components/PositionCard";
 import { api, type PositionData } from "@/lib/api";
 
-// Demo trader address (replace with Privy wallet in prod)
 const DEMO_TRADER = "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC";
 
 export default function App() {
   const { colors, isDark, toggle } = useTheme();
+  const { price } = usePrice();
   const [balance, setBalance] = useState(0);
   const [capacity, setCapacity] = useState(0);
   const [positions, setPositions] = useState<PositionData[]>([]);
   const [loading, setLoading] = useState(false);
-  const [closing, setClosing] = useState<string | null>(null);
+  const [selling, setSelling] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Fetch account + positions
   const refresh = useCallback(async () => {
     try {
       const account = await api.getAccount(DEMO_TRADER);
       setBalance(account.balanceUsdt);
       setCapacity(account.vault.capacityUsdt);
 
-      // Fetch active positions
       const posPromises: Promise<PositionData | null>[] = [];
       for (let i = 0; i < account.vault.totalPositions; i++) {
-        posPromises.push(
-          api.getPosition(String(i)).catch(() => null)
-        );
+        posPromises.push(api.getPosition(String(i)).catch(() => null));
       }
       const all = await Promise.all(posPromises);
       setPositions(
@@ -40,9 +37,7 @@ export default function App() {
             p !== null && p.active && p.trader.toLowerCase() === DEMO_TRADER.toLowerCase()
         )
       );
-    } catch {
-      // API not connected yet — show empty state
-    }
+    } catch {}
   }, []);
 
   useEffect(() => {
@@ -55,25 +50,25 @@ export default function App() {
     setLoading(true);
     setError(null);
     try {
-      await api.openLong(DEMO_TRADER, amount);
+      await api.buy(DEMO_TRADER, amount);
       await refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to open position");
+      setError(err instanceof Error ? err.message : "Failed to buy");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleClose = async (positionId: number) => {
-    setClosing(String(positionId));
+  const handleSell = async (positionId: number) => {
+    setSelling(String(positionId));
     setError(null);
     try {
-      await api.closeLong(positionId);
+      await api.sell(positionId);
       await refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to close position");
+      setError(err instanceof Error ? err.message : "Failed to sell");
     } finally {
-      setClosing(null);
+      setSelling(null);
     }
   };
 
@@ -88,17 +83,9 @@ export default function App() {
     >
       <Header colors={colors} isDark={isDark} onToggleTheme={toggle} />
 
-      <main
-        style={{
-          maxWidth: 480,
-          margin: "0 auto",
-          padding: `${spacing.lg}px ${spacing.md}px`,
-        }}
-      >
-        {/* Price */}
+      <main style={{ maxWidth: 480, margin: "0 auto", padding: `${spacing.lg}px ${spacing.md}px` }}>
         <PriceDisplay colors={colors} />
 
-        {/* Error banner */}
         {error && (
           <div
             style={{
@@ -116,27 +103,18 @@ export default function App() {
           </div>
         )}
 
-        {/* Trade panel */}
         <TradePanel
           colors={colors}
           balance={balance}
           capacity={capacity}
+          askPrice={price?.ask ?? null}
           onBuy={handleBuy}
           loading={loading}
         />
 
-        {/* Open positions */}
         {positions.length > 0 && (
           <div style={{ marginTop: spacing.xl }}>
-            <div
-              style={{
-                fontSize: 16,
-                fontWeight: 600,
-                fontFamily: fontFamily.body,
-                color: colors.text,
-                marginBottom: spacing.md,
-              }}
-            >
+            <div style={{ fontSize: 16, fontWeight: 600, fontFamily: fontFamily.body, color: colors.text, marginBottom: spacing.md }}>
               Open Positions
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: spacing.md }}>
@@ -145,29 +123,21 @@ export default function App() {
                   key={pos.positionId}
                   colors={colors}
                   position={pos}
-                  onClose={handleClose}
-                  closing={closing === pos.positionId}
+                  bidPrice={price?.bid ?? null}
+                  onSell={handleSell}
+                  selling={selling === pos.positionId}
                 />
               ))}
             </div>
           </div>
         )}
 
-        {/* Empty state */}
         {positions.length === 0 && balance > 0 && (
-          <div
-            style={{
-              textAlign: "center",
-              padding: `${spacing["2xl"]}px 0`,
-              color: colors.textMuted,
-              fontSize: 14,
-            }}
-          >
+          <div style={{ textAlign: "center", padding: `${spacing["2xl"]}px 0`, color: colors.textMuted, fontSize: 14 }}>
             No open positions. Buy palm oil above to get started.
           </div>
         )}
 
-        {/* Vault info */}
         <div
           style={{
             marginTop: spacing.xl,

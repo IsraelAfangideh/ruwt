@@ -2,8 +2,11 @@ const BASE = "/api";
 
 export interface PriceData {
   commodity: string;
-  priceUsd: number;
-  source: string;
+  marketPrice: number;
+  oraclePrice: number;
+  bid: number | null;
+  ask: number | null;
+  spreadPercent: number | null;
   timestamp: number;
 }
 
@@ -12,7 +15,7 @@ export interface PositionData {
   trader: string;
   margin: number;
   entryPrice: number;
-  currentPrice: number;
+  markPrice: number;
   pnlUsd: number;
   pnlPercent: number;
   active: boolean;
@@ -45,15 +48,15 @@ export const api = {
 
   getPosition: (id: string) => request<PositionData>(`/positions/${id}`),
 
-  openLong: (trader: string, amount: number) =>
-    request<{ positionId: string; entryPrice: number; txHash: string }>(
-      "/positions/open",
+  buy: (trader: string, amount: number) =>
+    request<{ positionId: string; tradePrice: number; txHash: string }>(
+      "/positions/buy",
       { method: "POST", body: JSON.stringify({ trader, amount }) }
     ),
 
-  closeLong: (positionId: number) =>
-    request<{ positionId: number; exitPrice: number; txHash: string }>(
-      "/positions/close",
+  sell: (positionId: number) =>
+    request<{ positionId: number; tradePrice: number; txHash: string }>(
+      "/positions/sell",
       { method: "POST", body: JSON.stringify({ positionId }) }
     ),
 

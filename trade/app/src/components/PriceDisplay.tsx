@@ -1,6 +1,7 @@
 import { usePrice } from "@/hooks/usePrice";
 import { type ColorScheme } from "@/theme/colors";
 import { fontFamily } from "@/theme/tokens";
+import { fmtPrice } from "@/lib/format";
 
 export function PriceDisplay({ colors }: { colors: ColorScheme }) {
   const { price, direction } = usePrice();
@@ -44,18 +45,37 @@ export function PriceDisplay({ colors }: { colors: ColorScheme }) {
           lineHeight: 1,
         }}
       >
-        ${price.priceUsd.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+        ${fmtPrice(price.marketPrice)}
       </div>
       <div
         style={{
-          fontSize: 12,
-          color: colors.textSubtle,
+          display: "flex",
+          gap: 24,
+          marginTop: 12,
+          fontSize: 14,
           fontFamily: fontFamily.mono,
-          marginTop: 8,
         }}
       >
-        {price.source === "mock" ? "Simulated" : "Databento FCPO"} ·{" "}
-        {new Date(price.timestamp).toLocaleTimeString()}
+        {price.bid && (
+          <div>
+            <span style={{ fontSize: 11, color: colors.textSubtle, textTransform: "uppercase", letterSpacing: 0.5 }}>
+              Sell{" "}
+            </span>
+            <span style={{ color: colors.loss, fontWeight: 600 }}>
+              ${fmtPrice(price.bid)}
+            </span>
+          </div>
+        )}
+        {price.ask && (
+          <div>
+            <span style={{ fontSize: 11, color: colors.textSubtle, textTransform: "uppercase", letterSpacing: 0.5 }}>
+              Buy{" "}
+            </span>
+            <span style={{ color: colors.profit, fontWeight: 600 }}>
+              ${fmtPrice(price.ask)}
+            </span>
+          </div>
+        )}
       </div>
     </div>
   );

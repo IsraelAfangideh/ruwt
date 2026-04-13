@@ -1,19 +1,19 @@
 import { Router } from "express";
 import { z } from "zod";
 import { ethers } from "ethers";
-import { getLatestPrice, USDT_DECIMALS } from "../services/oracle.js";
+import { fromScaled, toScaled } from "../services/oracle.js";
+import { orderBook, withTradeLock, VAULT_MAKER } from "../services/orderbook.js";
+import { refreshVaultQuotes } from "../services/vault-amm.js";
 import * as chain from "../services/chain.js";
 
 const router = Router();
 
-const fromScaled = (value: bigint): number => Number(value) / 10 ** USDT_DECIMALS;
-
-const OpenSchema = z.object({
+const BuySchema = z.object({
   trader: z.string().regex(/^0x[a-fA-F0-9]{40}$/),
   amount: z.number().positive().max(100),
 });
 
-const CloseSchema = z.object({
+const SellSchema = z.object({
   positionId: z.number().int().min(0),
 });
 
@@ -26,60 +26,100 @@ function handleError(res: any, err: unknown): void {
   res.status(500).json({ error: message });
 }
 
-/** POST /api/positions/open — open a long at current oracle price */
-router.post("/open", async (req, res) => {
+/**
+ * POST /api/positions/buy — market buy at best ask.
+ * Acquires trade lock → matches order → executes on-chain → refreshes quotes.
+ * On chain failure, vault order is restored via quote refresh.
+ */
+router.post("/buy", async (req, res) => {
   try {
-    const { trader, amount } = OpenSchema.parse(req.body);
-    const price = getLatestPrice();
+    const { trader, amount } = BuySchema.parse(req.body);
 
-    const marginScaled = BigInt(Math.round(amount * 10 ** USDT_DECIMALS));
+    await withTradeLock(async () => {
+      const bbo = orderBook.getBBO();
+      if (bbo.bestAsk === null) {
+        res.status(503).json({ error: "No sell liquidity available" });
+        return;
+      }
 
-    const { positionId, txHash } = await chain.openLong(
-      trader,
-      marginScaled,
-      price.priceScaled
-    );
+      // Match against best ask
+      const { trade } = orderBook.placeOrder(trader, "bid", bbo.bestAsk, amount);
+      if (!trade) {
+        res.status(500).json({ error: "Order did not match" });
+        return;
+      }
 
-    res.json({
-      positionId: positionId.toString(),
-      entryPrice: price.priceUsd,
-      margin: amount,
-      txHash,
+      try {
+        const marginScaled = toScaled(amount);
+        const priceScaled = toScaled(trade.price);
+        const { positionId, txHash } = await chain.openLong(trader, marginScaled, priceScaled);
+
+        // Refresh quotes after successful trade (async, don't block response)
+        refreshVaultQuotes();
+
+        res.json({
+          positionId: positionId.toString(),
+          tradePrice: trade.price,
+          margin: amount,
+          txHash,
+        });
+      } catch (chainErr) {
+        // Chain tx failed — restore vault quotes so the consumed order is re-posted
+        await refreshVaultQuotes();
+        throw chainErr;
+      }
     });
   } catch (err) {
-    handleError(res, err);
+    if (!res.headersSent) handleError(res, err);
   }
 });
 
-/** POST /api/positions/close — close a position at current oracle price */
-router.post("/close", async (req, res) => {
+/**
+ * POST /api/positions/sell — market sell at best bid.
+ */
+router.post("/sell", async (req, res) => {
   try {
-    const { positionId } = CloseSchema.parse(req.body);
+    const { positionId } = SellSchema.parse(req.body);
 
-    // Pre-flight: check position is active before sending on-chain tx
+    // Pre-flight: check position is active (read-only, no lock needed)
     const pos = await chain.getPosition(BigInt(positionId));
     if (!pos.active) {
       res.status(400).json({ error: "Position not active" });
       return;
     }
 
-    const price = getLatestPrice();
-    const { txHash } = await chain.closeLong(
-      BigInt(positionId),
-      price.priceScaled
-    );
+    await withTradeLock(async () => {
+      const bbo = orderBook.getBBO();
+      if (bbo.bestBid === null) {
+        res.status(503).json({ error: "No buy liquidity available" });
+        return;
+      }
 
-    res.json({
-      positionId,
-      exitPrice: price.priceUsd,
-      txHash,
+      const margin = fromScaled(pos.margin);
+      const { trade } = orderBook.placeOrder(pos.trader, "ask", bbo.bestBid, margin, positionId);
+      if (!trade) {
+        res.status(500).json({ error: "Order did not match" });
+        return;
+      }
+
+      try {
+        const priceScaled = toScaled(trade.price);
+        const { txHash } = await chain.closeLong(BigInt(positionId), priceScaled);
+
+        refreshVaultQuotes();
+
+        res.json({ positionId, tradePrice: trade.price, txHash });
+      } catch (chainErr) {
+        await refreshVaultQuotes();
+        throw chainErr;
+      }
     });
   } catch (err) {
-    handleError(res, err);
+    if (!res.headersSent) handleError(res, err);
   }
 });
 
-/** GET /api/positions/:id — get position details + unrealized PnL */
+/** GET /api/positions/:id — position details + unrealized PnL at current bid */
 router.get("/:id", async (req, res) => {
   try {
     const id = req.params.id;
@@ -88,10 +128,8 @@ router.get("/:id", async (req, res) => {
       return;
     }
 
-    const positionId = BigInt(id);
-    const pos = await chain.getPosition(positionId);
+    const pos = await chain.getPosition(BigInt(id));
 
-    // Nonexistent positions return zero-address trader
     if (pos.trader === ethers.ZeroAddress) {
       res.status(404).json({ error: "Position not found" });
       return;
@@ -99,17 +137,18 @@ router.get("/:id", async (req, res) => {
 
     const margin = fromScaled(pos.margin);
     const entryPrice = fromScaled(pos.entryPrice);
-    const currentPrice = getLatestPrice().priceUsd;
+    const bbo = orderBook.getBBO();
+    const markPrice = bbo.bestBid ?? entryPrice;
 
-    const pnlPercent = ((currentPrice - entryPrice) / entryPrice) * 100;
-    const pnlUsd = margin * (currentPrice - entryPrice) / entryPrice;
+    const pnlPercent = ((markPrice - entryPrice) / entryPrice) * 100;
+    const pnlUsd = margin * (markPrice - entryPrice) / entryPrice;
 
     res.json({
       positionId: id,
       trader: pos.trader,
       margin,
       entryPrice,
-      currentPrice,
+      markPrice,
       pnlUsd: Math.round(pnlUsd * 100) / 100,
       pnlPercent: Math.round(pnlPercent * 100) / 100,
       active: pos.active,

@@ -1,21 +1,28 @@
 import { type ColorScheme } from "@/theme/colors";
 import { fontFamily, radii, spacing } from "@/theme/tokens";
 import { type PositionData } from "@/lib/api";
+import { fmtPrice } from "@/lib/format";
 
 interface PositionCardProps {
   colors: ColorScheme;
   position: PositionData;
-  onClose: (positionId: number) => Promise<void>;
-  closing: boolean;
+  bidPrice: number | null;
+  onSell: (positionId: number) => Promise<void>;
+  selling: boolean;
 }
 
 export function PositionCard({
   colors,
   position,
-  onClose,
-  closing,
+  bidPrice,
+  onSell,
+  selling,
 }: PositionCardProps) {
-  const isProfit = position.pnlUsd >= 0;
+  // P&L calculated against the actual sell price (bid), not midpoint
+  const sellPrice = bidPrice ?? position.markPrice;
+  const pnlUsd = position.margin * (sellPrice - position.entryPrice) / position.entryPrice;
+  const pnlPercent = ((sellPrice - position.entryPrice) / position.entryPrice) * 100;
+  const isProfit = pnlUsd >= 0;
   const pnlColor = isProfit ? colors.profit : colors.loss;
   const pnlBg = isProfit ? colors.profitBg : colors.lossBg;
 
@@ -29,34 +36,20 @@ export function PositionCard({
         borderLeft: `3px solid ${pnlColor}`,
       }}
     >
-      {/* Header */}
+      {/* Header: position label + P&L badge */}
       <div
         style={{
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
-          marginBottom: spacing.md,
+          marginBottom: spacing.sm,
         }}
       >
         <div>
-          <span
-            style={{
-              fontSize: 14,
-              fontWeight: 600,
-              fontFamily: fontFamily.body,
-              color: colors.text,
-            }}
-          >
+          <span style={{ fontSize: 14, fontWeight: 600, fontFamily: fontFamily.body, color: colors.text }}>
             LONG
           </span>
-          <span
-            style={{
-              fontSize: 12,
-              fontFamily: fontFamily.mono,
-              color: colors.textMuted,
-              marginLeft: spacing.sm,
-            }}
-          >
+          <span style={{ fontSize: 12, fontFamily: fontFamily.mono, color: colors.textMuted, marginLeft: spacing.sm }}>
             #{position.positionId}
           </span>
         </div>
@@ -71,91 +64,86 @@ export function PositionCard({
             fontFamily: fontFamily.mono,
           }}
         >
-          {isProfit ? "+" : ""}
-          {position.pnlPercent.toFixed(2)}%
+          {isProfit ? "+" : ""}{pnlPercent.toFixed(2)}%
         </div>
       </div>
 
-      {/* Stats grid */}
+      {/* Primary: what you'll get if you sell now */}
+      <div style={{ marginBottom: spacing.md }}>
+        <div style={{ fontSize: 11, color: colors.textSubtle, fontFamily: fontFamily.body, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 2 }}>
+          If you sell now
+        </div>
+        <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+          <span
+            style={{
+              fontSize: 28,
+              fontWeight: 700,
+              fontFamily: fontFamily.mono,
+              color: pnlColor,
+            }}
+          >
+            {isProfit ? "+$" : "-$"}{Math.abs(pnlUsd).toFixed(2)}
+          </span>
+          <span style={{ fontSize: 14, color: colors.textMuted, fontFamily: fontFamily.mono }}>
+            on ${position.margin.toFixed(0)}
+          </span>
+        </div>
+      </div>
+
+      {/* Secondary: entry vs sell price */}
       <div
         style={{
           display: "grid",
           gridTemplateColumns: "1fr 1fr",
           gap: spacing.sm,
           marginBottom: spacing.md,
+          padding: `${spacing.sm}px 0`,
+          borderTop: `1px solid ${colors.border}`,
         }}
       >
-        <Stat label="Entry" value={`$${position.entryPrice.toLocaleString()}`} colors={colors} />
-        <Stat label="Current" value={`$${position.currentPrice.toLocaleString()}`} colors={colors} />
-        <Stat label="Margin" value={`$${position.margin.toFixed(2)}`} colors={colors} />
-        <Stat
-          label="P&L"
-          value={`${isProfit ? "+" : ""}$${position.pnlUsd.toFixed(2)}`}
-          colors={colors}
-          valueColor={pnlColor}
-        />
+        <div>
+          <div style={{ fontSize: 11, color: colors.textSubtle, fontFamily: fontFamily.body, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 2 }}>
+            Bought at
+          </div>
+          <div style={{ fontSize: 14, fontWeight: 600, fontFamily: fontFamily.mono, color: colors.text }}>
+            ${fmtPrice(position.entryPrice)}
+          </div>
+        </div>
+        <div>
+          <div style={{ fontSize: 11, color: colors.textSubtle, fontFamily: fontFamily.body, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 2 }}>
+            Sell price
+          </div>
+          <div style={{ fontSize: 14, fontWeight: 600, fontFamily: fontFamily.mono, color: pnlColor }}>
+            ${fmtPrice(sellPrice)}
+          </div>
+        </div>
       </div>
 
-      {/* Close button */}
+      {/* Sell button */}
       <button
-        onClick={() => onClose(parseInt(position.positionId))}
-        disabled={closing}
+        onClick={() => onSell(parseInt(position.positionId))}
+        disabled={selling || bidPrice === null}
         style={{
           width: "100%",
-          padding: "12px 0",
-          fontSize: 14,
-          fontWeight: 600,
+          padding: "14px 0",
+          fontSize: 16,
+          fontWeight: 700,
           fontFamily: fontFamily.body,
-          background: closing ? colors.bgWarm : colors.loss,
-          color: closing ? colors.textSubtle : "#fff",
+          background: selling ? colors.bgWarm : colors.loss,
+          color: selling ? colors.textSubtle : "#fff",
           border: "none",
           borderRadius: radii.md,
-          cursor: closing ? "not-allowed" : "pointer",
-          opacity: closing ? 0.7 : 1,
+          cursor: selling ? "not-allowed" : "pointer",
+          opacity: selling ? 0.7 : 1,
           transition: "all 0.2s ease",
         }}
       >
-        {closing ? "Closing..." : "Close Position"}
+        {selling
+          ? "Selling..."
+          : bidPrice
+            ? `Sell at $${fmtPrice(bidPrice)}`
+            : "No bid available"}
       </button>
-    </div>
-  );
-}
-
-function Stat({
-  label,
-  value,
-  colors,
-  valueColor,
-}: {
-  label: string;
-  value: string;
-  colors: ColorScheme;
-  valueColor?: string;
-}) {
-  return (
-    <div>
-      <div
-        style={{
-          fontSize: 11,
-          color: colors.textSubtle,
-          fontFamily: fontFamily.body,
-          textTransform: "uppercase",
-          letterSpacing: 0.5,
-          marginBottom: 2,
-        }}
-      >
-        {label}
-      </div>
-      <div
-        style={{
-          fontSize: 15,
-          fontWeight: 600,
-          fontFamily: fontFamily.mono,
-          color: valueColor || colors.text,
-        }}
-      >
-        {value}
-      </div>
     </div>
   );
 }

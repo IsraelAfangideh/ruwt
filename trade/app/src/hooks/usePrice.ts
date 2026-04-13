@@ -13,16 +13,17 @@ export function usePrice(intervalMs = 5000) {
       try {
         const data = await api.getPrice();
         if (!active) return;
+        const current = data.marketPrice;
         if (prevPrice.current !== null) {
           setDirection(
-            data.priceUsd > prevPrice.current
+            current > prevPrice.current
               ? "up"
-              : data.priceUsd < prevPrice.current
+              : current < prevPrice.current
                 ? "down"
                 : null
           );
         }
-        prevPrice.current = data.priceUsd;
+        prevPrice.current = current;
         setPrice(data);
         setError(null);
       } catch (err) {
