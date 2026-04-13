@@ -35,15 +35,6 @@ button {
   outline-offset: 2px;
 }
 
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.4; }
-}
-
-.dot-live {
-  animation: pulse 2s ease-in-out infinite;
-}
-
 @media (prefers-reduced-motion: reduce) {
   * {
     transition-duration: 0.01ms !important;
