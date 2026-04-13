@@ -59,7 +59,7 @@ export function getMarketStatus(commodity: string): {
   const isOpen = isWeekday && inHours;
 
   if (isOpen) {
-    return { isOpen: true, label: `Live · ~15 min delay` };
+    return { isOpen: true, label: "Market open" };
   }
 
   // Find next open time
