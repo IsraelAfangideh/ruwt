@@ -59,7 +59,10 @@ export function getMarketStatus(commodity: string): {
   const isOpen = isWeekday && inHours;
 
   if (isOpen) {
-    return { isOpen: true, label: "Price updating" };
+    // How long until close?
+    const minsLeft = closeMinutes - minutesUTC;
+    const hoursLeft = Math.round(minsLeft / 60);
+    return { isOpen: true, label: hoursLeft > 1 ? `Next update in ${hoursLeft}h` : "Next update in <1h" };
   }
 
   // Find next open time
