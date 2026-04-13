@@ -60,6 +60,7 @@ Be sure that when we add challenges some of them are non trivial for models to s
   - Theme: `trade/app/src/theme/colors.ts` (light/dark + profit/loss), `tokens.ts`
   - Light mode: profit `#16a34a`, loss `#dc2626`
   - Dark mode: profit `#00f0aa`, loss `#ff3366`
+- **Design constitution**: `trade/DESIGN.md` — **READ BEFORE making any UI changes**. Hard rules on flicker, pricing clarity, transitions, mobile-first, data formatting.
 
 ### How the vault works
 - Owner seeds vault with USDT ($2K initial). Vault is counterparty to all trades.
