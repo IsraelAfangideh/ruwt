@@ -14,6 +14,8 @@ export interface PriceData {
   bid: number | null;
   ask: number | null;
   spreadPercent: number | null;
+  marketOpen: boolean;
+  marketStatus: string;
   timestamp: number;
 }
 

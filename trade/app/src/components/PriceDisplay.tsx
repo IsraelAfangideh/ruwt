@@ -83,6 +83,30 @@ export function PriceDisplay({ colors, commodity }: { colors: ColorScheme; commo
           </div>
         )}
       </div>
+      {/* Market status */}
+      <div
+        style={{
+          marginTop: 10,
+          fontSize: 12,
+          fontFamily: fontFamily.body,
+          color: colors.textSubtle,
+          display: "flex",
+          alignItems: "center",
+          gap: 6,
+        }}
+      >
+        <span
+          style={{
+            width: 6,
+            height: 6,
+            borderRadius: "50%",
+            background: price.marketOpen ? colors.profit : colors.textSubtle,
+            display: "inline-block",
+            flexShrink: 0,
+          }}
+        />
+        {price.marketStatus}
+      </div>
     </div>
   );
 }

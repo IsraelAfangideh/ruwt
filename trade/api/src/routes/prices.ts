@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { getAllPrices } from "../services/oracle.js";
+import { getAllPrices, getMarketStatus } from "../services/oracle.js";
 import { getQuotes } from "../services/vault-amm.js";
 
 const router = Router();
@@ -14,6 +14,8 @@ router.get("/current", (req, res) => {
     return;
   }
 
+  const market = getMarketStatus(commodity);
+
   res.json({
     commodity,
     marketPrice: quotes.lastTradePrice ?? quotes.oraclePrice,
@@ -21,6 +23,8 @@ router.get("/current", (req, res) => {
     bid: quotes.bid,
     ask: quotes.ask,
     spreadPercent: quotes.spreadPercent,
+    marketOpen: market.isOpen,
+    marketStatus: market.label,
     timestamp: Date.now(),
   });
 });

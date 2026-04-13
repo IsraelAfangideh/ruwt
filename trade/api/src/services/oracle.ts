@@ -14,10 +14,75 @@ export interface PriceData {
   timestamp: number;
 }
 
-const COMMODITIES: Record<string, { ticker: string; name: string }> = {
-  PALM_OIL: { ticker: "CPO=F", name: "Palm Oil (CME)" },
-  COCOA: { ticker: "CC=F", name: "Cocoa (ICE)" },
+interface CommoditySpec {
+  ticker: string;
+  name: string;
+  // Market hours in UTC (hour:minute)
+  marketOpen: { hour: number; minute: number };
+  marketClose: { hour: number; minute: number };
+  timezone: string; // display label
+}
+
+const COMMODITIES: Record<string, CommoditySpec> = {
+  PALM_OIL: {
+    ticker: "CPO=F",
+    name: "Palm Oil (CME)",
+    marketOpen: { hour: 1, minute: 0 },   // Bursa Malaysia 9am MYT = 1am UTC
+    marketClose: { hour: 9, minute: 0 },   // 5pm MYT = 9am UTC
+    timezone: "MYT",
+  },
+  COCOA: {
+    ticker: "CC=F",
+    name: "Cocoa (ICE)",
+    marketOpen: { hour: 13, minute: 0 },   // 9am ET = 1pm UTC
+    marketClose: { hour: 17, minute: 30 },  // 1:30pm ET = 5:30pm UTC
+    timezone: "ET",
+  },
 };
+
+/** Check if a commodity's market is currently open. */
+export function getMarketStatus(commodity: string): {
+  isOpen: boolean;
+  label: string;
+} {
+  const spec = COMMODITIES[commodity];
+  if (!spec) return { isOpen: false, label: "Unknown market" };
+
+  const now = new Date();
+  const day = now.getUTCDay(); // 0=Sun, 6=Sat
+  const minutesUTC = now.getUTCHours() * 60 + now.getUTCMinutes();
+  const openMinutes = spec.marketOpen.hour * 60 + spec.marketOpen.minute;
+  const closeMinutes = spec.marketClose.hour * 60 + spec.marketClose.minute;
+
+  const isWeekday = day >= 1 && day <= 5;
+  const inHours = minutesUTC >= openMinutes && minutesUTC < closeMinutes;
+  const isOpen = isWeekday && inHours;
+
+  if (isOpen) {
+    return { isOpen: true, label: `Live · ~15 min delay` };
+  }
+
+  // Find next open time
+  let daysUntilOpen = 0;
+  if (day === 5 && minutesUTC >= closeMinutes) daysUntilOpen = 2; // Fri after close → Mon
+  else if (day === 6) daysUntilOpen = 2; // Sat → Mon
+  else if (day === 0) daysUntilOpen = 1; // Sun → Mon
+  else if (minutesUTC >= closeMinutes) daysUntilOpen = 1; // After close → tomorrow
+
+  const nextOpen = new Date(now);
+  nextOpen.setUTCDate(nextOpen.getUTCDate() + daysUntilOpen);
+  nextOpen.setUTCHours(spec.marketOpen.hour, spec.marketOpen.minute, 0, 0);
+
+  const hoursUntil = Math.round((nextOpen.getTime() - now.getTime()) / 3600_000);
+
+  if (hoursUntil <= 12) {
+    return { isOpen: false, label: `Market closed · Opens in ${hoursUntil}h` };
+  }
+
+  const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const openDay = dayNames[nextOpen.getUTCDay()];
+  return { isOpen: false, label: `Market closed · Opens ${openDay}` };
+}
 
 let prices: Record<string, PriceData> = {};
 let intervalId: ReturnType<typeof setInterval> | null = null;
