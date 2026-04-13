@@ -142,8 +142,15 @@ export class OrderBook {
   }
 }
 
-// Singleton + trade mutex to prevent concurrent matches
-export const orderBook = new OrderBook();
+// One order book per commodity
+const books: Record<string, OrderBook> = {};
+
+export function getOrderBook(commodity: string): OrderBook {
+  if (!books[commodity]) {
+    books[commodity] = new OrderBook();
+  }
+  return books[commodity];
+}
 
 let tradeLock: Promise<void> = Promise.resolve();
 

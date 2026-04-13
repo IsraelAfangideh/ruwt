@@ -2,19 +2,23 @@ import { Router } from "express";
 import { z } from "zod";
 import { ethers } from "ethers";
 import { fromScaled, toScaled } from "../services/oracle.js";
-import { orderBook, withTradeLock, VAULT_MAKER } from "../services/orderbook.js";
+import { getOrderBook, withTradeLock } from "../services/orderbook.js";
 import { refreshVaultQuotes } from "../services/vault-amm.js";
 import * as chain from "../services/chain.js";
 
 const router = Router();
 
+const VALID_COMMODITIES = ["PALM_OIL", "COCOA"] as const;
+
 const BuySchema = z.object({
   trader: z.string().regex(/^0x[a-fA-F0-9]{40}$/),
   amount: z.number().positive().max(100),
+  commodity: z.enum(VALID_COMMODITIES).default("PALM_OIL"),
 });
 
 const SellSchema = z.object({
   positionId: z.number().int().min(0),
+  commodity: z.enum(VALID_COMMODITIES).default("PALM_OIL"),
 });
 
 function handleError(res: any, err: unknown): void {
@@ -26,24 +30,20 @@ function handleError(res: any, err: unknown): void {
   res.status(500).json({ error: message });
 }
 
-/**
- * POST /api/positions/buy — market buy at best ask.
- * Acquires trade lock → matches order → executes on-chain → refreshes quotes.
- * On chain failure, vault order is restored via quote refresh.
- */
+/** POST /api/positions/buy — market buy at best ask */
 router.post("/buy", async (req, res) => {
   try {
-    const { trader, amount } = BuySchema.parse(req.body);
+    const { trader, amount, commodity } = BuySchema.parse(req.body);
+    const book = getOrderBook(commodity);
 
     await withTradeLock(async () => {
-      const bbo = orderBook.getBBO();
+      const bbo = book.getBBO();
       if (bbo.bestAsk === null) {
         res.status(503).json({ error: "No sell liquidity available" });
         return;
       }
 
-      // Match against best ask
-      const { trade } = orderBook.placeOrder(trader, "bid", bbo.bestAsk, amount);
+      const { trade } = book.placeOrder(trader, "bid", bbo.bestAsk, amount);
       if (!trade) {
         res.status(500).json({ error: "Order did not match" });
         return;
@@ -54,17 +54,16 @@ router.post("/buy", async (req, res) => {
         const priceScaled = toScaled(trade.price);
         const { positionId, txHash } = await chain.openLong(trader, marginScaled, priceScaled);
 
-        // Refresh quotes after successful trade (async, don't block response)
         refreshVaultQuotes();
 
         res.json({
           positionId: positionId.toString(),
+          commodity,
           tradePrice: trade.price,
           margin: amount,
           txHash,
         });
       } catch (chainErr) {
-        // Chain tx failed — restore vault quotes so the consumed order is re-posted
         await refreshVaultQuotes();
         throw chainErr;
       }
@@ -74,14 +73,12 @@ router.post("/buy", async (req, res) => {
   }
 });
 
-/**
- * POST /api/positions/sell — market sell at best bid.
- */
+/** POST /api/positions/sell — market sell at best bid */
 router.post("/sell", async (req, res) => {
   try {
-    const { positionId } = SellSchema.parse(req.body);
+    const { positionId, commodity } = SellSchema.parse(req.body);
+    const book = getOrderBook(commodity);
 
-    // Pre-flight: check position is active (read-only, no lock needed)
     const pos = await chain.getPosition(BigInt(positionId));
     if (!pos.active) {
       res.status(400).json({ error: "Position not active" });
@@ -89,14 +86,14 @@ router.post("/sell", async (req, res) => {
     }
 
     await withTradeLock(async () => {
-      const bbo = orderBook.getBBO();
+      const bbo = book.getBBO();
       if (bbo.bestBid === null) {
         res.status(503).json({ error: "No buy liquidity available" });
         return;
       }
 
       const margin = fromScaled(pos.margin);
-      const { trade } = orderBook.placeOrder(pos.trader, "ask", bbo.bestBid, margin, positionId);
+      const { trade } = book.placeOrder(pos.trader, "ask", bbo.bestBid, margin, positionId);
       if (!trade) {
         res.status(500).json({ error: "Order did not match" });
         return;
@@ -108,7 +105,7 @@ router.post("/sell", async (req, res) => {
 
         refreshVaultQuotes();
 
-        res.json({ positionId, tradePrice: trade.price, txHash });
+        res.json({ positionId, commodity, tradePrice: trade.price, txHash });
       } catch (chainErr) {
         await refreshVaultQuotes();
         throw chainErr;
@@ -119,7 +116,7 @@ router.post("/sell", async (req, res) => {
   }
 });
 
-/** GET /api/positions/:id — position details + unrealized PnL at current bid */
+/** GET /api/positions/:id?commodity=PALM_OIL — position details + unrealized PnL at bid */
 router.get("/:id", async (req, res) => {
   try {
     const id = req.params.id;
@@ -128,6 +125,7 @@ router.get("/:id", async (req, res) => {
       return;
     }
 
+    const commodity = (req.query.commodity as string) || "PALM_OIL";
     const pos = await chain.getPosition(BigInt(id));
 
     if (pos.trader === ethers.ZeroAddress) {
@@ -137,7 +135,8 @@ router.get("/:id", async (req, res) => {
 
     const margin = fromScaled(pos.margin);
     const entryPrice = fromScaled(pos.entryPrice);
-    const bbo = orderBook.getBBO();
+    const book = getOrderBook(commodity);
+    const bbo = book.getBBO();
     const markPrice = bbo.bestBid ?? entryPrice;
 
     const pnlPercent = ((markPrice - entryPrice) / entryPrice) * 100;
@@ -145,6 +144,7 @@ router.get("/:id", async (req, res) => {
 
     res.json({
       positionId: id,
+      commodity,
       trader: pos.trader,
       margin,
       entryPrice,

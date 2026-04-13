@@ -6,13 +6,15 @@ import { Header } from "@/components/Header";
 import { PriceDisplay } from "@/components/PriceDisplay";
 import { TradePanel } from "@/components/TradePanel";
 import { PositionCard } from "@/components/PositionCard";
-import { api, type PositionData } from "@/lib/api";
+import { api, type PositionData, type Commodity, COMMODITY_LABELS } from "@/lib/api";
 
 const DEMO_TRADER = "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC";
+const COMMODITIES: Commodity[] = ["PALM_OIL", "COCOA"];
 
 export default function App() {
   const { colors, isDark, toggle } = useTheme();
-  const { price } = usePrice();
+  const [commodity, setCommodity] = useState<Commodity>("PALM_OIL");
+  const { price } = usePrice(commodity);
   const [balance, setBalance] = useState(0);
   const [capacity, setCapacity] = useState(0);
   const [positions, setPositions] = useState<PositionData[]>([]);
@@ -28,7 +30,7 @@ export default function App() {
 
       const posPromises: Promise<PositionData | null>[] = [];
       for (let i = 0; i < account.vault.totalPositions; i++) {
-        posPromises.push(api.getPosition(String(i)).catch(() => null));
+        posPromises.push(api.getPosition(String(i), commodity).catch(() => null));
       }
       const all = await Promise.all(posPromises);
       setPositions(
@@ -38,7 +40,7 @@ export default function App() {
         )
       );
     } catch {}
-  }, []);
+  }, [commodity]);
 
   useEffect(() => {
     refresh();
@@ -50,7 +52,7 @@ export default function App() {
     setLoading(true);
     setError(null);
     try {
-      await api.buy(DEMO_TRADER, amount);
+      await api.buy(DEMO_TRADER, amount, commodity);
       await refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to buy");
@@ -63,7 +65,7 @@ export default function App() {
     setSelling(String(positionId));
     setError(null);
     try {
-      await api.sell(positionId);
+      await api.sell(positionId, commodity);
       await refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to sell");
@@ -84,7 +86,41 @@ export default function App() {
       <Header colors={colors} isDark={isDark} onToggleTheme={toggle} />
 
       <main style={{ maxWidth: 480, margin: "0 auto", padding: `${spacing.lg}px ${spacing.md}px` }}>
-        <PriceDisplay colors={colors} />
+        {/* Commodity toggle */}
+        <div
+          style={{
+            display: "flex",
+            gap: 0,
+            marginBottom: spacing.md,
+            background: colors.bgWarm,
+            borderRadius: radii.md,
+            padding: 3,
+          }}
+        >
+          {COMMODITIES.map((c) => (
+            <button
+              key={c}
+              onClick={() => setCommodity(c)}
+              style={{
+                flex: 1,
+                padding: "10px 0",
+                fontSize: 14,
+                fontWeight: commodity === c ? 700 : 500,
+                fontFamily: fontFamily.body,
+                background: commodity === c ? colors.accent : "transparent",
+                color: commodity === c ? "#fff" : colors.textMuted,
+                border: "none",
+                borderRadius: radii.sm,
+                cursor: "pointer",
+                transition: "all 0.2s ease",
+              }}
+            >
+              {COMMODITY_LABELS[c]}
+            </button>
+          ))}
+        </div>
+
+        <PriceDisplay colors={colors} commodity={commodity} />
 
         {error && (
           <div
@@ -134,7 +170,7 @@ export default function App() {
 
         {positions.length === 0 && balance > 0 && (
           <div style={{ textAlign: "center", padding: `${spacing["2xl"]}px 0`, color: colors.textMuted, fontSize: 14 }}>
-            No open positions. Buy palm oil above to get started.
+            No open positions. Buy {COMMODITY_LABELS[commodity].toLowerCase()} above to get started.
           </div>
         )}
 

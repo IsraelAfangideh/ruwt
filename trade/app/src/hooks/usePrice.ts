@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
-import { api, type PriceData } from "@/lib/api";
+import { api, type PriceData, type Commodity } from "@/lib/api";
 
-export function usePrice(intervalMs = 5000) {
+export function usePrice(commodity: Commodity = "PALM_OIL", intervalMs = 5000) {
   const [price, setPrice] = useState<PriceData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const prevPrice = useRef<number | null>(null);
@@ -9,18 +9,17 @@ export function usePrice(intervalMs = 5000) {
 
   useEffect(() => {
     let active = true;
+    prevPrice.current = null;
+    setPrice(null);
+
     const poll = async () => {
       try {
-        const data = await api.getPrice();
+        const data = await api.getPrice(commodity);
         if (!active) return;
         const current = data.marketPrice;
         if (prevPrice.current !== null) {
           setDirection(
-            current > prevPrice.current
-              ? "up"
-              : current < prevPrice.current
-                ? "down"
-                : null
+            current > prevPrice.current ? "up" : current < prevPrice.current ? "down" : null
           );
         }
         prevPrice.current = current;
@@ -37,7 +36,7 @@ export function usePrice(intervalMs = 5000) {
       active = false;
       clearInterval(id);
     };
-  }, [intervalMs]);
+  }, [commodity, intervalMs]);
 
   return { price, error, direction };
 }

@@ -1,44 +1,47 @@
-import { orderBook, VAULT_MAKER } from "./orderbook.js";
-import { getLatestPrice, fromScaled } from "./oracle.js";
+import { getOrderBook, VAULT_MAKER } from "./orderbook.js";
+import { getLatestPrice, getAllPrices, fromScaled } from "./oracle.js";
 import * as chain from "./chain.js";
+
 const SPREAD_BPS = 100; // 1% total spread = 0.5% each side
-const MAX_VAULT_ORDER_USDT = 100; // max single order size
+const MAX_VAULT_ORDER_USDT = 100;
 
 /**
- * Vault Automated Market Maker.
- * Posts bid and ask orders around the oracle price with a 2% spread.
- * Called every time the oracle price updates.
- *
- * Vault ask = oracle * 1.005 (users buy at this price)
- * Vault bid = oracle * 0.995 (users sell at this price)
+ * Update vault quotes for a single commodity.
+ * Posts bid/ask around oracle price with a 1% spread.
  */
-export function updateVaultQuotes(availableCapacity: number): void {
+export function updateCommodityQuotes(commodity: string, availableCapacity: number): void {
   let oraclePrice: number;
   try {
-    oraclePrice = getLatestPrice().priceUsd;
+    oraclePrice = getLatestPrice(commodity).priceUsd;
   } catch {
-    return; // No price yet
+    return;
   }
 
-  // Cancel all existing vault orders
-  orderBook.cancelMakerOrders(VAULT_MAKER);
+  const book = getOrderBook(commodity);
+  book.cancelMakerOrders(VAULT_MAKER);
 
-  const halfSpreadMult = SPREAD_BPS / 2 / 10_000; // 0.01
+  const halfSpreadMult = SPREAD_BPS / 2 / 10_000;
   const askPrice = round(oraclePrice * (1 + halfSpreadMult));
   const bidPrice = round(oraclePrice * (1 - halfSpreadMult));
 
-  // Post ask — limited by available vault capacity (how much more OI vault can absorb)
   if (availableCapacity > 0) {
     const askSize = Math.min(availableCapacity, MAX_VAULT_ORDER_USDT);
-    orderBook.placeOrder(VAULT_MAKER, "ask", askPrice, askSize);
+    book.placeOrder(VAULT_MAKER, "ask", askPrice, askSize);
   }
 
-  // Post bid — vault can always buy back positions (receives margin, no new capital needed)
-  orderBook.placeOrder(VAULT_MAKER, "bid", bidPrice, MAX_VAULT_ORDER_USDT);
+  book.placeOrder(VAULT_MAKER, "bid", bidPrice, MAX_VAULT_ORDER_USDT);
 }
 
-/** Get the current vault bid/ask prices without modifying the book. */
-export function getVaultQuotes(): {
+/** Update vault quotes for all commodities. */
+export function updateAllQuotes(availableCapacity: number): void {
+  const all = getAllPrices();
+  for (const commodity of Object.keys(all)) {
+    updateCommodityQuotes(commodity, availableCapacity);
+  }
+}
+
+/** Get the current bid/ask/prices for a commodity. */
+export function getQuotes(commodity: string): {
   bid: number | null;
   ask: number | null;
   oraclePrice: number | null;
@@ -47,27 +50,26 @@ export function getVaultQuotes(): {
 } {
   let oraclePrice: number | null = null;
   try {
-    oraclePrice = getLatestPrice().priceUsd;
-  } catch {
-    // No price yet
-  }
+    oraclePrice = getLatestPrice(commodity).priceUsd;
+  } catch {}
 
-  const bbo = orderBook.getBBO();
+  const book = getOrderBook(commodity);
+  const bbo = book.getBBO();
 
   return {
     bid: bbo.bestBid,
     ask: bbo.bestAsk,
     oraclePrice,
-    lastTradePrice: orderBook.lastTradePrice,
-    spreadPercent: orderBook.getSpreadPercent(),
+    lastTradePrice: book.lastTradePrice,
+    spreadPercent: book.getSpreadPercent(),
   };
 }
 
-/** Fetch vault capacity from chain and refresh quotes. */
+/** Fetch vault capacity from chain and refresh all quotes. */
 export async function refreshVaultQuotes(): Promise<void> {
   try {
     const stats = await chain.getVaultStats();
-    updateVaultQuotes(fromScaled(stats.capacity));
+    updateAllQuotes(fromScaled(stats.capacity));
   } catch (err) {
     console.warn("[amm] quote refresh failed:", err);
   }

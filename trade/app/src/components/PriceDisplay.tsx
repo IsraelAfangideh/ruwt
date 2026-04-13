@@ -2,9 +2,15 @@ import { usePrice } from "@/hooks/usePrice";
 import { type ColorScheme } from "@/theme/colors";
 import { fontFamily } from "@/theme/tokens";
 import { fmtPrice } from "@/lib/format";
+import { type Commodity, COMMODITY_LABELS } from "@/lib/api";
 
-export function PriceDisplay({ colors }: { colors: ColorScheme }) {
-  const { price, direction } = usePrice();
+const UNITS: Record<Commodity, string> = {
+  PALM_OIL: "USD / MT",
+  COCOA: "USD / MT",
+};
+
+export function PriceDisplay({ colors, commodity }: { colors: ColorScheme; commodity: Commodity }) {
+  const { price, direction } = usePrice(commodity);
 
   if (!price) {
     return (
@@ -33,7 +39,7 @@ export function PriceDisplay({ colors }: { colors: ColorScheme }) {
           letterSpacing: 1,
         }}
       >
-        Palm Oil (FCPO) — USD / MT
+        {COMMODITY_LABELS[commodity]} — {UNITS[commodity]}
       </div>
       <div
         style={{
