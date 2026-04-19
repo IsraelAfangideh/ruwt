@@ -1,0 +1,124 @@
+# Deploy trade app (Vite + React PWA + Cloudflare Pages Functions) to Cloudflare Pages.
+# Project: ruwt-trade → https://ruwt-trade.pages.dev (custom domain set in dashboard)
+name: Deploy Trade (Cloudflare Pages)
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'trade/app/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  deployments: write
+
+jobs:
+  deploy:
+    name: Build & Deploy to Cloudflare Pages
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: trade/app
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: trade/app/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Build
+        run: npm run build
+
+      - name: Set runtime secrets
+        run: |
+          echo "${{ secrets.TRADE_OPERATOR_PRIVATE_KEY }}" | npx wrangler pages secret put OPERATOR_PRIVATE_KEY --project-name=ruwt-trade
+          echo "${{ secrets.TRADE_VAULT_ADDRESS }}" | npx wrangler pages secret put VAULT_ADDRESS --project-name=ruwt-trade
+          echo "${{ secrets.TRADE_POLYGON_RPC }}" | npx wrangler pages secret put POLYGON_RPC --project-name=ruwt-trade
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+      - name: Create GitHub deployment
+        id: deployment
+        uses: chrnorm/deployment-action@v2
+        with:
+          token: ${{ github.token }}
+          environment: Trade Production
+          production-environment: true
+          ref: ${{ github.sha }}
+
+      - name: Deploy to Cloudflare Pages
+        id: deploy
+        run: npx wrangler pages deploy dist --project-name=ruwt-trade
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+      - name: Update deployment status (success)
+        if: success()
+        uses: chrnorm/deployment-status@v2
+        with:
+          token: ${{ github.token }}
+          deployment-id: ${{ steps.deployment.outputs.deployment_id }}
+          state: success
+          environment-url: https://ruwt-trade.pages.dev
+
+      - name: Update deployment status (failure)
+        if: failure()
+        uses: chrnorm/deployment-status@v2
+        with:
+          token: ${{ github.token }}
+          deployment-id: ${{ steps.deployment.outputs.deployment_id }}
+          state: failure
+
+      - name: Post-deploy smoke tests
+        if: success()
+        working-directory: .
+        run: |
+          echo "=== Post-deploy smoke tests ==="
+          sleep 10
+          FAILED=0
+
+          # Test 1: Landing page returns 200
+          echo "Test 1: Landing page..."
+          HTTP=$(curl -s --max-time 10 -o /dev/null -w '%{http_code}' https://ruwt-trade.pages.dev/)
+          if [ "$HTTP" != "200" ]; then
+            echo "  FAIL: HTTP $HTTP"
+            FAILED=$((FAILED+1))
+          else
+            echo "  PASS"
+          fi
+
+          # Test 2: Price API returns JSON with commodity data
+          echo "Test 2: Price API..."
+          HTTP=$(curl -s --max-time 15 -o /tmp/prices.json -w '%{http_code}' https://ruwt-trade.pages.dev/api/prices?commodity=PALM_OIL)
+          if [ "$HTTP" != "200" ]; then
+            echo "  FAIL: HTTP $HTTP"
+            FAILED=$((FAILED+1))
+          elif ! python3 -c "import json; d=json.load(open('/tmp/prices.json')); assert d.get('oraclePrice',0) > 0" 2>/dev/null; then
+            echo "  FAIL: no valid price data"
+            FAILED=$((FAILED+1))
+          else
+            PRICE=$(python3 -c "import json; print(json.load(open('/tmp/prices.json'))['oraclePrice'])")
+            echo "  PASS (palm oil: \$$PRICE)"
+          fi
+
+          echo ""
+          echo "=== $FAILED failure(s) ==="
+          if [ "$FAILED" -gt 0 ]; then
+            echo "::error::$FAILED smoke test(s) failed"
+            exit 1
+          fi

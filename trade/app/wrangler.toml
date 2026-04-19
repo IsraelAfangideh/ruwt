@@ -1,0 +1,14 @@
+name = "ruwt-trade"
+compatibility_date = "2024-01-01"
+pages_build_output_dir = "dist"
+
+[[kv_namespaces]]
+binding = "PRICES"
+id = "" # Set after creating KV namespace: wrangler kv namespace create PRICES
+
+# Runtime secrets set via wrangler pages secret put in deploy workflow:
+# OPERATOR_PRIVATE_KEY — backend hot wallet for submitting txs
+# VAULT_ADDRESS — deployed PalmVault contract address
+# POLYGON_RPC — Alchemy/QuickNode Polygon RPC URL
+#
+# Do NOT add [vars] here for values set in Dashboard — causes deploy failures.
