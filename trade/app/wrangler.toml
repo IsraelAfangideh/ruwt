@@ -4,7 +4,7 @@ pages_build_output_dir = "dist"
 
 [[kv_namespaces]]
 binding = "PRICES"
-id = "" # Set after creating KV namespace: wrangler kv namespace create PRICES
+id = "f876aa498b7b4d2cbe85b9debe0e04a8"
 
 # Runtime secrets set via wrangler pages secret put in deploy workflow:
 # OPERATOR_PRIVATE_KEY — backend hot wallet for submitting txs
