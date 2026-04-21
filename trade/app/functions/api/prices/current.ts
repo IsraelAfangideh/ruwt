@@ -1,5 +1,5 @@
-import type { Env } from "../_shared/env";
-import { getPrice, computeQuotes, getMarketStatus } from "../_shared/oracle";
+import type { Env } from "../../_shared/env";
+import { getPrice, computeQuotes, getMarketStatus } from "../../_shared/oracle";
 
 /** GET /api/prices?commodity=PALM_OIL */
 export async function onRequestGet(context: { request: Request; env: Env }) {
