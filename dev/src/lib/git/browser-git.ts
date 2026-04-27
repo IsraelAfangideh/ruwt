@@ -9,6 +9,11 @@ import * as git from 'isomorphic-git';
 import http from 'isomorphic-git/http/web';
 import type { RuntimeBackend } from '@/lib/sandbox/runtime';
 
+// GitHub (and most git hosts) don't return CORS headers for the git
+// smart-HTTP endpoints, so isomorphic-git can't fetch them directly from
+// the browser. Route through the maintainer-run public CORS proxy.
+const CORS_PROXY = 'https://cors.isomorphic-git.org';
+
 // ── Types ──────────────────────────────────────────────────────────────
 
 export type GitFileStatus = 'modified' | 'added' | 'deleted' | 'untracked' | 'unmodified';
@@ -219,6 +224,7 @@ export async function clone(
     http,
     dir,
     url,
+    corsProxy: CORS_PROXY,
     singleBranch: true,
     depth: 1,
     ...authOptions,
@@ -279,6 +285,7 @@ export async function push(backend: RuntimeBackend, dir: string, options: PushOp
     fs,
     http,
     dir,
+    corsProxy: CORS_PROXY,
     ...authOptions,
   });
 }

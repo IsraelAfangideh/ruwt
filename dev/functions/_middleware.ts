@@ -52,7 +52,7 @@ const SECURITY_HEADERS_IDE: Record<string, string> = {
   'Content-Security-Policy': [
     ...SHARED_CSP,
     "script-src 'self' 'unsafe-eval' 'wasm-unsafe-eval' https://cdn.jsdelivr.net",
-    "connect-src 'self' https://*.supabase.co https://ruwt-exec.fly.dev https://*.webcontainer-api.io wss://*.webcontainer-api.io https://*.stackblitz.com wss://*.stackblitz.com https://*.stackblitz.io wss://*.stackblitz.io https://cdn.jsdelivr.net",
+    "connect-src 'self' https://*.supabase.co https://ruwt-exec.fly.dev https://*.webcontainer-api.io wss://*.webcontainer-api.io https://*.stackblitz.com wss://*.stackblitz.com https://*.stackblitz.io wss://*.stackblitz.io https://cdn.jsdelivr.net https://cors.isomorphic-git.org",
     "frame-src https://*.webcontainer-api.io https://stackblitz.com https://*.stackblitz.io",
   ].join('; '),
 };
