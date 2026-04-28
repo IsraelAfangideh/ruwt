@@ -112,6 +112,19 @@ export const STATIC_ROUTE_META: Record<string, SeoMeta> = {
     description: 'Create your free account on ruwt.dev. Get 50k credits to start solving AI coding challenges.',
     canonicalUrl: 'https://ruwt.dev/register',
   },
+  '/for-hiring-managers': {
+    title: 'Your candidates are passing your screen with AI. Stop pretending. | Ruwt',
+    description: 'Invisible AI overlays like Cluely silently pass technical screens. Ruwt grades how candidates use AI instead of pretending it isn\'t there. Free pilot — 5 candidates, no commitment.',
+    canonicalUrl: 'https://ruwt.dev/for-hiring-managers',
+    jsonLd: {
+      '@context': 'https://schema.org',
+      '@type': 'Product',
+      name: 'Ruwt for Hiring Managers',
+      description: 'AI-fluency assessment platform for engineering hiring. Catches candidates passing screens with invisible AI overlays.',
+      url: 'https://ruwt.dev/for-hiring-managers',
+      brand: buildOrganizationLd(),
+    },
+  },
   '/teams': {
     title: 'AI Coding Assessments for Hiring Teams | Ruwt',
     description: 'Assess candidates on real AI skills — model selection, prompt efficiency, and debugging. Full session replays, AI Profile analytics, and candidate comparison. $200/mo flat rate.',

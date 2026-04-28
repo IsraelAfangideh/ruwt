@@ -470,6 +470,24 @@ export const projects = sqliteTable('projects', {
   updatedAt: text('updated_at').default(sql`(datetime('now'))`),
 });
 
+// --- Pilot leads (hiring-manager wedge captures) ---
+
+export const pilotLeads = sqliteTable('pilot_leads', {
+  id: text('id').primaryKey(),
+  email: text('email').notNull(),
+  name: text('name'),
+  company: text('company'),
+  role: text('role'),
+  hiresPerYear: integer('hires_per_year'),
+  currentTool: text('current_tool'),
+  notes: text('notes'),
+  source: text('source').default('for-hiring-managers'),
+  ip: text('ip'),
+  userAgent: text('user_agent'),
+  status: text('status').default('new').notNull(), // 'new' | 'contacted' | 'qualified' | 'rejected'
+  createdAt: text('created_at').default(sql`(datetime('now'))`).notNull(),
+});
+
 // --- Notification Preferences ---
 
 export const notificationPreferences = sqliteTable('notification_preferences', {
@@ -501,6 +519,8 @@ export type AiCall = typeof aiCalls.$inferSelect;
 export type NewAiCall = typeof aiCalls.$inferInsert;
 export type Transaction = typeof transactions.$inferSelect;
 export type NewTransaction = typeof transactions.$inferInsert;
+export type PilotLead = typeof pilotLeads.$inferSelect;
+export type NewPilotLead = typeof pilotLeads.$inferInsert;
 export type Assessment = typeof assessments.$inferSelect;
 export type NewAssessment = typeof assessments.$inferInsert;
 export type AssessmentChallenge = typeof assessmentChallenges.$inferSelect;

@@ -19,7 +19,9 @@ export type RootStackParamList = {
   AssessmentLanding: { token: string };
   AssessmentFlow: { sessionId: string };
   AssessmentResults: { shareToken: string };
+  Scorecard: { token: string };
   Hiring: undefined;
+  ForHiringManagers: undefined;
   GuestArena: { challengeId: string };
   PublicProfile: { username: string };
   Share: { attemptId: string };

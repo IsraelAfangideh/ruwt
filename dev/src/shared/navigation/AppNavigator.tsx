@@ -76,7 +76,11 @@ const AssessmentFlowScreen = lazyWithRetry('AssessmentFlow', () => import('@/fea
 /* istanbul ignore next -- @preserve */
 const AssessmentResultsScreen = lazyWithRetry('AssessmentResults', () => import('@/features/assessments/screens/AssessmentResultsScreen'), m => m.AssessmentResultsScreen);
 /* istanbul ignore next -- @preserve */
+const ScorecardScreen = lazyWithRetry('Scorecard', () => import('@/features/assessments/screens/ScorecardScreen'), m => m.ScorecardScreen);
+/* istanbul ignore next -- @preserve */
 const HiringScreen = lazyWithRetry('Hiring', () => import('@/features/teams/TeamsScreen'), m => m.TeamsScreen);
+/* istanbul ignore next -- @preserve */
+const HiringManagersScreen = lazyWithRetry('ForHiringManagers', () => import('@/features/marketing/HiringManagersScreen'), m => m.HiringManagersScreen);
 /* istanbul ignore next -- @preserve */
 const GuestArenaScreen = lazyWithRetry('GuestArena', () => import('@/features/arena/GuestArenaScreen'), m => m.GuestArenaScreen);
 /* istanbul ignore next -- @preserve */
@@ -215,7 +219,9 @@ export function AppNavigator() {
           <Stack.Screen name="AssessmentLanding" component={AssessmentLandingScreen} />
           <Stack.Screen name="AssessmentFlow" component={AssessmentFlowScreen} />
           <Stack.Screen name="AssessmentResults" component={AssessmentResultsScreen} />
+          <Stack.Screen name="Scorecard" component={ScorecardScreen} />
           <Stack.Screen name="Hiring" component={HiringScreen} />
+          <Stack.Screen name="ForHiringManagers" component={HiringManagersScreen} />
           <Stack.Screen name="GuestArena" component={GuestArenaScreen} />
           <Stack.Screen name="PublicProfile" component={PublicProfileScreen} />
           <Stack.Screen name="Share" component={ShareScreen} />
