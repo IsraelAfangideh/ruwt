@@ -150,7 +150,7 @@ export function HiringManagersScreen() {
               body: 'Senior engineers re-interview the same false positives. Hiring managers re-watch CoderPad replays trying to spot tab-switches. The cost compounds with every bad pass-through.',
             },
           ].map((p) => (
-            <Card key={p.title} style={[styles.problemCard, { borderColor: c.border, backgroundColor: c.cardBg }]}>
+            <Card key={p.title} style={[styles.problemCard, { borderColor: c.border, backgroundColor: c.card }]}>
               <CardHeader>
                 <CardTitle>{p.title}</CardTitle>
               </CardHeader>
@@ -163,7 +163,7 @@ export function HiringManagersScreen() {
       </View>
 
       {/* Solution / how it works */}
-      <View style={[styles.section, { backgroundColor: c.cardBg, paddingHorizontal: isMobile ? spacing.md : spacing.xl }]}>
+      <View style={[styles.section, { backgroundColor: c.card, paddingHorizontal: isMobile ? spacing.md : spacing.xl }]}>
         <Text style={[styles.sectionTitle, { color: c.text }]}>
           What Ruwt actually measures
         </Text>
@@ -192,7 +192,7 @@ export function HiringManagersScreen() {
         <Text style={[styles.sectionTitle, { color: c.text }]}>
           What false-positive interviews are costing you
         </Text>
-        <Card style={[styles.roiCard, { borderColor: c.border, backgroundColor: c.cardBg }]}>
+        <Card style={[styles.roiCard, { borderColor: c.border, backgroundColor: c.card }]}>
           <CardContent>
             <View style={styles.roiInputs}>
               <RoiInput
@@ -237,7 +237,7 @@ export function HiringManagersScreen() {
       </View>
 
       {/* Pilot CTA form */}
-      <View style={[styles.section, { paddingHorizontal: isMobile ? spacing.md : spacing.xl, paddingBottom: spacing.xxl }]}>
+      <View style={[styles.section, { paddingHorizontal: isMobile ? spacing.md : spacing.xl, paddingBottom: spacing['2xl'] }]}>
         <Text style={[styles.sectionTitle, { color: c.text }]}>
           Run 5 candidates side-by-side. No commitment.
         </Text>
@@ -245,7 +245,7 @@ export function HiringManagersScreen() {
           Send us the next 5 candidates already in your pipeline. We'll run them through Ruwt
           alongside your current screen. You compare the results yourself.
         </Text>
-        <Card style={[styles.pilotCard, { borderColor: c.border, backgroundColor: c.cardBg }]}>
+        <Card style={[styles.pilotCard, { borderColor: c.border, backgroundColor: c.card }]}>
           <CardContent>
             {submitted ? (
               <View style={{ alignItems: 'center', paddingVertical: spacing.lg }}>
@@ -338,7 +338,7 @@ const styles = StyleSheet.create({
   logo: { fontSize: fontSizes.xl, fontWeight: '700' },
   headerActions: { flexDirection: 'row', gap: spacing.sm, alignItems: 'center' },
 
-  hero: { paddingVertical: spacing.xxl, paddingHorizontal: spacing.lg },
+  hero: { paddingVertical: spacing['2xl'], paddingHorizontal: spacing.lg },
   heroInner: { maxWidth: 800, marginHorizontal: 'auto', alignItems: 'center', gap: spacing.lg },
   heroTitle: {
     fontSize: 44, fontWeight: '800', color: '#f5f3f0',
@@ -350,7 +350,7 @@ const styles = StyleSheet.create({
   },
   heroCtas: { flexDirection: 'row', gap: spacing.md, flexWrap: 'wrap', justifyContent: 'center' },
 
-  section: { paddingVertical: spacing.xxl, paddingHorizontal: spacing.lg },
+  section: { paddingVertical: spacing['2xl'], paddingHorizontal: spacing.lg },
   sectionTitle: {
     fontSize: 32, fontWeight: '700', textAlign: 'center',
     marginBottom: spacing.md,

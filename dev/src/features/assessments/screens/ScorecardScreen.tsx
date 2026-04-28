@@ -155,7 +155,7 @@ export function ScorecardScreen() {
         </View>
 
         {/* Rating panel */}
-        <Card style={[styles.ratingCard, { borderColor: tierColor, backgroundColor: c.cardBg }]}>
+        <Card style={[styles.ratingCard, { borderColor: tierColor, backgroundColor: c.card }]}>
           <CardContent style={{ alignItems: 'center', paddingVertical: spacing.xl }}>
             <Text style={[styles.ratingTier, { color: tierColor }]} testID="scorecard-tier">
               {data.rating.label}
@@ -178,7 +178,7 @@ export function ScorecardScreen() {
                 <View
                   key={f.label}
                   testID={`scorecard-flag-${f.type}`}
-                  style={[styles.flag, { borderLeftColor: FLAG_COLORS[f.type], backgroundColor: c.cardBg, borderColor: c.border }]}
+                  style={[styles.flag, { borderLeftColor: FLAG_COLORS[f.type], backgroundColor: c.card, borderColor: c.border }]}
                 >
                   <Text style={[styles.flagLabel, { color: FLAG_COLORS[f.type] }]}>{f.label}</Text>
                   <Text style={[styles.flagDetail, { color: c.textMuted }]}>{f.detail}</Text>
@@ -193,7 +193,7 @@ export function ScorecardScreen() {
           <Text style={[styles.sectionTitle, { color: c.text }]}>Challenge-by-challenge</Text>
           <View style={styles.challengeList}>
             {data.challenges.map((ch, i) => (
-              <Card key={`${ch.title}-${i}`} style={[styles.challengeCard, { borderColor: c.border, backgroundColor: c.cardBg }]}>
+              <Card key={`${ch.title}-${i}`} style={[styles.challengeCard, { borderColor: c.border, backgroundColor: c.card }]}>
                 <CardHeader>
                   <View style={styles.challengeHeader}>
                     <CardTitle>{ch.title}</CardTitle>
