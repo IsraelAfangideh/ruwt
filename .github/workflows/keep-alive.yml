@@ -16,16 +16,19 @@ jobs:
 
           # Retry helper: curl_check URL TIMEOUT
           # Returns HTTP status code, retries once after 5s on timeout/failure
+          # `|| echo 000` keeps a resolve/connect failure (curl exit 6/7/28) from
+          # propagating under `bash -eo pipefail` and aborting the whole step —
+          # we report "000" as a normal failure instead.
           curl_check() {
             local url="$1" timeout="${2:-15}"
             local http
-            http=$(curl -s -o /dev/null -w '%{http_code}' --max-time "$timeout" "$url")
+            http=$(curl -s -o /dev/null -w '%{http_code}' --max-time "$timeout" "$url" || echo "000")
             if [ "$http" = "200" ]; then
               echo "$http"; return
             fi
             echo "  Retry after cold-start (got $http)..." >&2
             sleep 5
-            curl -s -o /dev/null -w '%{http_code}' --max-time "$timeout" "$url"
+            curl -s -o /dev/null -w '%{http_code}' --max-time "$timeout" "$url" || echo "000"
           }
 
           # Check 1: ruwt.dev landing page
@@ -58,7 +61,7 @@ jobs:
             curl -s --max-time 15 -X POST https://ruwt-exec.fly.dev/api/v2/piston/execute \
               -H "Content-Type: application/json" \
               -H "X-Executor-Secret: ${{ secrets.EXECUTOR_SECRET }}" \
-              -d '{"language":"python","version":"3.10.0","files":[{"content":"print(42)"}],"run_timeout":5000}'
+              -d '{"language":"python","version":"3.10.0","files":[{"content":"print(42)"}],"run_timeout":5000}' || true
           }
           parse_piston() {
             echo "$1" | python3 -c "import sys,json; print(json.load(sys.stdin).get('run',{}).get('stdout','').strip())" 2>/dev/null || echo ""
@@ -81,10 +84,15 @@ jobs:
           fi
 
           # Check 4: Supabase auth health
+          # NOTE: a paused/deleted project returns NXDOMAIN, making curl exit 6.
+          # Under `bash -eo pipefail` that would abort this whole step before the
+          # alert-email logic runs, so we must NOT let the curl failure propagate.
+          # `|| echo 000` swallows the non-zero exit; HTTP stays "000" on resolve/
+          # connect failure, which we then report as a normal FAIL (and alert).
           echo "Checking Supabase..."
           HTTP=$(curl -s -o /dev/null -w '%{http_code}' --max-time 15 \
             "${{ secrets.VITE_SUPABASE_URL }}/auth/v1/health" \
-            -H "apikey: ${{ secrets.VITE_SUPABASE_ANON_KEY }}")
+            -H "apikey: ${{ secrets.VITE_SUPABASE_ANON_KEY }}" || echo "000")
           if [ "$HTTP" != "200" ]; then
             echo "  FAIL: Supabase -> $HTTP"
             RESULTS="${RESULTS}- FAIL: Supabase auth health -> HTTP $HTTP\n"
