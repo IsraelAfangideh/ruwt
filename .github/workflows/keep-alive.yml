@@ -113,6 +113,43 @@ jobs:
             RESULTS="${RESULTS}- OK: /api/health -> $HTTP\n"
           fi
 
+          # Check 6: Supabase database — real `select 1` over the connection pooler.
+          # Doubles as keep-warm activity: an actual DB query resets the free-tier
+          # 7-day inactivity timer that otherwise pauses the project (removing its
+          # DNS and breaking login). The /auth/v1/health ping above does NOT count
+          # as DB activity, which is why the project paused in the first place.
+          echo "Checking Supabase DB (keep-warm)..."
+          if ! command -v psql >/dev/null 2>&1; then
+            echo "  WARN: psql not on runner; skipping DB keep-warm"
+            RESULTS="${RESULTS}- WARN: Supabase DB keep-warm skipped (no psql)\n"
+          else
+            db_query() {
+              # PGCONNECT_TIMEOUT bounds the TCP connect; `timeout` bounds the whole
+              # query; `|| echo ""` keeps a failure from tripping `bash -eo pipefail`.
+              # SUPABASE_DEV_DATABASE_URL = the /dev auth project pooler URL
+              # (postgres.fzncpdelyfuvdeqmwznx). NOT the same as SUPABASE_DATABASE_URL,
+              # which points at the /social project (used by seed.yml). We must warm
+              # the /dev project specifically — that's the one whose pause broke login.
+              PGCONNECT_TIMEOUT=15 timeout 25 \
+                psql "${{ secrets.SUPABASE_DEV_DATABASE_URL }}" -tAc 'select 1' 2>/dev/null \
+                | tr -d '[:space:]' || echo ""
+            }
+            DB_OUT=$(db_query)
+            if [ "$DB_OUT" != "1" ]; then
+              echo "  Retry DB query after cold-start..."
+              sleep 5
+              DB_OUT=$(db_query)
+            fi
+            if [ "$DB_OUT" = "1" ]; then
+              echo "  OK: DB query returned 1"
+              RESULTS="${RESULTS}- OK: Supabase DB -> select 1 = 1\n"
+            else
+              echo "  FAIL: DB query did not return 1 (got '$DB_OUT')"
+              RESULTS="${RESULTS}- FAIL: Supabase DB select 1 failed\n"
+              FAILED=$((FAILED+1))
+            fi
+          fi
+
           echo ""
           echo "=== $FAILED failure(s) ==="
 
