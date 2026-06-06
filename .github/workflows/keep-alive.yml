@@ -10,6 +10,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Run health checks
+        # Secrets are exposed as env vars, NOT inlined via ${{ }} into the script.
+        # Inlining splices the raw secret text into the shell source, so a secret
+        # containing `$` (e.g. a DB password) gets mangled by bash variable
+        # expansion — and it's a script-injection risk. As env vars, their
+        # contents are never re-expanded by the shell.
+        env:
+          EXECUTOR_SECRET: ${{ secrets.EXECUTOR_SECRET }}
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          SUPABASE_DEV_DATABASE_URL: ${{ secrets.SUPABASE_DEV_DATABASE_URL }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          ERROR_ALERT_EMAIL: ${{ secrets.ERROR_ALERT_EMAIL }}
         run: |
           FAILED=0
           RESULTS=""
@@ -60,7 +72,7 @@ jobs:
           run_piston() {
             curl -s --max-time 15 -X POST https://ruwt-exec.fly.dev/api/v2/piston/execute \
               -H "Content-Type: application/json" \
-              -H "X-Executor-Secret: ${{ secrets.EXECUTOR_SECRET }}" \
+              -H "X-Executor-Secret: $EXECUTOR_SECRET" \
               -d '{"language":"python","version":"3.10.0","files":[{"content":"print(42)"}],"run_timeout":5000}' || true
           }
           parse_piston() {
@@ -91,8 +103,8 @@ jobs:
           # connect failure, which we then report as a normal FAIL (and alert).
           echo "Checking Supabase..."
           HTTP=$(curl -s -o /dev/null -w '%{http_code}' --max-time 15 \
-            "${{ secrets.VITE_SUPABASE_URL }}/auth/v1/health" \
-            -H "apikey: ${{ secrets.VITE_SUPABASE_ANON_KEY }}" || echo "000")
+            "$VITE_SUPABASE_URL/auth/v1/health" \
+            -H "apikey: $VITE_SUPABASE_ANON_KEY" || echo "000")
           if [ "$HTTP" != "200" ]; then
             echo "  FAIL: Supabase -> $HTTP"
             RESULTS="${RESULTS}- FAIL: Supabase auth health -> HTTP $HTTP\n"
@@ -131,7 +143,7 @@ jobs:
               # which points at the /social project (used by seed.yml). We must warm
               # the /dev project specifically — that's the one whose pause broke login.
               PGCONNECT_TIMEOUT=15 timeout 25 \
-                psql "${{ secrets.SUPABASE_DEV_DATABASE_URL }}" -tAc 'select 1' 2>/dev/null \
+                psql "$SUPABASE_DEV_DATABASE_URL" -tAc 'select 1' 2>/dev/null \
                 | tr -d '[:space:]' || echo ""
             }
             DB_OUT=$(db_query)
@@ -158,16 +170,16 @@ jobs:
             TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
             echo "Sending alert..."
             curl -s -X POST https://api.resend.com/emails \
-              -H "Authorization: Bearer ${{ secrets.RESEND_API_KEY }}" \
+              -H "Authorization: Bearer $RESEND_API_KEY" \
               -H "Content-Type: application/json" \
               -d "$(python3 -c "
-          import json
+          import json, os
           results = '''$(printf "$RESULTS")'''
           print(json.dumps({
               'from': 'ruwt.dev alerts <alerts@ruwt.dev>',
-              'to': ['${{ secrets.ERROR_ALERT_EMAIL }}'],
+              'to': [os.environ['ERROR_ALERT_EMAIL']],
               'subject': '[ruwt.dev DOWN] ${FAILED} service(s) failing',
-              'html': '<h2>Health Check Alert</h2><p>Time: ${TIMESTAMP}</p><pre>' + results + '</pre><p>This check runs every 5 minutes via <a href=\"https://github.com/${{ github.repository }}/actions/workflows/keep-alive.yml\">GitHub Actions</a>.</p>'
+              'html': '<h2>Health Check Alert</h2><p>Time: ${TIMESTAMP}</p><pre>' + results + '</pre><p>This check runs every 5 minutes via <a href=\"https://github.com/'+os.environ.get('GITHUB_REPOSITORY','')+'/actions/workflows/keep-alive.yml\">GitHub Actions</a>.</p>'
           }))
           ")"
             echo "::error::$FAILED health check(s) failed"
