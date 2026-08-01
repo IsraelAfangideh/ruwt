@@ -34,6 +34,7 @@ export type RootStackParamList = {
   ProjectList: undefined;
   IDE: { projectId?: string } | undefined;
   TakeHome: { sessionId: string };
+  Intelligence: undefined;
   NotFound: undefined;
 };
 
@@ -46,6 +47,7 @@ export const ALLOWED_AUTH_REDIRECTS = new Set<keyof RootStackParamList>([
   'Arena', 'DailyChallenge', 'Assessments', 'AssessmentBuilder',
   'Hiring', 'OrgManagement', 'Replay', 'Share', 'Certificate',
   'ProjectList', 'IDE',
+  'Intelligence',
 ]);
 
 declare global {

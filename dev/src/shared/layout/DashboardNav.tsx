@@ -6,7 +6,7 @@ import { useColors } from '@/shared/theme';
 import { spacing, fontSizes, fontFamily } from '@/shared/theme/tokens';
 
 type NavItem = {
-  name: 'Problems' | 'Discuss' | 'Leaderboard' | 'ProjectList' | 'Assessments' | 'Hiring' | 'OrgManagement';
+  name: 'Problems' | 'Discuss' | 'Leaderboard' | 'ProjectList' | 'Assessments' | 'Hiring' | 'OrgManagement' | 'Intelligence';
   label: string;
   accent?: boolean;
   subtle?: boolean;
@@ -21,6 +21,7 @@ const practiceNavItems: NavItem[] = [
 
 const hiringNavItems: NavItem[] = [
   { name: 'Assessments', label: 'Assessments' },
+  { name: 'Intelligence', label: 'Intelligence' },
   { name: 'Problems', label: 'Preview Challenges', subtle: true },
   { name: 'OrgManagement', label: 'Org Settings' },
 ];

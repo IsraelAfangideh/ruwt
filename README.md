@@ -63,3 +63,25 @@ Can you pick the right prompts, avoid unnecessary back-and-forth, and solve prob
 - `/social`: GitHub Actions (`deploy.yml`) -> Fly.io via `flyctl`
 
 See [CLAUDE.md](./CLAUDE.md) for full architecture details, infrastructure config, and API reference.
+
+## Agentic Engineering Intelligence foundation
+
+The `/dev` application now includes an additive `/intelligence` workspace.
+It uses the existing Supabase session and organization membership model.
+
+```bash
+# Web application and tests
+cd dev && npm install && npm run dev
+cd dev && npm run typecheck && npm test && npm run build
+
+# Apply the additive local D1 migration
+cd dev && npx wrangler d1 execute ruwt-dev --local --file=./drizzle/migrations-d1/0065_agentic_engineering_intelligence.sql
+
+# Desktop foundation and CLI
+cd desktop && npm install && npm run check && npm run dev
+cd desktop && npm run cli -- status
+```
+
+See [STATUS.md](./STATUS.md) for real, simulated, experimental, and placeholder
+capabilities. See `docs/` for the event schema, security boundary, CLI, and
+deployment instructions.

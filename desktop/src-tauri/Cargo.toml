@@ -1,0 +1,14 @@
+[package]
+name = "ruwt-desktop"
+version = "0.1.0"
+description = "Ruwt Desktop local agentic engineering intelligence"
+edition = "2021"
+
+[build-dependencies]
+tauri-build = { version = "2" }
+
+[dependencies]
+tauri = { version = "2" }
+
+[features]
+custom-protocol = ["tauri/custom-protocol"]
