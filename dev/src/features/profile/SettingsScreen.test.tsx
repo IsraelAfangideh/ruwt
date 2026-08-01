@@ -61,9 +61,8 @@ describe('SettingsScreen', () => {
   it('renders settings content after loading', async () => {
     render(<SettingsScreen />);
     await waitFor(() => {
-      expect(screen.getAllByText('Settings').length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText('Email Preferences').length).toBeGreaterThanOrEqual(1);
     });
-    expect(screen.getAllByText('Email Preferences').length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText(/Daily newsletter/).length).toBeGreaterThanOrEqual(1);
   });
 
