@@ -1,684 +1,721 @@
-import { useEffect } from 'react';
-import { View, Text, ScrollView, StyleSheet, Image } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { ScrollView } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { createClient } from '@/shared/lib/supabase/client';
-import { Button } from '@/shared/ui/Button';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/shared/ui/Card';
-import { Badge } from '@/shared/ui/Badge';
 import { FeaturedReplay } from '@/shared/social/FeaturedReplay';
 import { ActivityFeed } from '@/shared/social/ActivityFeed';
 import { PlatformStats } from '@/shared/social/PlatformStats';
-/* Discord link removed — social features are built in-site */
-import { useColors } from '@/shared/theme';
-import { spacing, fontSizes, fontFamily } from '@/shared/theme/tokens';
-import { useWindowWidth } from '@/shared/hooks/useWindowWidth';
+import { useTheme } from '@/shared/theme';
 import { useDocumentMeta } from '@/shared/hooks/useDocumentMeta';
 import { DEFAULT_AUTH_REDIRECT } from '@/shared/navigation/types';
 import { resetNavigation } from '@/shared/navigation/resetNavigation';
+import './landing.css';
+
+/**
+ * Scroll-reveal and the count-up both need callbacks the platform may not run:
+ * IntersectionObserver may be missing entirely, and a browser suspends both it
+ * and rAF while the page is hidden. When we cannot be sure they will fire,
+ * everything renders in its final state — content must never be stranded at
+ * opacity 0.
+ */
+function canAnimate() {
+  if (typeof IntersectionObserver === 'undefined' || typeof document === 'undefined') return false;
+  if (document.hidden) return false;
+  return !(
+    typeof window !== 'undefined' &&
+    typeof window.matchMedia === 'function' &&
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  );
+}
+
+/* One observer for the whole page rather than one per reveal — every caller
+   wants the same thresholds, and the page has ~19 of them. */
+const revealCallbacks = new WeakMap<Element, () => void>();
+let sharedObserver: IntersectionObserver | null = null;
+
+/* istanbul ignore next -- @preserve */
+function observeOnce(el: Element, onEnter: () => void) {
+  sharedObserver ??= new IntersectionObserver(
+    (entries) => {
+      for (const entry of entries) {
+        if (!entry.isIntersecting) continue;
+        sharedObserver?.unobserve(entry.target);
+        revealCallbacks.get(entry.target)?.();
+        revealCallbacks.delete(entry.target);
+      }
+    },
+    { rootMargin: '0px 0px -10% 0px', threshold: 0.05 },
+  );
+  revealCallbacks.set(el, onEnter);
+  sharedObserver.observe(el);
+  return () => {
+    sharedObserver?.unobserve(el);
+    revealCallbacks.delete(el);
+  };
+}
+
+/** Fires once when the element first scrolls into view. */
+function useInView<T extends HTMLElement>() {
+  const ref = useRef<T | null>(null);
+  const [inView, setInView] = useState(() => !canAnimate());
+
+  useEffect(() => {
+    /* istanbul ignore next -- @preserve */
+    if (!canAnimate() || !ref.current) {
+      setInView(true);
+      return;
+    }
+    /* istanbul ignore next -- @preserve */
+    return observeOnce(ref.current, () => setInView(true));
+  }, []);
+
+  return [ref, inView] as const;
+}
+
+function Reveal({ children, delay = 0 }: { children: React.ReactNode; delay?: number }) {
+  const [ref, inView] = useInView<HTMLDivElement>();
+  return (
+    <div ref={ref} className="lp-reveal" data-in={inView} style={{ transitionDelay: `${delay}ms` }}>
+      {children}
+    </div>
+  );
+}
+
+/**
+ * A dollar figure that eases up from zero — the hero's whole argument is a
+ * number moving. Its own component so the ~150 frames of the animation
+ * re-render one text node, not the entire page.
+ */
+function Cost({
+  target,
+  durationMs,
+  run,
+  className,
+}: {
+  target: number;
+  durationMs: number;
+  run: boolean;
+  className: string;
+}) {
+  const [value, setValue] = useState(() => (canAnimate() ? 0 : target));
+
+  useEffect(() => {
+    if (!run) return;
+    if (!canAnimate()) {
+      setValue(target);
+      return;
+    }
+    /* istanbul ignore next -- @preserve */
+    let frame = 0;
+    /* istanbul ignore next -- @preserve */
+    const started = performance.now();
+    /* istanbul ignore next -- @preserve */
+    const tick = (now: number) => {
+      const p = Math.min(1, (now - started) / durationMs);
+      setValue(target * (1 - Math.pow(1 - p, 3)));
+      if (p < 1) frame = requestAnimationFrame(tick);
+    };
+    /* istanbul ignore next -- @preserve */
+    frame = requestAnimationFrame(tick);
+    /* istanbul ignore next -- @preserve */
+    return () => cancelAnimationFrame(frame);
+  }, [target, durationMs, run]);
+
+  return <p className={className}>${value.toFixed(4)}</p>;
+}
+
+/**
+ * Frames a live component, and hides itself while that component renders
+ * nothing. ActivityFeed and PlatformStats both return null until their fetch
+ * lands, and stay null when there is too little data — without this the
+ * section shows empty bordered boxes.
+ */
+function SignalPanel({
+  label,
+  wide,
+  children,
+}: {
+  label?: string;
+  wide?: boolean;
+  children: React.ReactNode;
+}) {
+  const ref = useRef<HTMLDivElement | null>(null);
+  const [filled, setFilled] = useState(false);
+
+  useEffect(() => {
+    const el = ref.current;
+    /* istanbul ignore next -- @preserve */
+    if (!el || typeof MutationObserver === 'undefined') return;
+    const mo = new MutationObserver(() => {
+      /* istanbul ignore else -- @preserve */
+      if (el.childElementCount > 0) {
+        setFilled(true);
+        mo.disconnect(); // nothing to watch for once content has arrived
+      }
+    });
+    setFilled(el.childElementCount > 0);
+    if (el.childElementCount === 0) mo.observe(el, { childList: true });
+    return () => mo.disconnect();
+  }, []);
+
+  return (
+    <div className={wide ? 'lp-panel lp-panel--wide' : 'lp-panel'} hidden={!filled}>
+      {label ? <span className="lp-mono">{label}</span> : null}
+      <div ref={ref}>{children}</div>
+    </div>
+  );
+}
+
+/** `01 — The Arena`, the ruled kicker that opens every section. */
+function Kicker({ index, label }: { index: string; label: string }) {
+  return (
+    <div className="lp-kicker lp-mono">
+      <b>{index}</b> <span>{label}</span> <hr />
+    </div>
+  );
+}
+
+/** The numbered ledger list used for both the AFI dimensions and IDE features. */
+function Rows({ items }: { items: { name: string; desc: string }[] }) {
+  return (
+    <div className="lp-rows">
+      {items.map((item, i) => (
+        <div className="lp-row" key={item.name}>
+          <span className="lp-row-idx">{String(i + 1).padStart(2, '0')}</span>
+          <h3 className="lp-row-name">{item.name}</h3>
+          <p className="lp-row-desc">{item.desc}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** A ruled band of figures. Columns divide by item count, so 3 and 4 both fit. */
+function StatStrip({
+  items,
+  className,
+  style,
+}: {
+  items: { value: string; label: string }[];
+  className?: string;
+  style?: React.CSSProperties;
+}) {
+  return (
+    <dl className={className ? `lp-strip ${className}` : 'lp-strip'} style={style}>
+      {items.map((s) => (
+        <div key={s.label}>
+          <dt>{s.value}</dt>
+          <dd>{s.label}</dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
+function Check() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+      <path d="M2 7.5 5.5 11 12 3.5" stroke="currentColor" strokeWidth="1.6" />
+    </svg>
+  );
+}
+
+/* ── Page content ─────────────────────────────────────────────────────────── */
+
+const DIMENSIONS = [
+  {
+    name: 'Model Selection',
+    desc: 'Know when a $0.01 model does the job and when you actually need a $0.50 one. Reaching for premium on FizzBuzz is a red flag.',
+  },
+  {
+    name: 'Prompt Efficiency',
+    desc: 'Working code in fewer tokens. Concise, structured prompts beat verbose walls of text on every measure that matters.',
+  },
+  {
+    name: 'Iterative Debugging',
+    desc: 'Real engineering tickets. Diagnose and fix the actual defect — do not burn tokens asking for a full rewrite.',
+  },
+  {
+    name: 'Multi-Model Strategy',
+    desc: 'Switch tiers mid-solve. Micro for boilerplate, reasoning for the part that is genuinely hard. Most people never switch at all.',
+  },
+  {
+    name: 'Speed',
+    desc: 'Wall-clock efficiency. Fast and cheap ranks above fast alone. Deliberate speed, not rushed guessing.',
+  },
+];
+
+const IDE_FEATURES = [
+  {
+    name: 'AI Agent',
+    desc: 'The agent reads your code, writes fixes, runs commands, and iterates on its own. Agent, Plan, Debug, and Ask modes.',
+  },
+  {
+    name: 'npm Packages',
+    desc: 'Install any npm package straight in the browser. Packages resolve and install client-side — there is no server.',
+  },
+  {
+    name: 'Full Terminal',
+    desc: 'node, npm, npx, git, and the rest of the shell. Tab completion included. Run your code the moment you write it.',
+  },
+  {
+    name: 'Bring Your Own Key',
+    desc: 'Use the free open-weight models, or plug in your own Claude, GPT, or Groq key when you want the premium tiers.',
+  },
+  {
+    name: 'Auto-Save',
+    desc: 'Projects persist to the cloud. Close the tab, open it on another machine, pick up on the same line.',
+  },
+];
+
+const TIERS = [
+  {
+    score: '400+',
+    name: 'AI-Fluent',
+    req: '10+ challenges',
+    desc: 'You can drive AI effectively. A solid foundation in model selection and prompting.',
+  },
+  {
+    score: '550+',
+    name: 'AI-Fluent Pro',
+    req: '25+ across 3 categories',
+    desc: 'A versatile operator. Efficient across several problem domains, not just the one you practise.',
+  },
+  {
+    score: '700+',
+    name: 'AI-Fluent Expert',
+    req: '50+ across all categories',
+    desc: 'Top 5%. Exceptional efficiency on every dimension of AI-assisted engineering.',
+  },
+];
+
+const HERO_STATS = [
+  { value: 'Free', label: 'Browser IDE' },
+  { value: '15', label: 'AI models' },
+  { value: '$0', label: 'To start' },
+  { value: '0–850', label: 'AFI score' },
+];
+
+const ARENA_STATS = [
+  { value: '100+', label: 'Challenges' },
+  { value: '15', label: 'AI models' },
+  { value: '5', label: 'Cost tiers' },
+  { value: '4', label: 'Categories' },
+];
+
+const TEAM_STATS = [
+  { value: '0–850', label: 'AFI score' },
+  { value: '100+', label: 'Challenges' },
+  { value: '3-tier', label: 'Certification' },
+];
+
+const TRUST = [
+  { name: 'Powered by Cloudflare', desc: 'Enterprise-grade infrastructure, deployed to the edge for low latency worldwide.' },
+  { name: 'Open Source Models', desc: 'No vendor lock-in. The default models are open-weight and community-audited.' },
+  { name: 'Your Data Stays Private', desc: 'Code runs in sandboxed execution. We never store your solutions beyond the session.' },
+  { name: 'Real Leaderboard', desc: 'Rankings come from actual AI spend — no gamification tricks, no vanity metrics.' },
+];
 
 export function LandingScreen() {
   useDocumentMeta({ canonicalPath: '/' });
   const navigation = useNavigation();
-  const c = useColors();
+  const { isDark } = useTheme();
 
-  // Redirect logged-in users to Assessments
+  // Logged-in visitors never see the pitch.
   useEffect(() => {
-    createClient().auth.getUser().then(({ data: { user } }) => {
-      if (user) resetNavigation(navigation, [{ name: DEFAULT_AUTH_REDIRECT }]);
-    }).catch(() => {/* auth check is best-effort */});
+    createClient()
+      .auth.getUser()
+      .then(({ data: { user } }) => {
+        if (user) resetNavigation(navigation, [{ name: DEFAULT_AUTH_REDIRECT }]);
+      })
+      .catch(() => {
+        /* auth check is best-effort */
+      });
   }, [navigation]);
-  const width = useWindowWidth();
-  const isMobile = width < 768;
+
+  const [ledgerRef, ledgerIn] = useInView<HTMLDivElement>();
+
+  const go = (screen: string) => () => navigation.navigate(screen as never);
 
   return (
-    <ScrollView style={[styles.page, { backgroundColor: c.bg }]}>
+    <ScrollView style={{ flex: 1 }}>
       <a className="skip-link" href="#landing-main">Skip to main content</a>
-      {/* ─── Nav ─── */}
-      <View style={[styles.header, { borderBottomColor: c.border }]} accessibilityRole="banner">
-        <Text style={[styles.logo, { color: c.text }]}>Ruwt</Text>
-        <View style={styles.headerActions} accessibilityRole="navigation" accessibilityLabel="Main navigation">
-          <Button variant="ghost" onPress={() => navigation.navigate('Hiring')} textStyle={{ color: c.accent }}>For Teams</Button>
-          <Button variant="ghost" onPress={() => navigation.navigate('Login')}>Sign in</Button>
-          <Button onPress={() => navigation.navigate('Register')}>Get Started</Button>
-        </View>
-      </View>
 
-      {/* ─── Hero ─── */}
-      <View nativeID="landing-main" style={[styles.hero, { backgroundColor: '#1a1816' }]} tabIndex={-1}>
-        <View style={styles.heroInner}>
-          <Badge variant="secondary" style={{ alignSelf: 'center' }}>Now in Beta</Badge>
-          <Text style={styles.heroTitle} accessibilityRole="heading">
-            What's Your{'\n'}
-            <Text style={{ color: '#c9a962' }}>AI Fluency Index?</Text>
-          </Text>
-          <Text style={styles.heroSub}>
-            A free browser IDE with AI built in. Build real projects, solve coding challenges, and get scored on how efficiently you use AI.{'\n'}No install. No subscription. Open a tab and start coding.
-          </Text>
+      <div className="lp" data-theme={isDark ? 'dark' : 'light'}>
+        <div className="lp-rules" aria-hidden="true" />
+        <div className="lp-grain" aria-hidden="true" />
 
-          {/* Stats row */}
-          <View style={[styles.statsRow, isMobile && styles.statsRowMobile]}>
-            {[
-              { value: 'Free', label: 'Browser IDE' },
-              { value: '15', label: 'AI Models' },
-              { value: '$0', label: 'To Start' },
-              { value: '0-850', label: 'AFI Score' },
-            ].map((stat) => (
-              <View key={stat.label} style={styles.statItem}>
-                <Text style={styles.statValue}>{stat.value}</Text>
-                <Text style={styles.statLabel}>{stat.label}</Text>
-              </View>
-            ))}
-          </View>
+        {/* ── Masthead ─────────────────────────────────────────────────── */}
+        <div className="lp-shell">
+          <header className="lp-nav">
+            <div className="lp-mark">
+              <b>Ruwt</b>
+              <span className="lp-mono">/dev</span>
+            </div>
+            <nav className="lp-nav-links" aria-label="Main navigation">
+              <button type="button" className="lp-btn lp-btn--ghost" onClick={go('Hiring')}>
+                For Teams
+              </button>
+              <button type="button" className="lp-btn lp-btn--ghost" onClick={go('Login')}>
+                Sign in
+              </button>
+              <button type="button" className="lp-btn lp-btn--gold lp-btn--sm" onClick={go('Register')}>
+                Get Started
+              </button>
+            </nav>
+          </header>
+        </div>
 
-          <View style={styles.heroCtas}>
-            <Button
-              size="lg"
-              onPress={() => navigation.navigate('Register')}
-              style={{ backgroundColor: '#c9a962' }}
-              textStyle={{ color: '#1a1816' }}
-            >
-              Find Your Score
-            </Button>
-            <Button
-              variant="outline"
-              size="lg"
-              onPress={() => navigation.navigate('IDE' as any)}
-              style={{ borderColor: 'rgba(232,228,223,0.25)' }}
-              textStyle={{ color: '#f5f3f0' }}
-            >
-              Open the IDE — Free
-            </Button>
-          </View>
+        <main id="landing-main" tabIndex={-1}>
+          {/* ── Hero ───────────────────────────────────────────────────── */}
+          <div className="lp-shell">
+            <section className="lp-hero">
+              <p className="lp-eyebrow lp-mono lp-rise" style={{ animationDelay: '80ms' }}>
+                <i aria-hidden="true" />
+                <em>Now in Beta</em>
+                <span aria-hidden="true">—</span>
+                <span>Free browser IDE</span>
+              </p>
 
-        </View>
-      </View>
+              <h1 className="lp-display lp-rise" style={{ animationDelay: '160ms' }}>
+                What&rsquo;s your
+                <br />
+                AI <em>Fluency</em> Index?
+              </h1>
 
-      {/* ─── Teams strip — immediately visible ─── */}
-      <View style={[styles.hiringStrip, { borderBottomColor: c.border }]}>
-        <View style={styles.hiringStripInner}>
-          <Text style={[styles.hiringStripText, { color: c.text }]}>
-            Engineering teams:{' '}
-            <Text style={{ color: c.accent, fontWeight: '700' }}>
-              Measure your team's AFI. Benchmark candidates.
-            </Text>
-          </Text>
-          <Button
-            size="sm"
-            variant="outline"
-            onPress={() => navigation.navigate('Hiring')}
-            style={{ borderColor: c.accent }}
-            textStyle={{ color: c.accent }}
-          >
-            Learn More
-          </Button>
-        </View>
-      </View>
+              <span className="lp-draw" aria-hidden="true" />
 
-      {/* ─── Free IDE ─── */}
-      <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: c.text }]} accessibilityRole="heading">Build With AI, For Free</Text>
-        <Text style={[styles.sectionSub, { color: c.textMuted }]}>
-          A full development environment in your browser. Monaco editor, AI agent that reads and writes your files, npm packages, terminal, git — powered by open-source AI models at zero cost.
-        </Text>
-        <View style={styles.cards}>
-          {[
-            { icon: '\u{1F916}', title: 'AI Agent', desc: 'The AI reads your code, writes fixes, runs commands, and iterates autonomously. Agent, Plan, Debug, and Ask modes.' },
-            { icon: '\u{1F4E6}', title: 'npm Packages', desc: 'Install any npm package directly in the browser. No server needed — packages resolve and install client-side.' },
-            { icon: '\u{1F4BB}', title: 'Full Terminal', desc: 'node, npm, npx, git, and all shell commands. Tab completion. Run your code instantly.' },
-            { icon: '\u{1F511}', title: 'Bring Your Own Key', desc: 'Use free open-source models, or plug in your own Claude, GPT-4, or Groq API key for premium AI.' },
-            { icon: '\u{1F4BE}', title: 'Auto-Save', desc: 'Projects persist to the cloud. Pick up where you left off, from any device.' },
-          ].map((item) => (
-            <Card key={item.title} style={styles.card}>
-              <CardHeader>
-                <View style={[styles.iconCircle, { backgroundColor: c.accentBg }]}>
-                  <Text style={{ fontSize: 20 }}>{item.icon}</Text>
-                </View>
-                <CardTitle>{item.title}</CardTitle>
-                <CardDescription>{item.desc}</CardDescription>
-              </CardHeader>
-            </Card>
-          ))}
-        </View>
-        <Button
-          size="lg"
-          onPress={() => navigation.navigate('IDE' as any)}
-          style={{ backgroundColor: '#c9a962', alignSelf: 'center', marginTop: 16 }}
-          textStyle={{ color: '#1a1816' }}
-        >
-          Open the IDE
-        </Button>
-      </View>
+              <p className="lp-deck lp-rise" style={{ animationDelay: '280ms' }}>
+                A browser IDE with 15 AI models built in. Solve real engineering challenges, then
+                get scored on the thing no other tool measures: what it cost you to get there.
+              </p>
 
-      {/* ─── Arena Preview ─── */}
-      <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: c.text }]} accessibilityRole="heading">The Arena</Text>
-        <Text style={[styles.sectionSub, { color: c.textMuted }]}>
-          Solve real coding challenges with AI. Get scored on efficiency. Compete on the leaderboard.
-        </Text>
-        <Card style={styles.previewCard}>
-          <Image
-            source={{ uri: '/arena-preview.png' }}
-            style={styles.previewImage}
-            resizeMode="contain"
-            accessibilityLabel="Arena IDE showing code editor, AI chat, and terminal"
-          />
-        </Card>
-      </View>
+              {/* The argument, in two columns. */}
+              <div ref={ledgerRef} className="lp-ledger lp-rise" style={{ animationDelay: '400ms' }}>
+                <div className="lp-ledger-head lp-mono">
+                  <span>Ledger &mdash; one challenge, two solve paths</span>
+                  <span>Both pass every test</span>
+                </div>
 
-      {/* ─── Daily Challenge CTA ─── */}
-      <View style={[styles.section, { paddingBottom: 0 }]}>
-        <Card style={[styles.tryChallengeCard, { backgroundColor: c.muted + '30' }]}>
-          <CardHeader>
-            <Badge variant="default">Daily Challenge</Badge>
-            <CardTitle>Today's Challenge</CardTitle>
-            <CardDescription>
-              A new challenge every day. Compete against other developers for the lowest AI cost. Share your results.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button variant="outline" onPress={() => navigation.navigate('Register')}>
-              See Today's Challenge
-            </Button>
-          </CardContent>
-        </Card>
-      </View>
+                <div className="lp-ledger-body">
+                  <div className="lp-col">
+                    <p className="lp-col-tag lp-mono">No strategy</p>
+                    <Cost target={0.412} durationMs={2600} run={ledgerIn} className="lp-cost" />
+                    <ul className="lp-meta">
+                      <li><span>Models</span><b>Premium &times; 11</b></li>
+                      <li><span>Prompts</span><b>11</b></li>
+                      <li><span>Tokens</span><b>48,210</b></li>
+                    </ul>
+                    <p className="lp-pass lp-mono"><Check /> Passed</p>
+                  </div>
 
-      {/* ─── Recent activity (auto-hides when < 3 unique users) ─── */}
-      <View style={styles.section}>
-        <View style={styles.activityWrap}>
-          <ActivityFeed limit={5} heading="Developers are solving challenges right now" />
-        </View>
-      </View>
+                  <div className="lp-col lp-col--win">
+                    <p className="lp-col-tag lp-mono">AFI 780</p>
+                    <Cost target={0.0031} durationMs={900} run={ledgerIn} className="lp-cost" />
+                    <ul className="lp-meta">
+                      <li><span>Models</span><b>Micro &rarr; Mid</b></li>
+                      <li><span>Prompts</span><b>2</b></li>
+                      <li><span>Tokens</span><b>1,940</b></li>
+                    </ul>
+                    <p className="lp-pass lp-mono"><Check /> Passed</p>
+                  </div>
+                </div>
 
-      {/* ─── Featured challenge CTA ─── */}
-      <View style={[styles.section, { paddingTop: 0 }]}>
-        <Card style={[styles.tryChallengeCard, { borderColor: c.accent, borderWidth: 1, borderLeftWidth: 4 }]}>
-          <CardHeader>
-            <Badge variant="default">Real-World</Badge>
-            <CardTitle>Fix the Connection Pool Race Condition</CardTitle>
-            <CardDescription>
-              A Jira-style engineering ticket. Debug a real race condition — but can you do it cheaply with the right AI model?
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button variant="outline" onPress={() => navigation.navigate('Register')}>
-              Try This Challenge
-            </Button>
-          </CardContent>
-        </Card>
-      </View>
+                <div className="lp-ledger-foot">
+                  <strong>133&times; the spend for the same green tests.</strong>
+                  <span className="lp-mono">Illustrative figures, real model pricing</span>
+                </div>
+              </div>
 
-      {/* ─── What Your AFI Measures ─── */}
-      <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: c.text }]} accessibilityRole="heading">What Your AFI Measures</Text>
-        <Text style={[styles.sectionSub, { color: c.textMuted }]}>
-          Five dimensions of AI fluency, scored 0-850. The skills that separate the top 5% from everyone else.
-        </Text>
-        <View style={styles.cards}>
-          {[
-            {
-              icon: '$',
-              title: 'Model Selection',
-              desc: 'Know when a $0.01 model works and when you need a $0.50 one. Using premium for FizzBuzz is a red flag.',
-            },
-            {
-              icon: '\u270F',
-              title: 'Prompt Efficiency',
-              desc: 'Get working code in fewer tokens. Concise, structured prompts beat verbose walls of text every time.',
-            },
-            {
-              icon: '\u{1F41B}',
-              title: 'Iterative Debugging',
-              desc: "Real engineering tickets. Diagnose and fix bugs cheaply — don't burn tokens asking for full rewrites.",
-            },
-            {
-              icon: '\u{1F504}',
-              title: 'Multi-Model Strategy',
-              desc: 'Switch between cheap and premium models mid-challenge. Use micro for boilerplate, reasoning for the hard parts.',
-            },
-            {
-              icon: '\u{23F1}',
-              title: 'Speed',
-              desc: 'Wall-clock efficiency. Fast solvers with low cost rank highest. Deliberate speed, not rushed guessing.',
-            },
-          ].map((item) => (
-            <Card key={item.icon} style={styles.card}>
-              <CardHeader>
-                <View style={[styles.iconCircle, { backgroundColor: c.accentBg }]}>
-                  <Text style={[styles.iconText, { color: c.accent }]}>{item.icon}</Text>
-                </View>
-                <CardTitle>{item.title}</CardTitle>
-                <CardDescription>{item.desc}</CardDescription>
-              </CardHeader>
-            </Card>
-          ))}
-        </View>
-      </View>
+              <div className="lp-ctas lp-hero-ctas lp-rise" style={{ animationDelay: '520ms' }}>
+                <button type="button" className="lp-btn lp-btn--gold" onClick={go('Register')}>
+                  Find Your Score
+                </button>
+                <button type="button" className="lp-btn lp-btn--line" onClick={go('IDE')}>
+                  Open the IDE — Free
+                </button>
+              </div>
 
-      {/* ─── Featured replay ─── */}
-      <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: c.text }]} accessibilityRole="heading">Watch How Top Solvers Think</Text>
-        <Text style={[styles.sectionSub, { color: c.textMuted }]}>
-          Watch how top solvers complete challenges for under $0.01. Every replay is public and shareable.
-        </Text>
-        <FeaturedReplay />
-      </View>
+              <StatStrip items={HERO_STATS} className="lp-rise" style={{ animationDelay: '620ms' }} />
+            </section>
+          </div>
 
-      {/* ─── Certification Tiers ─── */}
-      <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: c.text }]} accessibilityRole="heading">Get Certified</Text>
-        <Text style={[styles.sectionSub, { color: c.textMuted }]}>
-          Earn AI-Fluent certification badges. Put them on your LinkedIn. Let your AFI speak for itself.
-        </Text>
-        <View style={styles.cards}>
-          {[
-            { icon: '\uD83E\uDD49', title: 'AI-Fluent', afi: '400+', req: '10+ challenges', desc: 'You can use AI effectively. Solid foundation in model selection and prompting.' },
-            { icon: '\uD83E\uDD48', title: 'AI-Fluent Pro', afi: '550+', req: '25+ across 3 categories', desc: 'Versatile AI operator. Efficient across multiple problem domains.' },
-            { icon: '\uD83E\uDD47', title: 'AI-Fluent Expert', afi: '700+', req: '50+ across all categories', desc: 'Top 5%. Exceptional efficiency across every dimension of AI-assisted engineering.' },
-          ].map((tier) => (
-            <Card key={tier.title} style={styles.card}>
-              <CardHeader>
-                <View style={[styles.iconCircle, { backgroundColor: c.accentBg }]}>
-                  <Text style={{ fontSize: 24 }}>{tier.icon}</Text>
-                </View>
-                <CardTitle>{tier.title}</CardTitle>
-                <CardDescription>
-                  AFI {tier.afi} {'\u00B7'} {tier.req}
-                </CardDescription>
-                <CardDescription>{tier.desc}</CardDescription>
-              </CardHeader>
-            </Card>
-          ))}
-        </View>
-      </View>
+          {/* ── Ticker ─────────────────────────────────────────────────── */}
+          <div className="lp-ticker" aria-hidden="true">
+            {/* Duplicated once so translateX(-50%) loops seamlessly. */}
+            <ul className="lp-mono">
+              {[0, 1].map((pass) =>
+                DIMENSIONS.map((d) => <li key={`${pass}-${d.name}`}>{d.name}</li>),
+              )}
+            </ul>
+          </div>
 
-      {/* ─── How Scoring Works ─── */}
-      <View style={[styles.section, styles.sectionAlt, { backgroundColor: c.muted + '40' }]}>
-        <Text style={[styles.sectionTitle, { color: c.text }]} accessibilityRole="heading">How Scoring Works</Text>
-        <View style={styles.cards}>
-          {[
-            { step: '1', title: 'Solve Challenges', desc: 'Pick from 100+ real engineering challenges. Use the Arena IDE with 15 AI models across 5 cost tiers. Choose your models strategically.' },
-            { step: '2', title: 'Build Your AFI', desc: 'Every solve contributes to your AI Fluency Index (0-850). Cheap, fast, correct solutions push your score higher. Wasteful prompting pulls it down.' },
-            { step: '3', title: 'Earn Certification', desc: 'Hit AFI milestones to earn AI-Fluent Verified badges — Bronze (400+), Silver (550+), Gold (700+). Share on LinkedIn. Prove it to hiring teams.' },
-          ].map((item) => (
-            <Card key={item.step} style={styles.card}>
-              <CardHeader>
-                <View style={[styles.iconCircle, { backgroundColor: c.accentBg }]}>
-                  <Text style={[styles.iconText, { color: c.accent }]}>{item.step}</Text>
-                </View>
-                <CardTitle>{item.title}</CardTitle>
-                <CardDescription>{item.desc}</CardDescription>
-              </CardHeader>
-            </Card>
-          ))}
-        </View>
-      </View>
+          {/* ── 01 · The Arena ─────────────────────────────────────────── */}
+          <div className="lp-shell">
+            <section className="lp-sec" style={{ borderTop: 0 }}>
+              <Reveal>
+                <Kicker index="01" label="The Arena" />
+                <div className="lp-sec-head">
+                  <h2 className="lp-display">Every solve is an itemized receipt.</h2>
+                  <p className="lp-deck">
+                    Pick from 100+ engineering challenges — race conditions, off-by-ones, flaky
+                    tests, the tickets you actually get assigned. Solve them with AI in the Arena
+                    IDE. Every prompt, every token, every cent is on the record.
+                  </p>
+                </div>
+              </Reveal>
 
-      {/* ─── Trust Signals ─── */}
-      <View style={[styles.section, { backgroundColor: c.bg }]}>
-        <Text style={[styles.sectionTitle, { color: c.text }]} accessibilityRole="heading">Built on Trust</Text>
-        <View style={styles.trustGrid}>
-          {[
-            { icon: '\u26A1', title: 'Powered by Cloudflare', desc: 'Enterprise-grade infrastructure. Edge-deployed globally for low latency.' },
-            { icon: '\u{1F513}', title: 'Open Source Models', desc: 'No vendor lock-in. All models are open-weight and community-audited.' },
-            { icon: '\u{1F6E1}', title: 'Your Data Stays Private', desc: 'Code runs in sandboxed execution. We never store your solutions beyond the session.' },
-            { icon: '\u{1F3C6}', title: 'Real Leaderboard', desc: 'Rankings are based on actual AI costs — no gamification tricks or vanity metrics.' },
-          ].map((item) => (
-            <Card key={item.title} style={styles.trustCard}>
-              <CardHeader>
-                <View style={[styles.trustIconCircle, { backgroundColor: c.accentBg }]}>
-                  <Text style={{ fontSize: 20 }}>{item.icon}</Text>
-                </View>
-                <CardTitle>{item.title}</CardTitle>
-                <CardDescription>{item.desc}</CardDescription>
-              </CardHeader>
-            </Card>
-          ))}
-        </View>
-      </View>
+              <Reveal delay={80}>
+                <div className="lp-frame">
+                  <div className="lp-frame-bar lp-mono">
+                    <i aria-hidden="true" />
+                    <i aria-hidden="true" />
+                    <i aria-hidden="true" />
+                    <span>arena — connection-pool-race.ts</span>
+                  </div>
+                  <img
+                    src="/arena-preview.png"
+                    alt="The Arena IDE, showing the code editor, AI chat panel, and terminal side by side"
+                    loading="lazy"
+                    width={1600}
+                    height={1000}
+                  />
+                </div>
+              </Reveal>
 
-      {/* ─── Live platform stats ─── */}
-      <View style={[styles.section, { backgroundColor: c.bg }]}>
-        <Text style={[styles.sectionTitle, { color: c.text }]} accessibilityRole="heading">
-          Built by Engineers, for Engineers
-        </Text>
-        <Text style={[styles.sectionSub, { color: c.textMuted }]}>
-          Real challenges. Real AI models. Real costs. Every solve is tracked and ranked.
-        </Text>
-        <PlatformStats />
-      </View>
+              <Reveal delay={80}>
+                <StatStrip items={ARENA_STATS} />
+              </Reveal>
 
-      {/* ─── Community ─── */}
-      <View style={[styles.section, { backgroundColor: c.bg, paddingTop: 0 }]}>
-        <Card style={[styles.card, { borderColor: c.accent, borderWidth: 1 }]}>
-          <CardHeader>
-            <CardTitle>Join the Discussion</CardTitle>
-            <CardDescription>Every challenge has its own discussion. Share strategies, compare approaches, and learn from other solvers.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button
-              variant="outline"
-              onPress={() => navigation.navigate('Problems')}
-              style={{ borderColor: c.accent }}
-              textStyle={{ color: c.accent }}
-            >
-              Browse Challenges
-            </Button>
-          </CardContent>
-        </Card>
-      </View>
+              <Reveal delay={120}>
+                <div className="lp-ticket">
+                  <div className="lp-ticket-top lp-mono">
+                    <span className="lp-tag">Real-world</span>
+                    <span>RUWT-412 · Debugging · Hard</span>
+                  </div>
+                  <h3>Fix the Connection Pool Race Condition</h3>
+                  <p className="lp-deck">
+                    A Jira-style engineering ticket with a genuine race condition underneath. You
+                    can find it. The question is whether you can find it cheaply.
+                  </p>
+                  <div className="lp-ticket-actions">
+                    <button type="button" className="lp-btn lp-btn--gold lp-btn--sm" onClick={go('Register')}>
+                      Try This Challenge
+                    </button>
+                    <button type="button" className="lp-btn lp-btn--line lp-btn--sm" onClick={go('Problems')}>
+                      Browse Challenges
+                    </button>
+                  </div>
+                </div>
+              </Reveal>
+            </section>
 
-      {/* ─── For Teams ─── */}
-      <View style={[styles.section, { backgroundColor: '#1a1816', paddingVertical: spacing['2xl'] }]}>
-        <View style={styles.hiringSection}>
-          <Badge variant="secondary" style={{ alignSelf: 'center' }}>For Teams</Badge>
-          <Text style={[styles.hiringSectionTitle, { color: '#f5f3f0' }]}>
-            Measure Your Team's{'\n'}
-            <Text style={{ color: '#c9a962' }}>AI Fluency.</Text>
-          </Text>
-          <Text style={[styles.hiringSectionSub, { color: '#9a938a' }]}>
-            Benchmark your existing team. Assess candidates. Every engineer gets an AFI score — objective, comparable, backed by real AI usage data. Know who's efficient and who needs upskilling.
-          </Text>
-          <View style={styles.hiringStats}>
-            {[
-              { value: '0-850', label: 'AFI Score' },
-              { value: '100+', label: 'Challenges' },
-              { value: '3-tier', label: 'Certification' },
-            ].map((s) => (
-              <View key={s.label} style={styles.hiringStat}>
-                <Text style={{ fontSize: fontSizes.xl, fontWeight: '700', color: '#c9a962', fontFamily: fontFamily.body }}>{s.value}</Text>
-                <Text style={{ fontSize: 10, color: '#6b6560', letterSpacing: 1, textTransform: 'uppercase' as any }}>{s.label}</Text>
-              </View>
-            ))}
-          </View>
-          <View style={styles.heroCtas}>
-            <Button
-              size="lg"
-              onPress={() => navigation.navigate('Hiring')}
-              style={{ backgroundColor: '#c9a962' }}
-              textStyle={{ color: '#1a1816', fontWeight: '700' }}
-            >
-              Benchmark Your Team
-            </Button>
-            <Button
-              variant="outline"
-              size="lg"
-              onPress={() => navigation.navigate('Hiring')}
-              style={{ borderColor: 'rgba(232,228,223,0.25)' }}
-              textStyle={{ color: '#f5f3f0' }}
-            >
-              Assess Candidates
-            </Button>
-          </View>
-        </View>
-      </View>
+            {/* ── 02 · The Index ───────────────────────────────────────── */}
+            <section className="lp-sec">
+              <Reveal>
+                <Kicker index="02" label="The Index" />
+                <div className="lp-sec-head">
+                  <h2 className="lp-display">One number for how well you use AI.</h2>
+                  <p className="lp-deck">
+                    Your AI Fluency Index runs 0 to 850. Cheap, fast, correct solves push it up.
+                    Wasteful prompting pulls it down. Hit a milestone and the certification is
+                    yours to put on a profile.
+                  </p>
+                </div>
+              </Reveal>
 
-      {/* ─── Final CTA ─── */}
-      <View style={[styles.ctaSection, { backgroundColor: '#1a1816' }]}>
-        <Text style={styles.ctaTitle}>What will your AFI be?</Text>
-        <Text style={styles.ctaSub}>
-          100+ challenges. 15 AI models. One score that proves how well you use them. Free to start.
-        </Text>
-        <View style={styles.heroCtas}>
-          <Button
-            size="lg"
-            onPress={() => navigation.navigate('Register')}
-            style={{ backgroundColor: '#c9a962' }}
-            textStyle={{ color: '#1a1816' }}
-          >
-            Find Your Score
-          </Button>
-          <Button
-            size="lg"
-            variant="outline"
-            onPress={() => navigation.navigate('Hiring')}
-            style={{ borderColor: 'rgba(232,228,223,0.25)' }}
-            textStyle={{ color: '#f5f3f0' }}
-          >
-            Benchmark Your Team
-          </Button>
-        </View>
-      </View>
+              <Reveal>
+                <div className="lp-gauge">
+                  <svg viewBox="0 0 1000 100" role="img" aria-label="The AI Fluency Index runs from 0 to 850. Certification tiers begin at 400 for AI-Fluent, 550 for Pro, and 700 for Expert.">
+                    <g className="lp-gauge-fill">
+                      <rect x="470" y="46" width="176" height="9" opacity="0.32" />
+                      <rect x="648" y="46" width="174" height="9" opacity="0.62" />
+                      <rect x="824" y="46" width="176" height="9" />
+                    </g>
+                    <line className="lp-gauge-rule" x1="0" y1="62" x2="1000" y2="62" />
+                    {[
+                      { x: 0, label: '0' },
+                      { x: 470, label: '400' },
+                      { x: 647, label: '550' },
+                      { x: 823, label: '700' },
+                      { x: 999, label: '850' },
+                    ].map((t) => (
+                      <g key={t.label}>
+                        <line className="lp-gauge-tick" x1={t.x} y1="62" x2={t.x} y2="72" />
+                        <text className="lp-gauge-label" x={t.x} y="88" textAnchor={t.x > 900 ? 'end' : t.x < 40 ? 'start' : 'middle'}>
+                          {t.label}
+                        </text>
+                      </g>
+                    ))}
+                    {[
+                      { x: 558, label: 'AI-FLUENT' },
+                      { x: 735, label: 'PRO' },
+                      { x: 912, label: 'EXPERT' },
+                    ].map((z) => (
+                      <text key={z.label} className="lp-gauge-tier" x={z.x} y="32" textAnchor="middle">
+                        {z.label}
+                      </text>
+                    ))}
+                  </svg>
+                </div>
+              </Reveal>
 
-      {/* ─── Footer ─── */}
-      <View style={[styles.footer, { borderTopColor: c.border }]} accessibilityRole="contentinfo">
-        <Text style={[styles.footerText, { color: c.textMuted }]}>
-          {'\u00A9'} {new Date().getFullYear()} Ruwt. All rights reserved.
-        </Text>
-      </View>
+              <Reveal>
+                <Rows items={DIMENSIONS} />
+              </Reveal>
+
+              <Reveal>
+                <div className="lp-tiers">
+                  {TIERS.map((t) => (
+                    <div className="lp-tier" key={t.name}>
+                      <p className="lp-tier-score">{t.score}</p>
+                      <h3>{t.name}</h3>
+                      <p>{t.desc}</p>
+                      <p className="lp-tier-req lp-mono">{t.req}</p>
+                    </div>
+                  ))}
+                </div>
+              </Reveal>
+            </section>
+
+            {/* ── 03 · The IDE ─────────────────────────────────────────── */}
+            <section className="lp-sec">
+              <Reveal>
+                <Kicker index="03" label="The IDE" />
+                <div className="lp-sec-head">
+                  <h2 className="lp-display">A full dev environment. Nothing to install.</h2>
+                  <p className="lp-deck">
+                    Monaco editor, an AI agent that reads and writes your files, npm, a real
+                    terminal, git. Running on open-weight models at zero cost. Open a tab and
+                    build something.
+                  </p>
+                </div>
+              </Reveal>
+
+              <Reveal>
+                <Rows items={IDE_FEATURES} />
+              </Reveal>
+
+              <Reveal>
+                <div className="lp-ctas" style={{ marginTop: 40 }}>
+                  <button type="button" className="lp-btn lp-btn--gold" onClick={go('IDE')}>
+                    Open the IDE
+                  </button>
+                  <button type="button" className="lp-btn lp-btn--line" onClick={go('Register')}>
+                    See Today&rsquo;s Challenge
+                  </button>
+                </div>
+              </Reveal>
+            </section>
+
+            {/* ── 04 · In the open ─────────────────────────────────────── */}
+            <section className="lp-sec">
+              <Reveal>
+                <Kicker index="04" label="In the open" />
+                <div className="lp-sec-head">
+                  <h2 className="lp-display">Built on Trust</h2>
+                  <p className="lp-deck">
+                    Every replay is public. Every cost is real. Watch how the cheapest solvers
+                    actually think, then go beat them.
+                  </p>
+                </div>
+              </Reveal>
+
+              <Reveal>
+                <div className="lp-signals">
+                  <SignalPanel label="Platform to date" wide>
+                    <PlatformStats />
+                  </SignalPanel>
+                  <SignalPanel>
+                    <ActivityFeed limit={5} heading="Developers are solving challenges right now" />
+                  </SignalPanel>
+                  {/* FeaturedReplay always renders — it falls back to sample copy
+                      — so it needs no empty-state watching. */}
+                  <div className="lp-panel">
+                    <FeaturedReplay />
+                  </div>
+                </div>
+              </Reveal>
+
+              <Reveal>
+                <div className="lp-trust">
+                  {TRUST.map((t) => (
+                    <div key={t.name}>
+                      <h3>{t.name}</h3>
+                      <p>{t.desc}</p>
+                    </div>
+                  ))}
+                </div>
+              </Reveal>
+            </section>
+          </div>
+
+          {/* ── Teams — the contrast flip ──────────────────────────────── */}
+          <section className="lp-invert">
+            <div className="lp-shell">
+              <Reveal>
+                <Kicker index="05" label="For Teams" />
+                <div className="lp-sec-head">
+                  <h2 className="lp-display">
+                    Measure your team&rsquo;s <em>AI Fluency</em>.
+                  </h2>
+                  <p className="lp-deck">
+                    Benchmark the engineers you have. Assess the ones you are hiring. Everybody
+                    gets an AFI — objective, comparable, backed by real usage data. You find out
+                    who is efficient and who needs upskilling.
+                  </p>
+                </div>
+              </Reveal>
+
+              <Reveal>
+                <StatStrip items={TEAM_STATS} />
+              </Reveal>
+
+              <Reveal>
+                <div className="lp-ctas" style={{ marginTop: 40 }}>
+                  <button type="button" className="lp-btn lp-btn--gold" onClick={go('Hiring')}>
+                    Benchmark Your Team
+                  </button>
+                  <button type="button" className="lp-btn lp-btn--line" onClick={go('Hiring')}>
+                    Assess Candidates
+                  </button>
+                </div>
+              </Reveal>
+            </div>
+          </section>
+
+          {/* ── Closing ────────────────────────────────────────────────── */}
+          <div className="lp-shell">
+            <section className="lp-close">
+              <Reveal>
+                <h2 className="lp-display">
+                  What will your <em>AFI</em> be?
+                </h2>
+                <p className="lp-deck">
+                  100+ challenges. 15 AI models. One number that says how well you use them.
+                  Free to start.
+                </p>
+                <div className="lp-ctas">
+                  <button type="button" className="lp-btn lp-btn--gold" onClick={go('Register')}>
+                    Find Your Score
+                  </button>
+                  <button type="button" className="lp-btn lp-btn--line" onClick={go('Hiring')}>
+                    Benchmark Your Team
+                  </button>
+                </div>
+              </Reveal>
+            </section>
+          </div>
+        </main>
+
+        {/* ── Footer ───────────────────────────────────────────────────── */}
+        <div className="lp-shell">
+          <footer className="lp-foot lp-mono">
+            <span>© {new Date().getFullYear()} Ruwt — All rights reserved</span>
+            <span>ruwt.dev</span>
+          </footer>
+        </div>
+      </div>
     </ScrollView>
   );
 }
-
-const styles = StyleSheet.create({
-  page: { flex: 1 },
-
-  /* Nav */
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    borderBottomWidth: 1,
-  },
-  logo: {
-    fontSize: fontSizes.xl,
-    fontWeight: '700',
-    fontFamily: fontFamily.display,
-  },
-  headerActions: { flexDirection: 'row', gap: spacing.md },
-
-  /* Hero */
-  hero: {
-    paddingVertical: spacing['2xl'] + 16,
-    paddingHorizontal: spacing.lg,
-  },
-  heroInner: {
-    maxWidth: 800,
-    alignSelf: 'center',
-    alignItems: 'center',
-    gap: spacing.md,
-  },
-  heroTitle: {
-    fontSize: 40,
-    fontWeight: '700',
-    textAlign: 'center',
-    color: '#f5f3f0',
-    fontFamily: fontFamily.body,
-    lineHeight: 50,
-  },
-  heroSub: {
-    fontSize: fontSizes.lg,
-    textAlign: 'center',
-    color: '#9a938a',
-    fontFamily: fontFamily.body,
-    lineHeight: 28,
-    maxWidth: 560,
-  },
-  statsRow: {
-    flexDirection: 'row',
-    gap: spacing.xl,
-    marginVertical: spacing.lg,
-  },
-  statsRowMobile: {
-    gap: spacing.md,
-    flexWrap: 'wrap',
-    justifyContent: 'center',
-  },
-  statItem: {
-    alignItems: 'center',
-    gap: 2,
-  },
-  statValue: {
-    fontSize: fontSizes['2xl'],
-    fontWeight: '700',
-    color: '#c9a962',
-    fontFamily: fontFamily.body,
-  },
-  statLabel: {
-    fontSize: fontSizes.xs,
-    color: '#9a938a',
-    fontFamily: fontFamily.body,
-    textTransform: 'uppercase' as any,
-    letterSpacing: 1,
-  },
-  heroCtas: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.md,
-    justifyContent: 'center',
-  },
-  hiringStrip: {
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.lg,
-    borderBottomWidth: 1,
-    backgroundColor: 'rgba(201,169,98,0.04)',
-  },
-  hiringStripInner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.lg,
-    maxWidth: 800,
-    alignSelf: 'center',
-    flexWrap: 'wrap',
-  },
-  hiringStripText: {
-    fontSize: fontSizes.sm,
-    fontFamily: fontFamily.body,
-  },
-  hiringCard: { maxWidth: 600, alignSelf: 'center' as const, width: '100%' as unknown as number },
-  hiringSection: {
-    maxWidth: 700,
-    alignSelf: 'center',
-    alignItems: 'center',
-    gap: spacing.md,
-    paddingHorizontal: spacing.lg,
-  },
-  hiringSectionTitle: {
-    fontSize: fontSizes['3xl'],
-    fontWeight: '700',
-    textAlign: 'center',
-    fontFamily: fontFamily.body,
-    lineHeight: 38,
-  },
-  hiringSectionSub: {
-    fontSize: fontSizes.md,
-    textAlign: 'center',
-    fontFamily: fontFamily.body,
-    lineHeight: 24,
-    maxWidth: 560,
-  },
-  hiringStats: {
-    flexDirection: 'row',
-    gap: spacing.xl,
-    marginVertical: spacing.sm,
-  },
-  hiringStat: { alignItems: 'center', gap: 2 },
-
-  /* Sections */
-  section: { padding: spacing.lg, paddingVertical: spacing.xl },
-  sectionAlt: { marginHorizontal: 0 },
-  sectionTitle: {
-    fontSize: fontSizes['3xl'],
-    fontWeight: '700',
-    textAlign: 'center',
-    marginBottom: spacing.lg,
-    fontFamily: fontFamily.body,
-  },
-  sectionSub: {
-    textAlign: 'center',
-    marginBottom: spacing.lg,
-    maxWidth: 560,
-    alignSelf: 'center',
-    fontFamily: fontFamily.body,
-  },
-
-  /* Cards */
-  cards: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.lg,
-    justifyContent: 'center',
-    maxWidth: 1000,
-    alignSelf: 'center',
-  },
-  card: { flex: 1, minWidth: 240 },
-  previewCard: {
-    maxWidth: 800,
-    alignSelf: 'center',
-    width: '100%',
-    overflow: 'hidden',
-    padding: 0,
-  },
-  previewImage: {
-    width: '100%',
-    aspectRatio: 1.6,
-    borderRadius: 8,
-  },
-  tryChallengeCard: { maxWidth: 500, alignSelf: 'center', width: '100%' },
-  iconCircle: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing.sm,
-  },
-  iconText: { fontSize: fontSizes.xl, fontWeight: '700' },
-
-  /* Trust */
-  trustGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.md,
-    justifyContent: 'center',
-    maxWidth: 800,
-    alignSelf: 'center',
-  },
-  trustCard: { flex: 1, minWidth: 200 },
-  trustIconCircle: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing.xs,
-  },
-
-  /* Activity */
-  activityWrap: { maxWidth: 600, alignSelf: 'center', width: '100%' },
-
-  /* Final CTA */
-  ctaSection: {
-    paddingVertical: spacing['2xl'] + 16,
-    paddingHorizontal: spacing.lg,
-    alignItems: 'center',
-    gap: spacing.md,
-  },
-  ctaTitle: {
-    fontSize: fontSizes['3xl'],
-    fontWeight: '700',
-    color: '#f5f3f0',
-    fontFamily: fontFamily.body,
-    textAlign: 'center',
-  },
-  ctaSub: {
-    color: '#9a938a',
-    fontFamily: fontFamily.body,
-    textAlign: 'center',
-    maxWidth: 500,
-    marginBottom: spacing.sm,
-  },
-
-  /* Footer */
-  footer: {
-    padding: spacing.lg,
-    borderTopWidth: 1,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    flexWrap: 'wrap',
-  },
-  footerText: { fontSize: fontSizes.sm },
-});
