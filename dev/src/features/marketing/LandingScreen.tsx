@@ -339,7 +339,6 @@ export function LandingScreen() {
 
   return (
     <ScrollView style={{ flex: 1 }}>
-      <a className="skip-link" href="#landing-main">Skip to main content</a>
 
       <div className="lp" data-theme={isDark ? 'dark' : 'light'}>
         <div className="lp-rules" aria-hidden="true" />

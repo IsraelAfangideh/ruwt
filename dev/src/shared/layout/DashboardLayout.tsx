@@ -73,8 +73,6 @@ export function DashboardLayout({ user, children, requireOrg }: DashboardLayoutP
 
   return (
     <View style={[styles.page, { backgroundColor: c.bg }]}>
-      {/* Skip to main content link */}
-      <a className="skip-link" href="#main-content">Skip to main content</a>
       <View style={[styles.header, { backgroundColor: c.bg, borderBottomColor: c.border }]} accessibilityRole="banner">
         <View style={styles.headerLeft}>
           <Pressable onPress={() => navigation.navigate('Problems')} style={styles.logo} accessibilityRole="link" accessibilityLabel="Ruwt – go to problems">

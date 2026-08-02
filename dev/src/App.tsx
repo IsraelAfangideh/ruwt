@@ -6,6 +6,7 @@ import { AuthProvider } from '@/shared/lib/AuthContext';
 import { AppModeProvider } from '@/shared/lib/AppModeContext';
 import { DashboardDataProvider } from '@/shared/lib/DashboardDataContext';
 import { AppNavigator } from '@/shared/navigation/AppNavigator';
+import { SkipLink } from '@/shared/ui/SkipLink';
 import './index.css';
 
 function BodyTheme() {
@@ -52,6 +53,9 @@ export default function App() {
             <AppModeProvider>
               <DashboardDataProvider>
                 <BodyTheme />
+                {/* Above the navigator: first in tab order, and outside every
+                    screen's ScrollView (whose transform breaks position:fixed). */}
+                <SkipLink />
                 <AppNavigator />
               </DashboardDataProvider>
             </AppModeProvider>
