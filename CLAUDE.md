@@ -363,6 +363,7 @@ Cleanup: `docker stop ruwt-exec-test && docker rm ruwt-exec-test`
 
 ## Additional Gotchas
 
+- **`position: fixed` does not work inside a react-native-web `ScrollView`.** RNW gives every ScrollView `transform: translateZ(0)`, and a transformed ancestor becomes the containing block for fixed descendants — so a "fixed" overlay is rebased to the scroll container and scrolls away after one viewport. Roughly 20 screens wrap their content in a root ScrollView, so this bites any fixed overlay, sticky bar, or full-bleed decorative layer. Use `position: absolute` inside a `position: relative` page wrapper, or portal the overlay to `document.body` (which is how `ToastProvider` sidesteps it). Note: the shared `.skip-link:focus { position: fixed }` in `src/index.css` is already affected on every ScrollView screen.
 - `develop` branch is heavily diverged from `main` — use feature branches off `main` for new work
 - Docker Desktop must be running for local executor tests (`open -a Docker` on macOS)
 - `--privileged` flag required for iptables inside Docker on macOS
