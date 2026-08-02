@@ -342,9 +342,9 @@ describe('ArenaIDE', () => {
     expect(editor.value).toBe('function solve() {}');
   });
 
-  it('renders terminal panel', () => {
+  it('renders terminal panel', async () => {
     renderIDE();
-    expect(screen.getByTestId('terminal-panel')).toBeInTheDocument();
+    expect(await screen.findByTestId('terminal-panel')).toBeInTheDocument();
   });
 
   /* ─── Tab switching ────────────────────────────────────────────── */
@@ -2455,10 +2455,10 @@ describe('ArenaIDE', () => {
 
   /* ─── handleTerminalCodeApplied flashes toast ──────────────────── */
 
-  it('renders terminal panel with code applied callback', () => {
+  it('renders terminal panel with code applied callback', async () => {
     renderIDE();
     // Terminal panel is rendered with onCodeApplied prop
-    expect(screen.getByTestId('terminal-panel')).toBeInTheDocument();
+    expect(await screen.findByTestId('terminal-panel')).toBeInTheDocument();
   });
 
   /* ─── Ctrl+L keyboard shortcut (non-Mac) ────────────────────────── */
@@ -2670,10 +2670,10 @@ describe('ArenaIDE', () => {
 
   /* ─── TerminalPanel receives isExpired prop ──────── */
 
-  it('passes isExpired function prop to TerminalPanel', () => {
+  it('passes isExpired function prop to TerminalPanel', async () => {
     renderIDE({ isExpired: true });
     // TerminalPanel is mocked — just verify it renders with the expected props
-    expect(screen.getByTestId('terminal-panel')).toBeInTheDocument();
+    expect(await screen.findByTestId('terminal-panel')).toBeInTheDocument();
   });
 
   /* ─── workspace files included in AI chat context ──── */
