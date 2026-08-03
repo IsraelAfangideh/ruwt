@@ -1389,11 +1389,11 @@ describe('ArenaIDE', () => {
 
   /* ─── Suspense fallback for Monaco ─────────────────────────────── */
 
-  it('shows loading text while editor loads via Suspense', () => {
+  it('shows loading text while editor loads via Suspense', async () => {
     // The Suspense fallback shows "Loading editor..."
-    // Since our mock loads synchronously, we just verify the mock editor renders
+    // MonacoEditor is lazy behind Suspense, so it arrives a tick after render
     renderIDE();
-    expect(screen.getByTestId('monaco-editor')).toBeInTheDocument();
+    expect(await screen.findByTestId('monaco-editor')).toBeInTheDocument();
   });
 
   /* ─── Message cost line ────────────────────────────────────────── */
