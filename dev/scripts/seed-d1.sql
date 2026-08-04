@@ -105,11 +105,11 @@ Example:
 Input: "name,age,city\nAlice,30,\"New York\"\nBob,25,London"
 Output: [{"name":"Alice","age":"30","city":"New York"},{"name":"Bob","age":"25","city":"London"}]
 
-Token limit is tight. Be concise with your AI prompts — describe the requirements clearly in as few tokens as possible.', 'medium', 'function parseCSV(csv) {
+Your AI budget is tight ($0.01). Be concise with your AI prompts — describe the requirements clearly in as few tokens as possible.', 'medium', 'function parseCSV(csv) {
   // Your code here
 }
 
-module.exports = { parseCSV };', '[{"input":"name,age,city\nAlice,30,New York\nBob,25,London","expectedOutput":"[{\"name\":\"Alice\",\"age\":\"30\",\"city\":\"New York\"},{\"name\":\"Bob\",\"age\":\"25\",\"city\":\"London\"}]"},{"input":"a,b\n\"hello, world\",test\n\"say \"\"hi\"\"\",val","expectedOutput":"[{\"a\":\"hello, world\",\"b\":\"test\"},{\"a\":\"say \\\"hi\\\"\",\"b\":\"val\"}]"},{"input":"x\n1\n2\n3","expectedOutput":"[{\"x\":\"1\"},{\"x\":\"2\"},{\"x\":\"3\"}]"}]', 5000, 256, 5000, NULL, 900, 'prompt_efficiency', 'Concise problem description');
+module.exports = { parseCSV };', '[{"input":"name,age,city\nAlice,30,New York\nBob,25,London","expectedOutput":"[{\"name\":\"Alice\",\"age\":\"30\",\"city\":\"New York\"},{\"name\":\"Bob\",\"age\":\"25\",\"city\":\"London\"}]"},{"input":"a,b\n\"hello, world\",test\n\"say \"\"hi\"\"\",val","expectedOutput":"[{\"a\":\"hello, world\",\"b\":\"test\"},{\"a\":\"say \\\"hi\\\"\",\"b\":\"val\"}]"},{"input":"x\n1\n2\n3","expectedOutput":"[{\"x\":\"1\"},{\"x\":\"2\"},{\"x\":\"3\"}]"}]', 5000, 256, 5000, 100, 900, 'prompt_efficiency', 'Concise problem description');
 INSERT OR REPLACE INTO challenges (id, title, description, difficulty, starter_code, test_cases, exec_time_limit, exec_memory_limit, max_tokens, max_cost, wall_clock_limit, category, skill_tested) VALUES ('algorithmic-sort', 'Algorithmic Sort', 'Implement merge sort that sorts an array of numbers in ascending order.
 
 Requirements:

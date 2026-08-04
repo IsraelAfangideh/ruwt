@@ -247,7 +247,7 @@ Example:
 Input: "name,age,city\\nAlice,30,\\"New York\\"\\nBob,25,London"
 Output: [{"name":"Alice","age":"30","city":"New York"},{"name":"Bob","age":"25","city":"London"}]
 
-Efficiency tip: describe the requirements clearly in as few tokens as possible — your cost is tracked on the leaderboard.`,
+Your AI budget is tight ($0.01). Be concise with your AI prompts — describe the requirements clearly in as few tokens as possible.`,
     difficulty: 'medium',
     starterCode: `function parseCSV(csv) {
   // Your code here
@@ -271,7 +271,7 @@ module.exports = { parseCSV };`,
     execTimeLimit: 5000,
     execMemoryLimit: 256,
     maxTokens: null,
-    maxCost: null,
+    maxCost: 100,
     wallClockLimit: 1200,
     category: 'prompt_efficiency',
     skillTested: 'Concise problem description',
