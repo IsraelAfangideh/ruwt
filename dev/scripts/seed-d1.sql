@@ -463,7 +463,7 @@ Output format: the expected call count as a number.
 
 Test scenarios are evaluated by a test harness that simulates timing.
 
-Moderate token limit — describe both functions clearly and concisely in a single prompt exchange.', 'medium', 'function debounce(fn, ms) {
+Moderate AI budget ($0.015) — describe both functions clearly and concisely in a single prompt exchange.', 'medium', 'function debounce(fn, ms) {
   // Your code here
 }
 
@@ -471,7 +471,7 @@ function throttle(fn, ms) {
   // Your code here
 }
 
-module.exports = { debounce, throttle };', '[{"input":"debounce-basic\n3\n100","expectedOutput":"1"},{"input":"debounce-reset\n5\n50","expectedOutput":"1"},{"input":"throttle-basic\n3\n100","expectedOutput":"1"},{"input":"throttle-spaced\n3\n50","expectedOutput":"3"},{"input":"debounce-args\nhello\n100","expectedOutput":"hello"}]', 5000, 256, 4000, NULL, 1200, 'prompt_efficiency', 'Concise specification of timing behavior');
+module.exports = { debounce, throttle };', '[{"input":"debounce-basic\n3\n100","expectedOutput":"1"},{"input":"debounce-reset\n5\n50","expectedOutput":"1"},{"input":"throttle-basic\n3\n100","expectedOutput":"1"},{"input":"throttle-spaced\n3\n50","expectedOutput":"3"},{"input":"debounce-args\nhello\n100","expectedOutput":"hello"}]', 5000, 256, 4000, 150, 1200, 'prompt_efficiency', 'Concise specification of timing behavior');
 INSERT OR REPLACE INTO challenges (id, title, description, difficulty, starter_code, test_cases, exec_time_limit, exec_memory_limit, max_tokens, max_cost, wall_clock_limit, category, skill_tested) VALUES ('deep-clone', 'Deep Clone', 'Write a function that creates a deep clone of an object.
 
 Requirements:

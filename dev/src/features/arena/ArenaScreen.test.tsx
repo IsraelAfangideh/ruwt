@@ -108,12 +108,17 @@ const challengeData: {
 const profileData = { credits: 50000 };
 
 /**
- * Clicks Submit, then confirms past the submit guard when it appears.
- * The guard stops a submission of unedited starter code, and the first
- * submission on an attempt whose tests were never run. Most fixtures here
- * leave the editor on the starter code, so they meet the first condition.
+ * Puts real code in the editor, clicks Submit, then confirms past the guard.
+ *
+ * The edit is not optional. Unedited starter code has no way through the
+ * guard, and the server rejects it as well, so editing first is the only
+ * path a real user has.
  */
 async function clickSubmit() {
+  const edit = screen.queryByTestId('ide-edit-code');
+  if (edit) {
+    await act(async () => { fireEvent.click(edit); });
+  }
   await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Submit' })); });
   const confirm = screen.queryByRole('button', { name: 'Submit Anyway' });
   if (confirm) {
@@ -724,19 +729,55 @@ describe('ArenaScreen', () => {
     expect(submissionCount()).toBe(0);
   });
 
-  it('guard "Keep Working" cancels the submission', async () => {
+  it('offers no way to submit unedited starter code', async () => {
     await startAttempt();
     await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Submit' })); });
-    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Keep Working' })); });
+    // The server rejects this too, so the client must not offer a way through.
+    expect(screen.queryByRole('button', { name: 'Submit Anyway' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Got It' })).toBeInTheDocument();
+  });
+
+  it('guard dismissal cancels the submission', async () => {
+    await startAttempt();
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Submit' })); });
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Got It' })); });
     expect(screen.queryByText('This is still the starter code')).not.toBeInTheDocument();
     expect(submissionCount()).toBe(0);
   });
 
-  it('guard "Submit Anyway" sends the submission', async () => {
+  it('guard "Submit Anyway" sends the submission once the code is edited', async () => {
     await startAttempt();
+    await act(async () => { fireEvent.click(screen.getByTestId('ide-edit-code')); });
     await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Submit' })); });
     await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Submit Anyway' })); });
     await waitFor(() => expect(submissionCount()).toBe(1));
+  });
+
+  it('re-opens the guard when the server rejects unedited starter code', async () => {
+    // Simulates a browser on a cached pre-guard bundle: the client sends it,
+    // the server refuses, and nothing may claim a submission was recorded.
+    globalThis.fetch = mockFetchForChallenge();
+    const realFetch = globalThis.fetch as any;
+    globalThis.fetch = vi.fn().mockImplementation((url: string, opts?: any) => {
+      if (typeof url === 'string' && url.includes('/api/submissions') && opts?.body?.includes('"mode":"submit"')) {
+        return Promise.resolve({
+          ok: false,
+          status: 422,
+          json: () => Promise.resolve({ error: 'This is still the starter code.', code: 'starter_code_unedited' }),
+        });
+      }
+      return realFetch(url, opts);
+    });
+
+    await startAttempt();
+    // Edit so the client-side check passes and the request actually goes out.
+    await act(async () => { fireEvent.click(screen.getByTestId('ide-edit-code')); });
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Submit' })); });
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Submit Anyway' })); });
+
+    await waitFor(() => expect(screen.getByText('This is still the starter code')).toBeInTheDocument());
+    // No results bar claiming a failed submission.
+    expect(screen.queryByTestId('ide-results')).not.toBeInTheDocument();
   });
 
   it('guards the first submission when the tests were never run', async () => {

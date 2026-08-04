@@ -10,6 +10,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { View, Text } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { ArenaIDE, type ArenaChallenge } from '@/features/arena/ArenaIDE';
+import ArenaOverlay, { OVERLAY_TITLE, overlayButton } from '@/features/arena/ArenaOverlay';
 import { arena } from '@/shared/theme/colors';
 import { fontFamily } from '@/shared/theme/tokens';
 import { getDifficultyStyle } from '@/shared/lib/difficulty';
@@ -260,89 +261,45 @@ export function GuestArenaScreen() {
 
         {/* Signup overlay */}
         {showSignupOverlay && (
-          <div style={{
-            position: 'absolute',
-            top: 0, left: 0, right: 0, bottom: 0,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            background: 'rgba(13,17,23,0.85)',
-            zIndex: 200,
-          }}>
-            <div style={{
-              background: arena.surface,
-              border: `1px solid ${arena.border}`,
-              borderRadius: 12,
-              padding: 32,
-              maxWidth: 420,
-              width: '90%',
-              textAlign: 'center',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              gap: 16,
-            }}>
-              <h2 style={{
-                fontSize: 20,
-                fontWeight: 700,
-                color: arena.text,
-                margin: 0,
-                fontFamily: '"Cormorant Garamond", Georgia, serif',
-              }}>
-                Sign Up to Continue
-              </h2>
-              <p style={{ fontSize: 13, color: arena.textMuted, margin: 0 }}>
-                Create a free account to run tests, submit solutions, and use AI assistance.
-              </p>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, width: '100%', marginTop: 8 }}>
-                <button
-                  style={{
-                    background: arena.accent,
-                    border: 'none',
-                    borderRadius: 8,
-                    color: '#0d1117',
-                    padding: '10px 20px',
-                    fontSize: 14,
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    width: '100%',
-                  }}
-                  onClick={() => navigation.navigate('Register')}
-                >
-                  Sign Up Free
-                </button>
-                <button
-                  style={{
-                    background: 'transparent',
-                    border: `1px solid ${arena.border}`,
-                    borderRadius: 8,
-                    color: arena.text,
-                    padding: '10px 20px',
-                    fontSize: 14,
-                    fontWeight: 500,
-                    cursor: 'pointer',
-                    width: '100%',
-                  }}
-                  onClick={() => navigation.navigate('Login')}
-                >
-                  Already have an account? Sign In
-                </button>
-                <button
-                  style={{
-                    background: 'transparent',
-                    border: 'none',
-                    color: arena.textMuted,
-                    fontSize: 13,
-                    cursor: 'pointer',
-                    padding: '8px 0',
-                  }}
-                  onClick={() => setShowSignupOverlay(false)}
-                >
-                  Continue exploring
-                </button>
-              </div>
+          <ArenaOverlay
+            label="Sign Up to Continue"
+            zIndex={200}
+            cardStyle={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}
+          >
+            <h2 style={{ ...OVERLAY_TITLE, fontSize: 20, margin: 0 }}>
+              Sign Up to Continue
+            </h2>
+            <p style={{ fontSize: 13, color: arena.textMuted, margin: 0 }}>
+              Create a free account to run tests, submit solutions, and use AI assistance.
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, width: '100%', marginTop: 8 }}>
+              <button
+                style={{ ...overlayButton('primary', 'md'), width: '100%' }}
+                onClick={() => navigation.navigate('Register')}
+              >
+                Sign Up Free
+              </button>
+              <button
+                style={{ ...overlayButton('secondary', 'md'), width: '100%' }}
+                onClick={() => navigation.navigate('Login')}
+              >
+                Already have an account? Sign In
+              </button>
+              <button
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: arena.textMuted,
+                  fontSize: 13,
+                  cursor: 'pointer',
+                  padding: '8px 0',
+                }}
+                onClick={() => setShowSignupOverlay(false)}
+              >
+                Continue exploring
+              </button>
             </div>
-          </div>
+          </ArenaOverlay>
         )}
       </div>
     </div>

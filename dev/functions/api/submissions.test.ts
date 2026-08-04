@@ -720,6 +720,72 @@ describe('POST /api/submissions', () => {
     }));
   });
 
+  it('submit mode: rejects unedited starter code without running or recording', async () => {
+    mockGetUser.mockResolvedValue(FAKE_USER);
+
+    const starter = 'function fizzbuzz(n) {\n  // Your code here\n}';
+    const attempt = fakeAttempt();
+    const challenge = fakeChallenge({ starterCode: starter });
+
+    const updateSet = vi.fn().mockReturnValue({
+      where: vi.fn().mockResolvedValue(undefined),
+    });
+
+    const { db } = makeDb({
+      selectResults: [
+        [attempt],     // attempt lookup
+        [challenge],   // challenge lookup
+      ],
+      updateSet,
+    });
+    mockGetDb.mockReturnValue(db);
+    mockRunTestCases.mockClear();
+
+    const res = await onRequestPost(makePostContext({
+      attemptId: VALID_ATTEMPT_ID,
+      // Surrounding whitespace only — still the starter code.
+      sourceCode: `\n${starter}  `,
+      mode: 'submit',
+    }));
+    const json = await res.json();
+
+    expect(res.status).toBe(422);
+    expect(json.error).toContain('starter code');
+    // No executor run, and nothing written to the attempt record.
+    expect(mockRunTestCases).not.toHaveBeenCalled();
+    expect(updateSet).not.toHaveBeenCalled();
+  });
+
+  it('submit mode: accepts code that differs from the starter code', async () => {
+    mockGetUser.mockResolvedValue(FAKE_USER);
+
+    const attempt = fakeAttempt();
+    const challenge = fakeChallenge({ starterCode: 'function fizzbuzz(n) {\n  // Your code here\n}' });
+    mockRunTestCases.mockResolvedValue(passingTestResult());
+
+    const updateSet = vi.fn().mockReturnValue({
+      where: vi.fn().mockResolvedValue(undefined),
+    });
+
+    const { db } = makeDb({
+      selectResults: [
+        [attempt],     // attempt lookup
+        [challenge],   // challenge lookup
+      ],
+      updateSet,
+    });
+    mockGetDb.mockReturnValue(db);
+
+    const res = await onRequestPost(makePostContext({
+      attemptId: VALID_ATTEMPT_ID,
+      sourceCode: 'function fizzbuzz(n) { return "FizzBuzz"; }',
+      mode: 'submit',
+    }));
+
+    expect(res.status).toBe(200);
+    expect(mockRunTestCases).toHaveBeenCalled();
+  });
+
   it('submit mode: marks attempt failed when tests fail', async () => {
     mockGetUser.mockResolvedValue(FAKE_USER);
 

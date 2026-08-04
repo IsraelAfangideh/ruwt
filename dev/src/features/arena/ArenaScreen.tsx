@@ -461,6 +461,12 @@ export function ArenaScreen() {
         body: JSON.stringify({ attemptId: attempt.id, sourceCode, language: lang, mode: 'submit', idempotencyKey: `${attempt.id}-${crypto.randomUUID()}` }),
       });
       const data = await res.json();
+      // The server refuses unedited starter code and records nothing. Re-open
+      // the guard rather than reporting a submission that never happened.
+      if (res.status === 422 && data.code === 'starter_code_unedited') {
+        setSubmitGuard('untouched');
+        return { passed: false, passedTests: 0, totalTests: 0, results: [] };
+      }
       /* istanbul ignore next -- @preserve */
       if (!res.ok) throw new Error(data.error || 'Submit failed');
       const result = {
