@@ -10,7 +10,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { View, Text } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { ArenaIDE, type ArenaChallenge } from '@/features/arena/ArenaIDE';
-import ArenaOverlay, { OVERLAY_TITLE, overlayButton } from '@/features/arena/ArenaOverlay';
+import ModalOverlay, { OVERLAY_TITLE, overlayButton } from '@/shared/ui/ModalOverlay';
 import { arena } from '@/shared/theme/colors';
 import { fontFamily } from '@/shared/theme/tokens';
 import { getDifficultyStyle } from '@/shared/lib/difficulty';
@@ -261,7 +261,7 @@ export function GuestArenaScreen() {
 
         {/* Signup overlay */}
         {showSignupOverlay && (
-          <ArenaOverlay
+          <ModalOverlay
             label="Sign Up to Continue"
             zIndex={200}
             cardStyle={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}
@@ -299,7 +299,7 @@ export function GuestArenaScreen() {
                 Continue exploring
               </button>
             </div>
-          </ArenaOverlay>
+          </ModalOverlay>
         )}
       </div>
     </div>
