@@ -44,6 +44,7 @@ vi.mock('@/features/arena/ArenaIDE', () => ({
           </button>
         )}
         {props.onDismissResults && <button data-testid="ide-dismiss" onClick={props.onDismissResults}>Dismiss</button>}
+        {props.onCodeChange && <button data-testid="ide-edit-code" onClick={() => props.onCodeChange('// the user wrote this')}>Edit Code</button>}
       </div>
     );
   },
@@ -105,6 +106,43 @@ const challengeData: {
 };
 
 const profileData = { credits: 50000 };
+
+/**
+ * Puts real code in the editor, clicks Submit, then confirms past the guard.
+ *
+ * The edit is not optional. Unedited starter code has no way through the
+ * guard, and the server rejects it as well, so editing first is the only
+ * path a real user has.
+ */
+async function clickSubmit() {
+  const edit = screen.queryByTestId('ide-edit-code');
+  if (edit) {
+    await act(async () => { fireEvent.click(edit); });
+  }
+  await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Submit' })); });
+  const confirm = screen.queryByRole('button', { name: 'Submit Anyway' });
+  if (confirm) {
+    await act(async () => { fireEvent.click(confirm); });
+  }
+}
+
+/** Renders, starts the attempt, and waits for the Submit button. */
+async function startAttempt() {
+  render(<ArenaScreen />);
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Start Challenge' })).toBeInTheDocument());
+  await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Start Challenge' })); });
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Submit' })).toBeInTheDocument());
+}
+
+/**
+ * Number of real submissions. Run Tests posts to the same endpoint with
+ * mode 'test', so the body decides what counts.
+ */
+function submissionCount() {
+  return (globalThis.fetch as any).mock.calls
+    .filter((c: any[]) => typeof c[0] === 'string' && c[0].includes('/api/submissions')
+      && typeof c[1]?.body === 'string' && c[1].body.includes('"mode":"submit"')).length;
+}
 
 function mockFetchForChallenge(challenge = challengeData, profile = profileData, submissionExtras: Record<string, unknown> = {}) {
   return vi.fn().mockImplementation((url: string, opts?: any) => {
@@ -674,7 +712,7 @@ describe('ArenaScreen', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: 'Start Challenge' })).toBeInTheDocument());
     await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Start Challenge' })); });
     await waitFor(() => expect(screen.getByRole('button', { name: 'Submit' })).toBeInTheDocument());
-    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Submit' })); });
+    await clickSubmit();
     // After submit, test results are passed to IDE with isSubmission=true
     await waitFor(() => {
       const results = screen.queryByTestId('ide-results');
@@ -682,12 +720,101 @@ describe('ArenaScreen', () => {
     });
   });
 
+  /* ─── Submit guard ─────────────────────────────────────────────── */
+
+  it('guards a submission of unedited starter code', async () => {
+    await startAttempt();
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Submit' })); });
+    expect(screen.getByText('This is still the starter code')).toBeInTheDocument();
+    expect(submissionCount()).toBe(0);
+  });
+
+  it('offers no way to submit unedited starter code', async () => {
+    await startAttempt();
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Submit' })); });
+    // The server rejects this too, so the client must not offer a way through.
+    expect(screen.queryByRole('button', { name: 'Submit Anyway' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Got It' })).toBeInTheDocument();
+  });
+
+  it('guard dismissal cancels the submission', async () => {
+    await startAttempt();
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Submit' })); });
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Got It' })); });
+    expect(screen.queryByText('This is still the starter code')).not.toBeInTheDocument();
+    expect(submissionCount()).toBe(0);
+  });
+
+  it('guard "Submit Anyway" sends the submission once the code is edited', async () => {
+    await startAttempt();
+    await act(async () => { fireEvent.click(screen.getByTestId('ide-edit-code')); });
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Submit' })); });
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Submit Anyway' })); });
+    await waitFor(() => expect(submissionCount()).toBe(1));
+  });
+
+  it('re-opens the guard when the server rejects unedited starter code', async () => {
+    // Simulates a browser on a cached pre-guard bundle: the client sends it,
+    // the server refuses, and nothing may claim a submission was recorded.
+    globalThis.fetch = mockFetchForChallenge();
+    const realFetch = globalThis.fetch as any;
+    globalThis.fetch = vi.fn().mockImplementation((url: string, opts?: any) => {
+      if (typeof url === 'string' && url.includes('/api/submissions') && opts?.body?.includes('"mode":"submit"')) {
+        return Promise.resolve({
+          ok: false,
+          status: 422,
+          json: () => Promise.resolve({ error: 'This is still the starter code.', code: 'starter_code_unedited' }),
+        });
+      }
+      return realFetch(url, opts);
+    });
+
+    await startAttempt();
+    // Edit so the client-side check passes and the request actually goes out.
+    await act(async () => { fireEvent.click(screen.getByTestId('ide-edit-code')); });
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Submit' })); });
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Submit Anyway' })); });
+
+    await waitFor(() => expect(screen.getByText('This is still the starter code')).toBeInTheDocument());
+    // No results bar claiming a failed submission.
+    expect(screen.queryByTestId('ide-results')).not.toBeInTheDocument();
+  });
+
+  it('guards the first submission when the tests were never run', async () => {
+    await startAttempt();
+    await act(async () => { fireEvent.click(screen.getByTestId('ide-edit-code')); });
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Submit' })); });
+    expect(screen.getByText('Submit without running the tests?')).toBeInTheDocument();
+    expect(submissionCount()).toBe(0);
+  });
+
+  it('does not guard once the code is edited and the tests have run', async () => {
+    await startAttempt();
+    await act(async () => { fireEvent.click(screen.getByTestId('ide-edit-code')); });
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Run Tests' })); });
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Submit' })); });
+    expect(screen.queryByRole('button', { name: 'Submit Anyway' })).not.toBeInTheDocument();
+    await waitFor(() => expect(submissionCount()).toBe(1));
+  });
+
+  it('warns only once about never running the tests', async () => {
+    await startAttempt();
+    await act(async () => { fireEvent.click(screen.getByTestId('ide-edit-code')); });
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Submit' })); });
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Submit Anyway' })); });
+    await waitFor(() => expect(submissionCount()).toBe(1));
+    // Second submission goes straight through — the user was already warned.
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Submit' })); });
+    expect(screen.queryByRole('button', { name: 'Submit Anyway' })).not.toBeInTheDocument();
+    await waitFor(() => expect(submissionCount()).toBe(2));
+  });
+
   it('shows success overlay after passed submission', async () => {
     render(<ArenaScreen />);
     await waitFor(() => expect(screen.getByRole('button', { name: 'Start Challenge' })).toBeInTheDocument());
     await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Start Challenge' })); });
     await waitFor(() => expect(screen.getByRole('button', { name: 'Submit' })).toBeInTheDocument());
-    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Submit' })); });
+    await clickSubmit();
     await waitFor(() => {
       expect(screen.getByText('Challenge Passed!')).toBeInTheDocument();
     });
@@ -702,7 +829,7 @@ describe('ArenaScreen', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: 'Start Challenge' })).toBeInTheDocument());
     await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Start Challenge' })); });
     await waitFor(() => expect(screen.getByRole('button', { name: 'Submit' })).toBeInTheDocument());
-    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Submit' })); });
+    await clickSubmit();
     await waitFor(() => {
       expect(screen.getByText('Challenge Passed!')).toBeInTheDocument();
     });
@@ -717,7 +844,7 @@ describe('ArenaScreen', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: 'Start Challenge' })).toBeInTheDocument());
     await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Start Challenge' })); });
     await waitFor(() => expect(screen.getByRole('button', { name: 'Submit' })).toBeInTheDocument());
-    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Submit' })); });
+    await clickSubmit();
     await waitFor(() => expect(screen.getByText('Challenge Passed!')).toBeInTheDocument());
     fireEvent.click(screen.getByRole('button', { name: 'View Your Replay' }));
     expect(mockNavigate).toHaveBeenCalledWith('Replay', expect.objectContaining({ attemptId: expect.any(String) }));
@@ -728,7 +855,7 @@ describe('ArenaScreen', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: 'Start Challenge' })).toBeInTheDocument());
     await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Start Challenge' })); });
     await waitFor(() => expect(screen.getByRole('button', { name: 'Submit' })).toBeInTheDocument());
-    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Submit' })); });
+    await clickSubmit();
     await waitFor(() => expect(screen.getByText('Challenge Passed!')).toBeInTheDocument());
     const backBtns = screen.getAllByText(/Back to Problems/);
     fireEvent.click(backBtns[backBtns.length - 1]);
@@ -743,7 +870,7 @@ describe('ArenaScreen', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: 'Start Challenge' })).toBeInTheDocument());
     await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Start Challenge' })); });
     await waitFor(() => expect(screen.getByRole('button', { name: 'Submit' })).toBeInTheDocument());
-    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Submit' })); });
+    await clickSubmit();
     await waitFor(() => expect(screen.getByText('Challenge Passed!')).toBeInTheDocument());
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: 'Copy Link' }));
@@ -760,7 +887,7 @@ describe('ArenaScreen', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: 'Start Challenge' })).toBeInTheDocument());
     await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Start Challenge' })); });
     await waitFor(() => expect(screen.getByRole('button', { name: 'Submit' })).toBeInTheDocument());
-    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Submit' })); });
+    await clickSubmit();
     await waitFor(() => expect(screen.getByText('Challenge Passed!')).toBeInTheDocument());
     fireEvent.click(screen.getByRole('button', { name: 'LinkedIn' }));
     expect(openSpy).toHaveBeenCalledWith(expect.stringContaining('linkedin.com'), '_blank', expect.any(String));
@@ -773,7 +900,7 @@ describe('ArenaScreen', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: 'Start Challenge' })).toBeInTheDocument());
     await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Start Challenge' })); });
     await waitFor(() => expect(screen.getByRole('button', { name: 'Submit' })).toBeInTheDocument());
-    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Submit' })); });
+    await clickSubmit();
     await waitFor(() => expect(screen.getByText('Challenge Passed!')).toBeInTheDocument());
     fireEvent.click(screen.getByRole('button', { name: 'X / Twitter' }));
     expect(openSpy).toHaveBeenCalledWith(expect.stringContaining('twitter.com'), '_blank', expect.any(String));
@@ -785,7 +912,7 @@ describe('ArenaScreen', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: 'Start Challenge' })).toBeInTheDocument());
     await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Start Challenge' })); });
     await waitFor(() => expect(screen.getByRole('button', { name: 'Submit' })).toBeInTheDocument());
-    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Submit' })); });
+    await clickSubmit();
     await waitFor(() => expect(screen.getByText('Challenge Passed!')).toBeInTheDocument());
     expect(screen.getByTestId('download-share-card')).toBeInTheDocument();
   });
@@ -815,7 +942,7 @@ describe('ArenaScreen', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: 'Start Challenge' })).toBeInTheDocument());
     await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Start Challenge' })); });
     await waitFor(() => expect(screen.getByRole('button', { name: 'Submit' })).toBeInTheDocument());
-    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Submit' })); });
+    await clickSubmit();
     await waitFor(() => {
       const results = screen.queryByTestId('ide-results');
       expect(results).toBeTruthy();
@@ -1143,7 +1270,7 @@ describe('ArenaScreen', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: 'Start Challenge' })).toBeInTheDocument());
     await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Start Challenge' })); });
     await waitFor(() => expect(screen.getByRole('button', { name: 'Submit' })).toBeInTheDocument());
-    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Submit' })); });
+    await clickSubmit();
     await waitFor(() => expect(screen.getByText('Challenge Passed!')).toBeInTheDocument());
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: 'See How #1 Solved This' }));
@@ -1167,7 +1294,7 @@ describe('ArenaScreen', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: 'Start Challenge' })).toBeInTheDocument());
     await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Start Challenge' })); });
     await waitFor(() => expect(screen.getByRole('button', { name: 'Submit' })).toBeInTheDocument());
-    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Submit' })); });
+    await clickSubmit();
     await waitFor(() => expect(screen.getByText('Challenge Passed!')).toBeInTheDocument());
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: 'See How #1 Solved This' }));
@@ -1184,7 +1311,7 @@ describe('ArenaScreen', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: 'Start Challenge' })).toBeInTheDocument());
     await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Start Challenge' })); });
     await waitFor(() => expect(screen.getByRole('button', { name: 'Submit' })).toBeInTheDocument());
-    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Submit' })); });
+    await clickSubmit();
     await waitFor(() => {
       expect(screen.getByText('Up Next')).toBeInTheDocument();
     });
@@ -1270,7 +1397,7 @@ describe('ArenaScreen', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: 'Start Challenge' })).toBeInTheDocument());
     await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Start Challenge' })); });
     await waitFor(() => expect(screen.getByRole('button', { name: 'Submit' })).toBeInTheDocument());
-    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Submit' })); });
+    await clickSubmit();
     await waitFor(() => {
       const results = screen.queryByTestId('ide-results');
       expect(results).toBeTruthy();
@@ -1313,7 +1440,7 @@ describe('ArenaScreen', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: 'Start Challenge' })).toBeInTheDocument());
     await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Start Challenge' })); });
     await waitFor(() => expect(screen.getByRole('button', { name: 'Submit' })).toBeInTheDocument());
-    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Submit' })); });
+    await clickSubmit();
     // Submit completes — attempt state updated with new attempt data
     await waitFor(() => expect(screen.queryByTestId('ide-results')).toBeInTheDocument());
   });
@@ -1382,7 +1509,7 @@ describe('ArenaScreen', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: 'Start Challenge' })).toBeInTheDocument());
     await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Start Challenge' })); });
     await waitFor(() => expect(screen.getByRole('button', { name: 'Submit' })).toBeInTheDocument());
-    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Submit' })); });
+    await clickSubmit();
     await waitFor(() => expect(screen.getByText('Challenge Passed!')).toBeInTheDocument());
     // The "Up Next" link should point to the closest difficulty in same category
     // hard (idx 3) has dist 1, easy (idx 1) has dist 1+5=6, so hard-one wins
@@ -1444,7 +1571,7 @@ describe('ArenaScreen', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: 'Start Challenge' })).toBeInTheDocument());
     await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Start Challenge' })); });
     await waitFor(() => expect(screen.getByRole('button', { name: 'Submit' })).toBeInTheDocument());
-    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Submit' })); });
+    await clickSubmit();
     await waitFor(() => expect(screen.getByText('Challenge Passed!')).toBeInTheDocument());
 
     // nextChallenge should be null, so link href falls back to /challenges
@@ -1502,7 +1629,7 @@ describe('ArenaScreen', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: 'Start Challenge' })).toBeInTheDocument());
     await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Start Challenge' })); });
     await waitFor(() => expect(screen.getByRole('button', { name: 'Submit' })).toBeInTheDocument());
-    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Submit' })); });
+    await clickSubmit();
     await waitFor(() => expect(screen.getByText('Challenge Passed!')).toBeInTheDocument());
 
     const tryNextLink = screen.getByText('Up Next');
@@ -1524,7 +1651,7 @@ describe('ArenaScreen', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: 'Start Challenge' })).toBeInTheDocument());
     await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Start Challenge' })); });
     await waitFor(() => expect(screen.getByRole('button', { name: 'Submit' })).toBeInTheDocument());
-    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Submit' })); });
+    await clickSubmit();
     await waitFor(() => expect(screen.getByText('Challenge Passed!')).toBeInTheDocument());
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: 'View Your Replay' }));
@@ -1539,7 +1666,7 @@ describe('ArenaScreen', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: 'Start Challenge' })).toBeInTheDocument());
     await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Start Challenge' })); });
     await waitFor(() => expect(screen.getByRole('button', { name: 'Submit' })).toBeInTheDocument());
-    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Submit' })); });
+    await clickSubmit();
     await waitFor(() => expect(screen.getByText('Challenge Passed!')).toBeInTheDocument());
     // There are multiple "Back to Problems" buttons, find the one in the overlay
     const btcButtons = screen.getAllByText('Back to Problems');
@@ -1556,7 +1683,7 @@ describe('ArenaScreen', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: 'Start Challenge' })).toBeInTheDocument());
     await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Start Challenge' })); });
     await waitFor(() => expect(screen.getByRole('button', { name: 'Submit' })).toBeInTheDocument());
-    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Submit' })); });
+    await clickSubmit();
     await waitFor(() => expect(screen.getByText('Challenge Passed!')).toBeInTheDocument());
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: 'Copy Link' }));
@@ -1684,7 +1811,7 @@ describe('ArenaScreen', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: 'Start Challenge' })).toBeInTheDocument());
     await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Start Challenge' })); });
     await waitFor(() => expect(screen.getByRole('button', { name: 'Submit' })).toBeInTheDocument());
-    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Submit' })); });
+    await clickSubmit();
     await waitFor(() => expect(screen.getByText('Challenge Passed!')).toBeInTheDocument());
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: 'See How #1 Solved This' }));
@@ -1723,7 +1850,7 @@ describe('ArenaScreen', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: 'Start Challenge' })).toBeInTheDocument());
     await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Start Challenge' })); });
     await waitFor(() => expect(screen.getByRole('button', { name: 'Submit' })).toBeInTheDocument());
-    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Submit' })); });
+    await clickSubmit();
     await waitFor(() => {
       const results = screen.queryByTestId('ide-results');
       expect(results).toBeTruthy();
@@ -1765,7 +1892,7 @@ describe('ArenaScreen', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: 'Start Challenge' })).toBeInTheDocument());
     await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Start Challenge' })); });
     await waitFor(() => expect(screen.getByRole('button', { name: 'Submit' })).toBeInTheDocument());
-    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Submit' })); });
+    await clickSubmit();
     await waitFor(() => expect(screen.getByText('Challenge Passed!')).toBeInTheDocument());
 
     // Click "See How #1 Solved This" — leaderboard returns non-ok
@@ -1810,7 +1937,7 @@ describe('ArenaScreen', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: 'Start Challenge' })).toBeInTheDocument());
     await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Start Challenge' })); });
     await waitFor(() => expect(screen.getByRole('button', { name: 'Submit' })).toBeInTheDocument());
-    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Submit' })); });
+    await clickSubmit();
     await waitFor(() => expect(screen.getByText('Challenge Passed!')).toBeInTheDocument());
 
     await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'See How #1 Solved This' })); });
@@ -1855,7 +1982,7 @@ describe('ArenaScreen', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: 'Start Challenge' })).toBeInTheDocument());
     await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Start Challenge' })); });
     await waitFor(() => expect(screen.getByRole('button', { name: 'Submit' })).toBeInTheDocument());
-    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Submit' })); });
+    await clickSubmit();
     await waitFor(() => expect(screen.getByText('Challenge Passed!')).toBeInTheDocument());
 
     await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'See How #1 Solved This' })); });
@@ -2019,7 +2146,7 @@ describe('ArenaScreen', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: 'Start Challenge' })).toBeInTheDocument());
     await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Start Challenge' })); });
     await waitFor(() => expect(screen.getByRole('button', { name: 'Submit' })).toBeInTheDocument());
-    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Submit' })); });
+    await clickSubmit();
     await waitFor(() => expect(screen.getByText('Challenge Passed!')).toBeInTheDocument());
 
     // Cross-category fallback: should recommend other-1 from debugging category
@@ -2063,7 +2190,7 @@ describe('ArenaScreen', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: 'Start Challenge' })).toBeInTheDocument());
     await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Start Challenge' })); });
     await waitFor(() => expect(screen.getByRole('button', { name: 'Submit' })).toBeInTheDocument());
-    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Submit' })); });
+    await clickSubmit();
     await waitFor(() => expect(screen.getByText('Challenge Passed!')).toBeInTheDocument());
 
     // "Top Solver" label should not appear when topCost is null
@@ -2079,7 +2206,7 @@ describe('ArenaScreen', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: 'Start Challenge' })).toBeInTheDocument());
     await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Start Challenge' })); });
     await waitFor(() => expect(screen.getByRole('button', { name: 'Submit' })).toBeInTheDocument());
-    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Submit' })); });
+    await clickSubmit();
     await waitFor(() => {
       expect(screen.getByText('Challenge Passed!')).toBeInTheDocument();
     });
@@ -2125,7 +2252,7 @@ describe('ArenaScreen', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: 'Start Challenge' })).toBeInTheDocument());
     await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Start Challenge' })); });
     await waitFor(() => expect(screen.getByRole('button', { name: 'Submit' })).toBeInTheDocument());
-    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Submit' })); });
+    await clickSubmit();
     await waitFor(() => {
       expect(screen.getByText('Challenge Passed!')).toBeInTheDocument();
     });
@@ -2168,7 +2295,7 @@ describe('ArenaScreen', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: 'Start Challenge' })).toBeInTheDocument());
     await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Start Challenge' })); });
     await waitFor(() => expect(screen.getByRole('button', { name: 'Submit' })).toBeInTheDocument());
-    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Submit' })); });
+    await clickSubmit();
     await waitFor(() => {
       expect(screen.getByText('Challenge Passed!')).toBeInTheDocument();
     });
@@ -2322,7 +2449,7 @@ describe('ArenaScreen', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: 'Start Challenge' })).toBeInTheDocument());
     await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Start Challenge' })); });
     await waitFor(() => expect(screen.getByRole('button', { name: 'Submit' })).toBeInTheDocument());
-    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Submit' })); });
+    await clickSubmit();
     await waitFor(() => expect(screen.getByText('Challenge Passed!')).toBeInTheDocument());
 
     const link = screen.getByText('Up Next');
@@ -2367,7 +2494,7 @@ describe('ArenaScreen', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: 'Start Challenge' })).toBeInTheDocument());
     await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Start Challenge' })); });
     await waitFor(() => expect(screen.getByRole('button', { name: 'Submit' })).toBeInTheDocument());
-    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Submit' })); });
+    await clickSubmit();
     await waitFor(() => expect(screen.getByText('Challenge Passed!')).toBeInTheDocument());
 
     const link = screen.getByText('Up Next');
@@ -2412,7 +2539,7 @@ describe('ArenaScreen', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: 'Start Challenge' })).toBeInTheDocument());
     await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Start Challenge' })); });
     await waitFor(() => expect(screen.getByRole('button', { name: 'Submit' })).toBeInTheDocument());
-    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Submit' })); });
+    await clickSubmit();
     await waitFor(() => expect(screen.getByText('Challenge Passed!')).toBeInTheDocument());
 
     await waitFor(() => {
@@ -2436,7 +2563,7 @@ describe('ArenaScreen', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: 'Start Challenge' })).toBeInTheDocument());
     await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Start Challenge' })); });
     await waitFor(() => expect(screen.getByRole('button', { name: 'Submit' })).toBeInTheDocument());
-    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Submit' })); });
+    await clickSubmit();
     await waitFor(() => expect(screen.getByText('Challenge Passed!')).toBeInTheDocument());
 
     await waitFor(() => {
@@ -2456,7 +2583,7 @@ describe('ArenaScreen', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: 'Start Challenge' })).toBeInTheDocument());
     await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Start Challenge' })); });
     await waitFor(() => expect(screen.getByRole('button', { name: 'Submit' })).toBeInTheDocument());
-    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Submit' })); });
+    await clickSubmit();
     await waitFor(() => expect(screen.getByText('Challenge Passed!')).toBeInTheDocument());
 
     await waitFor(() => {
@@ -2473,7 +2600,7 @@ describe('ArenaScreen', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: 'Start Challenge' })).toBeInTheDocument());
     await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Start Challenge' })); });
     await waitFor(() => expect(screen.getByRole('button', { name: 'Submit' })).toBeInTheDocument());
-    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Submit' })); });
+    await clickSubmit();
     await waitFor(() => expect(screen.getByText('Challenge Passed!')).toBeInTheDocument());
 
     expect(screen.queryByText(/AI solvers finished/)).not.toBeInTheDocument();
@@ -2491,7 +2618,7 @@ describe('ArenaScreen', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: 'Start Challenge' })).toBeInTheDocument());
     await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Start Challenge' })); });
     await waitFor(() => expect(screen.getByRole('button', { name: 'Submit' })).toBeInTheDocument());
-    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Submit' })); });
+    await clickSubmit();
     await waitFor(() => expect(screen.getByText('Challenge Passed!')).toBeInTheDocument());
 
     expect(screen.queryByText(/AI solvers finished/)).not.toBeInTheDocument();
@@ -2509,7 +2636,7 @@ describe('ArenaScreen', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: 'Start Challenge' })).toBeInTheDocument());
     await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Start Challenge' })); });
     await waitFor(() => expect(screen.getByRole('button', { name: 'Submit' })).toBeInTheDocument());
-    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Submit' })); });
+    await clickSubmit();
     await waitFor(() => expect(screen.getByText('Challenge Passed!')).toBeInTheDocument());
 
     await waitFor(() => {

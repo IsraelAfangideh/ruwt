@@ -10,6 +10,7 @@ import { useAuth } from '@/shared/lib/AuthContext';
 import { resetNavigation } from '@/shared/navigation/resetNavigation';
 import { useToast } from '@/shared/ui/Toast';
 import { ArenaErrorBoundary } from '@/features/arena/ArenaErrorBoundary';
+import SubmitGuardOverlay, { type SubmitGuardReason } from '@/features/arena/SubmitGuardOverlay';
 import { estimateMessagesForBudget, formatCostFromHundredths } from '@/shared/lib/ai/pricing';
 import { BADGE_DEFS, type BadgeDef } from '@/shared/lib/badge-defs';
 import { formatTime } from '@/shared/lib/utils';
@@ -27,6 +28,46 @@ const STAT_CARD: React.CSSProperties = { flex: 1, minWidth: 90, padding: '10px 8
 const STAT_LABEL: React.CSSProperties = { fontSize: 10, color: arena.textMuted, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4, fontWeight: 600 };
 const STAT_VALUE: React.CSSProperties = { fontWeight: 700, fontSize: 18, fontFamily: fontFamily.mono };
 const SECTION_LABEL: React.CSSProperties = { fontSize: 10, textTransform: 'uppercase', letterSpacing: 1.5, fontWeight: 600 } as const;
+
+/**
+ * Header action buttons, for the mobile and the desktop header alike.
+ * Run Tests is the primary button and Submit the secondary one: running the
+ * tests costs the user nothing, and submitting writes a permanent record.
+ * One factory keeps that hierarchy in a single place.
+ */
+function actionButton(
+  variant: 'primary' | 'secondary',
+  compact: boolean,
+  blocked: boolean,
+  busy: boolean
+): React.CSSProperties {
+  /* istanbul ignore next -- @preserve */
+  const variantStyle: React.CSSProperties = variant === 'primary'
+    ? { background: blocked ? arena.textMuted : arena.accent, border: 'none', color: '#0d1117', fontWeight: 600 }
+    : { background: 'transparent', border: `1px solid ${arena.border}`, color: blocked ? arena.textMuted : arena.text, fontWeight: 500 };
+  /* istanbul ignore next -- @preserve */
+  const inactive = busy || blocked;
+  return {
+    ...variantStyle,
+    borderRadius: 6,
+    padding: compact ? '4px 10px' : '6px 16px',
+    fontSize: compact ? 12 : 13,
+    cursor: /* istanbul ignore next -- @preserve */ inactive ? 'not-allowed' : 'pointer',
+    opacity: /* istanbul ignore next -- @preserve */ inactive ? 0.5 : 1,
+    flexShrink: 0,
+  };
+}
+
+/**
+ * The code an attempt opens with. The submit guard compares against this, so
+ * every caller must agree on it — hence one helper rather than a repeated
+ * ternary.
+ */
+function starterCodeFor(starterCode: string | null | undefined, language: string): string {
+  /* istanbul ignore next -- @preserve */
+  const defaultComment = language === 'python' ? '# your code here' : '// your code here';
+  return starterCode || defaultComment;
+}
 
 function BudgetProgressBar({ spent, budget }: { spent: number; budget: number | null; isOverBudget?: boolean }) {
   const mono = fontFamily.mono;
@@ -197,6 +238,12 @@ export function ArenaScreen() {
   const [commentText, setCommentText] = useState('');
   const [commentSubmitted, setCommentSubmitted] = useState(false);
   const [commentSubmitting, setCommentSubmitting] = useState(false);
+  // Submit guard: warns before a submission that cannot pass, or before the
+  // first submission on an attempt whose tests were never run.
+  const [submitGuard, setSubmitGuard] = useState<SubmitGuardReason | null>(null);
+  // True once the user has run the tests, or has been warned once and chosen to
+  // submit regardless. Either way the guard stops nagging.
+  const [submitVerified, setSubmitVerified] = useState(false);
   const navigatingRef = useRef(false);
   const autoResumeCalledRef = useRef(false);
   const startAttemptRef = useRef<() => void>();
@@ -254,6 +301,8 @@ export function ArenaScreen() {
     setAiComparison(null);
     setCommentText('');
     setCommentSubmitted(false);
+    setSubmitGuard(null);
+    setSubmitVerified(false);
   }, []);
 
   // Reset all state when challengeId changes (e.g. "Try Next Challenge")
@@ -356,14 +405,10 @@ export function ArenaScreen() {
           setCode(saved);
           showToast('Restored your progress', 'success');
         } else {
-          /* istanbul ignore next -- @preserve */
-          const defaultComment = language === 'python' ? '# your code here' : '// your code here';
-          setCode(data.challenge?.starterCode || defaultComment);
+          setCode(starterCodeFor(data.challenge?.starterCode, language));
         }
       } else {
-        /* istanbul ignore next -- @preserve */
-        const defaultComment = language === 'python' ? '# your code here' : '// your code here';
-        setCode(data.challenge?.starterCode || defaultComment);
+        setCode(starterCodeFor(data.challenge?.starterCode, language));
       }
       setTestResults(null);
     } catch (e) {
@@ -382,6 +427,10 @@ export function ArenaScreen() {
     async (sourceCode: string, lang: string) => {
       /* istanbul ignore next -- @preserve */
       if (!attempt?.id) return { passed: false, passedTests: 0, totalTests: 0, results: [] };
+      // Every path that runs the tests lands here — the header button, the
+      // `test` command in the terminal, and the AI agent loop — so the submit
+      // guard learns about all three.
+      setSubmitVerified(true);
       const res = await fetch('/api/submissions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -412,6 +461,12 @@ export function ArenaScreen() {
         body: JSON.stringify({ attemptId: attempt.id, sourceCode, language: lang, mode: 'submit', idempotencyKey: `${attempt.id}-${crypto.randomUUID()}` }),
       });
       const data = await res.json();
+      // The server refuses unedited starter code and records nothing. Re-open
+      // the guard rather than reporting a submission that never happened.
+      if (res.status === 422 && data.code === 'starter_code_unedited') {
+        setSubmitGuard('untouched');
+        return { passed: false, passedTests: 0, totalTests: 0, results: [] };
+      }
       /* istanbul ignore next -- @preserve */
       if (!res.ok) throw new Error(data.error || 'Submit failed');
       const result = {
@@ -543,7 +598,7 @@ export function ArenaScreen() {
     }
   }, [code, language, onRunTests]);
 
-  const handleSubmit = useCallback(async () => {
+  const runSubmit = useCallback(async () => {
     setIsRunning(true);
     try {
       await onSubmit(code, language);
@@ -559,6 +614,25 @@ export function ArenaScreen() {
       setIsRunning(false);
     }
   }, [code, language, onSubmit]);
+
+  const handleSubmit = useCallback(async () => {
+    // Unedited starter code cannot pass, so that warning is never suppressed.
+    if (code.trim() === starterCodeFor(challenge?.starterCode, language).trim()) {
+      setSubmitGuard('untouched');
+      return;
+    }
+    if (!submitVerified) {
+      setSubmitGuard('never-ran');
+      return;
+    }
+    await runSubmit();
+  }, [code, challenge?.starterCode, language, submitVerified, runSubmit]);
+
+  const confirmSubmit = useCallback(async () => {
+    setSubmitGuard(null);
+    setSubmitVerified(true);
+    await runSubmit();
+  }, [runSubmit]);
 
   // Compute personal best from past attempts (memoized; must be before early returns for hooks rules)
   const personalBest = useMemo(
@@ -871,36 +945,14 @@ export function ArenaScreen() {
               </span>
             )}
             <button
-              style={{
-                background: 'transparent',
-                border: `1px solid ${arena.border}`,
-                borderRadius: 6,
-                color: arena.text,
-                padding: '4px 10px',
-                fontSize: 12,
-                fontWeight: 500,
-                cursor: /* istanbul ignore next -- @preserve */ isRunning || isExpired ? 'not-allowed' : 'pointer',
-                opacity: /* istanbul ignore next -- @preserve */ isRunning || isExpired ? 0.5 : 1,
-                flexShrink: 0,
-              }}
+              style={actionButton('primary', true, isExpired, isRunning)}
               onClick={handleRun}
               disabled={isRunning || isExpired}
             >
               {/* istanbul ignore next -- @preserve */ isExpired ? /* istanbul ignore next -- @preserve */ 'Expired' : /* istanbul ignore next -- @preserve */ isRunning ? '...' : 'Run'}
             </button>
             <button
-              style={{
-                background: /* istanbul ignore next -- @preserve */ submitBlocked ? arena.textMuted : arena.accent,
-                border: 'none',
-                borderRadius: 6,
-                color: '#0d1117',
-                padding: '4px 10px',
-                fontSize: 12,
-                fontWeight: 600,
-                cursor: /* istanbul ignore next -- @preserve */ isRunning || submitBlocked ? 'not-allowed' : 'pointer',
-                opacity: /* istanbul ignore next -- @preserve */ isRunning || submitBlocked ? 0.5 : 1,
-                flexShrink: 0,
-              }}
+              style={actionButton('secondary', true, submitBlocked, isRunning)}
               onClick={handleSubmit}
               disabled={isRunning || submitBlocked}
             >
@@ -1008,17 +1060,7 @@ export function ArenaScreen() {
             {/* Actions */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <button
-                style={{
-                  background: 'transparent',
-                  border: `1px solid ${arena.border}`,
-                  borderRadius: 6,
-                  color: arena.text,
-                  padding: '6px 16px',
-                  fontSize: 13,
-                  fontWeight: 500,
-                  cursor: isRunning || isExpired ? 'not-allowed' : 'pointer',
-                  opacity: isRunning || isExpired ? 0.5 : 1,
-                }}
+                style={actionButton('primary', false, isExpired, isRunning)}
                 onClick={handleRun}
                 disabled={isRunning || isExpired}
               >
@@ -1035,17 +1077,7 @@ export function ArenaScreen() {
                 })()}
               </button>
               <button
-                style={{
-                  background: submitBlocked ? arena.textMuted : arena.accent,
-                  border: 'none',
-                  borderRadius: 6,
-                  color: '#0d1117',
-                  padding: '6px 16px',
-                  fontSize: 13,
-                  fontWeight: 600,
-                  cursor: isRunning || submitBlocked ? 'not-allowed' : 'pointer',
-                  opacity: isRunning || submitBlocked ? 0.5 : 1,
-                }}
+                style={actionButton('secondary', false, submitBlocked, isRunning)}
                 onClick={handleSubmit}
                 disabled={isRunning || submitBlocked}
               >
@@ -1088,6 +1120,16 @@ export function ArenaScreen() {
             pastAttempts={pastAttempts}
           />
         </ArenaErrorBoundary>
+
+        {/* Guard against a submission that cannot pass, or an unverified first submission */}
+        {submitGuard && (
+          <SubmitGuardOverlay
+            reason={submitGuard}
+            isMobile={isMobile}
+            onCancel={() => setSubmitGuard(null)}
+            onConfirm={confirmSubmit}
+          />
+        )}
 
         {/* Success overlay after passed submission */}
         {successOverlay && (
