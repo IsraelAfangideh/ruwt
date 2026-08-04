@@ -2,7 +2,7 @@ import React from 'react';
 import { arena } from '@/shared/theme/colors';
 import { fontFamily } from '@/shared/theme/tokens';
 import { formatCostFromHundredths } from '@/shared/lib/ai/pricing';
-import ArenaOverlay, { OVERLAY_TITLE, overlayActions, overlayButton } from '@/features/arena/ArenaOverlay';
+import ModalOverlay, { OVERLAY_TITLE, overlayActions, overlayButton } from '@/shared/ui/ModalOverlay';
 
 interface ExpiryOverlayProps {
   totalTokens: number;
@@ -16,7 +16,7 @@ interface ExpiryOverlayProps {
 function ExpiryOverlay({ totalTokens, totalCost, isMobile, onReview, onSubmit, onRestart }: ExpiryOverlayProps) {
   const testsPassed = !!onSubmit;
   return (
-    <ArenaOverlay isMobile={isMobile} label={testsPassed ? 'Time is up, tests passed' : 'Time is up'}>
+    <ModalOverlay isMobile={isMobile} label={testsPassed ? 'Time is up, tests passed' : 'Time is up'}>
       <h2 style={testsPassed ? { ...s.title, color: arena.accent, margin: '0 0 8px' } : s.title}>
         {testsPassed ? 'Time\'s Up — But You Solved It!' : 'Time\'s Up!'}
       </h2>
@@ -50,7 +50,7 @@ function ExpiryOverlay({ totalTokens, totalCost, isMobile, onReview, onSubmit, o
           </button>
         )}
       </div>
-    </ArenaOverlay>
+    </ModalOverlay>
   );
 }
 

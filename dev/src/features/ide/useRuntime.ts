@@ -11,6 +11,31 @@ export type SaveStatus = 'idle' | 'saving' | 'saved' | 'error';
 
 const AUTO_SAVE_INTERVAL = 30_000;
 
+/** Files mounted when no project loads. Keys are relative to HOME_DIR. */
+export const STARTER_FILES: Record<string, string> = {
+  'package.json': JSON.stringify({
+    name: 'ruwt-project',
+    version: '1.0.0',
+    type: 'module',
+    scripts: { start: 'node index.js', test: 'node test.js' },
+  }, null, 2),
+  'index.js': '// Welcome to Ruwt IDE\n// Start coding or clone a repo\n\nconsole.log(\'Hello, world!\');\n',
+};
+
+/**
+ * True when two collected file maps hold the same paths and contents.
+ *
+ * Callers compare the current tree against a baseline they captured
+ * themselves. A fixed baseline would not work: what a session starts with
+ * depends on whether it mounted the starter files, loaded a project, or
+ * cloned a repository.
+ */
+export function sameFiles(a: Record<string, string>, b: Record<string, string>): boolean {
+  const names = Object.keys(a);
+  if (names.length !== Object.keys(b).length) return false;
+  return names.every((name) => a[name] === b[name]);
+}
+
 export function useRuntime(projectId?: string) {
   const [ready, setReady] = useState(false);
   const [files, setFiles] = useState<FileEntry[]>([]);
@@ -51,13 +76,9 @@ export function useRuntime(projectId?: string) {
         }
 
         // No projectId or load failed — mount starter files
-        vfs.writeFile(`${HOME_DIR}/package.json`, JSON.stringify({
-          name: 'ruwt-project',
-          version: '1.0.0',
-          type: 'module',
-          scripts: { start: 'node index.js', test: 'node test.js' },
-        }, null, 2));
-        vfs.writeFile(`${HOME_DIR}/index.js`, '// Welcome to Ruwt IDE\n// Start coding or clone a repo\n\nconsole.log(\'Hello, world!\');\n');
+        for (const [name, contents] of Object.entries(STARTER_FILES)) {
+          vfs.writeFile(`${HOME_DIR}/${name}`, contents);
+        }
 
         if (!cancelledRef.current) {
           const tree = buildFileTree(vfs, HOME_DIR);
