@@ -67,7 +67,7 @@ vi.mock('@/shared/theme/colors', () => ({
 const mockFetch = vi.fn();
 vi.stubGlobal('fetch', mockFetch);
 
-import { useRuntime } from './useRuntime';
+import { useRuntime, sameFiles, STARTER_FILES } from './useRuntime';
 
 // ---------------------------------------------------------------------------
 // Tests
@@ -263,5 +263,43 @@ describe('useRuntime', () => {
     const { unmount } = renderHook(() => useRuntime());
     unmount();
     // Should not throw
+  });
+});
+
+describe('sameFiles', () => {
+  it('is true for identical maps', () => {
+    expect(sameFiles({ ...STARTER_FILES }, { ...STARTER_FILES })).toBe(true);
+  });
+
+  it('is true for two empty maps', () => {
+    expect(sameFiles({}, {})).toBe(true);
+  });
+
+  it('is false when a file was edited', () => {
+    expect(sameFiles(
+      { ...STARTER_FILES, 'index.js': 'export function solve() { return 42; }' },
+      STARTER_FILES,
+    )).toBe(false);
+  });
+
+  it('is false when a file was added', () => {
+    expect(sameFiles({ ...STARTER_FILES, 'solution.js': 'x' }, STARTER_FILES)).toBe(false);
+  });
+
+  it('is false when a file was deleted', () => {
+    expect(sameFiles({ 'index.js': STARTER_FILES['index.js'] }, STARTER_FILES)).toBe(false);
+  });
+
+  it('is false when a file was renamed but kept its contents', () => {
+    expect(sameFiles(
+      { 'package.json': STARTER_FILES['package.json'], 'main.js': STARTER_FILES['index.js'] },
+      STARTER_FILES,
+    )).toBe(false);
+  });
+
+  it('compares a cloned repository tree, not just the starter files', () => {
+    const repo = { 'src/app.ts': 'export const a = 1;', 'README.md': '# repo' };
+    expect(sameFiles({ ...repo }, repo)).toBe(true);
+    expect(sameFiles({ ...repo, 'src/app.ts': 'export const a = 2;' }, repo)).toBe(false);
   });
 });

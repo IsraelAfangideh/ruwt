@@ -1,6 +1,6 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { arena } from '@/shared/theme/colors';
-import ArenaOverlay, { OVERLAY_TITLE, overlayActions, overlayButton } from '@/features/arena/ArenaOverlay';
+import ModalOverlay, { OVERLAY_TITLE, overlayActions, overlayButton } from '@/shared/ui/ModalOverlay';
 
 /**
  * Reason the guard appeared.
@@ -41,17 +41,9 @@ const COPY: Record<SubmitGuardReason, { title: string; body: string; cancelLabel
 function SubmitGuardOverlay({ reason, isMobile, onCancel, onConfirm }: SubmitGuardOverlayProps) {
   const { title, body, cancelLabel, confirmLabel } = COPY[reason];
 
-  // Escape cancels — the safe choice, since confirming is what costs the user.
-  useEffect(() => {
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onCancel();
-    };
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, [onCancel]);
-
   return (
-    <ArenaOverlay isMobile={isMobile} label={title}>
+    // Escape cancels — the safe choice, since confirming is what costs the user.
+    <ModalOverlay isMobile={isMobile} label={title} onDismiss={onCancel}>
       <h2 style={OVERLAY_TITLE}>{title}</h2>
       <p style={s.body}>{body}</p>
       <div style={overlayActions(isMobile)}>
@@ -64,7 +56,7 @@ function SubmitGuardOverlay({ reason, isMobile, onCancel, onConfirm }: SubmitGua
           </button>
         )}
       </div>
-    </ArenaOverlay>
+    </ModalOverlay>
   );
 }
 
