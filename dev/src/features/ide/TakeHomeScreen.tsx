@@ -13,7 +13,8 @@ import { useIDELayout } from '@/features/shared-ide/hooks/useIDELayout';
 import { arena } from '@/shared/theme/colors';
 import { fontFamily } from '@/shared/theme/tokens';
 import { useDocumentMeta } from '@/shared/hooks/useDocumentMeta';
-import { useRuntime } from './useRuntime';
+import { useRuntime, sameFiles } from './useRuntime';
+import TakeHomeSubmitGuard from './TakeHomeSubmitGuard';
 import { FileTree } from './FileTree';
 import { IDETerminal } from './IDETerminal';
 import { tabLabel, languageForPath, buildGitStatusMap } from './utils';
@@ -61,6 +62,16 @@ export function TakeHomeScreen() {
   const [sessionError, setSessionError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  // Non-null while the candidate is confirming. Submitting is irreversible.
+  const [pendingSubmit, setPendingSubmit] = useState<{ untouched: boolean } | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  /**
+   * The files this session started with, captured once the tree settles —
+   * after the clone for a repo take-home, on ready for a bare one. The submit
+   * guard compares against this. Null means "not established", and the guard
+   * then stays quiet rather than warning on a guess.
+   */
+  const baselineFilesRef = useRef<Record<string, string> | null>(null);
   const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
   const [showInstructions, setShowInstructions] = useState(true);
   const [disclosureAccepted, setDisclosureAccepted] = useState(false);
@@ -126,6 +137,8 @@ export function TakeHomeScreen() {
 
   /** Shared clone logic — used by both initial clone and retry. */
   const doClone = useCallback((repoUrl: string) => {
+    // A clone replaces the tree, so any earlier baseline is stale.
+    baselineFilesRef.current = null;
     cloneAttemptedRef.current = true;
     setCloneFailed(false);
     setCloneProgress('Cloning repository...');
@@ -137,6 +150,8 @@ export function TakeHomeScreen() {
       .then(async () => {
         setCloneProgress(null);
         await refreshFiles();
+        // The cloned repository is what this candidate started from.
+        baselineFilesRef.current = collectFiles();
         try {
           const entries = await browserGit.status(backend, '.');
           setGitStatusEntries(entries);
@@ -149,13 +164,19 @@ export function TakeHomeScreen() {
         setCloneFailed(true);
         cloneAttemptedRef.current = false; // allow retry
       });
-  }, [refreshFiles, backend]);
+  }, [refreshFiles, backend, collectFiles]);
 
   // Clone repo when session is loaded and runtime is ready
   useEffect(() => {
     if (!ready || !sessionDetails?.repoUrl || cloneAttemptedRef.current) return;
     doClone(sessionDetails.repoUrl);
   }, [ready, sessionDetails, doClone]);
+
+  // No repository to clone — the starter files are the baseline.
+  useEffect(() => {
+    if (!ready || sessionDetails?.repoUrl || baselineFilesRef.current) return;
+    baselineFilesRef.current = collectFiles();
+  }, [ready, sessionDetails, collectFiles]);
 
   /** Retry clone after a failure. */
   const handleRetryClone = useCallback(() => {
@@ -292,30 +313,67 @@ export function TakeHomeScreen() {
     }
   }, [ready, files, openTabs.length, openFile]);
 
-  // Submit handler
-  const handleSubmit = useCallback(async () => {
+  // Step 1 — ask first. This POST ends the assessment for good, so nothing
+  // reaches the server until the candidate confirms.
+  const requestSubmit = useCallback(() => {
     if (!sessionId || submitting || submitted) return;
+    setSubmitError(null);
+    const baseline = baselineFilesRef.current;
+    setPendingSubmit({ untouched: baseline !== null && sameFiles(collectFiles(), baseline) });
+  }, [sessionId, submitting, submitted, collectFiles]);
+
+  // Stable, so the guard's Escape listener does not re-subscribe every time
+  // the countdown ticks.
+  const cancelSubmit = useCallback(() => setPendingSubmit(null), []);
+
+  // Step 2 — the candidate confirmed.
+  const handleSubmit = useCallback(async () => {
+    setPendingSubmit(null);
     setSubmitting(true);
     try {
       // Flush remaining replay events before submitting
       await recorder.flush().catch(/* istanbul ignore next -- @preserve */ () => {});
-      const allFiles = await collectFiles();
+      // Re-collect rather than reuse the map from requestSubmit: editor
+      // changes reach the filesystem on a 300ms debounce, so a keystroke just
+      // before the click is still pending when the dialog opens.
+      const allFiles = collectFiles();
       const res = await fetch('/api/assess/takehome/submit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sessionId, files: allFiles }),
       });
-      if (res.ok) {
-        const data = await res.json() as { shareToken: string };
-        setSubmitted(true);
-        navigation.navigate('AssessmentResults', { shareToken: data.shareToken });
+      const data = await res.json().catch(/* istanbul ignore next -- @preserve */ () => ({})) as { shareToken?: string; error?: string; code?: string };
+      if (!res.ok) {
+        // The assessment already ended. Nothing to retry — send them to the
+        // result rather than leaving them on a dead screen.
+        if (data.code === 'session_not_active' && data.shareToken) {
+          setSubmitted(true);
+          navigation.navigate('AssessmentResults', { shareToken: data.shareToken });
+          return;
+        }
+        // Say so. A silent failure reads as a broken button, and the candidate
+        // is on a timer.
+        setSubmitError(data.error || `Submit failed (${res.status}). Your work is not submitted yet.`);
+        return;
       }
-    } catch {
-      // submit error — stay on page
+      // The server has marked the session completed by this point, so the
+      // assessment is over either way.
+      setSubmitted(true);
+      if (!data.shareToken) {
+        setSubmitError('Your work was submitted, but the server returned no results link. Contact your reviewer.');
+        return;
+      }
+      navigation.navigate('AssessmentResults', { shareToken: data.shareToken });
+    } catch (e) {
+      setSubmitError(
+        e instanceof Error
+          ? `Submit failed: ${e.message}. Your work is not submitted yet.`
+          : 'Submit failed. Your work is not submitted yet.'
+      );
     } finally {
       setSubmitting(false);
     }
-  }, [sessionId, submitting, submitted, collectFiles, navigation, recorder]);
+  }, [sessionId, collectFiles, navigation, recorder]);
 
   if (loading || !user) return null;
 
@@ -396,7 +454,7 @@ export function TakeHomeScreen() {
             {showInstructions ? 'Hide Instructions' : 'Show Instructions'}
           </button>
           <button
-            onClick={handleSubmit}
+            onClick={requestSubmit}
             disabled={submitting || submitted}
             style={{
               ...submitBtnStyle,
@@ -408,6 +466,20 @@ export function TakeHomeScreen() {
           </button>
         </div>
       </div>
+
+      {/* A failed submit must not read as a broken button */}
+      {submitError && (
+        <div style={submitErrorStyle} role="alert" data-testid="takehome-submit-error">
+          <span>{submitError}</span>
+          <button
+            onClick={() => setSubmitError(null)}
+            style={submitErrorDismissStyle}
+            aria-label="Dismiss error"
+          >
+            {'×'}
+          </button>
+        </div>
+      )}
 
       {/* Main content area */}
       <div style={mainStyle}>
@@ -561,6 +633,14 @@ export function TakeHomeScreen() {
           </div>
         </div>
       </div>
+
+      {pendingSubmit && (
+        <TakeHomeSubmitGuard
+          untouched={pendingSubmit.untouched}
+          onCancel={cancelSubmit}
+          onConfirm={handleSubmit}
+        />
+      )}
     </div>
   );
 }
@@ -575,6 +655,8 @@ const rootStyle: React.CSSProperties = {
   background: arena.bg,
   color: arena.text,
   overflow: 'hidden',
+  // Anchors the submit guard, which covers its nearest positioned ancestor.
+  position: 'relative',
 };
 
 const centerStyle: React.CSSProperties = {
@@ -582,6 +664,29 @@ const centerStyle: React.CSSProperties = {
   alignItems: 'center',
   justifyContent: 'center',
   flex: 1,
+};
+
+const submitErrorStyle: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  gap: 12,
+  padding: '8px 12px',
+  background: `${arena.error}1f`,
+  borderBottom: `1px solid ${arena.error}55`,
+  color: arena.error,
+  fontSize: 13,
+  flexShrink: 0,
+};
+
+const submitErrorDismissStyle: React.CSSProperties = {
+  background: 'transparent',
+  border: 'none',
+  color: arena.error,
+  fontSize: 16,
+  cursor: 'pointer',
+  padding: '0 4px',
+  lineHeight: 1,
 };
 
 const topBarStyle: React.CSSProperties = {

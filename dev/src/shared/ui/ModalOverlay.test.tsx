@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import ArenaOverlay, { OVERLAY_TITLE, overlayActions, overlayButton } from './ArenaOverlay';
+import ModalOverlay, { OVERLAY_TITLE, overlayActions, overlayButton } from './ModalOverlay';
 
 vi.mock('@/shared/theme/colors', () => ({
   arena: {
@@ -15,26 +15,26 @@ vi.mock('@/shared/theme/colors', () => ({
   },
 }));
 
-describe('ArenaOverlay', () => {
+describe('ModalOverlay', () => {
   it('renders its children', () => {
-    render(<ArenaOverlay label="x"><p>Inside the card</p></ArenaOverlay>);
+    render(<ModalOverlay label="x"><p>Inside the card</p></ModalOverlay>);
     expect(screen.getByText('Inside the card')).toBeInTheDocument();
   });
 
   it('always announces itself as a modal dialog', () => {
-    render(<ArenaOverlay label="Confirm this"><p>a</p></ArenaOverlay>);
+    render(<ModalOverlay label="Confirm this"><p>a</p></ModalOverlay>);
     const dialog = screen.getByRole('dialog');
     expect(dialog).toHaveAttribute('aria-modal', 'true');
     expect(dialog).toHaveAttribute('aria-label', 'Confirm this');
   });
 
   it('tightens the card padding on mobile', () => {
-    render(<ArenaOverlay isMobile label="m"><p>a</p></ArenaOverlay>);
+    render(<ModalOverlay isMobile label="m"><p>a</p></ModalOverlay>);
     expect(screen.getByRole('dialog')).toHaveStyle({ padding: '24px 20px' });
   });
 
   it('lets the caller override the card and the stacking order', () => {
-    render(<ArenaOverlay label="g" zIndex={200} cardStyle={{ padding: '32px' }}><p>a</p></ArenaOverlay>);
+    render(<ModalOverlay label="g" zIndex={200} cardStyle={{ padding: '32px' }}><p>a</p></ModalOverlay>);
     const dialog = screen.getByRole('dialog');
     expect(dialog).toHaveStyle({ padding: '32px' });
     expect(dialog.parentElement).toHaveStyle({ zIndex: '200' });

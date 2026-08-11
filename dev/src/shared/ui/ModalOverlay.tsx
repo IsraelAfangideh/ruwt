@@ -1,20 +1,26 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { arena } from '@/shared/theme/colors';
 import { fontFamily } from '@/shared/theme/tokens';
 
 /**
- * The backdrop and card that every arena overlay sits in.
+ * The backdrop and card that the dark-palette modals sit in.
  *
- * ExpiryOverlay, SubmitGuardOverlay, and the guest signup overlay each held a
- * private copy of these styles. One shell keeps them in step.
+ * The arena expiry, submit-guard, and guest-signup overlays, plus the
+ * take-home submit guard, each held a private copy of these styles. One shell
+ * keeps them in step.
  *
  * The overlay covers its nearest positioned ancestor, not the viewport, which
- * is how the arena has always framed these — the header stays reachable.
+ * is how these have always been framed — the header stays reachable.
  */
-interface ArenaOverlayProps {
+interface ModalOverlayProps {
   children: React.ReactNode;
   /** Names the dialog for screen readers. Required: every overlay is modal. */
   label: string;
+  /**
+   * Called when the user presses Escape. Owned here so no consumer has to
+   * re-implement it. Map it to the safe choice — cancel, never confirm.
+   */
+  onDismiss?: () => void;
   /** Tightens the card padding for narrow screens. */
   isMobile?: boolean;
   /** Defaults to 50. The guest signup overlay sits above the IDE chrome. */
@@ -26,7 +32,16 @@ interface ArenaOverlayProps {
   cardStyle?: React.CSSProperties;
 }
 
-function ArenaOverlay({ children, label, isMobile, zIndex = 50, cardStyle }: ArenaOverlayProps) {
+function ModalOverlay({ children, label, onDismiss, isMobile, zIndex = 50, cardStyle }: ModalOverlayProps) {
+  useEffect(() => {
+    if (!onDismiss) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onDismiss();
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [onDismiss]);
+
   return (
     <div style={{ ...s.backdrop, zIndex }}>
       <div
@@ -41,7 +56,7 @@ function ArenaOverlay({ children, label, isMobile, zIndex = 50, cardStyle }: Are
   );
 }
 
-export default ArenaOverlay;
+export default ModalOverlay;
 
 /** Display-face heading used by every arena overlay. */
 export const OVERLAY_TITLE: React.CSSProperties = {

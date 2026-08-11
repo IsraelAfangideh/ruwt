@@ -50,7 +50,18 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
     }
 
     if (session.status !== 'in_progress') {
-      return Response.json({ error: 'Session is not active' }, { status: 400 });
+      // Usually a second submit on an assessment that already ended. Return a
+      // stable `code` and the share token so the client can say so plainly and
+      // send the candidate to their result, rather than printing a bare string.
+      return Response.json(
+        {
+          error: 'This assessment has already ended.',
+          code: 'session_not_active',
+          status: session.status,
+          shareToken: session.shareToken,
+        },
+        { status: 400 },
+      );
     }
 
     // Record the submitted files as a telemetry event

@@ -76,10 +76,22 @@ let mockWCReturn: any;
 const mockRefreshFiles = vi.fn().mockResolvedValue(undefined);
 const mockMarkDirty = vi.fn();
 const mockSaveProject = vi.fn().mockResolvedValue(true);
-const mockCollectFiles = vi.fn().mockResolvedValue({ 'index.js': 'code' });
+// collectFiles is synchronous — a resolved Promise here would serialise to {}
+// in the request body and hide a regression.
+const mockCollectFiles = vi.fn().mockReturnValue({ 'index.js': 'code' });
+// sameFiles has its own unit tests in useRuntime.test.ts; here it is a switch
+// so a test can choose whether the guard shows its extra warning.
+const mockSameFiles = vi.fn(() => false);
 vi.mock('./useRuntime', () => ({
   useRuntime: () => mockWCReturn,
+  sameFiles: () => mockSameFiles(),
 }));
+
+/** Clicks Submit, then confirms in the guard. Submitting is irreversible. */
+async function submitAndConfirm() {
+  await act(async () => { fireEvent.click(screen.getByTestId('submit-btn')); });
+  await act(async () => { fireEvent.click(screen.getByTestId('takehome-confirm-submit')); });
+}
 
 vi.mock('./IDETerminal', () => ({
   IDETerminal: () => <div data-testid="ide-terminal-mock">Terminal</div>,
@@ -265,9 +277,7 @@ describe('TakeHomeScreen', () => {
       expect(screen.getByTestId('submit-btn')).toBeInTheDocument();
     });
 
-    await act(async () => {
-      fireEvent.click(screen.getByTestId('submit-btn'));
-    });
+    await submitAndConfirm();
 
     expect(mockCollectFiles).toHaveBeenCalled();
     // Verify navigation happened
@@ -390,9 +400,8 @@ describe('TakeHomeScreen', () => {
       expect(screen.getByTestId('submit-btn')).toBeInTheDocument();
     });
 
-    await act(async () => {
-      fireEvent.click(screen.getByTestId('submit-btn'));
-    });
+    // Confirm, or the failure mock is never reached and this cannot fail.
+    await submitAndConfirm();
 
     // Should still show Submit (not Submitted) since it failed
     await waitFor(() => {
@@ -452,10 +461,179 @@ describe('TakeHomeScreen', () => {
       expect(screen.getByTestId('submit-btn')).toBeInTheDocument();
     });
 
-    await act(async () => {
-      fireEvent.click(screen.getByTestId('submit-btn'));
-    });
+    await submitAndConfirm();
 
     expect(mockRecorder.flush).toHaveBeenCalled();
+  });
+
+  /* ─── Submit guard ─────────────────────────────────────────────── */
+
+  /** Session-load response followed by a chosen submit response. */
+  function mockSessionThenSubmit(submitRes: Record<string, unknown>) {
+    mockFetch
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({
+          session: { id: 'sess-123', status: 'in_progress', expiresAt: new Date(Date.now() + 3600000).toISOString(), disclosureAccepted: 1 },
+          assessment: { id: 'a1', type: 'takehome', timeLimit: 3600, instructions: 'Test', allowedModels: null },
+        }),
+      })
+      .mockResolvedValue(submitRes);
+  }
+
+  async function renderAndWaitForSubmit() {
+    render(<TakeHomeScreen />);
+    await waitFor(() => { expect(screen.getByTestId('submit-btn')).toBeInTheDocument(); });
+  }
+
+  it('asks before submitting, and sends nothing until confirmed', async () => {
+    mockSessionThenSubmit({ ok: true, json: () => Promise.resolve({ shareToken: 's' }) });
+    await renderAndWaitForSubmit();
+    const callsBefore = mockFetch.mock.calls.length;
+
+    await act(async () => { fireEvent.click(screen.getByTestId('submit-btn')); });
+
+    expect(screen.getByText('Submit and end the assessment?')).toBeInTheDocument();
+    expect(mockFetch.mock.calls.length).toBe(callsBefore);
+    expect(mockNavigate).not.toHaveBeenCalledWith('AssessmentResults', expect.anything());
+  });
+
+  it('Keep Working cancels without submitting', async () => {
+    mockSessionThenSubmit({ ok: true, json: () => Promise.resolve({ shareToken: 's' }) });
+    await renderAndWaitForSubmit();
+    const callsBefore = mockFetch.mock.calls.length;
+
+    await act(async () => { fireEvent.click(screen.getByTestId('submit-btn')); });
+    await act(async () => { fireEvent.click(screen.getByTestId('takehome-keep-working')); });
+
+    expect(screen.queryByText('Submit and end the assessment?')).not.toBeInTheDocument();
+    expect(mockFetch.mock.calls.length).toBe(callsBefore);
+  });
+
+  it('Escape cancels the guard', async () => {
+    mockSessionThenSubmit({ ok: true, json: () => Promise.resolve({ shareToken: 's' }) });
+    await renderAndWaitForSubmit();
+    const callsBefore = mockFetch.mock.calls.length;
+
+    await act(async () => { fireEvent.click(screen.getByTestId('submit-btn')); });
+    await act(async () => { fireEvent.keyDown(window, { key: 'Escape' }); });
+
+    expect(screen.queryByText('Submit and end the assessment?')).not.toBeInTheDocument();
+    expect(mockFetch.mock.calls.length).toBe(callsBefore);
+  });
+
+  it('warns when no starter file has been changed', async () => {
+    mockSameFiles.mockReturnValueOnce(true);
+    mockSessionThenSubmit({ ok: true, json: () => Promise.resolve({ shareToken: 's' }) });
+    await renderAndWaitForSubmit();
+
+    await act(async () => { fireEvent.click(screen.getByTestId('submit-btn')); });
+
+    expect(screen.getByTestId('takehome-untouched-warning')).toBeInTheDocument();
+    // A candidate may still hand in nothing — it must not be blocked.
+    expect(screen.getByTestId('takehome-confirm-submit')).toBeInTheDocument();
+  });
+
+  it('omits the warning once a file has been changed', async () => {
+    mockSessionThenSubmit({ ok: true, json: () => Promise.resolve({ shareToken: 's' }) });
+    await renderAndWaitForSubmit();
+
+    await act(async () => { fireEvent.click(screen.getByTestId('submit-btn')); });
+
+    expect(screen.queryByTestId('takehome-untouched-warning')).not.toBeInTheDocument();
+  });
+
+  it('surfaces the server reason when a submit fails', async () => {
+    mockSessionThenSubmit({
+      ok: false,
+      status: 400,
+      json: () => Promise.resolve({ error: 'Session is not active' }),
+    });
+    await renderAndWaitForSubmit();
+
+    await submitAndConfirm();
+
+    const err = await screen.findByTestId('takehome-submit-error');
+    expect(err).toHaveTextContent('Session is not active');
+    expect(mockNavigate).not.toHaveBeenCalledWith('AssessmentResults', expect.anything());
+    // The button must not stay stuck on "Submitting..."
+    expect(screen.getByTestId('submit-btn')).not.toBeDisabled();
+  });
+
+  it('sends the candidate to their result when the assessment already ended', async () => {
+    mockSessionThenSubmit({
+      ok: false,
+      status: 400,
+      json: () => Promise.resolve({
+        error: 'This assessment has already ended.',
+        code: 'session_not_active',
+        status: 'completed',
+        shareToken: 'share-done',
+      }),
+    });
+    await renderAndWaitForSubmit();
+
+    await submitAndConfirm();
+
+    // Nothing to retry, so no error banner — just take them to the result.
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith('AssessmentResults', { shareToken: 'share-done' });
+    });
+    expect(screen.queryByTestId('takehome-submit-error')).not.toBeInTheDocument();
+  });
+
+  it('still shows an error when the ended session has no share token', async () => {
+    mockSessionThenSubmit({
+      ok: false,
+      status: 400,
+      json: () => Promise.resolve({ error: 'This assessment has already ended.', code: 'session_not_active' }),
+    });
+    await renderAndWaitForSubmit();
+
+    await submitAndConfirm();
+
+    const err = await screen.findByTestId('takehome-submit-error');
+    expect(err).toHaveTextContent('already ended');
+  });
+
+  it('surfaces a thrown network error', async () => {
+    mockFetch
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({
+          session: { id: 'sess-123', status: 'in_progress', expiresAt: new Date(Date.now() + 3600000).toISOString(), disclosureAccepted: 1 },
+          assessment: { id: 'a1', type: 'takehome', timeLimit: 3600, instructions: 'Test', allowedModels: null },
+        }),
+      })
+      .mockRejectedValue(new Error('Network down'));
+    await renderAndWaitForSubmit();
+
+    await submitAndConfirm();
+
+    const err = await screen.findByTestId('takehome-submit-error');
+    expect(err).toHaveTextContent('Network down');
+    expect(err).toHaveTextContent('not submitted yet');
+  });
+
+  it('reports a completed submit that returns no share token', async () => {
+    mockSessionThenSubmit({ ok: true, json: () => Promise.resolve({}) });
+    await renderAndWaitForSubmit();
+
+    await submitAndConfirm();
+
+    const err = await screen.findByTestId('takehome-submit-error');
+    expect(err).toHaveTextContent('no results link');
+    expect(mockNavigate).not.toHaveBeenCalledWith('AssessmentResults', expect.anything());
+  });
+
+  it('dismisses the error banner', async () => {
+    mockSessionThenSubmit({ ok: false, status: 500, json: () => Promise.resolve({}) });
+    await renderAndWaitForSubmit();
+
+    await submitAndConfirm();
+    await screen.findByTestId('takehome-submit-error');
+
+    await act(async () => { fireEvent.click(screen.getByLabelText('Dismiss error')); });
+    expect(screen.queryByTestId('takehome-submit-error')).not.toBeInTheDocument();
   });
 });
