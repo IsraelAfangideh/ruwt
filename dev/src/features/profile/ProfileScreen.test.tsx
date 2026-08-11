@@ -418,7 +418,7 @@ describe('ProfileScreen', () => {
     fireEvent.change(input, { target: { value: 'newuser' } });
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => {
-      expect(screen.getByText('Network error')).toBeInTheDocument();
+      expect(screen.getByText(/Could not reach the server/)).toBeInTheDocument();
     });
   });
 
@@ -481,7 +481,7 @@ describe('ProfileScreen', () => {
     fireEvent.change(input, { target: { value: 'newuser' } });
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => {
-      expect(screen.getByText('Failed to save')).toBeInTheDocument();
+      expect(screen.getByText(/Could not save/)).toBeInTheDocument();
     });
   });
 
@@ -635,7 +635,7 @@ describe('ProfileScreen', () => {
       const input = document.querySelector('[data-testid="username-input"]') as HTMLInputElement;
       fireEvent.change(input, { target: { value: 'testname' } });
       fireEvent.click(screen.getByRole('button', { name: 'Save' }));
-      await waitFor(() => { expect(screen.getByText('Network error')).toBeInTheDocument(); });
+      await waitFor(() => { expect(screen.getByText(/Could not reach the server/)).toBeInTheDocument(); });
     });
 
     it('handles profile with very long username', async () => {

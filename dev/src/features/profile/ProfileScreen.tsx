@@ -22,6 +22,7 @@ import { useDashboardData } from '@/shared/lib/DashboardDataContext';
 import { useDocumentMeta } from '@/shared/hooks/useDocumentMeta';
 import { formatCategory, generateHeatmapDays } from '@/shared/lib/utils';
 import { AFI_TIER_COLORS, CERTIFICATIONS, type AFITier } from '@/shared/lib/scoring';
+import { UsernameClaim } from '@/shared/ui/UsernameClaim';
 
 interface ProfileData {
   profile: {
@@ -181,11 +182,9 @@ export function ProfileScreen() {
     [cachedData.badges.data],
   );
 
-  // Username editing
+  // Username editing — the claim itself lives in UsernameClaim, which owns the
+  // draft, the validation and the taken-handle case.
   const [editingUsername, setEditingUsername] = useState(false);
-  const [username, setUsername] = useState('');
-  const [usernameError, setUsernameError] = useState<string | null>(null);
-  const [savingUsername, setSavingUsername] = useState(false);
 
   // Bio editing
   const [editingBio, setEditingBio] = useState(false);
@@ -198,34 +197,11 @@ export function ProfileScreen() {
   // Initialize local state from cached data when it loads
   useEffect(() => {
     if (data) {
-      setUsername(data.profile.username || '');
       setBio((data.profile as any)?.bio || '');
       setAvatarUrl(data.profile?.avatarUrl || null);
     }
   }, [data]);
 
-  const handleSaveUsername = async () => {
-    if (!username.trim()) return;
-    setSavingUsername(true);
-    setUsernameError(null);
-    try {
-      const res = await fetch('/api/profile', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: username.trim().toLowerCase() }),
-      });
-      if (!res.ok) {
-        const err = await res.json();
-        setUsernameError(err.error || 'Failed to save');
-      } else {
-        setEditingUsername(false);
-        refreshEndpoint('dashboard');
-      }
-    } catch {
-      setUsernameError('Network error');
-    }
-    setSavingUsername(false);
-  };
 
   /* istanbul ignore next -- @preserve */
   const handleSaveBio = async () => {
@@ -358,23 +334,16 @@ export function ProfileScreen() {
               <View style={styles.usernameEditRow}>
                 <View style={styles.usernameInputWrap}>
                   <Label htmlFor="profile-username">Username</Label>
-                  <Input
-                    id="profile-username"
-                    value={username}
-                    onChangeText={setUsername}
-                    placeholder="your-username"
-                    autoCapitalize="none"
-                    editable={!savingUsername}
-                    label="Username"
+                  <UsernameClaim
+                    value={profile.username}
+                    saveLabel="Save"
+                    onSaved={() => {
+                      setEditingUsername(false);
+                      refreshEndpoint('dashboard');
+                    }}
                   />
-                  {usernameError && (
-                    <Text style={[styles.errorText, { color: c.error }]}>{usernameError}</Text>
-                  )}
                 </View>
                 <View style={styles.usernameActions}>
-                  <Button size="sm" onPress={handleSaveUsername} disabled={savingUsername}>
-                    {savingUsername ? 'Saving...' : 'Save'}
-                  </Button>
                   <Button size="sm" variant="ghost" onPress={() => setEditingUsername(false)}>
                     Cancel
                   </Button>
@@ -382,6 +351,7 @@ export function ProfileScreen() {
               </View>
             ) : (
               <Pressable onPress={() => setEditingUsername(true)}>
+                {/* Without a handle there is no public profile, so replays cannot be shared. */}
                 <Text style={[styles.usernameDisplay, { color: c.accent }]}>
                   {profile.username ? `@${profile.username}` : 'Set username'}
                 </Text>

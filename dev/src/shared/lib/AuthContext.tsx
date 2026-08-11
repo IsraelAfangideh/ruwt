@@ -7,6 +7,7 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import * as Sentry from '@sentry/react';
 import { createClient } from '@/shared/lib/supabase/client';
+import { reportAttribution } from '@/shared/lib/attribution';
 import type { User } from '@supabase/supabase-js';
 
 interface AuthContextType {
@@ -22,11 +23,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const supabase = createClient();
+    // Once per mount, so a token refresh does not re-post. The record clears
+    // itself on success, so later page loads send nothing at all.
+    let reported = false;
+
+    /** Attaches the stored first-touch record to the account, once. */
+    const report = (u: User | null) => {
+      if (!u || reported) return;
+      reported = true;
+      void reportAttribution();
+    };
 
     // Initial check
     supabase.auth.getUser().then(({ data: { user: u } }) => {
       setUser(prev => (prev?.id === u?.id ? prev : u));
       setLoading(false);
+      report(u);
       /* istanbul ignore next -- @preserve */
       if (u) Sentry.setUser({ id: u.id, email: u.email ?? undefined });
     });
@@ -38,6 +50,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       /* istanbul ignore next -- @preserve */
       setUser(prev => (prev?.id === u?.id ? prev : u));
       setLoading(false);
+      report(u);
       if (u) {
         /* istanbul ignore next -- @preserve */
         Sentry.setUser({ id: u.id, email: u.email ?? undefined });

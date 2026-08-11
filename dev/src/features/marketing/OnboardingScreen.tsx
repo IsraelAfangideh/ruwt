@@ -18,6 +18,7 @@ import { resetNavigation } from '@/shared/navigation/resetNavigation';
 import { Card, CardHeader, CardTitle, CardContent } from '@/shared/ui/Card';
 import { Badge } from '@/shared/ui/Badge';
 import { Button } from '@/shared/ui/Button';
+import { UsernameClaim } from '@/shared/ui/UsernameClaim';
 import { useColors } from '@/shared/theme';
 import { spacing, fontSizes, fontFamily, radii } from '@/shared/theme/tokens';
 
@@ -30,6 +31,9 @@ export function OnboardingScreen() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [wantsNewsletter, setWantsNewsletter] = useState(true);
+  // Optional. A handle unlocks a public profile and shareable replays, but a
+  // new user must never be blocked from reaching their first challenge.
+  const [username, setUsername] = useState<string | null>(null);
 
   useEffect(() => {
     const init = async () => {
@@ -50,6 +54,8 @@ export function OnboardingScreen() {
             resetNavigation(navigation, [{ name: 'Problems' }]);
             return;
           }
+          // A GitHub sign-in can already have supplied one.
+          if (profile.username) setUsername(profile.username);
         }
       } catch {
         // Continue with onboarding if check fails
@@ -117,7 +123,14 @@ export function OnboardingScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.stepContainer}>
-          {step === 0 && <StepWelcome colors={c} onNext={goNext} />}
+          {step === 0 && (
+            <StepWelcome
+              colors={c}
+              onNext={goNext}
+              claimed={username}
+              onClaimUsername={setUsername}
+            />
+          )}
           {step === 1 && (
             <StepFirstChallenge
               colors={c}
@@ -166,9 +179,14 @@ export function OnboardingScreen() {
 function StepWelcome({
   colors: c,
   onNext,
+  claimed,
+  onClaimUsername,
 }: {
   colors: any;
   onNext: () => void;
+  /** Handle already claimed in this session, if any. */
+  claimed: string | null;
+  onClaimUsername: (username: string) => void;
 }) {
   return (
     <View style={styles.stepInner}>
@@ -211,6 +229,24 @@ function StepWelcome({
             Budget models ($) are cheap but may need more attempts. Premium models ($$$) are
             powerful but expensive. The best engineers find the sweet spot — and their AFI shows it.
           </Text>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent>
+          <Text style={[styles.tipText, { color: c.text }]}>
+            {claimed ? `You are @${claimed}.` : 'Pick your handle'}
+          </Text>
+          <Text style={[styles.tipDetail, { color: c.textMuted }]}>
+            {claimed
+              ? 'Your profile and every replay you share carry this handle.'
+              : 'It gives you a public profile, and it puts your name on the replays of the challenges you solve. You can set it later in Settings.'}
+          </Text>
+          {!claimed && (
+            <View style={{ marginTop: spacing.md }}>
+              <UsernameClaim value={claimed} onSaved={onClaimUsername} />
+            </View>
+          )}
         </CardContent>
       </Card>
 

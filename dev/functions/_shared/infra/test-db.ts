@@ -44,6 +44,12 @@ CREATE TABLE IF NOT EXISTS profiles (
   preferred_mode TEXT,
   afi_score INTEGER DEFAULT 0 NOT NULL,
   afi_tier TEXT DEFAULT 'novice' NOT NULL,
+  referrer TEXT,
+  utm_source TEXT,
+  utm_medium TEXT,
+  utm_campaign TEXT,
+  landing_path TEXT,
+  attributed_at TEXT,
   created_at TEXT DEFAULT (datetime('now')) NOT NULL
 );
 

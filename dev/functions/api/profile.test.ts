@@ -346,7 +346,9 @@ describe('PATCH /api/profile', () => {
 
     expect(res.status).toBe(400);
     const json = await res.json();
-    expect(json.error).toContain('Lowercase alphanumeric');
+    // Wording comes from USERNAME_RULE in src/shared/lib/username.ts, which the
+    // client shows too, so the two can no longer disagree.
+    expect(json.error).toContain('Lowercase letters, numbers and hyphens');
   });
 
   it('rejects username starting with a hyphen', async () => {

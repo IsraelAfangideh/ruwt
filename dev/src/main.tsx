@@ -1,6 +1,11 @@
 import * as Sentry from '@sentry/react';
 import { createRoot } from 'react-dom/client';
 import App from './App';
+import { captureAttribution } from './shared/lib/attribution';
+
+// Before anything can navigate away. A GitHub sign-in round trip replaces
+// document.referrer, so this is the only moment the true source is visible.
+captureAttribution();
 
 Sentry.init({
   dsn: import.meta.env.VITE_SENTRY_DSN,

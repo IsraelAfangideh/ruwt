@@ -80,55 +80,53 @@ describe('ProfileScreen — negative paths', () => {
     mockUseDashboardData.mockReturnValue(makeCachedState());
   });
 
-  it('sends XSS string in username to server without client-side execution', async () => {
-    let patchBody: any = null;
-    vi.stubGlobal('fetch', vi.fn().mockImplementation(async (_url: string, opts: any) => {
-      if (opts?.method === 'PATCH') {
-        patchBody = JSON.parse(opts.body);
-        return { ok: false, json: async () => ({ error: 'Invalid username' }) } as Response;
-      }
-      return { ok: true, json: async () => ({}) } as Response;
-    }));
-
+  /**
+   * These three used to assert that a hostile handle reached the server.
+   * The claim UI now rejects anything the pattern refuses before it sends, so
+   * the string never leaves the browser. The server still validates every one
+   * of these — see functions/api/profile.test.ts — because the client is a
+   * convenience, not the authority.
+   */
+  async function openClaimAndType(value: string) {
     render(<ProfileScreen />);
     await waitFor(() => expect(screen.getByText('Set username')).toBeInTheDocument());
     fireEvent.click(screen.getByText('Set username'));
     await waitFor(() => expect(screen.getByRole('button', { name: 'Save' })).toBeInTheDocument());
 
     const input = document.querySelector('[data-testid="username-input"]') as HTMLInputElement;
-    fireEvent.change(input, { target: { value: '<script>alert(1)</script>' } });
+    fireEvent.change(input, { target: { value } });
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+  }
 
-    await waitFor(() => {
-      expect(patchBody).not.toBeNull();
-      expect(patchBody.username).toBe('<script>alert(1)</script>');
-    });
+  it('refuses to send an XSS string, and never executes it', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({}) } as Response);
+    vi.stubGlobal('fetch', fetchMock);
+
+    await openClaimAndType('<script>alert(1)</script>');
+
+    await waitFor(() => expect(screen.getByText(/Lowercase letters|characters/)).toBeInTheDocument());
+    expect(fetchMock.mock.calls.some((c) => c[1]?.method === 'PATCH')).toBe(false);
+    expect(document.querySelector('script')).toBeNull();
   });
 
-  it('passes SQL injection string in username to server', async () => {
-    let patchBody: any = null;
-    vi.stubGlobal('fetch', vi.fn().mockImplementation(async (_url: string, opts: any) => {
-      if (opts?.method === 'PATCH') {
-        patchBody = JSON.parse(opts.body);
-        return { ok: false, json: async () => ({ error: 'Invalid username' }) } as Response;
-      }
-      return { ok: true, json: async () => ({}) } as Response;
-    }));
+  it('refuses to send a SQL injection string', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({}) } as Response);
+    vi.stubGlobal('fetch', fetchMock);
 
-    render(<ProfileScreen />);
-    await waitFor(() => expect(screen.getByText('Set username')).toBeInTheDocument());
-    fireEvent.click(screen.getByText('Set username'));
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Save' })).toBeInTheDocument());
+    await openClaimAndType("'; DROP TABLE users; --");
 
-    const input = document.querySelector('[data-testid="username-input"]') as HTMLInputElement;
-    fireEvent.change(input, { target: { value: "'; DROP TABLE users; --" } });
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(screen.getByText(/Lowercase letters|characters/)).toBeInTheDocument());
+    expect(fetchMock.mock.calls.some((c) => c[1]?.method === 'PATCH')).toBe(false);
+  });
 
-    await waitFor(() => {
-      expect(patchBody).not.toBeNull();
-      // ProfileScreen lowercases username before sending
-      expect(patchBody.username).toBe("'; drop table users; --");
-    });
+  it('refuses to send an extremely long username (1000 chars)', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({}) } as Response);
+    vi.stubGlobal('fetch', fetchMock);
+
+    await openClaimAndType('a'.repeat(1000));
+
+    await waitFor(() => expect(screen.getByText(/30 characters/)).toBeInTheDocument());
+    expect(fetchMock.mock.calls.some((c) => c[1]?.method === 'PATCH')).toBe(false);
   });
 
   it('handles network error on username PATCH (fetch throws)', async () => {
@@ -137,42 +135,10 @@ describe('ProfileScreen — negative paths', () => {
       return { ok: true, json: async () => ({}) } as Response;
     }));
 
-    render(<ProfileScreen />);
-    await waitFor(() => expect(screen.getByText('Set username')).toBeInTheDocument());
-    fireEvent.click(screen.getByText('Set username'));
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Save' })).toBeInTheDocument());
+    // A valid handle, so the request actually goes out and can fail.
+    await openClaimAndType('newuser');
 
-    const input = document.querySelector('[data-testid="username-input"]') as HTMLInputElement;
-    fireEvent.change(input, { target: { value: 'newuser' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
-
-    await waitFor(() => expect(screen.getByText('Network error')).toBeInTheDocument());
-  });
-
-  it('handles extremely long username (1000 chars)', async () => {
-    let patchBody: any = null;
-    vi.stubGlobal('fetch', vi.fn().mockImplementation(async (_url: string, opts: any) => {
-      if (opts?.method === 'PATCH') {
-        patchBody = JSON.parse(opts.body);
-        return { ok: false, json: async () => ({ error: 'Username too long' }) } as Response;
-      }
-      return { ok: true, json: async () => ({}) } as Response;
-    }));
-
-    render(<ProfileScreen />);
-    await waitFor(() => expect(screen.getByText('Set username')).toBeInTheDocument());
-    fireEvent.click(screen.getByText('Set username'));
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Save' })).toBeInTheDocument());
-
-    const longUsername = 'a'.repeat(1000);
-    const input = document.querySelector('[data-testid="username-input"]') as HTMLInputElement;
-    fireEvent.change(input, { target: { value: longUsername } });
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
-
-    await waitFor(() => {
-      expect(patchBody).not.toBeNull();
-      expect(patchBody.username).toBe(longUsername);
-    });
+    await waitFor(() => expect(screen.getByText(/Could not reach the server/)).toBeInTheDocument());
   });
 
   it('shows error state when dashboard data context returns error status', async () => {
