@@ -8,8 +8,9 @@
  */
 
 import { writeFileSync } from 'fs';
-import { join, dirname } from 'path';
+import { join, dirname, resolve } from 'path';
 import { fileURLToPath } from 'url';
+import type { ChallengeTier } from '../drizzle/schema.d1';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -17,7 +18,7 @@ function escapeSql(s: string): string {
   return s.replace(/'/g, "''");
 }
 
-const sampleChallenges: Array<{
+export const sampleChallenges: Array<{
   id: string;
   title: string;
   description: string;
@@ -32,6 +33,23 @@ const sampleChallenges: Array<{
   category: string;
   skillTested: string;
   testHarness?: string;
+  /**
+   * 1 when the judge feeds the input on stdin and reads stdout, rather than
+   * calling an exported function. A challenge whose harness reads stdin must
+   * set this, or the judge dispatches it the wrong way and every test fails.
+   */
+  useStdin?: boolean;
+  /** Run on submit but never shown. Same shape as testCases. */
+  hiddenTestCases?: Array<{ input: string; expectedOutput: string; hint?: string }>;
+  tags?: string[];
+  /**
+   * 'onboarding' | 'core' | 'headline', and catalogue position. These are set
+   * by migration 0007 in production. The seed uses INSERT OR REPLACE, so a
+   * column it does not emit is reset to its default — omitting these would
+   * silently flatten every onboarding and headline challenge to 'core'.
+   */
+  tier?: ChallengeTier;
+  sortOrder?: number;
 }> = [
   // ===== MODEL SELECTION (4 challenges) =====
   {
@@ -69,6 +87,8 @@ module.exports = { toTitleCase };`,
     wallClockLimit: 900,
     category: 'model_selection',
     skillTested: 'Choosing appropriate model tier for simple tasks',
+    tier: 'core',
+    sortOrder: 2,
   },
   {
     id: 'regex-pattern-matcher',
@@ -249,11 +269,13 @@ Output: [{"name":"Alice","age":"30","city":"New York"},{"name":"Bob","age":"25",
 
 Your AI budget is tight ($0.01). Be concise with your AI prompts — describe the requirements clearly in as few tokens as possible.`,
     difficulty: 'medium',
+    // Matches production. No module.exports: this challenge runs in stdin
+    // mode, so the harness below calls parseCSV directly.
     starterCode: `function parseCSV(csv) {
   // Your code here
-}
-
-module.exports = { parseCSV };`,
+  // Parse CSV string into array of objects
+  // Handle: headers, quoted fields, escaped quotes, newlines in quotes
+}`,
     testCases: [
       {
         input: 'name,age,city\nAlice,30,New York\nBob,25,London',
@@ -268,6 +290,20 @@ module.exports = { parseCSV };`,
         expectedOutput: '[{"x":"1"},{"x":"2"},{"x":"3"}]',
       },
     ],
+    hiddenTestCases: [
+      {
+        input: 'id,val\n1,hello\n2,world',
+        expectedOutput: '[{"id":"1","val":"hello"},{"id":"2","val":"world"}]',
+      },
+      {
+        input: 'name\nAlice\nBob\nCharlie',
+        expectedOutput: '[{"name":"Alice"},{"name":"Bob"},{"name":"Charlie"}]',
+      },
+      {
+        input: 'a,b,c\n1,2,3',
+        expectedOutput: '[{"a":"1","b":"2","c":"3"}]',
+      },
+    ],
     execTimeLimit: 5000,
     execMemoryLimit: 256,
     maxTokens: null,
@@ -275,6 +311,15 @@ module.exports = { parseCSV };`,
     wallClockLimit: 1800,
     category: 'prompt_efficiency',
     skillTested: 'Concise problem description',
+    tier: 'core',
+    sortOrder: 20,
+    useStdin: true,
+    testHarness: `let _input = '';
+process.stdin.on('data', d => _input += d);
+process.stdin.on('end', () => {
+  console.log(JSON.stringify(parseCSV(_input.trim())));
+});`,
+    tags: ['javascript', 'csv', 'parsing'],
   },
   {
     id: 'algorithmic-sort',
@@ -424,6 +469,8 @@ module.exports = { binarySearch };`,
     wallClockLimit: 900,
     category: 'iterative_debugging',
     skillTested: 'Targeted bug description for efficient fixes',
+    tier: 'onboarding',
+    sortOrder: 3,
   },
   {
     id: 'refactor-legacy-function',
@@ -500,6 +547,8 @@ module.exports = { calcStats };`,
     wallClockLimit: 1500,
     category: 'iterative_debugging',
     skillTested: 'Incremental AI-assisted refactoring',
+    tier: 'core',
+    sortOrder: 33,
   },
   {
     id: 'fix-failing-tests',
@@ -617,6 +666,8 @@ module.exports = { fizzBuzz };`,
     wallClockLimit: 900,
     category: 'model_selection',
     skillTested: 'Using cheapest model for trivial tasks',
+    tier: 'onboarding',
+    sortOrder: 1,
   },
   {
     id: 'json-transformer',
@@ -852,6 +903,8 @@ module.exports = { evaluate };`,
     wallClockLimit: 2400,
     category: 'model_selection',
     skillTested: 'Allocating budget to genuinely hard problems',
+    tier: 'headline',
+    sortOrder: 1,
   },
   {
     id: 'cost-optimizer',
@@ -899,6 +952,8 @@ module.exports = { isPalindrome, capitalize, sum };`,
     wallClockLimit: 1800,
     category: 'model_selection',
     skillTested: 'Strategic model switching for mixed-difficulty tasks',
+    tier: 'headline',
+    sortOrder: 7,
   },
 
   // ===== PROMPT EFFICIENCY (7 more challenges, IDs 11-17) =====
@@ -1047,6 +1102,8 @@ module.exports = { solve };`,
     wallClockLimit: 1200,
     category: 'prompt_efficiency',
     skillTested: 'Concise specification of timing behavior',
+    tier: 'core',
+    sortOrder: 24,
   },
   {
     id: 'deep-clone',
@@ -1402,6 +1459,8 @@ module.exports = { solve };`,
     wallClockLimit: 900,
     category: 'iterative_debugging',
     skillTested: 'Targeted debugging of data structure bugs',
+    tier: 'onboarding',
+    sortOrder: 5,
   },
   {
     id: 'buggy-promise-chain',
@@ -1634,6 +1693,8 @@ module.exports = { solve };`,
     wallClockLimit: 900,
     category: 'iterative_debugging',
     skillTested: 'Fixing iteration logic bugs',
+    tier: 'onboarding',
+    sortOrder: 4,
   },
   {
     id: 'flaky-queue',
@@ -2003,7 +2064,15 @@ function main() {
     const maxTokens = c.maxTokens === null ? 'NULL' : c.maxTokens;
     const maxCost = c.maxCost === null ? 'NULL' : c.maxCost;
     const testHarness = c.testHarness ? `'${escapeSql(c.testHarness)}'` : 'NULL';
-    const row = `INSERT OR REPLACE INTO challenges (id, title, description, difficulty, starter_code, test_cases, exec_time_limit, exec_memory_limit, max_tokens, max_cost, wall_clock_limit, category, skill_tested, test_harness) VALUES ('${escapeSql(c.id)}', '${escapeSql(c.title)}', '${escapeSql(c.description)}', '${escapeSql(c.difficulty)}', '${escapeSql(c.starterCode)}', '${testCasesJson}', ${c.execTimeLimit}, ${c.execMemoryLimit}, ${maxTokens}, ${maxCost}, ${c.wallClockLimit}, '${escapeSql(c.category)}', '${escapeSql(c.skillTested)}', ${testHarness});`;
+    // These three used to be unrepresentable here, so a stdin challenge
+    // round-tripped through the seed came back in function-call mode with no
+    // hidden tests — a challenge that cannot pass.
+    const hiddenTestCases = c.hiddenTestCases ? `'${escapeSql(JSON.stringify(c.hiddenTestCases))}'` : 'NULL';
+    const useStdin = c.useStdin ? 1 : 0;
+    const tags = c.tags ? `'${escapeSql(JSON.stringify(c.tags))}'` : 'NULL';
+    const tier = c.tier ?? 'core';
+    const sortOrder = c.sortOrder ?? 0;
+    const row = `INSERT OR REPLACE INTO challenges (id, title, description, difficulty, starter_code, test_cases, hidden_test_cases, exec_time_limit, exec_memory_limit, max_tokens, max_cost, wall_clock_limit, category, skill_tested, test_harness, use_stdin, tags, tier, sort_order) VALUES ('${escapeSql(c.id)}', '${escapeSql(c.title)}', '${escapeSql(c.description)}', '${escapeSql(c.difficulty)}', '${escapeSql(c.starterCode)}', '${testCasesJson}', ${hiddenTestCases}, ${c.execTimeLimit}, ${c.execMemoryLimit}, ${maxTokens}, ${maxCost}, ${c.wallClockLimit}, '${escapeSql(c.category)}', '${escapeSql(c.skillTested)}', ${testHarness}, ${useStdin}, ${tags}, '${escapeSql(tier)}', ${sortOrder});`;
     lines.push(row);
   }
 
@@ -2014,4 +2083,10 @@ function main() {
   console.log('Run against local D1:  npx wrangler d1 execute <DB_NAME> --local --file=./scripts/seed-d1.sql');
 }
 
-main();
+/**
+ * Only generate when run directly. Importing this module — the shape tests do
+ * — must not write seed-d1.sql as a side effect.
+ */
+const invokedDirectly = process.argv[1] !== undefined
+  && resolve(process.argv[1]) === resolve(fileURLToPath(import.meta.url));
+if (invokedDirectly) main();
