@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { FIRST_CHALLENGE_TITLE } from '../../../src/shared/lib/first-challenge';
 import {
   welcomeEmail,
   candidateInviteEmail,
@@ -298,10 +299,10 @@ describe('welcomeEmail', () => {
     expect(html).toContain('https://ruwt.dev/challenges');
   });
 
-  it('mentions CSV Parser as a starter recommendation', () => {
+  it('recommends the first challenge as a starter', () => {
     const { html, text } = welcomeEmail({});
-    expect(html).toContain('CSV Parser');
-    expect(text).toContain('CSV Parser');
+    expect(html).toContain(FIRST_CHALLENGE_TITLE);
+    expect(text).toContain(FIRST_CHALLENGE_TITLE);
   });
 
   it('plain text includes all key information', () => {

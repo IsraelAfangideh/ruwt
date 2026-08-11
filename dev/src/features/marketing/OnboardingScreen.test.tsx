@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor, fireEvent, act } from '@testing-library/react';
+import { FIRST_CHALLENGE_ID, FIRST_CHALLENGE_TITLE } from '@/shared/lib/first-challenge';
 
 const mockNavigate = vi.fn();
 const mockReset = vi.fn();
@@ -116,7 +117,7 @@ describe('OnboardingScreen', () => {
     });
   });
 
-  it('renders CSV Parser challenge card on step 2', async () => {
+  it('renders the first challenge card on step 2', async () => {
     render(<OnboardingScreen />);
     await waitFor(() => {
       expect(screen.getAllByText('Next').length).toBeGreaterThanOrEqual(1);
@@ -125,10 +126,11 @@ describe('OnboardingScreen', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Next' }));
 
     await waitFor(() => {
-      expect(screen.getAllByText('One-Shot CSV Parser').length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText(FIRST_CHALLENGE_TITLE).length).toBeGreaterThanOrEqual(1);
     });
-    expect(screen.getAllByText('Easy').length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText('Prompt Efficiency').length).toBeGreaterThanOrEqual(1);
+    // Badges must match the real challenge record, not a nicer-sounding guess.
+    expect(screen.getAllByText('Sprint').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('Model Selection').length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText('JavaScript').length).toBeGreaterThanOrEqual(1);
   });
 
@@ -207,7 +209,7 @@ describe('OnboardingScreen', () => {
       fireEvent.click(screen.getByRole('button', { name: 'Start Challenge' }));
     });
 
-    expect(mockNavigate).toHaveBeenCalledWith('Arena', { challengeId: 'one-shot-csv-parser' });
+    expect(mockNavigate).toHaveBeenCalledWith('Arena', { challengeId: FIRST_CHALLENGE_ID });
   });
 
   it('completes onboarding on skip link', async () => {

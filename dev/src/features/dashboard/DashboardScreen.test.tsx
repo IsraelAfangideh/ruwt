@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor, fireEvent, act } from '@testing-library/react';
+import { FIRST_CHALLENGE_ID, FIRST_CHALLENGE_TITLE } from '@/shared/lib/first-challenge';
 
 const mockNavigate = vi.fn();
 const mockReset = vi.fn();
@@ -357,21 +358,21 @@ describe('DashboardScreen', () => {
     await waitFor(() => {
       expect(screen.getByText('Start Your First Challenge')).toBeInTheDocument();
     });
-    expect(screen.getByRole('button', { name: 'Try CSV Parser Challenge' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: `Try ${FIRST_CHALLENGE_TITLE}` })).toBeInTheDocument();
     expect(screen.getByText('Browse all challenges')).toBeInTheDocument();
   });
 
-  it('navigates to Arena with one-shot-csv-parser when Try CSV Parser Challenge is clicked', async () => {
+  it('navigates to Arena with the first challenge when the Get Started button is clicked', async () => {
     setupHappyPath({
       progress: { ...baseDashboardData.progress, solvedCount: 0 },
     });
     vi.useRealTimers();
     render(<DashboardScreen />);
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Try CSV Parser Challenge' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: `Try ${FIRST_CHALLENGE_TITLE}` })).toBeInTheDocument();
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Try CSV Parser Challenge' }));
-    expect(mockNavigate).toHaveBeenCalledWith('Arena', { challengeId: 'one-shot-csv-parser' });
+    fireEvent.click(screen.getByRole('button', { name: `Try ${FIRST_CHALLENGE_TITLE}` }));
+    expect(mockNavigate).toHaveBeenCalledWith('Arena', { challengeId: FIRST_CHALLENGE_ID });
   });
 
   it('navigates to Challenges when Browse all challenges is clicked', async () => {

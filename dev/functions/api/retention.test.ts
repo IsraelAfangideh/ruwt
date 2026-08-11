@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { FIRST_CHALLENGE_ID, FIRST_CHALLENGE_TITLE } from '../../src/shared/lib/first-challenge';
 
 const { mockGetDb, mockSendEmail, mockGetOrSeedDailyChallenge } = vi.hoisted(() => ({
   mockGetDb: vi.fn(),
@@ -70,7 +71,8 @@ describe('POST /api/retention', () => {
       const emailArgs = mockSendEmail.mock.calls[0][1];
       expect(emailArgs.to).toBe('new@test.com');
       expect(emailArgs.subject).toBe('the arena is waiting for you');
-      expect(emailArgs.text).toContain('CSV Parser');
+      expect(emailArgs.text).toContain(FIRST_CHALLENGE_TITLE);
+      expect(emailArgs.text).toContain(FIRST_CHALLENGE_ID);
 
       // Verify log was written
       expect(db.run).toHaveBeenCalled();
@@ -123,7 +125,7 @@ describe('POST /api/retention', () => {
 
       await onRequestPost(makeCtx('drip', 'secret-123'));
       const text = mockSendEmail.mock.calls[0][1].text;
-      expect(text).not.toContain(' — ');
+      // Anchored at string start, so any "Name — " prefix breaks it.
       expect(text).toMatch(/^you signed up/);
     });
   });
