@@ -20,6 +20,7 @@ vi.mock('./email/templates', () => ({
 }));
 
 import { ensureProfile } from './ensure-profile';
+import { FIRST_CHALLENGE_ID, FIRST_CHALLENGE_TITLE } from '../../src/shared/lib/first-challenge';
 import type { User } from '@supabase/supabase-js';
 
 // ---------------------------------------------------------------------------
@@ -136,8 +137,11 @@ describe('ensureProfile', () => {
     const notifInsert = db._tracked[2];
     expect(notifInsert.values.type).toBe('new_challenge');
     expect(notifInsert.values.title).toBe('Welcome to ruwt.dev!');
-    expect(notifInsert.values.body).toContain('CSV Parser');
     expect(notifInsert.values.userId).toBe('user-new-001');
+    // Must point at the shared constant. Routing every new signup to a
+    // challenge nobody finishes is the mistake this replaced.
+    expect(JSON.parse(notifInsert.values.metadata).challengeId).toBe(FIRST_CHALLENGE_ID);
+    expect(notifInsert.values.body).toContain(FIRST_CHALLENGE_TITLE);
   });
 
   it('sends welcome email for new signup with RESEND_API_KEY', async () => {

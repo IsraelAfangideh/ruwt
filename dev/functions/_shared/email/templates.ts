@@ -5,6 +5,7 @@
  * All emails use inline CSS for maximum email-client compatibility.
  * CTA buttons use the bulletproof table-based technique for Outlook.
  */
+import { FIRST_CHALLENGE_TITLE } from '../../../src/shared/lib/first-challenge';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -178,7 +179,7 @@ export function welcomeEmail(params: WelcomeParams): EmailTemplate {
                 </td>
               </tr>
             </table>
-            <p style="margin: 0; font-size: 13px; color: #8a847a; text-align: center; line-height: 1.5;">We recommend starting with the <strong>CSV Parser</strong> challenge &mdash; it takes about 3 minutes and shows how AI speeds up real tasks.</p>`;
+            <p style="margin: 0; font-size: 13px; color: #8a847a; text-align: center; line-height: 1.5;">We recommend starting with <strong>${FIRST_CHALLENGE_TITLE}</strong> &mdash; a short one that shows how cheaply you can solve a task with AI.</p>`;
 
   const html = wrapInLayout(content, 'Welcome to ruwt.dev — start your first AI coding challenge');
 
@@ -195,7 +196,7 @@ export function welcomeEmail(params: WelcomeParams): EmailTemplate {
     '',
     'Start your first challenge: https://ruwt.dev/challenges',
     '',
-    'We recommend starting with the CSV Parser challenge — it takes about 3 minutes.',
+    `We recommend starting with ${FIRST_CHALLENGE_TITLE} — a short one that shows how cheaply you can solve a task with AI.`,
     '',
     '---',
     'Sent by ruwt.dev -- AI-efficiency assessment platform',

@@ -19,6 +19,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/shared/ui/Card';
 import { Badge } from '@/shared/ui/Badge';
 import { Button } from '@/shared/ui/Button';
 import { UsernameClaim } from '@/shared/ui/UsernameClaim';
+import { FIRST_CHALLENGE_ID, FIRST_CHALLENGE_TITLE } from '@/shared/lib/first-challenge';
 import { useColors } from '@/shared/theme';
 import { spacing, fontSizes, fontFamily, radii } from '@/shared/theme/tokens';
 
@@ -135,7 +136,7 @@ export function OnboardingScreen() {
             <StepFirstChallenge
               colors={c}
               onBack={goBack}
-              onStartChallenge={() => navigateToArena('one-shot-csv-parser')}
+              onStartChallenge={() => navigateToArena(FIRST_CHALLENGE_ID)}
               onSkip={completeOnboarding}
             />
           )}
@@ -286,23 +287,23 @@ function StepFirstChallenge({
       <Card style={{ borderColor: c.accent, borderWidth: 1 }}>
         <CardHeader>
           <View style={styles.badgeRow}>
-            <Badge variant="default">Easy</Badge>
-            <Badge variant="secondary">Prompt Efficiency</Badge>
+            <Badge variant="default">Sprint</Badge>
+            <Badge variant="secondary">Model Selection</Badge>
           </View>
-          <CardTitle>One-Shot CSV Parser</CardTitle>
+          <CardTitle>{FIRST_CHALLENGE_TITLE}</CardTitle>
         </CardHeader>
         <CardContent>
           <Text style={[styles.challengeDesc, { color: c.textMuted }]}>
-            Build a CSV parser that handles quoted fields, escaped quotes, and embedded newlines.
-            Tedious to write by hand — but one good AI prompt gets it done. This challenge teaches
-            you the core loop: prompt, review, submit.
+            Write FizzBuzz. The task is trivial on purpose — the budget is not. It is tight enough
+            that a premium model blows it, so the only way through is to pick the cheapest model
+            that can still do the job. That is the whole game here, on the smallest possible task.
           </Text>
           <View style={styles.challengeMeta}>
             <View style={[styles.metaPill, { backgroundColor: c.accentBg }]}>
               <Text style={[styles.metaText, { color: c.accent }]}>JavaScript</Text>
             </View>
             <View style={[styles.metaPill, { backgroundColor: c.successBg }]}>
-              <Text style={[styles.metaText, { color: c.success }]}>~3 min</Text>
+              <Text style={[styles.metaText, { color: c.success }]}>10 min limit</Text>
             </View>
           </View>
         </CardContent>

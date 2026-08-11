@@ -9,6 +9,7 @@ import type { Db } from './infra/db';
 import { profiles, transactions, notifications, newsletterLogs } from '../../drizzle/schema.d1';
 import { sendEmail } from './newsletter/resend';
 import { welcomeEmail, newSignupNotificationEmail } from './email/templates';
+import { FIRST_CHALLENGE_ID, FIRST_CHALLENGE_TITLE } from '../../src/shared/lib/first-challenge';
 
 export const ADMIN_EMAIL = 'israel@ruwt.dev';
 
@@ -47,8 +48,12 @@ export async function ensureProfile(db: Db, user: User, env?: { RESEND_API_KEY?:
       userId: user.id,
       type: 'new_challenge',
       title: 'Welcome to ruwt.dev!',
-      body: 'Start with the CSV Parser challenge — a quick intro that shows how AI speeds up real tasks.',
-      metadata: JSON.stringify({ challengeId: 'one-shot-csv-parser' }),
+      // Points at FIRST_CHALLENGE_ID, not the CSV parser. That one had been
+      // sold here as "a quick intro" while sitting at 0 passes in 8 attempts,
+      // with half of those running out the clock — the worst possible first
+      // impression. See src/shared/lib/first-challenge.ts for the choice.
+      body: `Start with ${FIRST_CHALLENGE_TITLE} — a short challenge that shows how cheaply you can solve a task with AI.`,
+      metadata: JSON.stringify({ challengeId: FIRST_CHALLENGE_ID }),
     }).onConflictDoNothing();
 
     // Welcome email (logged for visibility)
