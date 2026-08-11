@@ -9,6 +9,7 @@ import { getUser } from '../_shared/infra/auth';
 import { getUserOrg, getTrialStatus, canStartTrial } from '../_shared/org';
 import { ensureProfile } from '../_shared/ensure-profile';
 import { profiles } from '../../drizzle/schema.d1';
+import { USERNAME_MIN, USERNAME_MAX, USERNAME_PATTERN, USERNAME_RULE } from '../../src/shared/lib/username';
 
 export async function onRequestGet(context: { request: Request; env: Env; waitUntil?: (p: Promise<unknown>) => void }) {
   try {
@@ -103,9 +104,9 @@ export async function onRequestPatch(context: { request: Request; env: Env }) {
     const body = await context.request.json().catch(() => ({}));
     const profileUpdateSchema = z.object({
       username: z.string()
-        .min(3, 'Username must be at least 3 characters')
-        .max(30, 'Username must be at most 30 characters')
-        .regex(/^[a-z0-9][a-z0-9-]{1,28}[a-z0-9]$/, 'Lowercase alphanumeric and hyphens only, cannot start or end with a hyphen')
+        .min(USERNAME_MIN, `Username must be at least ${USERNAME_MIN} characters`)
+        .max(USERNAME_MAX, `Username must be at most ${USERNAME_MAX} characters`)
+        .regex(USERNAME_PATTERN, USERNAME_RULE)
         .optional(),
       onboardingCompleted: z.union([z.literal(0), z.literal(1)]).optional(),
       newsletterSubscribed: z.union([z.literal(0), z.literal(1)]).optional(),

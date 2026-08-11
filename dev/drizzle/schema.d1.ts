@@ -29,6 +29,17 @@ export const profiles = sqliteTable('profiles', {
   preferredMode: text('preferred_mode'), // 'practice' | 'hiring' — persists mode switcher state
   afiScore: integer('afi_score').default(0).notNull(), // Cached AFI score (0-850), updated on each solve
   afiTier: text('afi_tier').default('novice').notNull(), // Cached AFI tier label
+
+  // First-touch acquisition, captured on the visitor's first page load and
+  // written once. NULL means the profile predates attribution; a direct visit
+  // records referrer = 'direct'. See migration 0069.
+  referrer: text('referrer'),
+  utmSource: text('utm_source'),
+  utmMedium: text('utm_medium'),
+  utmCampaign: text('utm_campaign'),
+  landingPath: text('landing_path'),
+  attributedAt: text('attributed_at'),
+
   createdAt: text('created_at').default(sql`(datetime('now'))`).notNull(),
 });
 
