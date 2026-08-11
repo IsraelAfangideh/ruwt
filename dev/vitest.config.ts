@@ -14,7 +14,9 @@ export default defineConfig({
     },
   },
   test: {
-    include: ['src/**/*.test.ts', 'src/**/*.test.tsx', 'functions/**/*.test.ts'],
+    // scripts/ carries the seed data, which the app depends on being the right
+    // shape — see scripts/seed-d1.test.ts.
+    include: ['src/**/*.test.ts', 'src/**/*.test.tsx', 'functions/**/*.test.ts', 'scripts/**/*.test.ts'],
     environment: 'node',
     setupFiles: ['./src/shared/test/setup.ts'],
     // Vitest's 5s default is wall-clock, and vitest runs ~13 forked workers,
