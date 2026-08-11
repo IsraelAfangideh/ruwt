@@ -266,6 +266,22 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
       return Response.json({ error: 'Challenge not found' }, { status: 404 });
     }
 
+    // Unedited starter code cannot pass. Reject it before the executor runs,
+    // before the admin alert, and before any 'failed' row reaches the record.
+    // The Arena mirrors this check in the client — see handleSubmit in
+    // src/features/arena/ArenaScreen.tsx — so in practice this catches only
+    // scripted callers and browsers on a cached pre-guard bundle. The client
+    // branches on `code`, so keep that field stable.
+    if (challenge.starterCode && sourceCode.trim() === challenge.starterCode.trim()) {
+      return Response.json(
+        {
+          error: 'This is still the starter code. Edit it before you submit.',
+          code: 'starter_code_unedited',
+        },
+        { status: 422 }
+      );
+    }
+
     let publicTests: Array<{ input: string; expectedOutput: string }>;
     try {
       publicTests = JSON.parse(challenge.testCases);
