@@ -70,7 +70,7 @@ describe('POST /api/retention', () => {
       const emailArgs = mockSendEmail.mock.calls[0][1];
       expect(emailArgs.to).toBe('new@test.com');
       expect(emailArgs.subject).toBe('the arena is waiting for you');
-      expect(emailArgs.text).toContain('CSV Parser');
+      expect(emailArgs.text).toContain('FizzBuzz Budget');
 
       // Verify log was written
       expect(db.run).toHaveBeenCalled();

@@ -539,7 +539,7 @@ function ChatPanel({
           <div style={s.chatEmpty}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: '0 12px', width: '100%', maxWidth: 360 }}>
               <span style={{ color: arena.textSubtle, fontSize: 12, textAlign: 'center', lineHeight: '1.5' }}>
-                Every message costs from your budget. Choose your tier wisely.
+                Practice is free — ask the AI anything. Cheaper models earn a higher efficiency score.
               </span>
               {[
                 'Write the solution',
@@ -2004,7 +2004,7 @@ export function ArenaIDE({
           <span style={{ fontSize: 13, color: arena.text, flex: 1 }}>
             Start by asking the AI to help you solve this problem
             <span style={{ display: 'block', fontSize: 11, color: arena.textMuted, marginTop: 2 }}>
-              First message costs ~$0.001 with Budget tier
+              Practice is free — asking won't cost you anything.
             </span>
           </span>
           <button

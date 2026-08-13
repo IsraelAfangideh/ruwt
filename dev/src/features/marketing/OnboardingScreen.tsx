@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { createClient } from '@/shared/lib/supabase/client';
+import { ENTRY_CHALLENGE_ID } from '@/shared/lib/onboarding';
 import { resetNavigation } from '@/shared/navigation/resetNavigation';
 import { Card, CardHeader, CardTitle, CardContent } from '@/shared/ui/Card';
 import { Badge } from '@/shared/ui/Badge';
@@ -122,7 +123,7 @@ export function OnboardingScreen() {
             <StepFirstChallenge
               colors={c}
               onBack={goBack}
-              onStartChallenge={() => navigateToArena('one-shot-csv-parser')}
+              onStartChallenge={() => navigateToArena(ENTRY_CHALLENGE_ID)}
               onSkip={completeOnboarding}
             />
           )}
@@ -250,16 +251,16 @@ function StepFirstChallenge({
       <Card style={{ borderColor: c.accent, borderWidth: 1 }}>
         <CardHeader>
           <View style={styles.badgeRow}>
-            <Badge variant="default">Easy</Badge>
-            <Badge variant="secondary">Prompt Efficiency</Badge>
+            <Badge variant="default">Beginner</Badge>
+            <Badge variant="secondary">Model Selection</Badge>
           </View>
-          <CardTitle>One-Shot CSV Parser</CardTitle>
+          <CardTitle>FizzBuzz Budget</CardTitle>
         </CardHeader>
         <CardContent>
           <Text style={[styles.challengeDesc, { color: c.textMuted }]}>
-            Build a CSV parser that handles quoted fields, escaped quotes, and embedded newlines.
-            Tedious to write by hand — but one good AI prompt gets it done. This challenge teaches
-            you the core loop: prompt, review, submit.
+            Solve the classic FizzBuzz — but do it cheaply. Pick a budget model, write one good
+            prompt, and keep your cost down. It's the whole game in three minutes: prompt, review,
+            submit. Practice is always free.
           </Text>
           <View style={styles.challengeMeta}>
             <View style={[styles.metaPill, { backgroundColor: c.accentBg }]}>

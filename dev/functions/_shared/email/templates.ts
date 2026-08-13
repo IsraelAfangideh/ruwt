@@ -178,7 +178,7 @@ export function welcomeEmail(params: WelcomeParams): EmailTemplate {
                 </td>
               </tr>
             </table>
-            <p style="margin: 0; font-size: 13px; color: #8a847a; text-align: center; line-height: 1.5;">We recommend starting with the <strong>CSV Parser</strong> challenge &mdash; it takes about 3 minutes and shows how AI speeds up real tasks.</p>`;
+            <p style="margin: 0; font-size: 13px; color: #8a847a; text-align: center; line-height: 1.5;">We recommend starting with <strong>FizzBuzz Budget</strong> &mdash; it takes about 3 minutes, and practice (including AI chat) is always free.</p>`;
 
   const html = wrapInLayout(content, 'Welcome to ruwt.dev — start your first AI coding challenge');
 
@@ -195,7 +195,7 @@ export function welcomeEmail(params: WelcomeParams): EmailTemplate {
     '',
     'Start your first challenge: https://ruwt.dev/challenges',
     '',
-    'We recommend starting with the CSV Parser challenge — it takes about 3 minutes.',
+    'We recommend starting with FizzBuzz Budget — it takes about 3 minutes, and practice is always free.',
     '',
     '---',
     'Sent by ruwt.dev -- AI-efficiency assessment platform',

@@ -33,6 +33,7 @@ import { getDifficultyStyle } from '@/shared/lib/difficulty';
 import { formatCostFromHundredths } from '@/shared/lib/ai/pricing';
 import { timeAgo, formatCategory, generateHeatmapDays } from '@/shared/lib/utils';
 import { AFI_TIER_COLORS, CERTIFICATIONS, AFI_MIN_SOLVES, type AFITier } from '@/shared/lib/scoring';
+import { ENTRY_CHALLENGE_ID } from '@/shared/lib/onboarding';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -247,7 +248,7 @@ function GetStartedBanner({ onTryChallenge, onBrowse }: { onTryChallenge: () => 
           style={{ backgroundColor: c.accent }}
           textStyle={{ color: c.primaryForeground, fontWeight: '700' }}
         >
-          Try CSV Parser Challenge
+          Try Your First Challenge
         </Button>
         <Pressable onPress={onBrowse}>
           <Text style={{ color: c.accent, textAlign: 'center', fontSize: fontSizes.sm, fontFamily: fontFamily.body }}>
@@ -956,7 +957,7 @@ export function DashboardScreen() {
         {data.progress.solvedCount === 0 && (
           <View style={styles.section}>
             <GetStartedBanner
-              onTryChallenge={() => (navigation.navigate as any)('Arena', { challengeId: 'one-shot-csv-parser' })}
+              onTryChallenge={() => (navigation.navigate as any)('Arena', { challengeId: ENTRY_CHALLENGE_ID })}
               onBrowse={() => (navigation.navigate as any)('Problems')}
             />
           </View>

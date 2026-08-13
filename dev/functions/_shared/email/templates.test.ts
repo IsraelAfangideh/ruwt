@@ -298,10 +298,10 @@ describe('welcomeEmail', () => {
     expect(html).toContain('https://ruwt.dev/challenges');
   });
 
-  it('mentions CSV Parser as a starter recommendation', () => {
+  it('mentions FizzBuzz Budget as a starter recommendation', () => {
     const { html, text } = welcomeEmail({});
-    expect(html).toContain('CSV Parser');
-    expect(text).toContain('CSV Parser');
+    expect(html).toContain('FizzBuzz Budget');
+    expect(text).toContain('FizzBuzz Budget');
   });
 
   it('plain text includes all key information', () => {

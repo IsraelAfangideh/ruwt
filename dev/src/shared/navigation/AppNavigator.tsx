@@ -108,6 +108,8 @@ const TakeHomeScreen = lazyWithRetry('TakeHome', () => import('@/features/ide/Ta
 /* istanbul ignore next -- @preserve */
 const IntelligenceScreen = lazyWithRetry('Intelligence', () => import('@/features/intelligence/IntelligenceScreen'), m => m.IntelligenceScreen);
 /* istanbul ignore next -- @preserve */
+const AdminActivationScreen = lazyWithRetry('AdminActivation', () => import('@/features/admin/AdminActivationScreen'), m => m.AdminActivationScreen);
+/* istanbul ignore next -- @preserve */
 const NotFoundScreen = lazyWithRetry('NotFound', () => import('@/features/marketing/NotFoundScreen'), m => m.NotFoundScreen);
 
 function LoadingFallback() {
@@ -237,6 +239,7 @@ export function AppNavigator() {
           <Stack.Screen name="IDE" component={IDEScreen} />
           <Stack.Screen name="TakeHome" component={TakeHomeScreen} />
           <Stack.Screen name="Intelligence" component={IntelligenceScreen} />
+          <Stack.Screen name="AdminActivation" component={AdminActivationScreen} />
           <Stack.Screen name="NotFound" component={NotFoundScreen} />
         </Stack.Navigator>
       </Suspense>

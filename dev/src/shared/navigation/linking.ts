@@ -40,6 +40,7 @@ export const linking: LinkingOptions<ReactNavigation.RootParamList> = {
       IDE: 'ide/new/:projectId?',
       TakeHome: 'ide/takehome/:sessionId',
       Intelligence: 'intelligence',
+      AdminActivation: 'admin/activation',
       NotFound: '*',
     },
   },

@@ -136,7 +136,7 @@ describe('ensureProfile', () => {
     const notifInsert = db._tracked[2];
     expect(notifInsert.values.type).toBe('new_challenge');
     expect(notifInsert.values.title).toBe('Welcome to ruwt.dev!');
-    expect(notifInsert.values.body).toContain('CSV Parser');
+    expect(notifInsert.values.body).toContain('FizzBuzz Budget');
     expect(notifInsert.values.userId).toBe('user-new-001');
   });
 

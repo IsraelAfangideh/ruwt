@@ -116,7 +116,7 @@ describe('OnboardingScreen', () => {
     });
   });
 
-  it('renders CSV Parser challenge card on step 2', async () => {
+  it('renders first challenge card on step 2', async () => {
     render(<OnboardingScreen />);
     await waitFor(() => {
       expect(screen.getAllByText('Next').length).toBeGreaterThanOrEqual(1);
@@ -125,10 +125,10 @@ describe('OnboardingScreen', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Next' }));
 
     await waitFor(() => {
-      expect(screen.getAllByText('One-Shot CSV Parser').length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText('FizzBuzz Budget').length).toBeGreaterThanOrEqual(1);
     });
-    expect(screen.getAllByText('Easy').length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText('Prompt Efficiency').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('Beginner').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('Model Selection').length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText('JavaScript').length).toBeGreaterThanOrEqual(1);
   });
 
@@ -207,7 +207,7 @@ describe('OnboardingScreen', () => {
       fireEvent.click(screen.getByRole('button', { name: 'Start Challenge' }));
     });
 
-    expect(mockNavigate).toHaveBeenCalledWith('Arena', { challengeId: 'one-shot-csv-parser' });
+    expect(mockNavigate).toHaveBeenCalledWith('Arena', { challengeId: 'fizzbuzz-budget' });
   });
 
   it('completes onboarding on skip link', async () => {
