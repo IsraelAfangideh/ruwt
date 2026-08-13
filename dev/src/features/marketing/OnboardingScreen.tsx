@@ -251,7 +251,7 @@ function StepFirstChallenge({
       <Card style={{ borderColor: c.accent, borderWidth: 1 }}>
         <CardHeader>
           <View style={styles.badgeRow}>
-            <Badge variant="default">Beginner</Badge>
+            <Badge variant="default">Sprint</Badge>
             <Badge variant="secondary">Model Selection</Badge>
           </View>
           <CardTitle>FizzBuzz Budget</CardTitle>

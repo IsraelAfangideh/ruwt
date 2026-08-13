@@ -10,7 +10,7 @@
  * History: newcomers used to be funneled to `one-shot-csv-parser` (a MEDIUM),
  * which they failed 0/6 and bounced. See ISR-21.
  *
- * NOTE: this constant only reaches the Vite client bundle. Three out-of-bundle
+ * NOTE: this constant only reaches the Vite client bundle. Four out-of-bundle
  * mirrors must be kept in sync BY HAND (Functions + static HTML can't import it):
  *   - index.html                          — guest "Try a Challenge" link
  *   - functions/api/retention.ts          — drip email link

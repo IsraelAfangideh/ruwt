@@ -99,11 +99,14 @@ describe('GET /api/admin/analytics/activation', () => {
     expect(json.headline.meetsTarget).toBe(false);
   });
 
-  it('clamps the days window param (default 30, max 365, min 1, non-numeric -> 30)', async () => {
+  it('clamps the days window param (default 30, max 365, min 1, zero -> 1, non-numeric -> 30)', async () => {
     mockGetUser.mockResolvedValue(ADMIN_USER);
 
     mockDb([{ signups: 0, opened: 0, used_ai_first_attempt: 0, passed_first_session: 0, returned: 0 }], []);
     expect((await (await onRequestGet(makeCtx('https://ruwt.dev/api/admin/analytics/activation?days=7'))).json()).windowDays).toBe(7);
+
+    mockDb([{ signups: 0, opened: 0, used_ai_first_attempt: 0, passed_first_session: 0, returned: 0 }], []);
+    expect((await (await onRequestGet(makeCtx('https://ruwt.dev/api/admin/analytics/activation?days=0'))).json()).windowDays).toBe(1);
 
     mockDb([{ signups: 0, opened: 0, used_ai_first_attempt: 0, passed_first_session: 0, returned: 0 }], []);
     expect((await (await onRequestGet(makeCtx('https://ruwt.dev/api/admin/analytics/activation?days=9999'))).json()).windowDays).toBe(365);

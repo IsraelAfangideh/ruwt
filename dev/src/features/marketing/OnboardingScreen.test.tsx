@@ -127,7 +127,7 @@ describe('OnboardingScreen', () => {
     await waitFor(() => {
       expect(screen.getAllByText('FizzBuzz Budget').length).toBeGreaterThanOrEqual(1);
     });
-    expect(screen.getAllByText('Beginner').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('Sprint').length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText('Model Selection').length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText('JavaScript').length).toBeGreaterThanOrEqual(1);
   });

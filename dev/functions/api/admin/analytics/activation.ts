@@ -34,7 +34,8 @@ export async function onRequestGet(context: { request: Request; env: Env }) {
   }
 
   const url = new URL(context.request.url);
-  const days = Math.min(Math.max(parseInt(url.searchParams.get('days') || '30', 10) || 30, 1), 365);
+  const parsedDays = parseInt(url.searchParams.get('days') || '30', 10);
+  const days = Math.min(Math.max(Number.isNaN(parsedDays) ? 30 : parsedDays, 1), 365);
   const windowMod = `-${days} days`;
 
   const db = getDb(context.env);
@@ -61,7 +62,9 @@ export async function onRequestGet(context: { request: Request; env: Env }) {
              AND a.created_at BETWEEN ch.created_at AND datetime(ch.created_at, '+24 hours')) AS fs_passed,
           (SELECT CASE WHEN EXISTS (
               SELECT 1 FROM ai_calls ac WHERE ac.attempt_id =
-                (SELECT a2.id FROM attempts a2 WHERE a2.user_id = ch.id ORDER BY a2.created_at ASC LIMIT 1)
+                (SELECT a2.id FROM attempts a2 WHERE a2.user_id = ch.id
+                   AND a2.created_at BETWEEN ch.created_at AND datetime(ch.created_at, '+24 hours')
+                   ORDER BY a2.created_at ASC, a2.id ASC LIMIT 1)
             ) THEN 1 ELSE 0 END) AS first_attempt_used_ai,
           (SELECT COUNT(*) FROM attempts a WHERE a.user_id = ch.id
              AND a.created_at > datetime(ch.created_at, '+24 hours')) AS post_fs_attempts
