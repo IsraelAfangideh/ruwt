@@ -35,6 +35,7 @@ export type RootStackParamList = {
   IDE: { projectId?: string } | undefined;
   TakeHome: { sessionId: string };
   Intelligence: undefined;
+  AdminActivation: undefined;
   NotFound: undefined;
 };
 
