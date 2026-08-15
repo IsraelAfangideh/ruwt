@@ -9,7 +9,7 @@ Workflow: `.github/workflows/release-desktop.yml` → GitHub Release `desktop-la
 
 The DMG window is Linear-style: **Ruwt on the left**, gold chevron, **Applications on the right**. Background: `desktop/src-tauri/dmg/background.png` (regenerate with `python3 desktop/scripts/render-dmg-background.py`).
 
-GitHub Actions sets `CI=true`, which makes Tauri pass `--skip-jenkins` and skip Finder layout. The macOS job sets `TAURI_BUNDLER_DMG_IGNORE_CI=true` so icon positions and the arrow actually land in the DMG.
+GitHub Actions cannot run Finder AppleScript (`create-dmg --skip-jenkins`), so CI builds the `.app` with Tauri and then `python3 desktop/scripts/build-macos-dmg.py` (`dmgbuild`) writes icon positions and the arrow into the disk image without Finder.
 
 ## Signing and notarization (optional)
 
