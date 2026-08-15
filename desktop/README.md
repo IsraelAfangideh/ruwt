@@ -56,11 +56,12 @@ See `.env.example` for all environment variables.
 
 - Real: Insights window, local session-file collection (Claude Code, Cursor, Codex),
   deterministic insight rules, redaction, durable queue, generic JSON import, export,
-  and sync to ruwt.ai.
+  sync to ruwt.ai, and in-app updates from `https://ruwt.ai/downloads/desktop-latest.json`.
 - Experimental: live vendor hooks. Session files are scanned; accounts are not connected.
-- Placeholder: OS credential storage, tray controls, and signed updates.
+- Placeholder: OS credential storage and tray controls.
   Start at login writes a macOS LaunchAgent. Signing/notarization activate when Apple
-  secrets are set in GitHub Actions.
+  secrets are set in GitHub Actions. The updater verifies SHA-256; it does not use
+  Apple/Microsoft code-signing until those secrets exist.
 
 The queue uses a permission-restricted, atomically replaced local journal. A
 SQLite migration is the next required release hardening step.

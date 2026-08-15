@@ -31,3 +31,20 @@ Once those are set, the next `Release Desktop` run signs and notarizes automatic
 Do not create empty placeholder secrets. An empty `APPLE_CERTIFICATE` makes Tauri try to import a blank keychain item and the DMG job fails. Leave the secrets unset until you have a real Developer ID `.p12`.
 
 Windows Authenticode signing is not configured yet. The NSIS installer still installs and launches.
+
+## In-app updates
+
+Packaged builds (version 0.2.0 and later) check `https://ruwt.ai/downloads/desktop-latest.json` on launch and from **Check for updates**. The fallback URL is `https://ruwt-ai.pages.dev/downloads/desktop-latest.json`.
+
+An update is offered when the published semver is higher, or when the version matches and the git commit differs (`desktop-latest` is a moving tag). Development builds (`commit` = `dev`, including `tauri dev`) do not self-replace.
+
+Install path:
+
+1. Download the platform installer.
+2. Verify SHA-256 against the manifest.
+3. macOS: copy `Ruwt.app` out of the DMG, quit, `ditto` over the running bundle, relaunch.
+4. Windows: quit, then run `Ruwt-Setup.exe /S`.
+
+`Release Desktop` writes `desktop-latest.json` next to the DMG and NSIS installer. `deploy-ai.yml` copies it to `/downloads/desktop-latest.json`.
+
+People on 0.1.0 still install 0.2.0 once by hand (Quit Ruwt, replace `/Applications/Ruwt.app` from the DMG). Later updates install from the app.

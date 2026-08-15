@@ -50,7 +50,7 @@ func main() {
 	mux := http.NewServeMux()
 	mux.Handle("/", http.FileServer(http.FS(content)))
 	mux.HandleFunc("/api/status", func(w http.ResponseWriter, _ *http.Request) {
-		writeJSON(w, map[string]any{"ok": true, "service": "ruwt-desktop", "shell": "launcher", "promptsStored": 0})
+		writeJSON(w, map[string]any{"ok": true, "service": "ruwt-desktop", "shell": "launcher", "promptsStored": 0, "version": "0.2.0"})
 	})
 	mux.HandleFunc("/api/fs/home", func(w http.ResponseWriter, _ *http.Request) {
 		writeJSON(w, map[string]string{"home": home})

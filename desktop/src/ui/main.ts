@@ -1,5 +1,5 @@
 import { Engine, type Snapshot } from '../engine.js';
-import { createBridge, detectShell } from './bridge.js';
+import { createBridge, detectShell, type Bridge, type UpdateStatus } from './bridge.js';
 
 const money = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 });
 const relative = (value: string | null) => {
@@ -11,9 +11,13 @@ const relative = (value: string | null) => {
 };
 
 let engine: Engine | undefined;
+let bridge: Bridge | undefined;
 let snapshot: Snapshot | undefined;
 let tab = 'insights';
 let busy = false;
+let update: UpdateStatus | undefined;
+let updateBusy = false;
+let versionLabel = '';
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 
@@ -26,6 +30,31 @@ function render() {
   $('run-status').textContent = view?.error ?? relative(view?.lastRunAt ?? null);
   $('autostart').toggleAttribute('data-on', Boolean(view?.autostart));
   $('autostart-label').textContent = view?.autostart ? 'Start at login on' : 'Start at login';
+  $('app-version').textContent = versionLabel ? `v${versionLabel}` : 'Ruwt Desktop';
+  const updateBanner = $('update-banner');
+  const updateButton = $<HTMLButtonElement>('check-update');
+  if (updateBusy) {
+    updateBanner.hidden = false;
+    updateBanner.className = 'banner banner-gold';
+    updateBanner.textContent = update?.available ? 'Downloading and installing the update…' : 'Checking for updates…';
+    updateButton.disabled = true;
+    updateButton.textContent = 'Updating';
+  } else if (update?.available) {
+    updateBanner.hidden = false;
+    updateBanner.className = 'banner banner-gold';
+    updateBanner.innerHTML = `${update.message} <button type="button" id="install-update" class="primary">Install update</button>`;
+    $('install-update')?.addEventListener('click', () => void onInstallUpdate());
+    updateButton.disabled = false;
+    updateButton.textContent = 'Update available';
+  } else {
+    updateBanner.hidden = !update?.message || update.message.includes('is current') || update.message.includes('development build');
+    if (!updateBanner.hidden) {
+      updateBanner.className = 'banner banner-gold';
+      updateBanner.textContent = update?.message ?? '';
+    }
+    updateButton.disabled = false;
+    updateButton.textContent = 'Check for updates';
+  }
   const banner = $('shell-banner');
   banner.hidden = view?.shell !== 'none';
   for (const button of document.querySelectorAll<HTMLButtonElement>('[data-tab]')) {
@@ -134,6 +163,7 @@ function renderDiagnostics() {
       queued: snapshot?.queued ?? 0,
       lastCollect: collect,
       error: snapshot?.error,
+      updater: update,
     }, null, 2)}</pre>`;
 }
 
@@ -164,14 +194,62 @@ async function onAutostart() {
   render();
 }
 
+async function onCheckUpdate(silent = false) {
+  if (!bridge || updateBusy) return;
+  if (!silent) {
+    updateBusy = true;
+    render();
+  }
+  try {
+    update = await bridge.checkUpdate();
+  } catch (error) {
+    update = {
+      current_version: versionLabel,
+      current_commit: '',
+      available: false,
+      message: error instanceof Error ? error.message : 'Ruwt could not check for updates.',
+    };
+  } finally {
+    updateBusy = false;
+    render();
+  }
+}
+
+async function onInstallUpdate() {
+  if (!bridge || updateBusy) return;
+  updateBusy = true;
+  render();
+  try {
+    update = await bridge.installUpdate();
+  } catch (error) {
+    update = {
+      current_version: versionLabel,
+      current_commit: '',
+      available: true,
+      message: error instanceof Error ? error.message : 'Ruwt could not install the update.',
+    };
+  } finally {
+    updateBusy = false;
+    render();
+  }
+}
+
 async function boot() {
   render();
   try {
-    const bridge = await createBridge();
+    bridge = await createBridge();
     engine = new Engine(bridge.fs, undefined, bridge.shell);
+    try {
+      const identity = await bridge.appIdentity();
+      versionLabel = identity.version;
+    } catch {
+      versionLabel = '';
+    }
     snapshot = await engine.snapshot('starting');
     render();
     snapshot = (await engine.collect()).snapshot;
+    render();
+    void onCheckUpdate(true);
   } catch {
     snapshot = {
       shell: 'none',
@@ -189,8 +267,8 @@ async function boot() {
       installationId: '',
       error: 'This window is running outside the Ruwt application shell.',
     };
+    render();
   }
-  render();
 }
 
 document.querySelectorAll<HTMLButtonElement>('[data-tab]').forEach((button) => {
@@ -203,4 +281,5 @@ $('sync').addEventListener('click', () => {
   $('sync-note').hidden = false;
 });
 $('autostart').addEventListener('click', () => void onAutostart());
+$('check-update').addEventListener('click', () => void onCheckUpdate());
 void boot();

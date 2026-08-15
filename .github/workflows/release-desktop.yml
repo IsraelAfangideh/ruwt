@@ -138,15 +138,53 @@ jobs:
           path: dist-desktop
           merge-multiple: true
 
+      - name: Write update manifest
+        run: |
+          python3 <<'PY'
+          import hashlib, json, os
+          from datetime import datetime, timezone
+          from pathlib import Path
+
+          def sha256(path: Path) -> str:
+              digest = hashlib.sha256()
+              with path.open("rb") as handle:
+                  for chunk in iter(lambda: handle.read(1 << 20), b""):
+                      digest.update(chunk)
+              return digest.hexdigest()
+
+          root = Path("dist-desktop")
+          version = json.loads(Path("desktop/package.json").read_text())["version"]
+          manifest = {
+              "version": version,
+              "commit": os.environ["GITHUB_SHA"],
+              "publishedAt": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+              "notes": "Windowed Ruwt app. macOS: open the DMG and drag Ruwt to Applications. Windows: run Ruwt-Setup.exe.",
+              "platforms": {
+                  "darwin": {
+                      "url": "https://ruwt.ai/downloads/Ruwt.dmg",
+                      "filename": "Ruwt.dmg",
+                      "sha256": sha256(root / "Ruwt.dmg"),
+                  },
+                  "windows": {
+                      "url": "https://ruwt.ai/downloads/Ruwt-Setup.exe",
+                      "filename": "Ruwt-Setup.exe",
+                      "sha256": sha256(root / "Ruwt-Setup.exe"),
+                  },
+              },
+          }
+          (root / "desktop-latest.json").write_text(json.dumps(manifest, indent=2) + "\n")
+          print(json.dumps(manifest, indent=2))
+          PY
+
       - name: Publish desktop-latest
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           ls -lh dist-desktop
           if gh release view desktop-latest >/dev/null 2>&1; then
-            gh release upload desktop-latest dist-desktop/Ruwt.dmg dist-desktop/Ruwt-Setup.exe --clobber
+            gh release upload desktop-latest dist-desktop/Ruwt.dmg dist-desktop/Ruwt-Setup.exe dist-desktop/desktop-latest.json --clobber
           else
-            gh release create desktop-latest dist-desktop/Ruwt.dmg dist-desktop/Ruwt-Setup.exe \
+            gh release create desktop-latest dist-desktop/Ruwt.dmg dist-desktop/Ruwt-Setup.exe dist-desktop/desktop-latest.json \
               --title "Ruwt desktop" \
               --notes "Windowed Ruwt app. macOS: open the DMG and drag Ruwt to Applications. Windows: run Ruwt-Setup.exe."
           fi

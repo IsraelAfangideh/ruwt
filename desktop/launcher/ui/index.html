@@ -29,6 +29,7 @@
       <div id="shell-banner" class="banner" hidden>
         This window is running outside the Ruwt application shell.
       </div>
+      <div id="update-banner" class="banner banner-gold" hidden></div>
       <section id="panel-insights">
         <h1>Your engineering intelligence</h1>
         <p class="lede">
@@ -60,8 +61,9 @@
       </section>
     </main>
     <footer>
-      <span>Ruwt Desktop</span>
+      <span id="app-version">Ruwt Desktop</span>
       <button id="autostart" type="button"><i></i><span id="autostart-label">Start at login</span></button>
+      <button id="check-update" type="button">Check for updates</button>
       <span id="run-status">No run yet.</span>
     </footer>
     <script type="module" src="./app.js"></script>

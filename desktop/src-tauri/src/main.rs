@@ -3,6 +3,8 @@
 use std::fs;
 use std::path::{Component, Path, PathBuf};
 
+mod update;
+
 use serde::Serialize;
 
 #[derive(Serialize)]
@@ -125,10 +127,30 @@ fn autostart_set(enabled: bool) -> Result<bool, String> {
   Err("Start at login is available on macOS in this build.".into())
 }
 
+#[tauri::command]
+fn app_identity() -> update::AppIdentity {
+  update::identity()
+}
+
+#[tauri::command]
+async fn check_update() -> Result<update::UpdateStatus, String> {
+  tauri::async_runtime::spawn_blocking(update::check)
+    .await
+    .map_err(|error| error.to_string())?
+}
+
+#[tauri::command]
+async fn install_update() -> Result<update::UpdateStatus, String> {
+  tauri::async_runtime::spawn_blocking(update::install)
+    .await
+    .map_err(|error| error.to_string())?
+}
+
 fn main() {
   tauri::Builder::default()
     .invoke_handler(tauri::generate_handler![
-      home_dir, read_text_file, write_text_file, mkdirp, path_exists, list_dir, autostart_set
+      home_dir, read_text_file, write_text_file, mkdirp, path_exists, list_dir, autostart_set,
+      app_identity, check_update, install_update
     ])
     .run(tauri::generate_context!())
     .expect("Ruwt Desktop could not start");

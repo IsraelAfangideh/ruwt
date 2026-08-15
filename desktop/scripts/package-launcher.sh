@@ -5,7 +5,7 @@ ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 LAUNCHER="$ROOT/desktop/launcher"
 OUT="$ROOT/ai/public/downloads"
 STAGING="$(mktemp -d)"
-VERSION="${RUWT_LAUNCHER_VERSION:-0.1.0}"
+VERSION="${RUWT_LAUNCHER_VERSION:-0.2.0}"
 
 mkdir -p "$OUT"
 find "$OUT" -type f ! -name '.gitkeep' -delete

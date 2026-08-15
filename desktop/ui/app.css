@@ -42,6 +42,7 @@ main { padding: 24px 20px 40px; max-width: 980px; width: 100%; }
 h1 { font-family: var(--serif); font-size: clamp(28px, 5vw, 42px); line-height: 1; margin: 0 0 10px; }
 .lede { color: var(--muted); line-height: 1.55; max-width: 62ch; }
 .banner { margin: 0 0 18px; padding: 12px 14px; border: 1px solid var(--danger); color: var(--danger); border-radius: 10px; background: color-mix(in srgb, var(--danger) 8%, transparent); }
+.banner-gold { border-color: var(--gold); color: var(--ink); background: color-mix(in srgb, var(--gold) 12%, transparent); display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
 .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin: 22px 0; }
 .metric, .card, .insight, .empty-card { background: var(--card); border: 1px solid var(--rule); border-radius: 14px; padding: 16px; }
 .metric { display: grid; gap: 6px; }

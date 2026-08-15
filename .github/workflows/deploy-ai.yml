@@ -68,6 +68,9 @@ jobs:
           if [ -f /tmp/ruwt-desk/Ruwt-Setup.exe ]; then
             cp /tmp/ruwt-desk/Ruwt-Setup.exe ai/public/downloads/Ruwt-Setup.exe
           fi
+          if [ -f /tmp/ruwt-desk/desktop-latest.json ]; then
+            cp /tmp/ruwt-desk/desktop-latest.json ai/public/downloads/desktop-latest.json
+          fi
           ls -lh ai/public/downloads || true
 
       - name: Lint
