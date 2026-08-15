@@ -134,3 +134,41 @@ export const intelligenceAuditLogs = sqliteTable('intelligence_audit_logs', {
   metadata: text('metadata').default('{}').notNull(),
   createdAt: text('created_at').default(sql`(datetime('now'))`).notNull(),
 });
+
+export const siteVisitors = sqliteTable('site_visitors', {
+  id: text('id').primaryKey(),
+  firstSeenAt: text('first_seen_at').default(sql`(datetime('now'))`).notNull(),
+  lastSeenAt: text('last_seen_at').default(sql`(datetime('now'))`).notNull(),
+  visitCount: integer('visit_count').default(1).notNull(),
+  firstReferrer: text('first_referrer'),
+  firstUserAgent: text('first_user_agent'),
+  visitorKind: text('visitor_kind').default('unknown').notNull(),
+});
+
+export const siteVisits = sqliteTable('site_visits', {
+  id: text('id').primaryKey(),
+  visitorId: text('visitor_id').notNull().references(() => siteVisitors.id),
+  path: text('path').default('/').notNull(),
+  referrer: text('referrer'),
+  userAgent: text('user_agent'),
+  visitorKind: text('visitor_kind').default('unknown').notNull(),
+  isNewVisitor: integer('is_new_visitor').default(0).notNull(),
+  createdAt: text('created_at').default(sql`(datetime('now'))`).notNull(),
+});
+
+export const siteStats = sqliteTable('site_stats', {
+  id: text('id').primaryKey(),
+  totalVisits: integer('total_visits').default(0).notNull(),
+  uniqueVisitors: integer('unique_visitors').default(0).notNull(),
+  totalDownloadClicks: integer('total_download_clicks').default(0).notNull(),
+  updatedAt: text('updated_at').default(sql`(datetime('now'))`).notNull(),
+});
+
+export const downloadClicks = sqliteTable('download_clicks', {
+  id: text('id').primaryKey(),
+  visitorId: text('visitor_id'),
+  platform: text('platform').notNull(),
+  source: text('source').default('header').notNull(),
+  userAgent: text('user_agent'),
+  createdAt: text('created_at').default(sql`(datetime('now'))`).notNull(),
+});
