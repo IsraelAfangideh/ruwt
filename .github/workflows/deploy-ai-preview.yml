@@ -1,0 +1,168 @@
+# Deploy ruwt.ai preview for pull requests touching /ai.
+# Each PR gets its own URL: <branch>.ruwt-ai.pages.dev
+# Uses an isolated preview D1 database (ruwt-ai-preview).
+# ruwt.dev is a separate app and is not affected by this workflow.
+name: Deploy AI Preview
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - 'ai/**'
+      - '.github/workflows/deploy-ai-preview.yml'
+
+permissions:
+  contents: read
+  pull-requests: write
+  deployments: write
+
+jobs:
+  preview:
+    name: Build & Deploy AI Preview
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ai
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: ai/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps
+
+      - name: Ensure Cloudflare resources
+        run: node scripts/setup-cloudflare.mjs
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_ADMIN_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Build
+        run: npm run build
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+
+      - name: Apply migrations to preview D1
+        continue-on-error: true
+        run: npx wrangler d1 migrations apply ruwt-ai-preview --remote --env preview
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_ADMIN_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+      - name: Create GitHub deployment
+        id: deployment
+        uses: chrnorm/deployment-action@v2
+        with:
+          token: ${{ github.token }}
+          environment: AI Preview
+          ref: ${{ github.sha }}
+
+      - name: Deploy preview
+        id: deploy
+        run: |
+          npx wrangler pages deploy dist --project-name=ruwt-ai --branch="$HEAD_REF"
+          echo "preview_url=https://${HEAD_REF//\//-}.ruwt-ai.pages.dev" >> "$GITHUB_OUTPUT"
+        env:
+          HEAD_REF: ${{ github.head_ref }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+      - name: Update deployment status (success)
+        if: success()
+        uses: chrnorm/deployment-status@v2
+        with:
+          token: ${{ github.token }}
+          deployment-id: ${{ steps.deployment.outputs.deployment_id }}
+          state: success
+          environment-url: ${{ steps.deploy.outputs.preview_url }}
+
+      - name: Update deployment status (failure)
+        if: failure()
+        uses: chrnorm/deployment-status@v2
+        with:
+          token: ${{ github.token }}
+          deployment-id: ${{ steps.deployment.outputs.deployment_id }}
+          state: failure
+
+      - name: Comment preview URL on PR
+        uses: actions/github-script@v7
+        env:
+          PREVIEW_URL: ${{ steps.deploy.outputs.preview_url }}
+        with:
+          script: |
+            const previewUrl = process.env.PREVIEW_URL;
+            const body = `### ruwt.ai Preview Deploy\n\n` +
+              `**URL:** ${previewUrl}\n` +
+              `**Commit:** \`${context.sha.slice(0, 7)}\`\n\n` +
+              `> Preview uses an isolated database (\`ruwt-ai-preview\`). ` +
+              `Production (\`ruwt.ai\`) and \`ruwt.dev\` are unaffected.`;
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            const botComment = comments.find(c =>
+              c.user.type === 'Bot' && c.body.includes('### ruwt.ai Preview Deploy')
+            );
+            if (botComment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            }
+
+      - name: Smoke tests
+        if: success()
+        env:
+          PREVIEW_URL: ${{ steps.deploy.outputs.preview_url }}
+        run: |
+          echo "=== AI preview smoke tests against $PREVIEW_URL ==="
+          sleep 10
+          FAILED=0
+
+          echo "Test 1: Landing page..."
+          HTTP=$(curl -s --max-time 15 -o /dev/null -w '%{http_code}' "$PREVIEW_URL/")
+          if [ "$HTTP" != "200" ]; then
+            echo "  FAIL: HTTP $HTTP (expected 200)"
+            FAILED=$((FAILED+1))
+          else
+            echo "  PASS"
+          fi
+
+          echo "Test 2: Functions running..."
+          HTTP=$(curl -s --max-time 15 -o /dev/null -w '%{http_code}' "$PREVIEW_URL/api/health")
+          if [ "$HTTP" = "200" ]; then
+            echo "  PASS"
+          else
+            echo "  FAIL: HTTP $HTTP (expected 200)"
+            FAILED=$((FAILED+1))
+          fi
+
+          if [ "$FAILED" -gt 0 ]; then
+            echo "::error::$FAILED preview smoke test(s) failed"
+            exit 1
+          fi

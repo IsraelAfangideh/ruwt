@@ -6,6 +6,7 @@
 ruwt/
 ├── dev/          # AI-Efficiency Assessment Platform (web app)
 ├── health/       # Ruwt Fit — Fitness & Nutrition Tracker (web app)
+├── ai/           # Ruwt.ai — Agent Observation Platform (web app)
 ├── social/       # Ruwt Social Network (mobile + API)
 ├── trade/        # Ruwt Trade — Palm Oil Futures (web app + smart contracts)
 └── .github/      # CI/CD workflows
@@ -144,11 +145,32 @@ cd trade/app && npm run dev
 - **Setup needed**: Purchase ruwt.health domain, add Supabase redirect URLs for ruwt-health.pages.dev
 - **Local dev**: `cd health && npm run dev` (port 5174), `npx wrangler pages dev dist --d1=DB` for Functions
 
+## /ai — Ruwt.ai (Agent Observation Platform)
+
+Separate product from ruwt.dev. Own Pages project, D1 database, domain, and deploy
+workflows. ruwt.dev continues to deploy from `/dev` unchanged.
+
+- **Stack**: React (react-native-web) + Vite, Cloudflare Pages + Functions, Cloudflare D1 (SQLite), Supabase Auth
+- **Domain**: `ruwt.ai` (planned), fallback `ruwt-ai.pages.dev`
+- **Cloudflare Pages project**: `ruwt-ai`
+- **D1 databases**: `ruwt-ai` (production), `ruwt-ai-preview` (PR previews)
+- **Auth**: Shared Supabase project `fzncpdelyfuvdeqmwznx` (same user accounts as ruwt.dev)
+- **Deploy**: GitHub Actions (`deploy-ai.yml`) → `npx wrangler pages deploy dist --project-name=ruwt-ai`
+  - Triggers on push to `main` with changes in `ai/**`, or manual `workflow_dispatch`
+- **Preview deploys**: `deploy-ai-preview.yml` → `<branch>.ruwt-ai.pages.dev` (isolated preview D1)
+- **Domain setup**: `cd ai && CLOUDFLARE_API_TOKEN=... node scripts/setup-cloudflare.mjs`
+- **Design system**: Same warm cream/dark palette with gold accent as /dev and /health
+- **Key screens**: Landing, Intelligence dashboard (metrics + insights + activity), Org/workspace settings, ingestion key management
+- **API endpoints**: /api/intelligence/events, /api/intelligence/overview, /api/intelligence/demo, /api/intelligence/api-keys, /api/intelligence/policies, /api/orgs
+- **Local dev**: `cd ai && npm run dev` (port 5175), `npx wrangler pages dev dist --d1=DB` for Functions
+- **Desktop collector**: `/desktop` syncs to `https://ruwt.ai/api/intelligence/events` by default (not ruwt.dev)
+
 ## Cloudflare Account
 
 - **Account ID**: `32f5999dbd09eae38c1de8c15de98d48`
 - **Zone**: `ruwt.dev` (zone ID: `31032a4069bc880a095d18e9e96947ac`, Cloudflare nameservers, free plan)
 - **DNS**: CNAME `ruwt.dev` → `ruwt-dev.pages.dev` (proxied)
+- **ruwt.ai zone**: Add when domain is registered — run `ai/scripts/setup-cloudflare.mjs` to wire DNS + Pages custom domain. Does not affect ruwt.dev.
 - **Admin API token**: `CLOUDFLARE_ADMIN_API_TOKEN` in `dev/.env.local` — has Zone:Edit, DNS:Edit, Pages:Edit
 - **Workers AI token**: `CLOUDFLARE_API_TOKEN` in `social/code/api/.env` — Workers AI only
 - **Deploy token**: In GitHub Secrets as `CLOUDFLARE_API_TOKEN` — Pages deploy scope
@@ -163,6 +185,7 @@ cd trade/app && npm run dev
   - `site_url`: `https://ruwt.dev`
   - `uri_allow_list`: `https://ruwt.dev/**,https://ruwt-dev.pages.dev/**,http://localhost:5173/**,https://ruwt-health.pages.dev/**,http://localhost:5174/**`
   - Providers: GitHub OAuth + email/password (Google disabled)
+  - Add for ruwt.ai: `https://ruwt.ai/**`, `https://ruwt-ai.pages.dev/**`, `http://localhost:5175/**`
 
 ## Git Workflow
 

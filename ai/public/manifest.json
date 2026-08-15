@@ -1,0 +1,9 @@
+{
+  "name": "ruwt.ai",
+  "short_name": "ruwt.ai",
+  "description": "Agent observation platform",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f5f3f0",
+  "theme_color": "#1a1816"
+}

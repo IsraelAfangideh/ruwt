@@ -7,6 +7,7 @@ Monorepo for the Ruwt platform.
 | Directory | What | Stack | URL |
 |-----------|------|-------|-----|
 | `/dev` | AI-Efficiency Assessment Platform | React + Vite, Cloudflare Pages/D1, Supabase Auth | [ruwt.dev](https://ruwt.dev) |
+| `/ai` | Agent Observation Platform | React + Vite, Cloudflare Pages/D1, Supabase Auth | [ruwt.ai](https://ruwt.ai) |
 | `/social` | Ruwt Social Network (API + mobile) | Hono + Bun on Fly.io, React Native (Expo), Supabase Postgres | [ruwt.fly.dev](https://ruwt.fly.dev) |
 
 ---
@@ -66,7 +67,9 @@ See [CLAUDE.md](./CLAUDE.md) for full architecture details, infrastructure confi
 
 ## Agentic Engineering Intelligence foundation
 
-The `/dev` application now includes an additive `/intelligence` workspace.
+The `/dev` application includes an additive `/intelligence` workspace (legacy path
+on ruwt.dev). **ruwt.ai** (`/ai`) is the dedicated agent observation product with
+its own deploy and domain. The desktop collector syncs to ruwt.ai by default.
 It uses the existing Supabase session and organization membership model.
 
 ```bash
