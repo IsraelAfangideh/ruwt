@@ -85,6 +85,24 @@ async function ensureDns(zoneId) {
   }
 }
 
+async function ensurePagesProject() {
+  const projects = await cf(`/accounts/${ACCOUNT_ID}/pages/projects`);
+  const existing = projects.find((project) => project.name === PAGES_PROJECT);
+  if (existing) {
+    console.log(`Pages project "${PAGES_PROJECT}" already exists.`);
+    return;
+  }
+
+  await cf(`/accounts/${ACCOUNT_ID}/pages/projects`, {
+    method: 'POST',
+    body: JSON.stringify({
+      name: PAGES_PROJECT,
+      production_branch: 'main',
+    }),
+  });
+  console.log(`Created Pages project "${PAGES_PROJECT}".`);
+}
+
 async function ensurePagesDomain() {
   try {
     const domains = await cf(`/accounts/${ACCOUNT_ID}/pages/projects/${PAGES_PROJECT}/domains`);
@@ -150,6 +168,8 @@ async function main() {
   const productionId = await ensureD1('ruwt-ai');
   const previewId = await ensureD1('ruwt-ai-preview');
   patchWranglerIds({ production: productionId, preview: previewId });
+
+  await ensurePagesProject();
 
   const zone = await getZone();
   if (!zone) {
