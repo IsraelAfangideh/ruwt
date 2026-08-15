@@ -13,7 +13,7 @@ GitHub Actions cannot run Finder AppleScript (`create-dmg --skip-jenkins`), so C
 
 ## Signing and notarization (optional)
 
-Unsigned builds work (`signingIdentity` defaults to `-` in `tauri.conf.json`). CI re-seals the `.app` after `dmgbuild` copies it so Gatekeeper sees a consistent ad-hoc signature (Open Anyway) instead of a broken “damaged / cannot verify” seal. Set `APPLE_SIGNING_IDENTITY` to override that when a Developer ID cert is available.
+Unsigned builds work (`signingIdentity` defaults to `-` in `tauri.conf.json`). Ad-hoc signing does **not** remove Sequoia/Tahoe’s “Apple could not verify … malware” dialog for a browser-downloaded DMG — that needs a Developer ID and notarization. The site’s macOS install path is `curl -fsSL https://ruwt.ai/install.sh | bash` (`ai/public/install.sh`), which copies the app without a quarantine xattr so Gatekeeper never runs. Set `APPLE_SIGNING_IDENTITY` to override ad-hoc when a Developer ID cert is available.
 
 To ship a signed, notarized DMG, add these GitHub Actions secrets:
 
