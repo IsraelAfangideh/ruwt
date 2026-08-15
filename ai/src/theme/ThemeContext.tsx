@@ -11,7 +11,7 @@ interface ThemeContextType {
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
-const STORAGE_KEY = 'ruwt-health-theme';
+const STORAGE_KEY = 'ruwt-ai-theme';
 
 function getStoredMode(): ThemeMode | null {
   if (typeof window === 'undefined') return null;

@@ -5,11 +5,12 @@ import { AppNavigator } from '@/navigation/AppNavigator';
 import './index.css';
 
 function BodyTheme() {
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   useEffect(() => {
     document.body.style.backgroundColor = colors.bg;
     document.body.style.color = colors.text;
-  }, [colors.bg, colors.text]);
+    document.documentElement.style.colorScheme = isDark ? 'dark' : 'light';
+  }, [colors.bg, colors.text, isDark]);
   return null;
 }
 

@@ -4,6 +4,16 @@ Ruwt Desktop uses a Tauri 2 shell and one local service. The service owns the
 local queue, redaction, generic JSON import, retry state, and exports. The CLI
 uses the same service code.
 
+The **downloadable launcher** on ruwt.ai is `desktop/launcher` — a small local
+app that opens on double-click. Package it with:
+
+```bash
+bash desktop/scripts/package-launcher.sh
+```
+
+Artifacts land in `ai/public/downloads/` and are what the marketing Download
+button serves.
+
 Telemetry syncs to **ruwt.ai** — the agent observation platform. **ruwt.dev**
 is a separate web app (AI efficiency assessments) and is not the sync target.
 

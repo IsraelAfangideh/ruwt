@@ -13,7 +13,12 @@ const downloadSchema = z.object({
 });
 
 const INSTALL_COMMAND = 'curl -fsSL https://ruwt.ai/install.sh | bash';
-const REPO_URL = 'https://github.com/IsraelAfangideh/ruwt/tree/main/desktop';
+const ARTIFACTS: Record<string, { url: string; filename: string }> = {
+  macos: { url: '/downloads/Ruwt-macOS.zip', filename: 'Ruwt-macOS.zip' },
+  windows: { url: '/downloads/Ruwt-Setup.exe', filename: 'Ruwt-Setup.exe' },
+  linux: { url: '/downloads/ruwt-linux-amd64', filename: 'ruwt-linux-amd64' },
+  unknown: { url: '/downloads/Ruwt-macOS.zip', filename: 'Ruwt-macOS.zip' },
+};
 
 export async function onRequestPost(context: { request: Request; env: Env }) {
   try {
@@ -26,6 +31,7 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
     const userAgent = context.request.headers.get('user-agent');
     const db = getDb(context.env);
     const clickId = newId('dl');
+    const artifact = ARTIFACTS[platform] ?? ARTIFACTS.macos;
 
     await db.insert(downloadClicks).values({
       id: clickId,
@@ -63,8 +69,9 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
 
     return Response.json({
       ok: true,
+      url: artifact.url,
+      filename: artifact.filename,
       installCommand: INSTALL_COMMAND,
-      repoUrl: REPO_URL,
       stats: {
         totalDownloadClicks: stats?.totalDownloadClicks ?? 0,
       },
