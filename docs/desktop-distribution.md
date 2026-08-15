@@ -7,6 +7,10 @@ The Tauri identifier is `ai.ruwt.desktop`. CI builds:
 
 Workflow: `.github/workflows/release-desktop.yml` → GitHub Release `desktop-latest` → `deploy-ai.yml` copies artifacts to `https://ruwt.ai/downloads/`.
 
+The DMG window is Linear-style: **Ruwt on the left**, gold chevron, **Applications on the right**. Background: `desktop/src-tauri/dmg/background.png` (regenerate with `python3 desktop/scripts/render-dmg-background.py`).
+
+GitHub Actions cannot run Finder AppleScript (`create-dmg --skip-jenkins`), so CI builds the `.app` with Tauri and then `python3 desktop/scripts/build-macos-dmg.py` (`dmgbuild`) writes icon positions and the arrow into the disk image without Finder.
+
 ## Signing and notarization (optional)
 
 Unsigned builds work (`signingIdentity` defaults to `-` in `tauri.conf.json`). macOS Gatekeeper will ask the user to right-click → Open once. Set `APPLE_SIGNING_IDENTITY` to override that when a Developer ID cert is available.

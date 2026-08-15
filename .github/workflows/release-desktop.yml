@@ -43,7 +43,7 @@ jobs:
         working-directory: desktop
         run: npm ci
 
-      - name: Build DMG
+      - name: Build app
         working-directory: desktop
         env:
           APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
@@ -54,20 +54,27 @@ jobs:
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
           if [ -z "${APPLE_CERTIFICATE:-}" ]; then
-            echo "No Apple certificate — building unsigned DMG"
+            echo "No Apple certificate — building unsigned app"
             unset APPLE_CERTIFICATE APPLE_CERTIFICATE_PASSWORD APPLE_SIGNING_IDENTITY \
               APPLE_ID APPLE_PASSWORD APPLE_TEAM_ID
-            # Tauri skips codesign when the identity is "-"
             export APPLE_SIGNING_IDENTITY="-"
           else
             echo "Apple certificate present — signing and notarizing"
           fi
-          npx tauri build --bundles dmg
+          npx tauri build --bundles app
+
+      - name: Build Linear-style DMG
+        working-directory: desktop
+        run: |
+          python3 -m venv .dmg-venv
+          .dmg-venv/bin/pip install dmgbuild
+          export PATH="$PWD/.dmg-venv/bin:$PATH"
+          python3 scripts/build-macos-dmg.py
 
       - name: Rename artifact
         run: |
-          DMG=$(find desktop/src-tauri/target -name '*.dmg' | head -n 1)
-          test -n "$DMG"
+          DMG=desktop/src-tauri/target/release/bundle/dmg/Ruwt.dmg
+          test -f "$DMG"
           mkdir -p dist-desktop
           cp "$DMG" dist-desktop/Ruwt.dmg
           ls -lh dist-desktop/Ruwt.dmg
