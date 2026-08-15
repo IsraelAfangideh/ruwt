@@ -46,8 +46,7 @@ jobs:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
 
       - name: Ensure preview R2 bucket
-        continue-on-error: true
-        run: npx wrangler r2 bucket create ruwt-projects-preview || true
+        run: node scripts/ensure-preview-resources.mjs
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_ADMIN_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
