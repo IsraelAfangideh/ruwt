@@ -49,12 +49,12 @@ export function LandingScreen() {
             <article className="mk-step">
               <i>01</i>
               <h2>Download</h2>
-              <p>Click Install. Paste the line in Terminal. Ruwt copies into Applications and opens.</p>
+              <p>One click. A disk image lands in Downloads — the same motion as Linear or any app you already trust.</p>
             </article>
             <article className="mk-step">
               <i>02</i>
               <h2>Open it</h2>
-              <p>The window is the product. That is the whole install.</p>
+              <p>Open the disk image. Drag Ruwt onto Applications, then open it. After that, the window is the product.</p>
             </article>
             <article className="mk-step">
               <i>03</i>

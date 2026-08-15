@@ -59,9 +59,8 @@ See `.env.example` for all environment variables.
   sync to ruwt.ai, and in-app updates from `https://ruwt.ai/downloads/desktop-latest.json`.
 - Experimental: live vendor hooks. Session files are scanned; accounts are not connected.
 - Placeholder: OS credential storage and tray controls.
-  Start at login writes a macOS LaunchAgent. Signing/notarization activate when Apple
-  secrets are set in GitHub Actions. The updater verifies SHA-256; it does not use
-  Apple/Microsoft code-signing until those secrets exist.
+  Start at login writes a macOS LaunchAgent. macOS CI signs with Developer ID
+  (App Store Connect API key) and notarizes the DMG. The updater verifies SHA-256.
 
 The queue uses a permission-restricted, atomically replaced local journal. A
 SQLite migration is the next required release hardening step.

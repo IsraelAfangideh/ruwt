@@ -37,6 +37,7 @@
 !/ai/public/downloads/.gitkeep
 
 # Tauri / Rust
+desktop/.signing/
 desktop/src-tauri/target/
 desktop/src-tauri/gen/
 desktop/src-tauri/icons/android/
