@@ -1,34 +1,55 @@
 #!/usr/bin/env bash
+# Installs Ruwt Desktop on this Mac and opens it.
+# curl does not quarantine downloads, so Gatekeeper will not show
+# “Apple could not verify Ruwt is free of malware.”
 set -euo pipefail
 
-echo "Installing Ruwt desktop collector..."
-REPO="${RUWT_REPO:-https://github.com/IsraelAfangideh/ruwt.git}"
-TARGET="${RUWT_INSTALL_DIR:-$HOME/.ruwt/desktop}"
-
-mkdir -p "$(dirname "$TARGET")"
-if [ -d "$TARGET/.git" ]; then
-  git -C "$TARGET" pull --ff-only
-else
-  git clone --depth 1 "$REPO" "$TARGET-repo"
-  mkdir -p "$TARGET"
-  cp -R "$TARGET-repo/desktop/." "$TARGET/"
-  rm -rf "$TARGET-repo"
+if [[ "$(uname -s)" != "Darwin" ]]; then
+  echo "This installer is for macOS." >&2
+  echo "Windows: https://ruwt.ai/downloads/Ruwt-Setup.exe" >&2
+  echo "Linux:   https://ruwt.ai/downloads/ruwt-linux-amd64" >&2
+  exit 1
 fi
 
-cd "$TARGET"
-npm install --silent
+DMG_URL="${RUWT_DMG_URL:-https://ruwt.ai/downloads/Ruwt.dmg}"
+TMP="$(mktemp -d "${TMPDIR:-/tmp}/ruwt.XXXXXX")"
+MOUNT=""
 
-cat <<'MSG'
+cleanup() {
+  if [[ -n "${MOUNT}" ]]; then
+    hdiutil detach "${MOUNT}" -quiet >/dev/null 2>&1 \
+      || hdiutil detach "${MOUNT}" -force -quiet >/dev/null 2>&1 \
+      || true
+  fi
+  rm -rf "${TMP}"
+}
+trap cleanup EXIT
 
-Ruwt collector installed.
+echo "Downloading Ruwt…"
+curl -fL --retry 3 --retry-delay 1 "${DMG_URL}" -o "${TMP}/Ruwt.dmg"
 
-Quick start (no account required for local capture):
-  cd ~/.ruwt/desktop
-  npm run cli -- doctor
-  npm run cli -- import ./your-events.json
+ATTACH="$(hdiutil attach "${TMP}/Ruwt.dmg" -nobrowse -readonly)"
+MOUNT="$(printf '%s\n' "${ATTACH}" | awk '/\/Volumes\//{print $NF; exit}')"
+APP="${MOUNT}/Ruwt.app"
+if [[ -z "${MOUNT}" || ! -d "${APP}" ]]; then
+  echo "The download did not contain Ruwt.app." >&2
+  exit 1
+fi
 
-When you have an ingestion key from a workspace:
-  RUWT_INGESTION_KEY=ruwt_ing_... npm run cli -- sync
+place() {
+  local dest="$1"
+  mkdir -p "$(dirname "${dest}")"
+  rm -rf "${dest}"
+  cp -R "${APP}" "${dest}"
+  xattr -cr "${dest}" >/dev/null 2>&1 || true
+}
 
-Docs: https://ruwt.ai/download
-MSG
+DEST="/Applications/Ruwt.app"
+if ! place "${DEST}" 2>/dev/null; then
+  DEST="${HOME}/Applications/Ruwt.app"
+  place "${DEST}"
+fi
+
+echo "Opening Ruwt…"
+open "${DEST}"
+echo "Installed at ${DEST}"

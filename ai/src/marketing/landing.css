@@ -163,6 +163,31 @@
 
 .mk-hint[data-visible="false"] { display: none; }
 
+.mk-install-wrap {
+  flex: 1 1 100%;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 16px;
+  min-width: 0;
+}
+
+.mk-install {
+  flex: 1 1 16rem;
+  min-width: 0;
+  margin: 0;
+  padding: 12px 14px;
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  background: var(--gold-soft);
+  color: inherit;
+  font: 13px/1.4 var(--mono);
+  text-align: left;
+  overflow-x: auto;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
 .mk-proof {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
