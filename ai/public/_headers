@@ -18,8 +18,8 @@
   Cache-Control: public, max-age=300
   X-Content-Type-Options: nosniff
 
-/downloads/*.zip
-  Content-Type: application/zip
+/downloads/*.dmg
+  Content-Type: application/x-apple-diskimage
   Content-Disposition: attachment
 
 /downloads/*.exe

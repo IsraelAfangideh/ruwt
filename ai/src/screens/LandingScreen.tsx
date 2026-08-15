@@ -50,12 +50,12 @@ export function LandingScreen() {
             <article className="mk-step">
               <i>01</i>
               <h2>Download</h2>
-              <p>One click. The launcher lands in Downloads — the same motion as any desktop app you already trust.</p>
+              <p>One click. A disk image lands in Downloads — the same motion as Linear or any app you already trust.</p>
             </article>
             <article className="mk-step">
               <i>02</i>
               <h2>Open it</h2>
-              <p>Double-click Ruwt. On a Mac you can drag it to Applications; you do not have to. The app takes over from there.</p>
+              <p>Open the disk image. Drag Ruwt onto Applications, then launch it. Everything else happens in that window.</p>
             </article>
             <article className="mk-step">
               <i>03</i>

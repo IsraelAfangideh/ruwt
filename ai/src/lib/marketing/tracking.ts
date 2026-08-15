@@ -41,17 +41,31 @@ export function detectPlatform(): DownloadPlatform {
 type Artifact = { url: string; filename: string };
 
 const DEFAULT_ARTIFACTS: Record<DownloadPlatform, Artifact> = {
-  macos: { url: '/downloads/Ruwt-macOS.zip', filename: 'Ruwt-macOS.zip' },
+  macos: { url: '/downloads/Ruwt.dmg', filename: 'Ruwt.dmg' },
   windows: { url: '/downloads/Ruwt-Setup.exe', filename: 'Ruwt-Setup.exe' },
   linux: { url: '/downloads/ruwt-linux-amd64', filename: 'ruwt-linux-amd64' },
-  unknown: { url: '/downloads/Ruwt-macOS.zip', filename: 'Ruwt-macOS.zip' },
+  unknown: { url: '/downloads/Ruwt.dmg', filename: 'Ruwt.dmg' },
 };
+
+const MAC_FALLBACK: Artifact = { url: '/downloads/Ruwt-macOS.zip', filename: 'Ruwt-macOS.zip' };
+
+async function resolveArtifact(platform: DownloadPlatform, preferred: Artifact): Promise<Artifact> {
+  if (typeof fetch === 'undefined') return preferred;
+  try {
+    const head = await fetch(preferred.url, { method: 'HEAD' });
+    if (head.ok) return preferred;
+  } catch {
+    // Fall through to zip while the Tauri DMG is still building.
+  }
+  if (platform === 'macos') return MAC_FALLBACK;
+  return preferred;
+}
 
 export async function trackDownload(
   source: DownloadSource,
   platform: DownloadPlatform = detectPlatform(),
 ): Promise<Artifact> {
-  let artifact = DEFAULT_ARTIFACTS[platform];
+  let artifact = await resolveArtifact(platform, DEFAULT_ARTIFACTS[platform]);
   try {
     const res = await fetch('/api/marketing/download', {
       method: 'POST',
@@ -64,7 +78,9 @@ export async function trackDownload(
     });
     if (res.ok) {
       const data = (await res.json()) as { url?: string; filename?: string };
-      if (data.url && data.filename) artifact = { url: data.url, filename: data.filename };
+      if (data.url && data.filename) {
+        artifact = await resolveArtifact(platform, { url: data.url, filename: data.filename });
+      }
     }
   } catch {
     // Use the static artifact map.

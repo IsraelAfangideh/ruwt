@@ -36,6 +36,12 @@
 /ai/public/downloads/*
 !/ai/public/downloads/.gitkeep
 
+# Tauri / Rust
+desktop/src-tauri/target/
+desktop/src-tauri/gen/
+desktop/src-tauri/icons/android/
+desktop/src-tauri/icons/ios/
+
 # --------------------------------------------------------------------
 # Local-only / editor / OS
 # --------------------------------------------------------------------

@@ -22,7 +22,7 @@ export function DownloadScreen() {
         </p>
         <DownloadButton source="download-page" />
         <p className="mk-deck" style={{ marginTop: 28 }}>
-          macOS: Ruwt-macOS.zip → double-click Ruwt. Windows: Ruwt-Setup.exe. Linux: ruwt-linux-amd64.
+          macOS: Ruwt.dmg → drag to Applications. Windows: Ruwt-Setup.exe. Linux: ruwt-linux-amd64.
         </p>
       </main>
     </MarketingChrome>

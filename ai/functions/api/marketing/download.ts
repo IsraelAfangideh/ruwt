@@ -14,10 +14,10 @@ const downloadSchema = z.object({
 
 const INSTALL_COMMAND = 'curl -fsSL https://ruwt.ai/install.sh | bash';
 const ARTIFACTS: Record<string, { url: string; filename: string }> = {
-  macos: { url: '/downloads/Ruwt-macOS.zip', filename: 'Ruwt-macOS.zip' },
+  macos: { url: '/downloads/Ruwt.dmg', filename: 'Ruwt.dmg' },
   windows: { url: '/downloads/Ruwt-Setup.exe', filename: 'Ruwt-Setup.exe' },
   linux: { url: '/downloads/ruwt-linux-amd64', filename: 'ruwt-linux-amd64' },
-  unknown: { url: '/downloads/Ruwt-macOS.zip', filename: 'Ruwt-macOS.zip' },
+  unknown: { url: '/downloads/Ruwt.dmg', filename: 'Ruwt.dmg' },
 };
 
 export async function onRequestPost(context: { request: Request; env: Env }) {

@@ -1,2 +1,56 @@
-<!doctype html>
-<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/><title>Ruwt Desktop</title><style>body{margin:0;background:#0f0e0d;color:#e8e4df;font:14px system-ui,sans-serif}main{max-width:760px;margin:12vh auto;padding:32px}small{color:#c9a962;letter-spacing:.12em}h1{font:700 54px Georgia,serif;margin:12px 0}p{color:#a8a198;line-height:1.6}section{border:1px solid #393531;padding:18px;margin-top:24px}strong{color:#e8e4df}</style></head><body><main><small>RUWT DESKTOP · LOCAL-FIRST</small><h1>Collection stays on this device until you approve sync.</h1><p>The local service owns redaction, queueing, and import. Raw prompts and source code remain off by default.</p><section><strong>Developer foundation</strong><p>Use the CLI to inspect the local queue. Configure an organization ingestion key before synchronization.</p></section></main></body></html>
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Ruwt</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --paper: #f4f0e8;
+        --ink: #1c1814;
+        --muted: #5c564e;
+        --gold: #7a5e28;
+        --rule: rgba(28, 24, 20, 0.12);
+        --serif: "Iowan Old Style", Palatino, Georgia, serif;
+        --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --paper: #0e0d0c;
+          --ink: #ece7df;
+          --muted: #b3aaa0;
+          --gold: #d4b36a;
+          --rule: rgba(236, 231, 223, 0.12);
+        }
+      }
+      * { box-sizing: border-box; }
+      html, body { margin: 0; height: 100%; background: var(--paper); color: var(--ink); font-family: var(--sans); }
+      body { display: flex; }
+      main { margin: auto; padding: 48px 40px; max-width: 520px; }
+      .kicker { font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--gold); font-weight: 700; }
+      h1 { font-family: var(--serif); font-size: 44px; line-height: 0.95; font-weight: 600; margin: 14px 0 16px; }
+      p { color: var(--muted); line-height: 1.55; font-size: 15px; }
+      .status { margin-top: 32px; padding: 18px 0; border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule); display: grid; gap: 10px; }
+      .row { display: flex; justify-content: space-between; gap: 16px; font-size: 14px; }
+      .row b { font-weight: 600; }
+      .ok { color: var(--gold); }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="kicker">Ruwt · this machine</div>
+      <h1>It&rsquo;s running.</h1>
+      <p>
+        This window is the product. Ruwt stays on this computer, watches agent
+        activity, and does not store raw prompts. Add an ingestion key from ruwt.ai
+        only when you want a shared workspace.
+      </p>
+      <div class="status">
+        <div class="row"><span>Collector</span><b class="ok">Listening</b></div>
+        <div class="row"><span>Raw prompts stored</span><b>0</b></div>
+        <div class="row"><span>Data</span><b>~/.ruwt</b></div>
+      </div>
+    </main>
+  </body>
+</html>
