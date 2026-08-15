@@ -6,6 +6,8 @@
 #   APP_STORE_CONNECT_API_KEY_KEY, APP_STORE_CONNECT_API_KEY_KEY_ID,
 #   APP_STORE_CONNECT_API_KEY_ISSUER_ID
 # Optional override: APPLE_CERTIFICATE + APPLE_CERTIFICATE_PASSWORD (.p12)
+# Re-run after the Account Holder accepts Apple Developer agreements
+# (FORBIDDEN.REQUIRED_AGREEMENTS_MISSING_OR_EXPIRED otherwise).
 name: Release Desktop
 
 on:
