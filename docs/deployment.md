@@ -1,6 +1,25 @@
 # Deployment
 
-Run the additive migration before enabling the Intelligence route in a target
+## ruwt.ai (`/ai`)
+
+Create the D1 database and Pages project before the first deploy:
+
+```bash
+cd ai
+npx wrangler d1 create ruwt-ai
+# Update database_id in wrangler.toml with the returned UUID
+npm install
+npx wrangler d1 execute ruwt-ai --local --file=./drizzle/migrations-d1/0000_initial.sql
+npm run typecheck
+npm run build
+CLOUDFLARE_API_TOKEN=... npx wrangler pages deploy dist --project-name=ruwt-ai
+```
+
+Add Supabase redirect URLs for `https://ruwt.ai/callback`, `https://ruwt-ai.pages.dev/callback`, and `http://localhost:5175/callback`.
+
+Production deploys run via `.github/workflows/deploy-ai.yml` on push to `main` with changes in `ai/**`.
+
+## Agentic Engineering Intelligence (`/dev`)
 environment.
 
 ```bash

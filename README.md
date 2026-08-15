@@ -7,6 +7,7 @@ Monorepo for the Ruwt platform.
 | Directory | What | Stack | URL |
 |-----------|------|-------|-----|
 | `/dev` | AI-Efficiency Assessment Platform | React + Vite, Cloudflare Pages/D1, Supabase Auth | [ruwt.dev](https://ruwt.dev) |
+| `/ai` | Agent Observation Platform | React + Vite, Cloudflare Pages/D1, Supabase Auth | [ruwt.ai](https://ruwt.ai) |
 | `/social` | Ruwt Social Network (API + mobile) | Hono + Bun on Fly.io, React Native (Expo), Supabase Postgres | [ruwt.fly.dev](https://ruwt.fly.dev) |
 
 ---

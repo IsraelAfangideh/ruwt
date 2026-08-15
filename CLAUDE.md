@@ -6,6 +6,7 @@
 ruwt/
 ├── dev/          # AI-Efficiency Assessment Platform (web app)
 ├── health/       # Ruwt Fit — Fitness & Nutrition Tracker (web app)
+├── ai/           # Ruwt.ai — Agent Observation Platform (web app)
 ├── social/       # Ruwt Social Network (mobile + API)
 ├── trade/        # Ruwt Trade — Palm Oil Futures (web app + smart contracts)
 └── .github/      # CI/CD workflows
@@ -144,6 +145,22 @@ cd trade/app && npm run dev
 - **Setup needed**: Purchase ruwt.health domain, add Supabase redirect URLs for ruwt-health.pages.dev
 - **Local dev**: `cd health && npm run dev` (port 5174), `npx wrangler pages dev dist --d1=DB` for Functions
 
+## /ai — Ruwt.ai (Agent Observation Platform)
+
+- **Stack**: React (react-native-web) + Vite, Cloudflare Pages + Functions, Cloudflare D1 (SQLite), Supabase Auth
+- **Domain**: `ruwt.ai` (planned), fallback `ruwt-ai.pages.dev`
+- **Cloudflare Pages project**: `ruwt-ai`
+- **D1 database**: `ruwt-ai` (ID: create via `wrangler d1 create ruwt-ai`, then update `ai/wrangler.toml`)
+- **Auth**: Shared Supabase project `fzncpdelyfuvdeqmwznx` (same user accounts as ruwt.dev)
+- **Deploy**: GitHub Actions (`deploy-ai.yml`) → `npx wrangler pages deploy dist --project-name=ruwt-ai`
+  - Triggers on push to `main` with changes in `ai/**`, or manual `workflow_dispatch`
+- **Design system**: Same warm cream/dark palette with gold accent as /dev and /health
+- **Key screens**: Landing, Intelligence dashboard (metrics + insights + activity), Org/workspace settings, ingestion key management
+- **API endpoints**: /api/intelligence/events, /api/intelligence/overview, /api/intelligence/demo, /api/intelligence/api-keys, /api/intelligence/policies, /api/orgs
+- **Setup needed**: Create D1 database, create Pages project on first deploy, add Supabase redirect URLs for ruwt.ai and ruwt-ai.pages.dev
+- **Local dev**: `cd ai && npm run dev` (port 5175), `npx wrangler pages dev dist --d1=DB` for Functions
+- **Desktop collector**: `/desktop` posts telemetry to `/api/intelligence/events` — point at ruwt.ai once deployed
+
 ## Cloudflare Account
 
 - **Account ID**: `32f5999dbd09eae38c1de8c15de98d48`
@@ -163,6 +180,7 @@ cd trade/app && npm run dev
   - `site_url`: `https://ruwt.dev`
   - `uri_allow_list`: `https://ruwt.dev/**,https://ruwt-dev.pages.dev/**,http://localhost:5173/**,https://ruwt-health.pages.dev/**,http://localhost:5174/**`
   - Providers: GitHub OAuth + email/password (Google disabled)
+  - Add for ruwt.ai: `https://ruwt.ai/**`, `https://ruwt-ai.pages.dev/**`, `http://localhost:5175/**`
 
 ## Git Workflow
 

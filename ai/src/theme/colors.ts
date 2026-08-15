@@ -1,0 +1,66 @@
+/**
+ * Ruwt Color System (shared with /dev and /social)
+ * Warm cream/dark palette with gold accent
+ */
+
+export const colors = {
+  light: {
+    bg: '#f5f3f0',
+    bgWarm: '#ebe8e4',
+    bgElevated: '#ffffff',
+    text: '#1a1816',
+    textMuted: '#54504a',
+    textSubtle: '#5e5953',
+    accent: '#846a30',
+    accentMuted: '#7d6430',
+    border: 'rgba(26, 24, 22, 0.08)',
+    borderStrong: 'rgba(26, 24, 22, 0.15)',
+    error: '#994444',
+    errorBg: 'rgba(153, 68, 68, 0.1)',
+    success: '#356035',
+    successBg: 'rgba(53, 96, 53, 0.1)',
+    accentBg: 'rgba(154, 123, 60, 0.1)',
+    primary: '#1a1816',
+    primaryForeground: '#f5f3f0',
+    secondary: '#ebe8e4',
+    secondaryForeground: '#1a1816',
+    muted: '#ebe8e4',
+    mutedForeground: '#5c564e',
+    card: '#ffffff',
+    cardForeground: '#1a1816',
+    destructive: '#994444',
+    profit: '#16a34a',
+    loss: '#dc2626',
+  },
+  dark: {
+    bg: '#0f0e0d',
+    bgWarm: '#1a1816',
+    bgElevated: '#252220',
+    text: '#e8e4df',
+    textMuted: '#a8a198',
+    textSubtle: '#96908a',
+    accent: '#c9a962',
+    accentMuted: '#a08745',
+    border: 'rgba(232, 228, 223, 0.08)',
+    borderStrong: 'rgba(232, 228, 223, 0.15)',
+    error: '#c87878',
+    errorBg: 'rgba(200, 100, 100, 0.1)',
+    success: '#7ab87a',
+    successBg: 'rgba(122, 184, 122, 0.1)',
+    accentBg: 'rgba(201, 169, 98, 0.12)',
+    primary: '#e8e4df',
+    primaryForeground: '#0f0e0d',
+    secondary: '#252220',
+    secondaryForeground: '#e8e4df',
+    muted: '#252220',
+    mutedForeground: '#9a938a',
+    card: '#252220',
+    cardForeground: '#e8e4df',
+    destructive: '#c87878',
+    profit: '#00f0aa',
+    loss: '#ff3366',
+  },
+};
+
+export type ColorScheme = typeof colors.light;
+export type ThemeMode = 'light' | 'dark';
