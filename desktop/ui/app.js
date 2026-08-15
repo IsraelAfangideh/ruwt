@@ -101,11 +101,12 @@ function collectTools(value, tools, at, depth = 0) {
     if (child && typeof child === "object") collectTools(child, tools, at, depth + 1);
   }
 }
-function isTranscriptFile(name) {
-  return /\.(?:jsonl|json)$/i.test(name) && !/\.vscdb$/i.test(name);
-}
-var SKIP_DIRS = /* @__PURE__ */ new Set(["node_modules", ".git", "Cache", "CachedData", "GPUCache", "Code Cache", "logs", "blob_storage", "CachedExtensions", "Crashpad", "partitions", "User"]);
+var SKIP_DIRS = /* @__PURE__ */ new Set(["node_modules", ".git", "Cache", "CachedData", "GPUCache", "Code Cache", "logs", "blob_storage", "CachedExtensions", "Crashpad", "partitions", "User", "canvases", "terminals", "skills-cursor", "agent-hooks", "sandbox-policies", "bin"]);
 var MAX_DEPTH = 6;
+function isTranscriptFile(name) {
+  if (/\.jsonl$/i.test(name)) return true;
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.json$/i.test(name);
+}
 async function walkTranscripts(fs, home, root, files, source2, depth = 0) {
   if (files.length >= MAX_FILES || depth > MAX_DEPTH || !isApprovedPath(home, root)) return;
   const entries = await fs.listDir(root);

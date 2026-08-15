@@ -72,12 +72,13 @@ function collectTools(value: unknown, tools: SessionAcc['tools'], at?: string, d
   }
 }
 
-function isTranscriptFile(name: string): boolean {
-  return /\.(?:jsonl|json)$/i.test(name) && !/\.vscdb$/i.test(name);
-}
-
-const SKIP_DIRS = new Set(['node_modules', '.git', 'Cache', 'CachedData', 'GPUCache', 'Code Cache', 'logs', 'blob_storage', 'CachedExtensions', 'Crashpad', 'partitions', 'User']);
+const SKIP_DIRS = new Set(['node_modules', '.git', 'Cache', 'CachedData', 'GPUCache', 'Code Cache', 'logs', 'blob_storage', 'CachedExtensions', 'Crashpad', 'partitions', 'User', 'canvases', 'terminals', 'skills-cursor', 'agent-hooks', 'sandbox-policies', 'bin']);
 const MAX_DEPTH = 6;
+
+function isTranscriptFile(name: string): boolean {
+  if (/\.jsonl$/i.test(name)) return true;
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.json$/i.test(name);
+}
 
 async function walkTranscripts(fs: FsLike, home: string, root: string, files: { path: string; source: string }[], source: string, depth = 0) {
   if (files.length >= MAX_FILES || depth > MAX_DEPTH || !isApprovedPath(home, root)) return;

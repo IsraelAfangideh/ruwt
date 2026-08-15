@@ -64,4 +64,11 @@ describe('local collector', () => {
     expect(second.result.duplicates).toBeGreaterThan(0);
     expect(second.snapshot.overview.events).toBe(first.snapshot.overview.events);
   });
+
+  it('ignores editor config json that is not a session transcript', async () => {
+    const fs = seedFs();
+    fs.files.set(joinPath('/home/me', '.cursor', 'projects', 'workspace', 'canvases', 'tsconfig.json'), '{"compilerOptions":{}}');
+    const result = await collectEvents(fs, { orgId: '5d1ac29a-7d23-42d5-b890-586ee309a4a9', actorId: 'local:test', desktopInstallationId: 'install-1' });
+    expect(result.sources.find((source) => source.id === 'cursor')?.files).toBe(0);
+  });
 });
