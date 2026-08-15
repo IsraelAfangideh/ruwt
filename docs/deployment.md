@@ -20,6 +20,8 @@ Add Supabase redirect URLs for `https://ruwt.ai/callback`, `https://ruwt-ai.page
 Production deploys run via `.github/workflows/deploy-ai.yml` on push to `main` with changes in `ai/**`.
 
 ## Agentic Engineering Intelligence (`/dev`)
+
+Run the additive migration before enabling the Intelligence route in a target
 environment.
 
 ```bash
