@@ -23,6 +23,6 @@
     "compile:trade": "npm --prefix trade/chain run compile"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   }
 }

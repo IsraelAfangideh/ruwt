@@ -9,8 +9,6 @@ on:
     paths:
       - 'ai/**'
       - '.github/workflows/deploy-ai.yml'
-      - '.github/workflows/deploy-ai-preview.yml'
-      - '.github/workflows/deploy-dev-preview.yml'
   workflow_dispatch:
 
 permissions:
