@@ -9,7 +9,7 @@ Workflow: `.github/workflows/release-desktop.yml` → GitHub Release `desktop-la
 
 ## Signing and notarization (optional)
 
-Unsigned builds work. macOS Gatekeeper will ask the user to right-click → Open once.
+Unsigned builds work (`signingIdentity` defaults to `-` in `tauri.conf.json`). macOS Gatekeeper will ask the user to right-click → Open once. Set `APPLE_SIGNING_IDENTITY` to override that when a Developer ID cert is available.
 
 To ship a signed, notarized DMG, add these GitHub Actions secrets:
 
@@ -23,5 +23,7 @@ To ship a signed, notarized DMG, add these GitHub Actions secrets:
 | `APPLE_TEAM_ID` | 10-character Team ID |
 
 Once those are set, the next `Release Desktop` run signs and notarizes automatically. No code change required.
+
+Do not create empty placeholder secrets. An empty `APPLE_CERTIFICATE` makes Tauri try to import a blank keychain item and the DMG job fails. Leave the secrets unset until you have a real Developer ID `.p12`.
 
 Windows Authenticode signing is not configured yet. The NSIS installer still installs and launches.
