@@ -1,7 +1,24 @@
 import type { FsLike } from '../fs.js';
 import { isApprovedPath } from '../fs.js';
+import { MANIFEST_URLS, updateAvailable, type DesktopManifest, type ReleaseIdentity } from '../update.js';
 
 type Invoke = (command: string, args?: Record<string, unknown>) => Promise<unknown>;
+
+export interface AppIdentity extends ReleaseIdentity {
+  os: string;
+  packaged: boolean;
+}
+
+export interface UpdateStatus {
+  current_version: string;
+  current_commit: string;
+  available: boolean;
+  version?: string | null;
+  commit?: string | null;
+  notes?: string | null;
+  published_at?: string | null;
+  message: string;
+}
 
 function tauriInvoke(): Invoke | undefined {
   const host = window as Window & {
@@ -60,6 +77,31 @@ export interface Bridge {
   shell: 'tauri' | 'launcher' | 'none';
   fs: FsLike;
   setAutostart(enabled: boolean): Promise<boolean>;
+  appIdentity(): Promise<AppIdentity>;
+  checkUpdate(): Promise<UpdateStatus>;
+  installUpdate(): Promise<UpdateStatus>;
+}
+
+async function fetchManifest(): Promise<DesktopManifest> {
+  let last = 'Ruwt could not reach the update service.';
+  for (const url of MANIFEST_URLS) {
+    try {
+      const response = await fetch(url, { cache: 'no-store' });
+      if (!response.ok) { last = `The update service returned ${response.status}.`; continue; }
+      return await response.json() as DesktopManifest;
+    } catch (error) {
+      last = error instanceof Error ? error.message : last;
+    }
+  }
+  throw new Error(last);
+}
+
+function platformAsset(manifest: DesktopManifest) {
+  const darwin = typeof navigator !== 'undefined' && /mac/i.test(navigator.platform || navigator.userAgent);
+  const windows = typeof navigator !== 'undefined' && /win/i.test(navigator.platform || navigator.userAgent);
+  if (darwin) return manifest.platforms?.darwin;
+  if (windows) return manifest.platforms?.windows;
+  return undefined;
 }
 
 export async function createBridge(): Promise<Bridge> {
@@ -69,11 +111,16 @@ export async function createBridge(): Promise<Bridge> {
       shell: 'tauri',
       fs: new TauriFs(invoke),
       async setAutostart(enabled: boolean) { return invoke('autostart_set', { enabled }) as Promise<boolean>; },
+      async appIdentity() { return invoke('app_identity') as Promise<AppIdentity>; },
+      async checkUpdate() { return invoke('check_update') as Promise<UpdateStatus>; },
+      async installUpdate() { return invoke('install_update') as Promise<UpdateStatus>; },
     };
   }
   try {
     const status = await fetch('/api/status');
     if (status.ok) {
+      const info = await status.json() as { version?: string };
+      const identity: AppIdentity = { version: info.version ?? '0.2.0', commit: 'launcher', os: 'launcher', packaged: false };
       return {
         shell: 'launcher',
         fs: new HttpFs(),
@@ -81,6 +128,39 @@ export async function createBridge(): Promise<Bridge> {
           const response = await fetch('/api/autostart', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ enabled }) });
           const body = await response.json() as { enabled?: boolean };
           return Boolean(body.enabled);
+        },
+        async appIdentity() { return identity; },
+        async checkUpdate() {
+          const manifest = await fetchManifest();
+          const available = updateAvailable({ version: identity.version, commit: 'launcher-old' }, { version: manifest.version, commit: manifest.commit });
+          return {
+            current_version: identity.version,
+            current_commit: identity.commit,
+            available: true,
+            version: manifest.version,
+            commit: manifest.commit,
+            notes: manifest.notes,
+            published_at: manifest.publishedAt,
+            message: available
+              ? `Ruwt ${manifest.version} is the windowed app. Download it to replace this launcher.`
+              : 'Download the windowed Ruwt app from ruwt.ai to replace this launcher.',
+          };
+        },
+        async installUpdate() {
+          const manifest = await fetchManifest();
+          const asset = platformAsset(manifest);
+          if (!asset?.url) throw new Error('No installer is published for this system.');
+          window.open(asset.url, '_blank', 'noopener');
+          return {
+            current_version: identity.version,
+            current_commit: identity.commit,
+            available: true,
+            version: manifest.version,
+            commit: manifest.commit,
+            notes: manifest.notes,
+            published_at: manifest.publishedAt,
+            message: 'The installer download started. Replace this launcher with the windowed app.',
+          };
         },
       };
     }

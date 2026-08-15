@@ -517,9 +517,6 @@ var Engine = class {
     this.storePathOverride = storePathOverride;
     this.shell = shell;
   }
-  fs;
-  storePathOverride;
-  shell;
   async path() {
     return this.storePathOverride ?? storePathFor(await this.fs.home());
   }
@@ -584,6 +581,32 @@ var Engine = class {
   }
 };
 
+// src/update.ts
+function versionCmp(left, right) {
+  const a = left.split(".").map((part) => Number.parseInt(part, 10) || 0);
+  const b = right.split(".").map((part) => Number.parseInt(part, 10) || 0);
+  for (let index = 0; index < Math.max(a.length, b.length); index += 1) {
+    const delta = (a[index] ?? 0) - (b[index] ?? 0);
+    if (delta) return delta > 0 ? 1 : -1;
+  }
+  return 0;
+}
+function normalizeCommit(commit) {
+  return commit.trim().toLowerCase();
+}
+function updateAvailable(local, remote) {
+  if (!remote.version) return false;
+  if (!local.commit || local.commit === "dev") return false;
+  if (versionCmp(remote.version, local.version) > 0) return true;
+  const localCommit = normalizeCommit(local.commit);
+  const remoteCommit = normalizeCommit(remote.commit);
+  return versionCmp(remote.version, local.version) === 0 && Boolean(remoteCommit) && remoteCommit !== localCommit;
+}
+var MANIFEST_URLS = [
+  "https://ruwt.ai/downloads/desktop-latest.json",
+  "https://ruwt-ai.pages.dev/downloads/desktop-latest.json"
+];
+
 // src/ui/bridge.ts
 function tauriInvoke() {
   const host = window;
@@ -610,7 +633,6 @@ var TauriFs = class {
   constructor(invoke) {
     this.invoke = invoke;
   }
-  invoke;
   async home() {
     return this.invoke("home_dir");
   }
@@ -655,6 +677,29 @@ var HttpFs = class {
     return (await this.call("/api/fs/list", { path })).entries;
   }
 };
+async function fetchManifest() {
+  let last = "Ruwt could not reach the update service.";
+  for (const url of MANIFEST_URLS) {
+    try {
+      const response = await fetch(url, { cache: "no-store" });
+      if (!response.ok) {
+        last = `The update service returned ${response.status}.`;
+        continue;
+      }
+      return await response.json();
+    } catch (error) {
+      last = error instanceof Error ? error.message : last;
+    }
+  }
+  throw new Error(last);
+}
+function platformAsset(manifest) {
+  const darwin = typeof navigator !== "undefined" && /mac/i.test(navigator.platform || navigator.userAgent);
+  const windows = typeof navigator !== "undefined" && /win/i.test(navigator.platform || navigator.userAgent);
+  if (darwin) return manifest.platforms?.darwin;
+  if (windows) return manifest.platforms?.windows;
+  return void 0;
+}
 async function createBridge() {
   const invoke = await waitForTauriInvoke();
   if (invoke) {
@@ -663,12 +708,23 @@ async function createBridge() {
       fs: new TauriFs(invoke),
       async setAutostart(enabled) {
         return invoke("autostart_set", { enabled });
+      },
+      async appIdentity() {
+        return invoke("app_identity");
+      },
+      async checkUpdate() {
+        return invoke("check_update");
+      },
+      async installUpdate() {
+        return invoke("install_update");
       }
     };
   }
   try {
     const status = await fetch("/api/status");
     if (status.ok) {
+      const info = await status.json();
+      const identity = { version: info.version ?? "0.2.0", commit: "launcher", os: "launcher", packaged: false };
       return {
         shell: "launcher",
         fs: new HttpFs(),
@@ -676,6 +732,39 @@ async function createBridge() {
           const response = await fetch("/api/autostart", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ enabled }) });
           const body = await response.json();
           return Boolean(body.enabled);
+        },
+        async appIdentity() {
+          return identity;
+        },
+        async checkUpdate() {
+          const manifest = await fetchManifest();
+          const available = updateAvailable({ version: identity.version, commit: "launcher-old" }, { version: manifest.version, commit: manifest.commit });
+          return {
+            current_version: identity.version,
+            current_commit: identity.commit,
+            available: true,
+            version: manifest.version,
+            commit: manifest.commit,
+            notes: manifest.notes,
+            published_at: manifest.publishedAt,
+            message: available ? `Ruwt ${manifest.version} is the windowed app. Download it to replace this launcher.` : "Download the windowed Ruwt app from ruwt.ai to replace this launcher."
+          };
+        },
+        async installUpdate() {
+          const manifest = await fetchManifest();
+          const asset = platformAsset(manifest);
+          if (!asset?.url) throw new Error("No installer is published for this system.");
+          window.open(asset.url, "_blank", "noopener");
+          return {
+            current_version: identity.version,
+            current_commit: identity.commit,
+            available: true,
+            version: manifest.version,
+            commit: manifest.commit,
+            notes: manifest.notes,
+            published_at: manifest.publishedAt,
+            message: "The installer download started. Replace this launcher with the windowed app."
+          };
         }
       };
     }
@@ -694,9 +783,13 @@ var relative = (value) => {
   return `Collected ${Math.round(minutes / 60)} hr ago.`;
 };
 var engine;
+var bridge;
 var snapshot;
 var tab = "insights";
 var busy = false;
+var update;
+var updateBusy = false;
+var versionLabel = "";
 var $ = (id) => document.getElementById(id);
 function render() {
   const view = snapshot;
@@ -707,6 +800,31 @@ function render() {
   $("run-status").textContent = view?.error ?? relative(view?.lastRunAt ?? null);
   $("autostart").toggleAttribute("data-on", Boolean(view?.autostart));
   $("autostart-label").textContent = view?.autostart ? "Start at login on" : "Start at login";
+  $("app-version").textContent = versionLabel ? `v${versionLabel}` : "Ruwt Desktop";
+  const updateBanner = $("update-banner");
+  const updateButton = $("check-update");
+  if (updateBusy) {
+    updateBanner.hidden = false;
+    updateBanner.className = "banner banner-gold";
+    updateBanner.textContent = update?.available ? "Downloading and installing the update\u2026" : "Checking for updates\u2026";
+    updateButton.disabled = true;
+    updateButton.textContent = "Updating";
+  } else if (update?.available) {
+    updateBanner.hidden = false;
+    updateBanner.className = "banner banner-gold";
+    updateBanner.innerHTML = `${update.message} <button type="button" id="install-update" class="primary">Install update</button>`;
+    $("install-update")?.addEventListener("click", () => void onInstallUpdate());
+    updateButton.disabled = false;
+    updateButton.textContent = "Update available";
+  } else {
+    updateBanner.hidden = !update?.message || update.message.includes("is current") || update.message.includes("development build");
+    if (!updateBanner.hidden) {
+      updateBanner.className = "banner banner-gold";
+      updateBanner.textContent = update?.message ?? "";
+    }
+    updateButton.disabled = false;
+    updateButton.textContent = "Check for updates";
+  }
   const banner = $("shell-banner");
   banner.hidden = view?.shell !== "none";
   for (const button of document.querySelectorAll("[data-tab]")) {
@@ -808,7 +926,8 @@ function renderDiagnostics() {
     lastRunAt: snapshot?.lastRunAt,
     queued: snapshot?.queued ?? 0,
     lastCollect: collect,
-    error: snapshot?.error
+    error: snapshot?.error,
+    updater: update
   }, null, 2)}</pre>`;
 }
 async function onCollect() {
@@ -835,14 +954,60 @@ async function onAutostart() {
   snapshot = await engine.setAutostart(enabled);
   render();
 }
+async function onCheckUpdate(silent = false) {
+  if (!bridge || updateBusy) return;
+  if (!silent) {
+    updateBusy = true;
+    render();
+  }
+  try {
+    update = await bridge.checkUpdate();
+  } catch (error) {
+    update = {
+      current_version: versionLabel,
+      current_commit: "",
+      available: false,
+      message: error instanceof Error ? error.message : "Ruwt could not check for updates."
+    };
+  } finally {
+    updateBusy = false;
+    render();
+  }
+}
+async function onInstallUpdate() {
+  if (!bridge || updateBusy) return;
+  updateBusy = true;
+  render();
+  try {
+    update = await bridge.installUpdate();
+  } catch (error) {
+    update = {
+      current_version: versionLabel,
+      current_commit: "",
+      available: true,
+      message: error instanceof Error ? error.message : "Ruwt could not install the update."
+    };
+  } finally {
+    updateBusy = false;
+    render();
+  }
+}
 async function boot() {
   render();
   try {
-    const bridge = await createBridge();
+    bridge = await createBridge();
     engine = new Engine(bridge.fs, void 0, bridge.shell);
+    try {
+      const identity = await bridge.appIdentity();
+      versionLabel = identity.version;
+    } catch {
+      versionLabel = "";
+    }
     snapshot = await engine.snapshot("starting");
     render();
     snapshot = (await engine.collect()).snapshot;
+    render();
+    void onCheckUpdate(true);
   } catch {
     snapshot = {
       shell: "none",
@@ -860,8 +1025,8 @@ async function boot() {
       installationId: "",
       error: "This window is running outside the Ruwt application shell."
     };
+    render();
   }
-  render();
 }
 document.querySelectorAll("[data-tab]").forEach((button) => {
   button.addEventListener("click", () => {
@@ -876,4 +1041,5 @@ $("sync").addEventListener("click", () => {
   $("sync-note").hidden = false;
 });
 $("autostart").addEventListener("click", () => void onAutostart());
+$("check-update").addEventListener("click", () => void onCheckUpdate());
 void boot();

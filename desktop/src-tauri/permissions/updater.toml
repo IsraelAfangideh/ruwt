@@ -1,0 +1,8 @@
+[[permission]]
+identifier = "updater"
+description = "Check ruwt.ai for a newer desktop build and install it"
+commands.allow = [
+  "app_identity",
+  "check_update",
+  "install_update"
+]
