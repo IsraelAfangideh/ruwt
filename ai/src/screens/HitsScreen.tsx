@@ -63,7 +63,8 @@ export function HitsScreen() {
         <Text style={[styles.kicker, { color: c.accent }]}>SITE</Text>
         <Text style={[styles.title, { color: c.text }]}>Hits</Text>
         <Text style={[styles.lede, { color: c.textMuted }]}>
-          ruwt.ai visits and download clicks. Counts are exact — no inbox arithmetic.
+          ruwt.ai visits and download clicks. Direct hits with frozen Chrome UAs are usually scanners.
+          Downloads are the intent signal.
         </Text>
 
         {busy ? <View style={styles.center}><ActivityIndicator color={c.accent} /></View> : null}

@@ -4,7 +4,7 @@ import { downloadClicks, siteStats } from '../../../drizzle/schema.d1';
 import { sendEmail } from '../../_shared/email/resend';
 import type { Env } from '../../_shared/env';
 import { getDb } from '../../_shared/db';
-import { classifyVisitor, escapeHtml, newId } from '../../_shared/marketing/visitors';
+import { classifyVisitor, escapeHtml, kindLabel, newId } from '../../_shared/marketing/visitors';
 import { getMarketingSnapshot, snapshotEmailLines } from '../../_shared/marketing/stats';
 
 const downloadSchema = z.object({
@@ -52,7 +52,7 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
 
     const alertEmail = context.env.ERROR_ALERT_EMAIL;
     if (alertEmail) {
-      const kindLabel = classifyVisitor(userAgent);
+      const kind = classifyVisitor(userAgent);
       const snap = await getMarketingSnapshot(db);
       await sendEmail(context.env, {
         to: alertEmail,
@@ -62,7 +62,7 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
           ...snapshotEmailLines(snap),
           `<p><strong>Platform:</strong> ${escapeHtml(platform)}</p>`,
           `<p><strong>Source:</strong> ${escapeHtml(source)}</p>`,
-          `<p><strong>Visitor kind:</strong> ${escapeHtml(kindLabel)}</p>`,
+          `<p><strong>Visitor kind:</strong> ${escapeHtml(kindLabel(kind))}</p>`,
           `<p><strong>Visitor ID:</strong> ${escapeHtml(visitorId || 'anonymous')}</p>`,
         ].join('\n'),
       });
