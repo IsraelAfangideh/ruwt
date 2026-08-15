@@ -1,5 +1,5 @@
 # dmgbuild settings — Linear-style: Ruwt left, arrow, Applications right.
-# Paths are filled in by build-macos-dmg.py via -D defines.
+# Paths come from RUWT_DESKTOP_ROOT (set by build-macos-dmg.py).
 import os
 
 _root = os.environ["RUWT_DESKTOP_ROOT"]
