@@ -23,8 +23,7 @@ export function LandingScreen() {
             </h1>
             <p className="mk-deck">
               Ruwt is a small app you download. It sits on your machine, watches Cursor, Claude
-              Code, and Codex, and shows you cost, skipped tests, and sensitive access — evidence,
-              not vibes. No account. No prompt storage. Nothing leaves until you say so.
+              Code, and Codex, and shows you cost, skipped tests, and sensitive access.
             </p>
             <DownloadButton source="landing" />
           </section>
