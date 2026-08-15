@@ -45,7 +45,6 @@ jobs:
 
       - name: Build DMG
         working-directory: desktop
-        run: npx tauri build --bundles dmg
         env:
           APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
           APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
@@ -53,6 +52,17 @@ jobs:
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          if [ -z "${APPLE_CERTIFICATE:-}" ]; then
+            echo "No Apple certificate — building unsigned DMG"
+            unset APPLE_CERTIFICATE APPLE_CERTIFICATE_PASSWORD APPLE_SIGNING_IDENTITY \
+              APPLE_ID APPLE_PASSWORD APPLE_TEAM_ID
+            # Tauri skips codesign when the identity is "-"
+            export APPLE_SIGNING_IDENTITY="-"
+          else
+            echo "Apple certificate present — signing and notarizing"
+          fi
+          npx tauri build --bundles dmg
 
       - name: Rename artifact
         run: |
