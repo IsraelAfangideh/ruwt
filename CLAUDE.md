@@ -151,26 +151,27 @@ Separate product from ruwt.dev. Own Pages project, D1 database, domain, and depl
 workflows. ruwt.dev continues to deploy from `/dev` unchanged.
 
 - **Stack**: React (react-native-web) + Vite, Cloudflare Pages + Functions, Cloudflare D1 (SQLite), Supabase Auth
-- **Domain**: `ruwt.ai` (planned), fallback `ruwt-ai.pages.dev`
+- **Domain**: `ruwt.ai` (live), fallback `ruwt-ai.pages.dev`
 - **Cloudflare Pages project**: `ruwt-ai`
 - **D1 databases**: `ruwt-ai` (ID: `e6f7bd3b-dd99-4152-a6c4-2236e989aece`), `ruwt-ai-preview` (ID: `7c2840ee-51be-4c2b-ae49-4f3b8fe533d0`)
 - **Auth**: Shared Supabase project `fzncpdelyfuvdeqmwznx` (same user accounts as ruwt.dev)
 - **Deploy**: GitHub Actions (`deploy-ai.yml`) → `npx wrangler pages deploy dist --project-name=ruwt-ai`
   - Triggers on push to `main` with changes in `ai/**`, or manual `workflow_dispatch`
 - **Preview deploys**: `deploy-ai-preview.yml` → `<branch>.ruwt-ai.pages.dev` (isolated preview D1)
-- **Domain setup**: `cd ai && CLOUDFLARE_API_TOKEN=... node scripts/setup-cloudflare.mjs`
 - **Design system**: Same warm cream/dark palette with gold accent as /dev and /health
-- **Key screens**: Landing, Intelligence dashboard (metrics + insights + activity), Org/workspace settings, ingestion key management
-- **API endpoints**: /api/intelligence/events, /api/intelligence/overview, /api/intelligence/demo, /api/intelligence/api-keys, /api/intelligence/policies, /api/orgs
+- **Key screens**: Landing (Download in header), Intelligence dashboard, Org/workspace settings, ingestion key management
+- **API endpoints**: /api/intelligence/events, /api/intelligence/overview, /api/intelligence/demo, /api/intelligence/api-keys, /api/intelligence/policies, /api/orgs, /api/marketing/visit, /api/marketing/download
 - **Local dev**: `cd ai && npm run dev` (port 5175), `npx wrangler pages dev dist --d1=DB` for Functions
-- **Desktop collector**: `/desktop` syncs to `https://ruwt.ai/api/intelligence/events` by default (not ruwt.dev)
+- **Desktop app**: Tauri 2 in `/desktop` (`ai.ruwt.desktop`). CI `Release Desktop` builds unsigned macOS DMG + Windows NSIS, publishes GitHub Release `desktop-latest`, then retriggers `deploy-ai.yml` so files land at `/downloads/Ruwt.dmg` and `/downloads/Ruwt-Setup.exe`.
+  - Empty `APPLE_*` GitHub secrets break codesign (`SecKeychainItemImport`). Leave them unset until a real Developer ID `.p12` exists; `signingIdentity: "-"` skips signing.
+  - Docs: `docs/desktop-distribution.md`
 
 ## Cloudflare Account
 
 - **Account ID**: `32f5999dbd09eae38c1de8c15de98d48`
 - **Zone**: `ruwt.dev` (zone ID: `31032a4069bc880a095d18e9e96947ac`, Cloudflare nameservers, free plan)
 - **DNS**: CNAME `ruwt.dev` → `ruwt-dev.pages.dev` (proxied)
-- **ruwt.ai zone**: Add when domain is registered — run `ai/scripts/setup-cloudflare.mjs` to wire DNS + Pages custom domain. Does not affect ruwt.dev.
+- **ruwt.ai zone**: Live. CNAME `ruwt.ai` + `www` → `ruwt-ai.pages.dev` (proxied). Does not affect ruwt.dev.
 - **Admin API token**: `CLOUDFLARE_ADMIN_API_TOKEN` in `dev/.env.local` — has Zone:Edit, DNS:Edit, Pages:Edit
 - **Workers AI token**: `CLOUDFLARE_API_TOKEN` in `social/code/api/.env` — Workers AI only
 - **Deploy token**: In GitHub Secrets as `CLOUDFLARE_API_TOKEN` — Pages deploy scope
