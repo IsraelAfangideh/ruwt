@@ -13,7 +13,7 @@ GitHub Actions cannot run Finder AppleScript (`create-dmg --skip-jenkins`), so C
 
 ## Signing and notarization (optional)
 
-Unsigned builds work (`signingIdentity` defaults to `-` in `tauri.conf.json`). macOS Gatekeeper will ask the user to right-click → Open once. Set `APPLE_SIGNING_IDENTITY` to override that when a Developer ID cert is available.
+Unsigned builds work (`signingIdentity` defaults to `-` in `tauri.conf.json`). CI re-seals the `.app` after `dmgbuild` copies it so Gatekeeper sees a consistent ad-hoc signature (Open Anyway) instead of a broken “damaged / cannot verify” seal. Set `APPLE_SIGNING_IDENTITY` to override that when a Developer ID cert is available.
 
 To ship a signed, notarized DMG, add these GitHub Actions secrets:
 

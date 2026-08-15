@@ -4,8 +4,24 @@ import { isApprovedPath } from '../fs.js';
 type Invoke = (command: string, args?: Record<string, unknown>) => Promise<unknown>;
 
 function tauriInvoke(): Invoke | undefined {
-  const tauri = (window as Window & { __TAURI__?: { core?: { invoke?: Invoke } } }).__TAURI__;
-  return tauri?.core?.invoke;
+  const host = window as Window & {
+    __TAURI__?: { core?: { invoke?: Invoke } };
+    __TAURI_INTERNALS__?: { invoke?: Invoke };
+  };
+  const internals = host.__TAURI_INTERNALS__;
+  const core = host.__TAURI__?.core;
+  const invoke = internals?.invoke ?? core?.invoke;
+  return invoke ? invoke.bind(internals ?? core) : undefined;
+}
+
+async function waitForTauriInvoke(): Promise<Invoke | undefined> {
+  const deadline = Date.now() + 1500;
+  for (;;) {
+    const invoke = tauriInvoke();
+    if (invoke) return invoke;
+    if (Date.now() >= deadline) return undefined;
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  }
 }
 
 export function detectShell(): 'tauri' | 'launcher' | 'none' {
@@ -47,7 +63,7 @@ export interface Bridge {
 }
 
 export async function createBridge(): Promise<Bridge> {
-  const invoke = tauriInvoke();
+  const invoke = await waitForTauriInvoke();
   if (invoke) {
     return {
       shell: 'tauri',

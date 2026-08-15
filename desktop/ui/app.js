@@ -517,6 +517,9 @@ var Engine = class {
     this.storePathOverride = storePathOverride;
     this.shell = shell;
   }
+  fs;
+  storePathOverride;
+  shell;
   async path() {
     return this.storePathOverride ?? storePathFor(await this.fs.home());
   }
@@ -583,8 +586,20 @@ var Engine = class {
 
 // src/ui/bridge.ts
 function tauriInvoke() {
-  const tauri = window.__TAURI__;
-  return tauri?.core?.invoke;
+  const host = window;
+  const internals = host.__TAURI_INTERNALS__;
+  const core = host.__TAURI__?.core;
+  const invoke = internals?.invoke ?? core?.invoke;
+  return invoke ? invoke.bind(internals ?? core) : void 0;
+}
+async function waitForTauriInvoke() {
+  const deadline = Date.now() + 1500;
+  for (; ; ) {
+    const invoke = tauriInvoke();
+    if (invoke) return invoke;
+    if (Date.now() >= deadline) return void 0;
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  }
 }
 function detectShell() {
   if (window.__TAURI_INTERNALS__ || tauriInvoke()) return "tauri";
@@ -595,6 +610,7 @@ var TauriFs = class {
   constructor(invoke) {
     this.invoke = invoke;
   }
+  invoke;
   async home() {
     return this.invoke("home_dir");
   }
@@ -640,7 +656,7 @@ var HttpFs = class {
   }
 };
 async function createBridge() {
-  const invoke = tauriInvoke();
+  const invoke = await waitForTauriInvoke();
   if (invoke) {
     return {
       shell: "tauri",

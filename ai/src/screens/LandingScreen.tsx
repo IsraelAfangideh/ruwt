@@ -54,7 +54,7 @@ export function LandingScreen() {
             <article className="mk-step">
               <i>02</i>
               <h2>Open it</h2>
-              <p>Open the disk image. Drag Ruwt onto Applications, then launch it. Everything else happens in that window.</p>
+              <p>Open the disk image. Drag Ruwt onto Applications, then open it. If macOS says it could not verify Ruwt, go to System Settings → Privacy &amp; Security → Open Anyway. After that, the window is the product.</p>
             </article>
             <article className="mk-step">
               <i>03</i>
