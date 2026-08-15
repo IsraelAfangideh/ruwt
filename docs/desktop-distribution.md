@@ -7,6 +7,10 @@ The Tauri identifier is `ai.ruwt.desktop`. CI builds:
 
 Workflow: `.github/workflows/release-desktop.yml` → GitHub Release `desktop-latest` → `deploy-ai.yml` copies artifacts to `https://ruwt.ai/downloads/`.
 
+The DMG window is Linear-style: **Ruwt on the left**, gold chevron, **Applications on the right**. Background: `desktop/src-tauri/dmg/background.png` (regenerate with `python3 desktop/scripts/render-dmg-background.py`).
+
+GitHub Actions sets `CI=true`, which makes Tauri pass `--skip-jenkins` and skip Finder layout. The macOS job sets `TAURI_BUNDLER_DMG_IGNORE_CI=true` so icon positions and the arrow actually land in the DMG.
+
 ## Signing and notarization (optional)
 
 Unsigned builds work (`signingIdentity` defaults to `-` in `tauri.conf.json`). macOS Gatekeeper will ask the user to right-click → Open once. Set `APPLE_SIGNING_IDENTITY` to override that when a Developer ID cert is available.

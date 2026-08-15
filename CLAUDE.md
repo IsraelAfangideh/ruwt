@@ -164,6 +164,7 @@ workflows. ruwt.dev continues to deploy from `/dev` unchanged.
 - **Local dev**: `cd ai && npm run dev` (port 5175), `npx wrangler pages dev dist --d1=DB` for Functions
 - **Desktop app**: Tauri 2 in `/desktop` (`ai.ruwt.desktop`). CI `Release Desktop` builds unsigned macOS DMG + Windows NSIS, publishes GitHub Release `desktop-latest`, then retriggers `deploy-ai.yml` so files land at `/downloads/Ruwt.dmg` and `/downloads/Ruwt-Setup.exe`.
   - Empty `APPLE_*` GitHub secrets break codesign (`SecKeychainItemImport`). Leave them unset until a real Developer ID `.p12` exists; `signingIdentity: "-"` skips signing.
+  - Set `TAURI_BUNDLER_DMG_IGNORE_CI=true` in Release Desktop. Otherwise `CI=true` skips Finder layout and the DMG alphabetizes Applications to the left with no drag arrow.
   - Docs: `docs/desktop-distribution.md`
 
 ## Cloudflare Account
