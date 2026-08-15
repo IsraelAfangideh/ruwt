@@ -1,0 +1,12 @@
+[[permission]]
+identifier = "local-fs"
+description = "Scoped home-directory journal and approved transcript reads"
+commands.allow = [
+  "home_dir",
+  "read_text_file",
+  "write_text_file",
+  "mkdirp",
+  "path_exists",
+  "list_dir",
+  "autostart_set"
+]

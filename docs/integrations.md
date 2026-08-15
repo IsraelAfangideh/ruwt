@@ -3,7 +3,9 @@
 The generic JSON import adapter is real. It accepts a shared-schema event array
 or an object with an `events` array.
 
-Claude Code, Cursor, Codex, Git, and GitHub adapters remain unimplemented in
-this foundation. Ruwt must not present them as detected or connected. Each
-adapter needs approved paths, fixtures, compatibility tests, health reporting,
-and documented limitations before it becomes available.
+Claude Code, Cursor, and Codex **session-file scans** are real. Collect now walks
+approved folders (`~/.claude/projects`, `~/.cursor/projects`, `~/.codex`), keeps tool names and path classifications, and
+discards prompts, diffs, and command text. The Integrations tab reports scanned
+file counts. It does not claim a live hook or a connected vendor account.
+
+Git and GitHub adapters remain unimplemented.

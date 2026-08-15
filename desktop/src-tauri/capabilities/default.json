@@ -2,5 +2,5 @@
   "identifier": "default",
   "description": "Default Ruwt desktop capabilities",
   "windows": ["main"],
-  "permissions": ["core:default"]
+  "permissions": ["core:default", "local-fs"]
 }

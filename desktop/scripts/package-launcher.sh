@@ -11,6 +11,12 @@ mkdir -p "$OUT"
 find "$OUT" -type f ! -name '.gitkeep' -delete
 trap 'rm -rf "$STAGING"' EXIT
 
+if [ -x "$ROOT/desktop/node_modules/.bin/esbuild" ]; then
+  (cd "$ROOT/desktop" && npm run build:ui)
+fi
+mkdir -p "$LAUNCHER/ui"
+cp -R "$ROOT/desktop/ui/." "$LAUNCHER/ui/"
+
 build() {
   local goos="$1"
   local goarch="$2"

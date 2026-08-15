@@ -4,8 +4,10 @@ Ruwt Desktop uses a Tauri 2 shell and one local service. The service owns the
 local queue, redaction, generic JSON import, retry state, and exports. The CLI
 uses the same service code.
 
-The **downloadable app** on ruwt.ai is the Tauri shell in this folder. CI
-builds a macOS DMG and Windows installer (`.github/workflows/release-desktop.yml`).
+The **downloadable app** on ruwt.ai is the Tauri shell in this folder. The window
+opens on Insights, collects local session files on startup, and computes
+deterministic figures from the on-disk journal. CI builds a macOS DMG and
+Windows installer (`.github/workflows/release-desktop.yml`).
 
 Local windowed app:
 
@@ -32,6 +34,8 @@ npm run dev
 ```bash
 cd desktop
 npm run cli -- status
+npm run cli -- collect
+npm run cli -- insights
 npm run cli -- doctor
 npm run cli -- import ./events.json
 npm run cli -- export ./ruwt-local-export.json
@@ -50,11 +54,13 @@ See `.env.example` for all environment variables.
 
 ## Supported capability states
 
-- Real: local redaction, durable queue, generic JSON import, export, and sync to ruwt.ai.
-- Experimental: no vendor adapter is enabled. Claude Code, Cursor, and Codex
-  require verified fixtures and approved path mappings before release.
-- Placeholder: OS credential storage, tray controls, autostart, and updates.
-  Signing/notarization activate when Apple secrets are set in GitHub Actions.
+- Real: Insights window, local session-file collection (Claude Code, Cursor, Codex),
+  deterministic insight rules, redaction, durable queue, generic JSON import, export,
+  and sync to ruwt.ai.
+- Experimental: live vendor hooks. Session files are scanned; accounts are not connected.
+- Placeholder: OS credential storage, tray controls, and signed updates.
+  Start at login writes a macOS LaunchAgent. Signing/notarization activate when Apple
+  secrets are set in GitHub Actions.
 
 The queue uses a permission-restricted, atomically replaced local journal. A
 SQLite migration is the next required release hardening step.

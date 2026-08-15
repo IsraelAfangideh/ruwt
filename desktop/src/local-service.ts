@@ -1,10 +1,11 @@
 import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
-import { redactEvent, telemetryBatchSchema, type TelemetryEvent } from '../../dev/src/shared/intelligence/contracts.js';
+import { redactEvent, telemetryBatchSchema } from './contracts.js';
+import { type LocalStore as Journal, type QueueEntry } from './store.js';
 
-export type QueueState = 'queued' | 'uploading' | 'retry' | 'rejected';
-export interface QueueEntry { event: TelemetryEvent; state: QueueState; attempts: number; nextAttemptAt: string; lastError?: string; }
-export interface LocalStore { version: 1; paused: boolean; approvedPaths: string[]; entries: QueueEntry[]; }
+export type { QueueEntry };
+export type QueueState = Journal['entries'][number]['state'];
+export type LocalStore = Pick<Journal, 'version' | 'paused' | 'approvedPaths' | 'entries'>;
 
 const EMPTY_STORE: LocalStore = { version: 1, paused: false, approvedPaths: [], entries: [] };
 
