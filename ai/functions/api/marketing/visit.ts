@@ -1,10 +1,11 @@
 import { eq, sql } from 'drizzle-orm';
 import { z } from 'zod';
-import { downloadClicks, siteStats, siteVisitors, siteVisits } from '../../../drizzle/schema.d1';
+import { siteStats, siteVisitors, siteVisits } from '../../../drizzle/schema.d1';
 import { sendEmail } from '../../_shared/email/resend';
 import type { Env } from '../../_shared/env';
 import { getDb } from '../../_shared/db';
 import { classifyVisitor, escapeHtml, newId } from '../../_shared/marketing/visitors';
+import { getMarketingSnapshot, snapshotEmailLines } from '../../_shared/marketing/stats';
 
 const visitSchema = z.object({
   visitorId: z.string().min(8).max(64),
@@ -79,11 +80,13 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
       const alertEmail = context.env.ERROR_ALERT_EMAIL;
       if (alertEmail) {
         const kindLabel = visitorKind === 'human' ? 'Likely human' : visitorKind === 'bot' ? 'Likely bot/agent' : 'Unknown';
+        const snap = await getMarketingSnapshot(db);
         await sendEmail(context.env, {
           to: alertEmail,
-          subject: `[ruwt.ai] New visitor (${kindLabel})`,
+          subject: `[ruwt.ai] New visitor #${snap.totals.uniqueVisitors} (${kindLabel})`,
           html: [
             '<h2>New ruwt.ai visitor</h2>',
+            ...snapshotEmailLines(snap),
             `<p><strong>Kind:</strong> ${escapeHtml(kindLabel)}</p>`,
             `<p><strong>Path:</strong> ${escapeHtml(path)}</p>`,
             `<p><strong>Referrer:</strong> ${escapeHtml(referrer || 'Direct')}</p>`,

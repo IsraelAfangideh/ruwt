@@ -159,7 +159,7 @@ workflows. ruwt.dev continues to deploy from `/dev` unchanged.
   - Triggers on push to `main` with changes in `ai/**`, or manual `workflow_dispatch`
 - **Preview deploys**: `deploy-ai-preview.yml` → `<branch>.ruwt-ai.pages.dev` (isolated preview D1)
 - **Design system**: Same warm cream/dark palette with gold accent as /dev and /health
-- **Key screens**: Landing (Download in header), Intelligence dashboard, Org/workspace settings, ingestion key management
+- **Key screens**: Landing (Download in header), Hits (operator-only visit/download log at `/hits`), Intelligence dashboard, Org/workspace settings, ingestion key management
 - **API endpoints**: /api/intelligence/events, /api/intelligence/overview, /api/intelligence/demo, /api/intelligence/api-keys, /api/intelligence/policies, /api/orgs, /api/marketing/visit, /api/marketing/download
 - **Local dev**: `cd ai && npm run dev` (port 5175), `npx wrangler pages dev dist --d1=DB` for Functions
 - **Desktop app**: Tauri 2 in `/desktop` (`ai.ruwt.desktop`). CI `Release Desktop` builds unsigned macOS DMG + Windows NSIS, publishes GitHub Release `desktop-latest`, then retriggers `deploy-ai.yml` so files land at `/downloads/Ruwt.dmg` and `/downloads/Ruwt-Setup.exe`.
