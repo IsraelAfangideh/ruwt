@@ -67,7 +67,9 @@ See [CLAUDE.md](./CLAUDE.md) for full architecture details, infrastructure confi
 
 ## Agentic Engineering Intelligence foundation
 
-The `/dev` application now includes an additive `/intelligence` workspace.
+The `/dev` application includes an additive `/intelligence` workspace (legacy path
+on ruwt.dev). **ruwt.ai** (`/ai`) is the dedicated agent observation product with
+its own deploy and domain. The desktop collector syncs to ruwt.ai by default.
 It uses the existing Supabase session and organization membership model.
 
 ```bash

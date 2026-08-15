@@ -2,6 +2,10 @@
 
 Standalone Cloudflare Pages app for observing coding agent activity across your organization.
 
+**ruwt.dev remains a separate web app** (AI efficiency assessments, Arena, hiring).
+ruwt.ai has its own deploy pipeline, D1 database, and domain. Shared Supabase
+accounts only — not shared infrastructure or routes.
+
 ## Stack
 
 - React 19 + Vite + React Native Web
@@ -27,35 +31,45 @@ npx wrangler pages dev dist --d1=DB --port 8788
 
 ## First-time Cloudflare setup
 
-1. Create the D1 database:
-   ```bash
-   npx wrangler d1 create ruwt-ai
-   ```
-   Copy the returned `database_id` into `wrangler.toml`.
+Automated (recommended):
 
-2. Create the Pages project (first deploy):
-   ```bash
-   npm run build
-   CLOUDFLARE_API_TOKEN=... npx wrangler pages deploy dist --project-name=ruwt-ai
-   ```
+```bash
+cd ai
+CLOUDFLARE_API_TOKEN=... node scripts/setup-cloudflare.mjs
+git add wrangler.toml && git commit -m "chore(ai): wire D1 database IDs from setup script"
+```
 
-3. Set runtime secrets:
-   ```bash
-   echo "$VITE_SUPABASE_URL" | npx wrangler pages secret put SUPABASE_URL --project-name=ruwt-ai
-   echo "$VITE_SUPABASE_ANON_KEY" | npx wrangler pages secret put SUPABASE_ANON_KEY --project-name=ruwt-ai
-   ```
+The script creates `ruwt-ai` and `ruwt-ai-preview` D1 databases, attaches
+`ruwt.ai` to the Pages project when the zone exists, and updates `wrangler.toml`.
+It does **not** modify ruwt.dev.
 
-4. Apply migrations:
-   ```bash
-   npx wrangler d1 migrations apply ruwt-ai --remote
-   ```
+Manual steps if the domain is not in Cloudflare yet:
 
-5. Add Supabase redirect URLs:
+1. Register `ruwt.ai` and add it to Cloudflare (update nameservers).
+2. Re-run `node scripts/setup-cloudflare.mjs`.
+3. Set runtime secrets and deploy:
+
+```bash
+echo "$VITE_SUPABASE_URL" | npx wrangler pages secret put SUPABASE_URL --project-name=ruwt-ai
+echo "$VITE_SUPABASE_ANON_KEY" | npx wrangler pages secret put SUPABASE_ANON_KEY --project-name=ruwt-ai
+npm run build
+CLOUDFLARE_API_TOKEN=... npx wrangler pages deploy dist --project-name=ruwt-ai
+npx wrangler d1 migrations apply ruwt-ai --remote
+```
+
+4. Add Supabase redirect URLs:
    - `https://ruwt.ai/callback`
    - `https://ruwt-ai.pages.dev/callback`
    - `http://localhost:5175/callback`
+   - Preview branches: `https://*.ruwt-ai.pages.dev/callback` (if supported)
 
-6. Point DNS: CNAME `ruwt.ai` → `ruwt-ai.pages.dev` (proxied)
+Until the custom domain is live, use `https://ruwt-ai.pages.dev`.
+
+## PR previews
+
+Changes under `ai/**` trigger `.github/workflows/deploy-ai-preview.yml`.
+Each PR gets `<branch>.ruwt-ai.pages.dev` with an isolated `ruwt-ai-preview` D1.
+ruwt.dev previews are unaffected.
 
 ## API surface
 
@@ -72,6 +86,11 @@ Ingestion auth: `Authorization: Bearer ruwt_ing_...` or authenticated org member
 
 ## Desktop collector
 
-The local collector in `/desktop` posts to `/api/intelligence/events`. Point it at `https://ruwt.ai` once deployed.
+The local collector in `/desktop` syncs to `https://ruwt.ai/api/intelligence/events`
+by default. Only `RUWT_INGESTION_KEY` is required:
+
+```bash
+RUWT_INGESTION_KEY=ruwt_ing_... npm run cli -- sync
+```
 
 See `/docs/telemetry-schema.md` for the event contract.
