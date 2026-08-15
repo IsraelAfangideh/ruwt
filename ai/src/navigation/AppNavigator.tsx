@@ -12,6 +12,7 @@ import { LoginScreen } from '@/screens/LoginScreen';
 import { RegisterScreen } from '@/screens/RegisterScreen';
 import { CallbackScreen } from '@/screens/CallbackScreen';
 import { DashboardScreen } from '@/screens/DashboardScreen';
+import { HitsScreen } from '@/screens/HitsScreen';
 import { OrgSettingsScreen } from '@/screens/OrgSettingsScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -46,6 +47,7 @@ export function AppNavigator() {
         ) : (
           <>
             <Stack.Screen name="Dashboard" component={DashboardScreen} />
+            <Stack.Screen name="Hits" component={HitsScreen} />
             <Stack.Screen name="OrgSettings" component={OrgSettingsScreen} />
             <Stack.Screen name="Callback" component={CallbackScreen} />
           </>

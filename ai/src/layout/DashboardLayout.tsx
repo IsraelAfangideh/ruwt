@@ -22,6 +22,9 @@ export function DashboardLayout({ user, children }: { user: User; children: Reac
             <Text style={[styles.logo, { color: c.text }]}>ruwt.ai</Text>
           </Pressable>
           <View style={styles.headerActions}>
+            <Pressable onPress={() => navigation.navigate('Hits')}>
+              <Text style={[styles.navLink, { color: c.textMuted }]}>Hits</Text>
+            </Pressable>
             <Pressable onPress={() => navigation.navigate('OrgSettings')}>
               <Text style={[styles.navLink, { color: c.textMuted }]}>Workspace</Text>
             </Pressable>

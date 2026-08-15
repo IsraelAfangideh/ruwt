@@ -13,6 +13,7 @@ export const linking: LinkingOptions<RootStackParamList> = {
       Register: 'register',
       Callback: 'callback',
       Dashboard: 'dashboard',
+      Hits: 'hits',
       OrgSettings: 'settings/org',
     },
   },

@@ -7,5 +7,6 @@ export type RootStackParamList = {
   Register: undefined;
   Callback: undefined;
   Dashboard: undefined;
+  Hits: undefined;
   OrgSettings: undefined;
 };
