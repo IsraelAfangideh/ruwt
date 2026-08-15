@@ -5,6 +5,9 @@ import { useAuth } from '@/lib/AuthContext';
 import { linking } from './linking';
 import type { RootStackParamList } from './types';
 import { LandingScreen } from '@/screens/LandingScreen';
+import { DownloadScreen } from '@/screens/DownloadScreen';
+import { BlogIndexScreen } from '@/screens/BlogIndexScreen';
+import { BlogPostScreen } from '@/screens/BlogPostScreen';
 import { LoginScreen } from '@/screens/LoginScreen';
 import { RegisterScreen } from '@/screens/RegisterScreen';
 import { CallbackScreen } from '@/screens/CallbackScreen';
@@ -33,6 +36,9 @@ export function AppNavigator() {
         {!user ? (
           <>
             <Stack.Screen name="Landing" component={LandingScreen} />
+            <Stack.Screen name="Download" component={DownloadScreen} />
+            <Stack.Screen name="Blog" component={BlogIndexScreen} />
+            <Stack.Screen name="BlogPost" component={BlogPostScreen} />
             <Stack.Screen name="Login" component={LoginScreen} />
             <Stack.Screen name="Register" component={RegisterScreen} />
             <Stack.Screen name="Callback" component={CallbackScreen} />

@@ -6,6 +6,9 @@ export const linking: LinkingOptions<RootStackParamList> = {
   config: {
     screens: {
       Landing: '',
+      Download: 'download',
+      Blog: 'blog',
+      BlogPost: 'blog/:slug',
       Login: 'login',
       Register: 'register',
       Callback: 'callback',
