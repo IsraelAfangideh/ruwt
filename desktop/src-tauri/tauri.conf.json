@@ -38,9 +38,10 @@
       "signingIdentity": "-",
       "minimumSystemVersion": "11.0",
       "dmg": {
-        "appPosition": { "x": 180, "y": 220 },
-        "applicationFolderPosition": { "x": 480, "y": 220 },
-        "windowSize": { "width": 660, "height": 400 }
+        "background": "src-tauri/dmg/background.png",
+        "windowSize": { "width": 660, "height": 400 },
+        "appPosition": { "x": 160, "y": 168 },
+        "applicationFolderPosition": { "x": 500, "y": 168 }
       }
     },
     "windows": {
