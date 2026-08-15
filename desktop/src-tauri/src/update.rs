@@ -75,7 +75,7 @@ pub fn check() -> Result<UpdateStatus, String> {
       commit: None,
       notes: None,
       published_at: None,
-      message: "This is a development build. Packaged apps check ruwt.ai for updates.",
+      message: "This is a development build. Packaged apps check ruwt.ai for updates.".into(),
     });
   }
   let manifest = fetch_manifest()?;
@@ -124,7 +124,7 @@ pub fn install() -> Result<UpdateStatus, String> {
     commit: Some(manifest.commit),
     notes: manifest.notes,
     published_at: manifest.published_at,
-    message: "Update installed. Ruwt is restarting.",
+    message: "Update installed. Ruwt is restarting.".into(),
   })
 }
 

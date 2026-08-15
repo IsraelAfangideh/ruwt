@@ -199,7 +199,19 @@ def mint_certificate() -> None:
             last_error = str(error)
             print(last_error, flush=True)
     if created is None:
-        existing = api("GET", "/v1/certificates?limit=200")
+        if "REQUIRED_AGREEMENTS_MISSING_OR_EXPIRED" in last_error:
+            raise SystemExit(
+                "Apple rejected Developer ID creation because a paid-program agreement "
+                "is missing or expired.\n"
+                "Sign in as Account Holder and accept the latest agreements:\n"
+                "  https://developer.apple.com/account\n"
+                "  https://appstoreconnect.apple.com/agreements\n"
+                "Then re-run the Release Desktop workflow."
+            )
+        try:
+            existing = api("GET", "/v1/certificates?limit=200")
+        except SystemExit:
+            existing = {"data": []}
         names = [
             f"{row.get('attributes', {}).get('certificateType')} {row.get('attributes', {}).get('name')} {row.get('id')}"
             for row in existing.get("data", [])
@@ -208,7 +220,6 @@ def mint_certificate() -> None:
         extra = "\nExisting Developer ID certs:\n" + "\n".join(names) if names else ""
         raise SystemExit(
             "Could not create a Developer ID Application certificate from the App Store Connect API key.\n"
-            "The key can submit iOS builds; creating Developer ID often needs Account Holder access.\n"
             "Create the cert at https://developer.apple.com/account/resources/certificates/add\n"
             f"{extra}\n{last_error}"
         )
