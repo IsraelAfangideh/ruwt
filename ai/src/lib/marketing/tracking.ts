@@ -38,10 +38,20 @@ export function detectPlatform(): DownloadPlatform {
   return 'unknown';
 }
 
+type Artifact = { url: string; filename: string };
+
+const DEFAULT_ARTIFACTS: Record<DownloadPlatform, Artifact> = {
+  macos: { url: '/downloads/Ruwt-macOS.zip', filename: 'Ruwt-macOS.zip' },
+  windows: { url: '/downloads/Ruwt-Setup.exe', filename: 'Ruwt-Setup.exe' },
+  linux: { url: '/downloads/ruwt-linux-amd64', filename: 'ruwt-linux-amd64' },
+  unknown: { url: '/downloads/Ruwt-macOS.zip', filename: 'Ruwt-macOS.zip' },
+};
+
 export async function trackDownload(
   source: DownloadSource,
   platform: DownloadPlatform = detectPlatform(),
-): Promise<{ installCommand: string; repoUrl: string } | null> {
+): Promise<Artifact> {
+  let artifact = DEFAULT_ARTIFACTS[platform];
   try {
     const res = await fetch('/api/marketing/download', {
       method: 'POST',
@@ -52,19 +62,31 @@ export async function trackDownload(
         source,
       }),
     });
-    if (!res.ok) return null;
-    const data = (await res.json()) as { installCommand: string; repoUrl: string };
-    return data;
+    if (res.ok) {
+      const data = (await res.json()) as { url?: string; filename?: string };
+      if (data.url && data.filename) artifact = { url: data.url, filename: data.filename };
+    }
   } catch {
-    return null;
+    // Use the static artifact map.
   }
+  return artifact;
 }
 
-export async function copyInstallCommand(source: DownloadSource): Promise<string> {
-  const tracked = await trackDownload(source);
-  const command = tracked?.installCommand ?? 'curl -fsSL https://ruwt.ai/install.sh | bash';
-  if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
-    await navigator.clipboard.writeText(command);
-  }
-  return command;
+export function triggerFileDownload(artifact: Artifact): void {
+  const link = document.createElement('a');
+  link.href = artifact.url;
+  link.download = artifact.filename;
+  link.rel = 'noopener';
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+}
+
+export async function startLauncherDownload(
+  source: DownloadSource,
+  platform: DownloadPlatform = detectPlatform(),
+): Promise<Artifact> {
+  const artifact = await trackDownload(source, platform);
+  triggerFileDownload(artifact);
+  return artifact;
 }

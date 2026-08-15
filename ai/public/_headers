@@ -14,5 +14,14 @@
 /*.js
   Cache-Control: public, max-age=31536000, immutable
 
-/favicon.ico
-  Cache-Control: public, max-age=31536000, immutable
+/downloads/*
+  Cache-Control: public, max-age=300
+  X-Content-Type-Options: nosniff
+
+/downloads/*.zip
+  Content-Type: application/zip
+  Content-Disposition: attachment
+
+/downloads/*.exe
+  Content-Type: application/vnd.microsoft.portable-executable
+  Content-Disposition: attachment
