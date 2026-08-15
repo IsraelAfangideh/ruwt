@@ -38,7 +38,6 @@
       "icons/icon.ico"
     ],
     "macOS": {
-      "signingIdentity": "-",
       "minimumSystemVersion": "11.0",
       "dmg": {
         "background": "src-tauri/dmg/background.png",

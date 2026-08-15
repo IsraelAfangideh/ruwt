@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 """Build a Linear-style DMG without Finder AppleScript (works on GitHub Actions).
 
-Ad-hoc sign Ruwt.app before dmgbuild copies it. Do not codesign on the mounted
-volume — that hits “internal error in Code Signing subsystem” on GHA runners.
-Do not ad-hoc sign the DMG (Gatekeeper may refuse to mount a download).
+If APPLE_SIGNING_IDENTITY is a Developer ID, leave Tauri's signature on
+Ruwt.app and do not ad-hoc re-sign (that would strip notarization).
 """
 from __future__ import annotations
 
@@ -24,10 +23,18 @@ def run(args: list[str]) -> None:
     subprocess.check_call(args)
 
 
-def adhoc_sign(target: Path) -> None:
-    subprocess.call(["xattr", "-cr", str(target)])
-    run(["codesign", "--force", "--deep", "--sign", "-", "--timestamp=none", str(target)])
-    run(["codesign", "--verify", "--deep", "--verbose=2", str(target)])
+def identity() -> str:
+    return os.environ.get("APPLE_SIGNING_IDENTITY", "").strip() or "-"
+
+
+def prepare_app() -> None:
+    subprocess.call(["xattr", "-cr", str(APP)])
+    signer = identity()
+    if signer == "-":
+        run(["codesign", "--force", "--deep", "--sign", "-", "--timestamp=none", str(APP)])
+        run(["codesign", "--verify", "--deep", "--verbose=2", str(APP)])
+        return
+    run(["codesign", "--verify", "--deep", "--strict", "--verbose=2", str(APP)])
 
 
 def main() -> None:
@@ -37,7 +44,7 @@ def main() -> None:
     if not BACKGROUND.is_file():
         raise SystemExit(f"missing DMG background: {BACKGROUND}")
     out.parent.mkdir(parents=True, exist_ok=True)
-    adhoc_sign(APP)
+    prepare_app()
     env = os.environ.copy()
     env["RUWT_DESKTOP_ROOT"] = str(ROOT)
     cmd = ["dmgbuild", "-s", str(SETTINGS), "Ruwt", str(out)]

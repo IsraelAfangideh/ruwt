@@ -17,12 +17,12 @@ export function DownloadScreen() {
           Then stop using this website.
         </h1>
         <p className="mk-deck">
-          Detected {platform === 'unknown' ? 'your system' : platform}. On a Mac, paste one line in
-          Terminal — the app opens. Windows and Linux still download a file.
+          Detected {platform === 'unknown' ? 'your system' : platform}. Click once — the file lands in
+          Downloads. Open it. Everything else happens in the app.
         </p>
         <DownloadButton source="download-page" />
         <p className="mk-deck" style={{ marginTop: 28 }}>
-          macOS: <code>curl -fsSL https://ruwt.ai/install.sh | bash</code>. Windows: Ruwt-Setup.exe. Linux: ruwt-linux-amd64.
+          macOS: Ruwt.dmg → drag to Applications. Windows: Ruwt-Setup.exe. Linux: ruwt-linux-amd64.
         </p>
       </main>
     </MarketingChrome>

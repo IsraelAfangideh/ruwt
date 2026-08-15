@@ -11,24 +11,15 @@ The DMG window is Linear-style: **Ruwt on the left**, gold chevron, **Applicatio
 
 GitHub Actions cannot run Finder AppleScript (`create-dmg --skip-jenkins`), so CI builds the `.app` with Tauri and then `python3 desktop/scripts/build-macos-dmg.py` (`dmgbuild`) writes icon positions and the arrow into the disk image without Finder.
 
-## Signing and notarization (optional)
+## Signing and notarization
 
-Unsigned builds work (`signingIdentity` defaults to `-` in `tauri.conf.json`). Ad-hoc signing does **not** remove Sequoia/Tahoe’s “Apple could not verify … malware” dialog for a browser-downloaded DMG — that needs a Developer ID and notarization. The site’s macOS install path is `curl -fsSL https://ruwt.ai/install.sh | bash` (`ai/public/install.sh`), which copies the app without a quarantine xattr so Gatekeeper never runs. Set `APPLE_SIGNING_IDENTITY` to override ad-hoc when a Developer ID cert is available.
+CI mints a **Developer ID Application** certificate from the same App Store Connect API key used for iOS TestFlight (`APP_STORE_CONNECT_API_KEY_KEY`, `_KEY_ID`, `_ISSUER_ID`, team `S5G585GH4X`). The private key is stored encrypted in the Actions cache (`desktop/.signing/developer-id.p12.enc`). The DMG is signed, submitted to `notarytool`, and stapled.
 
-To ship a signed, notarized DMG, add these GitHub Actions secrets:
+Optional override: set `APPLE_CERTIFICATE` (base64 `.p12`) and `APPLE_CERTIFICATE_PASSWORD` to skip minting.
 
-| Secret | Purpose |
-|--------|---------|
-| `APPLE_CERTIFICATE` | Base64-encoded Developer ID Application `.p12` |
-| `APPLE_CERTIFICATE_PASSWORD` | Password for that `.p12` |
-| `APPLE_SIGNING_IDENTITY` | e.g. `Developer ID Application: Your Name (TEAMID)` |
-| `APPLE_ID` | Apple ID used for notarization |
-| `APPLE_PASSWORD` | App-specific password |
-| `APPLE_TEAM_ID` | 10-character Team ID |
+Do not create empty placeholder `APPLE_*` secrets. An empty `APPLE_CERTIFICATE` makes Tauri try to import a blank keychain item.
 
-Once those are set, the next `Release Desktop` run signs and notarizes automatically. No code change required.
-
-Do not create empty placeholder secrets. An empty `APPLE_CERTIFICATE` makes Tauri try to import a blank keychain item and the DMG job fails. Leave the secrets unset until you have a real Developer ID `.p12`.
+`curl -fsSL https://ruwt.ai/install.sh | bash` remains a quarantine-free fallback.
 
 Windows Authenticode signing is not configured yet. The NSIS installer still installs and launches.
 

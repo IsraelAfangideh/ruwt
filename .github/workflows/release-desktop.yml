@@ -2,9 +2,10 @@
 # macOS → DMG (Linear-style drag to Applications)
 # Windows → NSIS setup exe
 #
-# Apple signing/notarization runs automatically when these GitHub secrets exist:
-#   APPLE_CERTIFICATE, APPLE_CERTIFICATE_PASSWORD, APPLE_SIGNING_IDENTITY,
-#   APPLE_ID, APPLE_PASSWORD, APPLE_TEAM_ID
+# macOS signing uses the iOS App Store Connect API key already in this repo:
+#   APP_STORE_CONNECT_API_KEY_KEY, APP_STORE_CONNECT_API_KEY_KEY_ID,
+#   APP_STORE_CONNECT_API_KEY_ISSUER_ID
+# Optional override: APPLE_CERTIFICATE + APPLE_CERTIFICATE_PASSWORD (.p12)
 name: Release Desktop
 
 on:
@@ -43,24 +44,42 @@ jobs:
         working-directory: desktop
         run: npm ci
 
-      - name: Build app
+      - name: Restore Developer ID
+        id: signing-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: desktop/.signing/developer-id.p12.enc
+          key: ruwt-developer-id-v1
+
+      - name: Ensure Developer ID
         working-directory: desktop
         env:
+          APP_STORE_CONNECT_API_KEY_KEY: ${{ secrets.APP_STORE_CONNECT_API_KEY_KEY }}
+          APP_STORE_CONNECT_API_KEY_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ISSUER_ID }}
+          APP_STORE_CONNECT_API_KEY_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_KEY_ID }}
           APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
           APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
           APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
-          if [ -z "${APPLE_CERTIFICATE:-}" ]; then
-            echo "No Apple certificate — building unsigned app"
-            unset APPLE_CERTIFICATE APPLE_CERTIFICATE_PASSWORD APPLE_SIGNING_IDENTITY \
-              APPLE_ID APPLE_PASSWORD APPLE_TEAM_ID
-            export APPLE_SIGNING_IDENTITY="-"
-          else
-            echo "Apple certificate present — signing and notarizing"
-          fi
+          python3 -m venv .sign-venv
+          .sign-venv/bin/pip install pyjwt cryptography
+          .sign-venv/bin/python scripts/ensure-developer-id.py
+
+      - name: Save Developer ID
+        if: success() && steps.signing-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: desktop/.signing/developer-id.p12.enc
+          key: ruwt-developer-id-v1
+
+      - name: Build app
+        working-directory: desktop
+        run: |
+          test -n "${APPLE_SIGNING_IDENTITY:-}"
+          test "${APPLE_SIGNING_IDENTITY}" != "-"
+          echo "Signing as ${APPLE_SIGNING_IDENTITY}"
+          unset APPLE_ID APPLE_PASSWORD
           npx tauri build --bundles app
 
       - name: Build Linear-style DMG
@@ -70,6 +89,10 @@ jobs:
           .dmg-venv/bin/pip install dmgbuild
           export PATH="$PWD/.dmg-venv/bin:$PATH"
           python3 scripts/build-macos-dmg.py
+
+      - name: Notarize DMG
+        working-directory: desktop
+        run: python3 scripts/notarize-macos-dmg.py
 
       - name: Rename artifact
         run: |
