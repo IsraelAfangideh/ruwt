@@ -66,8 +66,9 @@ jobs:
       - name: Build Linear-style DMG
         working-directory: desktop
         run: |
-          python3 -m pip install --user dmgbuild
-          export PATH="$(python3 -c 'import os, site; print(os.path.join(site.getuserbase(), "bin"))'):$PATH"
+          python3 -m venv .dmg-venv
+          .dmg-venv/bin/pip install dmgbuild
+          export PATH="$PWD/.dmg-venv/bin:$PATH"
           python3 scripts/build-macos-dmg.py
 
       - name: Rename artifact
