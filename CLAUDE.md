@@ -164,6 +164,7 @@ workflows. ruwt.dev continues to deploy from `/dev` unchanged.
 - **Local dev**: `cd ai && npm run dev` (port 5175), `npx wrangler pages dev dist --d1=DB` for Functions
 - **Desktop app**: Tauri 2 in `/desktop` (`ai.ruwt.desktop`). CI `Release Desktop` builds unsigned macOS DMG + Windows NSIS, publishes GitHub Release `desktop-latest`, then retriggers `deploy-ai.yml` so files land at `/downloads/Ruwt.dmg` and `/downloads/Ruwt-Setup.exe`.
   - Empty `APPLE_*` GitHub secrets break codesign (`SecKeychainItemImport`). Leave them unset until a real Developer ID `.p12` exists; `signingIdentity: "-"` skips signing.
+  - The windowed app collects Claude Code / Cursor / Codex session files from approved folders, writes `~/.ruwt/queue.json`, and computes Insights locally. The Go launcher serves the same UI on `127.0.0.1` with a scoped `/api/fs/*` gateway. Do not open the HTML as a file; that path has no filesystem bridge.
   - Docs: `docs/desktop-distribution.md`
 
 ## Cloudflare Account

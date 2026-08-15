@@ -4,23 +4,26 @@
   "version": "0.1.0",
   "identifier": "ai.ruwt.desktop",
   "build": {
-    "frontendDist": "../ui"
+    "frontendDist": "../ui",
+    "beforeBuildCommand": "npm run build:ui",
+    "beforeDevCommand": "npm run build:ui"
   },
   "app": {
+    "withGlobalTauri": true,
     "windows": [
       {
         "label": "main",
-        "title": "Ruwt",
-        "width": 720,
-        "height": 540,
-        "minWidth": 560,
-        "minHeight": 420,
+        "title": "Ruwt Desktop",
+        "width": 980,
+        "height": 720,
+        "minWidth": 640,
+        "minHeight": 520,
         "resizable": true,
         "center": true
       }
     ],
     "security": {
-      "csp": "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'",
+      "csp": "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' https://ruwt.ai https://ruwt-ai.pages.dev",
       "capabilities": ["default"]
     }
   },

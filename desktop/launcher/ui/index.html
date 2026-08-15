@@ -3,58 +3,67 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Ruwt</title>
-    <style>
-      :root {
-        --paper: #f5f3f0;
-        --ink: #1a1816;
-        --muted: #54504a;
-        --gold: #846a30;
-        --rule: rgba(26, 24, 22, 0.12);
-        --serif: "Iowan Old Style", "Palatino Linotype", Palatino, serif;
-        --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      }
-      @media (prefers-color-scheme: dark) {
-        :root {
-          --paper: #0f0e0d;
-          --ink: #e8e4df;
-          --muted: #a8a198;
-          --gold: #c9a962;
-          --rule: rgba(232, 228, 223, 0.12);
-        }
-      }
-      * { box-sizing: border-box; }
-      html, body { margin: 0; min-height: 100%; background: var(--paper); color: var(--ink); font-family: var(--sans); }
-      main { max-width: 560px; margin: 0 auto; padding: 12vh 28px 48px; }
-      .kicker { font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--gold); font-weight: 700; }
-      h1 { font-family: var(--serif); font-size: clamp(36px, 6vw, 52px); line-height: 0.95; font-weight: 600; margin: 16px 0 18px; }
-      p { color: var(--muted); line-height: 1.55; font-size: 16px; }
-      .status { margin-top: 36px; padding: 20px 0; border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule); display: grid; gap: 10px; }
-      .row { display: flex; justify-content: space-between; gap: 16px; font-size: 14px; }
-      .row b { font-weight: 600; }
-      .ok { color: var(--gold); }
-    </style>
+    <title>Ruwt Desktop</title>
+    <link rel="stylesheet" href="./app.css" />
   </head>
   <body>
-    <main>
-      <div class="kicker">Ruwt · local</div>
-      <h1>It's running on this machine.</h1>
-      <p>
-        Ruwt watches agent activity here — Cursor, Claude Code, Codex — and keeps
-        raw prompts off disk. When you want a shared workspace, add an ingestion key
-        from ruwt.ai. Until then, nothing leaves this computer.
-      </p>
-      <div class="status">
-        <div class="row"><span>Collector</span><b class="ok" id="status">Starting…</b></div>
-        <div class="row"><span>Raw prompts stored</span><b>0</b></div>
-        <div class="row"><span>Data</span><b>~/.ruwt</b></div>
+    <header class="top">
+      <div class="brand">
+        <strong>Ruwt.</strong>
+        <span id="status-badge" class="badge" data-state="starting">Starting</span>
+        <span id="queue-badge" class="badge">Queue 0</span>
       </div>
+      <div class="actions">
+        <button id="collect" type="button">Collect now</button>
+        <button id="sync" class="primary" type="button">Sync</button>
+      </div>
+    </header>
+    <nav class="tabs" aria-label="Desktop sections">
+      <button type="button" data-tab="insights" aria-selected="true">Insights</button>
+      <button type="button" data-tab="activity" aria-selected="false">Activity</button>
+      <button type="button" data-tab="integrations" aria-selected="false">Integrations</button>
+      <button type="button" data-tab="privacy" aria-selected="false">Privacy</button>
+      <button type="button" data-tab="diagnostics" aria-selected="false">Diagnostics</button>
+    </nav>
+    <main>
+      <div id="shell-banner" class="banner" hidden>
+        This window is running outside the Ruwt application shell.
+      </div>
+      <section id="panel-insights">
+        <h1>Your engineering intelligence</h1>
+        <p class="lede">
+          Ruwt computes these figures from events stored on this machine. Nothing here needs a network,
+          and nothing here is a guess from a model. Every rule is deterministic and states its own limits.
+        </p>
+        <div class="stack"></div>
+      </section>
+      <section id="panel-activity" hidden>
+        <h1>Activity</h1>
+        <p class="lede">Redacted events from the last collection run. Prompts and source are not stored.</p>
+        <div class="stack"></div>
+      </section>
+      <section id="panel-integrations" hidden>
+        <h1>Integrations</h1>
+        <p class="lede">Approved folders are scanned on this computer. Live vendor hooks are not claimed.</p>
+        <p id="sync-note" class="banner" hidden>Sync needs an ingestion key from ruwt.ai. Set RUWT_INGESTION_KEY and run <code>npm run cli -- sync</code> until keychain storage ships.</p>
+        <div class="stack"></div>
+      </section>
+      <section id="panel-privacy" hidden>
+        <h1>Privacy</h1>
+        <p class="lede">The journal lives in ~/.ruwt and never stores raw prompts.</p>
+        <div class="stack"></div>
+      </section>
+      <section id="panel-diagnostics" hidden>
+        <h1>Diagnostics</h1>
+        <p class="lede">Local collector state for this machine. This is not sent anywhere by default.</p>
+        <div class="stack"></div>
+      </section>
     </main>
-    <script>
-      fetch("/api/status")
-        .then((r) => r.json())
-        .then(() => { document.getElementById("status").textContent = "Listening"; })
-        .catch(() => { document.getElementById("status").textContent = "Offline"; });
-    </script>
+    <footer>
+      <span>Ruwt Desktop</span>
+      <button id="autostart" type="button"><i></i><span id="autostart-label">Start at login</span></button>
+      <span id="run-status">No run yet.</span>
+    </footer>
+    <script type="module" src="./app.js"></script>
   </body>
 </html>

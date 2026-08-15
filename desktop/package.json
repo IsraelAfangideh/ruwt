@@ -6,12 +6,20 @@
   "scripts": {
     "dev": "tauri dev",
     "build": "tauri build",
+    "build:ui": "esbuild src/ui/main.ts --bundle --format=esm --outfile=ui/app.js --platform=browser --target=es2022",
     "check": "tsc --noEmit",
+    "test": "vitest run",
     "cli": "tsx src/cli.ts"
+  },
+  "dependencies": {
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2.0.0",
+    "@types/node": "^22.0.0",
+    "esbuild": "^0.25.0",
     "tsx": "^4.0.0",
-    "typescript": "^5.0.0"
+    "typescript": "^5.0.0",
+    "vitest": "^3.2.0"
   }
 }

@@ -2,7 +2,9 @@ package main
 
 import (
 	"embed"
+	"encoding/json"
 	"fmt"
+	"io"
 	"io/fs"
 	"net"
 	"net/http"
@@ -10,11 +12,18 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"time"
 )
 
 //go:embed ui/*
 var uiFS embed.FS
+
+type dirEntry struct {
+	Name string `json:"name"`
+	Path string `json:"path"`
+	Dir  bool   `json:"dir"`
+}
 
 func main() {
 	home, _ := os.UserHomeDir()
@@ -41,8 +50,107 @@ func main() {
 	mux := http.NewServeMux()
 	mux.Handle("/", http.FileServer(http.FS(content)))
 	mux.HandleFunc("/api/status", func(w http.ResponseWriter, _ *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"ok":true,"service":"ruwt-desktop","promptsStored":0}`))
+		writeJSON(w, map[string]any{"ok": true, "service": "ruwt-desktop", "shell": "launcher", "promptsStored": 0})
+	})
+	mux.HandleFunc("/api/fs/home", func(w http.ResponseWriter, _ *http.Request) {
+		writeJSON(w, map[string]string{"home": home})
+	})
+	mux.HandleFunc("/api/fs/read", func(w http.ResponseWriter, r *http.Request) {
+		path, err := requestedPath(r, home, false)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusForbidden)
+			return
+		}
+		info, err := os.Stat(path)
+		if err != nil || info.Size() > 1_500_000 {
+			http.Error(w, "Ruwt could not read that file.", http.StatusBadRequest)
+			return
+		}
+		data, err := os.ReadFile(path)
+		if err != nil {
+			http.Error(w, "Ruwt could not read that file.", http.StatusBadRequest)
+			return
+		}
+		writeJSON(w, map[string]string{"contents": string(data)})
+	})
+	mux.HandleFunc("/api/fs/write", func(w http.ResponseWriter, r *http.Request) {
+		payload := struct {
+			Path     string `json:"path"`
+			Contents string `json:"contents"`
+		}{}
+		if err := json.NewDecoder(io.LimitReader(r.Body, 8<<20)).Decode(&payload); err != nil {
+			http.Error(w, "Invalid request.", http.StatusBadRequest)
+			return
+		}
+		path, err := approvedPath(payload.Path, home, true)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusForbidden)
+			return
+		}
+		if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		if err := os.WriteFile(path, []byte(payload.Contents), 0o600); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		writeJSON(w, map[string]bool{"ok": true})
+	})
+	mux.HandleFunc("/api/fs/mkdirp", func(w http.ResponseWriter, r *http.Request) {
+		path, err := requestedPath(r, home, true)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusForbidden)
+			return
+		}
+		if err := os.MkdirAll(path, 0o700); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		writeJSON(w, map[string]bool{"ok": true})
+	})
+	mux.HandleFunc("/api/fs/exists", func(w http.ResponseWriter, r *http.Request) {
+		path, err := requestedPath(r, home, false)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusForbidden)
+			return
+		}
+		_, err = os.Stat(path)
+		writeJSON(w, map[string]bool{"exists": err == nil})
+	})
+	mux.HandleFunc("/api/fs/list", func(w http.ResponseWriter, r *http.Request) {
+		path, err := requestedPath(r, home, false)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusForbidden)
+			return
+		}
+		entries, err := os.ReadDir(path)
+		if err != nil {
+			writeJSON(w, map[string]any{"entries": []dirEntry{}})
+			return
+		}
+		out := make([]dirEntry, 0, len(entries))
+		for _, entry := range entries {
+			out = append(out, dirEntry{Name: entry.Name(), Path: filepath.Join(path, entry.Name()), Dir: entry.IsDir()})
+		}
+		writeJSON(w, map[string]any{"entries": out})
+	})
+	mux.HandleFunc("/api/autostart", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet {
+			_, err := os.Stat(autostartPath(home))
+			writeJSON(w, map[string]bool{"enabled": err == nil})
+			return
+		}
+		payload := struct {
+			Enabled bool `json:"enabled"`
+		}{}
+		_ = json.NewDecoder(r.Body).Decode(&payload)
+		enabled, err := setAutostart(home, payload.Enabled)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		writeJSON(w, map[string]bool{"enabled": enabled})
 	})
 
 	url := fmt.Sprintf("http://%s/", listener.Addr().String())
@@ -54,6 +162,80 @@ func main() {
 	if err := http.Serve(listener, mux); err != nil {
 		fatal(err.Error())
 	}
+}
+
+func requestedPath(r *http.Request, home string, write bool) (string, error) {
+	payload := struct {
+		Path string `json:"path"`
+	}{}
+	if err := json.NewDecoder(io.LimitReader(r.Body, 1<<20)).Decode(&payload); err != nil {
+		return "", fmt.Errorf("invalid request")
+	}
+	return approvedPath(payload.Path, home, write)
+}
+
+func approvedPath(path, home string, write bool) (string, error) {
+	if path == "" || strings.Contains(path, "..") {
+		return "", fmt.Errorf("that path is not approved")
+	}
+	abs, err := filepath.Abs(path)
+	if err != nil {
+		return "", err
+	}
+	roots := []string{filepath.Join(home, ".ruwt")}
+	if !write {
+		roots = append(roots,
+			filepath.Join(home, ".claude"),
+			filepath.Join(home, ".cursor"),
+			filepath.Join(home, ".codex"),
+			filepath.Join(home, "Library", "Application Support", "Cursor"),
+			filepath.Join(home, "AppData", "Roaming", "Cursor"),
+			filepath.Join(home, ".config", "Cursor"),
+		)
+	}
+	for _, root := range roots {
+		rel, err := filepath.Rel(root, abs)
+		if err == nil && rel != ".." && !strings.HasPrefix(rel, ".."+string(os.PathSeparator)) {
+			return abs, nil
+		}
+	}
+	return "", fmt.Errorf("that path is not approved")
+}
+
+func autostartPath(home string) string {
+	return filepath.Join(home, "Library", "LaunchAgents", "ai.ruwt.desktop.plist")
+}
+
+func setAutostart(home string, enabled bool) (bool, error) {
+	if runtime.GOOS != "darwin" {
+		return false, fmt.Errorf("start at login is available on macOS in this build")
+	}
+	exe, err := os.Executable()
+	if err != nil {
+		return false, err
+	}
+	plist := autostartPath(home)
+	if !enabled {
+		_ = os.Remove(plist)
+		return false, nil
+	}
+	if err := os.MkdirAll(filepath.Dir(plist), 0o755); err != nil {
+		return false, err
+	}
+	body := fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+  <key>Label</key><string>ai.ruwt.desktop</string>
+  <key>ProgramArguments</key><array><string>%s</string></array>
+  <key>RunAtLoad</key><true/>
+</dict></plist>
+`, exe)
+	return true, os.WriteFile(plist, []byte(body), 0o644)
+}
+
+func writeJSON(w http.ResponseWriter, value any) {
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(value)
 }
 
 func relocateToApplications() {
@@ -118,7 +300,7 @@ func copyDir(src, dst string) error {
 		}
 		target := filepath.Join(dst, rel)
 		if info.IsDir() {
-			return os.MkdirAll(target, 0o755)
+			return os.MkdirAll(target, info.Mode())
 		}
 		data, err := os.ReadFile(path)
 		if err != nil {
