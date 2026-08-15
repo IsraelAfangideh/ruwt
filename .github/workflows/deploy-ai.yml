@@ -9,6 +9,8 @@ on:
     paths:
       - 'ai/**'
       - '.github/workflows/deploy-ai.yml'
+      - '.github/workflows/deploy-ai-preview.yml'
+      - '.github/workflows/deploy-dev-preview.yml'
   workflow_dispatch:
 
 permissions:
@@ -30,12 +32,18 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'npm'
           cache-dependency-path: ai/package-lock.json
 
       - name: Install dependencies
         run: npm ci --legacy-peer-deps
+
+      - name: Ensure Cloudflare resources
+        run: node scripts/setup-cloudflare.mjs
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_ADMIN_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
       - name: Lint
         run: npm run lint
@@ -75,7 +83,7 @@ jobs:
 
       - name: Deploy to Cloudflare Pages
         id: deploy
-        run: npx wrangler pages deploy dist --project-name=ruwt-ai
+        run: npx wrangler pages deploy dist --project-name=ruwt-ai --branch=main
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -101,9 +109,21 @@ jobs:
         if: success()
         run: |
           sleep 10
-          HTTP=$(curl -s --max-time 10 -o /dev/null -w '%{http_code}' https://ruwt-ai.pages.dev/api/health)
-          if [ "$HTTP" != "200" ]; then
-            echo "::error::Smoke test failed: HTTP $HTTP"
-            exit 1
-          fi
-          echo "Smoke test passed: HTTP $HTTP"
+          for URL in https://ruwt.ai/api/health https://ruwt-ai.pages.dev/api/health; do
+            HTTP=$(curl -s --max-time 10 -o /dev/null -w '%{http_code}' "$URL")
+            if [ "$HTTP" = "200" ]; then
+              echo "Smoke test passed: $URL HTTP $HTTP"
+              exit 0
+            fi
+            echo "Smoke test pending for $URL: HTTP $HTTP"
+          done
+          echo "::error::Smoke test failed on ruwt.ai and ruwt-ai.pages.dev"
+          exit 1
+
+      - name: Attach custom domain
+        if: success()
+        continue-on-error: true
+        run: node scripts/setup-cloudflare.mjs
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_ADMIN_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

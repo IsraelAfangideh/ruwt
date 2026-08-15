@@ -31,12 +31,18 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'npm'
           cache-dependency-path: ai/package-lock.json
 
       - name: Install dependencies
         run: npm ci --legacy-peer-deps
+
+      - name: Ensure Cloudflare resources
+        run: node scripts/setup-cloudflare.mjs
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_ADMIN_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
       - name: Lint
         run: npm run lint

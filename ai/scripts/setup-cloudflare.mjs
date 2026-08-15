@@ -85,18 +85,27 @@ async function ensureDns(zoneId) {
 }
 
 async function ensurePagesDomain() {
-  const domains = await cf(`/accounts/${ACCOUNT_ID}/pages/projects/${PAGES_PROJECT}/domains`);
-  const names = domains.map((entry) => entry.name);
-  for (const name of [DOMAIN, `www.${DOMAIN}`]) {
-    if (names.includes(name)) {
-      console.log(`Pages domain already attached: ${name}`);
-      continue;
+  try {
+    const domains = await cf(`/accounts/${ACCOUNT_ID}/pages/projects/${PAGES_PROJECT}/domains`);
+    const names = domains.map((entry) => entry.name);
+    for (const name of [DOMAIN, `www.${DOMAIN}`]) {
+      if (names.includes(name)) {
+        console.log(`Pages domain already attached: ${name}`);
+        continue;
+      }
+      await cf(`/accounts/${ACCOUNT_ID}/pages/projects/${PAGES_PROJECT}/domains`, {
+        method: 'POST',
+        body: JSON.stringify({ name }),
+      });
+      console.log(`Attached Pages custom domain: ${name}`);
     }
-    await cf(`/accounts/${ACCOUNT_ID}/pages/projects/${PAGES_PROJECT}/domains`, {
-      method: 'POST',
-      body: JSON.stringify({ name }),
-    });
-    console.log(`Attached Pages custom domain: ${name}`);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (message.includes('8000007') || message.includes('Project not found') || message.includes('10000')) {
+      console.log(`Pages project "${PAGES_PROJECT}" not found yet — domain attach runs after first deploy.`);
+      return;
+    }
+    throw error;
   }
 }
 
