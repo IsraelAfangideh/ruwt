@@ -51,36 +51,37 @@ async function getZone() {
   return zones[0] ?? null;
 }
 
+async function createDnsRecord(zoneId, name, content) {
+  try {
+    await cf(`/zones/${zoneId}/dns_records`, {
+      method: 'POST',
+      body: JSON.stringify({ type: 'CNAME', name, content, proxied: true }),
+    });
+    console.log(`Created CNAME ${name} → ${content}`);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (message.includes('81053') || message.includes('already exists')) {
+      console.log(`CNAME ${name} already exists — skipping.`);
+      return;
+    }
+    throw error;
+  }
+}
+
 async function ensureDns(zoneId) {
   const existing = await cf(`/zones/${zoneId}/dns_records?type=CNAME&name=${DOMAIN}`);
   const root = existing.find((record) => record.name === DOMAIN);
-  if (!root) {
-    await cf(`/zones/${zoneId}/dns_records`, {
-      method: 'POST',
-      body: JSON.stringify({
-        type: 'CNAME',
-        name: DOMAIN,
-        content: PAGES_TARGET,
-        proxied: true,
-      }),
-    });
-    console.log(`Created CNAME ${DOMAIN} → ${PAGES_TARGET}`);
-  } else {
+  if (root) {
     console.log(`CNAME ${DOMAIN} already exists (${root.content})`);
+  } else {
+    await createDnsRecord(zoneId, DOMAIN, PAGES_TARGET);
   }
 
   const wwwExisting = await cf(`/zones/${zoneId}/dns_records?type=CNAME&name=www.${DOMAIN}`);
-  if (!wwwExisting.length) {
-    await cf(`/zones/${zoneId}/dns_records`, {
-      method: 'POST',
-      body: JSON.stringify({
-        type: 'CNAME',
-        name: `www.${DOMAIN}`,
-        content: PAGES_TARGET,
-        proxied: true,
-      }),
-    });
-    console.log(`Created CNAME www.${DOMAIN} → ${PAGES_TARGET}`);
+  if (wwwExisting.length) {
+    console.log(`CNAME www.${DOMAIN} already exists (${wwwExisting[0].content})`);
+  } else {
+    await createDnsRecord(zoneId, `www.${DOMAIN}`, PAGES_TARGET);
   }
 }
 

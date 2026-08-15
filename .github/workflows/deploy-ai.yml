@@ -9,8 +9,6 @@ on:
     paths:
       - 'ai/**'
       - '.github/workflows/deploy-ai.yml'
-      - '.github/workflows/deploy-ai-preview.yml'
-      - '.github/workflows/deploy-dev-preview.yml'
   workflow_dispatch:
 
 permissions:
@@ -40,6 +38,7 @@ jobs:
         run: npm ci --legacy-peer-deps
 
       - name: Ensure Cloudflare resources
+        continue-on-error: true
         run: node scripts/setup-cloudflare.mjs
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_ADMIN_API_TOKEN }}
