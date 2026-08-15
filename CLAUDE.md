@@ -153,7 +153,7 @@ workflows. ruwt.dev continues to deploy from `/dev` unchanged.
 - **Stack**: React (react-native-web) + Vite, Cloudflare Pages + Functions, Cloudflare D1 (SQLite), Supabase Auth
 - **Domain**: `ruwt.ai` (planned), fallback `ruwt-ai.pages.dev`
 - **Cloudflare Pages project**: `ruwt-ai`
-- **D1 databases**: `ruwt-ai` (production), `ruwt-ai-preview` (PR previews)
+- **D1 databases**: `ruwt-ai` (ID: `e6f7bd3b-dd99-4152-a6c4-2236e989aece`), `ruwt-ai-preview` (ID: `7c2840ee-51be-4c2b-ae49-4f3b8fe533d0`)
 - **Auth**: Shared Supabase project `fzncpdelyfuvdeqmwznx` (same user accounts as ruwt.dev)
 - **Deploy**: GitHub Actions (`deploy-ai.yml`) → `npx wrangler pages deploy dist --project-name=ruwt-ai`
   - Triggers on push to `main` with changes in `ai/**`, or manual `workflow_dispatch`
