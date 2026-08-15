@@ -51,38 +51,45 @@ async function getZone() {
   return zones[0] ?? null;
 }
 
-async function createDnsRecord(zoneId, name, content) {
-  try {
-    await cf(`/zones/${zoneId}/dns_records`, {
-      method: 'POST',
-      body: JSON.stringify({ type: 'CNAME', name, content, proxied: true }),
-    });
-    console.log(`Created CNAME ${name} → ${content}`);
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    if (message.includes('81053') || message.includes('already exists')) {
-      console.log(`CNAME ${name} already exists — skipping.`);
-      return;
-    }
-    throw error;
+function normalizeHost(value) {
+  return value.replace(/\.$/, '').toLowerCase();
+}
+
+async function ensureCname(zoneId, recordName, target) {
+  const fqdn = recordName === '@' ? DOMAIN : recordName.includes('.') ? recordName : `${recordName}.${DOMAIN}`;
+  const records = await cf(`/zones/${zoneId}/dns_records?name=${fqdn}`);
+  const normalizedTarget = normalizeHost(target);
+
+  const correct = records.find(
+    (record) => record.type === 'CNAME' && normalizeHost(record.content) === normalizedTarget,
+  );
+  if (correct) {
+    console.log(`DNS ${fqdn} already points to ${target}`);
+    return;
   }
+
+  for (const record of records) {
+    if (!['A', 'AAAA', 'CNAME'].includes(record.type)) continue;
+    if (record.type === 'CNAME' && normalizeHost(record.content) === normalizedTarget) continue;
+    await cf(`/zones/${zoneId}/dns_records/${record.id}`, { method: 'DELETE' });
+    console.log(`Removed ${record.type} ${fqdn} → ${record.content}`);
+  }
+
+  await cf(`/zones/${zoneId}/dns_records`, {
+    method: 'POST',
+    body: JSON.stringify({
+      type: 'CNAME',
+      name: recordName === '@' ? '@' : fqdn,
+      content: target,
+      proxied: true,
+    }),
+  });
+  console.log(`Created CNAME ${fqdn} → ${target}`);
 }
 
 async function ensureDns(zoneId) {
-  const existing = await cf(`/zones/${zoneId}/dns_records?type=CNAME&name=${DOMAIN}`);
-  const root = existing.find((record) => record.name === DOMAIN);
-  if (root) {
-    console.log(`CNAME ${DOMAIN} already exists (${root.content})`);
-  } else {
-    await createDnsRecord(zoneId, DOMAIN, PAGES_TARGET);
-  }
-
-  const wwwExisting = await cf(`/zones/${zoneId}/dns_records?type=CNAME&name=www.${DOMAIN}`);
-  if (wwwExisting.length) {
-    console.log(`CNAME www.${DOMAIN} already exists (${wwwExisting[0].content})`);
-  } else {
-    await createDnsRecord(zoneId, `www.${DOMAIN}`, PAGES_TARGET);
-  }
+  await ensureCname(zoneId, '@', PAGES_TARGET);
+  await ensureCname(zoneId, 'www', PAGES_TARGET);
 }
 
 async function ensurePagesProject() {

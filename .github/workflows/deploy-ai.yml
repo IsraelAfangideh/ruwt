@@ -93,6 +93,12 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
+      - name: Attach custom domain and fix DNS
+        run: node scripts/setup-cloudflare.mjs
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_ADMIN_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
       - name: Update deployment status (success)
         if: success() && steps.deployment.outputs.deployment_id != ''
         continue-on-error: true
@@ -115,22 +121,26 @@ jobs:
       - name: Post-deploy smoke test
         if: success()
         run: |
-          sleep 10
-          for URL in https://ruwt.ai/api/health https://ruwt-ai.pages.dev/api/health; do
-            HTTP=$(curl -s --max-time 10 -o /dev/null -w '%{http_code}' "$URL")
-            if [ "$HTTP" = "200" ]; then
-              echo "Smoke test passed: $URL HTTP $HTTP"
-              exit 0
-            fi
-            echo "Smoke test pending for $URL: HTTP $HTTP"
-          done
-          echo "::error::Smoke test failed on ruwt.ai and ruwt-ai.pages.dev"
-          exit 1
+          sleep 15
+          FAILED=0
 
-      - name: Attach custom domain
-        if: success()
-        continue-on-error: true
-        run: node scripts/setup-cloudflare.mjs
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_ADMIN_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          echo "Checking https://ruwt-ai.pages.dev/api/health ..."
+          HTTP=$(curl -s --max-time 15 -o /dev/null -w '%{http_code}' https://ruwt-ai.pages.dev/api/health)
+          if [ "$HTTP" = "200" ]; then
+            echo "Smoke test passed: ruwt-ai.pages.dev HTTP $HTTP"
+          else
+            echo "::error::Pages deploy smoke test failed: HTTP $HTTP"
+            FAILED=$((FAILED+1))
+          fi
+
+          echo "Checking https://ruwt.ai/api/health ..."
+          HTTP=$(curl -s --max-time 20 -o /dev/null -w '%{http_code}' https://ruwt.ai/api/health || echo "000")
+          if [ "$HTTP" = "200" ]; then
+            echo "Smoke test passed: ruwt.ai HTTP $HTTP"
+          else
+            echo "::warning::Custom domain not ready yet: ruwt.ai HTTP $HTTP (pages.dev is live)"
+          fi
+
+          if [ "$FAILED" -gt 0 ]; then
+            exit 1
+          fi
