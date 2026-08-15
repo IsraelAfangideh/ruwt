@@ -50,9 +50,25 @@ jobs:
         with:
           go-version: '1.22'
 
-      - name: Package desktop launcher
+      - name: Package Linux fallback launcher
         working-directory: .
         run: bash desktop/scripts/package-launcher.sh
+
+      - name: Fetch Tauri desktop release
+        working-directory: .
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p ai/public/downloads
+          gh release download desktop-latest --dir /tmp/ruwt-desk --clobber
+          if [ -f /tmp/ruwt-desk/Ruwt.dmg ]; then
+            cp /tmp/ruwt-desk/Ruwt.dmg ai/public/downloads/Ruwt.dmg
+          fi
+          if [ -f /tmp/ruwt-desk/Ruwt-Setup.exe ]; then
+            cp /tmp/ruwt-desk/Ruwt-Setup.exe ai/public/downloads/Ruwt-Setup.exe
+          fi
+          ls -lh ai/public/downloads || true
 
       - name: Lint
         run: npm run lint

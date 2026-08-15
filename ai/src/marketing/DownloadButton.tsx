@@ -31,10 +31,17 @@ export function DownloadButton({ source, compact = false }: Props) {
     if (state !== 'idle') return;
     setState('busy');
     const artifact = await trackDownload(source);
+    const platform = detectPlatform();
     window.setTimeout(() => {
       triggerFileDownload(artifact);
       setState('done');
-      setHint('Open the file in Downloads. Double-click Ruwt — that is the whole install.');
+      if (platform === 'macos' && artifact.filename.endsWith('.dmg')) {
+        setHint('Open the disk image and drag Ruwt to Applications.');
+      } else if (platform === 'windows') {
+        setHint('Open Ruwt-Setup.exe. The app launches when setup finishes.');
+      } else {
+        setHint('Open the file in Downloads. That is the whole install.');
+      }
     }, 900);
   };
 

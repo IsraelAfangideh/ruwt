@@ -4,15 +4,16 @@ Ruwt Desktop uses a Tauri 2 shell and one local service. The service owns the
 local queue, redaction, generic JSON import, retry state, and exports. The CLI
 uses the same service code.
 
-The **downloadable launcher** on ruwt.ai is `desktop/launcher` — a small local
-app that opens on double-click. Package it with:
+The **downloadable app** on ruwt.ai is the Tauri shell in this folder. CI
+builds a macOS DMG and Windows installer (`.github/workflows/release-desktop.yml`).
+
+Local windowed app:
 
 ```bash
-bash desktop/scripts/package-launcher.sh
+cd desktop
+npm install
+npm run dev
 ```
-
-Artifacts land in `ai/public/downloads/` and are what the marketing Download
-button serves.
 
 Telemetry syncs to **ruwt.ai** — the agent observation platform. **ruwt.dev**
 is a separate web app (AI efficiency assessments) and is not the sync target.
@@ -52,8 +53,8 @@ See `.env.example` for all environment variables.
 - Real: local redaction, durable queue, generic JSON import, export, and sync to ruwt.ai.
 - Experimental: no vendor adapter is enabled. Claude Code, Cursor, and Codex
   require verified fixtures and approved path mappings before release.
-- Placeholder: browser sign-in, OS credential storage, tray controls,
-  autostart, code signing, notarization, and updates.
+- Placeholder: OS credential storage, tray controls, autostart, and updates.
+  Signing/notarization activate when Apple secrets are set in GitHub Actions.
 
 The queue uses a permission-restricted, atomically replaced local journal. A
 SQLite migration is the next required release hardening step.

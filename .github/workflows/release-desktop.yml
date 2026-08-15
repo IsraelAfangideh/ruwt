@@ -1,0 +1,140 @@
+# Release Ruwt desktop (Tauri) as a real windowed app.
+# macOS → DMG (Linear-style drag to Applications)
+# Windows → NSIS setup exe
+#
+# Apple signing/notarization runs automatically when these GitHub secrets exist:
+#   APPLE_CERTIFICATE, APPLE_CERTIFICATE_PASSWORD, APPLE_SIGNING_IDENTITY,
+#   APPLE_ID, APPLE_PASSWORD, APPLE_TEAM_ID
+name: Release Desktop
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'desktop/**'
+      - '.github/workflows/release-desktop.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  macos:
+    name: Build macOS DMG
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: desktop/package-lock.json
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: desktop/src-tauri
+
+      - name: Install frontend deps
+        working-directory: desktop
+        run: npm ci
+
+      - name: Build DMG
+        working-directory: desktop
+        run: npx tauri build --bundles dmg
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+
+      - name: Rename artifact
+        run: |
+          DMG=$(find desktop/src-tauri/target -name '*.dmg' | head -n 1)
+          test -n "$DMG"
+          mkdir -p dist-desktop
+          cp "$DMG" dist-desktop/Ruwt.dmg
+          ls -lh dist-desktop/Ruwt.dmg
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ruwt-macos-dmg
+          path: dist-desktop/Ruwt.dmg
+          if-no-files-found: error
+
+  windows:
+    name: Build Windows setup
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: desktop/package-lock.json
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: desktop/src-tauri
+
+      - name: Install frontend deps
+        working-directory: desktop
+        run: npm ci
+
+      - name: Build NSIS installer
+        working-directory: desktop
+        run: npx tauri build --bundles nsis
+
+      - name: Rename artifact
+        shell: bash
+        run: |
+          EXE=$(find desktop/src-tauri/target -name '*setup.exe' -o -name '*nsis.exe' | head -n 1)
+          test -n "$EXE"
+          mkdir -p dist-desktop
+          cp "$EXE" dist-desktop/Ruwt-Setup.exe
+          ls -lh dist-desktop/Ruwt-Setup.exe
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ruwt-windows-nsis
+          path: dist-desktop/Ruwt-Setup.exe
+          if-no-files-found: error
+
+  publish:
+    name: Publish GitHub Release
+    needs: [macos, windows]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist-desktop
+          merge-multiple: true
+
+      - name: Publish desktop-latest
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ls -lh dist-desktop
+          if gh release view desktop-latest >/dev/null 2>&1; then
+            gh release upload desktop-latest dist-desktop/Ruwt.dmg dist-desktop/Ruwt-Setup.exe --clobber
+          else
+            gh release create desktop-latest dist-desktop/Ruwt.dmg dist-desktop/Ruwt-Setup.exe \
+              --title "Ruwt desktop" \
+              --notes "Windowed Ruwt app. macOS: open the DMG and drag Ruwt to Applications. Windows: run Ruwt-Setup.exe."
+          fi
+
+      - name: Refresh ruwt.ai downloads
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run "Deploy AI (Cloudflare Pages)" --ref main
