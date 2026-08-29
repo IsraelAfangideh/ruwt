@@ -73,12 +73,21 @@ vi.mock('@/shared/ui/Toast', () => ({
 vi.mock('@/features/arena/ArenaErrorBoundary', () => ({
   ArenaErrorBoundary: ({ children }: any) => <div data-testid="error-boundary">{children}</div>,
 }));
-vi.mock('@/shared/lib/ai/pricing', () => ({
-  estimateMessagesForBudget: (_cost: number, tier: string) => tier === 'premium' ? 2 : 10,
-  getModelById: () => ({ name: 'Test Model' }),
-  tierColor: () => '#ccc',
-  formatCostFromHundredths: (c: number) => { const d = c / 10000; return d < 0.01 ? `$${d.toFixed(4)}` : `$${d.toFixed(2)}`; },
-}));
+vi.mock('@/shared/lib/ai/pricing', () => {
+  const model = { id: '@cf/meta/llama-3.1-8b-instruct', displayName: 'Llama 3.1 8B', tier: 'budget', input: 0.05, output: 0.08 };
+  return {
+    estimateMessagesForBudget: (_cost: number, tier: string) => tier === 'premium' ? 2 : 10,
+    getModelById: () => ({ name: 'Test Model', ...model }),
+    tierColor: () => '#ccc',
+    formatCostFromHundredths: (c: number) => { const d = c / 10000; return d < 0.01 ? `$${d.toFixed(4)}` : `$${d.toFixed(2)}`; },
+    TIER_ORDER: ['budget'],
+    getModelsForTier: () => [model],
+    TIER_MODELS: { budget: model, micro: model, mid: model, premium: model, reasoning: model },
+    defaultVersusTier: () => 'budget',
+    estimateVersusMatchCost: () => 12,
+    friendlyModelName: (id: string) => id,
+  };
+});
 vi.mock('@/shared/theme', async () => (await import('@/shared/test/helpers')).mockTheme());
 vi.mock('@/shared/theme/tokens', async () => (await import('@/shared/test/helpers')).mockTokens({ mono: true }));
 
@@ -185,6 +194,9 @@ function mockFetchForChallenge(challenge = challengeData, profile = profileData,
           { id: 'test-challenge', category: 'prompt_efficiency', difficulty: 'medium', userStatus: 'not_started' },
         ]),
       });
+    }
+    if (typeof url === 'string' && url.includes('/api/versus/matches')) {
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({ match: null }) });
     }
     if (typeof url === 'string' && url.includes('/api/execute')) {
       return Promise.resolve({
@@ -321,6 +333,42 @@ describe('ArenaScreen', () => {
       expect(screen.getByText('FizzBuzz Budget')).toBeInTheDocument();
     });
     expect(screen.getByRole('button', { name: 'Start Challenge' })).toBeInTheDocument();
+  });
+
+  it('lets the user pick Versus and race a model', async () => {
+    const fetchMock = mockFetchForChallenge();
+    fetchMock.mockImplementation((url: string, opts?: any) => {
+      if (typeof url === 'string' && url.includes('/api/versus/matches') && opts?.method === 'POST') {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({
+            match: {
+              id: 'm1',
+              userAttemptId: 'att-vs',
+              opponentModel: '@cf/meta/llama-3.1-8b-instruct',
+              opponentStatus: 'queued',
+              opponentThinking: '',
+              opponentIteration: 0,
+              winner: null,
+              createdAt: new Date().toISOString(),
+              finishedAt: null,
+              teaser: 'waiting to start…',
+            },
+            attempt: { id: 'att-vs', totalCost: 0, inputTokens: 0, outputTokens: 0, status: 'in_progress', expiresAt: null, playMode: 'versus' },
+            isExisting: false,
+            challenge: { starterCode: '// start here' },
+          }),
+        });
+      }
+      return mockFetchForChallenge()(url, opts);
+    });
+    globalThis.fetch = fetchMock;
+    render(<ArenaScreen />);
+    await waitFor(() => expect(screen.getByTestId('mode-versus')).toBeInTheDocument());
+    fireEvent.click(screen.getByTestId('mode-versus'));
+    expect(screen.getByText(/Prove you're not replaceable/)).toBeInTheDocument();
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Race the model' })); });
+    await waitFor(() => expect(screen.getByTestId('arena-ide')).toBeInTheDocument());
   });
 
   it('shows difficulty badge on pre-attempt screen', async () => {

@@ -67,6 +67,7 @@ export async function onRequestGet(context: { request: Request; env: Env }) {
       const conditions = [
         eq(attempts.challengeId, challengeId),
         eq(attempts.status, 'passed'),
+        eq(attempts.playMode, 'union'),
         eq(profiles.leaderboardExcluded, 0),
       ];
       if (threshold) {
@@ -148,19 +149,19 @@ export async function onRequestGet(context: { request: Request; env: Env }) {
         username: profiles.username,
         afiScore: profiles.afiScore,
         afiTier: profiles.afiTier,
-        solvedCount: sql<number>`COUNT(DISTINCT CASE WHEN ${attempts.status} = 'passed' ${combinedFilter} THEN ${attempts.challengeId} END)`,
-        totalAttempts: sql<number>`COUNT(CASE WHEN 1=1 ${combinedFilter} THEN ${attempts.id} END)`,
-        avgCost: sql<number>`AVG(CASE WHEN ${attempts.status} = 'passed' ${combinedFilter} THEN ${attempts.totalCost} END)`,
-        totalCost: sql<number>`SUM(CASE WHEN 1=1 ${combinedFilter} THEN ${attempts.totalCost} ELSE 0 END)`,
+        solvedCount: sql<number>`COUNT(DISTINCT CASE WHEN ${attempts.status} = 'passed' AND ${attempts.playMode} = 'union' ${combinedFilter} THEN ${attempts.challengeId} END)`,
+        totalAttempts: sql<number>`COUNT(CASE WHEN ${attempts.playMode} = 'union' ${combinedFilter} THEN ${attempts.id} END)`,
+        avgCost: sql<number>`AVG(CASE WHEN ${attempts.status} = 'passed' AND ${attempts.playMode} = 'union' ${combinedFilter} THEN ${attempts.totalCost} END)`,
+        totalCost: sql<number>`SUM(CASE WHEN ${attempts.playMode} = 'union' ${combinedFilter} THEN ${attempts.totalCost} ELSE 0 END)`,
       })
       .from(profiles)
       .leftJoin(attempts, eq(profiles.id, attempts.userId))
       .where(eq(profiles.leaderboardExcluded, 0))
       .groupBy(profiles.id, profiles.name, profiles.avatarUrl, profiles.username, profiles.afiScore, profiles.afiTier)
-      .having(sql`COUNT(DISTINCT CASE WHEN ${attempts.status} = 'passed' ${combinedFilter} THEN ${attempts.challengeId} END) > 0`)
+      .having(sql`COUNT(DISTINCT CASE WHEN ${attempts.status} = 'passed' AND ${attempts.playMode} = 'union' ${combinedFilter} THEN ${attempts.challengeId} END) > 0`)
       .orderBy(
-        desc(sql`COUNT(DISTINCT CASE WHEN ${attempts.status} = 'passed' ${combinedFilter} THEN ${attempts.challengeId} END)`),
-        sql`AVG(CASE WHEN ${attempts.status} = 'passed' ${combinedFilter} THEN ${attempts.totalCost} END)`
+        desc(sql`COUNT(DISTINCT CASE WHEN ${attempts.status} = 'passed' AND ${attempts.playMode} = 'union' ${combinedFilter} THEN ${attempts.challengeId} END)`),
+        sql`AVG(CASE WHEN ${attempts.status} = 'passed' AND ${attempts.playMode} = 'union' ${combinedFilter} THEN ${attempts.totalCost} END)`
       )
       .limit(limit);
 

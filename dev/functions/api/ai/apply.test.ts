@@ -250,6 +250,25 @@ describe('POST /api/ai/apply', () => {
     expect(json.error).toBe('Forbidden');
   });
 
+  it('returns 403 when the attempt is Versus', async () => {
+    (getUser as Mock).mockResolvedValue(TEST_USER);
+    mockDb.select.mockImplementation(() => ({
+      from: vi.fn().mockReturnValue({
+        where: vi.fn().mockReturnValue({
+          limit: vi.fn().mockResolvedValue(
+            [{ userId: TEST_USER.id, challengeId: 'challenge-1', playMode: 'versus' }]
+          ),
+        }),
+      }),
+    }));
+
+    const res = await onRequestPost(makeContext(validBody()));
+
+    expect(res.status).toBe(403);
+    const json = await res.json() as any;
+    expect(json.error).toMatch(/unaided/i);
+  });
+
   // ------------------------------------------------------------------
   // Missing AI credentials
   // ------------------------------------------------------------------

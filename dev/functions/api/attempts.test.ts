@@ -22,7 +22,7 @@ vi.mock('drizzle-orm', () => ({
 
 // We must also mock the schema so imports don't blow up
 vi.mock('../../drizzle/schema.d1', () => ({
-  attempts: { id: 'id', userId: 'userId', challengeId: 'challengeId', status: 'status', createdAt: 'createdAt' },
+  attempts: { id: 'id', userId: 'userId', challengeId: 'challengeId', status: 'status', createdAt: 'createdAt', playMode: 'playMode' },
   challenges: { id: 'id', title: 'title', difficulty: 'difficulty' },
 }));
 
@@ -260,6 +260,7 @@ describe('POST /api/attempts', () => {
         passedTests: 0,
         totalTests: 2, // 1 public + 1 hidden
         expiresAt: null,
+        playMode: 'union',
       }),
     );
   });

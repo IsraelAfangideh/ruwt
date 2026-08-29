@@ -22,6 +22,7 @@ describe('test-db utility', () => {
     expect(tableNames).toContain('profiles');
     expect(tableNames).toContain('challenges');
     expect(tableNames).toContain('attempts');
+    expect(tableNames).toContain('versus_matches');
     expect(tableNames).toContain('ai_calls');
     expect(tableNames).toContain('transactions');
     expect(tableNames).toContain('organizations');

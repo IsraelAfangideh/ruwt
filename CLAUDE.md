@@ -302,13 +302,14 @@ This opens the browser once — user approves — token is saved and auto-refres
 
 1. Landing → Register/Login (GitHub OAuth or email, 50k free credits)
 2. Browse challenges at `/challenges` (filter by category: Model Selection, Prompt Efficiency, Debugging)
-3. Pick challenge → choose Timed or Untimed → Arena IDE opens
-4. IDE layout: sidebar LEFT (description/AI chat tabs), editor+terminal RIGHT, xterm virtual shell with `ruwt` TUI mode
-5. Iterate: write code, chat with AI (costs credits), run tests, debug
-6. Submit → attempt marked passed/failed
-7. Leaderboard ranks by challenges solved, then avg cost (cheapest wins)
+3. Pick challenge → start screen: **Union** (work with AI) or **Versus** (race a model unaided)
+4. Union IDE: sidebar LEFT (description/AI chat tabs), editor+terminal RIGHT, xterm virtual shell with `ruwt` TUI mode
+5. Versus IDE: no AI chat; opponent strip with hold-to-peek thinking; first correct submit wins
+6. Union submit → attempt marked passed/failed. Versus failed submit stays in progress until someone passes hidden tests
+7. Leaderboard ranks Union solves by challenges solved, then avg cost (cheapest wins). Versus attempts are excluded
 - Core concept: measures how *efficiently* you use AI, not just correctness
 - Philosophy: easy challenge + premium model = should pass. The game is efficiency, not fighting the platform.
+- Versus opponent loop: `POST /api/versus/matches` then tick `POST /api/versus/matches/:id/events` (max 5). Platform absorbs opponent cost. Hiring assessments stay Union.
 
 ## Arena Challenge Harness
 

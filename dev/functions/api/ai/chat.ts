@@ -79,7 +79,11 @@ export async function onRequestPost(context: {
     let isAssessmentAttempt = false;
     if (attemptId) {
       const [attempt] = await db
-        .select({ userId: attempts.userId, assessmentSessionId: attempts.assessmentSessionId })
+        .select({
+          userId: attempts.userId,
+          assessmentSessionId: attempts.assessmentSessionId,
+          playMode: attempts.playMode,
+        })
         .from(attempts)
         .where(eq(attempts.id, attemptId))
         .limit(1);
@@ -88,6 +92,12 @@ export async function onRequestPost(context: {
       }
       if (attempt.userId !== user.id) {
         return Response.json({ error: 'Forbidden' }, { status: 403 });
+      }
+      if (attempt.playMode === 'versus') {
+        return Response.json(
+          { error: 'Versus attempts are unaided. You cannot chat with AI during a race.' },
+          { status: 403 }
+        );
       }
       isAssessmentAttempt = !!attempt.assessmentSessionId;
     }

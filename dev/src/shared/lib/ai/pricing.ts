@@ -293,3 +293,24 @@ export function estimateMessagesForBudget(budgetHundredths: number, tier: ModelT
   /* istanbul ignore next -- @preserve */
   return costPerMsg > 0 ? Math.floor(budgetHundredths / costPerMsg) : 999;
 }
+
+const VERSUS_TICKS = 5;
+const VERSUS_TICK_INPUT = 2000;
+const VERSUS_TICK_OUTPUT = 1500;
+
+const DIFFICULTY_TO_TIER: Record<string, ModelTier> = {
+  sprint: 'micro', easy: 'budget', medium: 'mid', hard: 'premium', impossible: 'reasoning',
+};
+
+export function defaultVersusTier(difficulty: string): ModelTier {
+  return DIFFICULTY_TO_TIER[difficulty] ?? 'budget';
+}
+
+/** Estimated opponent spend for a 5-tick race (hundredths of a cent). Informational only. */
+export function estimateVersusMatchCost(modelId: string, ticks = VERSUS_TICKS): number {
+  const m = getModelById(modelId);
+  if (!m) return 0;
+  const inputCost = Math.ceil((VERSUS_TICK_INPUT / 1_000_000) * m.input * 10000);
+  const outputCost = Math.ceil((VERSUS_TICK_OUTPUT / 1_000_000) * m.output * 10000);
+  return (inputCost + outputCost) * ticks;
+}

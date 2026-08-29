@@ -152,6 +152,7 @@ vi.mock('@/shared/lib/ai/pricing', () => {
     tierLabel: (t: string) => t.charAt(0).toUpperCase() + t.slice(1),
     estimateTypicalMessageCost: () => 100,
     formatCostFromHundredths: (v: number) => `$${(v / 10000).toFixed(4)}`,
+    friendlyModelName: (id: string) => id,
   };
 });
 
