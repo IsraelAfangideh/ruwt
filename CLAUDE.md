@@ -398,7 +398,7 @@ Cleanup: `docker stop ruwt-exec-test && docker rm ruwt-exec-test`
 - `develop` branch is heavily diverged from `main` — use feature branches off `main` for new work
 - Docker Desktop must be running for local executor tests (`open -a Docker` on macOS)
 - `--privileged` flag required for iptables inside Docker on macOS
-- Preview deploys: PRs with `dev/**` changes get preview URLs via `deploy-dev-preview.yml` (`<branch>.ruwt-dev.pages.dev`). Production deploys only on push to `main`. The preview R2-ensure and D1-migrate steps use `CLOUDFLARE_ADMIN_API_TOKEN` and `continue-on-error: true` — a token auth miss (Cloudflare 10000) must not skip Pages deploy. Versus needs `0071_versus_matches.sql` on `ruwt-dev-preview` (and prod `ruwt-dev` before merge).
+- Preview deploys: PRs with `dev/**` changes get preview URLs via `deploy-dev-preview.yml` (`<branch>.ruwt-dev.pages.dev`). Production deploys only on push to `main`. Pages publish fails if `ruwt-projects-preview` is missing. The workflow tries to create it with `CLOUDFLARE_API_TOKEN` then `CLOUDFLARE_ADMIN_API_TOKEN`; if both lack R2:Edit it rebinds preview to the existing `ruwt-projects` bucket for that run only. Versus needs `0071_versus_matches.sql` on `ruwt-dev-preview` (applied) and on prod `ruwt-dev` before merge.
 
 ## Knowledge Sharing
 
