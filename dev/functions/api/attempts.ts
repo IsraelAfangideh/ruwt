@@ -50,7 +50,8 @@ export async function onRequestPost(context: { request: Request; env: Env; waitU
         and(
           eq(attempts.userId, user.id),
           eq(attempts.challengeId, challengeId),
-          eq(attempts.status, 'in_progress')
+          eq(attempts.status, 'in_progress'),
+          eq(attempts.playMode, 'union'),
         )
       )
       .limit(1);
@@ -104,6 +105,7 @@ export async function onRequestPost(context: { request: Request; env: Env; waitU
       passedTests: 0,
       totalTests,
       expiresAt,
+      playMode: 'union',
     });
 
     const [newAttempt] = await db

@@ -10,13 +10,14 @@ vi.mock('@sentry/react', () => ({
 }));
 
 let mockGetUserResult: any = { data: { user: null } };
+let mockGetUser: () => Promise<any> = () => Promise.resolve(mockGetUserResult);
 let authChangeCallback: ((event: string, session: any) => void) | null = null;
 const mockUnsubscribe = vi.fn();
 
 vi.mock('@/shared/lib/supabase/client', () => ({
   createClient: () => ({
     auth: {
-      getUser: () => Promise.resolve(mockGetUserResult),
+      getUser: () => mockGetUser(),
       onAuthStateChange: (cb: any) => {
         authChangeCallback = cb;
         return { data: { subscription: { unsubscribe: mockUnsubscribe } } };
@@ -25,7 +26,7 @@ vi.mock('@/shared/lib/supabase/client', () => ({
   }),
 }));
 
-import { AuthProvider, useAuth } from './AuthContext';
+import { AuthProvider, useAuth, AUTH_LOAD_TIMEOUT_MS } from './AuthContext';
 
 function wrapper({ children }: { children: React.ReactNode }) {
   return <AuthProvider>{children}</AuthProvider>;
@@ -35,6 +36,7 @@ describe('AuthContext', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     mockGetUserResult = { data: { user: null } };
+    mockGetUser = () => Promise.resolve(mockGetUserResult);
     authChangeCallback = null;
     mockUnsubscribe.mockClear();
     mockSetUser.mockClear();
@@ -118,5 +120,32 @@ describe('AuthContext', () => {
 
     unmount();
     expect(mockUnsubscribe).toHaveBeenCalled();
+  });
+
+  it('settles loading when getUser rejects', async () => {
+    mockGetUser = () => Promise.reject(new Error('network'));
+
+    const { result } = renderHook(() => useAuth(), { wrapper });
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+    expect(result.current.user).toBeNull();
+  });
+
+  it('settles loading after timeout if getUser hangs', async () => {
+    vi.useFakeTimers();
+    mockGetUser = () => new Promise(() => {});
+
+    const { result } = renderHook(() => useAuth(), { wrapper });
+    expect(result.current.loading).toBe(true);
+
+    await act(async () => {
+      vi.advanceTimersByTime(AUTH_LOAD_TIMEOUT_MS);
+    });
+
+    expect(result.current.loading).toBe(false);
+    expect(result.current.user).toBeNull();
+    vi.useRealTimers();
   });
 });

@@ -22,6 +22,8 @@ import { estimateChatCost, formatEstimatedCost } from '@/shared/lib/cost-estimat
 import { useIsMobile } from '@/shared/lib/useIsMobile';
 import { CommentSection } from '@/shared/social/CommentSection';
 import { type AIMode, type TestResults as AITestResults, formatTestResultsForMessage } from '@/features/shared-ide/lib/ai-types';
+import { OpponentStrip } from '@/features/arena/versus/OpponentStrip';
+import type { VersusMatchPublic } from '@/features/arena/versus/types';
 import { buildSystemPrompt } from '@/features/arena/lib/system-prompts';
 import { stripToolCalls, hasToolCalls } from '@/features/shared-ide/lib/tool-parser';
 import { applyAIResponse } from '@/features/shared-ide/lib/code-apply';
@@ -109,6 +111,8 @@ interface ArenaIDEProps {
   testResults?: TestResults | null;
   onDismissResults?: () => void;
   pastAttempts?: PastAttempt[];
+  playMode?: 'union' | 'versus';
+  versusMatch?: VersusMatchPublic | null;
 }
 
 /* ─── Notification Toast ─────────────────────────────────────────── */
@@ -126,7 +130,7 @@ function PasteBlockedToast({ visible }: { visible: boolean }) {
   if (!visible) return null;
   return (
     <div style={{ ...s.toast, borderLeft: `3px solid ${arena.error}` }} role="alert" aria-live="assertive">
-      <span style={{ color: arena.error }}>{'\u2718'}</span> No pasting in the Arena — let your AI write the code.
+      <span style={{ color: arena.error }}>{'\u2718'}</span> No pasting in the Arena.
     </div>
   );
 }
@@ -913,12 +917,15 @@ export function ArenaIDE({
   testResults,
   onDismissResults,
   pastAttempts,
+  playMode = 'union',
+  versusMatch,
 }: ArenaIDEProps) {
+  const versus = playMode === 'versus';
   const [totalCost, setTotalCost] = useState(attempt?.totalCost ?? 0);
   const [inputTokens, setInputTokens] = useState(attempt?.inputTokens ?? 0);
   const [outputTokens, setOutputTokens] = useState(attempt?.outputTokens ?? 0);
   const [messages, setMessages] = useState<{ role: 'system' | 'user' | 'assistant'; content: string; isConstraint?: boolean; meta?: MessageMeta; thinking?: string }[]>(() => {
-    if (!attempt?.id) return [];
+    if (playMode === 'versus' || !attempt?.id) return [];
     try {
       const saved = localStorage.getItem(`arena-chat-${attempt.id}`);
       /* istanbul ignore next -- @preserve */
@@ -1098,10 +1105,11 @@ export function ArenaIDE({
 
   // Persist chat messages to localStorage (survives component remounts)
   useEffect(() => {
+    if (versus) return;
     if (attemptId && messages.length > 0) {
       localStorage.setItem(`arena-chat-${attemptId}`, JSON.stringify(messages));
     }
-  }, [messages, attemptId]);
+  }, [messages, attemptId, versus]);
 
   // Auto-save code to localStorage every 30s + on blur/tab switch
   useEffect(() => {
@@ -1537,11 +1545,11 @@ export function ArenaIDE({
   const chatDisabledReason: 'expired' | 'cost' | null = (isExpired && !showExpiryOverlay) ? 'expired' : aiLimitReached ? 'cost' : null;
 
   const sidebarTabs = useMemo((): SidebarTab[] => {
-    const tabs: SidebarTab[] = ['description', 'chat', 'discussion'];
+    const tabs: SidebarTab[] = versus ? ['description', 'discussion'] : ['description', 'chat', 'discussion'];
     /* istanbul ignore next -- @preserve */
     if (layout.resultsDock === 'sidebar') tabs.push('results');
     return tabs;
-  }, [layout.resultsDock]);
+  }, [layout.resultsDock, versus]);
 
   const chatPanelCommonProps = useMemo(() => ({
     chatScrollRef,
@@ -1670,8 +1678,9 @@ export function ArenaIDE({
     isExpired: () => isExpiredRef.current,
     onModelChange: handleModelChange,
     currentModelId: model,
+    disableAi: versus,
   }), [fs, language, attemptId, challenge, shellCallbacks, streamChat, abortChat,
-    handleTerminalCodeApplied, onRunTests, handleModelChange, model]);
+    handleTerminalCodeApplied, onRunTests, handleModelChange, model, versus]);
 
   const renderSidebarContent = (collapseChevron: string) => (
     /* istanbul ignore next -- @preserve */ layout.sidebarCollapsed ? (
@@ -1686,10 +1695,12 @@ export function ArenaIDE({
       <div role="complementary" aria-label="Challenge description and AI chat" style={s.sidebar}>
         <div style={s.tabBar} role="tablist" aria-label="Sidebar panels">
           <button style={activeTab === 'description' ? s.tabActive : s.tab} onClick={() => setActiveTab('description')} role="tab" aria-selected={activeTab === 'description'} aria-controls="panel-description">Description</button>
+          {!versus && (
           <button style={activeTab === 'chat' ? s.tabActive : s.tab} onClick={() => { setActiveTab('chat'); setHasUnreadChat(false); }} role="tab" aria-selected={activeTab === 'chat'} aria-controls="panel-chat">
             AI Chat
             {hasUnreadChat && <span style={s.unreadDot} aria-label="unread messages" />}
           </button>
+          )}
           <button style={activeTab === 'discussion' ? s.tabActive : s.tab} onClick={() => setActiveTab('discussion')} role="tab" aria-selected={activeTab === 'discussion'} aria-controls="panel-discussion">Discussion</button>
           <button
             onClick={/* istanbul ignore next -- @preserve */ () => sidebarPanelRef.current?.collapse()}
@@ -1729,6 +1740,11 @@ export function ArenaIDE({
         .ruwt-diff-glyph-changed { border-left: 3px solid rgba(201,169,98,0.6); margin-left: 3px; }
         @keyframes ruwt-pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
       `}</style>
+      {versus && versusMatch && (
+        <div style={{ padding: isMobile ? '8px 10px 0' : '10px 12px 0' }}>
+          <OpponentStrip match={versusMatch} compact={!!isMobile} />
+        </div>
+      )}
       {/* Main content area */}
       {isMobile ? (
       <div style={s.mainRow}>
@@ -1749,6 +1765,7 @@ export function ArenaIDE({
             >
               Description
             </button>
+            {!versus && (
             <button
               style={activeTab === 'chat' ? s.tabActive : s.tab}
               onClick={() => { setActiveTab('chat'); setHasUnreadChat(false); }}
@@ -1759,6 +1776,7 @@ export function ArenaIDE({
               AI Chat
               {/* istanbul ignore next -- @preserve */ hasUnreadChat && <span style={s.unreadDot} aria-label="unread messages" />}
             </button>
+            )}
             <button
               style={/* istanbul ignore next -- @preserve */ activeTab === 'discussion' ? s.tabActive : s.tab}
               onClick={/* istanbul ignore next -- @preserve */ () => setActiveTab('discussion')}

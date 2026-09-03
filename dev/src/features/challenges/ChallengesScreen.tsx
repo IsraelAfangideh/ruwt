@@ -10,7 +10,7 @@ import { spacing, fontSizes, fontFamily, radii } from '@/shared/theme/tokens';
 import { useIsMobile } from '@/shared/lib/useIsMobile';
 import { DIFFICULTIES, getDifficultyStyle } from '@/shared/lib/difficulty';
 import { useDocumentMeta } from '@/shared/hooks/useDocumentMeta';
-import { useAuthGuard } from '@/shared/hooks/useAuthGuard';
+import { useAuth } from '@/shared/lib/AuthContext';
 import { Badge } from '@/shared/ui/Badge';
 import { Button } from '@/shared/ui/Button';
 import { useDashboardData } from '@/shared/lib/DashboardDataContext';
@@ -79,7 +79,7 @@ function getInitialDifficulty(): string {
 
 export function ChallengesScreen() {
   useDocumentMeta({ title: 'AI Coding Challenges', description: 'Browse 60+ coding challenges across 11 categories. Test your AI efficiency in model selection, prompt engineering, debugging, and more.', canonicalPath: '/problems' });
-  const { user, loading: authLoading } = useAuthGuard();
+  const { user } = useAuth();
   const navigation = useNavigation();
   const { state: cachedData } = useDashboardData();
   const challenges = cachedData.challenges.data as Challenge[];
@@ -279,12 +279,6 @@ export function ChallengesScreen() {
       .slice(0, 4);
   }, [filtered, progressStats.solved]);
 
-  /* istanbul ignore next -- @preserve */
-  if (authLoading || !user) {
-    /* istanbul ignore next -- @preserve */
-    return <CardGridSkeleton />;
-  }
-
   const hasActiveFilters = activeLang !== 'all' || activeCategory !== 'all' || activeDifficulty !== 'all' || searchQuery.trim() !== '' || statusFilter !== 'all';
   const hasNonStatusFilters = activeLang !== 'all' || activeCategory !== 'all' || activeDifficulty !== 'all' || searchQuery.trim() !== '';
   const displayStats = hasNonStatusFilters ? filteredStats : progressStats;
@@ -300,6 +294,15 @@ export function ChallengesScreen() {
           <Text style={[styles.subtitle, { color: c.textMuted }]}>
             Real engineering problems. Real AI models. Ranked by efficiency.
           </Text>
+          <View
+            testID="versus-mode-banner"
+            style={[styles.versusBanner, { borderColor: c.accent, backgroundColor: c.accentBg }]}
+          >
+            <Text style={[styles.versusBannerTitle, { color: c.accent }]}>Versus mode</Text>
+            <Text style={[styles.versusBannerBody, { color: c.text }]}>
+              Race a model unaided. First correct submit wins. Tap Race a model on any card.
+            </Text>
+          </View>
         </View>
         {/* Progress summary — clickable stats filter */}
         <View style={[styles.progressCard, { backgroundColor: c.muted, borderColor: c.border }]} accessibilityRole="group" accessibilityLabel="Challenge progress">
@@ -735,6 +738,16 @@ const styles = StyleSheet.create({
   headerLeft: { flex: 1, minWidth: 240 },
   title: { fontSize: fontSizes['3xl'], fontWeight: '700', fontFamily: fontFamily.body },
   subtitle: { fontSize: fontSizes.sm, marginTop: spacing.xs },
+  versusBanner: {
+    marginTop: spacing.md,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderWidth: 1,
+    borderRadius: radii.md,
+    maxWidth: 520,
+  },
+  versusBannerTitle: { fontSize: fontSizes.sm, fontWeight: '700', fontFamily: fontFamily.body },
+  versusBannerBody: { fontSize: fontSizes.sm, marginTop: 2, fontFamily: fontFamily.body, lineHeight: 20 },
 
   // Progress card
   progressCard: {

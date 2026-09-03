@@ -9,8 +9,8 @@ import { render, screen } from '@testing-library/react';
 vi.mock('@react-navigation/native', () => ({
   useNavigation: () => ({ navigate: vi.fn(), reset: vi.fn() }),
 }));
-vi.mock('@/shared/hooks/useAuthGuard', () => ({
-  useAuthGuard: () => ({ user: { id: 'u1' }, loading: false }),
+vi.mock('@/shared/lib/AuthContext', () => ({
+  useAuth: () => ({ user: { id: 'u1' }, loading: false }),
 }));
 vi.mock('@/shared/layout/DashboardLayout', () => ({
   DashboardLayout: ({ children }: any) => <div data-testid="dashboard-layout">{children}</div>,

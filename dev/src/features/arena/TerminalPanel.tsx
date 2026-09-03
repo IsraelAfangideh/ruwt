@@ -47,6 +47,7 @@ interface TerminalPanelProps {
   isExpired: () => boolean;
   onModelChange?: (tier: ModelTier, modelId: string) => void;
   currentModelId?: string;
+  disableAi?: boolean;
 }
 
 /** Max lines kept in the accessible transcript buffer */
@@ -58,7 +59,7 @@ export const TerminalPanel = React.forwardRef<TerminalPanelHandle, TerminalPanel
       fs, language, attemptId, challengeTitle, challengeDescription,
       challengeDifficulty, challengeCategory, challengeTestCases, hiddenTestCount, readonlyPrefix,
       useStdin, shellCallbacks, streamChat, abortChat, onCodeApplied, onRunTests, isExpired,
-      onModelChange, currentModelId,
+      onModelChange, currentModelId, disableAi,
     } = props;
 
     const containerRef = useRef<HTMLDivElement>(null);
@@ -66,7 +67,7 @@ export const TerminalPanel = React.forwardRef<TerminalPanelHandle, TerminalPanel
     const fitRef = useRef<FitAddon | null>(null);
     const shellRef = useRef<VirtualShell | null>(null);
     const tuiRef = useRef<RuwtTUI | null>(null);
-    const modeRef = useRef<'shell' | 'ruwt'>('ruwt');
+    const modeRef = useRef<'shell' | 'ruwt'>(disableAi ? 'shell' : 'ruwt');
     const [transcript, setTranscript] = React.useState<string[]>([]);
 
     // Expose focus method
@@ -184,12 +185,20 @@ export const TerminalPanel = React.forwardRef<TerminalPanelHandle, TerminalPanel
       const shell = new VirtualShell(term, fs, language, {
         onRunCode: (...args) => shellCallbacksRef.current.onRunCode(...args),
         onRunTests: (...args) => shellCallbacksRef.current.onRunTests(...args),
-        onEnterRuwt: () => enterRuwt(),
+        onEnterRuwt: () => {
+          if (disableAi) {
+            term.write('\r\n\x1b[90mVersus is unaided. Type \x1b[33mtest\x1b[90m to run tests.\x1b[0m');
+            shell.printPrompt();
+            return;
+          }
+          enterRuwt();
+        },
       });
       shellRef.current = shell;
 
-      // Auto-enter ruwt AI mode on startup
-      enterRuwt();
+      if (!disableAi) {
+        enterRuwt();
+      }
 
       // Route input based on mode
       const onData = term.onData((data: string) => {

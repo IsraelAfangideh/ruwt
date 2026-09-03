@@ -68,6 +68,12 @@ describe('UserNav', () => {
     };
   });
 
+  it('shows Sign in when there is no session', () => {
+    render(<UserNav user={null} />);
+    fireEvent.click(screen.getByText('Sign in'));
+    expect(mockNavigate).toHaveBeenCalledWith('Login');
+  });
+
   it('renders user avatar with correct initials', () => {
     render(<UserNav user={mockUser} />);
     expect(screen.getByText('TU')).toBeInTheDocument();

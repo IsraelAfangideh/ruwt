@@ -95,6 +95,9 @@ interface EndpointConfig {
   transform: (json: any) => any;
 }
 
+/** Public browse data — safe to fetch before a session exists. */
+export const PUBLIC_ENDPOINTS: EndpointName[] = ['challenges', 'dailyChallenge'];
+
 export const ENDPOINTS: Record<EndpointName, EndpointConfig> = {
   challenges: {
     url: '/api/challenges',
@@ -154,7 +157,8 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
   const stateRef = useRef(state);
   stateRef.current = state;
   const abortControllers = useRef<Partial<Record<EndpointName, AbortController>>>({});
-  const hasFetched = useRef(false);
+  const fetchedPublic = useRef(false);
+  const fetchedPrivate = useRef(false);
   const backgroundInterval = useRef<ReturnType<typeof setInterval> | null>(null);
 
   /* istanbul ignore next -- @preserve */
@@ -209,14 +213,23 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
     await Promise.allSettled(toRefresh.map((n) => fetchEndpoint(n, true)));
   }, [fetchEndpoint]);
 
-  // Initial prefetch when user is authenticated (no longer blocked by profile fetch)
+  // Public list immediately — Problems should not wait on Supabase.
   useEffect(() => {
-    if (authLoading || !user || hasFetched.current) return;
-    hasFetched.current = true;
+    if (fetchedPublic.current) return;
+    fetchedPublic.current = true;
+    dispatch({ type: 'BATCH_SET_STATUS', endpoints: PUBLIC_ENDPOINTS, status: 'loading' });
+    Promise.allSettled(PUBLIC_ENDPOINTS.map((n) => fetchEndpoint(n, false)));
+  }, [fetchEndpoint]);
 
-    const names = Object.keys(ENDPOINTS) as EndpointName[];
-    dispatch({ type: 'BATCH_SET_STATUS', endpoints: names, status: 'loading' });
-    Promise.allSettled(names.map((n) => fetchEndpoint(n, false)));
+  // Private tabs + per-user challenge progress after a session exists.
+  useEffect(() => {
+    if (authLoading || !user || fetchedPrivate.current) return;
+    fetchedPrivate.current = true;
+    const privateNames = (Object.keys(ENDPOINTS) as EndpointName[]).filter(
+      (n) => !PUBLIC_ENDPOINTS.includes(n),
+    );
+    dispatch({ type: 'BATCH_SET_STATUS', endpoints: privateNames, status: 'loading' });
+    Promise.allSettled([...privateNames, 'challenges' as EndpointName].map((n) => fetchEndpoint(n, false)));
   }, [authLoading, user, fetchEndpoint]);
 
   // Background refresh

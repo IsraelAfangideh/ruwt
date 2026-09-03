@@ -208,6 +208,9 @@ vi.mock('@/shared/lib/ai/pricing', () => {
     tierLabel: (t: string) => t.charAt(0).toUpperCase() + t.slice(1),
     estimateTypicalMessageCost: () => 100,
     formatCostFromHundredths: (v: number) => `$${(v / 10000).toFixed(4)}`,
+    friendlyModelName: (id: string) => id,
+    defaultVersusTier: () => 'budget',
+    estimateVersusMatchCost: () => 12,
   };
 });
 
@@ -319,6 +322,33 @@ describe('ArenaIDE', () => {
   it('renders without crashing', () => {
     const { container } = renderIDE();
     expect(container.innerHTML).not.toBe('');
+  });
+
+  it('hides AI Chat in Versus mode', () => {
+    renderIDE({
+      playMode: 'versus',
+      versusMatch: {
+        id: 'm1',
+        userId: 'u1',
+        challengeId: 'ch-1',
+        userAttemptId: 'att-1',
+        opponentModel: 'mock-model',
+        opponentStatus: 'thinking',
+        opponentThinking: 'planning',
+        opponentIteration: 0,
+        opponentCost: 0,
+        opponentInputTokens: 0,
+        opponentOutputTokens: 0,
+        userPassedAt: null,
+        opponentPassedAt: null,
+        winner: null,
+        createdAt: new Date().toISOString(),
+        finishedAt: null,
+        teaser: 'figuring out the puzzle…',
+      },
+    });
+    expect(screen.queryByRole('tab', { name: 'AI Chat' })).toBeNull();
+    expect(screen.getByTestId('opponent-strip')).toBeInTheDocument();
   });
 
   it('renders Description and AI Chat tabs', () => {

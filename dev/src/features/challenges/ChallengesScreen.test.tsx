@@ -7,8 +7,8 @@ const mockReset = vi.fn();
 vi.mock('@react-navigation/native', () => ({
   useNavigation: () => ({ navigate: mockNavigate, reset: mockReset }),
 }));
-vi.mock('@/shared/hooks/useAuthGuard', () => ({
-  useAuthGuard: () => ({ user: { id: 'u1' }, loading: false }),
+vi.mock('@/shared/lib/AuthContext', () => ({
+  useAuth: () => ({ user: { id: 'u1' }, loading: false }),
 }));
 vi.mock('@/shared/layout/DashboardLayout', () => ({
   DashboardLayout: ({ children }: any) => <div data-testid="dashboard-layout">{children}</div>,
@@ -86,6 +86,12 @@ describe('ChallengesScreen', () => {
   it('renders title after loading', () => {
     render(<ChallengesScreen />);
     expect(screen.getAllByText('Engineering Challenges').length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('explains Versus mode on the problems list', () => {
+    render(<ChallengesScreen />);
+    expect(screen.getByText('Versus mode')).toBeInTheDocument();
+    expect(screen.getByText(/Race a model unaided/)).toBeInTheDocument();
   });
 
   it('renders challenge cards after loading', () => {

@@ -95,8 +95,29 @@ CREATE TABLE IF NOT EXISTS attempts (
   replay_public INTEGER DEFAULT 1 NOT NULL,
   used_byok INTEGER DEFAULT 0 NOT NULL,
   used_hosted INTEGER DEFAULT 0 NOT NULL,
+  play_mode TEXT DEFAULT 'union' NOT NULL,
   created_at TEXT DEFAULT (datetime('now')) NOT NULL,
   submitted_at TEXT
+);
+
+CREATE TABLE IF NOT EXISTS versus_matches (
+  id TEXT PRIMARY KEY NOT NULL,
+  user_id TEXT NOT NULL REFERENCES profiles(id),
+  challenge_id TEXT NOT NULL REFERENCES challenges(id),
+  user_attempt_id TEXT NOT NULL REFERENCES attempts(id),
+  opponent_model TEXT NOT NULL,
+  opponent_status TEXT NOT NULL DEFAULT 'queued',
+  opponent_code TEXT,
+  opponent_thinking TEXT NOT NULL DEFAULT '',
+  opponent_iteration INTEGER NOT NULL DEFAULT 0,
+  opponent_cost INTEGER NOT NULL DEFAULT 0,
+  opponent_input_tokens INTEGER NOT NULL DEFAULT 0,
+  opponent_output_tokens INTEGER NOT NULL DEFAULT 0,
+  user_passed_at TEXT,
+  opponent_passed_at TEXT,
+  winner TEXT,
+  created_at TEXT DEFAULT (datetime('now')) NOT NULL,
+  finished_at TEXT
 );
 
 CREATE TABLE IF NOT EXISTS ai_calls (
@@ -457,6 +478,7 @@ const TABLE_NAMES = [
   'organizations',
   'transactions',
   'ai_calls',
+  'versus_matches',
   'attempts',
   'challenges',
   'profiles',

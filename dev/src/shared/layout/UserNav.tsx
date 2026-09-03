@@ -10,7 +10,7 @@ import { spacing, fontSizes, fontFamily } from '@/shared/theme/tokens';
 import type { User } from '@supabase/supabase-js';
 
 interface UserNavProps {
-  user: User;
+  user: User | null;
 }
 
 export function UserNav({ user }: UserNavProps) {
@@ -19,6 +19,21 @@ export function UserNav({ user }: UserNavProps) {
   const [open, setOpen] = useState(false);
   const c = useColors();
   const { mode, isOrgMember, orgInfo } = useAppMode();
+
+  if (!user) {
+    return (
+      <Pressable
+        onPress={() => navigation.navigate('Login')}
+        accessibilityRole="button"
+        accessibilityLabel="Sign in"
+        testID="header-sign-in"
+      >
+        <Text style={{ color: c.accent, fontWeight: '700', fontFamily: fontFamily.body, fontSize: fontSizes.sm }}>
+          Sign in
+        </Text>
+      </Pressable>
+    );
+  }
 
   const handleEscape = useCallback((e: KeyboardEvent) => {
     /* istanbul ignore next -- @preserve */

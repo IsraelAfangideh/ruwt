@@ -99,16 +99,16 @@ export function ChallengeCard({ challenge }: { challenge: Challenge }) {
     onMouseLeave: () => setHovered(false),
   } : {};
 
+  const openArena = (playMode?: 'union' | 'versus') => {
+    (navigation.navigate as any)('Arena', playMode === 'versus'
+      ? { challengeId: challenge.id, playMode: 'versus' }
+      : { challengeId: challenge.id });
+  };
+
   return (
-    <Pressable
-      onPress={() => (navigation.navigate as any)('Arena', { challengeId: challenge.id })}
-      accessibilityRole="link"
-      accessibilityLabel={`${challenge.title}, ${diffStyle.label} difficulty${isSolved ? ', Solved' : isInProgress ? ', In progress' : ''}`}
+    <View
       testID={`challenge-${challenge.id}`}
-      style={({ pressed }: { pressed: boolean }) => [
-        styles.pressable,
-        pressed && styles.pressed,
-      ]}
+      style={styles.pressable}
       {...webHoverProps}
     >
       <Card style={[
@@ -117,6 +117,15 @@ export function ChallengeCard({ challenge }: { challenge: Challenge }) {
         isSolved && { borderLeftWidth: 3, borderLeftColor: c.success },
         hovered && styles.hovered,
       ]}>
+      <Pressable
+        onPress={() => openArena()}
+        accessibilityRole="link"
+        accessibilityLabel={`${challenge.title}, ${diffStyle.label} difficulty${isSolved ? ', Solved' : isInProgress ? ', In progress' : ''}`}
+        style={({ pressed }: { pressed: boolean }) => [
+          styles.cardPress,
+          pressed && styles.pressed,
+        ]}
+      >
         {/* Status indicator stripe for in-progress */}
         {isInProgress && (
           <View style={[styles.progressStripe, { backgroundColor: c.accent }]} accessible={false} aria-hidden={true} />
@@ -180,20 +189,31 @@ export function ChallengeCard({ challenge }: { challenge: Challenge }) {
           )}
 
           {/* CTA + Bookmark */}
-          <View style={styles.footerRow}>
-            <Text style={[styles.ctaLink, { color: ctaColor }]}>
-              {ctaText} {'\u2192'}
-            </Text>
-            <BookmarkButton targetType="challenge" targetId={challenge.id} />
-          </View>
+          <Text style={[styles.ctaLink, { color: ctaColor }]}>
+            {ctaText} {'\u2192'}
+          </Text>
+        </View>
+      </Pressable>
+        <View style={styles.footerRow}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`Race ${challenge.title} versus a model`}
+            testID={`versus-${challenge.id}`}
+            onPress={() => openArena('versus')}
+            style={[styles.versusBtn, { borderColor: c.accent, backgroundColor: c.accentBg }]}
+          >
+            <Text style={[styles.versusText, { color: c.accent }]}>Race a model</Text>
+          </Pressable>
+          <BookmarkButton targetType="challenge" targetId={challenge.id} />
         </View>
       </Card>
-    </Pressable>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   pressable: { flex: 1, minWidth: 280 },
+  cardPress: { flex: 1 },
   pressed: { opacity: 0.92, transform: [{ scale: 0.98 }] },
   card: {
     flex: 1,
@@ -239,6 +259,15 @@ const styles = StyleSheet.create({
   spacer: { flex: 1 },
   footer: { marginTop: spacing.sm, alignItems: 'flex-start' },
   statsLine: { fontSize: fontSizes.xs, marginBottom: spacing.xs },
-  footerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: spacing.sm, width: '100%' },
-  ctaLink: { fontSize: fontSizes.sm, fontWeight: '700', fontFamily: fontFamily.body },
+  footerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: spacing.sm, width: '100%', gap: spacing.sm },
+  ctaLink: { fontSize: fontSizes.sm, fontWeight: '700', fontFamily: fontFamily.body, flex: 1 },
+  versusBtn: {
+    flex: 1,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    borderRadius: radii.md,
+    borderWidth: 1.5,
+    alignItems: 'center',
+  },
+  versusText: { fontSize: fontSizes.sm, fontWeight: '700', fontFamily: fontFamily.body },
 });

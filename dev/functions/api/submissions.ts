@@ -16,7 +16,7 @@ import { invalidateCache } from '../_shared/infra/cache';
 import { sendEmail } from '../_shared/newsletter/resend';
 import { challengeAttemptNotificationEmail } from '../_shared/email/templates';
 import { ADMIN_EMAIL } from '../_shared/ensure-profile';
-import { attempts, challenges, customChallenges, profiles } from '../../drizzle/schema.d1';
+import { attempts, challenges, customChallenges, profiles, versusMatches } from '../../drizzle/schema.d1';
 import type { AiComparison } from '../../src/shared/lib/arena-types';
 
 /** Returns true if code already reads stdin (model ignored instructions). */
@@ -204,6 +204,27 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
       });
     }
 
+    if (attempt.playMode === 'versus' && attempt.status !== 'in_progress') {
+      return Response.json(
+        { error: 'Match is over. Start a rematch.', code: 'versus_match_over' },
+        { status: 409 }
+      );
+    }
+
+    if (attempt.playMode === 'versus') {
+      const [match] = await db
+        .select()
+        .from(versusMatches)
+        .where(eq(versusMatches.userAttemptId, attempt.id))
+        .limit(1);
+      if (match?.winner) {
+        return Response.json(
+          { error: 'Match already finished', winner: match.winner, code: 'versus_already_won' },
+          { status: 409 }
+        );
+      }
+    }
+
     // Submit mode: if attempt already submitted, auto-create a new one
     if (attempt.status !== 'in_progress') {
       const newAttemptId = crypto.randomUUID();
@@ -218,6 +239,7 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
         passedTests: 0,
         totalTests: attempt.totalTests,
         expiresAt: null,
+        playMode: 'union',
       });
       const [newAttempt] = await db
         .select()
@@ -331,7 +353,8 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
       })()
     );
 
-    const status = testResult.passed ? 'passed' : 'failed';
+    const isVersus = attempt.playMode === 'versus';
+    const status = testResult.passed ? 'passed' : isVersus ? 'in_progress' : 'failed';
     const submittedAtMs = Date.now();
     const submittedNow = new Date(submittedAtMs).toISOString();
     await db
@@ -341,9 +364,34 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
         finalCode: sourceCode,
         passedTests: testResult.passedTests,
         totalTests: testResult.totalTests,
-        submittedAt: submittedNow,
+        submittedAt: testResult.passed || !isVersus ? submittedNow : attempt.submittedAt,
       })
       .where(eq(attempts.id, attempt.id));
+
+    if (isVersus && testResult.passed) {
+      const [liveMatch] = await db
+        .select()
+        .from(versusMatches)
+        .where(eq(versusMatches.userAttemptId, attempt.id))
+        .limit(1);
+      if (liveMatch && !liveMatch.winner) {
+        await db
+          .update(versusMatches)
+          .set({
+            userPassedAt: submittedNow,
+            winner: 'user',
+            opponentStatus: liveMatch.opponentStatus === 'passed' ? liveMatch.opponentStatus : 'aborted',
+            finishedAt: submittedNow,
+          })
+          .where(eq(versusMatches.id, liveMatch.id));
+      } else if (liveMatch?.winner === 'opponent') {
+        await db.update(attempts).set({ status: 'failed' }).where(eq(attempts.id, attempt.id));
+        return Response.json(
+          { error: 'Match already finished', winner: 'opponent', code: 'versus_already_won' },
+          { status: 409 }
+        );
+      }
+    }
 
     // On successful solve, run post-solve tasks concurrently (non-blocking)
     let newBadges: string[] = [];
@@ -409,6 +457,7 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
           LEFT JOIN (SELECT DISTINCT attempt_id, 1 AS has_ai FROM ai_calls) ac_sub
             ON ac_sub.attempt_id = a.id
           WHERE a.challenge_id = ? AND a.status = 'passed' AND a.submitted_at IS NOT NULL
+            AND (a.play_mode = 'union' OR a.play_mode IS NULL)
         `).bind(attempt.challengeId).first<{
           aiSolves: number; manualSolves: number;
           aiAvgTimeSecs: number | null; manualAvgTimeSecs: number | null;
@@ -508,6 +557,7 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
       newBadges,
       streak: streakResult ? { currentStreak: streakResult.currentStreak } : null,
       aiComparison,
+      versusWinner: isVersus && testResult.passed ? 'user' as const : undefined,
     };
 
     // Cache for idempotency dedup

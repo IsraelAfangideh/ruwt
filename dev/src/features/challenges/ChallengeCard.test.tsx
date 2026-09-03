@@ -109,6 +109,12 @@ describe('ChallengeCard', () => {
     expect(mockNavigate).toHaveBeenCalledWith('Arena', { challengeId: 'ch-1' });
   });
 
+  it('navigates to Versus lobby from the Versus control', () => {
+    render(<ChallengeCard challenge={baseChallenge} />);
+    fireEvent.click(screen.getByText('Race a model'));
+    expect(mockNavigate).toHaveBeenCalledWith('Arena', { challengeId: 'ch-1', playMode: 'versus' });
+  });
+
   it('shows efficiency goal when maxCost is set', () => {
     const ch: Challenge = { ...baseChallenge, maxCost: 50000 };
     render(<ChallengeCard challenge={ch} />);

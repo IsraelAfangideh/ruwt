@@ -107,6 +107,7 @@ describe('Leaderboard Integration (real SQLite)', () => {
           and(
             eq(attempts.challengeId, 'ch-1'),
             eq(attempts.status, 'passed'),
+            eq(attempts.playMode, 'union'),
             eq(profiles.leaderboardExcluded, 0),
           )
         )
@@ -120,6 +121,40 @@ describe('Leaderboard Integration (real SQLite)', () => {
       expect(results[1].totalCost).toBe(200);
       expect(results[2].userName).toBe('Bob');
       expect(results[2].totalCost).toBe(500);
+    });
+
+    it('excludes versus attempts from cost ranking', () => {
+      seedUsers();
+      seedChallenges();
+
+      db.insert(attempts).values({
+        id: 'att-alice-union',
+        userId: 'alice',
+        challengeId: 'ch-1',
+        status: 'passed',
+        playMode: 'union',
+        totalCost: 200,
+        submittedAt: '2026-03-15T10:00:00Z',
+      }).run();
+
+      db.insert(attempts).values({
+        id: 'att-alice-versus',
+        userId: 'alice',
+        challengeId: 'ch-1',
+        status: 'passed',
+        playMode: 'versus',
+        totalCost: 1,
+        submittedAt: '2026-03-15T11:00:00Z',
+      }).run();
+
+      const results = db
+        .select({ attemptId: attempts.id, playMode: attempts.playMode, totalCost: attempts.totalCost })
+        .from(attempts)
+        .where(and(eq(attempts.challengeId, 'ch-1'), eq(attempts.status, 'passed'), eq(attempts.playMode, 'union')))
+        .all();
+
+      expect(results).toHaveLength(1);
+      expect(results[0].attemptId).toBe('att-alice-union');
     });
 
     it('deduplicates by user — keeps cheapest attempt only', () => {

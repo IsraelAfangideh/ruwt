@@ -102,9 +102,30 @@ export const attempts = sqliteTable('attempts', {
   replayPublic: integer('replay_public').default(1).notNull(),
   usedByok: integer('used_byok').default(0).notNull(),
   usedHosted: integer('used_hosted').default(0).notNull(),
+  playMode: text('play_mode').default('union').notNull(), // 'union' | 'versus'
 
   createdAt: text('created_at').default(sql`(datetime('now'))`).notNull(),
   submittedAt: text('submitted_at'),
+});
+
+export const versusMatches = sqliteTable('versus_matches', {
+  id: text('id').primaryKey(),
+  userId: text('user_id').notNull().references(() => profiles.id),
+  challengeId: text('challenge_id').notNull().references(() => challenges.id),
+  userAttemptId: text('user_attempt_id').notNull().references(() => attempts.id),
+  opponentModel: text('opponent_model').notNull(),
+  opponentStatus: text('opponent_status').default('queued').notNull(),
+  opponentCode: text('opponent_code'),
+  opponentThinking: text('opponent_thinking').default('').notNull(),
+  opponentIteration: integer('opponent_iteration').default(0).notNull(),
+  opponentCost: integer('opponent_cost').default(0).notNull(),
+  opponentInputTokens: integer('opponent_input_tokens').default(0).notNull(),
+  opponentOutputTokens: integer('opponent_output_tokens').default(0).notNull(),
+  userPassedAt: text('user_passed_at'),
+  opponentPassedAt: text('opponent_passed_at'),
+  winner: text('winner'), // 'user' | 'opponent' | null
+  createdAt: text('created_at').default(sql`(datetime('now'))`).notNull(),
+  finishedAt: text('finished_at'),
 });
 
 export const aiCalls = sqliteTable('ai_calls', {
@@ -726,6 +747,18 @@ export type BookmarkTargetType = 'challenge' | 'replay';
 
 export type Project = typeof projects.$inferSelect;
 export type NewProject = typeof projects.$inferInsert;
+export type VersusMatch = typeof versusMatches.$inferSelect;
+export type NewVersusMatch = typeof versusMatches.$inferInsert;
+export type PlayMode = 'union' | 'versus';
+export type VersusWinner = 'user' | 'opponent';
+export type VersusOpponentStatus =
+  | 'queued'
+  | 'thinking'
+  | 'writing'
+  | 'testing'
+  | 'passed'
+  | 'failed'
+  | 'aborted';
 
 export type CloudMachine = typeof cloudMachines.$inferSelect;
 export type NewCloudMachine = typeof cloudMachines.$inferInsert;

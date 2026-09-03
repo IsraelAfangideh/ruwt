@@ -289,6 +289,18 @@ describe('POST /api/ai/chat', () => {
     expect(json.error).toBe('Attempt not found');
   });
 
+  it('returns 403 when the attempt is Versus', async () => {
+    (getUser as Mock).mockResolvedValue(TEST_USER);
+    mockDb.selectResults.push([{ id: TEST_USER.id, credits: 50000 }]);
+    mockDb.selectResults.push([{ userId: TEST_USER.id, assessmentSessionId: null, playMode: 'versus' }]);
+
+    const res = await onRequestPost(makeContext(validBody()));
+
+    expect(res.status).toBe(403);
+    const json = await res.json() as any;
+    expect(json.error).toMatch(/unaided/i);
+  });
+
   it('returns 403 when attempt belongs to a different user', async () => {
     (getUser as Mock).mockResolvedValue(TEST_USER);
     // 1) Profile lookup

@@ -11,7 +11,12 @@ import { resetNavigation } from '@/shared/navigation/resetNavigation';
 import { useToast } from '@/shared/ui/Toast';
 import { ArenaErrorBoundary } from '@/features/arena/ArenaErrorBoundary';
 import SubmitGuardOverlay, { type SubmitGuardReason } from '@/features/arena/SubmitGuardOverlay';
-import { estimateMessagesForBudget, formatCostFromHundredths } from '@/shared/lib/ai/pricing';
+import { estimateMessagesForBudget, formatCostFromHundredths, TIER_MODELS, defaultVersusTier } from '@/shared/lib/ai/pricing';
+import { VersusLobby } from '@/features/arena/versus/VersusLobby';
+import { VersusEndOverlay } from '@/features/arena/versus/VersusEndOverlay';
+import { useVersusTicks } from '@/features/arena/versus/useVersusTicks';
+import type { VersusMatchPublic } from '@/features/arena/versus/types';
+import { stashVersusReturn } from '@/features/arena/versus/return-after-login';
 import { BADGE_DEFS, type BadgeDef } from '@/shared/lib/badge-defs';
 import { formatTime } from '@/shared/lib/utils';
 import { SplitPaneSkeleton } from '@/shared/ui/ScreenSkeletons';
@@ -199,14 +204,24 @@ export function ArenaScreen() {
   const route = useRoute();
   const { user, loading: authLoading } = useAuth();
   /* istanbul ignore next -- @preserve */
-  const params = (route.params || {}) as { challengeId?: string };
+  const params = (route.params || {}) as { challengeId?: string; playMode?: 'union' | 'versus' };
   const challengeId = params.challengeId ?? '';
+  /* istanbul ignore next -- @preserve */
+  const urlPlayMode = typeof window !== 'undefined'
+    ? new URLSearchParams(window.location.search).get('mode')
+    : null;
+  const initialLobby: 'union' | 'versus' =
+    params.playMode === 'versus' || urlPlayMode === 'versus' ? 'versus' : 'union';
 
   useEffect(() => {
-    if (!authLoading && !user) {
-      resetNavigation(navigation, [{ name: 'GuestArena', params: { challengeId } }]);
+    if (authLoading || user) return;
+    if (initialLobby === 'versus') {
+      stashVersusReturn(challengeId);
+      resetNavigation(navigation, [{ name: 'Login' }]);
+      return;
     }
-  }, [authLoading, user, challengeId]);
+    resetNavigation(navigation, [{ name: 'GuestArena', params: { challengeId } }]);
+  }, [authLoading, user, challengeId, initialLobby, navigation]);
 
   const [challenge, setChallenge] = useState<ArenaChallenge | null>(null);
   const [attempt, setAttempt] = useState<ArenaAttempt | null>(null);
@@ -244,6 +259,9 @@ export function ArenaScreen() {
   // True once the user has run the tests, or has been warned once and chosen to
   // submit regardless. Either way the guard stops nagging.
   const [submitVerified, setSubmitVerified] = useState(false);
+  const [lobbyMode, setLobbyMode] = useState<'union' | 'versus'>(initialLobby);
+  const [opponentModel, setOpponentModel] = useState(TIER_MODELS.budget.id);
+  const [versusMatch, setVersusMatch] = useState<VersusMatchPublic | null>(null);
   const navigatingRef = useRef(false);
   const autoResumeCalledRef = useRef(false);
   const startAttemptRef = useRef<() => void>();
@@ -276,7 +294,7 @@ export function ArenaScreen() {
               submittedAt: a.submittedAt,
             }))
         );
-        return all.some((a: PastAttempt) => a.status === 'in_progress');
+        return all.some((a: PastAttempt & { playMode?: string }) => a.status === 'in_progress' && a.playMode !== 'versus');
       }
     } catch {
       showToast('Failed to load past attempts', 'error');
@@ -303,17 +321,20 @@ export function ArenaScreen() {
     setCommentSubmitted(false);
     setSubmitGuard(null);
     setSubmitVerified(false);
+    setVersusMatch(null);
+    setLobbyMode('union');
   }, []);
 
   // Reset all state when challengeId changes (e.g. "Try Next Challenge")
   useEffect(() => {
     setChallenge(null);
     resetAttemptState();
+    setLobbyMode(initialLobby);
     setLoading(true);
     setNextChallenge(null);
     navigatingRef.current = false;
     autoResumeCalledRef.current = false;
-  }, [challengeId]);
+  }, [challengeId, initialLobby, resetAttemptState]);
 
   // Load challenge + profile on mount (but don't create attempt yet)
   useEffect(() => {
@@ -334,6 +355,7 @@ export function ArenaScreen() {
         }
         const chData = await chRes.json();
         setChallenge(chData);
+        setOpponentModel(TIER_MODELS[defaultVersusTier(chData.difficulty)].id);
       } catch (e) {
         /* istanbul ignore next -- @preserve */
         if (!cancelled) {
@@ -353,9 +375,26 @@ export function ArenaScreen() {
     /* istanbul ignore next -- @preserve */
     if (!autoResumeCalledRef.current) {
       autoResumeCalledRef.current = true;
-      fetchPastAttempts().then((hasInProgress) => {
+      (async () => {
+        try {
+          const vs = await fetch(`/api/versus/matches?challengeId=${challengeId}`);
+          if (vs.ok) {
+            const data = await vs.json();
+            if (data.match && data.attempt) {
+              setVersusMatch(data.match);
+              setAttempt(data.attempt);
+              setLobbyMode('versus');
+              const saved = localStorage.getItem(`arena-code-${data.attempt.id}`);
+              setCode(saved || starterCodeFor(challenge.starterCode, challenge.language || 'javascript'));
+              return;
+            }
+          }
+        } catch {
+          /* fall through to union resume */
+        }
+        const hasInProgress = await fetchPastAttempts();
         if (hasInProgress) startAttemptRef.current?.();
-      });
+      })();
     } else {
       /* istanbul ignore next -- @preserve */
       fetchPastAttempts();
@@ -419,6 +458,44 @@ export function ArenaScreen() {
   }, [challengeId]);
   useEffect(() => { startAttemptRef.current = startAttempt; }, [startAttempt]);
 
+  const startVersus = useCallback(async (modelId?: string) => {
+    setStarting(true);
+    setError(null);
+    try {
+      const res = await fetch('/api/versus/matches', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ challengeId, model: modelId || opponentModel }),
+      });
+      if (!res.ok) {
+        setError('Failed to start Versus match');
+        return;
+      }
+      const data = await res.json();
+      setVersusMatch(data.match);
+      setAttempt(data.attempt);
+      setLobbyMode('versus');
+      if (data.isExisting) {
+        const saved = localStorage.getItem(`arena-code-${data.attempt.id}`);
+        if (saved) {
+          setCode(saved);
+          showToast('Restored your progress', 'success');
+        } else {
+          setCode(starterCodeFor(data.challenge?.starterCode, language));
+        }
+      } else {
+        setCode(starterCodeFor(data.challenge?.starterCode, language));
+      }
+      setTestResults(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to start Versus match');
+    } finally {
+      setStarting(false);
+    }
+  }, [challengeId, opponentModel, language, showToast]);
+
+  useVersusTicks(versusMatch?.id ?? null, versusMatch?.winner, setVersusMatch);
+
   const onRestart = useCallback(() => {
     resetAttemptState();
   }, [resetAttemptState]);
@@ -467,6 +544,10 @@ export function ArenaScreen() {
         setSubmitGuard('untouched');
         return { passed: false, passedTests: 0, totalTests: 0, results: [] };
       }
+      if (res.status === 409 && (data.code === 'versus_already_won' || data.code === 'versus_match_over')) {
+        setVersusMatch((prev) => prev ? { ...prev, winner: data.winner ?? prev.winner } : prev);
+        return { passed: false, passedTests: 0, totalTests: 0, results: [] };
+      }
       /* istanbul ignore next -- @preserve */
       if (!res.ok) throw new Error(data.error || 'Submit failed');
       const result = {
@@ -482,8 +563,17 @@ export function ArenaScreen() {
         /* istanbul ignore next -- @preserve */
         setAttempt((prev) => prev ? { ...prev, ...data.attempt } : prev);
       }
-      // Show success overlay for passed submissions
-      if (result.passed) {
+      if (data.versusWinner === 'user') {
+        setVersusMatch((prev) => prev ? {
+          ...prev,
+          winner: 'user',
+          userPassedAt: new Date().toISOString(),
+          finishedAt: new Date().toISOString(),
+          opponentStatus: prev.opponentStatus === 'passed' ? prev.opponentStatus : 'aborted',
+        } : prev);
+      }
+      // Versus has its own end overlay. Union keeps the cost-rank success card.
+      if (result.passed && !versusMatch && data.versusWinner !== 'user') {
         setSuccessOverlay({ attemptId: finalAttemptId, passed: true });
         // Capture earned badges and streak from response
         /* istanbul ignore next -- @preserve */
@@ -537,7 +627,7 @@ export function ArenaScreen() {
       fetchPastAttempts();
       return result;
     },
-    [attempt?.id, fetchPastAttempts, challengeId, challenge?.category, challenge?.difficulty]
+    [attempt?.id, fetchPastAttempts, challengeId, challenge?.category, challenge?.difficulty, versusMatch]
   );
 
   // Execute code via Piston API (public, no server endpoint needed)
@@ -818,6 +908,15 @@ export function ArenaScreen() {
             </div>
           )}
 
+          <VersusLobby
+            mode={lobbyMode}
+            onMode={setLobbyMode}
+            difficulty={challenge.difficulty}
+            language={challenge.language || 'javascript'}
+            opponentModel={opponentModel}
+            onOpponentModel={setOpponentModel}
+          />
+
           {/* Error from failed attempt start */}
           {error && (
             <p style={{ fontSize: 13, color: arena.error, marginBottom: 16 }}>{error}</p>
@@ -837,10 +936,10 @@ export function ArenaScreen() {
               opacity: starting ? 0.6 : 1,
               width: isMobile ? '100%' : 'auto',
             }}
-            onClick={() => startAttempt()}
+            onClick={() => (lobbyMode === 'versus' ? startVersus() : startAttempt())}
             disabled={starting}
           >
-            {starting ? 'Starting...' : personalBest ? 'Try Again' : 'Start Challenge'}
+            {starting ? 'Starting...' : lobbyMode === 'versus' ? 'Race the model' : personalBest ? 'Try Again' : 'Start Challenge'}
           </button>
 
           {/* Back link */}
@@ -1118,8 +1217,24 @@ export function ArenaScreen() {
             testResults={testResults}
             onDismissResults={() => setTestResults(null)}
             pastAttempts={pastAttempts}
+            playMode={versusMatch ? 'versus' : 'union'}
+            versusMatch={versusMatch}
           />
         </ArenaErrorBoundary>
+        {versusMatch?.winner && (
+          <VersusEndOverlay
+            match={versusMatch}
+            onRematch={() => {
+              setAttempt(null);
+              setVersusMatch(null);
+              setTestResults(null);
+              setSuccessOverlay(null);
+              setLobbyMode('versus');
+              startVersus(versusMatch.opponentModel);
+            }}
+            onBack={() => navigation.navigate('Problems')}
+          />
+        )}
 
         {/* Guard against a submission that cannot pass, or an unverified first submission */}
         {submitGuard && (

@@ -7,38 +7,21 @@ import { NotificationBell } from './NotificationBell';
 import { TrialBanner } from './TrialBanner';
 import { ModeSwitcher } from './ModeSwitcher';
 import { Button } from '../ui/Button';
-import { Skeleton } from '@/shared/ui/Skeleton';
 import { useAppMode } from '@/shared/lib/AppModeContext';
-import { useDashboardData } from '@/shared/lib/DashboardDataContext';
 import { useColors } from '@/shared/theme';
 import { spacing, fontSizes, fontFamily } from '@/shared/theme/tokens';
 import type { User } from '@supabase/supabase-js';
 
 interface DashboardLayoutProps {
-  user: User;
+  user: User | null;
   children: React.ReactNode;
   requireOrg?: boolean;
-}
-
-function ContentSkeleton() {
-  return (
-    <View style={{ gap: spacing.lg }}>
-      <Skeleton width={200} height={32} />
-      <Skeleton width={320} height={16} />
-      <View style={{ gap: spacing.md, marginTop: spacing.md }}>
-        <Skeleton width="100%" height={120} />
-        <Skeleton width="100%" height={120} />
-        <Skeleton width="100%" height={80} />
-      </View>
-    </View>
-  );
 }
 
 export function DashboardLayout({ user, children, requireOrg }: DashboardLayoutProps) {
   const navigation = useNavigation();
   const c = useColors();
   const { profile, profileLoading, isOrgMember } = useAppMode();
-  const { initialLoadComplete } = useDashboardData();
 
   const accountType = profile?.accountType ?? 'individual';
   const trial = profile?.trial ?? null;
@@ -64,9 +47,6 @@ export function DashboardLayout({ user, children, requireOrg }: DashboardLayoutP
           </Button>
         </View>
       );
-    }
-    if (!initialLoadComplete && !requireOrg) {
-      return <ContentSkeleton />;
     }
     return children;
   };

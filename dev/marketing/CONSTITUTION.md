@@ -34,9 +34,11 @@ Developers, Founders who want to hire, People who want to learn how to vibe code
 
 Never use this character: > when typing written posts, because then I have to remove it before copying and pasting the message as a post.
 
-USE: 'come play', 'come see where you rank', 'prove it', 'cheapest correct solution wins'
+USE: 'come play', 'come see where you rank', 'prove it', 'cheapest correct solution wins', 'prove you're not replaceable' (Versus only)
 
-NEVER: 'you'll be left behind', 'prove you're not replaceable', 'don't get left out', 'revolutionize', 'disrupt', 'game-changer'
+NEVER: 'you'll be left behind', 'don't get left out', 'revolutionize', 'disrupt', 'game-changer'
+
+Versus is a race, not a eulogy. Losing copy can be pointed ('that model just took your puzzle'). Do not turn a loss into a verdict on the person's career. Winning copy stays short ('still here'). Keep the other fear lines banned. No fake scarcity.
 
 ---
 
@@ -73,4 +75,4 @@ The progression is: first solve it, then solve it cheaper. Not: struggle to solv
 
 ---
 
-*Last updated: 2026-02-23*
+*Last updated: 2026-08-29*

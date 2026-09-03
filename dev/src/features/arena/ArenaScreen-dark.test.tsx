@@ -66,12 +66,21 @@ vi.mock('@/shared/ui/Toast', () => ({
 vi.mock('@/features/arena/ArenaErrorBoundary', () => ({
   ArenaErrorBoundary: ({ children }: any) => <div data-testid="error-boundary">{children}</div>,
 }));
-vi.mock('@/shared/lib/ai/pricing', () => ({
-  estimateMessagesForBudget: (_cost: number, tier: string) => tier === 'premium' ? 2 : 10,
-  getModelById: () => ({ name: 'Test Model' }),
-  tierColor: () => '#ccc',
-  formatCostFromHundredths: (c: number) => { const d = c / 10000; return d < 0.01 ? `$${d.toFixed(4)}` : `$${d.toFixed(2)}`; },
-}));
+vi.mock('@/shared/lib/ai/pricing', () => {
+  const model = { id: '@cf/meta/llama-3.1-8b-instruct', displayName: 'Llama 3.1 8B', tier: 'budget', input: 0.05, output: 0.08 };
+  return {
+    estimateMessagesForBudget: (_cost: number, tier: string) => tier === 'premium' ? 2 : 10,
+    getModelById: () => ({ name: 'Test Model', ...model }),
+    tierColor: () => '#ccc',
+    formatCostFromHundredths: (c: number) => { const d = c / 10000; return d < 0.01 ? `$${d.toFixed(4)}` : `$${d.toFixed(2)}`; },
+    TIER_ORDER: ['budget'],
+    getModelsForTier: () => [model],
+    TIER_MODELS: { budget: model, micro: model, mid: model, premium: model, reasoning: model },
+    defaultVersusTier: () => 'budget',
+    estimateVersusMatchCost: () => 12,
+    friendlyModelName: (id: string) => id,
+  };
+});
 vi.mock('@/shared/theme', async () => (await import('@/shared/test/helpers')).mockDarkTheme());
 vi.mock('@/shared/theme/tokens', async () => (await import('@/shared/test/helpers')).mockTokens({ mono: true }));
 
@@ -111,6 +120,9 @@ function mockFetchForChallenge(challenge = challengeData) {
     }
     if (typeof url === 'string' && url === '/api/challenges') {
       return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
+    }
+    if (typeof url === 'string' && url.includes('/api/versus/matches')) {
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({ match: null }) });
     }
     if (typeof url === 'string' && url.includes('/api/execute')) {
       return Promise.resolve({ ok: true, json: () => Promise.resolve({ run: { stdout: 'hello', stderr: '', code: 0 } }) });

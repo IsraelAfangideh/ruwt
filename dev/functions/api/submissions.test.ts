@@ -40,7 +40,9 @@ vi.mock('drizzle-orm', () => ({
 vi.mock('../../drizzle/schema.d1', () => ({
   attempts: { id: 'id', userId: 'userId', challengeId: 'challengeId', status: 'status' },
   challenges: { id: 'id' },
+  customChallenges: { id: 'id' },
   profiles: { id: 'id', name: 'name' },
+  versusMatches: { id: 'id', userAttemptId: 'userAttemptId', winner: 'winner' },
 }));
 
 import { onRequestPost, onRequestGet } from './submissions';
@@ -812,6 +814,54 @@ describe('POST /api/submissions', () => {
     expect(json.success).toBe(false);
     expect(json.status).toBe('failed');
     expect(updateSet).toHaveBeenCalledWith(expect.objectContaining({ status: 'failed' }));
+  });
+
+  it('versus failed submit stays in_progress', async () => {
+    mockGetUser.mockResolvedValue(FAKE_USER);
+    const attempt = fakeAttempt({ playMode: 'versus' });
+    const match = { id: 'm1', winner: null, opponentStatus: 'thinking' };
+    const challenge = fakeChallenge();
+    mockRunTestCases.mockResolvedValue(failingTestResult());
+    const updateSet = vi.fn().mockReturnValue({
+      where: vi.fn().mockResolvedValue(undefined),
+    });
+    const { db } = makeDb({
+      selectResults: [[attempt], [match], [challenge]],
+      updateSet,
+    });
+    mockGetDb.mockReturnValue(db);
+
+    const res = await onRequestPost(makePostContext({
+      attemptId: VALID_ATTEMPT_ID,
+      sourceCode: 'code',
+      mode: 'submit',
+    }));
+    const json = await res.json();
+
+    expect(json.success).toBe(false);
+    expect(json.status).toBe('in_progress');
+    expect(updateSet).toHaveBeenCalledWith(expect.objectContaining({ status: 'in_progress' }));
+  });
+
+  it('versus submit is rejected when the match already has a winner', async () => {
+    mockGetUser.mockResolvedValue(FAKE_USER);
+    const attempt = fakeAttempt({ playMode: 'versus' });
+    const match = { id: 'm1', winner: 'opponent', opponentStatus: 'passed' };
+    const { db } = makeDb({
+      selectResults: [[attempt], [match]],
+    });
+    mockGetDb.mockReturnValue(db);
+
+    const res = await onRequestPost(makePostContext({
+      attemptId: VALID_ATTEMPT_ID,
+      sourceCode: 'code',
+      mode: 'submit',
+    }));
+    const json = await res.json();
+
+    expect(res.status).toBe(409);
+    expect(json.code).toBe('versus_already_won');
+    expect(mockRunTestCases).not.toHaveBeenCalled();
   });
 
   it('submit mode: returns 403 when time limit has expired', async () => {
