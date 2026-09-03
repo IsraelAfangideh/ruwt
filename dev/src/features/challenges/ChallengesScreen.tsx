@@ -294,6 +294,15 @@ export function ChallengesScreen() {
           <Text style={[styles.subtitle, { color: c.textMuted }]}>
             Real engineering problems. Real AI models. Ranked by efficiency.
           </Text>
+          <View
+            testID="versus-mode-banner"
+            style={[styles.versusBanner, { borderColor: c.accent, backgroundColor: c.accentBg }]}
+          >
+            <Text style={[styles.versusBannerTitle, { color: c.accent }]}>Versus mode</Text>
+            <Text style={[styles.versusBannerBody, { color: c.text }]}>
+              Race a model unaided. First correct submit wins. Tap Race a model on any card.
+            </Text>
+          </View>
         </View>
         {/* Progress summary — clickable stats filter */}
         <View style={[styles.progressCard, { backgroundColor: c.muted, borderColor: c.border }]} accessibilityRole="group" accessibilityLabel="Challenge progress">
@@ -729,6 +738,16 @@ const styles = StyleSheet.create({
   headerLeft: { flex: 1, minWidth: 240 },
   title: { fontSize: fontSizes['3xl'], fontWeight: '700', fontFamily: fontFamily.body },
   subtitle: { fontSize: fontSizes.sm, marginTop: spacing.xs },
+  versusBanner: {
+    marginTop: spacing.md,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderWidth: 1,
+    borderRadius: radii.md,
+    maxWidth: 520,
+  },
+  versusBannerTitle: { fontSize: fontSizes.sm, fontWeight: '700', fontFamily: fontFamily.body },
+  versusBannerBody: { fontSize: fontSizes.sm, marginTop: 2, fontFamily: fontFamily.body, lineHeight: 20 },
 
   // Progress card
   progressCard: {

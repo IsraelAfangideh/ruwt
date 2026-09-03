@@ -16,6 +16,7 @@ import { VersusLobby } from '@/features/arena/versus/VersusLobby';
 import { VersusEndOverlay } from '@/features/arena/versus/VersusEndOverlay';
 import { useVersusTicks } from '@/features/arena/versus/useVersusTicks';
 import type { VersusMatchPublic } from '@/features/arena/versus/types';
+import { stashVersusReturn } from '@/features/arena/versus/return-after-login';
 import { BADGE_DEFS, type BadgeDef } from '@/shared/lib/badge-defs';
 import { formatTime } from '@/shared/lib/utils';
 import { SplitPaneSkeleton } from '@/shared/ui/ScreenSkeletons';
@@ -213,10 +214,14 @@ export function ArenaScreen() {
     params.playMode === 'versus' || urlPlayMode === 'versus' ? 'versus' : 'union';
 
   useEffect(() => {
-    if (!authLoading && !user) {
-      resetNavigation(navigation, [{ name: 'GuestArena', params: { challengeId } }]);
+    if (authLoading || user) return;
+    if (initialLobby === 'versus') {
+      stashVersusReturn(challengeId);
+      resetNavigation(navigation, [{ name: 'Login' }]);
+      return;
     }
-  }, [authLoading, user, challengeId]);
+    resetNavigation(navigation, [{ name: 'GuestArena', params: { challengeId } }]);
+  }, [authLoading, user, challengeId, initialLobby, navigation]);
 
   const [challenge, setChallenge] = useState<ArenaChallenge | null>(null);
   const [attempt, setAttempt] = useState<ArenaAttempt | null>(null);

@@ -200,8 +200,9 @@ export function ChallengeCard({ challenge }: { challenge: Challenge }) {
             accessibilityLabel={`Race ${challenge.title} versus a model`}
             testID={`versus-${challenge.id}`}
             onPress={() => openArena('versus')}
+            style={[styles.versusBtn, { borderColor: c.accent, backgroundColor: c.accentBg }]}
           >
-            <Text style={[styles.versusText, { color: c.textMuted }]}>Versus</Text>
+            <Text style={[styles.versusText, { color: c.accent }]}>Race a model</Text>
           </Pressable>
           <BookmarkButton targetType="challenge" targetId={challenge.id} />
         </View>
@@ -260,5 +261,13 @@ const styles = StyleSheet.create({
   statsLine: { fontSize: fontSizes.xs, marginBottom: spacing.xs },
   footerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: spacing.sm, width: '100%', gap: spacing.sm },
   ctaLink: { fontSize: fontSizes.sm, fontWeight: '700', fontFamily: fontFamily.body, flex: 1 },
+  versusBtn: {
+    flex: 1,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    borderRadius: radii.md,
+    borderWidth: 1.5,
+    alignItems: 'center',
+  },
   versusText: { fontSize: fontSizes.sm, fontWeight: '700', fontFamily: fontFamily.body },
 });

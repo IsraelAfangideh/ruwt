@@ -88,6 +88,12 @@ describe('ChallengesScreen', () => {
     expect(screen.getAllByText('Engineering Challenges').length).toBeGreaterThanOrEqual(1);
   });
 
+  it('explains Versus mode on the problems list', () => {
+    render(<ChallengesScreen />);
+    expect(screen.getByText('Versus mode')).toBeInTheDocument();
+    expect(screen.getByText(/Race a model unaided/)).toBeInTheDocument();
+  });
+
   it('renders challenge cards after loading', () => {
     const { container } = render(<ChallengesScreen />);
     const cards = container.querySelectorAll('[data-testid="challenge-card"]');

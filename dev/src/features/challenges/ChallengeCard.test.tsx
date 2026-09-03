@@ -111,7 +111,7 @@ describe('ChallengeCard', () => {
 
   it('navigates to Versus lobby from the Versus control', () => {
     render(<ChallengeCard challenge={baseChallenge} />);
-    fireEvent.click(screen.getByText('Versus'));
+    fireEvent.click(screen.getByText('Race a model'));
     expect(mockNavigate).toHaveBeenCalledWith('Arena', { challengeId: 'ch-1', playMode: 'versus' });
   });
 

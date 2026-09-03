@@ -250,6 +250,16 @@ describe('ArenaScreen', () => {
     );
   });
 
+  it('sends unauthenticated Versus players to Login', () => {
+    routeParams = { challengeId: 'test-challenge', playMode: 'versus' };
+    authReturn = { user: null, loading: false };
+    render(<ArenaScreen />);
+    expect(mockResetNavigation).toHaveBeenCalledWith(
+      expect.anything(),
+      [{ name: 'Login' }],
+    );
+  });
+
   it('shows loading state while fetching challenge data', () => {
     // fetch that never resolves
     globalThis.fetch = vi.fn().mockReturnValue(new Promise(() => {}));
