@@ -7,8 +7,8 @@ const mockReset = vi.fn();
 vi.mock('@react-navigation/native', () => ({
   useNavigation: () => ({ navigate: mockNavigate, reset: mockReset }),
 }));
-vi.mock('@/shared/hooks/useAuthGuard', () => ({
-  useAuthGuard: () => ({ user: { id: 'u1' }, loading: false }),
+vi.mock('@/shared/lib/AuthContext', () => ({
+  useAuth: () => ({ user: { id: 'u1' }, loading: false }),
 }));
 vi.mock('@/shared/layout/DashboardLayout', () => ({
   DashboardLayout: ({ children }: any) => <div data-testid="dashboard-layout">{children}</div>,

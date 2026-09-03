@@ -10,7 +10,7 @@ import { spacing, fontSizes, fontFamily, radii } from '@/shared/theme/tokens';
 import { useIsMobile } from '@/shared/lib/useIsMobile';
 import { DIFFICULTIES, getDifficultyStyle } from '@/shared/lib/difficulty';
 import { useDocumentMeta } from '@/shared/hooks/useDocumentMeta';
-import { useAuthGuard } from '@/shared/hooks/useAuthGuard';
+import { useAuth } from '@/shared/lib/AuthContext';
 import { Badge } from '@/shared/ui/Badge';
 import { Button } from '@/shared/ui/Button';
 import { useDashboardData } from '@/shared/lib/DashboardDataContext';
@@ -79,7 +79,7 @@ function getInitialDifficulty(): string {
 
 export function ChallengesScreen() {
   useDocumentMeta({ title: 'AI Coding Challenges', description: 'Browse 60+ coding challenges across 11 categories. Test your AI efficiency in model selection, prompt engineering, debugging, and more.', canonicalPath: '/problems' });
-  const { user, loading: authLoading } = useAuthGuard();
+  const { user } = useAuth();
   const navigation = useNavigation();
   const { state: cachedData } = useDashboardData();
   const challenges = cachedData.challenges.data as Challenge[];
@@ -278,12 +278,6 @@ export function ChallengesScreen() {
       })
       .slice(0, 4);
   }, [filtered, progressStats.solved]);
-
-  /* istanbul ignore next -- @preserve */
-  if (authLoading || !user) {
-    /* istanbul ignore next -- @preserve */
-    return <CardGridSkeleton />;
-  }
 
   const hasActiveFilters = activeLang !== 'all' || activeCategory !== 'all' || activeDifficulty !== 'all' || searchQuery.trim() !== '' || statusFilter !== 'all';
   const hasNonStatusFilters = activeLang !== 'all' || activeCategory !== 'all' || activeDifficulty !== 'all' || searchQuery.trim() !== '';

@@ -335,6 +335,13 @@ describe('ArenaScreen', () => {
     expect(screen.getByRole('button', { name: 'Start Challenge' })).toBeInTheDocument();
   });
 
+  it('opens the Versus lobby when playMode is versus', async () => {
+    routeParams = { challengeId: 'test-challenge', playMode: 'versus' };
+    render(<ArenaScreen />);
+    await waitFor(() => expect(screen.getByTestId('versus-lobby')).toBeInTheDocument());
+    expect(screen.getByRole('button', { name: 'Race the model' })).toBeInTheDocument();
+  });
+
   it('lets the user pick Versus and race a model', async () => {
     const fetchMock = mockFetchForChallenge();
     fetchMock.mockImplementation((url: string, opts?: any) => {

@@ -399,6 +399,7 @@ Cleanup: `docker stop ruwt-exec-test && docker rm ruwt-exec-test`
 - Docker Desktop must be running for local executor tests (`open -a Docker` on macOS)
 - `--privileged` flag required for iptables inside Docker on macOS
 - Preview deploys: PRs with `dev/**` changes get preview URLs via `deploy-dev-preview.yml` (`<branch>.ruwt-dev.pages.dev`). Production deploys only on push to `main`. Pages publish fails if `ruwt-projects-preview` is missing. The workflow tries to create it with `CLOUDFLARE_API_TOKEN` then `CLOUDFLARE_ADMIN_API_TOKEN`; if both lack R2:Edit it rebinds preview to the existing `ruwt-projects` bucket for that run only. Versus needs `0071_versus_matches.sql` on `ruwt-dev-preview` (applied) and on prod `ruwt-dev` before merge.
+- Preview auth: `https://*.ruwt-dev.pages.dev` is not covered by Supabase `https://ruwt-dev.pages.dev/**`. GitHub OAuth from a preview host often lands on production `ruwt.dev`. Use email/password on the preview origin. Auth `getUser` is capped at 4s so a hung Supabase call cannot pin Problems on a skeleton. Problems fetches `/api/challenges` without waiting for a session; Versus is a control on each challenge card and `/arena/:id?mode=versus`.
 
 ## Knowledge Sharing
 

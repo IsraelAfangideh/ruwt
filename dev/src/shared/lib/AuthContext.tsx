@@ -15,6 +15,9 @@ interface AuthContextType {
   loading: boolean;
 }
 
+/** Cap getUser so a hung Supabase call cannot pin the app on a skeleton. */
+export const AUTH_LOAD_TIMEOUT_MS = 4000;
+
 const AuthContext = createContext<AuthContextType>({ user: null, loading: true });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -34,32 +37,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       void reportAttribution();
     };
 
-    // Initial check
-    supabase.auth.getUser().then(({ data: { user: u } }) => {
+    let resolved = false;
+    const applyUser = (u: User | null, fromTimeout = false) => {
+      if (resolved && fromTimeout) return;
+      resolved = true;
       setUser(prev => (prev?.id === u?.id ? prev : u));
       setLoading(false);
       report(u);
       /* istanbul ignore next -- @preserve */
       if (u) Sentry.setUser({ id: u.id, email: u.email ?? undefined });
-    });
+      else Sentry.setUser(null);
+    };
+
+    const timeout = setTimeout(() => applyUser(null, true), AUTH_LOAD_TIMEOUT_MS);
+
+    // Initial check — always settle loading, even if getUser rejects or hangs.
+    supabase.auth.getUser()
+      .then(({ data: { user: u } }) => applyUser(u))
+      .catch(() => applyUser(null));
 
     // Live updates (sign-in, sign-out, token refresh)
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      const u = session?.user ?? null;
-      // Keep stable reference if same user (token refresh creates new objects)
-      /* istanbul ignore next -- @preserve */
-      setUser(prev => (prev?.id === u?.id ? prev : u));
-      setLoading(false);
-      report(u);
-      if (u) {
-        /* istanbul ignore next -- @preserve */
-        Sentry.setUser({ id: u.id, email: u.email ?? undefined });
-      } else {
-        Sentry.setUser(null);
-      }
+      applyUser(session?.user ?? null);
     });
 
-    return () => { subscription.unsubscribe(); };
+    return () => {
+      clearTimeout(timeout);
+      subscription.unsubscribe();
+    };
   }, []);
 
   const value = useMemo(() => ({ user, loading }), [user, loading]);

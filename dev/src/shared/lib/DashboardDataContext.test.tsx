@@ -205,23 +205,28 @@ describe('useDashboardData without provider', () => {
 // ---------------------------------------------------------------------------
 
 describe('DashboardDataProvider (no user)', () => {
-  it('provides initial state when no user is authenticated', () => {
+  it('fetches public endpoints when no user is authenticated', async () => {
     mockUser.current = null;
     mockAuthLoading.current = false;
 
     const { result } = renderHook(() => useDashboardData(), { wrapper });
-    expect(result.current.state.challenges.status).toBe('idle');
-    expect(result.current.initialLoadComplete).toBe(false);
-    expect(fetchMock).not.toHaveBeenCalled();
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith('/api/challenges', expect.anything());
+      expect(fetchMock).toHaveBeenCalledWith('/api/daily-challenge', expect.anything());
+    });
+    expect(fetchMock).not.toHaveBeenCalledWith('/api/dashboard', expect.anything());
+    expect(result.current.state.challenges.status).not.toBe('idle');
   });
 
-  it('does not fetch when auth is still loading', () => {
+  it('still fetches public list while auth is loading', async () => {
     mockUser.current = { id: 'u1' };
     mockAuthLoading.current = true;
 
-    const { result } = renderHook(() => useDashboardData(), { wrapper });
-    expect(result.current.state.challenges.status).toBe('idle');
-    expect(fetchMock).not.toHaveBeenCalled();
+    renderHook(() => useDashboardData(), { wrapper });
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith('/api/challenges', expect.anything());
+    });
+    expect(fetchMock).not.toHaveBeenCalledWith('/api/dashboard', expect.anything());
   });
 });
 
@@ -242,7 +247,9 @@ describe('DashboardDataProvider (authenticated)', () => {
     renderHook(() => useDashboardData(), { wrapper });
 
     await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledTimes(Object.keys(ENDPOINTS).length);
+      for (const config of Object.values(ENDPOINTS)) {
+        expect(fetchMock).toHaveBeenCalledWith(config.url, expect.anything());
+      }
     });
   });
 

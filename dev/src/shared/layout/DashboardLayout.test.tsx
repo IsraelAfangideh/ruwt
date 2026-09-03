@@ -231,20 +231,16 @@ describe('DashboardLayout', () => {
 
   /* ── Content skeleton tests ──────────────────────────────── */
 
-  it('shows content skeleton when initial load is not complete', () => {
+  it('renders children while dashboard prefetch is still running', () => {
     mockDashboardData = { ...mockDashboardData, initialLoadComplete: false };
 
-    const { container } = render(
+    render(
       <DashboardLayout user={mockUser}>
         <span>Dashboard Content</span>
       </DashboardLayout>
     );
 
-    // Children should NOT be rendered while loading
-    expect(screen.queryByText('Dashboard Content')).toBeNull();
-    // Skeleton blocks should be present (aria-hidden divs)
-    const skeletons = container.querySelectorAll('[aria-hidden="true"]');
-    expect(skeletons.length).toBeGreaterThan(0);
+    expect(screen.getByText('Dashboard Content')).toBeInTheDocument();
   });
 
   it('renders children once initial load completes', () => {

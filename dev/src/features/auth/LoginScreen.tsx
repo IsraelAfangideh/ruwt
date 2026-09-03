@@ -107,6 +107,11 @@ export function LoginScreen() {
         <Text style={[styles.formSubtitle, { color: c.textMuted }]}>
           Sign in to your account to continue
         </Text>
+        {typeof window !== 'undefined' && /\.pages\.dev$/.test(window.location.hostname) && (
+          <Text style={[styles.formSubtitle, { color: c.textMuted, marginTop: 8 }]} testID="preview-auth-hint">
+            Preview host: GitHub sign-in may send you to ruwt.dev. Use email and password here.
+          </Text>
+        )}
       </View>
 
       {error && (

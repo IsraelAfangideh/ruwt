@@ -10,7 +10,7 @@ export type RootStackParamList = {
   Leaderboard: undefined;
   Profile: undefined;
   Settings: undefined;
-  Arena: { challengeId: string };
+  Arena: { challengeId: string; playMode?: 'union' | 'versus' };
   Replay: { attemptId: string };
   DailyChallenge: undefined;
   Assessments: undefined;

@@ -203,8 +203,14 @@ export function ArenaScreen() {
   const route = useRoute();
   const { user, loading: authLoading } = useAuth();
   /* istanbul ignore next -- @preserve */
-  const params = (route.params || {}) as { challengeId?: string };
+  const params = (route.params || {}) as { challengeId?: string; playMode?: 'union' | 'versus' };
   const challengeId = params.challengeId ?? '';
+  /* istanbul ignore next -- @preserve */
+  const urlPlayMode = typeof window !== 'undefined'
+    ? new URLSearchParams(window.location.search).get('mode')
+    : null;
+  const initialLobby: 'union' | 'versus' =
+    params.playMode === 'versus' || urlPlayMode === 'versus' ? 'versus' : 'union';
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -248,7 +254,7 @@ export function ArenaScreen() {
   // True once the user has run the tests, or has been warned once and chosen to
   // submit regardless. Either way the guard stops nagging.
   const [submitVerified, setSubmitVerified] = useState(false);
-  const [lobbyMode, setLobbyMode] = useState<'union' | 'versus'>('union');
+  const [lobbyMode, setLobbyMode] = useState<'union' | 'versus'>(initialLobby);
   const [opponentModel, setOpponentModel] = useState(TIER_MODELS.budget.id);
   const [versusMatch, setVersusMatch] = useState<VersusMatchPublic | null>(null);
   const navigatingRef = useRef(false);
@@ -318,11 +324,12 @@ export function ArenaScreen() {
   useEffect(() => {
     setChallenge(null);
     resetAttemptState();
+    setLobbyMode(initialLobby);
     setLoading(true);
     setNextChallenge(null);
     navigatingRef.current = false;
     autoResumeCalledRef.current = false;
-  }, [challengeId]);
+  }, [challengeId, initialLobby, resetAttemptState]);
 
   // Load challenge + profile on mount (but don't create attempt yet)
   useEffect(() => {
